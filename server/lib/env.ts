@@ -70,5 +70,7 @@ export const env = {
   symplaApiKey: process.env.SYMPLA_API_KEY || "",
   posthogApiKey: process.env.POSTHOG_API_KEY || "",
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
+  resendApiKey: process.env.RESEND_API_KEY || "",
+  redisUrl: process.env.REDIS_URL || "",
   cronSecret: process.env.CRON_SECRET || "",
 };

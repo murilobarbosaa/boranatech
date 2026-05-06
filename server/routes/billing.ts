@@ -3,6 +3,7 @@ import crypto from "crypto";
 
 import { createAsaasCheckout, getAsaasSubscriptionPayments, getOrCreateAsaasCustomer } from "../lib/asaas";
 import { env } from "../lib/env";
+import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -196,7 +197,7 @@ router.post("/webhook", async (req, res, next) => {
       return res.json({ received: true });
     }
 
-    const { data: proPlan } = await supabaseAdmin.from("plans").select("id").eq("code", planCode).maybeSingle();
+    const { data: proPlan } = await supabaseAdmin.from("plans").select("id, name").eq("code", planCode).maybeSingle();
 
     if (!proPlan) {
       return next(createError(500, "db_error", "Plano Pro não encontrado."));
@@ -249,6 +250,26 @@ router.post("/webhook", async (req, res, next) => {
           })
           .eq("id", affiliate.id);
       }
+    }
+
+    try {
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const userEmail = authData?.user?.email || "";
+      const userName = String(authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário");
+
+      if (userEmail && ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(eventType) && newStatus === "active") {
+        await enqueueEmail({ type: "pro_upgrade", to: userEmail, name: userName, planName: proPlan.name || planCode });
+      }
+
+      if (userEmail && newStatus === "canceled") {
+        await enqueueEmail({ type: "cancellation", to: userEmail, name: userName });
+      }
+
+      if (userEmail && eventType === "PAYMENT_OVERDUE") {
+        await enqueueEmail({ type: "payment_failed", to: userEmail, name: userName });
+      }
+    } catch (emailError) {
+      console.error("[email] Erro ao processar e-mail transacional", emailError);
     }
 
     console.log(`[webhook] Subscription ${subscriptionId} -> ${newStatus} para user ${userId}`);

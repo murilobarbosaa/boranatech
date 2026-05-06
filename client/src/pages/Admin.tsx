@@ -74,6 +74,13 @@ type AiUsage = {
   status: "ok" | "watch" | "high";
 };
 
+type QueueStats = {
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+};
+
 type FunnelStep = {
   label: string;
   value: number;
@@ -1402,6 +1409,7 @@ export default function Admin() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
+  const [queueStats, setQueueStats] = useState<QueueStats>({ waiting: 0, active: 0, completed: 0, failed: 0 });
   const [posthogStats, setPosthogStats] = useState<PosthogStatsData | null>(null);
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(null);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
@@ -1452,17 +1460,19 @@ export default function Admin() {
           adminFetch("/dashboard"),
           fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
+          adminFetch("/queue-stats").catch(() => ({ data: { waiting: 0, active: 0, completed: 0, failed: 0 } })),
           adminFetch("/posthog-stats"),
           adminFetch("/churn-risk").catch(() => ({ data: null })),
           adminFetch("/affiliates-stats").catch(() => ({ data: [] })),
           adminFetch("/subscriptions"),
         ]);
       })
-      .then(([dashboardJson, healthJson, aiJson, posthogJson, churnRiskJson, affiliatesJson, subscriptionsJson]) => {
+      .then(([dashboardJson, healthJson, aiJson, queueJson, posthogJson, churnRiskJson, affiliatesJson, subscriptionsJson]) => {
         setDashboard(dashboardJson.data);
         setHealth(healthJson);
         setAuditLogs(Array.isArray(dashboardJson.data?.recent_audit) ? dashboardJson.data.recent_audit : []);
         setAiStats(aiJson.data || {});
+        setQueueStats(queueJson.data || { waiting: 0, active: 0, completed: 0, failed: 0 });
         setPosthogStats(posthogJson.data || null);
         setChurnRiskUsers(Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null);
         setAffiliates(Array.isArray(affiliatesJson.data) ? affiliatesJson.data : []);
@@ -1474,6 +1484,7 @@ export default function Admin() {
         setHealth(null);
         setAuditLogs([]);
         setAiStats({});
+        setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
         setPosthogStats(null);
         setChurnRiskUsers(null);
         setAffiliates([]);
@@ -1860,6 +1871,31 @@ export default function Admin() {
                   <p className="text-2xl font-black">{formatCurrency(Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0))}</p>
                   <p className="text-xs font-bold text-violet-100">custo estimado</p>
                 </div>
+              </div>
+            </article>
+
+            <article className="card-brutal rounded-3xl bg-white p-6">
+              <div className="flex items-center gap-3">
+                <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
+                  <Mail className="h-6 w-6" />
+                </span>
+                <div>
+                  <p className="text-xs font-black uppercase text-violet-700">sistema</p>
+                  <h2 className="font-display text-2xl font-black text-slate-950">Fila de e-mails</h2>
+                </div>
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                {[
+                  { label: "na fila", value: queueStats.waiting },
+                  { label: "processando", value: queueStats.active },
+                  { label: "enviados", value: queueStats.completed },
+                  { label: "com falha", value: queueStats.failed },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                    <p className="text-2xl font-black text-slate-950">{item.value}</p>
+                    <p className="text-xs font-bold text-slate-500">{item.label}</p>
+                  </div>
+                ))}
               </div>
             </article>
           </div>

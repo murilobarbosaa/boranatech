@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { logAudit } from "../lib/audit";
 import { env } from "../lib/env";
+import { emailQueue } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -598,6 +599,26 @@ router.get("/ai-stats", async (_req, res, next) => {
     res.json({ data: stats });
   } catch (err) {
     next(err);
+  }
+});
+
+router.get("/queue-stats", async (_req, res) => {
+  try {
+    if (!emailQueue) {
+      res.json({ data: { waiting: 0, active: 0, completed: 0, failed: 0 } });
+      return;
+    }
+
+    const [waiting, active, completed, failed] = await Promise.all([
+      emailQueue.getWaitingCount(),
+      emailQueue.getActiveCount(),
+      emailQueue.getCompletedCount(),
+      emailQueue.getFailedCount(),
+    ]);
+    res.json({ data: { waiting, active, completed, failed } });
+  } catch (err) {
+    console.error("[queue] Erro ao buscar stats", err);
+    res.json({ data: { waiting: 0, active: 0, completed: 0, failed: 0 } });
   }
 });
 

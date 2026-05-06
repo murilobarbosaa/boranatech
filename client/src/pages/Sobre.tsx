@@ -3,6 +3,7 @@
   Style: Neo-Brutalism Suavizado
 */
 
+import SobreRedesign from "./SobreRedesign";
 import { Link } from "wouter";
 import { Rocket, Heart, Target, Users, BookOpen, ArrowRight } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -23,7 +24,7 @@ const secoes = [
   { icon: <Users className="w-5 h-5" />, titulo: "Comunidades", desc: "Grupos e comunidades para se conectar com outras pessoas da área.", path: "/comunidades" },
 ];
 
-export default function Sobre() {
+function OldSobre() {
   return (
     <Layout>
       {/* Hero */}
@@ -187,3 +188,5 @@ export default function Sobre() {
     </Layout>
   );
 }
+
+export default SobreRedesign;

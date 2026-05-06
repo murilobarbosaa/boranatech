@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -40,6 +41,16 @@ router.get("/", async (req, res, next) => {
 
       if (insertError) {
         return next(createError(500, "db_error", "Erro ao criar perfil."));
+      }
+
+      try {
+        await enqueueEmail({
+          type: "welcome",
+          to: req.user!.email,
+          name: newProfile.name || req.user!.email.split("@")[0],
+        });
+      } catch (emailError) {
+        console.error("[email] Erro ao enviar boas-vindas", emailError);
       }
 
       return res.json({ data: newProfile });
