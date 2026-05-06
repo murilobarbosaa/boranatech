@@ -1,3 +1,4 @@
+import PerfilRedesign from "./PerfilRedesign";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
@@ -41,7 +42,7 @@ function groupFavorites(favorites: FavoriteItem[]) {
   }, {} as Record<FavoriteType, FavoriteItem[]>);
 }
 
-export default function Perfil() {
+function OldPerfil() {
   const [, setLocation] = useLocation();
   const { loading, profile, signOut, user } = useAuth();
   const { isPro, loading: subscriptionLoading } = useSubscription();
@@ -225,3 +226,5 @@ export default function Perfil() {
     </Layout>
   );
 }
+
+export default PerfilRedesign;
