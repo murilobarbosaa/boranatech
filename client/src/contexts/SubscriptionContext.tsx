@@ -7,7 +7,7 @@ interface SubscriptionContextValue {
   isPro: boolean;
   subscription: unknown;
   loading: boolean;
-  refreshSubscription: () => Promise<void>;
+  refreshSubscription: (options?: { silent?: boolean }) => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
@@ -32,7 +32,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [isPro, setIsPro] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const refreshSubscription = useCallback(async () => {
+  const refreshSubscription = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+
     if (isLocalDevelopmentHost()) {
       setSubscription({ status: "local_development_preview", isPro: true });
       setIsPro(true);
@@ -47,7 +49,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       return;
     }
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
+
     try {
       const sub = await getMySubscription();
       setSubscription(sub);
@@ -57,7 +62,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setSubscription(null);
       setIsPro(false);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [user]);
 
@@ -92,7 +99,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
-        void refreshSubscription();
+        void refreshSubscription({ silent: true });
       }
     }, 3 * 60 * 1000);
 
