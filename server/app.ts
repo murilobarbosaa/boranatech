@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 import { env } from "./lib/env";
+import { redisConnection } from "./lib/queue";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
 import { errorHandler } from "./middleware/error";
@@ -148,6 +149,16 @@ app.get("/api/health", async (_req, res) => {
   checks.currents = env.currentsApiKey ? "ok" : "error";
   checks.jooble = env.joobleApiKey ? "ok" : "error";
   checks.sympla = env.symplaApiKey ? "ok" : "error";
+  if (redisConnection) {
+    try {
+      await redisConnection.ping();
+      checks.redis = "ok";
+    } catch {
+      checks.redis = "error";
+    }
+  } else {
+    checks.redis = "error";
+  }
 
   const status = checks.database === "ok" ? "ok" : "degraded";
 

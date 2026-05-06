@@ -1,0 +1,191 @@
+[33mcommit d683318321578f1aea20984c1960d06426a8ba2e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 17:30:15 2026 -0300
+
+    fix: silent polling for subscription refresh, no more loading flash
+
+[33mcommit e94c2bcfe67244de927444c3b9c2d2410fb0e497[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 16:41:56 2026 -0300
+
+    feat: BullMQ email queue with Redis, welcome/pro/cancel/payment emails and admin monitoring
+
+[33mcommit dd364ec97528cc556c8bf0cae4deb85f032784bd[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 15:53:32 2026 -0300
+
+    feat: checkout success page, smart polling and Asaas callback URL
+
+[33mcommit 043a85b010aea7783b6e55f50362bf3e0507f687[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 15:15:27 2026 -0300
+
+    feat: redesign profile page with subscription, progress and study sections
+
+[33mcommit 27e853aac6dda305968ee10db8c9fb9da6421e52[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 14:57:41 2026 -0300
+
+    fix: webhook subscription id extraction, real plan code and auto refresh after payment
+
+[33mcommit 637968972b02bf851eb0a862c7c2865e01d9a4a8[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 14:42:14 2026 -0300
+
+    fix: return checkoutUrl from Asaas subscription payments
+
+[33mcommit 1d10fa1217b69bcda698f5ccc41642ed8d495a63[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 14:20:29 2026 -0300
+
+    fix: affiliate links point to /pro instead of /cadastro
+
+[33mcommit 5a6ef87449ba4b859392d85c181e0488b63ae64d[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 14:05:35 2026 -0300
+
+    fix: add vercel.json for SPA client-side routing
+
+[33mcommit 7b63143c2507cdf4c8320612448d3828c27b6b0b[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 03:07:45 2026 -0300
+
+    feat: checkout page with 3 plans, affiliate discount and Pro button in header
+
+[33mcommit 841c76c1034b64c2d04a4806aca6dd43318cd56a[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 02:58:08 2026 -0300
+
+    feat: affiliate admin — edit, delete and copy link
+
+[33mcommit 5bc51f6ffd6c26f548372299138deba97f13cadb[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 02:47:26 2026 -0300
+
+    feat: /cadastro page with affiliate discount banner
+
+[33mcommit 7973047f62112c1cd2c0406276372838a729ab4c[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 02:38:14 2026 -0300
+
+    feat: affiliate system — tracking, discount, commission and admin panel
+
+[33mcommit 14b0be3aaaff0514ca444be94549cab7567aa67d[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 02:28:18 2026 -0300
+
+    feat: churn risk users from Supabase Admin API
+
+[33mcommit e2c6ce20d035d2e945d633f9ac1c400325598afc[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 02:10:54 2026 -0300
+
+    feat: Posthog analytics integration in admin dashboard
+
+[33mcommit b9d78558ced8891fba30ab7a8e1dbc3874898117[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 01:36:36 2026 -0300
+
+    feat: add Posthog analytics with automatic event tracking
+
+[33mcommit a19496dc46caee4050bb18cf81a9adcd44dfc07b[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 00:29:57 2026 -0300
+
+    fix: allow multiple CORS origins for www and non-www domains
+
+[33mcommit bb32075f79a35fc92e1785c661e8b4ba34259c28[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Wed May 6 00:22:39 2026 -0300
+
+    fix: use VITE_API_URL for all API calls in production
+
+[33mcommit 365fb8083b50ba78ce9743405b4489b729a5df69[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 23:07:03 2026 -0300
+
+    fix: bundle server with esbuild for Railway deploy
+
+[33mcommit b011666dbd9f98efff323b097ae105e460af752a[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:58:58 2026 -0300
+
+    chore: fix deploy config
+
+[33mcommit 9ae2bcbfae43658520976ff6f9d3c9c95d08b9dc[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:52:39 2026 -0300
+
+    chore: add railway.json for production deploy config
+
+[33mcommit 22c4e87076c45bc367c74db527d60f05ba51a36d[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:29:34 2026 -0300
+
+    docs(project): add implementation notes and roadmap ideas
+
+[33mcommit d2bd8166f827bd0e2fd1e82343275d426595a2b2[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:29:23 2026 -0300
+
+    feat(admin): add protected dashboard and content management
+
+[33mcommit 7248e518d08bdad132b1921c6bd17996be358d84[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:29:14 2026 -0300
+
+    feat(user-data): add bookmarks, study tracking and quiz APIs
+
+[33mcommit 30710125563710dc037fe539674e7d61a7a89f42[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:29:00 2026 -0300
+
+    feat(billing): add subscription and Asaas billing flow
+
+[33mcommit f9a683fd37a5b06ef1778fbf0cc93fbe13053e6f[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:28:52 2026 -0300
+
+    feat(ai): add AI tools and usage tracking
+
+[33mcommit 500f51308ddd1bb88c9486e7820fd801a8cec930[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:28:42 2026 -0300
+
+    feat(content-api): add content endpoints and sync jobs
+
+[33mcommit 2c5148ef69a0cf5cf8310b2485b37975134746ae[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:28:34 2026 -0300
+
+    feat(server): add Express API foundation and Supabase integration
+
+[33mcommit 7ee02e88f3700c6ea42fe2b063604b9e0d785c80[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:28:27 2026 -0300
+
+    feat(auth): add Supabase auth and profile flows
+
+[33mcommit 6f7c92de4a78635242010468fd22dcaa3a1d67ef[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:28:12 2026 -0300
+
+    feat(content): add public learning and career pages
+
+[33mcommit 810facf09e81d101295d60d03c38bf7664549450[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:27:51 2026 -0300
+
+    feat(ui): add shared layout and design system components
+
+[33mcommit 09e83d0189c90c2963d77fe3ff04b824e3c35814[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Tue May 5 22:27:34 2026 -0300
+
+    chore(project): scaffold full-stack application setup
+
+[33mcommit 477444d37b14e0b8fe7e7e93ec651c25f8d91427[m
+Author: murilobarbosaa <murilobarbosa2811@gmail.com>
+Date:   Thu Apr 30 16:59:25 2026 -0300
+
+    Initial commit

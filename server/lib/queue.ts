@@ -22,6 +22,10 @@ export const redisConnection = env.redisUrl
     })
   : null;
 
+redisConnection?.on("error", (err) => {
+  console.error("[queue] Erro na conexão Redis:", err.message);
+});
+
 export const emailQueue = redisConnection
   ? new Queue<EmailJobData>("emails", {
       connection: redisConnection,
