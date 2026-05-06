@@ -1,0 +1,2164 @@
+BORA NA TECH - PLANO DETALHADO DE IMPLEMENTACAO DO BACKEND
+===========================================================
+
+Objetivo deste documento
+------------------------
+Este documento transforma a varredura do frontend em um plano completo de implementacao.
+
+A leitura principal e:
+
+1. O frontend atual NAO representa um site quase estatico.
+2. O frontend representa uma plataforma viva, com conta, assinatura, plano Pro, conteudo dinamico, favoritos, progresso, diario de estudos, ferramentas de IA, busca, admin, integracoes e possivelmente automacoes.
+3. O backend atual e minimo: Express, uma rota de IA e servidor de arquivos estaticos.
+4. A maior parte dos dados hardcoded/mockados no frontend deve ser migrada para banco, CMS, APIs internas ou integracoes externas.
+5. O plano abaixo considera o caminho mais coerente com o que ja existe: manter Supabase Auth como identidade, usar Postgres/Supabase para dados do produto e ampliar o Express como backend seguro para operacoes sensiveis, webhooks, IA e integracoes.
+
+
+Estado atual do backend
+-----------------------
+Arquivo principal:
+- server/index.ts
+
+O que existe:
+- Express.
+- JSON body parser com limite de 2 MB.
+- POST /api/ai/:tool.
+- Mapa de prompts fixos para ferramentas de IA.
+- Chamada para OpenAI via OPENAI_API_KEY.
+- Servir arquivos estaticos em dist/public.
+- Fallback GET * para index.html.
+
+Ferramentas de IA existentes no backend:
+- interview
+- github-review
+- resume-review
+- linkedin-optimizer
+- study-plan
+- roadmap-generator
+- employability
+- job-analyzer
+- networking-message
+
+O que nao existe:
+- Banco de dados do produto.
+- Perfis.
+- Preferencias.
+- Assinatura.
+- Checkout.
+- Webhook de pagamento.
+- Autorizacao Pro real.
+- Favoritos sincronizados.
+- Diario de estudos persistido.
+- Roadmap/progresso do usuario.
+- Admin real.
+- Conteudo dinamico.
+- CMS.
+- Busca global em backend.
+- Integracoes para noticias, eventos e vagas.
+- Historico de IA.
+- Rate limit.
+- Auditoria.
+- Logs de uso.
+- Protecao das rotas de IA por usuario/plano.
+- Validacao forte de payloads.
+- RLS/policies documentadas.
+
+
+Estado atual do frontend
+------------------------
+Arquivos e areas relevantes:
+
+- client/src/App.tsx
+  Define todas as rotas do produto.
+
+- client/src/contexts/AuthContext.tsx
+  Usa Supabase Auth direto no cliente.
+
+- client/src/lib/supabase.ts
+  Cria o cliente Supabase com VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.
+
+- client/src/contexts/SubscriptionContext.tsx
+  Plano Pro mockado com DEV_PRO_ACCESS = true.
+
+- client/src/hooks/useFavorites.ts
+  Favoritos em localStorage.
+
+- client/src/pages/EstudosDiario.tsx
+  Diario de estudos em useState, sem persistencia.
+
+- client/src/lib/data.ts
+  Grande massa de conteudo hardcoded.
+
+- client/src/lib/platformData.ts
+  Contem mockProfile e dados de plataforma.
+
+- client/src/services/profileService.ts
+  Retorna mockProfile.
+
+- client/src/services/contentService.ts
+  Retorna status mock para CMS, RSS, jobs-api e events-api.
+
+- client/src/services/careerQuizService.ts
+  Calcula resultado do quiz localmente.
+
+- client/src/lib/aiClient.ts
+  Chama /api/ai/:endpoint.
+
+- client/src/components/shared/AiToolPanel.tsx
+  Form generico para ferramentas de IA.
+
+- client/src/components/shared/AiChatPanel.tsx
+  Chat generico para ferramentas de IA.
+
+- client/src/components/pro/ProGate.tsx
+  Bloqueio visual de funcionalidades Pro.
+
+
+Principio arquitetural
+----------------------
+O backend deve ser dividido em quatro camadas:
+
+1. Identidade e autorizacao
+   Supabase Auth pode continuar sendo a fonte de identidade.
+   O backend Express deve validar JWT do Supabase nas rotas privadas.
+
+2. Dados do produto
+   Postgres/Supabase deve guardar perfis, favoritos, progresso, diario, assinaturas, conteudo e historicos.
+
+3. Operacoes sensiveis
+   Express deve cuidar de billing, webhooks, IA, rate limit, integracoes externas, jobs e admin.
+
+4. Conteudo vivo
+   Conteudos que hoje estao em TS devem virar registros editaveis ou sincronizados.
+   Podem comecar no Postgres e depois evoluir para CMS se necessario.
+
+
+Decisao recomendada de stack
+----------------------------
+Como o projeto ja usa Supabase Auth, a abordagem mais direta e:
+
+- Supabase Auth para login/cadastro/reset/sessao.
+- Supabase Postgres para dados.
+- Supabase RLS para proteger dados acessados diretamente pelo client, quando fizer sentido.
+- Express para:
+  - IA.
+  - Billing.
+  - Webhooks.
+  - Admin sensivel.
+  - Integracoes externas.
+  - Jobs/cron.
+  - Endpoints agregadores.
+  - Validacao Pro server-side.
+
+Essa arquitetura evita reescrever a autenticacao e aproveita o que ja existe, mas corrige o problema central: hoje o cliente sabe quem esta logado, mas o servidor nao usa essa informacao para proteger recursos.
+
+
+Variaveis de ambiente necessarias
+---------------------------------
+Ja existentes ou esperadas:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+- OPENAI_API_KEY
+- PORT
+- NODE_ENV
+
+Adicionar para backend:
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- SUPABASE_JWT_SECRET ou configuracao equivalente de validacao JWT
+- APP_PUBLIC_URL
+- CORS_ORIGIN
+- STRIPE_SECRET_KEY ou chave do provedor escolhido
+- STRIPE_WEBHOOK_SECRET
+- STRIPE_PRICE_PRO_MONTHLY
+- STRIPE_CUSTOMER_PORTAL_RETURN_URL
+- AI_DAILY_LIMIT_FREE
+- AI_DAILY_LIMIT_PRO
+- AI_MONTHLY_LIMIT_PRO
+- ADMIN_EMAIL_ALLOWLIST opcional no inicio
+- CRON_SECRET para endpoints internos de sincronizacao
+- SEARCH_PROVIDER se usar Algolia/Meilisearch/Typesense
+- MEILISEARCH_HOST / MEILISEARCH_API_KEY se usar Meilisearch
+
+Observacao:
+- VITE_* fica exposto no browser.
+- Chaves secretas nunca devem usar prefixo VITE_.
+- SUPABASE_SERVICE_ROLE_KEY nunca deve ir para o cliente.
+
+
+Autenticacao no backend
+-----------------------
+Problema atual:
+- O frontend sabe se existe user/session via Supabase.
+- O backend /api/ai/:tool nao exige usuario.
+- Logo, qualquer pessoa pode chamar ferramentas de IA se souber a rota.
+
+Implementacao necessaria:
+
+1. Criar middleware auth opcional/obrigatorio.
+
+Fluxo:
+- Cliente envia Authorization: Bearer <access_token_do_supabase>.
+- Backend valida token.
+- Backend injeta req.user com:
+  - id
+  - email
+  - role
+  - raw token claims
+
+2. Criar helper requireAuth.
+
+Responsabilidade:
+- Bloquear rota privada se token nao existir ou for invalido.
+- Retornar 401.
+
+3. Criar helper requirePro.
+
+Responsabilidade:
+- Depois de autenticar, consultar assinatura ativa.
+- Permitir se status ativo/trialing e current_period_end valido.
+- Retornar 403 se usuario nao for Pro.
+
+4. Criar helper requireAdmin.
+
+Responsabilidade:
+- Validar role admin no banco ou claim custom.
+- Nunca usar localStorage como sessao admin real.
+
+
+Modelo de dados principal
+=========================
+
+1. profiles
+-----------
+Finalidade:
+- Representa o perfil de produto do usuario.
+- Complementa auth.users do Supabase.
+
+Campos:
+- id uuid primary key
+- user_id uuid unique not null references auth.users(id)
+- name text
+- email text
+- handle text unique
+- avatar_url text
+- bio text
+- area_interesse text
+- nivel_atual text
+- objetivo text
+- onboarding_completed boolean default false
+- onboarding_step integer default 0
+- preferences jsonb default '{}'
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Regras:
+- Uma linha por usuario.
+- Criar automaticamente apos signup via trigger ou no primeiro GET /me.
+- email pode ser espelhado do auth para facilidade, mas auth.users continua fonte principal.
+
+Endpoints:
+- GET /me
+- PATCH /me
+- GET /me/profile
+- PATCH /me/profile
+
+Frontend impactado:
+- Perfil.tsx
+- AuthContext.tsx
+- profileService.ts
+- Header.tsx
+- OnboardingTour.tsx
+
+Substituir:
+- mockProfile por dados reais.
+- user_metadata como unica fonte de nome por profiles.name.
+
+
+2. plans
+--------
+Finalidade:
+- Catalogo interno de planos.
+
+Campos:
+- id uuid primary key
+- code text unique not null
+- name text not null
+- description text
+- price_cents integer not null
+- currency text default 'BRL'
+- interval text not null -- month/year
+- provider text not null -- stripe/pagarme/mercadopago
+- provider_price_id text
+- is_active boolean default true
+- features jsonb default '{}'
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Plano inicial:
+- free
+- pro_monthly
+
+
+3. subscriptions
+----------------
+Finalidade:
+- Guardar assinatura real do usuario.
+
+Campos:
+- id uuid primary key
+- user_id uuid not null references auth.users(id)
+- plan_id uuid references plans(id)
+- provider text not null
+- provider_customer_id text
+- provider_subscription_id text unique
+- status text not null
+- current_period_start timestamptz
+- current_period_end timestamptz
+- trial_end timestamptz
+- cancel_at_period_end boolean default false
+- canceled_at timestamptz
+- raw_provider_payload jsonb
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Status esperados:
+- active
+- trialing
+- past_due
+- unpaid
+- canceled
+- incomplete
+- incomplete_expired
+
+Regra Pro:
+- Usuario e Pro se existe subscription com:
+  - status in ('active', 'trialing')
+  - current_period_end > now() ou status trialing valido
+
+Endpoints:
+- GET /me/subscription
+- POST /billing/checkout
+- POST /billing/portal
+- POST /billing/webhook
+
+Frontend impactado:
+- SubscriptionContext.tsx
+- ProGate.tsx
+- Perfil.tsx
+- todas paginas com useSubscription
+
+Substituir:
+- DEV_PRO_ACCESS por chamada real.
+- togglePro de teste por botao de checkout/portal.
+
+
+4. user_bookmarks
+-----------------
+Finalidade:
+- Persistir favoritos e itens salvos.
+
+Tipos atuais no frontend:
+- area
+- roadmap
+- curso
+- projeto
+- dica
+- conceito
+- plataforma
+- evento
+- noticia
+- comunidade
+- faculdade
+
+Campos:
+- id uuid primary key
+- user_id uuid not null references auth.users(id)
+- resource_type text not null
+- resource_id text not null
+- title_snapshot text
+- subtitle_snapshot text
+- url_snapshot text
+- created_at timestamptz default now()
+
+Indice unico:
+- unique(user_id, resource_type, resource_id)
+
+Endpoints:
+- GET /me/bookmarks
+- POST /me/bookmarks
+- DELETE /me/bookmarks/:resourceType/:resourceId
+
+Frontend impactado:
+- useFavorites.ts
+- Perfil.tsx
+- Areas.tsx
+- Cursos.tsx
+- Roadmaps.tsx
+- Plataformas.tsx
+- Eventos.tsx
+- Projetos.tsx
+- Noticias.tsx
+- Comunidades.tsx
+- Faculdades.tsx
+- Dicas.tsx
+- Dicionario.tsx
+
+Migracao:
+- No primeiro login, opcionalmente ler localStorage e enviar para backend.
+- Depois de migrar, localStorage pode virar cache temporario ou ser removido.
+
+
+5. study_entries
+----------------
+Finalidade:
+- Persistir Diario de Estudos.
+
+Campos:
+- id uuid primary key
+- user_id uuid not null references auth.users(id)
+- text text not null
+- minutes integer not null
+- mode text not null
+- studied_at timestamptz not null
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Modes vistos no frontend:
+- produtiva
+- ritmo
+- dispersa
+- revisar
+
+Endpoints:
+- GET /me/study-entries?from=&to=
+- POST /me/study-entries
+- PATCH /me/study-entries/:id
+- DELETE /me/study-entries/:id
+- GET /me/study-stats?range=7d|30d|90d
+
+Stats:
+- streak atual
+- maior streak
+- total de minutos na semana
+- total de minutos no mes
+- media diaria
+- distribuicao por mode
+- dias estudados no periodo
+
+Frontend impactado:
+- EstudosDiario.tsx
+- Perfil.tsx
+
+Substituir:
+- useState local por hook/use service com backend.
+
+
+6. ai_usage_logs
+----------------
+Finalidade:
+- Controlar custo, abuso, limite e auditoria de ferramentas IA.
+
+Campos:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- tool text not null
+- request_id text
+- input_chars integer
+- output_chars integer
+- input_tokens integer
+- output_tokens integer
+- model text
+- status text not null
+- error_message text
+- cost_estimate numeric
+- created_at timestamptz default now()
+
+Uso:
+- Um registro por chamada de IA.
+- Mesmo quando falhar, registrar status/error.
+
+
+7. ai_generations
+-----------------
+Finalidade:
+- Historico opcional das respostas de IA.
+
+Campos:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- tool text not null
+- input_json jsonb
+- messages_json jsonb
+- output_text text
+- created_at timestamptz default now()
+
+Cuidados:
+- Curriculos, LinkedIn e empregabilidade podem conter dados sensiveis.
+- Decidir se salva por padrao ou se salva apenas com consentimento.
+- Pode haver campo save_to_history boolean.
+
+Endpoints:
+- GET /me/ai-history
+- GET /me/ai-history/:id
+- DELETE /me/ai-history/:id
+
+
+8. content tables
+-----------------
+Como o site deve ser vivo, o conteudo precisa sair de arquivos TS.
+
+Abordagem recomendada:
+- Comecar com tabelas no Postgres.
+- Criar seeds importando data.ts.
+- Depois criar Admin para editar.
+- Futuramente, se necessario, conectar CMS externo.
+
+Tabelas de conteudo:
+
+8.1 areas
+Campos:
+- id uuid primary key
+- slug text unique not null
+- name text not null
+- short_description text
+- full_description text
+- tag text
+- tag_class text
+- daily_tasks jsonb
+- profile_indicated text
+- skills jsonb
+- tools jsonb
+- roles jsonb
+- average_salary jsonb
+- initial_roadmap jsonb
+- projects jsonb
+- free_courses jsonb
+- essential_terms jsonb
+- initial_tips text
+- is_pro boolean default false
+- is_published boolean default true
+- sort_order integer default 0
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /areas
+- GET /areas/:slug
+- POST /admin/areas
+- PATCH /admin/areas/:id
+- DELETE /admin/areas/:id
+
+
+8.2 technologies
+Campos:
+- id uuid primary key
+- slug text unique not null
+- name text not null
+- category text
+- description text
+- long_description text
+- use_cases jsonb
+- pros jsonb
+- cons jsonb
+- learning_path jsonb
+- related_area_ids jsonb
+- market_demand text
+- beginner_friendly_score integer
+- salary_context jsonb
+- resources jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /technologies
+- GET /technologies/:slug
+- GET /technologies/compare?left=&right=
+- GET /technologies/ranking
+- POST /admin/technologies
+- PATCH /admin/technologies/:id
+
+
+8.3 courses
+Campos:
+- id uuid primary key
+- slug text unique
+- title text not null
+- provider text
+- url text
+- area_id uuid references areas(id)
+- technology_ids jsonb
+- level text
+- price_label text
+- is_free boolean
+- workload_hours integer
+- certificate boolean
+- description text
+- tags jsonb
+- language text default 'pt-BR'
+- rating numeric
+- source text
+- source_updated_at timestamptz
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /courses
+- GET /courses/:slug
+- POST /admin/courses
+- PATCH /admin/courses/:id
+
+
+8.4 platforms
+Campos:
+- id uuid primary key
+- slug text unique
+- name text not null
+- url text
+- description text
+- price_label text
+- strengths jsonb
+- limitations jsonb
+- best_for jsonb
+- tags jsonb
+- rating numeric
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /platforms
+- GET /platforms/:slug
+- POST /admin/platforms
+- PATCH /admin/platforms/:id
+
+
+8.5 faculties
+Campos:
+- id uuid primary key
+- slug text unique
+- name text not null
+- institution text
+- degree_type text
+- modality text
+- duration_label text
+- price_label text
+- location text
+- state text
+- city text
+- url text
+- description text
+- evaluation jsonb
+- tags jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /faculties
+- GET /faculties/:slug
+- POST /admin/faculties
+- PATCH /admin/faculties/:id
+
+
+8.6 events
+Campos:
+- id uuid primary key
+- slug text unique
+- title text not null
+- description text
+- starts_at timestamptz
+- ends_at timestamptz
+- location_label text
+- city text
+- state text
+- online boolean default false
+- url text
+- source text
+- source_external_id text
+- tags jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /events
+- GET /events/:slug
+- POST /admin/events
+- PATCH /admin/events/:id
+
+
+8.7 projects
+Campos:
+- id uuid primary key
+- slug text unique
+- title text not null
+- description text
+- objective text
+- level text
+- area_id uuid references areas(id)
+- tools jsonb
+- simplified_steps jsonb
+- portfolio_tips text
+- linkedin_suggestion text
+- next_project text
+- tags jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /projects
+- GET /projects/:slug
+- POST /admin/projects
+- PATCH /admin/projects/:id
+
+
+8.8 news
+Campos:
+- id uuid primary key
+- slug text unique
+- title text not null
+- summary text
+- body text
+- url text
+- image_url text
+- source text
+- author text
+- published_at timestamptz
+- tags jsonb
+- is_external boolean default true
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /news
+- GET /news/:slug
+- POST /admin/news
+- PATCH /admin/news/:id
+
+
+8.9 communities
+Campos:
+- id uuid primary key
+- slug text unique
+- name text not null
+- description text
+- url text
+- platform text
+- audience text
+- tags jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /communities
+- GET /communities/:slug
+- POST /admin/communities
+- PATCH /admin/communities/:id
+
+
+8.10 companies
+Campos:
+- id uuid primary key
+- slug text unique
+- name text not null
+- description text
+- website_url text
+- careers_url text
+- sector text
+- junior_friendly_score integer
+- remote_policy text
+- technologies jsonb
+- benefits jsonb
+- tags jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /companies
+- GET /companies/:slug
+- GET /companies/ranking-junior
+- POST /admin/companies
+- PATCH /admin/companies/:id
+
+
+8.11 salary_ranges
+Campos:
+- id uuid primary key
+- role text not null
+- area_id uuid references areas(id)
+- seniority text
+- location text
+- min_cents integer
+- median_cents integer
+- max_cents integer
+- currency text default 'BRL'
+- source text
+- source_url text
+- collected_at timestamptz
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /salary-ranges
+- POST /admin/salary-ranges
+- PATCH /admin/salary-ranges/:id
+
+
+8.12 dictionary_terms
+Campos:
+- id uuid primary key
+- slug text unique
+- term text not null
+- definition text not null
+- category text
+- examples jsonb
+- related_terms jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /dictionary
+- GET /dictionary/:slug
+- POST /admin/dictionary
+- PATCH /admin/dictionary/:id
+
+
+8.13 tips
+Campos:
+- id uuid primary key
+- slug text unique
+- title text not null
+- summary text
+- body text
+- category text
+- tags jsonb
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /tips
+- GET /tips/:slug
+- POST /admin/tips
+- PATCH /admin/tips/:id
+
+
+9. roadmaps
+-----------
+Finalidade:
+- Roadmaps como conteudo vivo.
+- Pode ter roadmaps publicos e Pro.
+
+Tabelas:
+
+roadmaps:
+- id uuid primary key
+- slug text unique
+- title text not null
+- description text
+- area_id uuid references areas(id)
+- level text
+- estimated_duration_weeks integer
+- is_pro boolean default false
+- is_published boolean default true
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+roadmap_steps:
+- id uuid primary key
+- roadmap_id uuid references roadmaps(id)
+- title text not null
+- description text
+- order_index integer not null
+- estimated_hours integer
+- resources jsonb
+- deliverable text
+- is_pro boolean default false
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+user_roadmap_progress:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- roadmap_id uuid references roadmaps(id)
+- step_id uuid references roadmap_steps(id)
+- status text not null
+- completed_at timestamptz
+- notes text
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+user_generated_roadmaps:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- title text
+- input_json jsonb
+- generated_json jsonb
+- generated_text text
+- created_at timestamptz default now()
+
+Endpoints:
+- GET /roadmaps
+- GET /roadmaps/:slug
+- GET /me/roadmap-progress
+- POST /me/roadmap-progress
+- PATCH /me/roadmap-progress/:id
+- POST /roadmaps/generate
+
+
+10. career quiz
+---------------
+Hoje:
+- Resultado local por contagem.
+
+Objetivo:
+- Guardar tentativas.
+- Melhorar resultado.
+- Personalizar proximos passos.
+- Opcionalmente usar IA.
+
+Tabelas:
+
+career_quiz_attempts:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- started_at timestamptz default now()
+- completed_at timestamptz
+- result_area text
+- confidence integer
+- result_json jsonb
+
+career_quiz_answers:
+- id uuid primary key
+- attempt_id uuid references career_quiz_attempts(id)
+- question_id text
+- answer_id text
+- area text
+- answer_text text
+- order_index integer
+
+Endpoints:
+- POST /career-quiz/attempts
+- POST /career-quiz/attempts/:id/answers
+- POST /career-quiz/attempts/:id/complete
+- GET /me/career-quiz/history
+
+Frontend impactado:
+- QuizCarreira.tsx
+- careerQuizService.ts
+- DiscoveryModal.tsx
+
+
+11. content_sources e sync logs
+-------------------------------
+Hoje:
+- contentService retorna mock:
+  - cms ready
+  - rss mock
+  - jobs-api mock
+  - events-api mock
+
+Objetivo:
+- Tornar visivel o estado das integracoes.
+- Rodar sincronizacoes.
+- Deduplicar conteudo externo.
+
+Tabelas:
+
+content_sources:
+- id uuid primary key
+- code text unique
+- name text
+- type text -- cms/rss/jobs-api/events-api/manual
+- base_url text
+- status text
+- config jsonb
+- last_sync_at timestamptz
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+content_sync_logs:
+- id uuid primary key
+- source_id uuid references content_sources(id)
+- status text
+- started_at timestamptz
+- finished_at timestamptz
+- items_found integer
+- items_created integer
+- items_updated integer
+- items_failed integer
+- error_message text
+- raw_summary jsonb
+
+Endpoints:
+- GET /content/status
+- POST /admin/content-sync/run
+- GET /admin/content-sync/logs
+
+
+12. external_jobs
+-----------------
+Se o produto tiver vagas ou oportunidades vivas.
+
+Campos:
+- id uuid primary key
+- external_id text
+- source text
+- title text not null
+- company text
+- location text
+- remote boolean
+- seniority text
+- employment_type text
+- url text
+- description text
+- tags jsonb
+- published_at timestamptz
+- fetched_at timestamptz default now()
+- is_published boolean default true
+
+Endpoints:
+- GET /jobs
+- GET /jobs/:id
+- POST /admin/jobs
+- PATCH /admin/jobs/:id
+
+
+13. admin e auditoria
+---------------------
+Problema atual:
+- Admin.tsx usa localStorage.
+- Isso e apenas demo visual.
+- Nao e seguranca real.
+
+Modelo:
+
+admin_roles:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- role text not null -- owner/editor/viewer
+- created_at timestamptz default now()
+
+content_audit_logs:
+- id uuid primary key
+- actor_user_id uuid references auth.users(id)
+- action text not null
+- resource_type text not null
+- resource_id text
+- before_json jsonb
+- after_json jsonb
+- created_at timestamptz default now()
+
+content_drafts:
+- id uuid primary key
+- resource_type text
+- resource_id text
+- draft_json jsonb
+- status text
+- author_user_id uuid references auth.users(id)
+- reviewer_user_id uuid references auth.users(id)
+- created_at timestamptz default now()
+- updated_at timestamptz default now()
+
+Endpoints:
+- GET /admin/me
+- GET /admin/content/:type
+- POST /admin/content/:type
+- PATCH /admin/content/:type/:id
+- DELETE /admin/content/:type/:id
+- GET /admin/audit-logs
+- GET /admin/dashboard
+
+Regras:
+- Todas rotas /admin exigem requireAdmin.
+- Toda alteracao relevante gera audit log.
+- Nunca confiar em localStorage para permissao.
+
+
+14. busca global
+----------------
+Hoje:
+- SearchBar consulta arrays locais.
+
+Objetivo:
+- Busca em dados vivos.
+
+Primeira versao simples:
+- Postgres full-text.
+- Endpoint /search.
+
+Versao melhor:
+- Meilisearch, Typesense ou Algolia.
+- Indexar areas, cursos, roadmaps, projetos, noticias, comunidades, faculdades, plataformas, tecnologias, empresas e termos.
+
+Tabela opcional search_documents:
+- id uuid primary key
+- resource_type text
+- resource_id text
+- title text
+- description text
+- url text
+- tags jsonb
+- search_vector tsvector
+- is_published boolean
+- updated_at timestamptz
+
+Endpoint:
+- GET /search?q=&type=&limit=&offset=
+
+Resposta:
+- items:
+  - type
+  - id
+  - title
+  - description
+  - url
+  - score
+
+Frontend impactado:
+- SearchBar.tsx
+- Header.tsx, se busca global for exibida nele.
+
+
+15. locations e mapa
+--------------------
+Hoje:
+- Map.tsx usa Google Maps/proxy.
+
+Se mapas forem parte real do produto:
+
+locations:
+- id uuid primary key
+- name text
+- address text
+- city text
+- state text
+- country text default 'BR'
+- latitude numeric
+- longitude numeric
+- resource_type text
+- resource_id text
+- created_at timestamptz default now()
+
+Endpoints:
+- GET /locations?type=&city=&state=
+- GET /map/resources
+
+Necessario tambem:
+- chave Google Maps real
+- restricao de dominio
+- mapId real
+- politica de custos
+
+
+16. notificacoes
+----------------
+Nao esta forte no frontend atual, mas faz sentido para o produto.
+
+notifications:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- type text
+- title text
+- body text
+- url text
+- read_at timestamptz
+- created_at timestamptz default now()
+
+notification_preferences:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- email_enabled boolean default true
+- study_reminders boolean default true
+- product_updates boolean default true
+- billing_alerts boolean default true
+- preferences jsonb default '{}'
+
+Endpoints:
+- GET /me/notifications
+- PATCH /me/notifications/:id/read
+- GET /me/notification-preferences
+- PATCH /me/notification-preferences
+
+
+17. analytics do produto
+------------------------
+Nao precisa ser primeira fase, mas importante para evolucao.
+
+product_events:
+- id uuid primary key
+- user_id uuid references auth.users(id)
+- anonymous_id text
+- event_name text
+- properties jsonb
+- created_at timestamptz default now()
+
+Eventos uteis:
+- signup_completed
+- login_completed
+- pro_checkout_started
+- pro_checkout_completed
+- ai_tool_used
+- bookmark_created
+- study_entry_created
+- roadmap_step_completed
+- search_performed
+- content_opened
+
+Endpoint:
+- POST /events
+
+
+Rotas de frontend e necessidades de backend
+===========================================
+
+/
+Pagina Home.
+Hoje:
+- Landing com dados locais, DiscoveryModal e OnboardingTour.
+Backend necessario:
+- Conteudo de destaque vindo de CMS/banco.
+- Status de onboarding se personalizado.
+- Eventualmente analytics de CTA.
+
+/areas
+Hoje:
+- Lista areas a partir de data.ts.
+- Busca/filtros locais.
+- Favoritos via localStorage.
+Backend:
+- GET /areas.
+- GET /me/bookmarks.
+- POST/DELETE bookmark.
+
+/areas/:slug
+Hoje:
+- Detalhe de area.
+- Conteudo completo Pro.
+Backend:
+- GET /areas/:slug.
+- Verificar se blocos Pro devem ser retornados apenas para Pro ou retornados com flag bloqueada.
+- Se Pro, requirePro para campos sensiveis/avancados.
+
+/tecnologias
+/tecnologias/:slug
+/tecnologias/comparar
+/tecnologias/mapa
+/tecnologias/ranking
+Backend:
+- GET /technologies.
+- GET /technologies/:slug.
+- GET /technologies/compare.
+- GET /technologies/ranking.
+- Dados atualizaveis por admin.
+
+/empresas
+/empresas/:slug
+/empresas/ranking-junior
+Backend:
+- GET /companies.
+- GET /companies/:slug.
+- GET /companies/ranking-junior.
+- Modelo de criterios de ranking.
+- Admin para manutencao.
+
+/salarios
+Backend:
+- GET /salary-ranges.
+- Fontes e data de coleta.
+- Filtros por area, senioridade, localidade.
+
+/entrevistas
+/entrevistas/perguntas
+/entrevistas/desafios
+Backend:
+- Banco de perguntas/desafios vivo se quiser atualizacao sem deploy.
+- Tabelas interview_questions e interview_challenges podem ser criadas ou usar content genérico.
+
+/entrevistas/simulador
+Backend:
+- POST /api/ai/interview protegido por auth + Pro.
+- Logs de uso.
+- Rate limit.
+- Historico opcional.
+
+/portfolio
+Backend:
+- Conteudo pode vir de banco.
+- Checklist pode virar progresso salvo se desejado.
+
+/portfolio/analisar
+Backend:
+- POST /api/ai/github-review protegido por auth + Pro.
+- Possivel integracao GitHub API no futuro.
+
+/curriculo
+/curriculo/analisar
+/curriculo/linkedin
+Backend:
+- Conteudo de templates vivo.
+- POST /api/ai/resume-review protegido.
+- POST /api/ai/linkedin-optimizer protegido.
+- Cuidado com dados pessoais.
+- Definir politica de retencao.
+
+/estudos
+Backend:
+- POST /api/ai/study-plan protegido por auth + Pro.
+- Possivel salvar plano gerado.
+- Tabela user_study_plans se necessario.
+
+/estudos/diario
+Backend:
+- study_entries.
+- study stats.
+- requireAuth + requirePro se diario for Pro.
+
+/empregabilidade
+Backend:
+- POST /api/ai/employability.
+- POST /api/ai/job-analyzer.
+- requireAuth + requirePro.
+- Cuidado com dados de curriculo.
+
+/networking
+Backend:
+- POST /api/ai/networking-message.
+- requireAuth + requirePro.
+
+/freelance
+Backend:
+- Conteudo vivo se for atualizado.
+- Links/iframes podem continuar externos.
+
+/evolucao
+Backend:
+- Trilhas/certificacoes vivas.
+- Progresso opcional.
+
+/simulador
+Backend:
+- Simulador local pode continuar local.
+- Se quiser salvar resultado: user_simulations.
+
+/ingles
+Backend:
+- Conteudo vivo e recursos externos.
+
+/ferramentas
+Backend:
+- Catalogo de ferramentas vivo.
+
+/mentorias
+Backend:
+- Se sair do "em breve": mentores, horarios, reservas, pagamentos ou leads.
+
+/admin
+Backend:
+- Admin real completo.
+- requireAdmin.
+- CRUD de conteudo.
+- Auditoria.
+
+/roadmaps
+Backend:
+- roadmaps.
+- roadmap_steps.
+- user_roadmap_progress.
+- POST /api/ai/roadmap-generator protegido.
+- user_generated_roadmaps.
+
+/cursos
+Backend:
+- courses.
+- favoritos.
+- filtros server-side.
+
+/plataformas
+Backend:
+- platforms.
+- favoritos.
+
+/faculdades
+/faculdades/:slug
+Backend:
+- faculties.
+- locations se houver mapa.
+- favoritos.
+- notas/voz se essa funcionalidade virar persistente.
+
+/eventos
+Backend:
+- events.
+- integracoes externas.
+- favoritos.
+
+/projetos
+Backend:
+- projects.
+- favoritos.
+- progresso opcional.
+
+/estagio
+/carreiras
+/portifolio
+Backend:
+- Dados vivos de vagas, carreiras, portfolio.
+- Possivel external_jobs.
+- Favoritos se vagas forem salvas.
+
+/noticias
+Backend:
+- news.
+- RSS/sync.
+- favoritos.
+
+/comunidades
+Backend:
+- communities.
+- favoritos.
+
+/sobre
+Backend:
+- Pode continuar estatico ou virar pagina editavel.
+
+/dicas
+Backend:
+- tips.
+- favoritos.
+
+/mulheres
+Backend:
+- Conteudo vivo/curadoria.
+- Comunidades/eventos/recursos relacionados.
+
+/dicionario
+Backend:
+- dictionary_terms.
+- favoritos.
+- busca.
+
+/comparador
+Backend:
+- Dados de comparacao vindos de tabelas reais.
+- Pode comparar areas, cursos, plataformas, faculdades.
+
+/quiz-carreira
+Backend:
+- career_quiz_attempts.
+- career_quiz_answers.
+- career_quiz_results.
+- IA opcional.
+
+/perfil
+Backend:
+- profiles.
+- bookmarks.
+- roadmaps/progresso.
+- study_entries summary.
+- subscription.
+- ai history opcional.
+
+/login
+/cadastro
+/recuperar-senha
+/nova-senha
+Backend:
+- Supabase Auth ja cobre.
+- Backend deve complementar com profile creation e talvez logs.
+
+
+Plano de implementacao por fases
+================================
+
+Fase 0 - Preparacao tecnica
+---------------------------
+Objetivo:
+- Organizar backend para crescer sem virar um unico server/index.ts gigante.
+
+Tarefas:
+1. Separar estrutura:
+   - server/index.ts
+   - server/app.ts
+   - server/routes/ai.ts
+   - server/routes/me.ts
+   - server/routes/billing.ts
+   - server/routes/bookmarks.ts
+   - server/routes/study.ts
+   - server/routes/content.ts
+   - server/routes/admin.ts
+   - server/middleware/auth.ts
+   - server/middleware/error.ts
+   - server/lib/supabaseAdmin.ts
+   - server/lib/openai.ts
+   - server/lib/env.ts
+
+2. Criar validacao de env:
+   - Falhar com mensagem clara se variaveis obrigatorias estiverem ausentes em producao.
+
+3. Criar error handler padrao:
+   - JSON uniforme:
+     {
+       "error": {
+         "code": "...",
+         "message": "..."
+       }
+     }
+
+4. Criar tipos compartilhados se necessario:
+   - shared/contracts.ts
+   - ou manter contratos no client inicialmente.
+
+Resultado esperado:
+- Backend pronto para receber rotas reais sem quebrar comportamento atual.
+
+
+Fase 1 - Auth backend e profiles
+--------------------------------
+Objetivo:
+- Fazer o servidor reconhecer o usuario logado.
+- Criar perfil real.
+
+Banco:
+- Criar profiles.
+- Criar trigger para updated_at.
+- Criar trigger apos signup ou endpoint que cria perfil on-demand.
+
+Backend:
+- Implementar validateSupabaseJwt.
+- Implementar requireAuth.
+- GET /me.
+- PATCH /me.
+
+Frontend:
+- Criar profileService real.
+- Perfil.tsx passa a carregar dados reais.
+- Header pode usar profile.name/avatar.
+- Manter fallback para user_metadata durante transicao.
+
+Testes:
+- Usuario sem token recebe 401.
+- Usuario logado recebe perfil.
+- Usuario so edita o proprio perfil.
+
+
+Fase 2 - Assinatura Pro real
+----------------------------
+Objetivo:
+- Remover DEV_PRO_ACCESS.
+- Ter plano Pro real.
+- Proteger recursos pagos.
+
+Banco:
+- plans.
+- subscriptions.
+
+Backend:
+- GET /me/subscription.
+- POST /billing/checkout.
+- POST /billing/portal.
+- POST /billing/webhook.
+- requirePro.
+
+Webhook:
+- checkout.session.completed.
+- customer.subscription.created.
+- customer.subscription.updated.
+- customer.subscription.deleted.
+- invoice.payment_succeeded.
+- invoice.payment_failed.
+
+Frontend:
+- SubscriptionContext busca /me/subscription.
+- ProGate mostra CTA real.
+- Perfil mostra status real:
+  - Gratuito
+  - Pro ativo
+  - Pagamento pendente
+  - Cancelamento agendado
+- Botao "Assinar agora" abre checkout.
+- Botao "Gerenciar assinatura" abre portal.
+
+Testes:
+- Usuario free nao acessa Pro.
+- Usuario active acessa.
+- Webhook atualiza status.
+- Rota de IA Pro retorna 403 para free.
+
+
+Fase 3 - IA segura e controlada
+-------------------------------
+Objetivo:
+- Transformar /api/ai/:tool em API de produto.
+
+Backend:
+- Adicionar requireAuth.
+- Adicionar requirePro para ferramentas Pro.
+- Criar lista de ferramentas com metadata:
+  - key
+  - systemPrompt
+  - requiresPro
+  - mode: chat/tool
+  - maxInputChars
+  - temperature
+  - model
+
+Validacao:
+- Se messages: validar array, roles e limite.
+- Se payload: validar JSON e tamanho.
+- Rejeitar tool desconhecida com 404.
+- Rejeitar payload gigante com 413/400.
+
+Rate limit:
+- Por user_id.
+- Por IP para anon, se algum uso anon existir.
+- Limite diario free e Pro.
+
+Logs:
+- ai_usage_logs.
+- ai_generations se permitido.
+
+Frontend:
+- aiClient envia Authorization Bearer token.
+- Tratar 401 com redirect/login.
+- Tratar 403 com ProGate/checkout.
+
+Testes:
+- Sem token -> 401.
+- Free chamando Pro -> 403.
+- Pro chamando Pro -> 200.
+- Tool invalida -> 404.
+- OPENAI_API_KEY ausente -> mensagem clara.
+
+
+Fase 4 - Favoritos reais
+------------------------
+Objetivo:
+- Sair de localStorage e sincronizar favoritos.
+
+Banco:
+- user_bookmarks.
+
+Backend:
+- GET /me/bookmarks.
+- POST /me/bookmarks.
+- DELETE /me/bookmarks/:resourceType/:resourceId.
+
+Frontend:
+- useFavorites passa a:
+  - carregar do backend quando logado.
+  - opcionalmente usar localStorage para anon.
+  - migrar localStorage para backend no primeiro login.
+  - manter estado local otimista.
+
+Decisao:
+- Favoritos exigem login?
+  Recomendado: permitir local anon, sincronizar ao login.
+
+Testes:
+- Favoritar cria registro.
+- Favoritar repetido nao duplica.
+- Remover apaga.
+- Favoritos aparecem no perfil em outro dispositivo.
+
+
+Fase 5 - Diario de estudos
+--------------------------
+Objetivo:
+- Persistir estudo e gerar metricas.
+
+Banco:
+- study_entries.
+
+Backend:
+- GET /me/study-entries.
+- POST /me/study-entries.
+- PATCH /me/study-entries/:id.
+- DELETE /me/study-entries/:id.
+- GET /me/study-stats.
+
+Frontend:
+- EstudosDiario carrega registros.
+- handleSubmit vira POST.
+- removeEntry vira DELETE.
+- Graficos usam dados reais.
+- Perfil mostra resumo.
+
+Testes:
+- Criar entrada.
+- Remover entrada.
+- Calculo de streak.
+- Usuario nao acessa entrada de outro.
+
+
+Fase 6 - Conteudo vivo - primeira migracao
+------------------------------------------
+Objetivo:
+- Migrar o conteudo hardcoded para banco sem reescrever todo o frontend de uma vez.
+
+Estrategia:
+1. Criar tabelas principais:
+   - areas
+   - technologies
+   - courses
+   - platforms
+   - faculties
+   - events
+   - projects
+   - news
+   - communities
+   - companies
+   - salary_ranges
+   - dictionary_terms
+   - tips
+   - roadmaps
+   - roadmap_steps
+
+2. Criar script de seed:
+   - Ler estruturas atuais de data.ts/platformData.
+   - Inserir no banco.
+   - Manter slugs estaveis.
+
+3. Criar endpoints publicos de leitura:
+   - GET /areas
+   - GET /areas/:slug
+   - etc.
+
+4. Adaptar frontend por modulo:
+   - Comecar por areas, cursos, roadmaps, projetos.
+   - Depois plataformas, eventos, noticias, comunidades.
+   - Depois faculdades, tecnologias, empresas, salarios, dicionario e dicas.
+
+5. Manter fallback temporario:
+   - Se API falhar, usar dados locais apenas durante transicao.
+   - Remover fallback depois que estiver estavel.
+
+Testes:
+- Lista carrega do backend.
+- Detalhe por slug funciona.
+- Conteudo nao publicado nao aparece.
+- Admin consegue editar depois da fase admin.
+
+
+Fase 7 - Roadmaps e progresso
+-----------------------------
+Objetivo:
+- Tornar roadmaps vivos e acompanhaveis.
+
+Banco:
+- roadmaps.
+- roadmap_steps.
+- user_roadmap_progress.
+- user_generated_roadmaps.
+
+Backend:
+- GET /roadmaps.
+- GET /roadmaps/:slug.
+- GET /me/roadmap-progress.
+- POST/PATCH progresso.
+- POST /roadmaps/generate.
+
+Frontend:
+- Roadmaps.tsx consome API.
+- Marcar etapa como concluida.
+- Roadmap IA pode ser salvo.
+- Conteudo Pro respeita assinatura real.
+
+
+Fase 8 - Quiz de carreira
+-------------------------
+Objetivo:
+- Trocar calculo local por resultado persistente e melhoravel.
+
+Banco:
+- career_quiz_attempts.
+- career_quiz_answers.
+
+Backend:
+- POST /career-quiz/attempts.
+- POST /career-quiz/attempts/:id/answers.
+- POST /career-quiz/attempts/:id/complete.
+- GET /me/career-quiz/history.
+
+Opcao IA:
+- Usar IA somente ao completar quiz.
+- Salvar resultado estruturado.
+- Recomendacoes apontam para areas/roadmaps/cursos reais.
+
+Frontend:
+- careerQuizService chama backend.
+- Resultado pode aparecer no perfil.
+
+
+Fase 9 - Admin real
+-------------------
+Objetivo:
+- Substituir Admin demo/localStorage por painel real.
+
+Banco:
+- admin_roles.
+- content_audit_logs.
+- content_drafts.
+
+Backend:
+- requireAdmin.
+- CRUD por tipo de conteudo.
+- Auditoria de alteracoes.
+- Dashboard com contagens.
+
+Frontend:
+- Admin.tsx remove sessao fake.
+- Login admin usa usuario real.
+- Telas de lista/editar/criar.
+- Publicar/despublicar.
+
+Testes:
+- Usuario comum recebe 403.
+- Admin edita.
+- Audit log e criado.
+- Conteudo editado aparece no site.
+
+
+Fase 10 - Busca global
+----------------------
+Objetivo:
+- Busca em conteudo vivo.
+
+Primeira versao:
+- Postgres full-text com search_documents.
+
+Backend:
+- GET /search.
+
+Frontend:
+- SearchBar chama /search.
+- Resultados agrupados por tipo.
+- Loading e empty state.
+
+Futuro:
+- Meilisearch/Typesense/Algolia.
+- Analytics de queries.
+
+
+Fase 11 - Integracoes externas
+------------------------------
+Objetivo:
+- Tornar noticias, eventos e vagas vivos.
+
+Banco:
+- content_sources.
+- content_sync_logs.
+- external_jobs.
+- news.
+- events.
+
+Backend:
+- Jobs/cron para RSS.
+- Jobs/cron para eventos.
+- Jobs/cron para vagas.
+- Deduplicacao por URL/source_external_id.
+- Normalizacao de tags.
+
+Endpoints:
+- GET /content/status.
+- POST /admin/content-sync/run.
+- GET /admin/content-sync/logs.
+
+Frontend:
+- contentService deixa de retornar mock.
+- Admin mostra status real.
+
+
+Fase 12 - Observabilidade, seguranca e producao
+-----------------------------------------------
+Objetivo:
+- Preparar operacao real.
+
+Itens:
+- Logs estruturados.
+- Sentry ou similar.
+- Rate limit.
+- Helmet/security headers.
+- CORS restrito.
+- Validacao com Zod.
+- Sanitizacao de inputs.
+- Backups do banco.
+- Monitoramento de custo OpenAI.
+- Alertas para falha de webhook.
+- Alertas para sync externo.
+- Testes de carga basicos nas rotas publicas.
+
+
+Fase 13 - Polimento do frontend apos backend
+--------------------------------------------
+Objetivo:
+- Remover mocks e estados falsos.
+
+Remover/substituir:
+- DEV_PRO_ACCESS.
+- togglePro fake.
+- mockProfile.
+- getProfileSnapshot mock.
+- getContentSourceStatus mock.
+- localStorage como fonte principal de favoritos.
+- useState temporario do diario.
+- careerQuizService local como fonte final.
+- Admin localStorage.
+- dados principais em data.ts como fonte primaria.
+
+Manter possivelmente:
+- data.ts como seed inicial ou fallback de desenvolvimento.
+- localStorage para tema.
+- localStorage anon para favoritos antes de login, se desejado.
+
+
+RLS e seguranca no Supabase
+===========================
+
+Regras gerais:
+- profiles: usuario so le/edita o proprio profile.
+- subscriptions: usuario le a propria assinatura; escrita apenas service role/webhook.
+- user_bookmarks: usuario CRUD apenas nos proprios favoritos.
+- study_entries: usuario CRUD apenas nas proprias entradas.
+- ai_usage_logs: usuario pode ler talvez agregados proprios; escrita apenas backend.
+- ai_generations: usuario le/deleta apenas as proprias; escrita backend.
+- admin_roles: leitura/escrita restrita.
+- conteudo publicado: leitura publica.
+- conteudo admin/draft: apenas admin.
+
+Exemplos conceituais:
+- using (auth.uid() = user_id)
+- with check (auth.uid() = user_id)
+
+Operacoes com service role:
+- Webhooks de billing.
+- Sync externo.
+- Admin server-side.
+- Escrita de ai logs.
+
+
+Contratos de API
+================
+
+Formato de sucesso:
+{
+  "data": ...
+}
+
+Formato de erro:
+{
+  "error": {
+    "code": "forbidden",
+    "message": "Plano Pro necessario."
+  }
+}
+
+Codigos:
+- 400 invalid_request
+- 401 unauthorized
+- 403 forbidden
+- 404 not_found
+- 409 conflict
+- 413 payload_too_large
+- 429 rate_limited
+- 500 internal_error
+- 502 upstream_error
+
+
+Ordem pratica de desenvolvimento
+================================
+
+Sprint 1:
+- Refatorar server.
+- Criar env validation.
+- Criar Supabase admin client.
+- Criar middleware auth.
+- Criar profiles.
+- GET/PATCH /me.
+
+Sprint 2:
+- Criar plans/subscriptions.
+- Integrar checkout.
+- Integrar webhook.
+- SubscriptionContext real.
+- ProGate com checkout.
+
+Sprint 3:
+- Proteger /api/ai.
+- Criar ai_usage_logs.
+- Rate limit basico.
+- aiClient envia token.
+
+Sprint 4:
+- user_bookmarks.
+- useFavorites com backend.
+- Migracao localStorage -> backend.
+
+Sprint 5:
+- study_entries.
+- EstudosDiario persistente.
+- study stats.
+
+Sprint 6:
+- Criar tabelas de conteudo principais.
+- Seed inicial a partir dos mocks.
+- Endpoints publicos para areas/cursos/roadmaps/projetos.
+
+Sprint 7:
+- Migrar frontend desses primeiros modulos.
+- Roadmap progress.
+- Roadmap IA salvo.
+
+Sprint 8:
+- Admin basico.
+- CRUD de conteudo.
+- Auditoria.
+
+Sprint 9:
+- Migrar restante do conteudo.
+- Busca global.
+
+Sprint 10:
+- Integracoes externas.
+- Content sync logs.
+- Observabilidade.
+
+
+Riscos e decisoes em aberto
+===========================
+
+1. Provedor de pagamento
+- Stripe e simples tecnicamente, mas confirmar disponibilidade/modelo no Brasil.
+- Alternativas: Pagar.me, Mercado Pago, Asaas.
+
+2. CMS vs Postgres Admin proprio
+- CMS acelera edicao.
+- Admin proprio da mais controle.
+- Para o estado atual, Postgres + admin proprio simples parece suficiente.
+
+3. O que e gratuito vs Pro
+- Hoje o frontend usa ProGate em muitas ferramentas.
+- Precisa definir regra de produto:
+  - paginas inteiras Pro?
+  - apenas IA Pro?
+  - limite free mensal?
+  - detalhe de area Pro?
+  - diario Pro?
+
+4. Retencao de dados de IA
+- Curriculo e vaga podem conter dados sensiveis.
+- Decidir se salva historico.
+- Se salvar, permitir apagar.
+
+5. Conteudo local como fallback
+- Bom durante transicao.
+- Ruim se virar fonte paralela permanente.
+- Definir data.ts como seed, nao como fonte final.
+
+6. RLS direto no client vs API Express
+- Dados simples podem ir direto via Supabase com RLS.
+- Operacoes sensiveis devem passar pelo backend.
+
+7. Admin
+- Pode ser simples no inicio.
+- Nao deve usar localStorage como permissao.
+
+
+Checklist final de "site funcional"
+===================================
+
+Conta:
+- Usuario cadastra.
+- Usuario loga.
+- Usuario recupera senha.
+- Usuario tem profile persistente.
+
+Plano:
+- Usuario ve plano atual.
+- Usuario assina Pro.
+- Webhook confirma assinatura.
+- Usuario Pro acessa funcionalidades Pro.
+- Usuario free recebe bloqueio real.
+
+IA:
+- IA exige auth.
+- IA exige Pro quando aplicavel.
+- IA tem limite.
+- IA registra uso.
+- IA nao expoe chave no browser.
+
+Favoritos:
+- Favoritos persistem no banco.
+- Favoritos aparecem no perfil.
+- Favoritos sincronizam entre dispositivos.
+
+Diario:
+- Entrada salva.
+- Entrada apaga.
+- Streak e metricas persistem.
+
+Conteudo:
+- Areas/cursos/projetos/roadmaps/etc vem de API ou banco.
+- Admin consegue editar.
+- Conteudo publicado aparece.
+- Conteudo despublicado some.
+
+Busca:
+- Busca consulta backend.
+- Resultados vem de conteudo vivo.
+
+Admin:
+- Admin usa usuario real.
+- Admin tem permissao real.
+- Admin gera auditoria.
+
+Integracoes:
+- Noticias/eventos/vagas podem ser sincronizados.
+- Status da sincronizacao aparece.
+
+Seguranca:
+- Rotas privadas exigem token.
+- Rotas Pro exigem assinatura.
+- Admin exige role.
+- Service role nunca vai ao cliente.
+- Webhook valida assinatura.
+- Rate limit protege IA.
+
+
+Conclusao
+=========
+O BORA NA TECH deve ser tratado como uma plataforma dinamica.
+
+O backend atual e apenas uma base minima para IA e hosting do frontend. Para o produto ficar funcional, o centro do trabalho e criar uma camada real de produto:
+
+- identidade reconhecida no servidor
+- perfil persistente
+- assinatura real
+- autorizacao Pro
+- dados do usuario
+- conteudo vivo
+- admin
+- busca
+- integracoes
+- IA controlada
+
+O caminho mais seguro e incremental e:
+
+1. Fazer servidor reconhecer usuario.
+2. Criar profiles.
+3. Criar assinatura e Pro real.
+4. Proteger IA.
+5. Persistir favoritos e diario.
+6. Migrar conteudo mockado para banco.
+7. Criar admin.
+8. Adicionar busca e integracoes.
+
+Depois disso, o frontend deixa de ser uma demonstracao rica e passa a ser um produto real sustentado por backend.
