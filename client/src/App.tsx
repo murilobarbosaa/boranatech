@@ -7,6 +7,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { useAffiliate } from "./hooks/useAffiliate";
 import Home from "./pages/Home";
 import Areas from "./pages/Areas";
 import AreaDetalhe from "./pages/AreaDetalhe";
@@ -124,6 +125,11 @@ function Router() {
   );
 }
 
+function AffiliateTracker() {
+  useAffiliate();
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -132,6 +138,7 @@ function App() {
           <SubscriptionProvider>
             <TooltipProvider>
               <Toaster />
+              <AffiliateTracker />
               <ScrollToTop />
               <Router />
             </TooltipProvider>

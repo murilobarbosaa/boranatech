@@ -50,6 +50,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
 router.post("/checkout", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
+    const affiliateCode = typeof req.body?.affiliateCode === "string" ? req.body.affiliateCode.trim().toUpperCase() : "";
 
     const { data: profile } = await supabaseAdmin.from("profiles").select("name, email").eq("user_id", userId).single();
 
@@ -74,10 +75,33 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       email: profile.email || req.user!.email,
     });
 
+    let checkoutValue = 24.9;
+    let validAffiliateCode = "";
+
+    if (affiliateCode) {
+      const { data: affiliate, error: affiliateError } = await supabaseAdmin
+        .from("affiliates")
+        .select("id, code, discount_percent, trials")
+        .eq("code", affiliateCode)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (!affiliateError && affiliate) {
+        validAffiliateCode = affiliate.code;
+        checkoutValue = Number((checkoutValue * (1 - Number(affiliate.discount_percent || 0) / 100)).toFixed(2));
+        await supabaseAdmin
+          .from("affiliates")
+          .update({ trials: Number(affiliate.trials || 0) + 1 })
+          .eq("id", affiliate.id);
+      }
+    }
+
     const asaasSubscription = await createAsaasCheckout({
       customerId: customer.id,
       userId,
       planCode: "pro_monthly",
+      value: checkoutValue,
+      affiliateCode: validAffiliateCode || undefined,
     });
 
     res.json({
@@ -135,7 +159,7 @@ router.post("/webhook", async (req, res, next) => {
     }
 
     const externalRef = subscriptionData.externalReference || event?.payment?.externalReference;
-    const userId = externalRef?.split(":")[0];
+    const [userId, , affiliateCode] = externalRef?.split(":") || [];
 
     if (!userId) {
       console.warn("[webhook] externalReference não encontrado:", event);
@@ -163,6 +187,7 @@ router.post("/webhook", async (req, res, next) => {
         current_period_start: now.toISOString(),
         current_period_end: newStatus === "active" ? periodEnd.toISOString() : now.toISOString(),
         canceled_at: newStatus === "canceled" ? now.toISOString() : null,
+        affiliate_code: affiliateCode || null,
         raw_provider_payload: event,
       },
       {
@@ -173,6 +198,27 @@ router.post("/webhook", async (req, res, next) => {
     if (error) {
       console.error("[webhook] Erro ao atualizar subscription:", error);
       return next(createError(500, "db_error", "Erro ao processar webhook."));
+    }
+
+    if (affiliateCode && ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(eventType)) {
+      const { data: affiliate } = await supabaseAdmin
+        .from("affiliates")
+        .select("id, sales, revenue_cents, commission_due_cents, commission_percent")
+        .eq("code", affiliateCode)
+        .maybeSingle();
+
+      if (affiliate) {
+        const revenueCents = Math.round(Number(event?.payment?.value || subscriptionData.value || 0) * 100);
+        const commissionCents = Math.round(revenueCents * (Number(affiliate.commission_percent || 0) / 100));
+        await supabaseAdmin
+          .from("affiliates")
+          .update({
+            sales: Number(affiliate.sales || 0) + 1,
+            revenue_cents: Number(affiliate.revenue_cents || 0) + revenueCents,
+            commission_due_cents: Number(affiliate.commission_due_cents || 0) + commissionCents,
+          })
+          .eq("id", affiliate.id);
+      }
     }
 
     console.log(`[webhook] Subscription ${subscriptionData.id} -> ${newStatus} para user ${userId}`);

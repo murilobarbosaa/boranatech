@@ -8,6 +8,7 @@ import { validateSupabaseJwt } from "./middleware/auth";
 import { errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
 import aiRouter from "./routes/ai";
+import affiliatesRouter from "./routes/affiliates";
 import billingRouter from "./routes/billing";
 import bookmarksRouter from "./routes/bookmarks";
 import contentRouter from "./routes/content";
@@ -116,6 +117,8 @@ app.use("/api/billing/webhook", (req, _res, next) => {
 });
 
 app.use(express.json({ limit: "2mb" }));
+
+app.use("/api/affiliates", affiliatesRouter);
 
 app.use("/api", validateSupabaseJwt);
 

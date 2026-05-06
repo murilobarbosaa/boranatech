@@ -102,6 +102,23 @@ type AffiliatePartner = {
   status: "ativo" | "pausado" | "rascunho";
 };
 
+type AffiliateRecord = {
+  id: string;
+  name: string;
+  email?: string | null;
+  code: string;
+  discount_percent: number;
+  commission_percent: number;
+  status: "active" | "paused" | "inactive";
+  clicks: number;
+  trials: number;
+  sales: number;
+  revenue_cents: number;
+  commission_due_cents: number;
+  commission_paid_cents: number;
+  notes?: string | null;
+};
+
 type AdminNavItem = {
   href: string;
   label: string;
@@ -478,6 +495,10 @@ function toUserProfile(record: AdminUserRecord): UserProfile {
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
+}
+
+function formatCents(value: number) {
+  return formatCurrency((value || 0) / 100);
 }
 
 function formatCount(value: number) {
@@ -1382,6 +1403,10 @@ export default function Admin() {
   const [affiliateDiscount, setAffiliateDiscount] = useState(20);
   const [affiliateCommission, setAffiliateCommission] = useState(30);
   const [copiedAffiliateLink, setCopiedAffiliateLink] = useState(false);
+  const [affiliates, setAffiliates] = useState<AffiliateRecord[]>([]);
+  const [affiliatesLoading, setAffiliatesLoading] = useState(false);
+  const [savingAffiliate, setSavingAffiliate] = useState(false);
+  const [payingAffiliateId, setPayingAffiliateId] = useState<string | null>(null);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [selectedUserEmail, setSelectedUserEmail] = useState("");
 
@@ -1414,16 +1439,18 @@ export default function Admin() {
           adminFetch("/ai-stats"),
           adminFetch("/posthog-stats"),
           adminFetch("/churn-risk").catch(() => ({ data: null })),
+          adminFetch("/affiliates-stats").catch(() => ({ data: [] })),
           adminFetch("/subscriptions"),
         ]);
       })
-      .then(([dashboardJson, healthJson, aiJson, posthogJson, churnRiskJson, subscriptionsJson]) => {
+      .then(([dashboardJson, healthJson, aiJson, posthogJson, churnRiskJson, affiliatesJson, subscriptionsJson]) => {
         setDashboard(dashboardJson.data);
         setHealth(healthJson);
         setAuditLogs(Array.isArray(dashboardJson.data?.recent_audit) ? dashboardJson.data.recent_audit : []);
         setAiStats(aiJson.data || {});
         setPosthogStats(posthogJson.data || null);
         setChurnRiskUsers(Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null);
+        setAffiliates(Array.isArray(affiliatesJson.data) ? affiliatesJson.data : []);
         setSubscriptions(Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : []);
       })
       .catch(() => {
@@ -1434,6 +1461,7 @@ export default function Admin() {
         setAiStats({});
         setPosthogStats(null);
         setChurnRiskUsers(null);
+        setAffiliates([]);
         setSubscriptions([]);
         setAccessState("forbidden");
       })
@@ -1527,6 +1555,19 @@ export default function Admin() {
       ]
     : [];
   const posthogAcquisitionTotal = posthogStats?.acquisition.reduce((sum, channel) => sum + channel.users, 0) || 0;
+  const affiliateTotals = useMemo(
+    () =>
+      affiliates.reduce(
+        (totals, affiliate) => ({
+          revenue: totals.revenue + Number(affiliate.revenue_cents || 0),
+          commissionDue: totals.commissionDue + Number(affiliate.commission_due_cents || 0),
+          sales: totals.sales + Number(affiliate.sales || 0),
+          clicks: totals.clicks + Number(affiliate.clicks || 0),
+        }),
+        { revenue: 0, commissionDue: 0, sales: 0, clicks: 0 },
+      ),
+    [affiliates],
+  );
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!dashboard?.counts) return metricCards;
 
@@ -1554,6 +1595,67 @@ export default function Admin() {
   async function handleCopyAffiliateLink() {
     await navigator.clipboard.writeText(generatedAffiliateLink);
     setCopiedAffiliateLink(true);
+  }
+
+  async function refreshAffiliates() {
+    setAffiliatesLoading(true);
+    try {
+      const json = await adminFetch("/affiliates-stats");
+      setAffiliates(Array.isArray(json.data) ? json.data : []);
+    } catch {
+      setAffiliates([]);
+    } finally {
+      setAffiliatesLoading(false);
+    }
+  }
+
+  async function handleCreateAffiliate() {
+    const code = slugifyAffiliateCode(affiliateCode);
+    if (!affiliateName.trim() || !code) {
+      toast.error("Informe nome e código do afiliado.");
+      return;
+    }
+
+    setSavingAffiliate(true);
+    try {
+      await adminFetch("/content/affiliates", {
+        method: "POST",
+        body: JSON.stringify({
+          name: affiliateName.trim(),
+          code,
+          discount_percent: affiliateDiscount,
+          commission_percent: affiliateCommission,
+          status: "active",
+        }),
+      });
+      toast.success("Afiliado criado com sucesso.");
+      await refreshAffiliates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao criar afiliado.");
+    } finally {
+      setSavingAffiliate(false);
+    }
+  }
+
+  async function handleMarkAffiliatePaid(affiliate: AffiliateRecord) {
+    if (affiliate.commission_due_cents <= 0) return;
+
+    setPayingAffiliateId(affiliate.id);
+    try {
+      await adminFetch(`/content/affiliates/${affiliate.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          commission_paid_cents: Number(affiliate.commission_paid_cents || 0) + Number(affiliate.commission_due_cents || 0),
+          commission_due_cents: 0,
+        }),
+      });
+      toast.success("Comissão marcada como paga.");
+      await refreshAffiliates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao marcar comissão como paga.");
+    } finally {
+      setPayingAffiliateId(null);
+    }
   }
 
   if (accessState !== "allowed" || !session) {
@@ -2033,7 +2135,11 @@ export default function Admin() {
               </article>
               <article className="card-brutal rounded-3xl bg-white p-6">
                 <h3 className="font-display text-2xl font-black">Afiliados externos</h3>
-                <div className="mt-4"><PendingIntegration tool="Tabela affiliates" description="Tabela de afiliados pendente de implementação" /></div>
+                <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
+                  <p className="text-xs font-black uppercase text-violet-700">Comissões a pagar</p>
+                  <p className="font-display mt-1 text-2xl font-black text-slate-950">{formatCents(affiliateTotals.commissionDue)}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-500">{formatCount(affiliateTotals.sales)} vendas atribuídas</p>
+                </div>
               </article>
             </div>
           </AdminSection>
@@ -2098,16 +2204,25 @@ export default function Admin() {
                 </div>
                 <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
                   <p className="text-xs font-black uppercase text-slate-500">status</p>
-                  <p className="font-display text-xl font-black text-slate-950">Integração pendente</p>
-                  <p className="text-sm font-bold text-slate-600">Sem tabela de afiliados</p>
+                  <p className="font-display text-xl font-black text-slate-950">Manual ativo</p>
+                  <p className="text-sm font-bold text-slate-600">{affiliates.length} afiliados cadastrados</p>
                 </div>
               </div>
             </div>
 
             <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
-              <div className="md:col-span-2 xl:col-span-4">
-                <PendingIntegration tool="Tabela affiliates" description="Tabela de afiliados pendente de implementação" />
-              </div>
+              {[
+                { label: "Receita atribuída", value: formatCents(affiliateTotals.revenue), icon: <DollarSign className="h-5 w-5" /> },
+                { label: "Comissões a pagar", value: formatCents(affiliateTotals.commissionDue), icon: <WalletCards className="h-5 w-5" /> },
+                { label: "Vendas atribuídas", value: formatCount(affiliateTotals.sales), icon: <Trophy className="h-5 w-5" /> },
+                { label: "Cliques registrados", value: formatCount(affiliateTotals.clicks), icon: <MousePointerClick className="h-5 w-5" /> },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+                  <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">{item.icon}</span>
+                  <p className="mt-3 text-xs font-black uppercase text-violet-700">{item.label}</p>
+                  <p className="font-display mt-1 text-2xl font-black text-slate-950">{item.value}</p>
+                </div>
+              ))}
             </div>
 
             <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -2198,14 +2313,25 @@ export default function Admin() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleCopyAffiliateLink}
-                    className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
-                  >
-                    <Copy className="h-5 w-5" />
-                    {copiedAffiliateLink ? "Link copiado" : "Copiar link"}
-                  </button>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={handleCreateAffiliate}
+                      disabled={savingAffiliate}
+                      className="btn-brutal-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black disabled:opacity-60"
+                    >
+                      <PlusCircle className="h-5 w-5" />
+                      {savingAffiliate ? "Salvando..." : "Criar afiliado"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyAffiliateLink}
+                      className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
+                    >
+                      <Copy className="h-5 w-5" />
+                      {copiedAffiliateLink ? "Link copiado" : "Copiar link"}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2214,7 +2340,46 @@ export default function Admin() {
                   <Tag className="h-6 w-6" />
                   Afiliados cadastrados
                 </h3>
-                <div className="mt-5"><PendingIntegration tool="Tabela affiliates" description="Tabela de afiliados pendente de implementação" /></div>
+                <div className="mt-5">
+                  {overviewLoading || affiliatesLoading ? (
+                    <LoadingBlock />
+                  ) : affiliates.length ? (
+                    <div className="space-y-3">
+                      {affiliates.map((affiliate) => (
+                        <div key={affiliate.id} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <p className="font-display text-lg font-black text-slate-950">{affiliate.name}</p>
+                              <p className="mt-1 font-mono text-xs font-black text-violet-700">{affiliate.code}</p>
+                              <p className="mt-1 text-xs font-semibold text-slate-500">
+                                {affiliate.discount_percent}% desconto • {affiliate.commission_percent}% comissão • {affiliate.status}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleMarkAffiliatePaid(affiliate)}
+                              disabled={affiliate.commission_due_cents <= 0 || payingAffiliateId === affiliate.id}
+                              className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+                            >
+                              {payingAffiliateId === affiliate.id ? "Pagando..." : "Marcar comissão paga"}
+                            </button>
+                          </div>
+                          <div className="mt-4 grid gap-2 text-xs font-black sm:grid-cols-4">
+                            <span className="rounded-xl bg-white px-3 py-2">Cliques: {formatCount(affiliate.clicks)}</span>
+                            <span className="rounded-xl bg-white px-3 py-2">Vendas: {formatCount(affiliate.sales)}</span>
+                            <span className="rounded-xl bg-white px-3 py-2">Receita: {formatCents(affiliate.revenue_cents)}</span>
+                            <span className="rounded-xl bg-white px-3 py-2">A pagar: {formatCents(affiliate.commission_due_cents)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                      <p className="font-display text-lg font-black text-slate-950">Nenhum afiliado cadastrado ainda</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-500">Crie o primeiro afiliado pelo formulário ao lado.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </article>

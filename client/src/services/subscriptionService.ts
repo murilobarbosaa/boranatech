@@ -1,4 +1,5 @@
 import { apiUrl } from "@/lib/api";
+import { AFFILIATE_STORAGE_KEY } from "@/hooks/useAffiliate";
 import { supabase } from "@/lib/supabase";
 
 const API_BASE = apiUrl("/api");
@@ -22,9 +23,18 @@ export async function getMySubscription() {
 
 export async function startCheckout() {
   const headers = await getAuthHeader();
+  let affiliateCode: string | undefined;
+  try {
+    const storedAffiliate = window.localStorage.getItem(AFFILIATE_STORAGE_KEY);
+    const affiliate = storedAffiliate ? JSON.parse(storedAffiliate) : null;
+    affiliateCode = affiliate?.expires > Date.now() ? affiliate.code : undefined;
+  } catch {
+    affiliateCode = undefined;
+  }
   const res = await fetch(`${API_BASE}/billing/checkout`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ affiliateCode }),
   });
 
   if (!res.ok) throw new Error("Erro ao iniciar checkout");

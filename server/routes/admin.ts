@@ -118,6 +118,17 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "is_published",
   ],
   roadmaps: ["title", "description", "area_slug", "level", "estimated_duration_weeks", "is_pro", "is_published", "sort_order"],
+  affiliates: [
+    "name",
+    "email",
+    "code",
+    "discount_percent",
+    "commission_percent",
+    "status",
+    "notes",
+    "commission_due_cents",
+    "commission_paid_cents",
+  ],
 };
 
 function getSearchColumn(type: string) {
@@ -587,6 +598,23 @@ router.get("/ai-stats", async (_req, res, next) => {
     res.json({ data: stats });
   } catch (err) {
     next(err);
+  }
+});
+
+router.get("/affiliates-stats", async (_req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin.from("affiliates").select("*").order("revenue_cents", { ascending: false });
+
+    if (error) {
+      console.error("[admin] Erro ao buscar afiliados", error);
+      res.json({ data: [] });
+      return;
+    }
+
+    res.json({ data: data || [] });
+  } catch (err) {
+    console.error("[admin] Erro inesperado ao buscar afiliados", err);
+    res.json({ data: [] });
   }
 });
 
