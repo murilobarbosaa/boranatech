@@ -1,7 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 
-import { createAsaasCheckout, getOrCreateAsaasCustomer } from "../lib/asaas";
+import { createAsaasCheckout, getAsaasSubscriptionPayments, getOrCreateAsaasCustomer } from "../lib/asaas";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
@@ -116,10 +116,13 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       cycle: PLAN_CYCLES[planId],
       affiliateCode: validAffiliateCode || undefined,
     });
+    const payments = await getAsaasSubscriptionPayments(asaasSubscription.id);
+    const firstPayment = Array.isArray(payments?.data) ? payments.data[0] : undefined;
+    const checkoutUrl = firstPayment?.invoiceUrl || firstPayment?.paymentLink || asaasSubscription.invoiceUrl || asaasSubscription.paymentLink;
 
     res.json({
       data: {
-        checkoutUrl: asaasSubscription.paymentLink || asaasSubscription.invoiceUrl,
+        checkoutUrl,
         subscriptionId: asaasSubscription.id,
       },
     });

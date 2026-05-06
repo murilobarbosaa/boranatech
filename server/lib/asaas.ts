@@ -1,6 +1,7 @@
 import { env } from "./env";
 
-const ASAAS_BASE_URL = env.asaasEnv === "production" ? "https://api.asaas.com/v3" : "https://sandbox.asaas.com/api/v3";
+const ASAAS_BASE = env.asaasEnv === "production" ? "https://api.asaas.com" : "https://sandbox.asaas.com";
+const ASAAS_BASE_URL = `${ASAAS_BASE}/api/v3`;
 
 async function asaasRequest(method: string, path: string, body?: Record<string, unknown>) {
   const res = await fetch(`${ASAAS_BASE_URL}${path}`, {
@@ -51,7 +52,7 @@ export async function createAsaasCheckout(params: {
   const nextDueDate = new Date();
   nextDueDate.setDate(nextDueDate.getDate() + 1);
 
-  return asaasRequest("POST", "/subscriptions", {
+  const data = await asaasRequest("POST", "/subscriptions", {
     customer: params.customerId,
     billingType: "CREDIT_CARD",
     value: params.value ?? 24.9,
@@ -60,4 +61,11 @@ export async function createAsaasCheckout(params: {
     description: "Bora na Tech? - Plano Pro",
     externalReference: [params.userId, params.planCode, params.affiliateCode].filter(Boolean).join(":"),
   });
+
+  console.log("[asaas] response:", JSON.stringify(data));
+  return data;
+}
+
+export async function getAsaasSubscriptionPayments(subscriptionId: string) {
+  return asaasRequest("GET", `/subscriptions/${encodeURIComponent(subscriptionId)}/payments`);
 }
