@@ -88,13 +88,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, [refreshSubscription, user]);
 
   useEffect(() => {
-    function handleFocus() {
-      void refreshSubscription();
-    }
+    if (!user || isPro) return;
 
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [refreshSubscription]);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void refreshSubscription();
+      }
+    }, 3 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [user, isPro, refreshSubscription]);
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({

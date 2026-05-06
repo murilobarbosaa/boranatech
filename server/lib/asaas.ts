@@ -48,6 +48,7 @@ export async function createAsaasCheckout(params: {
   value?: number;
   cycle?: "MONTHLY" | "SEMIANNUALLY" | "YEARLY";
   affiliateCode?: string;
+  successUrl?: string;
 }) {
   const nextDueDate = new Date();
   nextDueDate.setDate(nextDueDate.getDate() + 1);
@@ -60,6 +61,7 @@ export async function createAsaasCheckout(params: {
     cycle: params.cycle || "MONTHLY",
     description: "Bora na Tech? - Plano Pro",
     externalReference: [params.userId, params.planCode, params.affiliateCode].filter(Boolean).join(":"),
+    callback: params.successUrl ? { successUrl: params.successUrl } : undefined,
   });
 
   console.log("[asaas] response:", JSON.stringify(data));

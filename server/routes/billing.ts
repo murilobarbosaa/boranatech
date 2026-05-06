@@ -126,6 +126,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       value: checkoutValue,
       cycle: PLAN_CYCLES[planId],
       affiliateCode: validAffiliateCode || undefined,
+      successUrl: `${env.appPublicUrl}/pro/sucesso`,
     });
     const payments = await getAsaasSubscriptionPayments(asaasSubscription.id);
     const firstPayment = Array.isArray(payments?.data) ? payments.data[0] : undefined;

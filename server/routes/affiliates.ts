@@ -3,6 +3,7 @@ import { Router } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const router = Router();
+// TODO: mover para Redis quando tiver múltiplas instâncias.
 const clickRateLimit = new Map<string, number>();
 const CLICK_WINDOW_MS = 60 * 60 * 1000;
 
