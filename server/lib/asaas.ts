@@ -40,7 +40,14 @@ export async function getOrCreateAsaasCustomer(params: {
   });
 }
 
-export async function createAsaasCheckout(params: { customerId: string; userId: string; planCode: string; value?: number; affiliateCode?: string }) {
+export async function createAsaasCheckout(params: {
+  customerId: string;
+  userId: string;
+  planCode: string;
+  value?: number;
+  cycle?: "MONTHLY" | "SEMIANNUALLY" | "YEARLY";
+  affiliateCode?: string;
+}) {
   const nextDueDate = new Date();
   nextDueDate.setDate(nextDueDate.getDate() + 1);
 
@@ -49,7 +56,7 @@ export async function createAsaasCheckout(params: { customerId: string; userId: 
     billingType: "CREDIT_CARD",
     value: params.value ?? 24.9,
     nextDueDate: nextDueDate.toISOString().split("T")[0],
-    cycle: "MONTHLY",
+    cycle: params.cycle || "MONTHLY",
     description: "Bora na Tech? - Plano Pro",
     externalReference: [params.userId, params.planCode, params.affiliateCode].filter(Boolean).join(":"),
   });

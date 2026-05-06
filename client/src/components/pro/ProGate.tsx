@@ -1,8 +1,5 @@
 import { Lock } from "lucide-react";
-import { useState } from "react";
-import posthog from "posthog-js";
-
-import { startCheckout } from "@/services/subscriptionService";
+import { Link } from "wouter";
 
 interface ProGateProps {
   description: string;
@@ -10,23 +7,6 @@ interface ProGateProps {
 }
 
 export default function ProGate({ description, className = "" }: ProGateProps) {
-  const [loading, setLoading] = useState(false);
-
-  async function handleUpgrade() {
-    try {
-      setLoading(true);
-      posthog.capture("checkout_started", { description });
-      const { checkoutUrl } = await startCheckout();
-      if (checkoutUrl) {
-        window.open(checkoutUrl, "_blank");
-      }
-    } catch (err) {
-      console.error("Erro ao iniciar checkout:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <div
       className={`card-brutal rounded-2xl border-slate-300 bg-slate-100 p-6 text-center ${className}`}
@@ -40,14 +20,12 @@ export default function ProGate({ description, className = "" }: ProGateProps) {
       <p className="mx-auto mt-2 max-w-2xl text-sm font-medium text-slate-600">
         {description}
       </p>
-      <button
+      <Link
+        href="/pro"
         className="btn-brutal-accent mt-5 inline-flex rounded-full px-6 py-3 text-sm font-black"
-        disabled={loading}
-        onClick={handleUpgrade}
-        type="button"
       >
-        {loading ? "Abrindo checkout..." : "Assinar agora - R$24/mês"}
-      </button>
+        Ver planos Pro
+      </Link>
     </div>
   );
 }

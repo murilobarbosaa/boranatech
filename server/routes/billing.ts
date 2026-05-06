@@ -8,6 +8,17 @@ import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
 const router = Router();
+const PLAN_VALUES: Record<string, number> = {
+  monthly: 24.9,
+  semiannual: 119.4,
+  annual: 179.9,
+};
+
+const PLAN_CYCLES: Record<string, "MONTHLY" | "SEMIANNUALLY" | "YEARLY"> = {
+  monthly: "MONTHLY",
+  semiannual: "SEMIANNUALLY",
+  annual: "YEARLY",
+};
 
 router.get("/subscription", requireAuth, async (req, res, next) => {
   try {
@@ -51,6 +62,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
     const affiliateCode = typeof req.body?.affiliateCode === "string" ? req.body.affiliateCode.trim().toUpperCase() : "";
+    const planId = typeof req.body?.planId === "string" && PLAN_VALUES[req.body.planId] ? req.body.planId : "monthly";
 
     const { data: profile } = await supabaseAdmin.from("profiles").select("name, email").eq("user_id", userId).single();
 
@@ -75,7 +87,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       email: profile.email || req.user!.email,
     });
 
-    let checkoutValue = 24.9;
+    let checkoutValue = PLAN_VALUES[planId];
     let validAffiliateCode = "";
 
     if (affiliateCode) {
@@ -99,8 +111,9 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
     const asaasSubscription = await createAsaasCheckout({
       customerId: customer.id,
       userId,
-      planCode: "pro_monthly",
+      planCode: planId,
       value: checkoutValue,
+      cycle: PLAN_CYCLES[planId],
       affiliateCode: validAffiliateCode || undefined,
     });
 

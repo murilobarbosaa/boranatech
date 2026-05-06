@@ -30,6 +30,7 @@ import QuizCarreira from "./pages/QuizCarreira";
 import Perfil from "./pages/Perfil";
 import Auth from "./pages/Auth";
 import Cadastro from "./pages/Cadastro";
+import Checkout from "./pages/Checkout";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import NovaSenha from "./pages/NovaSenha";
 import Tecnologias from "./pages/Tecnologias";
@@ -116,6 +117,8 @@ function Router() {
       <Route path="/comparador" component={Comparador} />
       <Route path="/quiz-carreira" component={QuizCarreira} />
       <Route path="/perfil" component={Perfil} />
+      <Route path="/pro" component={Checkout} />
+      <Route path="/checkout" component={Checkout} />
       <Route path="/login">{() => <Auth mode="login" />}</Route>
       <Route path="/cadastro" component={Cadastro} />
       <Route path="/recuperar-senha" component={RecuperarSenha} />

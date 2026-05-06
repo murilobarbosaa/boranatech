@@ -21,7 +21,7 @@ export async function getMySubscription() {
   return json.data;
 }
 
-export async function startCheckout() {
+export async function createCheckout(planId = "monthly") {
   const headers = await getAuthHeader();
   let affiliateCode: string | undefined;
   try {
@@ -34,10 +34,14 @@ export async function startCheckout() {
   const res = await fetch(`${API_BASE}/billing/checkout`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ affiliateCode }),
+    body: JSON.stringify({ affiliateCode, planId }),
   });
 
   if (!res.ok) throw new Error("Erro ao iniciar checkout");
   const json = await res.json();
   return json.data;
+}
+
+export async function startCheckout() {
+  return createCheckout("monthly");
 }

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ChevronDown, Compass, LogOut, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
 type MenuItem = {
   label: string;
@@ -439,6 +440,7 @@ export default function Header() {
   const [location] = useLocation();
   const { signOut, user } = useAuth();
   const { isAdmin } = useAdmin();
+  const { isPro, loading: subscriptionLoading } = useSubscription();
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
   const initials = getInitials(userName) || "BT";
@@ -502,6 +504,14 @@ export default function Header() {
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Admin
+                  </Link>
+                ) : null}
+                {!isPro && !subscriptionLoading ? (
+                  <Link
+                    href="/pro"
+                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                  >
+                    Assinar Pro ⚡
                   </Link>
                 ) : null}
                 <button
@@ -578,6 +588,15 @@ export default function Header() {
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Admin
+                  </Link>
+                ) : null}
+                {!isPro && !subscriptionLoading ? (
+                  <Link
+                    href="/pro"
+                    onClick={closeMobileDrawer}
+                    className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                  >
+                    Pro ⚡
                   </Link>
                 ) : null}
                 <button
