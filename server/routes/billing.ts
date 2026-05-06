@@ -20,6 +20,17 @@ const PLAN_CYCLES: Record<string, "MONTHLY" | "SEMIANNUALLY" | "YEARLY"> = {
   annual: "YEARLY",
 };
 
+function extractSubscriptionId(event: Record<string, unknown>): string | null {
+  const payment = event?.payment as Record<string, unknown> | undefined;
+  const sub = payment?.subscription ?? event?.subscription;
+  if (!sub) return null;
+  if (typeof sub === "string") return sub;
+  if (typeof sub === "object" && sub !== null) {
+    return String((sub as Record<string, unknown>).id || "") || null;
+  }
+  return null;
+}
+
 router.get("/subscription", requireAuth, async (req, res, next) => {
   try {
     const { data: subscription, error } = await supabaseAdmin
@@ -152,9 +163,11 @@ router.post("/webhook", async (req, res, next) => {
       }
     }
 
-    const event = req.body;
+    const event = req.body as Record<string, unknown>;
     const eventType = event?.event as string;
-    const subscriptionData = event?.payment?.subscription || event?.subscription;
+    const subscriptionId = extractSubscriptionId(event);
+    const payment = event.payment as Record<string, unknown> | undefined;
+    const subscription = event.subscription as Record<string, unknown> | undefined;
 
     console.log(`[webhook] Asaas event: ${eventType}`);
 
@@ -170,19 +183,19 @@ router.post("/webhook", async (req, res, next) => {
     };
 
     const newStatus = statusMap[eventType];
-    if (!newStatus || !subscriptionData?.id) {
+    if (!newStatus || !subscriptionId) {
       return res.json({ received: true });
     }
 
-    const externalRef = subscriptionData.externalReference || event?.payment?.externalReference;
-    const [userId, , affiliateCode] = externalRef?.split(":") || [];
+    const externalRef = String(subscription?.externalReference || payment?.externalReference || "");
+    const [userId, planCode = "monthly", affiliateCode] = externalRef?.split(":") || [];
 
     if (!userId) {
       console.warn("[webhook] externalReference não encontrado:", event);
       return res.json({ received: true });
     }
 
-    const { data: proPlan } = await supabaseAdmin.from("plans").select("id").eq("code", "pro_monthly").single();
+    const { data: proPlan } = await supabaseAdmin.from("plans").select("id").eq("code", planCode).maybeSingle();
 
     if (!proPlan) {
       return next(createError(500, "db_error", "Plano Pro não encontrado."));
@@ -197,8 +210,8 @@ router.post("/webhook", async (req, res, next) => {
         user_id: userId,
         plan_id: proPlan.id,
         provider: "asaas",
-        provider_subscription_id: subscriptionData.id,
-        provider_customer_id: subscriptionData.customer,
+        provider_subscription_id: subscriptionId,
+        provider_customer_id: String(subscription?.customer || payment?.customer || ""),
         status: newStatus,
         current_period_start: now.toISOString(),
         current_period_end: newStatus === "active" ? periodEnd.toISOString() : now.toISOString(),
@@ -224,7 +237,7 @@ router.post("/webhook", async (req, res, next) => {
         .maybeSingle();
 
       if (affiliate) {
-        const revenueCents = Math.round(Number(event?.payment?.value || subscriptionData.value || 0) * 100);
+        const revenueCents = Math.round(Number(payment?.value || subscription?.value || 0) * 100);
         const commissionCents = Math.round(revenueCents * (Number(affiliate.commission_percent || 0) / 100));
         await supabaseAdmin
           .from("affiliates")
@@ -237,7 +250,7 @@ router.post("/webhook", async (req, res, next) => {
       }
     }
 
-    console.log(`[webhook] Subscription ${subscriptionData.id} -> ${newStatus} para user ${userId}`);
+    console.log(`[webhook] Subscription ${subscriptionId} -> ${newStatus} para user ${userId}`);
     res.json({ received: true });
   } catch (err) {
     next(err);

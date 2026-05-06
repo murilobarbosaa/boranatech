@@ -1,5 +1,5 @@
 import { getMySubscription } from "@/services/subscriptionService";
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "./AuthContext";
 
@@ -7,6 +7,7 @@ interface SubscriptionContextValue {
   isPro: boolean;
   subscription: unknown;
   loading: boolean;
+  refreshSubscription: () => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
@@ -31,6 +32,35 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [isPro, setIsPro] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const refreshSubscription = useCallback(async () => {
+    if (isLocalDevelopmentHost()) {
+      setSubscription({ status: "local_development_preview", isPro: true });
+      setIsPro(true);
+      setLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setSubscription(null);
+      setIsPro(false);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const sub = await getMySubscription();
+      setSubscription(sub);
+      setIsPro(sub?.isPro === true);
+    } catch (error) {
+      console.error("[SubscriptionContext] getMySubscription failed", error);
+      setSubscription(null);
+      setIsPro(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -48,35 +78,32 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       return;
     }
 
-    setLoading(true);
-    getMySubscription()
-      .then((sub) => {
-        if (!mounted) return;
-        setSubscription(sub);
-        setIsPro(sub?.isPro === true);
-      })
-      .catch((error) => {
-        console.error("[SubscriptionContext] getMySubscription failed", error);
-        if (!mounted) return;
-        setSubscription(null);
-        setIsPro(false);
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+    void refreshSubscription().finally(() => {
+      if (!mounted) return;
+    });
 
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [refreshSubscription, user]);
+
+  useEffect(() => {
+    function handleFocus() {
+      void refreshSubscription();
+    }
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [refreshSubscription]);
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({
       isPro,
       subscription,
       loading,
+      refreshSubscription,
     }),
-    [isPro, loading, subscription],
+    [isPro, loading, refreshSubscription, subscription],
   );
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
