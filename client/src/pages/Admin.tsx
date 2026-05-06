@@ -119,6 +119,15 @@ type AffiliateRecord = {
   notes?: string | null;
 };
 
+type AffiliateEditForm = {
+  name: string;
+  email: string;
+  discount_percent: number;
+  commission_percent: number;
+  status: "active" | "paused" | "inactive";
+  notes: string;
+};
+
 type AdminNavItem = {
   href: string;
   label: string;
@@ -1407,6 +1416,12 @@ export default function Admin() {
   const [affiliatesLoading, setAffiliatesLoading] = useState(false);
   const [savingAffiliate, setSavingAffiliate] = useState(false);
   const [payingAffiliateId, setPayingAffiliateId] = useState<string | null>(null);
+  const [editingAffiliateId, setEditingAffiliateId] = useState<string | null>(null);
+  const [affiliateEditForm, setAffiliateEditForm] = useState<AffiliateEditForm | null>(null);
+  const [savingAffiliateEditId, setSavingAffiliateEditId] = useState<string | null>(null);
+  const [deleteAffiliateTarget, setDeleteAffiliateTarget] = useState<AffiliateRecord | null>(null);
+  const [deletingAffiliateId, setDeletingAffiliateId] = useState<string | null>(null);
+  const [copiedAffiliateCardId, setCopiedAffiliateCardId] = useState<string | null>(null);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [selectedUserEmail, setSelectedUserEmail] = useState("");
 
@@ -1656,6 +1671,75 @@ export default function Admin() {
     } finally {
       setPayingAffiliateId(null);
     }
+  }
+
+  function startAffiliateEdit(affiliate: AffiliateRecord) {
+    setEditingAffiliateId(affiliate.id);
+    setAffiliateEditForm({
+      name: affiliate.name || "",
+      email: affiliate.email || "",
+      discount_percent: Number(affiliate.discount_percent || 20),
+      commission_percent: Number(affiliate.commission_percent || 30),
+      status: affiliate.status || "active",
+      notes: affiliate.notes || "",
+    });
+  }
+
+  function cancelAffiliateEdit() {
+    setEditingAffiliateId(null);
+    setAffiliateEditForm(null);
+  }
+
+  async function handleSaveAffiliateEdit(affiliate: AffiliateRecord) {
+    if (!affiliateEditForm) return;
+
+    setSavingAffiliateEditId(affiliate.id);
+    try {
+      await adminFetch(`/content/affiliates/${affiliate.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: affiliateEditForm.name.trim(),
+          email: affiliateEditForm.email.trim() || null,
+          discount_percent: Number(affiliateEditForm.discount_percent || 0),
+          commission_percent: Number(affiliateEditForm.commission_percent || 0),
+          status: affiliateEditForm.status,
+          notes: affiliateEditForm.notes.trim() || null,
+        }),
+      });
+      toast.success("Afiliado atualizado com sucesso.");
+      cancelAffiliateEdit();
+      await refreshAffiliates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar afiliado.");
+    } finally {
+      setSavingAffiliateEditId(null);
+    }
+  }
+
+  async function confirmDeleteAffiliate() {
+    if (!deleteAffiliateTarget) return;
+
+    setDeletingAffiliateId(deleteAffiliateTarget.id);
+    try {
+      await adminFetch(`/content/affiliates/${deleteAffiliateTarget.id}`, { method: "DELETE" });
+      toast.success("Afiliado excluído com sucesso.");
+      setDeleteAffiliateTarget(null);
+      if (editingAffiliateId === deleteAffiliateTarget.id) cancelAffiliateEdit();
+      await refreshAffiliates();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao excluir afiliado.");
+    } finally {
+      setDeletingAffiliateId(null);
+    }
+  }
+
+  async function handleCopyAffiliateCardLink(affiliate: AffiliateRecord) {
+    const link = buildAffiliateLink(affiliate.code, affiliate.discount_percent);
+    await navigator.clipboard.writeText(link);
+    setCopiedAffiliateCardId(affiliate.id);
+    window.setTimeout(() => {
+      setCopiedAffiliateCardId((current) => (current === affiliate.id ? null : current));
+    }, 2000);
   }
 
   if (accessState !== "allowed" || !session) {
@@ -2355,14 +2439,37 @@ export default function Admin() {
                                 {affiliate.discount_percent}% desconto • {affiliate.commission_percent}% comissão • {affiliate.status}
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => void handleMarkAffiliatePaid(affiliate)}
-                              disabled={affiliate.commission_due_cents <= 0 || payingAffiliateId === affiliate.id}
-                              className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
-                            >
-                              {payingAffiliateId === affiliate.id ? "Pagando..." : "Marcar comissão paga"}
-                            </button>
+                            <div className="flex flex-wrap gap-2 sm:justify-end">
+                              <button
+                                type="button"
+                                onClick={() => startAffiliateEdit(affiliate)}
+                                className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleCopyAffiliateCardLink(affiliate)}
+                                className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                              >
+                                {copiedAffiliateCardId === affiliate.id ? "Link copiado!" : "Copiar link"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleMarkAffiliatePaid(affiliate)}
+                                disabled={affiliate.commission_due_cents <= 0 || payingAffiliateId === affiliate.id}
+                                className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+                              >
+                                {payingAffiliateId === affiliate.id ? "Pagando..." : "Marcar comissão paga"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteAffiliateTarget(affiliate)}
+                                className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                              >
+                                Excluir
+                              </button>
+                            </div>
                           </div>
                           <div className="mt-4 grid gap-2 text-xs font-black sm:grid-cols-4">
                             <span className="rounded-xl bg-white px-3 py-2">Cliques: {formatCount(affiliate.clicks)}</span>
@@ -2370,6 +2477,84 @@ export default function Admin() {
                             <span className="rounded-xl bg-white px-3 py-2">Receita: {formatCents(affiliate.revenue_cents)}</span>
                             <span className="rounded-xl bg-white px-3 py-2">A pagar: {formatCents(affiliate.commission_due_cents)}</span>
                           </div>
+                          {editingAffiliateId === affiliate.id && affiliateEditForm ? (
+                            <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-white p-4">
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <label className="text-xs font-black uppercase text-slate-600">
+                                  Nome
+                                  <input
+                                    value={affiliateEditForm.name}
+                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, name: event.target.value })}
+                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                  />
+                                </label>
+                                <label className="text-xs font-black uppercase text-slate-600">
+                                  Email
+                                  <input
+                                    value={affiliateEditForm.email}
+                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, email: event.target.value })}
+                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                    type="email"
+                                  />
+                                </label>
+                                <label className="text-xs font-black uppercase text-slate-600">
+                                  Desconto (%)
+                                  <input
+                                    value={affiliateEditForm.discount_percent}
+                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, discount_percent: Number(event.target.value) })}
+                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                    min={1}
+                                    max={100}
+                                    type="number"
+                                  />
+                                </label>
+                                <label className="text-xs font-black uppercase text-slate-600">
+                                  Comissão (%)
+                                  <input
+                                    value={affiliateEditForm.commission_percent}
+                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, commission_percent: Number(event.target.value) })}
+                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                    min={1}
+                                    max={100}
+                                    type="number"
+                                  />
+                                </label>
+                                <label className="text-xs font-black uppercase text-slate-600">
+                                  Status
+                                  <select
+                                    value={affiliateEditForm.status}
+                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, status: event.target.value as AffiliateEditForm["status"] })}
+                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                  >
+                                    <option value="active">active</option>
+                                    <option value="paused">paused</option>
+                                    <option value="inactive">inactive</option>
+                                  </select>
+                                </label>
+                                <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
+                                  Notas
+                                  <textarea
+                                    value={affiliateEditForm.notes}
+                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, notes: event.target.value })}
+                                    className="mt-1 min-h-24 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                  />
+                                </label>
+                              </div>
+                              <div className="mt-4 flex justify-end gap-3">
+                                <button type="button" onClick={cancelAffiliateEdit} className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black">
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleSaveAffiliateEdit(affiliate)}
+                                  disabled={savingAffiliateEditId === affiliate.id}
+                                  className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                >
+                                  {savingAffiliateEditId === affiliate.id ? "Salvando..." : "Salvar"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -2528,6 +2713,31 @@ export default function Admin() {
           ) : null}
         </div>
       </section>
+      {deleteAffiliateTarget ? (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+          <div className="card-brutal max-w-md rounded-3xl bg-white p-6">
+            <h3 className="font-display text-2xl font-black text-slate-950">Tem certeza que deseja excluir o afiliado {deleteAffiliateTarget.name}?</h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">Esta ação não pode ser desfeita.</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteAffiliateTarget(null)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteAffiliate()}
+                disabled={deletingAffiliateId === deleteAffiliateTarget.id}
+                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-60"
+              >
+                {deletingAffiliateId === deleteAffiliateTarget.id ? "Excluindo..." : "Confirmar exclusão"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </AdminShell>
   );
 }

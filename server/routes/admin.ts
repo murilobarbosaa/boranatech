@@ -491,7 +491,7 @@ router.delete("/content/:type/:id", async (req, res, next) => {
     const { data: before } = await supabaseAdmin.from(type).select("*").eq("id", id).single();
     if (!before) return next(createError(404, "not_found", "Item não encontrado."));
 
-    if (req.query.force === "true") {
+    if (req.query.force === "true" || type === "affiliates") {
       const { error } = await supabaseAdmin.from(type).delete().eq("id", id);
       if (error) return next(createError(500, "db_error", "Erro ao deletar item."));
     } else {
