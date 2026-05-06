@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { logAudit } from "../lib/audit";
+import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -132,6 +133,71 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
   return payload;
 }
 
+type PosthogTrendResult = {
+  label?: string;
+  breakdown_value?: string | number | null;
+  aggregated_value?: number | string | null;
+  data?: Array<number | string | null>;
+};
+
+const emptyPosthogStats = {
+  configured: false,
+  totalPageviews: 0,
+  uniqueUsers: 0,
+  pages: [] as Array<{ page: string; views: number }>,
+  events: {
+    user_signed_up: 0,
+    user_signed_in: 0,
+    checkout_started: 0,
+    quiz_completed: 0,
+  },
+  acquisition: [] as Array<{ channel: string; users: number }>,
+};
+
+type PosthogEventName = keyof typeof emptyPosthogStats.events;
+
+function sumTrendValue(result: PosthogTrendResult): number {
+  if (typeof result.aggregated_value === "number") return result.aggregated_value;
+  if (typeof result.aggregated_value === "string") return Number(result.aggregated_value) || 0;
+
+  return (result.data || []).reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
+}
+
+function pagePath(value: string) {
+  try {
+    const parsed = new URL(value);
+    return parsed.pathname || "/";
+  } catch {
+    return value || "/";
+  }
+}
+
+async function fetchPosthogTrend(params: Record<string, string>) {
+  const url = new URL(`https://us.posthog.com/api/projects/${env.posthogProjectId}/insights/trend/`);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${env.posthogApiKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (response.status === 401 || response.status === 403) {
+    console.error(`[posthog] API rejeitou credenciais com status ${response.status}`);
+    return null;
+  }
+
+  if (!response.ok) {
+    console.error(`[posthog] Erro ao buscar trend: ${response.status}`);
+    return null;
+  }
+
+  return response.json() as Promise<{ result?: PosthogTrendResult[] }>;
+}
+
 router.get("/dashboard", async (_req, res, next) => {
   try {
     const [{ count: usersCount }, { count: subsCount }, { count: areasCount }, { count: coursesCount }, { count: aiLogsCount }, recentAudit] =
@@ -163,6 +229,79 @@ router.get("/dashboard", async (_req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+router.get("/posthog-stats", async (_req, res) => {
+  const data = structuredClone(emptyPosthogStats);
+
+  if (!env.posthogApiKey || !env.posthogProjectId) {
+    res.json({ data });
+    return;
+  }
+
+  data.configured = true;
+
+  try {
+    const events: PosthogEventName[] = ["user_signed_up", "user_signed_in", "checkout_started", "quiz_completed"];
+    const [pageviews, uniqueUsers, pages, customEvents, acquisition] = await Promise.all([
+      fetchPosthogTrend({
+        date_from: "-30d",
+        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0 }]),
+      }),
+      fetchPosthogTrend({
+        date_from: "-30d",
+        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0, math: "dau" }]),
+      }),
+      fetchPosthogTrend({
+        date_from: "-30d",
+        breakdown: "$current_url",
+        breakdown_type: "event",
+        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0 }]),
+      }),
+      fetchPosthogTrend({
+        date_from: "-30d",
+        events: JSON.stringify(events.map((event, index) => ({ id: event, type: "events", order: index }))),
+      }),
+      fetchPosthogTrend({
+        date_from: "-30d",
+        breakdown: "$referring_domain",
+        breakdown_type: "event",
+        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0, math: "dau" }]),
+      }),
+    ]);
+
+    data.totalPageviews = sumTrendValue(pageviews?.result?.[0] || {});
+    data.uniqueUsers = sumTrendValue(uniqueUsers?.result?.[0] || {});
+    data.pages = (pages?.result || [])
+      .map((item) => ({
+        page: pagePath(String(item.breakdown_value || item.label || "/")),
+        views: sumTrendValue(item),
+      }))
+      .filter((item) => item.views > 0)
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 10);
+
+    for (const item of customEvents?.result || []) {
+      const label = String(item.label || "");
+      const eventName = events.find((event) => label.includes(event));
+      if (eventName) data.events[eventName] = sumTrendValue(item);
+    }
+
+    data.acquisition = (acquisition?.result || [])
+      .map((item) => ({
+        channel: String(item.breakdown_value || item.label || "Direto"),
+        users: sumTrendValue(item),
+      }))
+      .filter((item) => item.users > 0)
+      .sort((a, b) => b.users - a.users)
+      .slice(0, 6);
+  } catch (err) {
+    console.error("[posthog] Erro inesperado ao buscar analytics", err);
+    res.json({ data: { ...emptyPosthogStats, configured: true } });
+    return;
+  }
+
+  res.json({ data });
 });
 
 router.get("/me", async (req, res, next) => {

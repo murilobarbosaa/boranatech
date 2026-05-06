@@ -166,6 +166,20 @@ type AuditLog = {
 
 type AiStatsData = Record<string, { calls: number; success: number; cost: number }>;
 
+type PosthogStatsData = {
+  configured?: boolean;
+  totalPageviews: number;
+  uniqueUsers: number;
+  pages: Array<{ page: string; views: number }>;
+  events: {
+    user_signed_up: number;
+    user_signed_in: number;
+    checkout_started: number;
+    quiz_completed: number;
+  };
+  acquisition: Array<{ channel: string; users: number }>;
+};
+
 type ContentItem = {
   id: string;
   slug?: string;
@@ -459,6 +473,10 @@ function toUserProfile(record: AdminUserRecord): UserProfile {
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("pt-BR").format(value || 0);
 }
 
 function formatRelativeTime(value: string) {
@@ -1349,6 +1367,7 @@ export default function Admin() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
+  const [posthogStats, setPosthogStats] = useState<PosthogStatsData | null>(null);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<AdminSectionId>("visao-geral");
@@ -1387,14 +1406,16 @@ export default function Admin() {
           adminFetch("/dashboard"),
           fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
+          adminFetch("/posthog-stats"),
           adminFetch("/subscriptions"),
         ]);
       })
-      .then(([dashboardJson, healthJson, aiJson, subscriptionsJson]) => {
+      .then(([dashboardJson, healthJson, aiJson, posthogJson, subscriptionsJson]) => {
         setDashboard(dashboardJson.data);
         setHealth(healthJson);
         setAuditLogs(Array.isArray(dashboardJson.data?.recent_audit) ? dashboardJson.data.recent_audit : []);
         setAiStats(aiJson.data || {});
+        setPosthogStats(posthogJson.data || null);
         setSubscriptions(Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : []);
       })
       .catch(() => {
@@ -1403,6 +1424,7 @@ export default function Admin() {
         setHealth(null);
         setAuditLogs([]);
         setAiStats({});
+        setPosthogStats(null);
         setSubscriptions([]);
         setAccessState("forbidden");
       })
@@ -1476,6 +1498,26 @@ export default function Admin() {
     });
   }, [aiStats]);
   const healthItemsReal = useMemo(() => buildHealthItems(health), [health]);
+  const posthogHasData = Boolean(
+    posthogStats &&
+      (posthogStats.totalPageviews > 0 ||
+        posthogStats.uniqueUsers > 0 ||
+        posthogStats.pages.length > 0 ||
+        Object.values(posthogStats.events).some((value) => value > 0) ||
+        posthogStats.acquisition.length > 0),
+  );
+  const posthogSignupConversion =
+    posthogStats && posthogStats.uniqueUsers > 0 ? Math.round((posthogStats.events.user_signed_up / posthogStats.uniqueUsers) * 100) : 0;
+  const posthogCheckoutConversion =
+    posthogStats && posthogStats.uniqueUsers > 0 ? Math.round((posthogStats.events.checkout_started / posthogStats.uniqueUsers) * 100) : 0;
+  const posthogFunnel = posthogStats
+    ? [
+        { label: "Visitantes únicos", value: posthogStats.uniqueUsers },
+        { label: "Cadastros", value: posthogStats.events.user_signed_up },
+        { label: "Checkouts iniciados", value: posthogStats.events.checkout_started },
+      ]
+    : [];
+  const posthogAcquisitionTotal = posthogStats?.acquisition.reduce((sum, channel) => sum + channel.users, 0) || 0;
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!dashboard?.counts) return metricCards;
 
@@ -1569,11 +1611,33 @@ export default function Admin() {
                 </div>
                 <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
                   <PieChart className="h-4 w-4" />
-                  conversão total 12%
+                  conversão cadastro {posthogSignupConversion}%
                 </span>
               </div>
               <div className="mt-6 space-y-4">
-                <PendingIntegration tool="Posthog ou GA4" description="Requer instalação do Posthog para rastrear visitantes e sessões" />
+                {overviewLoading ? (
+                  <LoadingBlock />
+                ) : posthogHasData && posthogFunnel.length ? (
+                  posthogFunnel.map((step, index) => {
+                    const maxValue = Math.max(posthogFunnel[0]?.value || 1, 1);
+                    return (
+                      <div key={step.label} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-black uppercase text-violet-700">{step.label}</p>
+                            <p className="font-display text-3xl font-black text-slate-950">{formatCount(step.value)}</p>
+                          </div>
+                          <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">etapa {index + 1}</span>
+                        </div>
+                        <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
+                          <div className="h-full rounded-full bg-violet-700" style={{ width: `${Math.max((step.value / maxValue) * 100, step.value > 0 ? 5 : 0)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <PendingIntegration tool="Posthog" description="Configure POSTHOG_API_KEY e POSTHOG_PROJECT_ID para rastrear visitantes e sessões" />
+                )}
               </div>
             </article>
 
@@ -1678,21 +1742,62 @@ export default function Admin() {
             subtitle="Entenda a última página, o tempo, a quantidade de sessões e a funcionalidade Pro que mais empurra o usuário para assinar."
           >
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              <div className="md:col-span-2 xl:col-span-4">
-                <PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" />
-              </div>
+              {overviewLoading ? (
+                <div className="md:col-span-2 xl:col-span-4"><LoadingBlock /></div>
+              ) : posthogHasData ? (
+                [
+                  { label: "Visitantes únicos", value: formatCount(posthogStats?.uniqueUsers || 0), detail: "Últimos 30 dias no Posthog" },
+                  { label: "Cadastros", value: formatCount(posthogStats?.events.user_signed_up || 0), detail: `${posthogSignupConversion}% dos visitantes únicos` },
+                  { label: "Logins", value: formatCount(posthogStats?.events.user_signed_in || 0), detail: "Evento user_signed_in" },
+                  { label: "Checkouts", value: formatCount(posthogStats?.events.checkout_started || 0), detail: `${posthogCheckoutConversion}% dos visitantes únicos` },
+                ].map((metric) => (
+                  <div key={metric.label} className="card-brutal rounded-3xl bg-white p-5">
+                    <p className="text-xs font-black uppercase text-violet-700">{metric.label}</p>
+                    <p className="font-display mt-2 text-3xl font-black text-slate-950">{metric.value}</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-500">{metric.detail}</p>
+                  </div>
+                ))
+              ) : (
+                <div className="md:col-span-2 xl:col-span-4">
+                  <PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" />
+                </div>
+              )}
             </div>
             <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
               <article className="card-brutal rounded-3xl bg-white p-6">
                 <h3 className="font-display text-2xl font-black text-slate-950">Páginas que antecedem a assinatura</h3>
-                <div className="mt-5"><PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" /></div>
+                <div className="mt-5">
+                  {posthogHasData && posthogStats?.pages.length ? (
+                    <div className="space-y-3">
+                      {posthogStats.pages.slice(0, 5).map((page) => (
+                        <div key={page.page} className="flex items-center justify-between gap-4 rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                          <p className="truncate text-sm font-black text-slate-950">{page.page}</p>
+                          <p className="text-sm font-black text-violet-700">{formatCount(page.views)} views</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" />
+                  )}
+                </div>
               </article>
               <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
                 <h3 className="font-display text-2xl font-black">Ação recomendada</h3>
                 <p className="mt-3 text-sm font-semibold text-violet-100">
-                  Priorize CTAs Pro em `/curriculo/analisar` e `/quiz-carreira`, e dispare automação de e-mail no segundo dia após cadastro gratuito.
+                  {posthogHasData && posthogStats?.pages[0]
+                    ? `Priorize CTAs Pro em ${posthogStats.pages[0].page}, a página com maior volume nos últimos 30 dias.`
+                    : "Quando o Posthog retornar sessões e eventos, esta área passa a sugerir ações com base no comportamento real."}
                 </p>
-                <div className="mt-5"><PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" /></div>
+                <div className="mt-5">
+                  {posthogHasData ? (
+                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
+                      <p className="text-2xl font-black">{formatCount(posthogStats?.events.quiz_completed || 0)}</p>
+                      <p className="text-xs font-bold text-violet-100">quizzes concluídos nos últimos 30 dias</p>
+                    </div>
+                  ) : (
+                    <PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" />
+                  )}
+                </div>
               </article>
             </div>
           </AdminSection>
@@ -1708,7 +1813,35 @@ export default function Admin() {
           >
             <article className="card-brutal overflow-hidden rounded-3xl bg-white">
               <div className="p-6">
-                <PendingIntegration tool="Posthog" description="Requer rastreamento de scroll depth" />
+                {overviewLoading ? (
+                  <LoadingBlock />
+                ) : posthogHasData && posthogStats?.pages.length ? (
+                  <div className="overflow-hidden rounded-2xl border-2 border-slate-900">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-100 text-xs font-black uppercase text-slate-600">
+                        <tr>
+                          <th className="px-4 py-3">Página</th>
+                          <th className="px-4 py-3">Pageviews</th>
+                          <th className="px-4 py-3">Participação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y-2 divide-slate-100">
+                        {posthogStats.pages.map((page) => {
+                          const share = posthogStats.totalPageviews > 0 ? Math.round((page.views / posthogStats.totalPageviews) * 100) : 0;
+                          return (
+                            <tr key={page.page}>
+                              <td className="px-4 py-3 font-black text-slate-950">{page.page}</td>
+                              <td className="px-4 py-3 font-semibold text-slate-600">{formatCount(page.views)}</td>
+                              <td className="px-4 py-3 font-semibold text-violet-700">{share}%</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <PendingIntegration tool="Posthog" description="Requer rastreamento de páginas e sessões" />
+                )}
               </div>
             </article>
           </AdminSection>
@@ -2082,7 +2215,20 @@ export default function Admin() {
                 Páginas mais acessadas
               </h2>
               <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900">
-                <div className="p-5"><PendingIntegration tool="Posthog" description="Requer rastreamento de páginas e sessões" /></div>
+                {overviewLoading ? (
+                  <div className="p-5"><LoadingBlock /></div>
+                ) : posthogHasData && posthogStats?.pages.length ? (
+                  <div className="divide-y-2 divide-slate-100">
+                    {posthogStats.pages.slice(0, 5).map((page) => (
+                      <div key={page.page} className="flex items-center justify-between gap-4 p-4">
+                        <p className="truncate text-sm font-black text-slate-950">{page.page}</p>
+                        <p className="font-display text-lg font-black text-violet-700">{formatCount(page.views)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-5"><PendingIntegration tool="Posthog" description="Requer rastreamento de páginas e sessões" /></div>
+                )}
               </div>
             </article>
           </div>
@@ -2094,7 +2240,26 @@ export default function Admin() {
                 Aquisição de usuários
               </h2>
               <div className="mt-6 space-y-4">
-                <PendingIntegration tool="Google Analytics 4" description="Requer configuração de UTMs e GA4 para rastrear origem" />
+                {overviewLoading ? (
+                  <LoadingBlock />
+                ) : posthogHasData && posthogStats?.acquisition.length ? (
+                  posthogStats.acquisition.map((channel) => {
+                    const percent = posthogAcquisitionTotal > 0 ? Math.round((channel.users / posthogAcquisitionTotal) * 100) : 0;
+                    return (
+                      <div key={channel.channel} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <p className="font-display text-lg font-black text-slate-950">{channel.channel === "None" ? "Direto" : channel.channel}</p>
+                          <p className="text-sm font-black text-violet-700">{formatCount(channel.users)} usuários</p>
+                        </div>
+                        <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
+                          <div className="h-full rounded-full bg-emerald-600" style={{ width: `${percent}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <PendingIntegration tool="Posthog" description="Requer eventos com origem/referrer para rastrear aquisição" />
+                )}
               </div>
             </article>
 
