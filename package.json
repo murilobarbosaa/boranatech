@@ -10,11 +10,12 @@
     "dev": "concurrently -k -n \"client,server\" -c \"blue,green\" \"env -u NO_COLOR vite --host\" \"env -u NO_COLOR tsx --tsconfig tsconfig.node.json server/index.ts\"",
     "dev:client": "env -u NO_COLOR vite --host",
     "dev:server": "env -u NO_COLOR tsx --tsconfig tsconfig.node.json server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" --external:@supabase/supabase-js --external:@supabase/* --external:sharp --external:@img/sharp-linux-x64 --external:@img/sharp-darwin-x64 --external:@img/sharp-win32-x64",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "postbuild": "echo 'Build complete'"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
