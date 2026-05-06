@@ -2,7 +2,7 @@ import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 
 const PROJECT_ROOT = import.meta.dirname;
 
@@ -10,8 +10,6 @@ const plugins = [react(), tailwindcss(), jsxLocPlugin()];
 
 export default defineConfig(({ mode }) => {
   const envDir = path.resolve(PROJECT_ROOT);
-  const env = loadEnv(mode, envDir, "");
-  const tunnelHost = env.VITE_DEV_TUNNEL_HOST?.replace(/^https?:\/\//, "").split("/")[0]?.trim();
 
   return {
     plugins,
@@ -48,16 +46,6 @@ export default defineConfig(({ mode }) => {
         ".ngrok.app",
         ".ngrok.dev",
       ],
-      // HMR pelo HTTPS do túnel: em .env defina VITE_DEV_TUNNEL_HOST=seu-subdominio.ngrok-free.app
-      ...(tunnelHost
-        ? {
-            hmr: {
-              host: tunnelHost,
-              protocol: "wss",
-              clientPort: 443,
-            },
-          }
-        : {}),
       fs: {
         strict: true,
         deny: ["**/.*"],

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.12 <23"
+  },
   "scripts": {
     "dev": "concurrently -k -n \"client,server\" -c \"blue,green\" \"env -u NO_COLOR vite --host\" \"env -u NO_COLOR tsx --tsconfig tsconfig.node.json server/index.ts\"",
     "dev:client": "env -u NO_COLOR vite --host",
