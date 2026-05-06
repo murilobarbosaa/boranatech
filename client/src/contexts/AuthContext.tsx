@@ -2,7 +2,15 @@ import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Profile } from "@/services/contracts";
 import { getMyProfile } from "@/services/profileService";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import posthog from "posthog-js";
 
 interface SignUpInput {
   name: string;
@@ -61,24 +69,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      await loadProfile(data.session);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data }: { data: { session: Session | null } }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        await loadProfile(data.session);
+        setLoading(false);
+      });
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, nextSession: Session | null) => {
-      setSession(nextSession);
-      if (event === "SIGNED_OUT" || !nextSession) {
-        setProfile(null);
-      } else {
-        void loadProfile(nextSession);
-      }
-      setLoading(false);
-    });
+    } = supabase.auth.onAuthStateChange(
+      (event: AuthChangeEvent, nextSession: Session | null) => {
+        setSession(nextSession);
+        if (event === "SIGNED_OUT" || !nextSession) {
+          setProfile(null);
+        } else {
+          if (nextSession.user) {
+            posthog.identify(nextSession.user.id);
+          }
+          void loadProfile(nextSession);
+        }
+        setLoading(false);
+      },
+    );
 
     return () => {
       mounted = false;
@@ -101,6 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) throw error;
+
+      posthog.capture("user_signed_up");
     } catch (error) {
       console.error("[AuthContext] signUp failed", error);
       throw error;
@@ -109,12 +126,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = useCallback(async ({ email, password }: SignInInput) => {
     const client = assertSupabaseConfigured();
-    const { error } = await client.auth.signInWithPassword({
+    const { data, error } = await client.auth.signInWithPassword({
       email: normalizeEmail(email),
       password,
     });
 
     if (error) throw error;
+
+    if (data.user) {
+      posthog.identify(data.user.id);
+      posthog.capture("user_signed_in");
+    }
   }, []);
 
   const signOut = useCallback(async () => {
@@ -122,13 +144,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await client.auth.signOut();
     if (error) throw error;
     setProfile(null);
+    posthog.capture("user_signed_out");
+    posthog.reset();
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
     const client = assertSupabaseConfigured();
-    const { error } = await client.auth.resetPasswordForEmail(normalizeEmail(email), {
-      redirectTo: `${window.location.origin}/nova-senha`,
-    });
+    const { error } = await client.auth.resetPasswordForEmail(
+      normalizeEmail(email),
+      {
+        redirectTo: `${window.location.origin}/nova-senha`,
+      },
+    );
 
     if (error) throw error;
   }, []);
@@ -151,7 +178,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       updatePassword,
     }),
-    [loading, profile, resetPassword, session, signIn, signOut, signUp, updatePassword]
+    [
+      loading,
+      profile,
+      resetPassword,
+      session,
+      signIn,
+      signOut,
+      signUp,
+      updatePassword,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, BrainCircuit } from "lucide-react";
+import posthog from "posthog-js";
 import Layout from "@/components/Layout";
 import { areasTI } from "@/lib/data";
 import { quizQuestions } from "@/lib/platformData";
@@ -31,9 +32,13 @@ export default function QuizCarreira() {
       });
     });
 
-    const topMatches = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topMatches = Object.entries(scores)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
     const topScore = topMatches[0]?.[1] || 0;
-    const confidence = answeredCount ? Math.min(100, Math.round((topScore / (answeredCount * 5)) * 100)) : 0;
+    const confidence = answeredCount
+      ? Math.min(100, Math.round((topScore / (answeredCount * 5)) * 100))
+      : 0;
 
     return { topMatches, confidence, reasons };
   }, [answers]);
@@ -41,7 +46,9 @@ export default function QuizCarreira() {
   const topMatches = quizResult.topMatches;
   const result = topMatches[0]?.[0];
   const resultArea = areasTI.find((area) => area.nome === result);
-  const resultReasons = result ? (quizResult.reasons[result] || []).slice(0, 3) : [];
+  const resultReasons = result
+    ? (quizResult.reasons[result] || []).slice(0, 3)
+    : [];
 
   const completed = answeredCount === quizQuestions.length;
 
@@ -59,7 +66,8 @@ export default function QuizCarreira() {
 
     const quizAnswers = quizQuestions.flatMap((question) => {
       const optionIndex = answers[question.id];
-      const option = optionIndex === undefined ? null : question.options[optionIndex];
+      const option =
+        optionIndex === undefined ? null : question.options[optionIndex];
       if (!option) return [];
 
       return [
@@ -82,7 +90,21 @@ export default function QuizCarreira() {
         topAreas: topMatches.map(([area, score]) => ({ area, score })),
       },
     });
-  }, [answers, completed, quizResult.confidence, result, resultArea?.slug, topMatches]);
+
+    posthog.capture("quiz_completed", {
+      result_area: result,
+      confidence: quizResult.confidence,
+      questions_answered: answeredCount,
+    });
+  }, [
+    answers,
+    answeredCount,
+    completed,
+    quizResult.confidence,
+    result,
+    resultArea?.slug,
+    topMatches,
+  ]);
 
   return (
     <Layout>
@@ -93,9 +115,13 @@ export default function QuizCarreira() {
             <BrainCircuit className="h-4 w-4" />
             quiz de descoberta com IA
           </p>
-          <h1 className="font-display text-4xl font-black text-slate-950">Descubra uma área para começar.</h1>
+          <h1 className="font-display text-4xl font-black text-slate-950">
+            Descubra uma área para começar.
+          </h1>
           <p className="mt-3 max-w-2xl text-slate-950">
-            Responda perguntas sobre rotina, raciocínio, comunicação, ferramentas, tolerância a abstração e tipo de problema para receber um direcionamento mais preciso.
+            Responda perguntas sobre rotina, raciocínio, comunicação,
+            ferramentas, tolerância a abstração e tipo de problema para receber
+            um direcionamento mais preciso.
           </p>
         </div>
       </section>
@@ -109,15 +135,23 @@ export default function QuizCarreira() {
                 <span>{progress}%</span>
               </div>
               <div className="h-3 overflow-hidden rounded-full border-2 border-slate-900 bg-violet-100">
-                <div className="h-full bg-amber-300 transition-all" style={{ width: `${progress}%` }} />
+                <div
+                  className="h-full bg-amber-300 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
               <p className="mt-3 text-sm font-medium text-slate-600">
-                O cálculo considera pesos por área. Uma resposta pode indicar afinidade com mais de um caminho, deixando o resultado menos raso.
+                O cálculo considera pesos por área. Uma resposta pode indicar
+                afinidade com mais de um caminho, deixando o resultado menos
+                raso.
               </p>
             </div>
 
             {quizQuestions.map((question, index) => (
-              <div key={question.id} className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#d8b4fe]">
+              <div
+                key={question.id}
+                className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#d8b4fe]"
+              >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <p className="text-xs font-black uppercase text-violet-700">
                     Pergunta {index + 1} de {quizQuestions.length}
@@ -126,12 +160,19 @@ export default function QuizCarreira() {
                     {question.category}
                   </span>
                 </div>
-                <h2 className="font-display text-2xl font-black text-slate-950">{question.question}</h2>
+                <h2 className="font-display text-2xl font-black text-slate-950">
+                  {question.question}
+                </h2>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {question.options.map((option, optionIndex) => (
                     <button
                       key={option.label}
-                      onClick={() => setAnswers((current) => ({ ...current, [question.id]: optionIndex }))}
+                      onClick={() =>
+                        setAnswers((current) => ({
+                          ...current,
+                          [question.id]: optionIndex,
+                        }))
+                      }
                       className={`rounded-2xl border-2 p-4 text-left text-sm font-bold transition-all ${
                         answers[question.id] === optionIndex
                           ? "border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]"
@@ -153,48 +194,84 @@ export default function QuizCarreira() {
             </p>
             {completed && result ? (
               <>
-                <p className="mt-3 text-amber-100">Sua direção inicial mais forte é:</p>
-                <p className="font-display mt-2 text-3xl font-black">{result}</p>
+                <p className="mt-3 text-amber-100">
+                  Sua direção inicial mais forte é:
+                </p>
+                <p className="font-display mt-2 text-3xl font-black">
+                  {result}
+                </p>
                 <div className="mt-3 rounded-2xl border-2 border-slate-900 bg-white p-4 text-slate-900">
-                  <p className="text-xs font-black uppercase text-violet-700">Confiança do diagnóstico</p>
-                  <p className="font-display mt-1 text-2xl font-black">{quizResult.confidence}%</p>
+                  <p className="text-xs font-black uppercase text-violet-700">
+                    Confiança do diagnóstico
+                  </p>
+                  <p className="font-display mt-1 text-2xl font-black">
+                    {quizResult.confidence}%
+                  </p>
                   <p className="mt-1 text-xs font-medium text-slate-600">
-                    Baseada na força das respostas para a área principal, não em uma verdade absoluta.
+                    Baseada na força das respostas para a área principal, não em
+                    uma verdade absoluta.
                   </p>
                 </div>
                 {resultReasons.length ? (
                   <div className="mt-4 rounded-2xl border-2 border-violet-300 bg-violet-900/40 p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-amber-100">Por que esse resultado apareceu</p>
+                    <p className="text-xs font-black uppercase tracking-wide text-amber-100">
+                      Por que esse resultado apareceu
+                    </p>
                     <ul className="mt-3 space-y-2">
                       {resultReasons.map((reason) => (
-                        <li key={reason} className="text-sm font-medium text-violet-50">• {reason}</li>
+                        <li
+                          key={reason}
+                          className="text-sm font-medium text-violet-50"
+                        >
+                          • {reason}
+                        </li>
                       ))}
                     </ul>
                   </div>
                 ) : null}
                 {topMatches.length > 1 ? (
                   <div className="mt-4 rounded-2xl border-2 border-violet-300 bg-violet-900/40 p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-amber-100">Outras afinidades</p>
+                    <p className="text-xs font-black uppercase tracking-wide text-amber-100">
+                      Outras afinidades
+                    </p>
                     <div className="mt-3 space-y-2">
                       {topMatches.slice(1).map(([area, score]) => (
-                        <div key={area} className="flex items-center justify-between gap-3 text-sm">
+                        <div
+                          key={area}
+                          className="flex items-center justify-between gap-3 text-sm"
+                        >
                           <span className="font-bold text-white">{area}</span>
                           <span className="rounded-full bg-amber-300 px-2 py-0.5 text-xs font-black text-slate-950">
-                            {Math.min(100, Math.round((score / (quizQuestions.length * 5)) * 100))}%
+                            {Math.min(
+                              100,
+                              Math.round(
+                                (score / (quizQuestions.length * 5)) * 100,
+                              ),
+                            )}
+                            %
                           </span>
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : null}
-                <p className="mt-3 text-sm text-slate-300">Use isso como bússola, não como sentença. O ideal é testar um projeto pequeno antes de decidir.</p>
-                <Link href={resultArea ? `/areas/${resultArea.slug}` : "/roadmaps"} className="btn-brutal-accent mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 font-black">
+                <p className="mt-3 text-sm text-slate-300">
+                  Use isso como bússola, não como sentença. O ideal é testar um
+                  projeto pequeno antes de decidir.
+                </p>
+                <Link
+                  href={resultArea ? `/areas/${resultArea.slug}` : "/roadmaps"}
+                  className="btn-brutal-accent mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 font-black"
+                >
                   Ver caminho recomendado
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </>
             ) : (
-              <p className="mt-3 text-sm text-slate-300">Responda todas as perguntas para receber uma sugestão de carreira.</p>
+              <p className="mt-3 text-sm text-slate-300">
+                Responda todas as perguntas para receber uma sugestão de
+                carreira.
+              </p>
             )}
           </aside>
         </div>

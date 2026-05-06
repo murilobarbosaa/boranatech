@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import posthog from "posthog-js";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUrl } from "@/lib/api";
@@ -115,7 +116,9 @@ async function apiFetch(path: string, options?: RequestInit) {
 
 export function useFavorites() {
   const { user } = useAuth();
-  const [favorites, setFavorites] = useState<FavoriteItem[]>(() => readFavorites());
+  const [favorites, setFavorites] = useState<FavoriteItem[]>(() =>
+    readFavorites(),
+  );
   const [loading, setLoading] = useState(true);
   const [migrated, setMigrated] = useState(false);
 
@@ -184,7 +187,9 @@ export function useFavorites() {
           window.localStorage.setItem(migratedKey, "1");
           window.localStorage.removeItem(FAVORITES_STORAGE_KEY);
           setMigrated(true);
-          return apiFetch("/").then((res) => res.json() as Promise<{ data?: BookmarkItem[] }>);
+          return apiFetch("/").then(
+            (res) => res.json() as Promise<{ data?: BookmarkItem[] }>,
+          );
         }
 
         return null;
@@ -197,10 +202,16 @@ export function useFavorites() {
       });
   }, [migrated, user]);
 
-  const favoriteKeys = useMemo(() => new Set(favorites.map(favoriteKey)), [favorites]);
+  const favoriteKeys = useMemo(
+    () => new Set(favorites.map(favoriteKey)),
+    [favorites],
+  );
 
   const isFavorite = useCallback(
-    (itemOrType: Pick<FavoriteItem, "id" | "type"> | FavoriteType, resourceId?: string) => {
+    (
+      itemOrType: Pick<FavoriteItem, "id" | "type"> | FavoriteType,
+      resourceId?: string,
+    ) => {
       if (typeof itemOrType === "string") {
         return favoriteKeys.has(`${itemOrType}:${resourceId}`);
       }
@@ -215,7 +226,9 @@ export function useFavorites() {
       const normalizedItem = { ...item, id: String(item.id) };
       const currentFavorites = user ? favorites : readFavorites();
       const key = favoriteKey(normalizedItem);
-      const isCurrentlyFavorite = currentFavorites.some((favorite) => favoriteKey(favorite) === key);
+      const isCurrentlyFavorite = currentFavorites.some(
+        (favorite) => favoriteKey(favorite) === key,
+      );
 
       if (!user) {
         const nextFavorites = isCurrentlyFavorite
@@ -224,26 +237,48 @@ export function useFavorites() {
 
         writeFavorites(nextFavorites);
         setFavorites(nextFavorites);
+        posthog.capture("favorite_toggled", {
+          action: isCurrentlyFavorite ? "removed" : "added",
+          resource_type: normalizedItem.type,
+          resource_title: normalizedItem.title,
+        });
         return nextFavorites.some((favorite) => favoriteKey(favorite) === key);
       }
 
       if (isCurrentlyFavorite) {
-        setFavorites((current) => current.filter((favorite) => favoriteKey(favorite) !== key));
+        setFavorites((current) =>
+          current.filter((favorite) => favoriteKey(favorite) !== key),
+        );
 
-        void apiFetch(`/${normalizedItem.type}/${encodeURIComponent(normalizedItem.id)}`, { method: "DELETE" }).catch(() => {
+        void apiFetch(
+          `/${normalizedItem.type}/${encodeURIComponent(normalizedItem.id)}`,
+          { method: "DELETE" },
+        ).catch(() => {
           setFavorites((current) => [normalizedItem, ...current]);
         });
 
+        posthog.capture("favorite_toggled", {
+          action: "removed",
+          resource_type: normalizedItem.type,
+          resource_title: normalizedItem.title,
+        });
         return false;
       }
 
       setFavorites((current) => [normalizedItem, ...current]);
+      posthog.capture("favorite_toggled", {
+        action: "added",
+        resource_type: normalizedItem.type,
+        resource_title: normalizedItem.title,
+      });
 
       void apiFetch("/", {
         method: "POST",
         body: JSON.stringify(favoriteToBookmark(normalizedItem)),
       }).catch(() => {
-        setFavorites((current) => current.filter((favorite) => favoriteKey(favorite) !== key));
+        setFavorites((current) =>
+          current.filter((favorite) => favoriteKey(favorite) !== key),
+        );
       });
 
       return true;
@@ -252,7 +287,8 @@ export function useFavorites() {
   );
 
   const getFavoritesByType = useCallback(
-    (resourceType: FavoriteType) => favorites.filter((favorite) => favorite.type === resourceType),
+    (resourceType: FavoriteType) =>
+      favorites.filter((favorite) => favorite.type === resourceType),
     [favorites],
   );
 
