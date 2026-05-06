@@ -29,6 +29,7 @@ import Comparador from "./pages/Comparador";
 import QuizCarreira from "./pages/QuizCarreira";
 import Perfil from "./pages/Perfil";
 import Auth from "./pages/Auth";
+import Cadastro from "./pages/Cadastro";
 import RecuperarSenha from "./pages/RecuperarSenha";
 import NovaSenha from "./pages/NovaSenha";
 import Tecnologias from "./pages/Tecnologias";
@@ -116,7 +117,7 @@ function Router() {
       <Route path="/quiz-carreira" component={QuizCarreira} />
       <Route path="/perfil" component={Perfil} />
       <Route path="/login">{() => <Auth mode="login" />}</Route>
-      <Route path="/cadastro">{() => <Auth mode="cadastro" />}</Route>
+      <Route path="/cadastro" component={Cadastro} />
       <Route path="/recuperar-senha" component={RecuperarSenha} />
       <Route path="/nova-senha" component={NovaSenha} />
       <Route path="/404" component={NotFound} />

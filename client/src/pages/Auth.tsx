@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
@@ -28,7 +28,13 @@ function firstIssueMessage(error: z.ZodError) {
   return error.issues[0]?.message ?? "Revise os dados informados.";
 }
 
-export default function Auth({ mode }: { mode: "login" | "cadastro" }) {
+export default function Auth({
+  mode,
+  signupBanner,
+}: {
+  mode: "login" | "cadastro";
+  signupBanner?: ReactNode;
+}) {
   const isSignup = mode === "cadastro";
   const [, setLocation] = useLocation();
   const { signIn, signUp } = useAuth();
@@ -102,6 +108,7 @@ export default function Auth({ mode }: { mode: "login" | "cadastro" }) {
                 ? "Cadastre-se com validação segura e entre automaticamente na sua bússola."
                 : "Acesse sua conta para recuperar seus caminhos, cursos e favoritos."}
             </p>
+            {isSignup && signupBanner ? <div className="mt-5">{signupBanner}</div> : null}
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               {isSignup && (
                 <label className="block">
