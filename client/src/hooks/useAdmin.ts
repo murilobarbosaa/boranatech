@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 export function useAdmin() {
@@ -32,7 +33,7 @@ export function useAdmin() {
           return;
         }
 
-        const res = await fetch("/api/admin/me", {
+        const res = await fetch(apiUrl("/api/admin/me"), {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
 

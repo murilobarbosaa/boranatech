@@ -1,6 +1,7 @@
+import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
-const API_BASE = "/api";
+const API_BASE = apiUrl("/api");
 
 async function getAuthHeader(): Promise<Record<string, string>> {
   const {

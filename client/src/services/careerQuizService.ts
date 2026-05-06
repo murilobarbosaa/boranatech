@@ -1,4 +1,5 @@
 import type { CareerQuizAnswer, CareerQuizResult } from "./contracts";
+import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 async function getAuthHeader(): Promise<Record<string, string> | null> {
@@ -36,20 +37,20 @@ export async function persistQuizResult(params: {
   if (!headers) return null;
 
   try {
-    const attemptRes = await fetch("/api/quiz/attempts", {
+    const attemptRes = await fetch(apiUrl("/api/quiz/attempts"), {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
     });
     if (!attemptRes.ok) return null;
     const { data: attempt } = await attemptRes.json();
 
-    await fetch(`/api/quiz/attempts/${attempt.id}/answers`, {
+    await fetch(apiUrl(`/api/quiz/attempts/${attempt.id}/answers`), {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ answers: params.answers }),
     });
 
-    const completeRes = await fetch(`/api/quiz/attempts/${attempt.id}/complete`, {
+    const completeRes = await fetch(apiUrl(`/api/quiz/attempts/${attempt.id}/complete`), {
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({
@@ -72,7 +73,7 @@ export async function getQuizHistory() {
   if (!headers) return [];
 
   try {
-    const res = await fetch("/api/quiz/history", { headers });
+    const res = await fetch(apiUrl("/api/quiz/history"), { headers });
     if (!res.ok) return [];
     const json = await res.json();
     return json.data || [];

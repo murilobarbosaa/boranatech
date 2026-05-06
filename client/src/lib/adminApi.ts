@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 async function authHeaders(options?: RequestInit) {
@@ -22,7 +23,7 @@ async function parseAdminResponse(res: Response) {
 }
 
 export async function adminFetch(path: string, options?: RequestInit) {
-  const res = await fetch(`/api/admin${path}`, {
+  const res = await fetch(apiUrl(`/api/admin${path}`), {
     ...options,
     headers: await authHeaders(options),
   });
@@ -31,7 +32,7 @@ export async function adminFetch(path: string, options?: RequestInit) {
 }
 
 export async function contentFetch(path: string, options?: RequestInit) {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(apiUrl(`/api${path}`), {
     ...options,
     headers: await authHeaders(options),
   });

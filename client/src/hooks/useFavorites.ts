@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
 export type FavoriteType =
@@ -102,7 +103,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 async function apiFetch(path: string, options?: RequestInit) {
   const authHeader = await getAuthHeader();
 
-  return fetch(`/api/bookmarks${path}`, {
+  return fetch(apiUrl(`/api/bookmarks${path}`), {
     ...options,
     headers: {
       "Content-Type": "application/json",

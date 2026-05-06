@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, X, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
+import { apiUrl } from "@/lib/api";
 import { areasTI, cursosGratuitos, roadmaps, plataformas, eventos, projetos } from "@/lib/data";
 
 interface SearchResult {
@@ -98,7 +99,7 @@ export default function SearchBar({ className = "" }: { className?: string }) {
 
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(trimmed)}&limit=10`, { signal: controller.signal })
+      fetch(apiUrl(`/api/search?q=${encodeURIComponent(trimmed)}&limit=10`), { signal: controller.signal })
         .then((res) => {
           if (!res.ok) throw new Error("search failed");
           return res.json();

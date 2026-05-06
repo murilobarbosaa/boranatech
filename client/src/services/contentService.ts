@@ -1,8 +1,9 @@
 import type { ContentSourceStatus } from "./contracts";
+import { apiUrl } from "@/lib/api";
 import { areasTI, cursosGratuitos, noticias, plataformas, projetos, roadmaps } from "@/lib/data";
 import { technologies, technologyRanking } from "@/lib/technologyData";
 
-const API_BASE = "/api/content";
+const API_BASE = apiUrl("/api/content");
 
 async function apiFetch(path: string) {
   const res = await fetch(`${API_BASE}${path}`);

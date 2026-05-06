@@ -1,3 +1,4 @@
+import { apiUrl } from "./api";
 import { supabase } from "./supabase";
 
 interface AiResponse {
@@ -43,7 +44,7 @@ async function parseAiResponse(response: Response): Promise<AiResponse> {
 
 export async function callAiChat(endpoint: string, messages: AiChatMessage[]): Promise<AiResponse> {
   const authHeader = await getAuthHeader();
-  const response = await fetch(`/api/ai/${endpoint}`, {
+  const response = await fetch(apiUrl(`/api/ai/${endpoint}`), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -57,7 +58,7 @@ export async function callAiChat(endpoint: string, messages: AiChatMessage[]): P
 
 export async function callAiTool(endpoint: string, payload: Record<string, unknown>): Promise<AiResponse> {
   const authHeader = await getAuthHeader();
-  const response = await fetch(`/api/ai/${endpoint}`, {
+  const response = await fetch(apiUrl(`/api/ai/${endpoint}`), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
+import { apiUrl } from "@/lib/api";
 
 type AdminSession = {
   username: string;
@@ -1384,7 +1385,7 @@ export default function Admin() {
         setOverviewLoading(true);
         return Promise.all([
           adminFetch("/dashboard"),
-          fetch("/api/health").then((res) => res.json()),
+          fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
           adminFetch("/subscriptions"),
         ]);
