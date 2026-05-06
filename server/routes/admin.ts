@@ -304,6 +304,66 @@ router.get("/posthog-stats", async (_req, res) => {
   res.json({ data });
 });
 
+router.get("/churn-risk", async (_req, res) => {
+  try {
+    const { data: subscriptions, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id, status, plans(name, price_cents)")
+      .eq("status", "active");
+
+    if (error) {
+      console.error("[admin] Erro ao buscar assinaturas para churn-risk", error);
+      res.json({ data: [] });
+      return;
+    }
+
+    const activeSubscriptions = (subscriptions || []).filter((subscription) => subscription.user_id);
+    const userIds = activeSubscriptions.map((subscription) => subscription.user_id as string);
+    const { data: profiles } = userIds.length
+      ? await supabaseAdmin.from("profiles").select("user_id, name, email").in("user_id", userIds)
+      : { data: [] };
+    const profilesByUserId = new Map((profiles || []).map((profile) => [profile.user_id, profile]));
+    const inactiveThresholdMs = 14 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const users = await Promise.all(
+      activeSubscriptions.map(async (subscription) => {
+        const userId = subscription.user_id as string;
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (authError || !authData.user) return null;
+
+        const lastSeenAt = authData.user.last_sign_in_at || authData.user.created_at;
+        if (!lastSeenAt) return null;
+
+        const daysInactive = Math.floor((now - new Date(lastSeenAt).getTime()) / (24 * 60 * 60 * 1000));
+        if (daysInactive < 14 || now - new Date(lastSeenAt).getTime() < inactiveThresholdMs) return null;
+
+        const profile = profilesByUserId.get(userId);
+        const metadata = authData.user.user_metadata || {};
+        const plan = Array.isArray(subscription.plans) ? subscription.plans[0] : subscription.plans;
+        const priceCents = Number(plan?.price_cents || 0);
+
+        return {
+          name: String(profile?.name || metadata.name || metadata.full_name || authData.user.email || "Usuário"),
+          email: String(profile?.email || authData.user.email || ""),
+          days_inactive: daysInactive,
+          mrr: priceCents / 100,
+        };
+      }),
+    );
+
+    res.json({
+      data: users
+        .filter((user): user is { name: string; email: string; days_inactive: number; mrr: number } => Boolean(user))
+        .sort((a, b) => b.days_inactive - a.days_inactive)
+        .slice(0, 10),
+    });
+  } catch (err) {
+    console.error("[admin] Erro inesperado ao buscar churn-risk", err);
+    res.json({ data: [] });
+  }
+});
+
 router.get("/me", async (req, res, next) => {
   try {
     const { data: role } = await supabaseAdmin.from("admin_roles").select("role, created_at").eq("user_id", req.user!.id).single();

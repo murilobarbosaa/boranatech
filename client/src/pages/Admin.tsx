@@ -166,6 +166,13 @@ type AuditLog = {
 
 type AiStatsData = Record<string, { calls: number; success: number; cost: number }>;
 
+type ChurnRiskUser = {
+  name: string;
+  email: string;
+  days_inactive: number;
+  mrr: number;
+};
+
 type PosthogStatsData = {
   configured?: boolean;
   totalPageviews: number;
@@ -378,8 +385,6 @@ const cancellationReasons = [
   { reason: "Faltou conteúdo avançado", percent: 12 },
   { reason: "Outro motivo", percent: 9 },
 ];
-
-const churnRiskUsers: Array<{ name: string; days: string; mrr: string }> = [];
 
 const seoPages = [
   { page: "/areas", signups: 412, keyword: "áreas de ti para iniciantes", indexed: "Indexada" },
@@ -1368,6 +1373,7 @@ export default function Admin() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
   const [posthogStats, setPosthogStats] = useState<PosthogStatsData | null>(null);
+  const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(null);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [activeSection, setActiveSection] = useState<AdminSectionId>("visao-geral");
@@ -1407,15 +1413,17 @@ export default function Admin() {
           fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
           adminFetch("/posthog-stats"),
+          adminFetch("/churn-risk").catch(() => ({ data: null })),
           adminFetch("/subscriptions"),
         ]);
       })
-      .then(([dashboardJson, healthJson, aiJson, posthogJson, subscriptionsJson]) => {
+      .then(([dashboardJson, healthJson, aiJson, posthogJson, churnRiskJson, subscriptionsJson]) => {
         setDashboard(dashboardJson.data);
         setHealth(healthJson);
         setAuditLogs(Array.isArray(dashboardJson.data?.recent_audit) ? dashboardJson.data.recent_audit : []);
         setAiStats(aiJson.data || {});
         setPosthogStats(posthogJson.data || null);
+        setChurnRiskUsers(Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null);
         setSubscriptions(Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : []);
       })
       .catch(() => {
@@ -1425,6 +1433,7 @@ export default function Admin() {
         setAuditLogs([]);
         setAiStats({});
         setPosthogStats(null);
+        setChurnRiskUsers(null);
         setSubscriptions([]);
         setAccessState("forbidden");
       })
@@ -1954,7 +1963,35 @@ export default function Admin() {
                 </article>
                 <article className="card-brutal rounded-3xl bg-rose-50 p-6">
                   <h3 className="font-display text-2xl font-black text-slate-950">Usuários em risco</h3>
-                  <div className="mt-4"><PendingIntegration tool="Supabase Admin API" description="Requer endpoint de último login via Supabase Admin API" /></div>
+                  <div className="mt-4">
+                    {overviewLoading ? (
+                      <LoadingBlock />
+                    ) : churnRiskUsers === null ? (
+                      <PendingIntegration tool="Supabase Admin API" description="Requer endpoint de último login via Supabase Admin API" />
+                    ) : churnRiskUsers.length ? (
+                      <div className="space-y-3">
+                        {churnRiskUsers.map((riskUser) => (
+                          <div key={`${riskUser.email}-${riskUser.days_inactive}`} className="rounded-2xl border-2 border-slate-900 bg-white p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="font-display text-lg font-black text-slate-950">{riskUser.name}</p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">{riskUser.email}</p>
+                              </div>
+                              <span className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1 text-xs font-black text-rose-800">
+                                {riskUser.days_inactive} dias
+                              </span>
+                            </div>
+                            <p className="mt-3 text-sm font-black text-slate-700">MRR: {formatCurrency(riskUser.mrr)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4">
+                        <p className="font-display text-lg font-black text-slate-950">Nenhum assinante Pro em risco no momento</p>
+                        <p className="mt-2 text-sm font-semibold text-slate-500">Todos os assinantes ativos consultados fizeram login nos últimos 14 dias.</p>
+                      </div>
+                    )}
+                  </div>
                 </article>
               </div>
             </div>
