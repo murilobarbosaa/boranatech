@@ -3,7 +3,7 @@ import { Router } from "express";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const router = Router();
-const SITE_URL = "https://boranatech.com.br";
+const SITE_URL = "https://www.boranatech.com.br";
 const CACHE_SECONDS = 60 * 60;
 
 type SitemapEntry = {
@@ -36,12 +36,7 @@ const staticEntries: SitemapEntry[] = [
 ];
 
 function escapeXml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
 function absoluteLoc(pathname: string) {
@@ -69,13 +64,7 @@ function toXml(entries: SitemapEntry[]) {
 async function fetchDynamicEntries() {
   const entries: SitemapEntry[] = [];
 
-  const [areas, roadmaps, courses, news, jobs] = await Promise.allSettled([
-    supabaseAdmin.from("areas").select("slug, updated_at").eq("is_published", true),
-    supabaseAdmin.from("roadmaps").select("slug, updated_at").eq("is_published", true),
-    supabaseAdmin.from("courses").select("slug, updated_at").eq("is_published", true),
-    supabaseAdmin.from("news").select("slug, published_at").eq("is_published", true),
-    supabaseAdmin.from("external_jobs").select("id, published_at").eq("is_published", true),
-  ]);
+  const [areas, roadmaps, courses, news, jobs] = await Promise.allSettled([supabaseAdmin.from("areas").select("slug, updated_at").eq("is_published", true), supabaseAdmin.from("roadmaps").select("slug, updated_at").eq("is_published", true), supabaseAdmin.from("courses").select("slug, updated_at").eq("is_published", true), supabaseAdmin.from("news").select("slug, published_at").eq("is_published", true), supabaseAdmin.from("external_jobs").select("id, published_at").eq("is_published", true)]);
 
   if (areas.status === "fulfilled" && !areas.value.error) {
     entries.push(...(areas.value.data || []).map((row) => ({ loc: `/areas/${row.slug}`, changefreq: "monthly" as const, priority: "0.7", lastmod: row.updated_at })));
@@ -101,9 +90,7 @@ async function fetchDynamicEntries() {
 }
 
 function latestDate(values: Array<string | null | undefined>) {
-  return values
-    .filter((value): value is string => Boolean(value))
-    .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0];
+  return values.filter((value): value is string => Boolean(value)).sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0];
 }
 
 router.get("/sitemap.xml", async (_req, res, next) => {
