@@ -40,7 +40,7 @@ const menuData: DropdownMenu[] = [
       {
         items: [
           { label: "Áreas da TI", description: "Conheça os caminhos da TI", path: "/areas" },
-          { label: "Quiz de Área", description: "Descubra sua área com IA", path: "/quiz-carreira", isPro: true },
+          { label: "Quiz de Área", description: "Descubra sua área com IA", path: "/quiz-carreira" },
           { label: "Tecnologias", description: "Linguagens e frameworks", path: "/tecnologias" },
           { label: "Mapa de Tecnologias", description: "Visualize o ecossistema tech", path: "/tecnologias/mapa" },
         ],
@@ -151,7 +151,7 @@ const menuData: DropdownMenu[] = [
     columns: [
       {
         items: [
-          { label: "Notícias", description: "Novidades da área tech", path: "/noticias", isPro: true },
+          { label: "Notícias", description: "Novidades da área tech", path: "/noticias" },
           { label: "Eventos", description: "Encontros por cidade e formato", path: "/eventos" },
           { label: "Comunidades", description: "Grupos para aprender junto", path: "/comunidades" },
         ],

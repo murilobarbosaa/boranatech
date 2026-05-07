@@ -1,6 +1,7 @@
 import { getMySubscription } from "@/services/subscriptionService";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
+import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "./AuthContext";
 
 interface SubscriptionContextValue {
@@ -28,6 +29,7 @@ function isLocalDevelopmentHost() {
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdmin();
   const [subscription, setSubscription] = useState<unknown>(null);
   const [isPro, setIsPro] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -108,12 +110,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({
-      isPro,
+      isPro: isPro || isAdmin,
       subscription,
-      loading,
+      loading: loading || adminLoading,
       refreshSubscription,
     }),
-    [isPro, loading, refreshSubscription, subscription],
+    [adminLoading, isAdmin, isPro, loading, refreshSubscription, subscription],
   );
 
   return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;

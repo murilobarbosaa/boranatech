@@ -10,8 +10,6 @@ import { ArrowLeft, CheckCircle, ExternalLink, Lightbulb, Sparkles } from "lucid
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
-import ProGate from "@/components/pro/ProGate";
-import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
@@ -37,7 +35,6 @@ function DifficultyBar({ level, fillClass }: { level: number; fillClass: string 
 
 export default function AreaDetalhe() {
   const params = useParams<{ slug: string }>();
-  const { isPro } = useSubscription();
   const [area, setArea] = useState(() => areasTI.find((a) => a.slug === params.slug) || null);
 
   useEffect(() => {
@@ -84,15 +81,8 @@ export default function AreaDetalhe() {
         actions={<FavoriteButton item={{ id: area.id, type: "area", title: area.nome, subtitle: area.descricaoCurta }} />}
       />
 
-      {!isPro ? (
-        <section className={cn(ac.contentBg, "py-12")}>
-          <div className="container">
-            <ProGate description="A página interna de cada área, com roadmap completo, habilidades, ferramentas, cursos e empresas relacionadas, faz parte do Plano Pro." />
-          </div>
-        </section>
-      ) : (
-        <section className={cn(ac.contentBg, "py-12")}>
-          <div className="container">
+      <section className={cn(ac.contentBg, "py-12")}>
+        <div className="container">
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
@@ -313,9 +303,8 @@ export default function AreaDetalhe() {
             </div>
           </div>
         </div>
-          </div>
-        </section>
-      )}
+        </div>
+      </section>
     </Layout>
   );
 }

@@ -33,6 +33,11 @@ declare global {
   }
 }
 
+async function isAdminUser(userId: string) {
+  const { data, error } = await supabaseAdmin.rpc("is_user_admin", { p_user_id: userId });
+  return !error && data === true;
+}
+
 function isLocalDevelopmentRequest(req: AuthRequest) {
   if (env.isProd) return false;
 
@@ -113,8 +118,11 @@ export async function checkProStatus(req: AuthRequest, _res: Response, next: Mid
   }
 
   try {
-    const { data, error } = await supabaseAdmin.rpc("is_user_pro", { p_user_id: req.user.id });
-    req.isPro = !error && data === true;
+    const [{ data: proData, error: proError }, adminAccess] = await Promise.all([
+      supabaseAdmin.rpc("is_user_pro", { p_user_id: req.user.id }),
+      isAdminUser(req.user.id),
+    ]);
+    req.isPro = (!proError && proData === true) || adminAccess;
   } catch {
     req.isPro = false;
   }
@@ -145,9 +153,9 @@ export async function requireAdmin(req: AuthRequest, _res: Response, next: Middl
   }
 
   try {
-    const { data, error } = await supabaseAdmin.rpc("is_user_admin", { p_user_id: req.user.id });
+    const adminAccess = await isAdminUser(req.user.id);
 
-    if (error || !data) {
+    if (!adminAccess) {
       return next(createError(403, "forbidden", "Acesso administrativo necessário."));
     }
 
