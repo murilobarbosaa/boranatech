@@ -1,9 +1,12 @@
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import TermosDeUsoRedesign from "./TermosDeUsoRedesign";
 
 const updatedAt = "2026-05-07";
 
 export default function TermosDeUso() {
+  return <TermosDeUsoRedesign />;
+
   return (
     <Layout>
       <SEO

@@ -1,9 +1,12 @@
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import PrivacidadeRedesign from "./PrivacidadeRedesign";
 
 const updatedAt = "2026-05-07";
 
 export default function Privacidade() {
+  return <PrivacidadeRedesign />;
+
   return (
     <Layout>
       <SEO
