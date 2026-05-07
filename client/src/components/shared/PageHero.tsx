@@ -111,9 +111,11 @@ export default function PageHero({
                 {eyebrow}
               </p>
             ) : null}
-            <div className="mb-3 flex flex-wrap items-start gap-4">
+            <div
+              className={`mb-3 flex flex-wrap gap-4 ${titlePrefix ? "items-center" : "items-start"}`}
+            >
               {titlePrefix ? <span className="shrink-0">{titlePrefix}</span> : null}
-              <h1 className="min-w-[12rem] flex-1 font-display text-4xl font-bold text-slate-950">
+              <h1 className="min-w-[12rem] flex-1 font-display text-4xl font-bold leading-tight text-slate-950">
                 {title}
               </h1>
             </div>

@@ -151,7 +151,7 @@ const menuData: DropdownMenu[] = [
     columns: [
       {
         items: [
-          { label: "Notícias", description: "Novidades da área tech", path: "/noticias" },
+          { label: "Últimas Notícias", description: "Novidades da área tech", path: "/noticias" },
           { label: "Eventos", description: "Encontros por cidade e formato", path: "/eventos" },
           { label: "Comunidades", description: "Grupos para aprender junto", path: "/comunidades" },
         ],
@@ -247,7 +247,7 @@ function DesktopMenuItem({
         onKeyDown={handleKeyDown}
         onMouseEnter={() => setOpenMenu(menu.id)}
         className={`nav-pill flex cursor-default items-center gap-1 px-3 py-1.5 text-sm font-bold ${
-          isActive ? "nav-pill-active text-slate-900" : "text-slate-700"
+          isActive || isOpen ? "nav-pill-active text-slate-900" : "text-slate-700"
         }`}
       >
         {menu.label}
@@ -256,10 +256,13 @@ function DesktopMenuItem({
 
       <div
         onMouseEnter={() => setOpenMenu(menu.id)}
-        className={`absolute left-0 top-full z-[1001] mt-3 min-w-[520px] overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a] transition-all duration-150 ${
-          isOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1.5 opacity-0"
+        className={`absolute left-0 top-full z-[1001] min-w-[520px] pt-3 transition-all duration-150 ${
+          isOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1.5 opacity-0 pointer-events-none"
         }`}
       >
+        <div
+          className={`overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
+        >
         <div className="mb-4">
           <p className="text-[13px] font-black text-slate-900">{menu.label}</p>
           <p className="mt-1 text-xs font-bold text-slate-500">{menu.headerDescription}</p>
@@ -309,6 +312,7 @@ function DesktopMenuItem({
         <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[#BA7517]">
           ★ funcionalidade Pro
         </div>
+        </div>
       </div>
     </div>
   );
@@ -350,8 +354,10 @@ function DesktopNav({ location }: { location: string }) {
       <Link
         href="/mentorias"
         aria-current={isPathActive("/mentorias", location) ? "page" : undefined}
-        className={`rounded-full border border-amber-400/80 bg-amber-100/60 px-3 py-1.5 text-sm font-semibold text-amber-950 transition-colors duration-200 hover:bg-amber-200/70 hover:border-amber-500 ${
-          isPathActive("/mentorias", location) ? "border-amber-500 bg-amber-200 text-amber-950 shadow-[1px_1px_0_#0f172a]" : ""
+        className={`nav-pill rounded-full border-2 px-3 py-1.5 text-sm font-black shadow-[2px_2px_0_#0f172a] ${
+          isPathActive("/mentorias", location)
+            ? "border-slate-900 bg-amber-300 text-slate-950"
+            : "border-amber-400 bg-amber-100 text-amber-950 hover:bg-amber-200"
         }`}
       >
         Mentorias
@@ -643,10 +649,10 @@ export default function Header() {
             href="/mentorias"
             onClick={closeMobileDrawer}
             aria-current={isPathActive("/mentorias", location) ? "page" : undefined}
-            className={`mx-4 mt-3 block rounded-full border px-4 py-3 text-center text-sm font-semibold transition-colors ${
+            className={`mx-4 mt-3 block rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
               isPathActive("/mentorias", location)
-                ? "border-amber-500 bg-amber-200 text-amber-950"
-                : "border-amber-400/80 bg-amber-100/50 text-amber-950 hover:bg-amber-200/60"
+                ? "border-slate-900 bg-amber-300 text-slate-950"
+                : "border-amber-400 bg-amber-100 text-amber-950 hover:bg-amber-200"
             }`}
           >
             Mentorias
