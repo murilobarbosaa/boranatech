@@ -22,6 +22,22 @@ const EDITABLE_FIELDS = [
 
 router.use(requireAuth);
 
+async function enqueueWelcomeEmailIfNeeded(profile: Record<string, unknown>, userId: string, email: string) {
+  if (profile.welcome_email_sent === true) return;
+
+  try {
+    await enqueueEmail({
+      type: "welcome",
+      to: email,
+      name: String(profile.name || email.split("@")[0]),
+    });
+
+    await supabaseAdmin.from("profiles").update({ welcome_email_sent: true }).eq("user_id", userId);
+  } catch (emailError) {
+    console.error("[email] Erro ao enfileirar boas-vindas", emailError);
+  }
+}
+
 router.get("/", async (req, res, next) => {
   try {
     const userId = req.user!.id;
@@ -43,15 +59,7 @@ router.get("/", async (req, res, next) => {
         return next(createError(500, "db_error", "Erro ao criar perfil."));
       }
 
-      try {
-        await enqueueEmail({
-          type: "welcome",
-          to: req.user!.email,
-          name: newProfile.name || req.user!.email.split("@")[0],
-        });
-      } catch (emailError) {
-        console.error("[email] Erro ao enviar boas-vindas", emailError);
-      }
+      void enqueueWelcomeEmailIfNeeded(newProfile, userId, req.user!.email);
 
       return res.json({ data: newProfile });
     }
@@ -59,6 +67,8 @@ router.get("/", async (req, res, next) => {
     if (error) {
       return next(createError(500, "db_error", "Erro ao buscar perfil."));
     }
+
+    void enqueueWelcomeEmailIfNeeded(profile, userId, req.user!.email);
 
     res.json({ data: profile });
   } catch (err) {
