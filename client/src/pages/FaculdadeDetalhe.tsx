@@ -1,5 +1,5 @@
 import { Link, useParams } from "wouter";
-import { ArrowLeft, BookOpen, Briefcase, CheckCircle, ExternalLink, GraduationCap, Sparkles } from "lucide-react";
+import { ArrowLeft, Briefcase, CheckCircle, ExternalLink, GraduationCap, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import FavoriteButton from "@/components/FavoriteButton";
 import { CursoVoiceNote } from "@/components/faculdades/CursoVoiceNote";

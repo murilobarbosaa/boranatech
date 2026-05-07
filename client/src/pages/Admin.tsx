@@ -8,7 +8,6 @@ import {
   BarChart3,
   Bot,
   BrainCircuit,
-  CalendarDays,
   CheckCircle2,
   Clock3,
   Compass,
@@ -18,8 +17,6 @@ import {
   DollarSign,
   Eye,
   FileText,
-  Flame,
-  Gauge,
   Globe2,
   Handshake,
   LayoutDashboard,
@@ -28,7 +25,6 @@ import {
   LogOut,
   Mail,
   MousePointerClick,
-  Percent,
   PieChart,
   PlusCircle,
   RefreshCcw,
@@ -82,32 +78,12 @@ type QueueStats = {
   failed: number;
 };
 
-type FunnelStep = {
-  label: string;
-  value: number;
-  visitors: string;
-  color: string;
-};
-
 type HealthItem = {
   service: string;
   status: string;
   detail: string;
   icon: ReactNode;
   tone: string;
-};
-
-type AffiliatePartner = {
-  name: string;
-  code: string;
-  discount: number;
-  commission: number;
-  clicks: string;
-  trials: string;
-  sales: string;
-  revenue: string;
-  commissionDue: string;
-  status: "ativo" | "pausado" | "rascunho";
 };
 
 type AffiliateRecord = {
@@ -301,76 +277,6 @@ const metricCards: MetricCard[] = [
   },
 ];
 
-const aiUsage: AiUsage[] = [
-  { feature: "Quiz de área com IA", requests: "1.892", credits: "94.600", cost: "R$ 142,90", status: "ok" },
-  { feature: "Analisador de currículo", requests: "734", credits: "88.080", cost: "R$ 161,40", status: "watch" },
-  { feature: "Otimizador de LinkedIn", requests: "421", credits: "37.890", cost: "R$ 72,80", status: "ok" },
-  { feature: "Plano de estudos", requests: "613", credits: "55.170", cost: "R$ 109,10", status: "high" },
-];
-
-const funnelSteps: FunnelStep[] = [];
-
-const planBreakdown = [
-  { label: "Gratuito", value: "1.065", percent: 83, color: "bg-slate-300" },
-  { label: "Pro mensal", value: "176", percent: 14, color: "bg-violet-700" },
-  { label: "Pro anual", value: "43", percent: 3, color: "bg-[#ffb800]" },
-];
-
-const healthItems: HealthItem[] = [
-  {
-    service: "Supabase Auth",
-    status: "Operando",
-    detail: "Login e cadastro sem falhas críticas",
-    icon: <ShieldCheck className="h-5 w-5" />,
-    tone: "bg-emerald-50 text-emerald-800",
-  },
-  {
-    service: "Banco de dados",
-    status: "Estável",
-    detail: "Latência média estimada de 118ms",
-    icon: <Database className="h-5 w-5" />,
-    tone: "bg-blue-50 text-blue-800",
-  },
-  {
-    service: "Serviços de IA",
-    status: "Atenção",
-    detail: "Plano de estudos acima da média de custo",
-    icon: <BrainCircuit className="h-5 w-5" />,
-    tone: "bg-amber-50 text-amber-900",
-  },
-  {
-    service: "Servidor web",
-    status: "Online",
-    detail: "Uptime estimado de 99,92%",
-    icon: <Server className="h-5 w-5" />,
-    tone: "bg-violet-50 text-violet-800",
-  },
-];
-
-const topPages = [
-  { page: "/areas", views: "18.204", engagement: "72%" },
-  { page: "/quiz-carreira", views: "12.891", engagement: "81%" },
-  { page: "/curriculo/analisar", views: "9.480", engagement: "68%" },
-  { page: "/roadmaps", views: "8.772", engagement: "75%" },
-  { page: "/estagio", views: "7.614", engagement: "64%" },
-];
-
-const acquisitionChannels = [
-  { channel: "Instagram", users: "4.120", percent: 49, color: "bg-pink-500" },
-  { channel: "Busca orgânica", users: "2.318", percent: 28, color: "bg-emerald-600" },
-  { channel: "Indicação", users: "1.137", percent: 14, color: "bg-blue-600" },
-  { channel: "Direto", users: "845", percent: 9, color: "bg-violet-700" },
-];
-
-const affiliatePartners: AffiliatePartner[] = [];
-
-const affiliateSummary = [
-  { label: "Receita por afiliados", value: "R$ 4.068", icon: <DollarSign className="h-5 w-5" /> },
-  { label: "Comissões a pagar", value: "R$ 1.135,80", icon: <WalletCards className="h-5 w-5" /> },
-  { label: "Vendas atribuídas", value: "113", icon: <Trophy className="h-5 w-5" /> },
-  { label: "Conversão média", value: "3,5%", icon: <Percent className="h-5 w-5" /> },
-];
-
 const adminNavItems: AdminNavItem[] = [
   { href: "#visao-geral", label: "Visão", icon: <LayoutDashboard className="h-4 w-4" /> },
   { href: "#conversao", label: "Conversão", icon: <MousePointerClick className="h-4 w-4" /> },
@@ -382,90 +288,6 @@ const adminNavItems: AdminNavItem[] = [
   { href: "#financeiro", label: "Financeiro", icon: <DollarSign className="h-4 w-4" /> },
   { href: "#ia", label: "IA", icon: <Bot className="h-4 w-4" /> },
   { href: "#afiliados", label: "Afiliados", icon: <Handshake className="h-4 w-4" /> },
-];
-
-const conversionMetrics = [
-  { label: "Página campeã", value: "/curriculo/analisar", detail: "31% das conversões vieram depois desta página" },
-  { label: "Tempo até converter", value: "2,8 dias", detail: "E-mail de conversão ideal no dia 2" },
-  { label: "Sessões até converter", value: "4,2", detail: "Boa janela para remarketing" },
-  { label: "Gate Pro decisivo", value: "Analisador de currículo", detail: "Primeira ferramenta Pro tentada por 38%" },
-];
-
-const conversionPages = [
-  { page: "/curriculo/analisar", conversions: 68, cta: "CTA agressivo no topo e no resultado parcial" },
-  { page: "/quiz-carreira", conversions: 54, cta: "Oferta Pro após resposta do quiz" },
-  { page: "/roadmaps", conversions: 27, cta: "Plano personalizado como upgrade" },
-  { page: "/salarios", conversions: 19, cta: "Comparativo salarial bloqueado" },
-];
-
-const pageBehavior = [
-  { page: "/roadmaps", time: "4m 18s", scroll: "78%", exit: "18%", pagesPerSession: "5,4" },
-  { page: "/areas", time: "2m 06s", scroll: "42%", exit: "37%", pagesPerSession: "3,1" },
-  { page: "/entrevistas", time: "3m 44s", scroll: "69%", exit: "21%", pagesPerSession: "4,8" },
-  { page: "/curriculo/analisar", time: "5m 12s", scroll: "83%", exit: "12%", pagesPerSession: "6,2" },
-];
-
-const retentionCohorts = [
-  { cohort: "Semana 1 jan", week1: "100%", week2: "72%", week3: "58%", week4: "44%" },
-  { cohort: "Semana 2 jan", week1: "100%", week2: "75%", week3: "61%", week4: "48%" },
-  { cohort: "Semana 3 jan", week1: "100%", week2: "79%", week3: "66%", week4: "52%" },
-  { cohort: "Semana 4 jan", week1: "100%", week2: "81%", week3: "69%", week4: "55%" },
-];
-
-const cancellationReasons = [
-  { reason: "Preço no momento", percent: 34 },
-  { reason: "Não usei o suficiente", percent: 27 },
-  { reason: "Já consegui uma vaga", percent: 18 },
-  { reason: "Faltou conteúdo avançado", percent: 12 },
-  { reason: "Outro motivo", percent: 9 },
-];
-
-const seoPages = [
-  { page: "/areas", signups: 412, keyword: "áreas de ti para iniciantes", indexed: "Indexada" },
-  { page: "/dicionario", signups: 188, keyword: "termos de tecnologia", indexed: "Indexada" },
-  { page: "/roadmaps", signups: 176, keyword: "roadmap programação iniciante", indexed: "Indexada" },
-  { page: "/entrevistas", signups: 93, keyword: "perguntas entrevista dev junior", indexed: "Pendente" },
-];
-
-const financialCohorts = [
-  { cohort: "Jan/26", mrr: "R$ 1.920", growth: "+18%" },
-  { cohort: "Fev/26", mrr: "R$ 2.840", growth: "+22%" },
-  { cohort: "Mar/26", mrr: "R$ 4.310", growth: "+31%" },
-  { cohort: "Abr/26", mrr: "R$ 6.760", growth: "+27%" },
-];
-
-const revenueByChannel = [
-  { channel: "Instagram", revenue: "R$ 3.240", percent: 41 },
-  { channel: "Busca orgânica", revenue: "R$ 2.180", percent: 28 },
-  { channel: "Afiliados", revenue: "R$ 1.520", percent: 19 },
-  { channel: "Direto", revenue: "R$ 944", percent: 12 },
-];
-
-const externalAffiliateRevenue = [
-  { partner: "Alura", revenue: "R$ 820", clicks: "1.204" },
-  { partner: "Udemy", revenue: "R$ 436", clicks: "884" },
-  { partner: "Rocketseat", revenue: "R$ 312", clicks: "521" },
-];
-
-const aiUserCosts: Array<{ user: string; cost: string; paid: string; status: string }> = [];
-
-const aiLimits = [
-  { feature: "Análises de currículo", used: 82, limit: "5/mês", usersNearLimit: 37 },
-  { feature: "LinkedIn IA", used: 64, limit: "4/mês", usersNearLimit: 19 },
-  { feature: "Plano de estudos", used: 51, limit: "6/mês", usersNearLimit: 11 },
-];
-
-const aiQuality = [
-  { feature: "Quiz de área", positive: 91, negative: 9 },
-  { feature: "Currículo IA", positive: 84, negative: 16 },
-  { feature: "Plano de estudos", positive: 78, negative: 22 },
-];
-
-const recentEvents = [
-  { time: "Agora", title: "Pico de uso no Analisador de currículo", detail: "41 análises nos últimos 20 minutos", icon: <Flame className="h-4 w-4" /> },
-  { time: "15 min", title: "Nova assinatura Pro anual", detail: "Conversão vinda do Quiz de área", icon: <WalletCards className="h-4 w-4" /> },
-  { time: "42 min", title: "Campanha do Instagram performando bem", detail: "CTR 6,8% para /areas", icon: <Globe2 className="h-4 w-4" /> },
-  { time: "1h", title: "Custo de IA dentro do limite diário", detail: "63% do orçamento consumido", icon: <Gauge className="h-4 w-4" /> },
 ];
 
 function slugifyAffiliateCode(value: string) {
@@ -644,20 +466,6 @@ function LoadingBlock({ label = "Carregando dados..." }: { label?: string }) {
   );
 }
 
-function AffiliateStatusPill({ status }: { status: AffiliatePartner["status"] }) {
-  const classes = {
-    ativo: "bg-emerald-100 text-emerald-800",
-    pausado: "bg-amber-100 text-amber-900",
-    rascunho: "bg-slate-100 text-slate-700",
-  };
-
-  return (
-    <span className={`rounded-full border border-slate-900 px-2 py-1 text-[11px] font-black uppercase ${classes[status]}`}>
-      {status}
-    </span>
-  );
-}
-
 function AdminShell({
   activeSection,
   children,
@@ -793,16 +601,6 @@ function AdminSection({
       </div>
       {children}
     </section>
-  );
-}
-
-function MiniStatCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <div className="card-brutal rounded-3xl bg-white p-5">
-      <p className="text-xs font-black uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="font-display mt-2 text-3xl font-black text-slate-950">{value}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-600">{detail}</p>
-    </div>
   );
 }
 
