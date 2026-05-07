@@ -151,6 +151,7 @@ export default function PerfilRedesign() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const subscriptionData = subscription as SubscriptionData | null;
 
   useEffect(() => {
@@ -261,6 +262,20 @@ export default function PerfilRedesign() {
       setLocation("/login", { replace: true });
     } catch {
       toast.error("Não foi possível sair agora. Tente novamente.");
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    try {
+      await apiFetch("/api/me", { method: "DELETE" });
+      await supabase?.auth.signOut();
+      toast.success("Sua conta foi excluída.");
+      setLocation("/", { replace: true });
+    } catch {
+      toast.error("Não foi possível excluir sua conta. Tente novamente.");
+    } finally {
+      setDeletingAccount(false);
     }
   }
 
@@ -490,10 +505,19 @@ export default function PerfilRedesign() {
           {deleteModalOpen ? (
             <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
               <h2 className="font-display flex items-center gap-2 text-2xl font-black text-rose-800"><Trash2 className="h-6 w-6" /> Excluir conta</h2>
-              <p className="mt-2 text-sm font-semibold text-slate-500">Esta confirmação é apenas visual por enquanto. Nenhuma conta será excluída.</p>
+              <p className="mt-2 text-sm font-semibold text-slate-500">
+                Esta ação é permanente e irreversível. Todos os seus dados, favoritos, histórico de estudos e assinatura serão apagados.
+              </p>
               <div className="mt-4 flex gap-3">
-                <button type="button" onClick={() => setDeleteModalOpen(false)} className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-2 font-black">Cancelar</button>
-                <button type="button" className="rounded-full border-2 border-[#1a1a1a] bg-rose-100 px-5 py-2 font-black text-rose-800">Confirmar exclusão</button>
+                <button type="button" onClick={() => setDeleteModalOpen(false)} disabled={deletingAccount} className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-2 font-black disabled:opacity-60">Cancelar</button>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteAccount()}
+                  disabled={deletingAccount}
+                  className="rounded-full border-2 border-[#1a1a1a] bg-rose-100 px-5 py-2 font-black text-rose-800 disabled:opacity-60"
+                >
+                  {deletingAccount ? "Excluindo..." : "Confirmar exclusão"}
+                </button>
               </div>
             </div>
           ) : null}

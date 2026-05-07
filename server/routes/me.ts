@@ -109,4 +109,21 @@ router.patch("/", async (req, res, next) => {
   }
 });
 
+router.delete("/", async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (error) {
+      console.error("[me] Erro ao excluir conta:", error);
+      return next(createError(500, "delete_account_failed", "Erro ao excluir conta."));
+    }
+
+    console.log("[me] Conta excluída:", userId);
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
