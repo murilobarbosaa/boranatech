@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle, Filter, Lightbulb, RotateCcw } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 
 type ComparisonCategory = "faculdades" | "cursos" | "areas" | "plataformas";
 type ComparisonItem = {
@@ -727,6 +728,13 @@ export default function Comparador() {
 
   return (
     <Layout>
+      <SEO
+        title="Comparador Tech — Compare faculdades, cursos, áreas e plataformas"
+        description="Compare opções de estudo e carreira em tecnologia lado a lado, considerando custo, tempo, perfil, objetivo e riscos para iniciantes."
+        keywords={["comparador tecnologia", "comparar cursos ti", "comparar faculdades tecnologia", "comparar áreas da ti"]}
+        url="/comparador"
+        schemaType="WebPage"
+      />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-lime-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#65a30d_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

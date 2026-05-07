@@ -7,6 +7,7 @@ import { useState } from "react";
 import { ExternalLink, Users } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { comunidades } from "@/lib/data";
 
 const areas = ["Todas", ...Array.from(new Set(comunidades.map((c) => c.area)))];
@@ -32,6 +33,13 @@ export default function Comunidades() {
 
   return (
     <Layout>
+      <SEO
+        title="Comunidades Tech — Grupos e redes para networking em TI"
+        description="Conheça comunidades de tecnologia, grupos de programação e redes para aprender, trocar experiências e fazer networking em TI."
+        keywords={["comunidades tecnologia", "discord programação", "networking ti", "grupos tech brasil"]}
+        url="/comunidades"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden bg-violet-100 py-12 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 
 const passwordSchema = z
@@ -94,6 +95,12 @@ export default function Auth({
 
   return (
     <Layout>
+      <SEO
+        title={isSignup ? "Cadastro — Bora na Tech?" : "Login — Bora na Tech?"}
+        description={isSignup ? "Crie sua conta gratuita no Bora na Tech? e salve seus caminhos de carreira em tecnologia." : "Acesse sua conta no Bora na Tech?."}
+        url={isSignup ? "/cadastro" : "/login"}
+        noindex={!isSignup}
+      />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">

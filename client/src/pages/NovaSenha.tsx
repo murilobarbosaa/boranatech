@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 
 const passwordSchema = z
@@ -65,6 +66,7 @@ export default function NovaSenha() {
 
   return (
     <Layout>
+      <SEO title="Nova senha — Bora na Tech?" url="/nova-senha" noindex />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">

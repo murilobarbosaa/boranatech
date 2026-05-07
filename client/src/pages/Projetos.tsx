@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Lightbulb, ArrowRight, ExternalLink, PlayCircle } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { projetos } from "@/lib/data";
 import { projectHelpVideos } from "@/lib/platformData";
 import { getProjects } from "@/services/contentService";
@@ -58,6 +59,13 @@ export default function Projetos() {
 
   return (
     <Layout>
+      <SEO
+        title="Projetos para Portfólio — Ideias práticas para iniciantes em TI"
+        description="Ideias de projetos por nível e área para montar portfólio, praticar tecnologia e mostrar evolução em processos seletivos."
+        keywords={["projetos para portfólio", "projetos programação iniciante", "ideias de projetos ti", "portfolio dev iniciante"]}
+        url="/projetos"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-orange-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#fb923c_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

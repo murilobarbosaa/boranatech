@@ -40,6 +40,7 @@ import AnimatedAreaMarquee from "@/components/AnimatedAreaMarquee";
 import DiscoveryModal from "@/components/DiscoveryModal";
 import Layout from "@/components/Layout";
 import OnboardingTour from "@/components/OnboardingTour";
+import SEO from "@/components/SEO";
 import { areasTI, cursosGratuitos, plataformas, eventos, noticias } from "@/lib/data";
 
 const heroImage = "/compass.png";
@@ -147,6 +148,19 @@ export default function Home() {
 
   return (
     <Layout>
+      <SEO
+        title="Bora na Tech? — Sua bússola para começar na tecnologia"
+        description="Descubra sua área ideal em TI, siga roadmaps completos, faça cursos curados e use ferramentas de IA para acelerar sua carreira tech. Plataforma para iniciantes."
+        keywords={["carreira em ti", "como começar em programação", "guia ti para iniciantes", "roadmap programação", "área da tecnologia", "carreira tech", "quiz carreira ti", "primeiro emprego em ti"]}
+        url="/"
+        schemaType="WebPage"
+        schemaData={{
+          breadcrumb: {
+            "@type": "BreadcrumbList",
+            itemListElement: [{ "@type": "ListItem", position: 1, name: "Início", item: "https://boranatech.com.br/" }],
+          },
+        }}
+      />
       {/* ===== HERO ===== */}
       <DiscoveryModal open={discoveryOpen} onClose={() => setDiscoveryOpen(false)} />
       <OnboardingTour open={onboardingOpen} onClose={() => setOnboardingOpen(false)} />

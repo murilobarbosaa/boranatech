@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, TrendingUp } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { getNews } from "@/services/contentService";
 import { noticias as fallbackNoticias } from "@/lib/data";
 
@@ -40,6 +41,13 @@ export default function Noticias() {
 
   return (
     <Layout>
+      <SEO
+        title="Notícias Tech — Últimas novidades do mundo da tecnologia"
+        description="Acompanhe notícias de tecnologia, inteligência artificial, mercado de TI e tendências importantes para quem está começando."
+        keywords={["notícias tecnologia", "novidades tech", "ia notícias", "mercado de ti", "tendências tecnologia"]}
+        url="/noticias"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden bg-sky-100 py-12 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#0284c7_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

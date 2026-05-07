@@ -287,6 +287,7 @@ function DesktopMenuItem({
                     key={item.path}
                     href={item.path}
                     onClick={() => setOpenMenu(null)}
+                    aria-current={isPathActive(item.path, location) ? "page" : undefined}
                     className={`block rounded-lg px-3 py-2.5 transition-colors hover:bg-[var(--menu-hover)] ${
                       item.isPro
                         ? "border border-yellow-300/80 bg-yellow-50/80 shadow-[2px_2px_0_rgba(15,23,42,0.12)]"
@@ -326,7 +327,7 @@ function DesktopNav({ location }: { location: string }) {
   }, []);
 
   return (
-    <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+    <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex" aria-label="Navegação principal">
       {menuData.map((menu) => (
         <DesktopMenuItem
           key={menu.id}
@@ -338,6 +339,7 @@ function DesktopNav({ location }: { location: string }) {
       ))}
       <Link
         href="/comparador"
+        aria-current={isPathActive("/comparador", location) ? "page" : undefined}
         className={`nav-pill inline-flex items-center gap-1 px-3 py-1.5 text-sm font-bold ${
           isPathActive("/comparador", location) ? "nav-pill-active text-slate-900" : "text-slate-700"
         }`}
@@ -347,6 +349,7 @@ function DesktopNav({ location }: { location: string }) {
       </Link>
       <Link
         href="/mentorias"
+        aria-current={isPathActive("/mentorias", location) ? "page" : undefined}
         className={`rounded-full border border-amber-400/80 bg-amber-100/60 px-3 py-1.5 text-sm font-semibold text-amber-950 transition-colors duration-200 hover:bg-amber-200/70 hover:border-amber-500 ${
           isPathActive("/mentorias", location) ? "border-amber-500 bg-amber-200 text-amber-950 shadow-[1px_1px_0_#0f172a]" : ""
         }`}
@@ -355,6 +358,7 @@ function DesktopNav({ location }: { location: string }) {
       </Link>
       <Link
         href="/mulheres"
+        aria-current={isPathActive("/mulheres", location) ? "page" : undefined}
         className={`nav-pill rounded-full border-2 px-3 py-1.5 text-sm font-black shadow-[2px_2px_0_#0f172a] ${
           isPathActive("/mulheres", location)
             ? "border-slate-900 bg-pink-300 text-slate-950"
@@ -413,6 +417,7 @@ function MobileAccordion({
                   key={item.path}
                   href={item.path}
                   onClick={closeDrawer}
+                  aria-current={isPathActive(item.path, location) ? "page" : undefined}
                   className={`block rounded-lg px-2 py-2.5 hover:bg-violet-50 ${
                     item.isPro
                       ? "my-1 border border-yellow-300/80 bg-yellow-50/80 shadow-[2px_2px_0_rgba(15,23,42,0.12)]"
@@ -558,7 +563,7 @@ export default function Header() {
           </button>
         </div>
 
-        <nav className="h-[calc(100%-64px)] overflow-y-auto pb-24">
+        <nav className="h-[calc(100%-64px)] overflow-y-auto pb-24" aria-label="Navegação principal mobile">
           {!user ? (
             <Link
               href="/login"
@@ -624,6 +629,7 @@ export default function Header() {
           <Link
             href="/comparador"
             onClick={closeMobileDrawer}
+            aria-current={isPathActive("/comparador", location) ? "page" : undefined}
             className={`mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
               isPathActive("/comparador", location)
                 ? "border-slate-900 bg-white text-slate-950"
@@ -636,6 +642,7 @@ export default function Header() {
           <Link
             href="/mentorias"
             onClick={closeMobileDrawer}
+            aria-current={isPathActive("/mentorias", location) ? "page" : undefined}
             className={`mx-4 mt-3 block rounded-full border px-4 py-3 text-center text-sm font-semibold transition-colors ${
               isPathActive("/mentorias", location)
                 ? "border-amber-500 bg-amber-200 text-amber-950"
@@ -647,6 +654,7 @@ export default function Header() {
           <Link
             href="/mulheres"
             onClick={closeMobileDrawer}
+            aria-current={isPathActive("/mulheres", location) ? "page" : undefined}
             className={`mx-4 mt-3 block rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
               isPathActive("/mulheres", location)
                 ? "border-slate-900 bg-pink-300 text-slate-950"

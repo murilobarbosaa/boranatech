@@ -11,6 +11,7 @@ import { Link } from "wouter";
 import { Search, ArrowRight } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { areasTI } from "@/lib/data";
 import { influencerTips } from "@/lib/platformData";
 import { getAreas } from "@/services/contentService";
@@ -65,6 +66,13 @@ export default function Areas() {
 
   return (
     <Layout>
+      <SEO
+        title="Áreas da TI — Conheça todas as especializações em tecnologia"
+        description="Explore as principais áreas da tecnologia: desenvolvimento, dados, segurança, design, infraestrutura, IA e mais. Descubra qual área combina com você."
+        keywords={["áreas da ti", "especializações tecnologia", "tipos de programador", "carreiras em tecnologia", "qual área da ti escolher"]}
+        url="/areas"
+        schemaType="CollectionPage"
+      />
       {/* Header */}
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />

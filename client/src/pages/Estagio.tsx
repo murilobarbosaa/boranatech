@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ExternalLink, Briefcase, Linkedin, FileText, Code2, Github, Lightbulb, Rocket, Sparkles, CheckCircle2, Target } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { vagasInfo, linkedinDicas } from "@/lib/data";
 import { careerInstitutes } from "@/lib/platformData";
 import { getJobs } from "@/services/contentService";
@@ -125,6 +126,13 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
 
   return (
     <Layout>
+      <SEO
+        title="Estágio em TI — Vagas e oportunidades de início de carreira"
+        description="Vagas, estágio, trainee e oportunidades para quem está começando em tecnologia, com orientação para o primeiro emprego em TI."
+        keywords={["estágio ti", "vagas estágio tecnologia", "primeiro emprego programação", "trainee tecnologia", "vagas júnior"]}
+        url="/estagio"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden bg-amber-100 py-12 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#d97706_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

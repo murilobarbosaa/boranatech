@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ExternalLink, Lightbulb, PlayCircle, Sparkles } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { tipCategories, tipsArticles } from "@/lib/platformData";
 
 export default function Dicas() {
@@ -10,6 +11,13 @@ export default function Dicas() {
 
   return (
     <Layout>
+      <SEO
+        title="Dicas de Carreira em TI — Conselhos práticos para sua jornada"
+        description="Dicas práticas para estudar tecnologia, evoluir em programação, montar portfólio e se preparar para oportunidades em TI."
+        keywords={["dicas carreira ti", "como evoluir em ti", "dicas programação iniciantes", "conselhos tech"]}
+        url="/dicas"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-amber-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import { createCheckout } from "@/services/subscriptionService";
@@ -125,6 +126,33 @@ export default function Checkout() {
 
   return (
     <Layout>
+      <SEO
+        title="Plano Pro — Bora na Tech?"
+        description="Desbloqueie ferramentas de IA, plano de estudos personalizado, analisador de currículo e LinkedIn, comparativo de salários e mais. A partir de R$ 14,99/mês."
+        keywords={["plano pro bora na tech", "ia carreira ti", "analisador currículo ia", "otimizador linkedin"]}
+        url="/pro"
+        schemaType="FAQPage"
+        schemaData={{
+          mainEntity: [
+            {
+              "@type": "Question",
+              name: "O que está incluído no Bora na Tech? Pro?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "Ferramentas de IA, roadmaps completos, plano de estudos, analisadores de currículo, LinkedIn e GitHub, além de recursos de carreira.",
+              },
+            },
+            {
+              "@type": "Question",
+              name: "Qual é o menor preço mensal equivalente?",
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: "O plano anual tem equivalente mensal a partir de R$ 14,99.",
+              },
+            },
+          ],
+        }}
+      />
       <section className="bg-[#f5f0e8] py-12">
         <div className="container">
           {discountPercent > 0 && affiliateCode ? (

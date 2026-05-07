@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Check, X, Star, Award, RotateCcw, SlidersHorizontal } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { plataformas } from "@/lib/data";
 import { getPlatforms } from "@/services/contentService";
 
@@ -51,6 +52,13 @@ export default function Plataformas() {
 
   return (
     <Layout>
+      <SEO
+        title="Plataformas de Estudo — Onde aprender tecnologia online"
+        description="Compare plataformas de cursos online para aprender programação, dados, design, IA e tecnologia com mais clareza."
+        keywords={["plataformas de cursos online", "onde estudar programação", "rocketseat alura udemy", "plataformas tecnologia"]}
+        url="/plataformas"
+        schemaType="CollectionPage"
+      />
       {/* Header */}
       <section className="relative overflow-hidden bg-blue-100 py-12 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#2563eb_1px,transparent_1px)] [background-size:18px_18px]" />

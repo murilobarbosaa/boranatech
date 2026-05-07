@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { ArrowRight, BrainCircuit } from "lucide-react";
 import posthog from "posthog-js";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { areasTI } from "@/lib/data";
 import { quizQuestions } from "@/lib/platformData";
 import { persistQuizResult } from "@/services/careerQuizService";
@@ -108,6 +109,13 @@ export default function QuizCarreira() {
 
   return (
     <Layout>
+      <SEO
+        title="Quiz de Carreira em TI — Descubra qual área combina com você"
+        description="Responda perguntas rápidas e descubra qual área da tecnologia combina mais com seu perfil. Quiz gratuito feito para iniciantes."
+        keywords={["quiz carreira ti", "qual área da ti escolher", "teste vocacional tecnologia", "qual carreira em ti seguir"]}
+        url="/quiz-carreira"
+        schemaType="WebPage"
+      />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-purple-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#9333ea_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

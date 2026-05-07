@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
 import posthog from "posthog-js";
 import App from "./App";
 import "./index.css";
@@ -8,4 +9,8 @@ posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
   defaults: "2026-01-30",
 });
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <HelmetProvider>
+    <App />
+  </HelmetProvider>,
+);

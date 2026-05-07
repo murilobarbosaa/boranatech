@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { Calendar, CalendarPlus, ExternalLink, MapPin, Users } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import {
   ESTADO_UF_OPTS,
   LABEL_FILTROS,
@@ -90,6 +91,13 @@ export default function Eventos() {
 
   return (
     <Layout>
+      <SEO
+        title="Eventos Tech — Hackathons, meetups e conferências de tecnologia"
+        description="Encontre eventos de tecnologia, hackathons, meetups e conferências para aprender, fazer networking e entrar no mercado tech."
+        keywords={["eventos tech brasil", "hackathon programação", "meetup tecnologia", "conferências ti"]}
+        url="/eventos"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden bg-fuchsia-100 py-12 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#c026d3_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

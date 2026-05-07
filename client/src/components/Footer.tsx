@@ -10,7 +10,7 @@ import { Compass, Heart } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-900 text-white border-t-4 border-violet-700">
+    <footer className="bg-slate-900 text-white border-t-4 border-violet-700" role="contentinfo">
       <div className="container py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
@@ -29,7 +29,7 @@ export default function Footer() {
           </div>
 
           {/* Explorar */}
-          <div>
+          <nav aria-label="Explorar">
             <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-violet-400 mb-4">Explorar</h3>
             <ul className="space-y-2">
               {[
@@ -47,10 +47,10 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
 
           {/* Carreira */}
-          <div>
+          <nav aria-label="Carreira">
             <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-violet-400 mb-4">Carreira</h3>
             <ul className="space-y-2">
               {[
@@ -69,10 +69,10 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </nav>
 
           {/* Sobre */}
-          <div>
+          <nav aria-label="Projeto">
             <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-violet-400 mb-4">Projeto</h3>
             <ul className="space-y-2">
               {[
@@ -93,7 +93,7 @@ export default function Footer() {
                 Os conteúdos externos (cursos, plataformas, links) pertencem aos seus respectivos criadores. O BORA NA TECH? é um projeto de curadoria.
               </p>
             </div>
-          </div>
+          </nav>
         </div>
 
         <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">

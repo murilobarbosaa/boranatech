@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Link } from "wouter";
 import { z } from "zod";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 
 const resetSchema = z.object({
@@ -38,6 +39,7 @@ export default function RecuperarSenha() {
 
   return (
     <Layout>
+      <SEO title="Recuperar senha — Bora na Tech?" url="/recuperar-senha" noindex />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -282,6 +283,7 @@ export default function PerfilRedesign() {
   if (authLoading || !user) {
     return (
       <Layout>
+        <SEO title="Perfil — Bora na Tech?" url="/perfil" noindex />
         <section className="bg-[#f5f0e8] py-16">
           <div className="container">
             <div className="mx-auto max-w-lg rounded-3xl border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[4px_4px_0_#0f172a]">
@@ -296,6 +298,7 @@ export default function PerfilRedesign() {
 
   return (
     <Layout>
+      <SEO title="Perfil — Bora na Tech?" url="/perfil" noindex />
       <section className="bg-[#f5f0e8] py-12">
         <div className="container space-y-8">
           <div className="rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">

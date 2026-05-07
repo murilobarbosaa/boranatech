@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Check, Clock } from "lucide-react";
 
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 
 export default function CheckoutSucesso() {
@@ -52,6 +53,7 @@ export default function CheckoutSucesso() {
 
   return (
     <Layout>
+      <SEO title="Pagamento confirmado — Bora na Tech? Pro" url="/pro/sucesso" noindex />
       <section className="bg-[#f5f0e8] py-16">
         <div className="container">
           <div className="mx-auto max-w-2xl rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[6px_6px_0_#0f172a]">

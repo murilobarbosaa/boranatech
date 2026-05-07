@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, ExternalLink, Clock, Globe } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
 
@@ -51,6 +52,13 @@ export default function Cursos() {
 
   return (
     <Layout>
+      <SEO
+        title="Cursos de TI — Curadoria de cursos online gratuitos e pagos"
+        description="Mais de 200 cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
+        keywords={["cursos de ti gratuitos", "cursos online programação", "cursos tecnologia iniciantes", "melhores cursos ti", "cursos para começar em programação"]}
+        url="/cursos"
+        schemaType="CollectionPage"
+      />
       {/* Header */}
       <section className="relative overflow-hidden bg-amber-100 py-12 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:18px_18px]" />

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Search } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { dictionaryTerms } from "@/lib/platformData";
 
 export default function Dicionario() {
@@ -18,6 +19,13 @@ export default function Dicionario() {
 
   return (
     <Layout>
+      <SEO
+        title="Dicionário Tech — Termos e conceitos de tecnologia explicados"
+        description="Glossário de tecnologia com termos de programação, carreira em TI e conceitos técnicos explicados em linguagem simples."
+        keywords={["dicionário tecnologia", "termos de programação", "glossário ti", "conceitos de tech"]}
+        url="/dicionario"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-cyan-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#0891b2_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

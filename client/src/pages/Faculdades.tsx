@@ -8,6 +8,7 @@ import { Link } from "wouter";
 import { ArrowRight, Check, ChevronDown, X, Star, MapPin } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { faculdades } from "@/lib/data";
 import { CursoVoiceNote } from "@/components/faculdades/CursoVoiceNote";
 import { brazilianStates, collegeSuggestions } from "@/lib/platformData";
@@ -56,6 +57,13 @@ export default function Faculdades() {
 
   return (
     <Layout>
+      <SEO
+        title="Faculdades de TI — Cursos superiores em tecnologia no Brasil"
+        description="Conheça cursos superiores em tecnologia no Brasil, diferenças entre formações e caminhos para iniciar uma carreira em TI."
+        keywords={["faculdade de ti", "graduação tecnologia", "engenharia de software", "ciência da computação", "análise de sistemas"]}
+        url="/faculdades"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden bg-indigo-100 py-12 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">

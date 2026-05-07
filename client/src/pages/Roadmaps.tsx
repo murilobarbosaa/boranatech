@@ -11,6 +11,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import { AiCtaButton } from "@/components/shared/AiCta";
 import AiToolPanel from "@/components/shared/AiToolPanel";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { roadmaps } from "@/lib/data";
@@ -45,6 +46,13 @@ export default function Roadmaps() {
 
   return (
     <Layout>
+      <SEO
+        title="Roadmaps de TI — Trilhas completas para sua carreira tech"
+        description="Roadmaps passo a passo para frontend, backend, dados, mobile, DevOps e mais. Aprenda na ordem certa, sem perder tempo."
+        keywords={["roadmap programação", "trilha de estudos ti", "como aprender programação", "roadmap frontend", "roadmap backend", "roadmap dados"]}
+        url="/roadmaps"
+        schemaType="CollectionPage"
+      />
       {/* Header */}
       <section className="bg-emerald-100 py-12 border-b-2 border-slate-900 relative overflow-hidden">
         <div className="absolute inset-0 opacity-15">

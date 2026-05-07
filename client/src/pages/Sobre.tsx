@@ -7,6 +7,7 @@ import SobreRedesign from "./SobreRedesign";
 import { Link } from "wouter";
 import { Rocket, Heart, Target, Users, BookOpen, ArrowRight } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 
 const valores = [
   { emoji: "🎯", titulo: "Clareza", desc: "Linguagem simples, sem jargão desnecessário. Se você não entendeu, a culpa é nossa." },
@@ -27,6 +28,13 @@ const secoes = [
 function OldSobre() {
   return (
     <Layout>
+      <SEO
+        title="Sobre o Projeto — Conheça o Bora na Tech?"
+        description="Conheça a missão do Bora na Tech?, uma plataforma educacional para ajudar iniciantes a começarem na tecnologia com direção."
+        keywords={["sobre bora na tech", "missão tecnologia", "projeto educacional ti"]}
+        url="/sobre"
+        schemaType="WebPage"
+      />
       {/* Hero */}
       <section className="relative overflow-hidden bg-violet-100 py-16 border-b-2 border-slate-900">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />

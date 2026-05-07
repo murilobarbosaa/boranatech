@@ -1,12 +1,20 @@
 import type { ReactNode } from "react";
 import { CheckCircle, ExternalLink, Flower2, Heart, HeartHandshake, PlayCircle, ShieldCheck, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { womenArea } from "@/lib/platformData";
 
 export default function Mulheres() {
   return (
     <Layout>
+      <SEO
+        title="Mulheres na Tecnologia — Comunidades, oportunidades e carreira"
+        description="Recursos, comunidades, oportunidades e caminhos para mulheres que querem começar ou evoluir na área de tecnologia."
+        keywords={["mulheres na tecnologia", "mulheres na ti", "diversidade tech", "programadoras brasil"]}
+        url="/mulheres"
+        schemaType="CollectionPage"
+      />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-pink-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#db2777_1px,transparent_1px)] [background-size:18px_18px]" />
         <Flower2 className="pointer-events-none absolute right-10 top-8 hidden h-20 w-20 rotate-12 text-pink-300 md:block" />
