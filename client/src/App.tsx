@@ -63,6 +63,9 @@ import Ingles from "./pages/Ingles";
 import Ferramentas from "./pages/Ferramentas";
 import Mentorias from "./pages/Mentorias";
 import Admin from "./pages/Admin";
+import Licenca from "./pages/Licenca";
+import Privacidade from "./pages/Privacidade";
+import TermosDeUso from "./pages/TermosDeUso";
 
 function Router() {
   return (
@@ -125,6 +128,9 @@ function Router() {
       <Route path="/cadastro" component={Cadastro} />
       <Route path="/recuperar-senha" component={RecuperarSenha} />
       <Route path="/nova-senha" component={NovaSenha} />
+      <Route path="/licenca" component={Licenca} />
+      <Route path="/privacidade" component={Privacidade} />
+      <Route path="/termos-de-uso" component={TermosDeUso} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -33,6 +33,9 @@ const staticEntries: SitemapEntry[] = [
   { loc: "/sobre", changefreq: "monthly", priority: "0.6" },
   { loc: "/pro", changefreq: "monthly", priority: "0.7" },
   { loc: "/cadastro", changefreq: "yearly", priority: "0.5" },
+  { loc: "/licenca", changefreq: "yearly", priority: "0.4" },
+  { loc: "/termos-de-uso", changefreq: "yearly", priority: "0.4" },
+  { loc: "/privacidade", changefreq: "yearly", priority: "0.4" },
 ];
 
 function escapeXml(value: string) {

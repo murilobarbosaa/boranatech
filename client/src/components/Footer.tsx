@@ -80,6 +80,9 @@ export default function Footer() {
                 { path: "/comparador", label: "Comparador" },
                 { path: "/quiz-carreira", label: "Quiz de Carreira" },
                 { path: "/sobre#missao", label: "Missão e Valores" },
+                { path: "/licenca", label: "Licença Creative Commons" },
+                { path: "/termos-de-uso", label: "Termos de Uso" },
+                { path: "/privacidade", label: "Política de Privacidade" },
               ].map((item) => (
                 <li key={item.path}>
                   <Link href={item.path} className="text-slate-400 hover:text-white text-sm transition-colors">
@@ -101,7 +104,7 @@ export default function Footer() {
             © 2025 BORA NA TECH? — Feito com <Heart className="inline w-3 h-3 text-red-400" /> para quem está começando.
           </p>
           <p className="text-slate-600 text-xs">
-            Plataforma educativa e de curadoria. Não garantimos emprego ou resultados.
+            Conteúdo original sob CC BY-NC-SA 4.0. Plataforma educativa e de curadoria. Não garantimos emprego ou resultados.
           </p>
         </div>
       </div>
