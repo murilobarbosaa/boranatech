@@ -14,9 +14,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Plus Jakarta Sans', sans-serif;
-  --font-mono: 'Fira Code', monospace;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "Fira Code", monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -106,16 +106,24 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
-    background-image:
-      radial-gradient(oklch(0.13 0.015 260 / 0.09) 1px, transparent 1px),
-      radial-gradient(oklch(0.55 0.19 290 / 0.1) 1px, transparent 1px);
-    background-position: 0 0, 12px 12px;
+    background-image: radial-gradient(oklch(0.13 0.015 260 / 0.09) 1px, transparent 1px), radial-gradient(oklch(0.55 0.19 290 / 0.1) 1px, transparent 1px);
+    background-position:
+      0 0,
+      12px 12px;
     background-size: 24px 24px;
   }
-  .font-display, h1, h2, h3, h4, h5, h6 {
+  .font-display,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-display);
   }
-  code, pre, .font-mono {
+  code,
+  pre,
+  .font-mono {
     font-family: var(--font-mono);
   }
   button:not(:disabled),
@@ -164,7 +172,9 @@
   .card-brutal {
     border: 2px solid oklch(0.13 0.015 260);
     box-shadow: 4px 4px 0 oklch(0.13 0.015 260);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
   }
   .card-brutal:hover {
     transform: translate(-2px, -2px);
@@ -180,7 +190,10 @@
   .card-invite {
     border: 2px solid oklch(0.13 0.015 260);
     box-shadow: 5px 5px 0 oklch(0.13 0.015 260);
-    transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+    transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      background-color 0.16s ease;
   }
   .card-invite:hover {
     transform: translate(-3px, -3px) rotate(-0.25deg);
@@ -191,7 +204,9 @@
   .btn-brutal-primary {
     border: 2px solid oklch(0.13 0.015 260);
     box-shadow: 3px 3px 0 oklch(0.13 0.015 260);
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    transition:
+      transform 0.1s ease,
+      box-shadow 0.1s ease;
   }
   .btn-brutal-primary:hover {
     transform: translate(-1px, -1px);
@@ -207,7 +222,9 @@
     color: oklch(0.13 0.015 260);
     border: 3px solid oklch(0.13 0.015 260);
     box-shadow: 4px 4px 0 oklch(0.13 0.015 260);
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
   }
   .btn-brutal-accent:hover {
     background-color: var(--brand-yellow-deep);
@@ -225,26 +242,62 @@
 
   .hero-pattern {
     background-color: var(--brand-cream);
-    background-image:
-      linear-gradient(90deg, oklch(0.13 0.015 260 / 0.06) 1px, transparent 1px),
-      linear-gradient(oklch(0.13 0.015 260 / 0.06) 1px, transparent 1px),
-      radial-gradient(oklch(0.5 0.2 290 / 0.18) 1px, transparent 1px);
-    background-size: 36px 36px, 36px 36px, 14px 14px;
+    background-image: linear-gradient(90deg, oklch(0.13 0.015 260 / 0.06) 1px, transparent 1px), linear-gradient(oklch(0.13 0.015 260 / 0.06) 1px, transparent 1px), radial-gradient(oklch(0.5 0.2 290 / 0.18) 1px, transparent 1px);
+    background-size:
+      36px 36px,
+      36px 36px,
+      14px 14px;
   }
 
   /* Area Tag Colors — fundos sólidos, texto claro */
-  .tag-frontend { background-color: #7c3aed; color: #faf5ff; }
-  .tag-backend { background-color: #15803d; color: #f0fdf4; }
-  .tag-dados { background-color: #d97706; color: #fffbeb; }
-  .tag-uxui { background-color: #db2777; color: #fdf2f8; }
-  .tag-mobile { background-color: #ea580c; color: #fff7ed; }
-  .tag-seguranca { background-color: #166534; color: #f0fdf4; }
-  .tag-cloud { background-color: #0369a1; color: #f0f9ff; }
-  .tag-ia { background-color: #6d28d9; color: #f5f3ff; }
-  .tag-produto { background-color: #c026d3; color: #fdf4ff; }
-  .tag-gestao { background-color: #4338ca; color: #eef2ff; }
-  .tag-qa { background-color: #ca8a04; color: #fefce8; }
-  .tag-devops { background-color: #0e7490; color: #ecfeff; }
+  .tag-frontend {
+    background-color: #7c3aed;
+    color: #faf5ff;
+  }
+  .tag-backend {
+    background-color: #15803d;
+    color: #f0fdf4;
+  }
+  .tag-dados {
+    background-color: #d97706;
+    color: #fffbeb;
+  }
+  .tag-uxui {
+    background-color: #db2777;
+    color: #fdf2f8;
+  }
+  .tag-mobile {
+    background-color: #ea580c;
+    color: #fff7ed;
+  }
+  .tag-seguranca {
+    background-color: #166534;
+    color: #f0fdf4;
+  }
+  .tag-cloud {
+    background-color: #0369a1;
+    color: #f0f9ff;
+  }
+  .tag-ia {
+    background-color: #6d28d9;
+    color: #f5f3ff;
+  }
+  .tag-produto {
+    background-color: #c026d3;
+    color: #fdf4ff;
+  }
+  .tag-gestao {
+    background-color: #4338ca;
+    color: #eef2ff;
+  }
+  .tag-qa {
+    background-color: #ca8a04;
+    color: #fefce8;
+  }
+  .tag-devops {
+    background-color: #0e7490;
+    color: #ecfeff;
+  }
 
   /* Section alternating background */
   .section-alt {
@@ -259,7 +312,7 @@
     position: relative;
   }
   .nav-link-animated::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: -2px;
     left: 0;
@@ -276,7 +329,11 @@
   .nav-pill {
     border: 2px solid transparent;
     border-radius: 999px;
-    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      box-shadow 0.15s ease,
+      transform 0.15s ease;
   }
   .nav-pill:hover,
   .nav-pill-active {
@@ -284,9 +341,74 @@
     border-color: oklch(0.13 0.015 260);
     box-shadow: 2px 2px 0 oklch(0.13 0.015 260);
   }
+
+  .pro-glare {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .pro-glare::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    left: -55%;
+    width: 45%;
+    background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, 0.56) 42%, rgba(255, 235, 120, 0.82) 50%, rgba(255, 255, 255, 0.56) 58%, rgba(255, 255, 255, 0) 80%, transparent 100%);
+    filter: blur(2px);
+    transform: translateX(-180%) skewX(-22deg);
+    animation: proGlareSweep 2.2s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .pro-glare::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: -42%;
+    width: 20%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.62), transparent);
+    transform: translateX(-180%) skewX(-22deg);
+    animation: proGlareSweep 1s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pro-glare::before,
+    .pro-glare::after {
+      animation: none;
+      display: none;
+    }
+  }
 }
 
 /* Animations */
+@keyframes proGlareSweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-180%) skewX(-22deg);
+  }
+  10% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.85;
+  }
+  45% {
+    opacity: 0.65;
+  }
+  60% {
+    opacity: 0;
+    transform: translateX(340%) skewX(-22deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(340%) skewX(-22deg);
+  }
+}
+
 @keyframes fadeSlideUp {
   from {
     opacity: 0;
@@ -317,7 +439,8 @@
 }
 
 @keyframes gentleFloat {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) rotate(-1deg);
   }
   50% {
