@@ -10,6 +10,12 @@ import { ChevronDown, Compass, LogOut, Menu, ShieldCheck, Sparkles, X } from "lu
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import {
+  normalizeAvatarBg,
+  normalizeAvatarBorder,
+  normalizeAvatarIcon,
+} from "@/constants/avatarOptions";
+import UserAvatar from "@/components/UserAvatar";
 type MenuItem = {
   label: string;
   description: string;
@@ -174,15 +180,6 @@ function hexToRgba(hex: string, alpha: number) {
   const b = value & 255;
 
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
 }
 
 function isDropdownActive(menu: DropdownMenu, location: string) {
@@ -449,11 +446,14 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
   const [location] = useLocation();
-  const { signOut, user } = useAuth();
+  const { loading: authLoading, profile, signOut, user } = useAuth();
   const { isAdmin } = useAdmin();
   const { isPro, loading: subscriptionLoading } = useSubscription();
-  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
-  const initials = getInitials(userName) || "BT";
+  const userName = profile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
+  const avatarLoading = Boolean(user && (authLoading || !profile));
+  const avatarBorder = normalizeAvatarBorder(profile?.avatar_border);
+  const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
+  const avatarBg = normalizeAvatarBg(profile?.avatar_bg);
 
   function closeMobileDrawer() {
     setMobileOpen(false);
@@ -502,10 +502,10 @@ export default function Header() {
               <>
                 <Link
                   href="/perfil"
-                  className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-white text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
+                  className="inline-flex"
                   aria-label="Abrir perfil"
                 >
-                  <span>{initials}</span>
+                  <UserAvatar name={userName} border={avatarBorder} icon={avatarIcon} bg={avatarBg} size="sm" loading={avatarLoading} />
                 </Link>
                 {isAdmin ? (
                   <Link
@@ -584,9 +584,7 @@ export default function Header() {
                 onClick={closeMobileDrawer}
                 className="flex items-center gap-3 text-sm font-black text-slate-950"
               >
-                <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-white text-xs">
-                  {initials}
-                </span>
+                <UserAvatar name={userName} border={avatarBorder} icon={avatarIcon} bg={avatarBg} size="sm" loading={avatarLoading} />
                 <span>{userName}</span>
               </Link>
               <div className="mt-3 flex gap-2">

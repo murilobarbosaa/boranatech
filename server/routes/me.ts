@@ -11,6 +11,9 @@ const router = Router();
 const EDITABLE_FIELDS = [
   "name",
   "handle",
+  "avatar_border",
+  "avatar_icon",
+  "avatar_bg",
   "bio",
   "area_interesse",
   "nivel_atual",
@@ -20,6 +23,12 @@ const EDITABLE_FIELDS = [
   "preferences",
 ];
 
+const AVATAR_VALUES = {
+  avatar_border: new Set(["classic", "purple", "gold", "pink", "green", "blue", "orange", "red", "cyan"]),
+  avatar_icon: new Set(["initials", "code", "sparkles", "rocket", "brain", "laptop", "star", "target", "crown"]),
+  avatar_bg: new Set(["slate", "yellow", "purple", "pink", "green", "blue", "orange", "cream", "white"]),
+} as const;
+
 router.use(requireAuth);
 
 function profileNameFromAuth(req: Request) {
@@ -27,6 +36,14 @@ function profileNameFromAuth(req: Request) {
   const metadataName = metadata.name || metadata.full_name || metadata.user_name;
   if (typeof metadataName === "string" && metadataName.trim()) return metadataName.trim();
   return req.user!.email.split("@")[0];
+}
+
+function validateAvatarPreference(field: keyof typeof AVATAR_VALUES, value: unknown) {
+  if (typeof value !== "string" || !AVATAR_VALUES[field].has(value)) {
+    return createError(400, "invalid_avatar_preference", `Valor inválido para ${field}.`);
+  }
+
+  return null;
 }
 
 async function enqueueWelcomeEmailIfNeeded(profile: Record<string, unknown>, userId: string, email: string) {
@@ -92,6 +109,13 @@ router.patch("/", async (req, res, next) => {
     for (const field of EDITABLE_FIELDS) {
       if (field in body) {
         updates[field] = body[field];
+      }
+    }
+
+    for (const field of Object.keys(AVATAR_VALUES) as Array<keyof typeof AVATAR_VALUES>) {
+      if (field in updates) {
+        const validationError = validateAvatarPreference(field, updates[field]);
+        if (validationError) return next(validationError);
       }
     }
 
