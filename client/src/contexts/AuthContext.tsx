@@ -23,6 +23,8 @@ interface SignInInput {
   password: string;
 }
 
+type OAuthProvider = "google";
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
@@ -30,6 +32,7 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (input: SignUpInput) => Promise<void>;
   signIn: (input: SignInInput) => Promise<void>;
+  signInWithOAuth: (provider: OAuthProvider) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
@@ -39,6 +42,11 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function authRedirectTo() {
+  const redirectPath = import.meta.env.VITE_AUTH_REDIRECT_PATH || "/perfil";
+  return `${window.location.origin}${redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`}`;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -139,6 +147,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signInWithOAuth = useCallback(async (provider: OAuthProvider) => {
+    const client = assertSupabaseConfigured();
+    posthog.capture("oauth_sign_in_started", { provider });
+
+    const { error } = await client.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: authRedirectTo(),
+        queryParams: {
+          access_type: "offline",
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async () => {
     const client = assertSupabaseConfigured();
     const { error } = await client.auth.signOut();
@@ -174,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       signUp,
       signIn,
+      signInWithOAuth,
       signOut,
       resetPassword,
       updatePassword,
@@ -184,6 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       session,
       signIn,
+      signInWithOAuth,
       signOut,
       signUp,
       updatePassword,

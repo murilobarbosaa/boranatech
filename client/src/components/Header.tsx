@@ -453,7 +453,6 @@ export default function Header() {
   const { isAdmin } = useAdmin();
   const { isPro, loading: subscriptionLoading } = useSubscription();
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
   const initials = getInitials(userName) || "BT";
 
   function closeMobileDrawer() {
@@ -506,7 +505,7 @@ export default function Header() {
                   className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-white text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
                   aria-label="Abrir perfil"
                 >
-                  {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : <span>{initials}</span>}
+                  <span>{initials}</span>
                 </Link>
                 {isAdmin ? (
                   <Link
@@ -586,7 +585,7 @@ export default function Header() {
                 className="flex items-center gap-3 text-sm font-black text-slate-950"
               >
                 <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-white text-xs">
-                  {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initials}
+                  {initials}
                 </span>
                 <span>{userName}</span>
               </Link>
