@@ -15,8 +15,8 @@ export default function TecnologiaMapa() {
   const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
   /** Lista longa dentro do painel por área (Ver mais); chave sempre `area.slug`. */
   const [expandedAreas, setExpandedAreas] = useState<Record<string, boolean>>({});
-  /** Painel compacto só abre onde o usuário clicou (`slug → true`). */
-  const [techPanelOpenByArea, setTechPanelOpenByArea] = useState<Record<string, boolean>>({});
+  /** Apenas um painel de tecnologias fica aberto por vez. */
+  const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null);
 
   const sections = useMemo(
     () =>
@@ -76,14 +76,14 @@ export default function TecnologiaMapa() {
               </div>
             </div>
             <p className="mt-3 text-xs font-medium text-slate-600">
-              Clique em <span className="font-bold">Ver tecnologias</span> só no card que quiser explorar (cada área é independente). Mais de nove itens? Use Ver mais dentro desse mesmo card.
+              Clique em <span className="font-bold">Ver tecnologias</span> no card que quiser explorar. Ao abrir uma área, a anterior fecha automaticamente.
             </p>
           </div>
 
           <div
             key={focusedSlug ?? "all"}
             className={cn(
-              "grid items-stretch gap-6",
+              "grid items-start gap-6",
               sections.length === 1 ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3",
             )}
           >
@@ -93,13 +93,13 @@ export default function TecnologiaMapa() {
               const preview = items.slice(0, PREVIEW_LOGO_COUNT);
               const hasMore = items.length > PREVIEW_LOGO_COUNT;
               const displayed = listExpanded ? items : preview;
-              const techPanelOpen = techPanelOpenByArea[slug] === true;
+              const techPanelOpen = expandedAreaId === slug;
 
               return (
                 <article
                   key={slug}
                   style={{ animationDelay: `${Math.min(areaIndex * 65, 520)}ms` }}
-                  className="tech-map-card card-brutal flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
+                  className="tech-map-card card-brutal flex min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
                 >
                   {/* Faixa superior compacta (~2 linhas de descrição); sem flex-1 no texto pra não criar vácuo até a linha */}
                   <div className="flex min-h-[7.25rem] shrink-0 flex-col border-b-2 border-slate-900 bg-gradient-to-br from-teal-50/90 via-white to-white px-5 pb-3 pt-3.5 sm:min-h-[7.5rem]">
@@ -118,16 +118,23 @@ export default function TecnologiaMapa() {
                     </div>
                   </div>
 
-                  <div className="flex min-h-0 flex-1 flex-col gap-3 p-3 sm:p-4">
+                  <div className="flex min-h-0 flex-col gap-3 p-3 sm:p-4">
                     <button
                       type="button"
                       aria-expanded={techPanelOpen}
                       aria-controls={`tech-panel-${slug}`}
                       id={`tech-toggle-${slug}`}
                       onClick={() =>
-                        setTechPanelOpenByArea((prev) => {
-                          const nextOpen = !(prev[slug] === true);
-                          return { ...prev, [slug]: nextOpen };
+                        setExpandedAreaId((current) => {
+                          const next = current === slug ? null : slug;
+                          if (next !== slug) {
+                            setExpandedAreas((prev) => {
+                              const copy = { ...prev };
+                              delete copy[slug];
+                              return copy;
+                            });
+                          }
+                          return next;
                         })
                       }
                       className={cn(

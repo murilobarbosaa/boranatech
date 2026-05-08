@@ -10,6 +10,7 @@ import { ChevronDown, Compass, LogOut, Menu, ShieldCheck, Sparkles, X } from "lu
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import {
   normalizeAvatarBg,
   normalizeAvatarBorder,
@@ -183,9 +184,7 @@ function hexToRgba(hex: string, alpha: number) {
 }
 
 function isDropdownActive(menu: DropdownMenu, location: string) {
-  return menu.columns.some((column) =>
-    column.items.some((item) => isNavItemActive(location, item.path)),
-  );
+  return getActiveDropdownItemPath(menu, location) !== null;
 }
 
 function isNavItemActive(currentPath: string, href: string) {
@@ -202,12 +201,19 @@ function isPathActive(path: string, location: string) {
   return isNavItemActive(location, path);
 }
 
+function getActiveDropdownItemPath(menu: DropdownMenu, location: string) {
+  return menu.columns
+    .flatMap((column) => column.items)
+    .filter((item) => isNavItemActive(location, item.path))
+    .sort((a, b) => {
+      const pathA = a.path.replace(/\/+$/, "") || "/";
+      const pathB = b.path.replace(/\/+$/, "") || "/";
+      return pathB.length - pathA.length;
+    })[0]?.path ?? null;
+}
+
 function ProStarBadge() {
-  return (
-    <span className="ml-1.5 mt-[1px] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-900 bg-[#FAC775] text-[9px] font-black leading-none text-[#412402] shadow-[1px_1px_0_#0f172a]">
-      ★
-    </span>
-  );
+  return <ProStarIcon className="ml-1.5 mt-[1px]" />;
 }
 
 function dropdownItemClass({ isActive, isPro }: { isActive: boolean; isPro?: boolean }) {
@@ -266,6 +272,7 @@ function DesktopMenuItem({
 }) {
   const isOpen = openMenu === menu.id;
   const isActive = isDropdownActive(menu, location);
+  const activeItemPath = getActiveDropdownItemPath(menu, location);
   const hasGroupedColumns = menu.columns.some((column) => column.groupLabel);
   const cssVars = {
     "--menu-accent": menu.accentColor,
@@ -336,7 +343,7 @@ function DesktopMenuItem({
 
               <div className={menu.columns.length === 1 ? "space-y-2" : "space-y-1"}>
                 {column.items.map((item) => {
-                  const itemActive = isNavItemActive(location, item.path);
+                  const itemActive = item.path === activeItemPath;
 
                   return (
                     <Link
@@ -359,7 +366,10 @@ function DesktopMenuItem({
         </div>
 
         <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[#BA7517]">
-          ★ funcionalidade Pro
+          <span className="inline-flex items-center gap-1.5">
+            <ProStarIcon />
+            funcionalidade Pro
+          </span>
         </div>
         </div>
       </div>
@@ -441,6 +451,7 @@ function MobileAccordion({
 }) {
   const isOpen = openId === menu.id;
   const isActive = isDropdownActive(menu, location);
+  const activeItemPath = getActiveDropdownItemPath(menu, location);
 
   return (
     <div className="border-b border-slate-200">
@@ -468,7 +479,7 @@ function MobileAccordion({
               ) : null}
 
               {column.items.map((item) => {
-                const itemActive = isNavItemActive(location, item.path);
+                const itemActive = item.path === activeItemPath;
 
                 return (
                   <Link
@@ -566,12 +577,12 @@ export default function Header() {
                   </Link>
                 ) : null}
                 {!isPro && !subscriptionLoading ? (
-                  <Link
-                    href="/pro"
-                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
-                  >
-                    Assinar Pro ⚡
-                  </Link>
+                <Link
+                  href="/pro"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                >
+                  <ProInlineBadge label="Assinar Pro" />
+                </Link>
                 ) : null}
                 <button
                   type="button"
@@ -653,7 +664,7 @@ export default function Header() {
                     onClick={closeMobileDrawer}
                     className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
                   >
-                    Pro ⚡
+                    <ProInlineBadge label="Pro" />
                   </Link>
                 ) : null}
                 <button

@@ -18,6 +18,7 @@ import {
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import UserAvatar from "@/components/UserAvatar";
+import { ProInlineBadge } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -447,7 +448,7 @@ export default function Perfil() {
                 <UserAvatar name={userName} border={avatarBorder} icon={avatarIcon} bg={avatarBg} size="lg" loading={profileLoading} />
                 <div>
                   <span className={`mb-3 inline-flex rounded-full border-2 border-[#1a1a1a] px-3 py-1 text-xs font-black ${isPro ? "bg-[#FFB800] text-[#1a1a1a]" : "bg-slate-100 text-slate-700"}`}>
-                    {subscriptionLoading ? "CARREGANDO" : isPro ? "PRO ⚡" : "GRATUITO"}
+                    {subscriptionLoading ? "CARREGANDO" : isPro ? <ProInlineBadge label="PRO" /> : "GRATUITO"}
                   </span>
                   <h1 className="font-display text-4xl font-black text-[#1a1a1a] md:text-5xl">{userName}</h1>
                   <p className="mt-2 text-lg font-black text-slate-500">@{String(username).replace(/^@/, "")}</p>
@@ -610,7 +611,7 @@ export default function Perfil() {
                   <p className="font-display text-2xl font-black text-[#1a1a1a]">Desbloqueie tudo.</p>
                   <p className="mt-2 text-sm font-bold text-[#1a1a1a]">A partir de R$ 14,99/mês no plano anual.</p>
                   <Link href="/pro" className="mt-5 inline-flex w-full items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-black shadow-[3px_3px_0_#0f172a]">
-                    Assinar Pro ⚡
+                    <ProInlineBadge label="Assinar Pro" />
                   </Link>
                 </div>
               </div>

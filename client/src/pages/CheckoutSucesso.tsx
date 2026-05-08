@@ -4,6 +4,7 @@ import { Check, Clock } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 
 export default function CheckoutSucesso() {
@@ -73,7 +74,10 @@ export default function CheckoutSucesso() {
               </>
             ) : showSuccess ? (
               <>
-                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">Bem-vindo ao Pro! ⚡</h1>
+                <h1 className="font-display mt-8 inline-flex items-center justify-center gap-2 text-4xl font-black text-[#1a1a1a]">
+                  Bem-vindo ao Pro!
+                  <ProStarIcon className="h-7 w-7 [&>svg]:h-5 [&>svg]:w-5" />
+                </h1>
                 <p className="mx-auto mt-3 max-w-lg text-base font-semibold leading-relaxed text-slate-600">
                   Sua assinatura {planName} está ativa. Agora você pode acessar todos os recursos Pro da Bora na Tech?.
                 </p>
