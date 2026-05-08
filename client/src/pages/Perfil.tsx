@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import {
   BookOpen,
   CalendarDays,
+  Check,
   Compass,
   Edit3,
   KeyRound,
@@ -16,9 +17,24 @@ import {
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import UserAvatar from "@/components/UserAvatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useFavorites } from "@/hooks/useFavorites";
+import {
+  avatarBgOptions,
+  avatarBorderOptions,
+  avatarIconOptions,
+  defaultAvatarBg,
+  defaultAvatarBorder,
+  defaultAvatarIcon,
+  normalizeAvatarBg,
+  normalizeAvatarBorder,
+  normalizeAvatarIcon,
+  type AvatarBgId,
+  type AvatarBorderId,
+  type AvatarIconId,
+} from "@/constants/avatarOptions";
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { getStudyEntries, getStudyStats, type StudyEntry, type StudyStats } from "@/services/studyService";
@@ -42,6 +58,29 @@ type RoadmapProgress = {
   progress?: number;
   area?: string;
 };
+
+type AvatarSection = "border" | "icon" | "bg";
+
+const avatarSections: Array<{ id: AvatarSection; label: string; title: string; description: string }> = [
+  {
+    id: "border",
+    label: "Borda",
+    title: "Escolha a borda",
+    description: "A cor da borda também define o offset visual do avatar.",
+  },
+  {
+    id: "icon",
+    label: "Ícone",
+    title: "Escolha o ícone",
+    description: "Use iniciais ou um símbolo que combine com sua jornada.",
+  },
+  {
+    id: "bg",
+    label: "Fundo",
+    title: "Escolha o fundo",
+    description: "Combine a cor de fundo com a borda e o ícone escolhidos.",
+  },
+];
 
 const proBenefits = [
   "Quiz de área com IA",
@@ -89,15 +128,6 @@ async function apiFetch(path: string, options?: RequestInit) {
   return res.json();
 }
 
-function initialsFrom(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
 function formatCurrencyFromCents(value?: number | null) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((value || 0) / 100);
 }
@@ -136,9 +166,101 @@ function EmptyBox({ title, text, action }: { title: string; text: string; action
   );
 }
 
+function optionButtonClass(selected: boolean, accentClassName?: string) {
+  if (selected) {
+    return `border-2 bg-white shadow-[2px_2px_0_#0f172a] ${accentClassName || "border-[#1a1a1a] text-[#1a1a1a]"}`;
+  }
+
+  return "border border-slate-200 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50";
+}
+
+type AvatarGridOption<T extends string> = {
+  id: T;
+  label: string;
+  accentClassName?: string;
+};
+
+function AvatarOptionGrid<T extends string>({
+  title,
+  options,
+  selected,
+  onSelect,
+  renderPreview,
+}: {
+  title: string;
+  options: AvatarGridOption<T>[];
+  selected: T;
+  onSelect: (value: T) => void;
+  renderPreview: (option: AvatarGridOption<T>) => ReactNode;
+}) {
+  return (
+    <section aria-label={`Opções de ${title.toLowerCase()}`}>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {options.map((option) => {
+          const isSelected = selected === option.id;
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={isSelected}
+              onClick={() => onSelect(option.id)}
+              className={`relative flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-center transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200 ${optionButtonClass(
+                isSelected,
+                option.accentClassName,
+              )}`}
+            >
+              {isSelected ? (
+                <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#1a1a1a] text-white">
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                </span>
+              ) : null}
+              {renderPreview(option)}
+              <span className="text-[11px] font-black leading-tight sm:text-xs">{option.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AvatarSectionTabs({
+  active,
+  onChange,
+}: {
+  active: AvatarSection;
+  onChange: (section: AvatarSection) => void;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-white p-1" role="tablist" aria-label="Categoria do avatar">
+      {avatarSections.map((section) => {
+        const selected = active === section.id;
+
+        return (
+          <button
+            key={section.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(section.id)}
+            className={`rounded-xl px-2 py-2 text-xs font-black transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200 ${
+              selected
+                ? "border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            {section.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Perfil() {
   const [, setLocation] = useLocation();
-  const { loading: authLoading, profile, signOut, user } = useAuth();
+  const { loading: authLoading, profile, refreshProfile, signOut, user } = useAuth();
   const { isPro, loading: subscriptionLoading, subscription, refreshSubscription } = useSubscription();
   const { favorites, loading: favoritesLoading } = useFavorites();
   const [localProfile, setLocalProfile] = useState<Profile | null>(profile);
@@ -149,6 +271,10 @@ export default function Perfil() {
   const [dataLoading, setDataLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editAvatarBorder, setEditAvatarBorder] = useState<AvatarBorderId>(defaultAvatarBorder);
+  const [editAvatarIcon, setEditAvatarIcon] = useState<AvatarIconId>(defaultAvatarIcon);
+  const [editAvatarBg, setEditAvatarBg] = useState<AvatarBgId>(defaultAvatarBg);
+  const [activeAvatarSection, setActiveAvatarSection] = useState<AvatarSection>("border");
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -205,7 +331,11 @@ export default function Perfil() {
   const userName = localProfile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
   const username = localProfile?.handle || user?.user_metadata?.username || user?.email?.split("@")[0] || "bora.na.tech";
   const email = localProfile?.email || user?.email || "";
-  const initials = initialsFrom(userName) || "BT";
+  const profileLoading = Boolean(user && !localProfile);
+  const avatarBorder = normalizeAvatarBorder(localProfile?.avatar_border);
+  const avatarIcon = normalizeAvatarIcon(localProfile?.avatar_icon);
+  const avatarBg = normalizeAvatarBg(localProfile?.avatar_bg);
+  const activeAvatarSectionConfig = avatarSections.find((section) => section.id === activeAvatarSection) || avatarSections[0];
   const planName = subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
   const planPrice = subscriptionData?.plans?.price_cents ? formatCurrencyFromCents(subscriptionData.plans.price_cents) : "Não informado";
 
@@ -234,7 +364,12 @@ export default function Perfil() {
   );
 
   function openEditProfile() {
+    if (profileLoading) return;
     setEditName(userName);
+    setEditAvatarBorder(avatarBorder);
+    setEditAvatarIcon(avatarIcon);
+    setEditAvatarBg(avatarBg);
+    setActiveAvatarSection("border");
     setEditingProfile(true);
   }
 
@@ -243,9 +378,15 @@ export default function Perfil() {
     try {
       const json = await apiFetch("/api/me", {
         method: "PATCH",
-        body: JSON.stringify({ name: editName.trim() }),
+        body: JSON.stringify({
+          name: editName.trim(),
+          avatar_border: editAvatarBorder,
+          avatar_icon: editAvatarIcon,
+          avatar_bg: editAvatarBg,
+        }),
       });
       setLocalProfile(json.data);
+      await refreshProfile().catch(() => undefined);
       toast.success("Perfil atualizado com sucesso.");
       setEditingProfile(false);
     } catch {
@@ -303,9 +444,7 @@ export default function Perfil() {
           <div className="rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] font-display text-4xl font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a]">
-                  {initials}
-                </div>
+                <UserAvatar name={userName} border={avatarBorder} icon={avatarIcon} bg={avatarBg} size="lg" loading={profileLoading} />
                 <div>
                   <span className={`mb-3 inline-flex rounded-full border-2 border-[#1a1a1a] px-3 py-1 text-xs font-black ${isPro ? "bg-[#FFB800] text-[#1a1a1a]" : "bg-slate-100 text-slate-700"}`}>
                     {subscriptionLoading ? "CARREGANDO" : isPro ? "PRO ⚡" : "GRATUITO"}
@@ -318,7 +457,8 @@ export default function Perfil() {
               <button
                 type="button"
                 onClick={openEditProfile}
-                className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a]"
+                disabled={profileLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
               >
                 <Edit3 className="h-5 w-5" />
                 Editar perfil
@@ -336,6 +476,74 @@ export default function Perfil() {
                     className="mt-2 w-full rounded-2xl border-2 border-[#1a1a1a] bg-white px-4 py-3 font-bold outline-none focus:ring-4 focus:ring-yellow-200"
                   />
                 </label>
+                <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-col gap-1">
+                    <h3 className="font-display text-xl font-black text-[#1a1a1a]">Personalização do avatar</h3>
+                    <p className="text-sm font-semibold text-slate-500">Escolha uma combinação para deixar seu perfil com a sua cara.</p>
+                  </div>
+
+                  <div className="mt-5 grid gap-5 lg:grid-cols-[240px_1fr]">
+                    <div className="mx-auto flex w-full max-w-[230px] flex-col gap-3">
+                      <div className="flex aspect-square flex-col items-center justify-center rounded-3xl border-2 border-[#1a1a1a] bg-[#f5f0e8] p-5 text-center">
+                        <UserAvatar
+                          name={editName || userName}
+                          border={editAvatarBorder}
+                          icon={editAvatarIcon}
+                          bg={editAvatarBg}
+                          size="xl"
+                        />
+                        <div className="mt-5 min-w-0">
+                          <p className="text-xs font-black uppercase text-slate-500">Preview</p>
+                          <p className="mt-1 max-w-[180px] truncate text-sm font-black text-[#1a1a1a]">{editName || userName}</p>
+                        </div>
+                      </div>
+                      <AvatarSectionTabs active={activeAvatarSection} onChange={setActiveAvatarSection} />
+                    </div>
+
+                    <div className="rounded-3xl border border-slate-200 bg-[#fbfaf7] p-4">
+                      <div>
+                        <h4 className="font-display text-xl font-black text-[#1a1a1a]">{activeAvatarSectionConfig.title}</h4>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">{activeAvatarSectionConfig.description}</p>
+                      </div>
+
+                      {activeAvatarSection === "border" ? (
+                        <AvatarOptionGrid
+                          title="Borda"
+                          options={avatarBorderOptions}
+                          selected={editAvatarBorder}
+                          onSelect={setEditAvatarBorder}
+                          renderPreview={(option) => (
+                            <UserAvatar name={editName || userName} border={option.id} icon={editAvatarIcon} bg={editAvatarBg} size="preview" />
+                          )}
+                        />
+                      ) : null}
+
+                      {activeAvatarSection === "icon" ? (
+                        <AvatarOptionGrid
+                          title="Ícone"
+                          options={avatarIconOptions}
+                          selected={editAvatarIcon}
+                          onSelect={setEditAvatarIcon}
+                          renderPreview={(option) => (
+                            <UserAvatar name={editName || userName} border={editAvatarBorder} icon={option.id} bg={editAvatarBg} size="preview" />
+                          )}
+                        />
+                      ) : null}
+
+                      {activeAvatarSection === "bg" ? (
+                        <AvatarOptionGrid
+                          title="Fundo"
+                          options={avatarBgOptions}
+                          selected={editAvatarBg}
+                          onSelect={setEditAvatarBg}
+                          renderPreview={(option) => (
+                            <UserAvatar name={editName || userName} border={editAvatarBorder} icon={editAvatarIcon} bg={option.id} size="preview" />
+                          )}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
                 <div className="mt-5 flex justify-end gap-3">
                   <button type="button" onClick={() => setEditingProfile(false)} className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-2 font-black">
                     Cancelar

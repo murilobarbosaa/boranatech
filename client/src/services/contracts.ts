@@ -33,6 +33,9 @@ export interface Profile {
   email: string | null;
   handle: string | null;
   avatar_url: string | null;
+  avatar_border: string | null;
+  avatar_icon: string | null;
+  avatar_bg: string | null;
   bio: string | null;
   area_interesse: string | null;
   nivel_atual: string | null;

@@ -36,6 +36,7 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -165,6 +166,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!session) {
+      setProfile(null);
+      return;
+    }
+
+    const nextProfile = await getMyProfile();
+    setProfile(nextProfile);
+  }, [session]);
+
   const signOut = useCallback(async () => {
     const client = assertSupabaseConfigured();
     const { error } = await client.auth.signOut();
@@ -204,11 +215,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       resetPassword,
       updatePassword,
+      refreshProfile,
     }),
     [
       loading,
       profile,
       resetPassword,
+      refreshProfile,
       session,
       signIn,
       signInWithOAuth,
