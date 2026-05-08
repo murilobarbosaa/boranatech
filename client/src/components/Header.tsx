@@ -184,18 +184,71 @@ function hexToRgba(hex: string, alpha: number) {
 
 function isDropdownActive(menu: DropdownMenu, location: string) {
   return menu.columns.some((column) =>
-    column.items.some((item) => location === item.path || location.startsWith(`${item.path}/`)),
+    column.items.some((item) => isNavItemActive(location, item.path)),
   );
 }
 
+function isNavItemActive(currentPath: string, href: string) {
+  if (!href || href === "#") return false;
+
+  const [pathWithoutHash] = currentPath.split("#");
+  const [pathname] = pathWithoutHash.split("?");
+
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 function isPathActive(path: string, location: string) {
-  return location === path || location.startsWith(`${path}/`);
+  return isNavItemActive(location, path);
 }
 
 function ProStarBadge() {
   return (
-    <span className="ml-1.5 inline-flex h-4 w-4 align-middle items-center justify-center rounded-full border border-slate-900 bg-[#FAC775] text-[9px] font-black leading-none text-[#412402] shadow-[1px_1px_0_#0f172a]">
+    <span className="ml-1.5 mt-[1px] inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-slate-900 bg-[#FAC775] text-[9px] font-black leading-none text-[#412402] shadow-[1px_1px_0_#0f172a]">
       ★
+    </span>
+  );
+}
+
+function dropdownItemClass({ isActive, isPro }: { isActive: boolean; isPro?: boolean }) {
+  const base =
+    "block rounded-xl border px-3 py-2.5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200";
+
+  if (isActive && isPro) {
+    return `${base} pro-glare border-[#FFB800] bg-[#FFF7D6] shadow-[2px_2px_0_#FFB800] hover:border-[#FFB800] hover:bg-[#FFF2B8]`;
+  }
+
+  if (isActive) {
+    return `${base} border-slate-900 bg-[#FFF7D6] shadow-[2px_2px_0_#0f172a] hover:bg-[#FFF2B8]`;
+  }
+
+  if (isPro) {
+    return `${base} pro-glare border-yellow-300/90 bg-yellow-50/85 shadow-[2px_2px_0_rgba(250,204,21,0.55)] hover:border-yellow-400 hover:bg-yellow-100/80 hover:shadow-[3px_3px_0_rgba(250,204,21,0.7)]`;
+  }
+
+  return `${base} border-transparent hover:border-slate-200 hover:bg-[var(--menu-hover)] hover:shadow-[2px_2px_0_rgba(15,23,42,0.1)]`;
+}
+
+function ActiveRouteDot() {
+  return (
+    <span className="ml-1.5 mt-[5px] inline-flex h-2 w-2 shrink-0 rounded-full border border-slate-900 bg-[#FFB800] shadow-[1px_1px_0_#0f172a]" aria-hidden="true" />
+  );
+}
+
+function DropdownItemTitle({
+  active,
+  isPro,
+  label,
+}: {
+  active: boolean;
+  isPro?: boolean;
+  label: string;
+}) {
+  return (
+    <span className={`relative z-10 flex items-start text-sm leading-snug text-slate-900 ${isPro || active ? "font-bold" : "font-medium"}`}>
+      <span>{label}</span>
+      {isPro ? <ProStarBadge /> : null}
+      {active ? <ActiveRouteDot /> : null}
     </span>
   );
 }
@@ -282,25 +335,24 @@ function DesktopMenuItem({
               ) : null}
 
               <div className={menu.columns.length === 1 ? "space-y-2" : "space-y-1"}>
-                {column.items.map((item) => (
-                  <Link
-                    key={item.path}
-                    href={item.path}
-                    onClick={() => setOpenMenu(null)}
-                    aria-current={isPathActive(item.path, location) ? "page" : undefined}
-                    className={`block rounded-lg px-3 py-2.5 transition-colors hover:bg-[var(--menu-hover)] ${
-                      item.isPro
-                        ? "border border-yellow-300/80 bg-yellow-50/80 shadow-[2px_2px_0_rgba(15,23,42,0.12)]"
-                        : ""
-                    }`}
-                  >
-                    <span className={`block text-sm leading-snug text-slate-900 ${item.isPro ? "font-bold" : "font-medium"}`}>
-                      {item.label}
-                      {item.isPro ? <ProStarBadge /> : null}
-                    </span>
-                    <span className="mt-0.5 block text-xs leading-snug text-slate-500">{item.description}</span>
-                  </Link>
-                ))}
+                {column.items.map((item) => {
+                  const itemActive = isNavItemActive(location, item.path);
+
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      onClick={() => setOpenMenu(null)}
+                      aria-current={itemActive ? "page" : undefined}
+                      className={dropdownItemClass({ isActive: itemActive, isPro: item.isPro })}
+                    >
+                      <DropdownItemTitle active={itemActive} isPro={item.isPro} label={item.label} />
+                      <span className={`relative z-10 mt-0.5 block text-xs leading-snug ${itemActive ? "text-slate-700" : "text-slate-500"}`}>
+                        {item.description}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -415,25 +467,22 @@ function MobileAccordion({
                 </p>
               ) : null}
 
-              {column.items.map((item) => (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={closeDrawer}
-                  aria-current={isPathActive(item.path, location) ? "page" : undefined}
-                  className={`block rounded-lg px-2 py-2.5 hover:bg-violet-50 ${
-                    item.isPro
-                      ? "my-1 border border-yellow-300/80 bg-yellow-50/80 shadow-[2px_2px_0_rgba(15,23,42,0.12)]"
-                      : ""
-                  }`}
-                >
-                  <span className={`block text-sm text-slate-900 ${item.isPro ? "font-bold" : "font-medium"}`}>
-                    {item.label}
-                    {item.isPro ? <ProStarBadge /> : null}
-                  </span>
-                  <span className="block text-xs text-slate-500">{item.description}</span>
-                </Link>
-              ))}
+              {column.items.map((item) => {
+                const itemActive = isNavItemActive(location, item.path);
+
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    onClick={closeDrawer}
+                    aria-current={itemActive ? "page" : undefined}
+                    className={`${dropdownItemClass({ isActive: itemActive, isPro: item.isPro })} my-1 px-2`}
+                  >
+                    <DropdownItemTitle active={itemActive} isPro={item.isPro} label={item.label} />
+                    <span className={`relative z-10 block text-xs ${itemActive ? "text-slate-700" : "text-slate-500"}`}>{item.description}</span>
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </div>
