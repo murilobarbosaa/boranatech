@@ -205,7 +205,6 @@ export default function Perfil() {
   const userName = localProfile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
   const username = localProfile?.handle || user?.user_metadata?.username || user?.email?.split("@")[0] || "bora.na.tech";
   const email = localProfile?.email || user?.email || "";
-  const avatarUrl = localProfile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture;
   const initials = initialsFrom(userName) || "BT";
   const planName = subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
   const planPrice = subscriptionData?.plans?.price_cents ? formatCurrencyFromCents(subscriptionData.plans.price_cents) : "Não informado";
@@ -305,7 +304,7 @@ export default function Perfil() {
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                 <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] font-display text-4xl font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a]">
-                  {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initials}
+                  {initials}
                 </div>
                 <div>
                   <span className={`mb-3 inline-flex rounded-full border-2 border-[#1a1a1a] px-3 py-1 text-xs font-black ${isPro ? "bg-[#FFB800] text-[#1a1a1a]" : "bg-slate-100 text-slate-700"}`}>

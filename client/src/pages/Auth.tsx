@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
 
 const passwordSchema = z
@@ -116,6 +117,7 @@ export default function Auth({
                 : "Acesse sua conta para recuperar seus caminhos, cursos e favoritos."}
             </p>
             {isSignup && signupBanner ? <div className="mt-5">{signupBanner}</div> : null}
+            <SocialAuthButtons mode={mode} />
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               {isSignup && (
                 <label className="block">

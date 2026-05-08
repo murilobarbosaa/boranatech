@@ -9,6 +9,7 @@ export interface AuthUser {
   id: string;
   email: string;
   role: string; // "authenticated" | "anon" | "admin"
+  userMetadata?: Record<string, unknown>;
 }
 
 type AuthRequest = Request & {
@@ -90,6 +91,7 @@ export async function validateSupabaseJwt(req: AuthRequest, _res: Response, next
       id: user.id,
       email: user.email || "",
       role: user.role || "authenticated",
+      userMetadata: user.user_metadata || {},
     };
 
     next();

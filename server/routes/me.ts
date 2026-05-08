@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request } from "express";
 
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -10,7 +11,6 @@ const router = Router();
 const EDITABLE_FIELDS = [
   "name",
   "handle",
-  "avatar_url",
   "bio",
   "area_interesse",
   "nivel_atual",
@@ -21,6 +21,13 @@ const EDITABLE_FIELDS = [
 ];
 
 router.use(requireAuth);
+
+function profileNameFromAuth(req: Request) {
+  const metadata = req.user?.userMetadata || {};
+  const metadataName = metadata.name || metadata.full_name || metadata.user_name;
+  if (typeof metadataName === "string" && metadataName.trim()) return metadataName.trim();
+  return req.user!.email.split("@")[0];
+}
 
 async function enqueueWelcomeEmailIfNeeded(profile: Record<string, unknown>, userId: string, email: string) {
   if (profile.welcome_email_sent === true) return;
@@ -50,7 +57,7 @@ router.get("/", async (req, res, next) => {
         .insert({
           user_id: userId,
           email: req.user!.email,
-          name: req.user!.email.split("@")[0],
+          name: profileNameFromAuth(req),
         })
         .select()
         .single();

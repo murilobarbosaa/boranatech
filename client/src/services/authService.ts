@@ -23,10 +23,11 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 export async function signInWithProvider(): Promise<void> {
   const client = assertSupabaseConfigured();
+  const redirectPath = import.meta.env.VITE_AUTH_REDIRECT_PATH || "/perfil";
   const { error } = await client.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${window.location.origin}/perfil`,
+      redirectTo: `${window.location.origin}${redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`}`,
     },
   });
 
