@@ -225,7 +225,7 @@ export default function EstudosDiario() {
   return (
     <Layout>
       <PageHero
-        accent="rose"
+        accent="fuchsia"
         eyebrow="só pelo perfil"
         title="Diário de Estudos"
         subtitle="Cada registro conta como foi a sessão — não humor genérico, e sim o que importa para ajustar rotina."

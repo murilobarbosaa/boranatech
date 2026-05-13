@@ -30,7 +30,7 @@ export default function TecnologiaMapa() {
   return (
     <Layout>
       <PageHero
-        accent="teal"
+        accent="emerald"
         eyebrow="por área de TI"
         title="Mapa de Tecnologias por Área"
         subtitle="Veja quais tecnologias aparecem em cada caminho de carreira."
