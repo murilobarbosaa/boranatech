@@ -13,7 +13,7 @@ export default function Empregabilidade() {
   return (
     <Layout>
       <PageHero
-        accent="violet"
+        accent="amber"
         eyebrow="prontidão para vaga"
         title="Análise de Empregabilidade"
         subtitle="Combine a calculadora de prontidão (vaga × seu perfil) com o analisador de vaga (salário, requisitos e red flags)."
@@ -28,6 +28,7 @@ export default function Empregabilidade() {
             <>
               <AiToolPanel
                 endpoint="employability"
+                accent="amber"
                 title="Calculadora de prontidão para vaga"
                 description="Cole a vaga e seu perfil. A IA estima probabilidade relativa neste processo, quão boa é a vaga para você, lacunas e plano de ação."
                 buttonLabel="Calcular prontidão"
@@ -84,6 +85,7 @@ export default function Empregabilidade() {
               />
               <AiToolPanel
                 endpoint="job-analyzer"
+                accent="amber"
                 title="Analisador de vaga"
                 description="Insight sobre o anúncio: faixa salarial, exigências fora do padrão, clareza, riscos e se costuma valer seguir neste tipo de posição."
                 buttonLabel="Analisar anúncio"

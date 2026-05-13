@@ -15,7 +15,7 @@ export default function Networking() {
   return (
     <Layout>
       <PageHero
-        accent="teal"
+        accent="emerald"
         eyebrow="relacionamentos úteis"
         title="Networking em Tech"
         subtitle="Construa conexões que abrem portas."
@@ -23,7 +23,7 @@ export default function Networking() {
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
         {!isPro ? <ProGate description="Gere mensagens personalizadas para recrutadores, devs sênior, pessoas que admira e pedidos de indicação." /> : (
-          <AiToolPanel endpoint="networking-message" title="Gerador de mensagem de networking com IA" description="Receba três versões: direta, descontraída e formal." fields={[{ name: "contactType", label: "Tipo de contato" }, { name: "name", label: "Nome e cargo da pessoa" }, { name: "company", label: "Empresa da pessoa" }, { name: "goal", label: "Objetivo da mensagem" }, { name: "about", label: "Uma linha sobre você" }]} />
+          <AiToolPanel endpoint="networking-message" accent="emerald" title="Gerador de mensagem de networking com IA" description="Receba três versões: direta, descontraída e formal." fields={[{ name: "contactType", label: "Tipo de contato" }, { name: "name", label: "Nome e cargo da pessoa" }, { name: "company", label: "Empresa da pessoa" }, { name: "goal", label: "Objetivo da mensagem" }, { name: "about", label: "Uma linha sobre você" }]} />
         )}
         <div className="grid gap-5 md:grid-cols-2">
           {networkingGuide.map((item) => (

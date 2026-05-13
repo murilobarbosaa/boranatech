@@ -33,7 +33,7 @@ export default function TecnologiaComparador() {
 
   return (
     <Layout>
-      <PageHero title="Comparador de Tecnologias" subtitle="Compare dificuldade, mercado, salário e casos de uso antes de escolher onde focar." />
+      <PageHero title="Comparador de Tecnologias" subtitle="Compare dificuldade, mercado, salário e casos de uso antes de escolher onde focar." accent="emerald" />
       <section className="container py-12">
         <div className="card-brutal rounded-2xl bg-white p-6">
           <div className="grid gap-4 md:grid-cols-2">

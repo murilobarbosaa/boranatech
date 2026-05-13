@@ -78,6 +78,7 @@ export default function CurriculoLinkedin() {
         ) : (
           <AiToolPanel
             endpoint="linkedin-optimizer"
+            accent="blue"
             title="Otimizar LinkedIn"
             description="Cole seu perfil em texto e informe área, nível e objetivo. A IA sugere versões melhores e palavras-chave."
             buttonLabel="Otimizar meu LinkedIn"

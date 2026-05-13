@@ -8,7 +8,7 @@ export default function EntrevistaSimulador() {
   const { isPro } = useSubscription();
   return (
     <Layout>
-      <PageHero title="Simulador de Entrevista com IA" subtitle="Pratique uma entrevista e receba um relatório com pontos fortes e melhorias." />
+      <PageHero title="Simulador de Entrevista com IA" subtitle="Pratique uma entrevista e receba um relatório com pontos fortes e melhorias." accent="blue" />
       <section className="container py-12">
         {!isPro ? (
           <ProGate description="Simule entrevistas técnicas ou comportamentais com perguntas em sequência, feedback por resposta, nota geral e sugestões específicas." />
@@ -16,6 +16,7 @@ export default function EntrevistaSimulador() {
           <div className="rounded-3xl border-2 border-slate-900 bg-slate-950 p-4 shadow-[6px_6px_0_#7c3aed]">
             <AiToolPanel
               endpoint="interview"
+              accent="blue"
               title="Configurar entrevista"
               description="Escolha área, nível e tipo. A IA retornará perguntas e feedback em formato de conversa."
               fields={[
