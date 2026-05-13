@@ -28,7 +28,7 @@ export default function CurriculoAnalisar() {
   return (
     <Layout>
       <PageHero
-        accent="amber"
+        accent="blue"
         eyebrow="recurso com IA"
         title="Analisador de currículo com IA"
         subtitle="Receba nota, lacunas, palavras-chave e melhorias por seção — no padrão de quem quer aparecer bem em processos seletivos."
@@ -76,6 +76,7 @@ export default function CurriculoAnalisar() {
         ) : (
           <AiToolPanel
             endpoint="resume-review"
+            accent="blue"
             title="Analisar currículo"
             description="Cole seu currículo e, se quiser, uma vaga alvo. A IA devolve uma revisão prática para melhorar sua candidatura."
             buttonLabel="Analisar meu currículo"
