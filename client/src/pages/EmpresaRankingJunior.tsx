@@ -5,7 +5,7 @@ import { juniorCompanyRanking } from "@/lib/companyData";
 export default function EmpresaRankingJunior() {
   return (
     <Layout>
-      <PageHero title="Ranking de empresas para carreira inicial" subtitle="Empresas com mais oportunidades simuladas para estágio, trainee e júnior." />
+      <PageHero title="Ranking de empresas para carreira inicial" subtitle="Empresas com mais oportunidades simuladas para estágio, trainee e júnior." accent="blue" />
       <section className="container py-12">
         <div className="card-brutal overflow-hidden rounded-2xl bg-white">
           <table className="w-full min-w-[680px] text-sm">
