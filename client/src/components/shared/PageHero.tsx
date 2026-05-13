@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export type PageHeroAccent =
   | "violet"
@@ -12,61 +12,36 @@ export type PageHeroAccent =
   | "cyan"
   | "teal";
 
+export type PageHeroPattern = "dots" | "grid" | "none";
+
 const ACCENT: Record<
   PageHeroAccent,
-  { hero: string; pill: string; dot: string }
+  { hero: string; pill: string; color: string }
 > = {
-  violet: {
-    hero: "bg-violet-100",
-    pill: "bg-violet-300",
-    dot: "[background-image:radial-gradient(#7c3aed_1px,transparent_1px)]",
-  },
-  sky: {
-    hero: "bg-sky-100",
-    pill: "bg-sky-300",
-    dot: "[background-image:radial-gradient(#0284c7_1px,transparent_1px)]",
-  },
-  amber: {
-    hero: "bg-amber-100",
-    pill: "bg-amber-300",
-    dot: "[background-image:radial-gradient(#f59e0b_1px,transparent_1px)]",
-  },
-  emerald: {
-    hero: "bg-emerald-100",
-    pill: "bg-emerald-300",
-    dot: "[background-image:radial-gradient(#10b981_1px,transparent_1px)]",
-  },
-  blue: {
-    hero: "bg-blue-100",
-    pill: "bg-blue-300",
-    dot: "[background-image:radial-gradient(#2563eb_1px,transparent_1px)]",
-  },
-  fuchsia: {
-    hero: "bg-fuchsia-100",
-    pill: "bg-fuchsia-300",
-    dot: "[background-image:radial-gradient(#c026d3_1px,transparent_1px)]",
-  },
-  orange: {
-    hero: "bg-orange-100",
-    pill: "bg-orange-300",
-    dot: "[background-image:radial-gradient(#ea580c_1px,transparent_1px)]",
-  },
-  rose: {
-    hero: "bg-rose-100",
-    pill: "bg-rose-300",
-    dot: "[background-image:radial-gradient(#e11d48_1px,transparent_1px)]",
-  },
-  cyan: {
-    hero: "bg-cyan-100",
-    pill: "bg-cyan-300",
-    dot: "[background-image:radial-gradient(#0891b2_1px,transparent_1px)]",
-  },
-  teal: {
-    hero: "bg-teal-100",
-    pill: "bg-teal-300",
-    dot: "[background-image:radial-gradient(#0d9488_1px,transparent_1px)]",
-  },
+  violet:  { hero: "bg-violet-100",  pill: "bg-violet-300",  color: "#7c3aed" },
+  sky:     { hero: "bg-sky-100",     pill: "bg-sky-300",     color: "#0284c7" },
+  amber:   { hero: "bg-amber-100",   pill: "bg-amber-300",   color: "#f59e0b" },
+  emerald: { hero: "bg-emerald-100", pill: "bg-emerald-300", color: "#10b981" },
+  blue:    { hero: "bg-blue-100",    pill: "bg-blue-300",    color: "#2563eb" },
+  fuchsia: { hero: "bg-fuchsia-100", pill: "bg-fuchsia-300", color: "#c026d3" },
+  orange:  { hero: "bg-orange-100",  pill: "bg-orange-300",  color: "#ea580c" },
+  rose:    { hero: "bg-rose-100",    pill: "bg-rose-300",    color: "#e11d48" },
+  cyan:    { hero: "bg-cyan-100",    pill: "bg-cyan-300",    color: "#0891b2" },
+  teal:    { hero: "bg-teal-100",    pill: "bg-teal-300",    color: "#0d9488" },
 };
+
+function patternStyle(pattern: PageHeroPattern, color: string): CSSProperties {
+  if (pattern === "none") return {};
+  if (pattern === "dots")
+    return {
+      backgroundImage: `radial-gradient(${color} 1px, transparent 1px)`,
+      backgroundSize: "18px 18px",
+    };
+  return {
+    backgroundImage: `linear-gradient(${color}33 1px, transparent 1px), linear-gradient(to right, ${color}33 1px, transparent 1px)`,
+    backgroundSize: "18px 18px",
+  };
+}
 
 interface PageHeroProps {
   title: string;
@@ -74,6 +49,8 @@ interface PageHeroProps {
   eyebrow?: string;
   /** Cor do hero — alinha com páginas como Notícias, Cursos e Roadmaps. */
   accent?: PageHeroAccent;
+  /** Padrão decorativo de fundo. Default 'dots' preserva comportamento atual. */
+  pattern?: PageHeroPattern;
   /** Voltar ao hub, breadcrumbs, ícone antes do eyebrow etc. */
   topSlot?: ReactNode;
   /** Conteúdo ao lado direito no hero (ex.: favoritar). */
@@ -87,6 +64,7 @@ export default function PageHero({
   subtitle,
   eyebrow,
   accent = "violet",
+  pattern = "dots",
   topSlot,
   actions,
   titlePrefix,
@@ -97,9 +75,12 @@ export default function PageHero({
     <section
       className={`relative overflow-hidden border-b-2 border-slate-900 py-12 ${a.hero}`}
     >
-      <div
-        className={`pointer-events-none absolute inset-0 opacity-50 ${a.dot} [background-size:18px_18px]`}
-      />
+      {pattern !== "none" && (
+        <div
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={patternStyle(pattern, a.color)}
+        />
+      )}
       <div className="container relative">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="max-w-2xl min-w-0 flex-1">
@@ -121,7 +102,11 @@ export default function PageHero({
             </div>
             <p className="text-lg text-slate-950">{subtitle}</p>
           </div>
-          {actions ? <div className="shrink-0">{actions}</div> : null}
+          {actions ? (
+            <div className="flex w-full max-w-xs shrink-0 flex-col gap-3 md:w-80">
+              {actions}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
