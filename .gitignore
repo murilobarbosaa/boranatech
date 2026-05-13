@@ -10,3 +10,9 @@ yarn-debug.log*
 yarn-error.log*
 .env.local
 .env.*.local
+
+# Claude Code
+.claude/
+.agents/
+skills-lock.json
+
