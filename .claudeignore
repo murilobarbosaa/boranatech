@@ -1,0 +1,33 @@
+# Dependências
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+build/
+.vite/
+
+# Logs
+*.log
+
+# Env / segredos (já não devem estar no git, mas garante)
+.env
+.env.local
+.env.*.local
+
+# Caches
+.cache/
+.turbo/
+
+# Editor
+.vscode/
+.idea/
+
+# Supabase gerados
+supabase/.branches/
+supabase/.temp/
+
+# Misc
+.DS_Store
+*.tsbuildinfo
+attached_assets/
