@@ -69,6 +69,7 @@ export default function Auth({
         }
 
         await signUp(parsed.data);
+        localStorage.setItem("bnt_signup_completed", "true");
         toast.success("Cadastro criado com segurança. Bem-vinda à plataforma!");
       } else {
         const parsed = loginSchema.safeParse({ email, password });
@@ -81,7 +82,7 @@ export default function Auth({
         toast.success("Login realizado com sucesso.");
       }
 
-      setLocation("/perfil", { replace: true });
+      setLocation(isSignup ? "/pro" : "/perfil", { replace: true });
     } catch (error) {
       console.error("[Auth] handleSubmit failed", error);
       toast.error(

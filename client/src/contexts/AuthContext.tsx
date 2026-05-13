@@ -99,6 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             posthog.identify(nextSession.user.id);
           }
           void loadProfile(nextSession);
+          if (event === "SIGNED_IN" && localStorage.getItem("bnt_social_signup_pending") === "true") {
+            localStorage.removeItem("bnt_social_signup_pending");
+            localStorage.setItem("bnt_signup_completed", "true");
+            window.setTimeout(() => {
+              if (window.location.pathname !== "/pro") window.location.assign("/pro");
+            }, 0);
+          }
         }
         setLoading(false);
       },

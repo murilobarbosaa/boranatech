@@ -56,6 +56,9 @@ export default function SocialAuthButtons({ mode }: SocialAuthButtonsProps) {
     setLoadingProvider(provider);
 
     try {
+      if (mode === "cadastro") {
+        localStorage.setItem("bnt_social_signup_pending", "true");
+      }
       await signInWithOAuth(provider);
     } catch (error) {
       console.error("[SocialAuthButtons] OAuth failed", error);
