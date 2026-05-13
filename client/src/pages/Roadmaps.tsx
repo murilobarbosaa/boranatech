@@ -60,20 +60,25 @@ export default function Roadmaps() {
         </div>
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#10b981_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">trilha com direção</p>
-            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Roadmaps de Estudo</h1>
-            <p className="text-slate-950 text-lg">
-              Trilhas visuais com ordem clara de aprendizado. Saiba exatamente qual é o próximo passo.
-            </p>
-            <AiCtaButton
-              onClick={() => setShowAiCreator((current) => !current)}
-              pressed={showAiCreator}
-              className="mt-6"
-              description="Gere uma trilha personalizada"
-            >
-              Criar roadmap com IA
-            </AiCtaButton>
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-2xl min-w-0 flex-1">
+              <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">trilha com direção</p>
+              <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Roadmaps de Estudo</h1>
+              <p className="text-slate-950 text-lg">
+                Trilhas visuais com ordem clara de aprendizado. Saiba exatamente qual é o próximo passo.
+              </p>
+            </div>
+            <div className="flex w-full max-w-xs shrink-0 flex-col gap-3 md:w-80">
+              <AiCtaButton
+                onClick={() => setShowAiCreator((current) => !current)}
+                pressed={showAiCreator}
+                accent="emerald"
+                className="w-full"
+                description="Gere uma trilha personalizada"
+              >
+                Criar roadmap com IA
+              </AiCtaButton>
+            </div>
           </div>
         </div>
       </section>
@@ -150,6 +155,7 @@ export default function Roadmaps() {
             {isPro ? (
               <AiToolPanel
                 endpoint="roadmap-generator"
+                accent="emerald"
                 title="Criador de roadmap com IA"
                 description="Clientes Pro podem gerar uma trilha personalizada por objetivo, área, rotina e prazo."
                 buttonLabel="Criar meu roadmap"

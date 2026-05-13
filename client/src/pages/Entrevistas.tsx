@@ -13,10 +13,15 @@ export default function Entrevistas() {
   return (
     <Layout>
       <PageHero
-        accent="sky"
+        accent="blue"
         eyebrow="do currículo à proposta"
         title="Processo Seletivo em Tech"
         subtitle="Tudo que você precisa saber para passar nas entrevistas."
+        actions={
+          <AiCtaLink href="/entrevistas/simulador" description="Treine respostas com feedback" accent="blue" className="w-full">
+            Simulador com IA
+          </AiCtaLink>
+        }
       />
       <section className={cn("sticky top-16 z-40 border-b-2 py-4", ac.stickyBar)}>
         <div className="container flex flex-wrap items-center gap-3">
@@ -30,9 +35,6 @@ export default function Entrevistas() {
           >
             Banco de perguntas
           </Link>
-          <AiCtaLink href="/entrevistas/simulador" description="Treine respostas com feedback" className="py-2">
-            Simulador com IA
-          </AiCtaLink>
           <Link
             href="/entrevistas/desafios"
             className={cn(

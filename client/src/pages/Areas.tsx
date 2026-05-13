@@ -15,6 +15,7 @@ import SEO from "@/components/SEO";
 import { areasTI } from "@/lib/data";
 import { influencerTips } from "@/lib/platformData";
 import { getAreas } from "@/services/contentService";
+import PageHero from "@/components/shared/PageHero";
 
 const perfilFiltros = [
   { id: "todos", label: "Todas as áreas" },
@@ -73,21 +74,13 @@ export default function Areas() {
         url="/areas"
         schemaType="CollectionPage"
       />
-      {/* Header */}
-      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-100 py-12">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />
-        <div className="container relative">
-          <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">mapa de possibilidades</p>
-            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
-              Áreas da TI
-            </h1>
-            <p className="text-slate-950 text-lg">
-              Explore as principais áreas de tecnologia e descubra qual combina com o seu perfil.
-            </p>
-          </div>
-        </div>
-      </section>
+      <PageHero
+        accent="violet"
+        pattern="dots"
+        eyebrow="mapa de possibilidades"
+        title="Áreas da TI"
+        subtitle="Explore as principais áreas de tecnologia e descubra qual combina com o seu perfil."
+      />
 
       {/* Filters */}
       <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
@@ -125,7 +118,7 @@ export default function Areas() {
       </section>
 
       {/* Grid */}
-      <section className="bg-[#f7f2ff] py-12">
+      <section className="bg-violet-50 py-12">
         <div className="container">
           {filtered.length === 0 ? (
             <div className="text-center py-16">

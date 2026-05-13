@@ -13,13 +13,19 @@ export default function EntrevistaPerguntas() {
 
   return (
     <Layout>
-      <PageHero title="Banco de Perguntas de Entrevista" subtitle="Perguntas técnicas, comportamentais e de lógica para praticar." />
-      <section className="container space-y-10 py-12">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <FilterPills options={["Todas", "Técnica", "Comportamental", "Lógica"]} value={type} onChange={setType} />
-          <AiCtaLink href="/entrevistas/simulador" description="Simule a entrevista e receba feedback">
+      <PageHero
+        title="Banco de Perguntas de Entrevista"
+        subtitle="Perguntas técnicas, comportamentais e de lógica para praticar."
+        accent="blue"
+        actions={
+          <AiCtaLink href="/entrevistas/simulador" description="Simule a entrevista e receba feedback" accent="blue" className="w-full">
             Praticar com IA
           </AiCtaLink>
+        }
+      />
+      <section className="container space-y-10 py-12">
+        <div className="mb-6 flex flex-wrap items-center justify-start gap-4">
+          <FilterPills options={["Todas", "Técnica", "Comportamental", "Lógica"]} value={type} onChange={setType} />
         </div>
         <div className="space-y-4">
           {filtered.map((item) => (
