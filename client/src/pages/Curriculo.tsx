@@ -17,17 +17,15 @@ export default function Curriculo() {
         eyebrow="candidatura e visibilidade"
         title="Currículo e LinkedIn para Tech"
         subtitle="Apareça para os recrutadores certos."
-      />
-      <section className={cn("sticky top-16 z-40 border-b-2 py-4", ac.stickyBar)}>
-        <div className="container flex flex-wrap gap-3">
-          <AiCtaLink href="/curriculo/analisar" description="Nota, lacunas e palavras-chave">
+        actions={<>
+          <AiCtaLink href="/curriculo/analisar" description="Nota, lacunas e palavras-chave" accent="blue" className="w-full">
             Analisar currículo com IA
           </AiCtaLink>
-          <AiCtaLink href="/curriculo/linkedin" description="Headline, Sobre e visibilidade">
+          <AiCtaLink href="/curriculo/linkedin" description="Headline, Sobre e visibilidade" accent="blue" className="w-full">
             Otimizar LinkedIn com IA
           </AiCtaLink>
-        </div>
-      </section>
+        </>}
+      />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
