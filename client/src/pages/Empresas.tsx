@@ -69,7 +69,7 @@ export default function Empresas() {
                     Limpar
                   </button>
                 )}
-                <Link href="/empresas/ranking-junior" className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-slate-900 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#93c5fd] transition-all hover:-translate-y-0.5">
+                <Link href="/empresas/ranking-junior" className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-blue-700 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5">
                   <Trophy className="h-4 w-4" />
                   Ranking carreira inicial
                 </Link>
