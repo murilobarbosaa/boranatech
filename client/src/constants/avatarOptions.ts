@@ -45,10 +45,10 @@ export const avatarBorderOptions: AvatarBorderOption[] = [
   {
     id: "purple",
     label: "Roxa",
-    borderClassName: "border-[#534AB7]",
-    offsetClassName: "bg-[#534AB7]",
-    accentClassName: "border-[#534AB7] text-[#534AB7]",
-    swatchClassName: "bg-[#534AB7]",
+    borderClassName: "border-[#6d28d9]",
+    offsetClassName: "bg-[#6d28d9]",
+    accentClassName: "border-[#6d28d9] text-[#6d28d9]",
+    swatchClassName: "bg-[#6d28d9]",
   },
   {
     id: "gold",
@@ -169,7 +169,7 @@ export const avatarBgOptions: AvatarBgOption[] = [
   {
     id: "purple",
     label: "Roxo",
-    className: "bg-[#534AB7] text-white",
+    className: "bg-[#6d28d9] text-white",
   },
   {
     id: "pink",
@@ -194,7 +194,7 @@ export const avatarBgOptions: AvatarBgOption[] = [
   {
     id: "cream",
     label: "Creme",
-    className: "bg-[#f5f0e8] text-[#1a1a1a]",
+    className: "bg-[#faf8f4] text-[#1a1a1a]",
   },
   {
     id: "white",
