@@ -116,10 +116,10 @@ export default function QuizCarreira() {
         url="/quiz-carreira"
         schemaType="WebPage"
       />
-      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-purple-100 py-12">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#9333ea_1px,transparent_1px)] [background-size:18px_18px]" />
+      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-100 py-12">
+        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-purple-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
             <BrainCircuit className="h-4 w-4" />
             quiz de descoberta com IA
           </p>
@@ -134,7 +134,7 @@ export default function QuizCarreira() {
         </div>
       </section>
 
-      <section className="bg-[#faf5ff] py-12">
+      <section className="bg-violet-50 py-12">
         <div className="container grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-5">
             <div className="card-brutal rounded-2xl bg-white p-5">
@@ -158,7 +158,7 @@ export default function QuizCarreira() {
             {quizQuestions.map((question, index) => (
               <div
                 key={question.id}
-                className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#d8b4fe]"
+                className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#c4b5fd]"
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <p className="text-xs font-black uppercase text-violet-700">

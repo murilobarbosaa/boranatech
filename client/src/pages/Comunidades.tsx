@@ -96,12 +96,12 @@ export default function Comunidades() {
                 </div>
 
                 <h3 className="font-display font-bold text-xl text-slate-900 mb-1">{com.nome}</h3>
-                <p className="text-xs text-violet-600 font-medium mb-3">{com.plataforma} · {com.area}</p>
+                <p className="text-xs text-violet-700 font-medium mb-3">{com.plataforma} · {com.area}</p>
                 <p className="text-sm text-slate-600 mb-4 flex-1">{com.porqueAcompanhar}</p>
 
                 <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mb-4">
                   <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-violet-600 shrink-0" />
+                    <Users className="w-4 h-4 text-violet-700 shrink-0" />
                     <p className="text-xs text-violet-800"><strong>Para quem:</strong> {com.publicoIndicado}</p>
                   </div>
                 </div>

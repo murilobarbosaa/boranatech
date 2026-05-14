@@ -150,7 +150,7 @@ export default function Areas() {
                     {area.nome}
                   </h3>
                   <p className="text-sm text-slate-600 mb-4 flex-1">{area.descricaoCurta}</p>
-                  <div className="mb-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-3">
+                  <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
                     <p className="text-xs font-black uppercase text-slate-500">Personalidade da área</p>
                     <p className="mt-1 text-xs text-slate-700">{area.perfilIndicado}</p>
                   </div>
