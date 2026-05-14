@@ -8,7 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
-import Home from "./pages/Home";
+import Home from "./pages/HomeLanding";
 import Areas from "./pages/Areas";
 import AreaDetalhe from "./pages/AreaDetalhe";
 import Roadmaps from "./pages/Roadmaps";
