@@ -98,7 +98,7 @@ export default function Dicionario() {
             <div className="py-16 text-center">
               <p className="text-3xl">🔎</p>
               <p className="mt-3 font-bold text-slate-700">Nenhum termo encontrado.</p>
-              <button onClick={() => { setQuery(""); setTag("Todas"); }} className="mt-3 text-sm font-bold text-violet-700 hover:underline">
+              <button onClick={() => { setQuery(""); setTag("Todas"); }} className="mt-3 text-sm font-bold text-slate-950 hover:underline">
                 Limpar filtros
               </button>
             </div>

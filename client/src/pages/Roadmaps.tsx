@@ -111,7 +111,7 @@ export default function Roadmaps() {
               <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">filtros por duração</p>
               <h2 className="font-display text-2xl font-black text-slate-950">Escolha o ritmo antes de abrir a trilha.</h2>
             </div>
-            <Link href="/quiz-carreira" className="hidden text-sm font-bold text-violet-700 hover:underline md:inline-flex">
+            <Link href="/quiz-carreira" className="hidden text-sm font-bold text-slate-950 hover:underline md:inline-flex">
               Não sei qual plano escolher
             </Link>
           </div>
@@ -131,7 +131,7 @@ export default function Roadmaps() {
                 }`}
                 aria-pressed={durationFilter === plan.days}
               >
-                <p className="font-display text-3xl font-black text-amber-600">{plan.days}</p>
+                <p className="font-display text-3xl font-black text-emerald-700">{plan.days}</p>
                 <p className="mt-1 text-sm font-black text-slate-950">{plan.depth}</p>
                 <p className="mt-2 text-xs text-slate-600">{plan.focus}</p>
               </button>
@@ -141,7 +141,7 @@ export default function Roadmaps() {
             <button
               type="button"
               onClick={() => setDurationFilter("todos")}
-              className="mt-4 text-xs font-black uppercase text-violet-700 hover:underline"
+              className="mt-4 text-xs font-black uppercase text-slate-950 hover:underline"
             >
               Limpar filtro de duração
             </button>
@@ -150,7 +150,7 @@ export default function Roadmaps() {
       </section>
 
       {showAiCreator && (
-        <section className="border-b-2 border-violet-200 bg-violet-50 py-8">
+        <section className="border-b-2 border-emerald-200 bg-emerald-50 py-8">
           <div className="container">
             {isPro ? (
               <AiToolPanel
@@ -190,20 +190,20 @@ export default function Roadmaps() {
                 key={r.id}
                 onClick={() => setSelected(selected === r.id ? null : r.id)}
                 className={`w-full text-left card-brutal rounded-xl p-5 transition-all ${
-                  selected === r.id ? "bg-violet-700 text-white" : "bg-white"
+                  selected === r.id ? "bg-emerald-700 text-white" : "bg-white"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium mb-2 inline-block ${
-                      selected === r.id ? "bg-violet-500 text-white" : "bg-violet-100 text-violet-700"
+                      selected === r.id ? "bg-emerald-500 text-white" : "bg-emerald-100 text-emerald-700"
                     }`}>
                       {r.area}
                     </span>
                     <h3 className={`font-display font-bold text-base ${selected === r.id ? "text-white" : "text-slate-900"}`}>
                       {r.nome}
                     </h3>
-                    <p className={`text-xs mt-1 ${selected === r.id ? "text-violet-200" : "text-slate-500"}`}>
+                    <p className={`text-xs mt-1 ${selected === r.id ? "text-emerald-200" : "text-slate-500"}`}>
                       {r.nivel}
                     </p>
                     <p className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-black ${
@@ -223,9 +223,9 @@ export default function Roadmaps() {
                 </div>
               </div>
             ))}
-            <Link href="/estudos" className="card-brutal block rounded-xl border-violet-300 bg-violet-50 p-5">
+            <Link href="/estudos" className="card-brutal block rounded-xl border-emerald-300 bg-emerald-50 p-5">
               <span className="font-display block font-black text-slate-950">Gerar plano de estudos personalizado</span>
-              <span className="mt-1 block text-xs font-bold text-violet-700">Plano Pro • montar rotina personalizada</span>
+              <span className="mt-1 block text-xs font-bold text-emerald-700">Plano Pro • montar rotina personalizada</span>
             </Link>
             {!isPro && filtered.length > visibleRoadmaps.length && (
               <ProGate className="p-5" description="Roadmaps além do exemplo gratuito ficam disponíveis no Plano Pro." />
@@ -237,22 +237,22 @@ export default function Roadmaps() {
             {selectedRoadmap ? (
               <div className="space-y-6">
                 {/* Header */}
-                <div className="card-brutal bg-violet-700 rounded-xl p-6 text-white">
+                <div className="card-brutal bg-emerald-700 rounded-xl p-6 text-white">
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <span className="text-xs bg-violet-500 text-white px-2 py-0.5 rounded-full font-medium inline-block">
+                    <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full font-medium inline-block">
                       {selectedRoadmap.area}
                     </span>
                     <FavoriteButton item={{ id: selectedRoadmap.id, type: "roadmap", title: selectedRoadmap.nome, subtitle: selectedRoadmap.area }} />
                   </div>
                   <h2 className="font-display font-bold text-2xl mb-2">{selectedRoadmap.nome}</h2>
-                  <p className="text-violet-200 mb-4">{selectedRoadmap.descricao}</p>
+                  <p className="text-emerald-200 mb-4">{selectedRoadmap.descricao}</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-violet-300 text-xs uppercase tracking-wide mb-1">Para quem</p>
+                      <p className="text-emerald-300 text-xs uppercase tracking-wide mb-1">Para quem</p>
                       <p className="text-sm">{selectedRoadmap.paraQuem}</p>
                     </div>
                     <div>
-                      <p className="text-violet-300 text-xs uppercase tracking-wide mb-1">Pré-requisitos</p>
+                      <p className="text-emerald-300 text-xs uppercase tracking-wide mb-1">Pré-requisitos</p>
                       <p className="text-sm">{selectedRoadmap.preRequisitos}</p>
                     </div>
                   </div>
@@ -265,7 +265,7 @@ export default function Roadmaps() {
                     {(isPro ? selectedRoadmap.etapas : selectedRoadmap.etapas.slice(0, 3)).map((etapa, i) => (
                       <div key={i} className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <div className="w-8 h-8 rounded-full bg-violet-700 text-white text-sm font-bold flex items-center justify-center border-2 border-slate-900 shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-emerald-700 text-white text-sm font-bold flex items-center justify-center border-2 border-slate-900 shrink-0">
                             {etapa.numero}
                           </div>
                           {i < selectedRoadmap.etapas.length - 1 && (
@@ -310,9 +310,9 @@ export default function Roadmaps() {
                       ))}
                     </ul>
                   </div>
-                  <div className="card-brutal bg-blue-50 rounded-xl p-5 border-blue-200">
+                  <div className="card-brutal bg-emerald-50 rounded-xl p-5 border-emerald-200">
                     <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle className="w-4 h-4 text-blue-500" />
+                      <CheckCircle className="w-4 h-4 text-emerald-700" />
                       <h3 className="font-semibold text-slate-900 text-sm">Próximo passo</h3>
                     </div>
                     <p className="text-xs text-slate-700">{selectedRoadmap.proximoPasso}</p>
@@ -320,12 +320,12 @@ export default function Roadmaps() {
                 </div>
 
                 {/* CTA */}
-                <div className="card-brutal bg-amber-400 rounded-xl p-5 flex items-center justify-between">
+                <div className="card-brutal bg-emerald-100 rounded-xl p-5 flex items-center justify-between border-2 border-emerald-700">
                   <div>
-                    <p className="font-display font-bold text-slate-900">Pronta para começar?</p>
+                    <p className="font-display font-bold text-slate-950">Pronta para começar?</p>
                     <p className="text-sm text-slate-700">Encontre cursos gratuitos e pagos para essa trilha.</p>
                   </div>
-                  <Link href="/cursos" className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white font-semibold rounded-lg text-sm border-2 border-slate-900 hover:bg-slate-800 transition-colors">
+                  <Link href="/cursos" className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700 text-white font-semibold rounded-lg text-sm border-2 border-emerald-700 hover:bg-emerald-800 transition-colors">
                     Ver cursos <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>

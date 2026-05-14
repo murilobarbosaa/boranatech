@@ -153,7 +153,7 @@ export default function Checkout() {
           ],
         }}
       />
-      <section className="bg-[#f5f0e8] py-12">
+      <section className="bg-[#faf8f4] py-12">
         <div className="container">
           {discountPercent > 0 && affiliateCode ? (
             <div className="mb-6 rounded-3xl border-2 border-slate-900 bg-[#FFB800] p-4 text-center font-black text-slate-950 shadow-[4px_4px_0_#0f172a]">
@@ -233,7 +233,7 @@ export default function Checkout() {
               {proBenefits.map((benefit) => {
                 const Icon = benefitIcons[benefit.icon];
                 return (
-                  <div key={benefit.label} className="flex items-center gap-3 rounded-2xl border-2 border-slate-900 bg-[#f5f0e8] p-4">
+                  <div key={benefit.label} className="flex items-center gap-3 rounded-2xl border-2 border-slate-900 bg-[#faf8f4] p-4">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-900 bg-[#FFB800]">
                       <Icon className="h-5 w-5 text-slate-950" />
                     </span>

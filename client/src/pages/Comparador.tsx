@@ -735,10 +735,10 @@ export default function Comparador() {
         url="/comparador"
         schemaType="WebPage"
       />
-      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-lime-100 py-12">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#65a30d_1px,transparent_1px)] [background-size:18px_18px]" />
+      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-emerald-100 py-12">
+        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#059669_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-lime-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">comparador</p>
+          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">comparador</p>
           <h1 className="font-display text-4xl font-black text-slate-950">Compare antes de escolher.</h1>
           <p className="mt-3 max-w-2xl text-slate-950">Coloque duas opções lado a lado e entenda custo, tempo, melhor uso e riscos para iniciantes.</p>
         </div>
@@ -754,7 +754,7 @@ export default function Comparador() {
                   Primeiro escolha <strong className="text-slate-800">o mesmo tipo de caminho</strong> nas duas colunas — não dá para comparar, por exemplo, uma graduação com um curso curto online; são decisões diferentes.
                 </p>
               </div>
-              <button type="button" onClick={resetFilters} className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-lime-50">
+              <button type="button" onClick={resetFilters} className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-emerald-50">
                 <RotateCcw className="h-4 w-4" />
                 Limpar filtros
               </button>
@@ -796,7 +796,7 @@ export default function Comparador() {
               </label>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-start gap-2 rounded-xl bg-lime-50 p-3 text-sm font-bold text-lime-900">
+            <div className="mt-4 flex flex-wrap items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900">
               <Filter className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 {filteredItems.length >= 2
@@ -863,7 +863,7 @@ export default function Comparador() {
                 <h2 className="font-display text-3xl font-black text-slate-950">{item.name}</h2>
                 <p className="mt-2 text-sm font-semibold text-slate-600">{item.decisionTip}</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl bg-lime-50 p-3"><p className="text-xs font-black uppercase text-lime-700">Preço</p><p className="text-sm font-black">{item.avgPrice}</p></div>
+                  <div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs font-black uppercase text-emerald-700">Preço</p><p className="text-sm font-black">{item.avgPrice}</p></div>
                   <div className="rounded-xl bg-amber-50 p-3"><p className="text-xs font-black uppercase text-amber-700">Tempo</p><p className="text-sm font-black">{item.duration}</p></div>
                   <div className="rounded-xl bg-blue-50 p-3"><p className="text-xs font-black uppercase text-blue-700">Iniciante</p><p className="text-sm font-black">{scoreLabel(item.beginnerScore)}</p></div>
                 </div>
@@ -887,9 +887,9 @@ export default function Comparador() {
           </div>
 
           <div className="grid gap-5 lg:grid-cols-3">
-            <div className="card-brutal rounded-2xl bg-lime-50 p-5 lg:col-span-2">
+            <div className="card-brutal rounded-2xl bg-emerald-50 p-5 lg:col-span-2">
               <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
-                <Lightbulb className="h-6 w-6 text-lime-700" />
+                <Lightbulb className="h-6 w-6 text-emerald-700" />
                 Recomendação prática
               </h2>
               <p className="mt-3 text-sm font-semibold text-slate-700">{recommendation}</p>

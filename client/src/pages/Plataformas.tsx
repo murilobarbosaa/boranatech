@@ -60,11 +60,11 @@ export default function Plataformas() {
         schemaType="CollectionPage"
       />
       {/* Header */}
-      <section className="relative overflow-hidden bg-blue-100 py-12 border-b-2 border-slate-900">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#2563eb_1px,transparent_1px)] [background-size:18px_18px]" />
+      <section className="relative overflow-hidden bg-emerald-100 py-12 border-b-2 border-slate-900">
+        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#059669_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-blue-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">onde estudar</p>
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">onde estudar</p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Plataformas de Estudo</h1>
             <p className="text-slate-950 text-lg">
               Compare marketplaces grandes, documentação oficial, playgrounds na nuvem e jogos de código (tipo Flexbox Froggy ou CodinGame) para montar sua rota com clareza.
@@ -74,18 +74,18 @@ export default function Plataformas() {
       </section>
 
       {/* Filters */}
-      <section className="bg-blue-50 border-b-2 border-blue-200 py-4 sticky top-16 z-40">
+      <section className="bg-emerald-50 border-b-2 border-emerald-200 py-4 sticky top-16 z-40">
         <div className="container">
-          <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#93c5fd]">
+          <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#6ee7b7]">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 font-display text-sm font-black text-slate-900">
-                <SlidersHorizontal className="h-4 w-4 text-blue-700" />
+                <SlidersHorizontal className="h-4 w-4 text-emerald-700" />
                 Filtros
               </div>
               <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
                 <span>{filtered.length} plataforma{filtered.length === 1 ? "" : "s"} encontrada{filtered.length === 1 ? "" : "s"}</span>
                 {hasActiveFilters && (
-                  <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 text-blue-700 hover:underline">
+                  <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1 text-emerald-700 hover:underline">
                     <RotateCcw className="h-3 w-3" />
                     Limpar filtros
                   </button>
@@ -102,8 +102,8 @@ export default function Plataformas() {
                   onClick={() => setTipoFilter(t)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
                     tipoFilter === t
-                      ? "bg-blue-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
-                      : "bg-white text-slate-700 border-slate-300 hover:border-blue-400"
+                      ? "bg-emerald-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
                   }`}
                 >
                   {t}
@@ -114,7 +114,7 @@ export default function Plataformas() {
               <select
                 value={areaFilter}
                 onChange={(event) => setAreaFilter(event.target.value)}
-                className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-blue-700 focus:ring-4 focus:ring-blue-100"
+                className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
                 aria-label="Filtrar por área"
               >
                 {areas.map((area) => (
@@ -141,8 +141,8 @@ export default function Plataformas() {
                 ))}
               </div>
 
-              <label className="flex items-center gap-2 rounded-full border-2 border-slate-300 bg-blue-50 px-3 py-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-              <input type="checkbox" checked={iniciante} onChange={(e) => setIniciante(e.target.checked)} className="w-4 h-4 accent-blue-700" />
+              <label className="flex items-center gap-2 rounded-full border-2 border-slate-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-slate-700 cursor-pointer">
+              <input type="checkbox" checked={iniciante} onChange={(e) => setIniciante(e.target.checked)} className="w-4 h-4 accent-emerald-700" />
               Boa para iniciantes
             </label>
             </div>
@@ -151,11 +151,11 @@ export default function Plataformas() {
       </section>
 
       {/* Grid */}
-      <section className="bg-[#eff6ff] py-12">
+      <section className="bg-[#ecfdf5] py-12">
         <div className="container">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((plat) => (
-              <div key={plat.id} className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#93c5fd]">
+              <div key={plat.id} className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#6ee7b7]">
                 {/* Header */}
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
@@ -193,7 +193,7 @@ export default function Plataformas() {
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Áreas fortes</p>
                   <div className="flex flex-wrap gap-1">
                     {plat.areasFortes.slice(0, 4).map((a) => (
-                      <span key={a} className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{a}</span>
+                      <span key={a} className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">{a}</span>
                     ))}
                   </div>
                 </div>
@@ -201,11 +201,11 @@ export default function Plataformas() {
                 {/* Pros / Cons */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div>
-                    <p className="text-xs font-medium text-blue-700 mb-1.5">Pontos fortes</p>
+                    <p className="text-xs font-medium text-emerald-700 mb-1.5">Pontos fortes</p>
                     <ul className="space-y-1">
                       {plat.pontosFortes.slice(0, 3).map((p) => (
                         <li key={p} className="flex items-start gap-1 text-xs text-slate-600">
-                          <Check className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
+                          <Check className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
                           {p}
                         </li>
                       ))}
@@ -232,7 +232,7 @@ export default function Plataformas() {
                     </span>
                   )}
                   {plat.trilhasOrganizadas && (
-                    <span className="flex items-center gap-1 text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
+                    <span className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
                       Trilhas organizadas
                     </span>
                   )}
@@ -250,7 +250,7 @@ export default function Plataformas() {
                     href={plat.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
                   >
                     Visitar <ExternalLink className="w-3 h-3" />
                   </a>

@@ -22,11 +22,11 @@ export default function TermosDeUso() {
         updatedAt="7 de maio de 2026"
         icon={<ShieldCheck className="h-7 w-7 text-slate-950" aria-hidden />}
         tone={{
-          hero: "bg-amber-100",
+          hero: "bg-[#faf8f4]",
           badge: "bg-[#FFB800]",
-          shadow: "shadow-amber-300",
-          soft: "bg-amber-100",
-          accentText: "text-amber-700",
+          shadow: "shadow-slate-200",
+          soft: "bg-[#faf8f4]",
+          accentText: "text-slate-950",
           marker: "bg-[#FFB800]",
         }}
         highlights={[

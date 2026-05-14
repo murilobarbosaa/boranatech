@@ -177,29 +177,29 @@ export default function Projetos() {
                             <p className="text-sm font-bold text-slate-900">
                               {(projectHelpVideos[projeto.id] || projectHelpVideos.default).title}
                             </p>
-                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-violet-700">
+                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
                               Assistir referência <ExternalLink className="h-3 w-3" />
                             </span>
                           </div>
                         </a>
                         {/* Entregável */}
-                        <div className="card-brutal bg-blue-50 rounded-lg p-4 mb-4 border-blue-200">
-                          <p className="text-xs font-medium text-blue-700 uppercase tracking-wide mb-1">Entregável final</p>
+                        <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
+                          <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">Entregável final</p>
                           <p className="text-sm text-slate-700">{projeto.entregavel}</p>
                           <p className="text-xs text-slate-500 mt-1">📤 Publicar em: {projeto.comoPublicar}</p>
                         </div>
 
                         {/* LinkedIn */}
-                        <div className="card-brutal bg-blue-50 rounded-lg p-4 border-blue-200">
+                        <div className="card-brutal bg-orange-50 rounded-lg p-4 border-orange-200">
                           <div className="flex items-center gap-2 mb-2">
-                            <Lightbulb className="w-4 h-4 text-blue-600" />
-                            <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Sugestão de post no LinkedIn</p>
+                            <Lightbulb className="w-4 h-4 text-orange-700" />
+                            <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">Sugestão de post no LinkedIn</p>
                           </div>
                           <p className="text-xs text-slate-700 italic">"{projeto.sugestaoLinkedIn}"</p>
                         </div>
 
                         {/* Próximo projeto */}
-                        <div className="mt-4 flex items-center gap-2 text-sm text-violet-700 font-medium">
+                        <div className="mt-4 flex items-center gap-2 text-sm text-slate-950 font-medium">
                           <ArrowRight className="w-4 h-4" />
                           <span>Próximo: {projeto.proximoProjeto}</span>
                         </div>
