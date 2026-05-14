@@ -22,12 +22,12 @@ export default function Licenca() {
         updatedAt="7 de maio de 2026"
         icon={<Share2 className="h-7 w-7 text-slate-950" aria-hidden />}
         tone={{
-          hero: "bg-violet-100",
-          badge: "bg-violet-300",
-          shadow: "shadow-violet-300",
-          soft: "bg-violet-100",
-          accentText: "text-violet-700",
-          marker: "bg-violet-300",
+          hero: "bg-[#faf8f4]",
+          badge: "bg-[#FFB800]",
+          shadow: "shadow-slate-200",
+          soft: "bg-[#faf8f4]",
+          accentText: "text-slate-950",
+          marker: "bg-[#FFB800]",
         }}
         highlights={[
           { label: "Licença", value: "CC BY-NC-SA 4.0" },
@@ -46,7 +46,7 @@ export default function Licenca() {
             body: (
               <LegalText>
                 Salvo indicação em contrário, textos, explicações, guias, listas, roadmaps editoriais, glossários e materiais educacionais originais do Bora na Tech? estão licenciados sob{" "}
-                <a className="font-black text-violet-700 underline" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.pt-br" rel="license noopener noreferrer" target="_blank">
+                <a className="font-black text-slate-950 underline" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.pt-br" rel="license noopener noreferrer" target="_blank">
                   CC BY-NC-SA 4.0
                   <ExternalLink className="ml-1 inline h-3.5 w-3.5" aria-hidden />
                 </a>

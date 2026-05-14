@@ -22,12 +22,12 @@ export default function Privacidade() {
         updatedAt="7 de maio de 2026"
         icon={<LockKeyhole className="h-7 w-7 text-slate-950" aria-hidden />}
         tone={{
-          hero: "bg-emerald-100",
-          badge: "bg-emerald-300",
-          shadow: "shadow-emerald-300",
-          soft: "bg-emerald-100",
-          accentText: "text-emerald-700",
-          marker: "bg-emerald-300",
+          hero: "bg-[#faf8f4]",
+          badge: "bg-[#FFB800]",
+          shadow: "shadow-slate-200",
+          soft: "bg-[#faf8f4]",
+          accentText: "text-slate-950",
+          marker: "bg-[#FFB800]",
         }}
         highlights={[
           { label: "Dados", value: "Conta, uso, pagamento, analytics e inputs de IA" },

@@ -56,7 +56,7 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 export default function Sobre() {
   return (
     <Layout>
-      <main className="bg-[#f5f0e8] text-[#1a1a1a]">
+      <main className="bg-[#faf8f4] text-[#1a1a1a]">
         <section className="border-b-2 border-[#1a1a1a] px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <Eyebrow>SOBRE O PROJETO</Eyebrow>
@@ -128,7 +128,7 @@ export default function Sobre() {
                 return (
                   <div
                     key={item.title}
-                    className="rounded-3xl border-2 border-[#1a1a1a] bg-[#f5f0e8] p-6 shadow-[4px_4px_0_#0f172a]"
+                    className="rounded-3xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-6 shadow-[4px_4px_0_#0f172a]"
                   >
                     <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#1a1a1a] bg-[#FFB800]">
                       <Icon className="h-6 w-6" strokeWidth={2.5} />

@@ -55,7 +55,7 @@ export default function CheckoutSucesso() {
   return (
     <Layout>
       <SEO title="Pagamento confirmado — Bora na Tech? Pro" url="/pro/sucesso" noindex />
-      <section className="bg-[#f5f0e8] py-16">
+      <section className="bg-[#faf8f4] py-16">
         <div className="container">
           <div className="mx-auto max-w-2xl rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[6px_6px_0_#0f172a]">
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] shadow-[4px_4px_0_#0f172a]">
@@ -68,7 +68,7 @@ export default function CheckoutSucesso() {
                 <p className="mx-auto mt-3 max-w-lg text-sm font-semibold leading-relaxed text-slate-600">
                   Estamos atualizando sua assinatura. Isso pode levar alguns segundos.
                 </p>
-                <div className="mx-auto mt-6 h-3 max-w-sm overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-[#f5f0e8]">
+                <div className="mx-auto mt-6 h-3 max-w-sm overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-[#faf8f4]">
                   <div className="h-full w-2/3 animate-pulse rounded-full bg-[#FFB800]" />
                 </div>
               </>
