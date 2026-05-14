@@ -425,7 +425,7 @@ export default function Perfil() {
     return (
       <Layout>
         <SEO title="Perfil — Bora na Tech?" url="/perfil" noindex />
-        <section className="bg-[#f5f0e8] py-16">
+        <section className="bg-[#faf8f4] py-16">
           <div className="container">
             <div className="mx-auto max-w-lg rounded-3xl border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[4px_4px_0_#0f172a]">
               <p className="font-display text-2xl font-black text-[#1a1a1a]">Carregando seu perfil...</p>
@@ -440,7 +440,7 @@ export default function Perfil() {
   return (
     <Layout>
       <SEO title="Perfil — Bora na Tech?" url="/perfil" noindex />
-      <section className="bg-[#f5f0e8] py-12">
+      <section className="bg-[#faf8f4] py-12">
         <div className="container space-y-8">
           <div className="rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -467,7 +467,7 @@ export default function Perfil() {
             </div>
 
             {editingProfile ? (
-              <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-[#f5f0e8] p-5 shadow-[4px_4px_0_#0f172a]">
+              <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-5 shadow-[4px_4px_0_#0f172a]">
                 <h2 className="font-display text-2xl font-black text-[#1a1a1a]">Editar perfil</h2>
                 <label className="mt-4 block text-sm font-black text-[#1a1a1a]">
                   Nome completo
@@ -485,7 +485,7 @@ export default function Perfil() {
 
                   <div className="mt-5 grid gap-5 lg:grid-cols-[240px_1fr]">
                     <div className="mx-auto flex w-full max-w-[230px] flex-col gap-3">
-                      <div className="flex aspect-square flex-col items-center justify-center rounded-3xl border-2 border-[#1a1a1a] bg-[#f5f0e8] p-5 text-center">
+                      <div className="flex aspect-square flex-col items-center justify-center rounded-3xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-5 text-center">
                         <UserAvatar
                           name={editName || userName}
                           border={editAvatarBorder}
@@ -501,7 +501,7 @@ export default function Perfil() {
                       <AvatarSectionTabs active={activeAvatarSection} onChange={setActiveAvatarSection} />
                     </div>
 
-                    <div className="rounded-3xl border border-slate-200 bg-[#fbfaf7] p-4">
+                    <div className="rounded-3xl border border-slate-200 bg-[#faf8f4] p-4">
                       <div>
                         <h4 className="font-display text-xl font-black text-[#1a1a1a]">{activeAvatarSectionConfig.title}</h4>
                         <p className="mt-1 text-sm font-semibold text-slate-500">{activeAvatarSectionConfig.description}</p>
@@ -585,7 +585,7 @@ export default function Perfil() {
                   ["Renovação", formatDate(renewalDate(subscriptionData))],
                   ["Status", subscriptionData?.status || "active"],
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#f5f0e8] p-4">
+                  <div key={label} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-4">
                     <p className="text-xs font-black uppercase text-slate-500">{label}</p>
                     <p className="mt-1 text-sm font-black">{value}</p>
                   </div>
@@ -643,7 +643,7 @@ export default function Perfil() {
               <div className="mt-5 space-y-3">
                 {recentEntries.length ? (
                   recentEntries.slice(0, 3).map((entry) => (
-                    <div key={entry.id} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#f5f0e8] p-4">
+                    <div key={entry.id} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-sm font-black text-[#1a1a1a]">{formatDate(entry.studied_at)}</p>
                         <span className="rounded-full border-2 border-[#1a1a1a] bg-white px-3 py-1 text-xs font-black">
@@ -668,7 +668,7 @@ export default function Perfil() {
               <div className="mt-5 space-y-3">
                 {roadmaps.length ? (
                   roadmaps.map((roadmap, index) => (
-                    <div key={`${roadmap.title}-${index}`} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#f5f0e8] p-4">
+                    <div key={`${roadmap.title}-${index}`} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-4">
                       <p className="font-display text-xl font-black text-[#1a1a1a]">{roadmap.title || "Roadmap em andamento"}</p>
                       <p className="mt-1 text-sm font-semibold text-slate-500">{roadmap.area || "Área não informada"}</p>
                       <div className="mt-3 h-3 rounded-full border-2 border-[#1a1a1a] bg-white">
@@ -690,7 +690,7 @@ export default function Perfil() {
           <section className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
             <h2 className="font-display text-3xl font-black text-[#1a1a1a]">Configurações da conta</h2>
             <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <Link href="/nova-senha" className="flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#f5f0e8] px-5 py-3 font-black shadow-[3px_3px_0_#0f172a]">
+              <Link href="/nova-senha" className="flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#faf8f4] px-5 py-3 font-black shadow-[3px_3px_0_#0f172a]">
                 <KeyRound className="h-5 w-5" />
                 Trocar senha
               </Link>
