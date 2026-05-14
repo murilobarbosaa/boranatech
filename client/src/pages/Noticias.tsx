@@ -105,10 +105,10 @@ export default function Noticias() {
                 <h3 className="font-display font-bold text-lg text-slate-900 mb-2 leading-snug">{noticia.titulo}</h3>
                 <p className="text-sm text-slate-600 mb-4 flex-1">{noticia.resumo}</p>
 
-                <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mb-4">
+                <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-4">
                   <div className="flex items-start gap-2">
-                    <TrendingUp className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
-                    <p className="text-xs text-violet-800"><strong>Por que isso importa para você:</strong> {noticia.porQueImporta}</p>
+                    <TrendingUp className="w-4 h-4 text-sky-700 mt-0.5 shrink-0" />
+                    <p className="text-xs text-sky-800"><strong>Por que isso importa para você:</strong> {noticia.porQueImporta}</p>
                   </div>
                 </div>
 
@@ -121,7 +121,7 @@ export default function Noticias() {
                     href={noticia.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-sky-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-950 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
                   >
                     Ler <ExternalLink className="w-3 h-3" />
                   </a>
