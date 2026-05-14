@@ -12,6 +12,12 @@ import { getTechnologies } from "@/services/contentService";
 
 const ac = getPageAccentUi("violet");
 
+const demandColors: Record<string, string> = {
+  Alta: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  "Média": "bg-amber-100 text-amber-700 border-amber-200",
+  Baixa: "bg-slate-100 text-slate-700 border-slate-200",
+};
+
 export default function Tecnologias() {
   const [technologyItems, setTechnologyItems] = useState(technologies);
   const [category, setCategory] = useState("Todas");
@@ -87,7 +93,7 @@ export default function Tecnologias() {
               <p className="mt-2 text-sm text-slate-600">{technology.description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">{technology.difficulty}</span>
-                <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">Demanda {technology.demand}</span>
+                <span className={cn("rounded-full border px-2 py-1 text-xs font-bold", demandColors[technology.demand] ?? demandColors["Média"])}>Demanda {technology.demand}</span>
               </div>
               <div className="mt-4">
                 <p className="text-xs font-black uppercase tracking-wide text-slate-500">
