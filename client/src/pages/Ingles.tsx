@@ -73,7 +73,7 @@ const studyMaterials = [
 const practicePlan = [
   { day: "Segunda", task: "Ler 1 página de documentação e grifar 10 termos." },
   { day: "Terça", task: "Assistir 1 vídeo curto com legenda em inglês." },
-  { day: "Quarta", task: "Pedir ao Cursor para explicar um erro ou trecho de código em inglês simples." },
+  { day: "Quarta", task: "Pedir à IA para explicar um erro ou trecho de código em inglês simples." },
   { day: "Quinta", task: "Escrever 5 frases sobre seu projeto usando vocabulário técnico." },
   { day: "Sexta", task: "Atualizar uma parte do README em inglês." },
   { day: "Sábado", task: "Simular 3 perguntas de entrevista técnica em inglês." },
@@ -120,7 +120,7 @@ export default function Ingles() {
                 ))}
               </div>
             </div>
-            <div className="card-brutal rounded-2xl bg-sky-200 p-6">
+            <div className="card-brutal rounded-2xl bg-sky-100 p-6">
               <h3 className="font-display text-2xl font-black text-slate-950">Meta simples</h3>
               <p className="mt-3 text-sm font-bold text-slate-800">
                 20 minutos por dia: 10 lendo, 5 ouvindo, 5 escrevendo uma frase sobre o que você estudou.
@@ -160,12 +160,12 @@ export default function Ingles() {
 
           <div className="card-brutal rounded-2xl bg-white p-6">
             <div className="mb-5 flex items-start gap-3">
-              <div className={cn("rounded-xl border-2 border-slate-900 bg-slate-950 p-3 text-white", ac.brutalShadow)}>
+              <div className={cn("rounded-xl border-2 border-sky-700 bg-sky-100 p-3 text-slate-950", ac.brutalShadow)}>
                 <Bot className="h-6 w-6" />
               </div>
               <div>
-                <p className={cn("text-xs font-black uppercase", ac.iconMuted)}>dicas de Cursor</p>
-                <h2 className="font-display text-3xl font-black text-slate-950">Use o Cursor como tutor de inglês técnico</h2>
+                <p className={cn("text-xs font-black uppercase", ac.iconMuted)}>dicas de IA</p>
+                <h2 className="font-display text-3xl font-black text-slate-950">Use a IA como tutor de inglês técnico</h2>
                 <p className="mt-1 text-sm text-slate-600">Aproveite seu próprio código, erros e README para estudar com contexto real.</p>
               </div>
             </div>
