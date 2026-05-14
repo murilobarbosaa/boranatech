@@ -30,7 +30,7 @@ export default function Entrevistas() {
             className={cn(
               "rounded-full border-2 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-[2px_2px_0_#0f172a] transition-all",
               ac.panelBorder,
-              "hover:border-sky-500",
+              "hover:border-blue-500",
             )}
           >
             Banco de perguntas
@@ -40,7 +40,7 @@ export default function Entrevistas() {
             className={cn(
               "rounded-full border-2 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-[2px_2px_0_#0f172a] transition-all",
               ac.panelBorder,
-              "hover:border-sky-500",
+              "hover:border-blue-500",
             )}
           >
             Desafios técnicos
