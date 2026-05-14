@@ -43,7 +43,7 @@ function EventLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
 
   return (
     <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
-      <span className={`font-display text-sm font-black leading-none text-pink-700 ${loaded ? "opacity-0" : "opacity-100"}`}>
+      <span className={`font-display text-sm font-black leading-none text-fuchsia-700 ${loaded ? "opacity-0" : "opacity-100"}`}>
         {eventInitials(name)}
       </span>
       <img
@@ -87,7 +87,7 @@ export default function Eventos() {
   );
 
   const selectClass =
-    "min-w-[10.5rem] max-w-[16rem] px-3 py-2 border-2 border-fuchsia-200 rounded-lg text-sm focus:outline-none focus:border-pink-500 bg-white truncate";
+    "min-w-[10.5rem] max-w-[16rem] px-3 py-2 border-2 border-fuchsia-200 rounded-lg text-sm focus:outline-none focus:border-fuchsia-500 bg-white truncate";
 
   return (
     <Layout>
@@ -176,7 +176,7 @@ export default function Eventos() {
                 type="checkbox"
                 checked={apenasGratuitos}
                 onChange={(e) => setApenasGratuitos(e.target.checked)}
-                className="w-4 h-4 accent-pink-600"
+                className="w-4 h-4 accent-fuchsia-600"
               />
               Apenas gratuitos
             </label>
@@ -192,13 +192,13 @@ export default function Eventos() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <EventLogo name={ev.nome} logoUrl={ev.logoUrl} />
-                    <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full font-medium border border-pink-200">
+                    <span className="text-xs bg-fuchsia-100 text-fuchsia-700 px-2 py-0.5 rounded-full font-medium border border-fuchsia-200">
                       {ev.categoria}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`max-w-[220px] rounded-full px-2 py-0.5 text-xs font-black ${ev.valor.toLowerCase() === "gratuito" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}
+                      className={`max-w-[220px] rounded-full border-2 px-2 py-0.5 text-xs font-black ${ev.valor.toLowerCase() === "gratuito" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"}`}
                     >
                       {ev.valor}
                     </span>
@@ -246,7 +246,7 @@ export default function Eventos() {
                       href={ev.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-pink-600 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-fuchsia-600 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
                     >
                       Inscrever <ExternalLink className="w-3 h-3 shrink-0" />
                     </a>
@@ -268,14 +268,14 @@ export default function Eventos() {
                   setEstadoUF(ALL);
                   setApenasGratuitos(false);
                 }}
-                className="mt-4 text-pink-700 text-sm font-medium hover:underline"
+                className="mt-4 text-fuchsia-700 text-sm font-medium hover:underline"
               >
                 Limpar filtros
               </button>
             </div>
           )}
 
-          <div className="mt-10 p-5 bg-pink-50 border-2 border-pink-200 rounded-xl">
+          <div className="mt-10 p-5 bg-fuchsia-50 border-2 border-fuchsia-200 rounded-xl">
             <h3 className="font-display font-semibold text-slate-900 mb-2">Dica: como encontrar mais eventos</h3>
             <p className="text-sm text-slate-600">
               Além dos eventos listados aqui, você pode buscar eventos no <strong>Meetup.com</strong>,{" "}

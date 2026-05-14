@@ -59,7 +59,7 @@ export default function Salarios() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="card-brutal rounded-2xl bg-yellow-100 p-6">
+          <div className="card-brutal rounded-2xl bg-amber-100 p-6">
             <h2 className="font-display text-2xl font-black">Calculadora CLT vs PJ</h2>
             <label className="mt-4 block text-sm font-black">Proposta PJ (R$)<input type="number" className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3" value={pj} onChange={(event) => setPj(Number(event.target.value))} /></label>
             <label className="mt-3 block text-sm font-black">Estado<select className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3"><option>SP</option><option>RJ</option><option>MG</option></select></label>
