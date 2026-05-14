@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ExternalLink, Briefcase, Linkedin, FileText, Code2, Github, Lightbulb, Rocket, Sparkles, CheckCircle2, Target } from "lucide-react";
+import { ExternalLink, Briefcase, Linkedin, FileText, Code2, Github, Lightbulb, Rocket, Sparkles, Star, CheckCircle2, Target } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { vagasInfo, linkedinDicas } from "@/lib/data";
@@ -170,13 +170,19 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
       <section className="bg-[#fffbeb] py-12">
         <div className="container">
           <div className="mb-10 grid gap-5 md:grid-cols-2">
-            <Link href="/empregabilidade" className="card-brutal block rounded-2xl border-violet-300 bg-violet-50 p-5">
-              <span className="mb-2 inline-flex rounded-full bg-violet-700 px-2 py-1 text-xs font-black text-white">Plano Pro</span>
+            <Link href="/empregabilidade" className="card-brutal block rounded-2xl border-2 border-amber-700 bg-white p-5">
+              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-1 text-xs font-black text-slate-950">
+                <Star className="h-3 w-3 fill-[#FFB800] text-slate-950" />
+                Plano Pro
+              </span>
               <h2 className="font-display text-xl font-black text-slate-950">Analisador de Vaga</h2>
               <p className="mt-2 text-sm text-slate-600">Cole uma vaga e descubra se vale aplicar agora e o que estudar nos próximos 7 dias.</p>
             </Link>
-            <Link href="/empregabilidade" className="card-brutal block rounded-2xl border-violet-300 bg-white p-5">
-              <span className="mb-2 inline-flex rounded-full bg-violet-700 px-2 py-1 text-xs font-black text-white">Plano Pro</span>
+            <Link href="/empregabilidade" className="card-brutal block rounded-2xl border-2 border-amber-700 bg-white p-5">
+              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-1 text-xs font-black text-slate-950">
+                <Star className="h-3 w-3 fill-[#FFB800] text-slate-950" />
+                Plano Pro
+              </span>
               <h2 className="font-display text-xl font-black text-slate-950">Calculadora de Prontidão</h2>
               <p className="mt-2 text-sm text-slate-600">Veja o que você já tem, o que falta e um plano de ação para chegar à primeira vaga.</p>
             </Link>
@@ -287,13 +293,13 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                 </div>
                 <div className="card-brutal bg-white rounded-xl p-6">
                   <div className="flex items-center gap-2 mb-4">
-                    <Briefcase className="w-5 h-5 text-violet-600" />
+                    <Briefcase className="w-5 h-5 text-amber-600" />
                     <h3 className="font-display font-bold text-lg text-slate-900">Dicas de portfólio</h3>
                   </div>
                   <ul className="space-y-2">
                     {vagasInfo.dicasPortfolio.map((d, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
-                        <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                        <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
                         {d}
                       </li>
                     ))}
@@ -306,12 +312,12 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
           {/* Tab 1: LinkedIn */}
           {tab === 1 && (
             <div className="max-w-3xl">
-              <div className="card-brutal bg-blue-700 rounded-xl p-6 text-white mb-8">
+              <div className="card-brutal bg-amber-100 rounded-xl p-6 border-2 border-amber-700 mb-8">
                 <div className="flex items-center gap-3 mb-3">
-                  <Linkedin className="w-6 h-6" />
-                  <h2 className="font-display font-bold text-xl">LinkedIn para quem está começando</h2>
+                  <Linkedin className="w-6 h-6 text-slate-950" />
+                  <h2 className="font-display font-bold text-xl text-slate-950">LinkedIn para quem está começando</h2>
                 </div>
-                <p className="text-blue-100">
+                <p className="text-slate-700">
                   O LinkedIn é a principal rede profissional de tecnologia. Mesmo sem experiência, um perfil bem feito pode abrir portas para estágios, trainees e primeiras oportunidades.
                 </p>
               </div>
@@ -322,7 +328,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                 <p className="text-sm text-slate-600 mb-3">{linkedinDicas.titulo.dicas}</p>
                 <div className="space-y-2">
                   {linkedinDicas.titulo.exemplos.map((ex, i) => (
-                    <div key={i} className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-800 italic">
+                    <div key={i} className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800 italic">
                       "{ex}"
                     </div>
                   ))}
@@ -333,7 +339,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
               <div className="card-brutal bg-white rounded-xl p-6 mb-5">
                 <h3 className="font-display font-bold text-lg text-slate-900 mb-2">Seção "Sobre"</h3>
                 <p className="text-sm text-slate-600 mb-3">{linkedinDicas.sobre.dicas}</p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 italic">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800 italic">
                   "{linkedinDicas.sobre.exemplo}"
                 </div>
               </div>
@@ -368,21 +374,21 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
           {tab === 2 && (
             <div>
               <div className="mb-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-stretch">
-                <div className="card-brutal rounded-2xl bg-violet-700 p-7 text-white">
-                  <p className="mb-4 inline-flex rounded-full border-2 border-white bg-yellow-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">prova do seu aprendizado</p>
-                  <h2 className="font-display text-3xl font-black">Portifólio para começar em tecnologia</h2>
-                  <p className="mt-3 text-sm leading-relaxed text-violet-100">
+                <div className="card-brutal rounded-2xl bg-amber-100 p-7 border-2 border-amber-700">
+                  <p className="mb-4 inline-flex rounded-full border-2 border-slate-950 bg-yellow-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">prova do seu aprendizado</p>
+                  <h2 className="font-display text-3xl font-black text-slate-950">Portifólio para começar em tecnologia</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-700">
                     Seu portifólio não precisa parecer de pessoa sênior. Ele precisa mostrar que você aprende, termina entregas pequenas e sabe explicar o que construiu.
                   </p>
                   <div className="mt-6 flex flex-wrap gap-2">
                     {["GitHub organizado", "Demo publicada", "README caprichado", "Aprendizados visíveis"].map((item) => (
-                      <span key={item} className="rounded-full border-2 border-white bg-white/15 px-3 py-1 text-xs font-black text-white">
+                      <span key={item} className="rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-black text-slate-950">
                         {item}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div className="card-brutal rounded-2xl bg-amber-300 p-6">
+                <div className="card-brutal rounded-2xl bg-amber-100 p-6">
                   <div className="mb-4 flex items-center gap-2">
                     <Github className="h-6 w-6 text-slate-950" />
                     <h3 className="font-display text-xl font-black text-slate-950">Regra simples</h3>
@@ -469,7 +475,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                   <div className="grid gap-4 sm:grid-cols-2">
                     {portfolioProjectIdeas.map((idea) => (
                       <div key={idea.title} className="card-invite rounded-xl bg-white p-5">
-                        <span className="mb-3 inline-flex rounded-full border-2 border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-black text-violet-700">{idea.tag}</span>
+                        <span className="mb-3 inline-flex rounded-full border-2 border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700">{idea.tag}</span>
                         <h4 className="font-display text-lg font-black text-slate-950">{idea.title}</h4>
                         <p className="mt-2 text-sm text-slate-600">{idea.desc}</p>
                       </div>
@@ -495,7 +501,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
 
                 <div className="card-brutal rounded-xl bg-white p-6">
                   <div className="mb-4 flex items-center gap-2">
-                    <Code2 className="h-5 w-5 text-violet-700" />
+                    <Code2 className="h-5 w-5 text-slate-950" />
                     <h3 className="font-display text-xl font-black text-slate-950">Como apresentar no LinkedIn</h3>
                   </div>
                   <p className="text-sm text-slate-600">

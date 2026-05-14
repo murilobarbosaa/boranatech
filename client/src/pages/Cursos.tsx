@@ -137,7 +137,7 @@ export default function Cursos() {
               <p className="text-3xl mb-3">📚</p>
               <p className="text-slate-600 font-medium">Nenhum curso encontrado.</p>
               <p className="text-slate-400 text-sm mt-1">Tente outros filtros.</p>
-              <button onClick={() => { setSearch(""); setArea("Todas"); setNivel("Todos"); setIdioma("Todos"); setTipo("Todos"); }} className="mt-4 text-violet-700 text-sm font-medium hover:underline">
+              <button onClick={() => { setSearch(""); setArea("Todas"); setNivel("Todos"); setIdioma("Todos"); setTipo("Todos"); }} className="mt-4 text-slate-950 text-sm font-medium hover:underline">
                 Limpar filtros
               </button>
             </div>
@@ -151,8 +151,8 @@ export default function Cursos() {
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${areaTagClass[curso.area] || "bg-slate-100 text-slate-600"}`}>
                         {curso.area}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded-full font-bold ${
-                        (curso.tipo || "Gratuito") === "Pago" ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700"
+                      <span className={`text-xs px-2 py-1 rounded-full font-bold border-2 ${
+                        (curso.tipo || "Gratuito") === "Pago" ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-emerald-100 text-emerald-700 border-emerald-200"
                       }`}>
                         {curso.tipo || "Gratuito"}
                       </span>
@@ -171,7 +171,7 @@ export default function Cursos() {
 
                   {/* Title */}
                   <h3 className="font-display font-bold text-slate-900 mb-1">{curso.titulo}</h3>
-                  <p className="text-sm text-violet-600 font-medium mb-3">{curso.canal}</p>
+                  <p className="text-sm text-amber-700 font-medium mb-3">{curso.canal}</p>
                   {curso.preco && <p className="mb-3 text-xs font-bold text-slate-500">{curso.preco}</p>}
                   <p className="text-sm text-slate-600 flex-1 mb-4">{curso.descricao}</p>
 
@@ -204,7 +204,7 @@ export default function Cursos() {
                       href={curso.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-violet-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
                     >
                       Acessar <ExternalLink className="w-3 h-3" />
                     </a>
