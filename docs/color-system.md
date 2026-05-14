@@ -2,6 +2,87 @@
 
 O sistema mapeia cor → família semântica → conjunto fixo de páginas. Cada família comunica a intenção de conteúdo antes de qualquer leitura. A regra de saturação restringe os tons usáveis para evitar que fundos grandes concorram com o conteúdo. O arquivo `client/src/lib/colorSystem.ts` é a fonte de verdade em código.
 
+## Sistemas de Cor Independentes
+
+O projeto BoraNaTech tem cinco sistemas de cor que coexistem em harmonia porque servem propósitos distintos. Este documento descreve principalmente o **Sistema 1**, mas reconhece formalmente os demais.
+
+### Sistema 1 — Cores Semânticas de Página
+
+Comunica "do que esta página fala". É o sistema das 10 famílias documentado neste arquivo (discovery, technical, market, application, information, reference, community, women, creative, institutional).
+
+**Quem controla:** designers/devs do projeto.  
+**Onde vive:** layouts, heros, seções, componentes compartilhados.  
+**Regras:** todas as documentadas neste arquivo.
+
+### Sistema 2 — Cores de Identidade Social
+
+Comunica "quem é este usuário" em contextos sociais (avatar, futuramente: tags próprias, categorias criadas pelo usuário, etc).
+
+**Quem controla:** cada usuário individual.  
+**Onde vive:** elementos pessoais que aparecem em múltiplos contextos (avatar no header, avatar em comentários futuros, etc).  
+**Regras:**
+- Paleta pode incluir cores fora das 10 famílias de página (red, pink, green Tailwind puro, etc) — diversidade é VALOR aqui, não problema
+- Elementos personalizados sempre têm "contenção visual" (border-2 border-slate-950 neobrutalist) que isola a cor do contexto da página
+- O namespace exclusivo de "women" (pink) se aplica apenas ao Sistema 1; no Sistema 2, pink é uma opção pessoal válida
+- Customizações premium (Pro/Plus) podem ampliar a paleta
+
+### Sistema 3 — Cores de Ação
+
+Comunica "esta ação tem natureza X" (destrutiva, sucesso, alerta), independente do tema da página ou da identidade do usuário.
+
+**Quem controla:** padrões UX universais.  
+**Onde vive:** botões de ação destrutiva (excluir, remover), mensagens de sucesso/erro, alertas, validações.  
+**Regras:**
+- Sucesso: emerald (usado neutralmente, não evoca família technical)
+- Erro / destrutivo: rose ou red
+- Alerta: amber (usado neutralmente, não evoca família market)
+- Confirmação positiva: emerald-100 / emerald-700
+- Exemplo aplicado: botão "Excluir conta" em /perfil usa rose-100 / rose-800 como cor de ação destrutiva, NÃO como família de página
+
+### Sistema 4 — Cores de Status Premium
+
+Comunica "este elemento é exclusivo do plano pago" (Pro, Plus, ou planos futuros). É um sistema dourado consistente usado para diferenciar features grátis de features premium.
+
+**Quem controla:** designers/devs do projeto (decisão de monetização).  
+**Onde vive:** estrelas indicadoras, backgrounds de itens premium em menus, tags "Pro", botões de upgrade, marca premium em customizações.  
+**Tokens:**
+- `#FFB800` — token primário do Pro (botões "Assinar Pro", estrela cheia, ícones)
+- `#FFF7D6` — background sutil de item Pro em listas (tint dourado)
+- `#FFF2B8` — variante mais saturada do tint (hover, estado ativo)
+- `#BA7517` — texto/borda de marca Pro (label "funcionalidade Pro", ícones de detalhe)
+
+**Regras:**
+- O dourado NUNCA é cor de família — é sempre marcador de status
+- Aplicar consistentemente: se um botão premium tem estrela dourada, TODO botão premium na mesma página deve ter
+- Em conjunto com cor de família: o dourado vence visualmente (é o que o usuário precisa ver primeiro)
+- O sistema 4 é "transparente" às famílias — pode aparecer sobre qualquer fundo de família
+
+**Exemplo aplicado:** dropdown "Carreira" no Header mostra estrelas douradas e background `#FFF7D6` em itens Pro (Salários, Empregabilidade, Currículo IA, etc), distinguindo-os dos itens gratuitos.
+
+### Sistema 5 — Acentos de Navegação (legado do Header)
+
+O Header tem um sistema próprio de 5 cores customizadas que acentua cada grupo de menu. Documentado aqui como reconhecimento, **NÃO como sistema a ser ampliado**.
+
+**Mapeamento atual:**
+- Descobrir: `#534AB7`
+- Aprender: `#3B6D11`
+- Evoluir: `#BA7517` (também é cor do Sistema 4 — coincidência histórica)
+- Carreira: `#0F6E56`
+- Comunidade: `#993C1D`
+
+**Onde aparece:** apenas em 2 lugares no Header (hover 8% opacidade no desktop, border 3px no drawer mobile). Função visual extremamente sutil.
+
+**Regras:**
+- Sistema CONTIDO ao Header — não propagar para outras páginas
+- Mudanças neste sistema requerem ajuste das 5 cores em conjunto (coerência interna)
+- Quando refatorarmos o Header (fase futura), avaliar se vale manter esse sistema ou alinhar com famílias de página
+
+### Coexistência
+
+Os cinco sistemas coexistem em harmonia porque servem propósitos distintos e raramente competem visualmente. Conflitos potenciais são resolvidos por contenção visual (borda preta neobrutalist, espaço em branco, escala/tamanho) ou por hierarquia de propósito (Sistema 4 — status premium — visualmente vence Sistema 1 — família — quando coexistem, porque o status é a informação primária).
+
+Exemplo: avatar do usuário com fundo rosa (Sistema 2) aparece no header de TODAS as páginas, incluindo páginas da família technical (emerald). Não há conflito porque a borda preta do avatar e o pequeno tamanho (~40px) isolam visualmente a cor pessoal do tema da página.
+
 ## Famílias
 
 | Família | Cor base | Tom claro | Tom escuro | Propósito | Páginas |
@@ -97,6 +178,67 @@ Para suportar essa exceção sem hardcode, o `AiToolPanel.tsx` usa estas chaves 
 | `buttonHover` | hover do background |
 | `buttonText` | cor do texto principal do botão |
 | `buttonEyebrow` | cor do texto do eyebrow "EXECUTAR COM IA" |
+
+## Sombra Colorida vs Sombra Preta
+
+O projeto usa sombra neobrutalist (`shadow-[Xpx_Xpx_0_#0f172a]`) como padrão estrutural em 95% dos elementos. Em casos estratégicos, sombra colorida da família da página substitui a preta para reforçar identidade narrativa.
+
+**Quando usar sombra preta (padrão):**
+- Botões de submit, navegações, headers
+- Cards de listagem (cursos, vagas, etc — qualquer card "filtrável")
+- Painéis estruturais, modais
+- Inputs, selects, qualquer formulário
+
+**Quando usar sombra colorida da família:**
+- Apenas em elementos onde a página inteira é o "conteúdo central" e queremos reforçar a identidade da família
+- Exemplo aplicado: cards de pergunta do `/quiz-carreira` (família discovery → `shadow-[5px_5px_0_#c4b5fd]` = violet-300)
+
+**Como escolher o tom da sombra colorida:**
+- Sempre use o tom -300 da família (não -500, não -700)
+- Tons claros (-300) dão "ar de personalidade"; tons escuros viram competição visual com a sombra preta de outros elementos
+
+**Regra de exclusão:**
+Nunca use sombra colorida em elementos que coexistem com cards de sombra preta na mesma seção. Se decidir sombra colorida em um padrão, aplicar a TODOS os elementos similares daquela página.
+
+## Padrões de Destaque (CTAs e Realces)
+
+Decisões estabelecidas durante a Onda 4 que se aplicam a TODAS as páginas do projeto:
+
+### Preto / slate-900 reservado para footer
+
+O preto puro (`bg-slate-900`, `bg-black`) é reservado EXCLUSIVAMENTE para o footer do site. Em qualquer outro contexto — CTAs, cards destaque, heros — usar sempre:
+- Cor da família da página (tons -100 claros com -700 escuros para borders/textos)
+- Ou estruturais (`border-2 border-slate-950` sem fundo preto)
+
+Razão: o preto em CTAs/cards cria competição visual desproporcional com o resto da página, e quebra a coerência cromática da família.
+
+### Padrão de CTA destaque
+
+Para CTAs de destaque (cards que chamam para ação principal dentro de uma página), usar o seguinte padrão dentro da família:
+
+```jsx
+<div className="bg-{família}-100 border-2 border-{família}-700 rounded-xl p-5">
+  <p className="font-bold text-slate-950">{Título do CTA}</p>
+  <p className="text-sm text-slate-700">{Subtítulo descritivo}</p>
+  <Link className="bg-{família}-700 text-white border-2 border-{família}-700 hover:bg-{família}-800">
+    {Ação}
+  </Link>
+</div>
+```
+
+Estrutura: fundo claro da família + border escura da família + textos neutros (slate-950/700) + botão sólido escuro da família.
+
+Exemplo aplicado: CTA "Pronta para começar?" em `/roadmaps` usa `emerald-100` + `border-emerald-700` + botão `emerald-700`.
+
+### Destaques numéricos ficam na cor da família
+
+Números grandes em destaque (durações, métricas, contadores, preços) devem usar a cor da família da página, não outras famílias "chamativas" como `amber-600`.
+
+Exemplo: filtros de duração em `/roadmaps` mostram "10 dias / 20 dias / etc" em `text-emerald-700` (família technical), não em `text-amber-600`.
+
+Exceção: quando o número É inerentemente uma categorização semântica de outra família (ex: preço amber em página de cursos), Sistema 3 prevalece — usar cor da categorização. Esse caso é raro.
+
+> Ver também: **[Coexistência](#coexistência)** — regras sobre como essas decisões interagem com cores de identidade social (Sistema 2) e acentos de navegação (Sistema 5) presentes na mesma página.
 
 ## Proteções e Exceções
 
