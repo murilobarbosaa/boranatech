@@ -70,6 +70,102 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
   }
 });
 
+const VALID_CANCEL_REASONS = new Set(["expensive", "unused", "missing_feature", "paused", "other"]);
+
+router.post("/cancel", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+    const body = (req.body || {}) as { reason_code?: unknown; reason_text?: unknown };
+
+    const reasonCode = typeof body.reason_code === "string" ? body.reason_code.trim() : "";
+    const reasonText = typeof body.reason_text === "string" ? body.reason_text.trim().slice(0, 500) : "";
+
+    if (reasonCode && !VALID_CANCEL_REASONS.has(reasonCode)) {
+      return next(createError(400, "invalid_reason_code", "Motivo de cancelamento inválido."));
+    }
+
+    const { data: subscription, error: subError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, provider_subscription_id, current_period_end, status, cancel_at_period_end")
+      .eq("user_id", userId)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (subError) {
+      return next(createError(500, "db_error", "Erro ao buscar assinatura."));
+    }
+
+    if (!subscription) {
+      return next(createError(404, "not_found", "Nenhuma assinatura ativa encontrada."));
+    }
+
+    if (subscription.cancel_at_period_end) {
+      return next(createError(409, "already_scheduled", "Cancelamento já está agendado."));
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        cancel_at_period_end: true,
+      })
+      .eq("id", subscription.id);
+
+    if (updateError) {
+      console.error("[billing/cancel] Erro ao atualizar subscription:", updateError);
+      return next(createError(500, "db_error", "Erro ao registrar cancelamento."));
+    }
+
+    const { error: logError } = await supabaseAdmin.from("subscription_cancellations").insert({
+      user_id: userId,
+      provider_subscription_id: subscription.provider_subscription_id || null,
+      reason_code: reasonCode || null,
+      reason_text: reasonText || null,
+      effective_at: subscription.current_period_end,
+      status: "scheduled",
+    });
+
+    if (logError) {
+      console.error("[billing/cancel] Erro ao registrar motivo de cancelamento:", logError);
+    }
+
+    try {
+      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const userEmail = authData?.user?.email || "";
+      const userName = String(
+        authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário",
+      );
+
+      if (userEmail && subscription.current_period_end) {
+        await enqueueEmail({
+          type: "cancellation_scheduled",
+          to: userEmail,
+          name: userName,
+          effectiveAt: subscription.current_period_end,
+        });
+      }
+    } catch (emailError) {
+      console.error("[billing/cancel] Erro ao enfileirar e-mail de confirmação:", emailError);
+    }
+
+    const effectiveAt = subscription.current_period_end;
+    const formattedDate = effectiveAt
+      ? new Date(effectiveAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+      : "o fim do período pago";
+
+    res.json({
+      data: {
+        cancel_at_period_end: true,
+        effective_at: effectiveAt,
+        message: `Sua assinatura foi cancelada. Você mantém acesso Pro até ${formattedDate}.`,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/checkout", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
@@ -127,7 +223,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       value: checkoutValue,
       cycle: PLAN_CYCLES[planId],
       affiliateCode: validAffiliateCode || undefined,
-      successUrl: `${env.appPublicUrl}/pro/sucesso`,
+      successUrl: `${env.appPublicUrl}/planos/sucesso`,
     });
     const payments = await getAsaasSubscriptionPayments(asaasSubscription.id);
     const firstPayment = Array.isArray(payments?.data) ? payments.data[0] : undefined;

@@ -4,6 +4,7 @@ import IORedis from "ioredis";
 import { env } from "./env";
 import {
   sendCancellationEmail,
+  sendCancellationScheduledEmail,
   sendPaymentFailedEmail,
   sendProUpgradeEmail,
   sendWelcomeEmail,
@@ -13,6 +14,7 @@ export type EmailJobData =
   | { type: "welcome"; to: string; name: string }
   | { type: "pro_upgrade"; to: string; name: string; planName: string }
   | { type: "cancellation"; to: string; name: string }
+  | { type: "cancellation_scheduled"; to: string; name: string; effectiveAt: string }
   | { type: "payment_failed"; to: string; name: string };
 
 export const redisConnection = env.redisUrl
@@ -51,6 +53,9 @@ async function sendDirect(data: EmailJobData) {
       break;
     case "cancellation":
       await sendCancellationEmail(data.to, data.name);
+      break;
+    case "cancellation_scheduled":
+      await sendCancellationScheduledEmail(data.to, data.name, data.effectiveAt);
       break;
     case "payment_failed":
       await sendPaymentFailedEmail(data.to, data.name);
