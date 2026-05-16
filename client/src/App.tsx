@@ -1,14 +1,14 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
-import Home from "./pages/HomeLanding";
+import Home from "./pages/home/HomeLanding";
 import Areas from "./pages/Areas";
 import AreaDetalhe from "./pages/AreaDetalhe";
 import Roadmaps from "./pages/Roadmaps";
@@ -27,7 +27,9 @@ import Mulheres from "./pages/Mulheres";
 import Dicionario from "./pages/Dicionario";
 import Comparador from "./pages/Comparador";
 import QuizCarreira from "./pages/QuizCarreira";
+import QuizCarreiraResultado from "./pages/quiz-carreira/QuizCarreiraResultado";
 import Perfil from "./pages/Perfil";
+import Conquistas from "./pages/conquistas/Conquistas";
 import Auth from "./pages/Auth";
 import Cadastro from "./pages/Cadastro";
 import Checkout from "./pages/Checkout";
@@ -119,10 +121,15 @@ function Router() {
       <Route path="/mulheres" component={Mulheres} />
       <Route path="/dicionario" component={Dicionario} />
       <Route path="/comparador" component={Comparador} />
+      <Route path="/quiz-carreira/resultado" component={QuizCarreiraResultado} />
       <Route path="/quiz-carreira" component={QuizCarreira} />
+      <Route path="/perfil/conquistas" component={Conquistas} />
       <Route path="/perfil" component={Perfil} />
-      <Route path="/pro/sucesso" component={CheckoutSucesso} />
-      <Route path="/pro" component={Checkout} />
+      <Route path="/planos/sucesso" component={CheckoutSucesso} />
+      <Route path="/planos" component={Checkout} />
+      {/* TODO: remover redirect após 90 dias em prod */}
+      <Route path="/pro/sucesso">{() => <Redirect to="/planos/sucesso" />}</Route>
+      <Route path="/pro">{() => <Redirect to="/planos" />}</Route>
       <Route path="/checkout" component={Checkout} />
       <Route path="/login">{() => <Auth mode="login" />}</Route>
       <Route path="/cadastro" component={Cadastro} />

@@ -10,6 +10,7 @@ import { errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
 import aiRouter from "./routes/ai";
 import affiliatesRouter from "./routes/affiliates";
+import badgesRouter from "./routes/badges";
 import billingRouter from "./routes/billing";
 import bookmarksRouter from "./routes/bookmarks";
 import contentRouter from "./routes/content";
@@ -127,6 +128,7 @@ app.use("/api", validateSupabaseJwt);
 
 app.use("/api/ai", aiRouter);
 app.use("/api/me", meRouter);
+app.use("/api/badges", badgesRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/bookmarks", bookmarksRouter);
 app.use("/api/study", studyRouter);
