@@ -7,7 +7,7 @@ interface SEOProps {
   image?: string;
   url?: string;
   type?: "website" | "article" | "profile";
-  schemaType?: "WebPage" | "Article" | "CollectionPage" | "Course" | "FAQPage";
+  schemaType?: "WebPage" | "Article" | "CollectionPage" | "Course" | "FAQPage" | "Product";
   schemaData?: object;
   noindex?: boolean;
   publishedTime?: string;
