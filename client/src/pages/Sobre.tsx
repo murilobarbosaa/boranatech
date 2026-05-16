@@ -85,7 +85,7 @@ export default function Sobre() {
                 Começar agora
               </Link>
               <Link
-                href="/pro"
+                href="/planos"
                 className="rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
               >
                 Ver planos

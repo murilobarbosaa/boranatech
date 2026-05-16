@@ -82,7 +82,7 @@ export default function Auth({
         toast.success("Login realizado com sucesso.");
       }
 
-      setLocation(isSignup ? "/pro" : "/perfil", { replace: true });
+      setLocation(isSignup ? "/planos" : "/perfil", { replace: true });
     } catch (error) {
       console.error("[Auth] handleSubmit failed", error);
       toast.error(

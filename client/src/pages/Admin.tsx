@@ -301,7 +301,7 @@ function slugifyAffiliateCode(value: string) {
 
 function buildAffiliateLink(code: string, discount: number) {
   const safeCode = slugifyAffiliateCode(code || "PARCEIRO");
-  return `https://boranatech.com.br/pro?ref=${safeCode}&cupom=${safeCode}&desconto=${discount}`;
+  return `https://boranatech.com.br/planos?ref=${safeCode}&cupom=${safeCode}&desconto=${discount}`;
 }
 
 function formatAdminDate(value?: string | null) {

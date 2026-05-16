@@ -35,7 +35,7 @@ export default function ProGate({ description, className = "" }: ProGateProps) {
         {description}
       </p>
       <Link
-        href="/pro"
+        href="/planos"
         className="btn-brutal-accent mt-5 inline-flex rounded-full px-6 py-3 text-sm font-black"
       >
         Ver planos Pro

@@ -6,10 +6,11 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronDown, Compass, LogOut, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
+import { ChevronDown, LogOut, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
+import Logo from "@/components/Logo";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import {
   normalizeAvatarBg,
@@ -123,15 +124,15 @@ const menuData: DropdownMenu[] = [
           { label: "Vagas, Estágio e Trainee", description: "Vagas, currículo e institutos", path: "/estagio" },
           { label: "Simulador de Carreira", description: "Quanto tempo até sua primeira vaga", path: "/simulador" },
           { label: "Empresas Tech", description: "Conheça quem contrata", path: "/empresas" },
-          { label: "Salários", description: "Tabela salarial e calculadoras", path: "/salarios", isPro: true },
+          { label: "Salários", description: "Tabela salarial e calculadoras", path: "/salarios" },
           { label: "Empregabilidade", description: "Prontidão vaga × perfil e análise crítica do anúncio", path: "/empregabilidade", isPro: true },
         ],
       },
       {
         groupLabel: "PROCESSO SELETIVO",
         items: [
-          { label: "Entrevistas", description: "Prepare-se para processos seletivos", path: "/entrevistas", isPro: true },
-          { label: "Currículo e LinkedIn", description: "Apareça para os recrutadores certos", path: "/curriculo", isPro: true },
+          { label: "Entrevistas", description: "Prepare-se para processos seletivos", path: "/entrevistas" },
+          { label: "Currículo e LinkedIn", description: "Apareça para os recrutadores certos", path: "/curriculo" },
           {
             label: "Analisador de currículo com IA",
             description: "Nota, lacunas, palavras-chave e melhorias por seção",
@@ -529,14 +530,8 @@ export default function Header() {
     <>
       <header className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a]">
-              <Compass className="h-5 w-5 text-slate-950" />
-            </div>
-            <span className="font-display font-black text-sm text-slate-900 leading-tight uppercase">
-              BORA NA TECH?
-              <span className="block text-xs font-bold tracking-normal normal-case text-slate-500">Sua Bússola na TI</span>
-            </span>
+          <Link href="/" className="group">
+            <Logo variant="light" size="sm" showTagline />
           </Link>
 
           <DesktopNav location={location} />
@@ -578,7 +573,7 @@ export default function Header() {
                 ) : null}
                 {!isPro && !subscriptionLoading ? (
                 <Link
-                  href="/pro"
+                  href="/planos"
                   className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
                 >
                   <ProInlineBadge label="Assinar Pro" />
@@ -660,7 +655,7 @@ export default function Header() {
                 ) : null}
                 {!isPro && !subscriptionLoading ? (
                   <Link
-                    href="/pro"
+                    href="/planos"
                     onClick={closeMobileDrawer}
                     className="inline-flex flex-1 items-center justify-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
                   >
