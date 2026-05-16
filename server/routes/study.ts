@@ -8,6 +8,23 @@ const router = Router();
 
 const VALID_MODES = ["produtiva", "ritmo", "dispersa", "revisar"];
 
+function normalizeStudiedAt(input: unknown): string {
+  if (typeof input !== "string") {
+    return new Date().toISOString();
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    return new Date(`${input}T12:00:00-03:00`).toISOString();
+  }
+
+  const parsed = new Date(input);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+
+  return new Date().toISOString();
+}
+
 router.use(requireAuth);
 
 router.get("/entries", async (req, res, next) => {
@@ -64,7 +81,7 @@ router.post("/entries", async (req, res, next) => {
         text: text.trim(),
         minutes: Math.round(minutes),
         mode,
-        studied_at: typeof studied_at === "string" ? studied_at : new Date().toISOString(),
+        studied_at: normalizeStudiedAt(studied_at),
       })
       .select()
       .single();
@@ -167,6 +184,27 @@ router.get("/stats", async (req, res, next) => {
     }
 
     res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/heatmap", async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+    const requested = parseInt(String(req.query.days || "365"), 10);
+    const days = Math.min(Math.max(Number.isFinite(requested) ? requested : 365, 7), 730);
+
+    const { data, error } = await supabaseAdmin.rpc("get_study_heatmap", {
+      p_user_id: userId,
+      p_days: days,
+    });
+
+    if (error) {
+      return next(createError(500, "rpc_error", "Erro ao buscar heatmap."));
+    }
+
+    res.json({ data: data || [] });
   } catch (err) {
     next(err);
   }
