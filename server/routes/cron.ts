@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { syncEvents } from "../jobs/syncEvents";
 import { syncJobs } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
+import { cancelAsaasSubscription } from "../lib/asaas";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
@@ -98,6 +99,62 @@ router.post("/sync-events", async (_req, res, next) => {
     res.json({ data: result });
   } catch (err) {
     await recordSync("sympla", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, err instanceof Error ? err.message : String(err));
+    next(err);
+  }
+});
+
+router.post("/process-cancellations", async (_req, res, next) => {
+  try {
+    const nowIso = new Date().toISOString();
+
+    const { data: due, error: dueError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, user_id, provider_subscription_id, current_period_end")
+      .eq("cancel_at_period_end", true)
+      .eq("status", "active")
+      .lte("current_period_end", nowIso);
+
+    if (dueError) {
+      return next(createError(500, "db_error", "Erro ao buscar cancelamentos pendentes."));
+    }
+
+    const subscriptions = due || [];
+    let canceled = 0;
+    let failed = 0;
+    const failures: Array<{ subscription_id: string; reason: string }> = [];
+
+    for (const sub of subscriptions) {
+      try {
+        if (sub.provider_subscription_id) {
+          await cancelAsaasSubscription(sub.provider_subscription_id);
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from("subscriptions")
+          .update({ status: "canceled", canceled_at: new Date().toISOString() })
+          .eq("id", sub.id);
+
+        if (updateError) throw updateError;
+
+        await supabaseAdmin
+          .from("subscription_cancellations")
+          .update({ status: "completed" })
+          .eq("user_id", sub.user_id)
+          .eq("status", "scheduled");
+
+        canceled += 1;
+      } catch (err) {
+        failed += 1;
+        failures.push({
+          subscription_id: sub.id,
+          reason: err instanceof Error ? err.message : String(err),
+        });
+        console.error(`[cron/process-cancellations] Falha em ${sub.id}:`, err);
+      }
+    }
+
+    res.json({ data: { processed: subscriptions.length, canceled, failed, failures } });
+  } catch (err) {
     next(err);
   }
 });

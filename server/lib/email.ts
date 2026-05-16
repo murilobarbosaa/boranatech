@@ -7,19 +7,23 @@ const resend = env.resendApiKey ? new Resend(env.resendApiKey) : null;
 const FROM_TRANSACTIONAL = '"Bora na Tech?" <noreply@boranatech.com.br>';
 const FROM_RELATIONSHIP = '"Bora na Tech?" <oi@boranatech.com.br>';
 
+// TODO(débito-técnico): centralizar lista de features Pro em arquivo compartilhado.
+// Hoje existe duplicação em:
+//   - client/src/pages/Checkout.tsx (array proFeatures — shape rico: icon, title, label, description, color, group)
+//   - server/lib/email.ts (array proBenefits — este arquivo; só strings)
+// O Perfil.tsx foi simplificado pra CTA simples e não precisa mais da lista.
+// Próximo passo: criar shared/proFeatures.ts com a fonte única (shape rico)
+// e derivar os strings do email a partir do campo `label`.
 const proBenefits = [
-  "Quiz de área com IA",
-  "Roadmaps completos",
+  "Roadmaps completos com IA",
   "Plano de estudos personalizado",
-  "Analisador de GitHub",
   "Analisador de currículo com IA",
   "Otimizador de LinkedIn com IA",
-  "Comparativo de salários",
-  "Análise de empregabilidade",
-  "Preparação para entrevistas",
-  "Networking e comunidade",
-  "Notícias tech filtradas",
-  "Comparador de áreas",
+  "Analisador de portfólio (GitHub)",
+  "Análise de empregabilidade com IA",
+  "Simulador de entrevistas com IA",
+  "Gerador de mensagens de networking",
+  "Comunidade exclusiva Pro (em breve)",
 ];
 
 function escapeHtml(value: string) {
@@ -101,8 +105,32 @@ export async function sendProUpgradeEmail(to: string, name: string, planName: st
       `
         <p style="font-size:16px;line-height:1.6;font-weight:700;">Sua assinatura ${safePlanName} está ativa. Todos os recursos estão desbloqueados.</p>
         ${list(proBenefits)}
-        ${button("Acessar recursos Pro", "https://boranatech.com.br/pro/sucesso")}
+        ${button("Acessar recursos Pro", "https://boranatech.com.br/planos/sucesso")}
         <p style="margin-top:20px;font-size:14px;font-weight:700;">Em caso de dúvidas, responda este e-mail.</p>
+      `,
+    ),
+  });
+}
+
+export async function sendCancellationScheduledEmail(to: string, name: string, effectiveAt: string) {
+  const safeName = escapeHtml(name);
+  const date = new Date(effectiveAt);
+  const formattedDate = Number.isNaN(date.getTime())
+    ? "o fim do período pago"
+    : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  const safeDate = escapeHtml(formattedDate);
+
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: "Recebemos seu cancelamento — acesso Pro até " + formattedDate,
+    html: layout(
+      `Tudo certo, ${safeName}.`,
+      `
+        <p style="font-size:16px;line-height:1.6;font-weight:700;">Sua solicitação de cancelamento foi registrada. Você mantém acesso a todos os recursos Pro até <strong>${safeDate}</strong>.</p>
+        <p style="font-size:16px;line-height:1.6;font-weight:700;">Mudou de ideia? Você pode reverter o cancelamento até essa data direto na sua página de perfil.</p>
+        ${button("Voltar para o perfil", "https://boranatech.com.br/perfil")}
+        <p style="margin-top:20px;font-size:14px;font-weight:700;">Quer nos contar o motivo do cancelamento? Responda este e-mail — sua opinião nos ajuda a melhorar.</p>
       `,
     ),
   });
@@ -119,7 +147,7 @@ export async function sendCancellationEmail(to: string, name: string) {
       `
         <p style="font-size:16px;line-height:1.6;font-weight:700;">Sua assinatura Pro foi cancelada. Você continua com acesso gratuito à plataforma.</p>
         <p style="font-size:16px;line-height:1.6;font-weight:700;">Se quiser voltar quando estiver pronto, é só acessar a página de planos.</p>
-        ${button("Ver planos", "https://boranatech.com.br/pro")}
+        ${button("Ver planos", "https://boranatech.com.br/planos")}
         <p style="margin-top:20px;font-size:14px;font-weight:700;">Antes de ir, conta pra gente: <a href="mailto:oi@boranatech.com.br" style="color:#1a1a1a;">o que poderíamos ter feito melhor?</a></p>
       `,
     ),

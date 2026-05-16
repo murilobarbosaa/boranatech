@@ -13,6 +13,25 @@ interface SubscriptionContextValue {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
 
+function buildDevMockSubscription() {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  return {
+    isPro: true,
+    status: "active",
+    cancel_at_period_end: false,
+    canceled_at: null,
+    current_period_start: new Date(now - 30 * day).toISOString(),
+    current_period_end: new Date(now + 335 * day).toISOString(),
+    created_at: new Date(now - 30 * day).toISOString(),
+    plans: {
+      name: "Pro Anual",
+      code: "annual",
+      price_cents: 17990,
+    },
+  };
+}
+
 function isLocalDevelopmentHost() {
   if (typeof window === "undefined") return false;
 
@@ -38,7 +57,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const silent = options?.silent === true;
 
     if (isLocalDevelopmentHost()) {
-      setSubscription({ status: "local_development_preview", isPro: true });
+      setSubscription(buildDevMockSubscription());
       setIsPro(true);
       setLoading(false);
       return;
@@ -74,7 +93,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     let mounted = true;
 
     if (isLocalDevelopmentHost()) {
-      setSubscription({ status: "local_development_preview", isPro: true });
+      setSubscription(buildDevMockSubscription());
       setIsPro(true);
       setLoading(false);
       return;

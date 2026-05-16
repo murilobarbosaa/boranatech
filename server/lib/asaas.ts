@@ -71,3 +71,7 @@ export async function createAsaasCheckout(params: {
 export async function getAsaasSubscriptionPayments(subscriptionId: string) {
   return asaasRequest("GET", `/subscriptions/${encodeURIComponent(subscriptionId)}/payments`);
 }
+
+export async function cancelAsaasSubscription(subscriptionId: string) {
+  return asaasRequest("DELETE", `/subscriptions/${encodeURIComponent(subscriptionId)}`);
+}
