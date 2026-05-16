@@ -26,44 +26,42 @@ export async function getCareerQuizResult(answers: CareerQuizAnswer[]): Promise<
   };
 }
 
-export async function persistQuizResult(params: {
-  answers: Array<{ question_id: string; answer_id?: string; answer_text?: string; area?: string }>;
+export async function persistQuizResult(payload: {
+  answers: Array<{
+    question_id: string;
+    answer_id: string;
+    answer_text: string;
+    area: string;
+  }>;
   result_area: string;
   result_area_slug?: string;
-  confidence?: number;
-  result_json?: Record<string, unknown>;
-}) {
-  const headers = await getAuthHeader();
-  if (!headers) return null;
+  confidence: number;
+  result_json?: unknown;
+}): Promise<{ id: string; completed_at: string } | null> {
+  if (!supabase) return null;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) return null;
 
   try {
-    const attemptRes = await fetch(apiUrl("/api/quiz/attempts"), {
+    const response = await fetch(apiUrl("/api/quiz/attempts/batch"), {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...headers },
-    });
-    if (!attemptRes.ok) return null;
-    const { data: attempt } = await attemptRes.json();
-
-    await fetch(apiUrl(`/api/quiz/attempts/${attempt.id}/answers`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify({ answers: params.answers }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(payload),
     });
 
-    const completeRes = await fetch(apiUrl(`/api/quiz/attempts/${attempt.id}/complete`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...headers },
-      body: JSON.stringify({
-        result_area: params.result_area,
-        result_area_slug: params.result_area_slug,
-        confidence: params.confidence,
-        result_json: params.result_json,
-      }),
-    });
-    if (!completeRes.ok) return null;
+    if (!response.ok) {
+      throw new Error(`Quiz persist falhou: ${response.status}`);
+    }
 
-    return attempt.id as string;
-  } catch {
+    const json = await response.json();
+    return json.data as { id: string; completed_at: string };
+  } catch (err) {
+    console.error("Erro ao persistir resultado do quiz:", err);
     return null;
   }
 }

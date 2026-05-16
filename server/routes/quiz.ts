@@ -6,6 +6,100 @@ import { createError } from "../middleware/error";
 
 const router = Router();
 
+router.post("/attempts/batch", requireAuth, async (req, res, next) => {
+  try {
+    const {
+      answers,
+      result_area,
+      result_area_slug,
+      confidence,
+      result_json,
+    } = req.body as {
+      answers?: Array<{
+        question_id?: unknown;
+        answer_id?: unknown;
+        answer_text?: unknown;
+        area?: unknown;
+      }>;
+      result_area?: unknown;
+      result_area_slug?: unknown;
+      confidence?: unknown;
+      result_json?: unknown;
+    };
+
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return next(
+        createError(400, "invalid_request", "answers deve ser um array não vazio."),
+      );
+    }
+    if (typeof result_area !== "string" || !result_area.trim()) {
+      return next(
+        createError(400, "invalid_request", "result_area é obrigatório."),
+      );
+    }
+    if (
+      typeof confidence !== "number" ||
+      confidence < 0 ||
+      confidence > 100
+    ) {
+      return next(
+        createError(400, "invalid_request", "confidence deve ser número entre 0 e 100."),
+      );
+    }
+
+    const now = new Date().toISOString();
+
+    const { data: attempt, error: attemptError } = await supabaseAdmin
+      .from("career_quiz_attempts")
+      .insert({
+        user_id: req.user!.id,
+        started_at: now,
+        completed_at: now,
+        result_area,
+        result_area_slug:
+          typeof result_area_slug === "string" ? result_area_slug : null,
+        confidence,
+        result_json: result_json ?? {},
+      })
+      .select("id, completed_at")
+      .single();
+
+    if (attemptError || !attempt) {
+      return next(createError(500, "db_error", "Erro ao criar tentativa."));
+    }
+
+    const answerRows = answers.map((a, idx) => ({
+      attempt_id: attempt.id,
+      question_id: String(a.question_id ?? ""),
+      answer_id: a.answer_id ? String(a.answer_id) : null,
+      answer_text: typeof a.answer_text === "string" ? a.answer_text : null,
+      area: typeof a.area === "string" ? a.area : null,
+      order_index: idx,
+    }));
+
+    const { error: answersError } = await supabaseAdmin
+      .from("career_quiz_answers")
+      .insert(answerRows);
+
+    if (answersError) {
+      await supabaseAdmin
+        .from("career_quiz_attempts")
+        .delete()
+        .eq("id", attempt.id);
+      return next(createError(500, "db_error", "Erro ao salvar respostas."));
+    }
+
+    res.json({
+      data: {
+        id: attempt.id as string,
+        completed_at: attempt.completed_at as string,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/attempts", requireAuth, async (req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin.from("career_quiz_attempts").insert({ user_id: req.user!.id }).select().single();
@@ -92,7 +186,7 @@ router.get("/history", requireAuth, async (req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("career_quiz_attempts")
-      .select("id, started_at, completed_at, result_area, result_area_slug, confidence")
+      .select("id, started_at, completed_at, result_area, result_area_slug, confidence, result_json")
       .eq("user_id", req.user!.id)
       .not("completed_at", "is", null)
       .order("completed_at", { ascending: false })
