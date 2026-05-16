@@ -140,6 +140,70 @@ router.patch("/", async (req, res, next) => {
   }
 });
 
+router.get("/roadmaps", async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    const { data: progress, error: progressError } = await supabaseAdmin
+      .from("user_roadmap_progress")
+      .select("roadmap_id, step_id, status")
+      .eq("user_id", userId);
+
+    if (progressError) {
+      return next(createError(500, "db_error", "Erro ao buscar progresso de roadmaps."));
+    }
+
+    if (!progress || progress.length === 0) {
+      return res.json({ data: [] });
+    }
+
+    const completedByRoadmap = new Map<string, number>();
+    for (const row of progress) {
+      if (row.status !== "completed") continue;
+      const id = String(row.roadmap_id);
+      completedByRoadmap.set(id, (completedByRoadmap.get(id) || 0) + 1);
+    }
+
+    const roadmapIds = Array.from(new Set(progress.map((row) => String(row.roadmap_id))));
+
+    const { data: roadmaps, error: roadmapsError } = await supabaseAdmin
+      .from("roadmaps")
+      .select("id, slug, title, area_slug, roadmap_steps(count)")
+      .in("id", roadmapIds);
+
+    if (roadmapsError) {
+      return next(createError(500, "db_error", "Erro ao buscar trilhas."));
+    }
+
+    const result = (roadmaps || [])
+      .map((roadmap) => {
+        const totalSteps = Number(
+          Array.isArray(roadmap.roadmap_steps) && roadmap.roadmap_steps.length > 0
+            ? roadmap.roadmap_steps[0].count || 0
+            : 0,
+        );
+        const completed = completedByRoadmap.get(String(roadmap.id)) || 0;
+        const progressPercent =
+          totalSteps > 0 ? Math.min(Math.round((completed / totalSteps) * 100), 100) : 0;
+
+        return {
+          id: roadmap.id,
+          slug: roadmap.slug,
+          title: roadmap.title,
+          area: roadmap.area_slug,
+          total_steps: totalSteps,
+          completed_steps: completed,
+          progress: progressPercent,
+        };
+      })
+      .sort((a, b) => b.progress - a.progress);
+
+    res.json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.delete("/", async (req, res, next) => {
   try {
     const userId = req.user!.id;
