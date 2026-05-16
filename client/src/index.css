@@ -568,3 +568,127 @@
 .ai-chat-typing-dot:nth-child(3) {
   animation-delay: 0.3s;
 }
+
+@keyframes spin-slow {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* LogoLoop — loop infinito horizontal em dois sentidos */
+@keyframes loop-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes loop-right {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+.animate-loop-left {
+  animation: loop-left 30s linear infinite;
+}
+
+.animate-loop-right {
+  animation: loop-right 30s linear infinite;
+}
+
+.animate-loop-left:hover,
+.animate-loop-right:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-loop-left,
+  .animate-loop-right {
+    animation: none;
+  }
+}
+
+@keyframes loop-slow {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+.animate-loop-slow {
+  animation: loop-slow 30s linear infinite;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.animate-loop-slow:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-loop-slow {
+    animation: none;
+  }
+}
+
+/* PraVoce — nuvens flutuantes neobrutalist */
+@keyframes float-cloud {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-16px); }
+}
+
+.animate-float-cloud {
+  animation: float-cloud var(--cloud-duration, 8s) ease-in-out infinite;
+  animation-delay: var(--cloud-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-cloud { animation: none; }
+}
+
+/* Checkout — estrelinhas douradas com pulse */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.animate-twinkle {
+  animation: twinkle var(--twinkle-duration, 3s) ease-in-out infinite;
+  animation-delay: var(--twinkle-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-twinkle { animation: none; }
+}
+
+/* CtaFinal — cursor piscando do terminal */
+@keyframes cursor-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s steps(2) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cursor-blink { animation: none; opacity: 1; }
+}
+
+/* CtaFinal — chuva de 0s e 1s no fundo do terminal interativo */
+@keyframes matrix-fall {
+  0% {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% {
+    transform: translateY(calc(100vh + 50px));
+    opacity: 0;
+  }
+}
+
+.animate-matrix-fall {
+  animation: matrix-fall var(--fall-duration, 10s) linear infinite;
+  animation-delay: var(--fall-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-matrix-fall { animation: none; opacity: 0.15; }
+}
