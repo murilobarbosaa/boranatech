@@ -31,7 +31,7 @@ const staticEntries: SitemapEntry[] = [
   { loc: "/mulheres", changefreq: "weekly", priority: "0.7" },
   { loc: "/dicas", changefreq: "weekly", priority: "0.7" },
   { loc: "/sobre", changefreq: "monthly", priority: "0.6" },
-  { loc: "/pro", changefreq: "monthly", priority: "0.7" },
+  { loc: "/planos", changefreq: "monthly", priority: "0.7" },
   { loc: "/cadastro", changefreq: "yearly", priority: "0.5" },
   { loc: "/licenca", changefreq: "yearly", priority: "0.4" },
   { loc: "/termos-de-uso", changefreq: "yearly", priority: "0.4" },

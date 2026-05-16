@@ -54,7 +54,7 @@ export default function CheckoutSucesso() {
 
   return (
     <Layout>
-      <SEO title="Pagamento confirmado — Bora na Tech? Pro" url="/pro/sucesso" noindex />
+      <SEO title="Pagamento confirmado — Bora na Tech? Pro" url="/planos/sucesso" noindex />
       <section className="bg-[#faf8f4] py-16">
         <div className="container">
           <div className="mx-auto max-w-2xl rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[6px_6px_0_#0f172a]">

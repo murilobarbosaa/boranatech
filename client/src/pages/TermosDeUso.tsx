@@ -37,7 +37,7 @@ export default function TermosDeUso() {
         relatedLinks={[
           { href: "/privacidade", label: "Privacidade", description: "Dados, cookies e direitos LGPD." },
           { href: "/licenca", label: "Licença", description: "Como reutilizar conteúdo original." },
-          { href: "/pro", label: "Plano Pro", description: "Recursos pagos disponíveis." },
+          { href: "/planos", label: "Plano Pro", description: "Recursos pagos disponíveis." },
         ]}
         sections={[
           { id: "sobre", title: "1. Sobre a plataforma", body: <LegalText>O Bora na Tech? é uma plataforma educacional e de curadoria para pessoas iniciantes em tecnologia. Oferecemos conteúdos sobre áreas de TI, roadmaps, cursos, plataformas, projetos, eventos, vagas, notícias, comunidade e ferramentas de apoio à carreira.</LegalText> },

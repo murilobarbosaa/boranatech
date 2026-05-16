@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem("bnt_social_signup_pending");
             localStorage.setItem("bnt_signup_completed", "true");
             window.setTimeout(() => {
-              if (window.location.pathname !== "/pro") window.location.assign("/pro");
+              if (window.location.pathname !== "/planos") window.location.assign("/planos");
             }, 0);
           }
         }
