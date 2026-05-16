@@ -135,18 +135,6 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     description: "Gerador de mensagem de networking",
     systemPrompt: "Você escreve mensagens de networking humanas para LinkedIn, com tom direto, descontraído e formal.",
   },
-  "career-quiz": {
-    key: "career-quiz",
-    requiresPro: false,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 5_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Quiz de carreira com IA",
-    systemPrompt:
-      "Você é um orientador de carreira especializado em tecnologia no Brasil. Com base nas respostas do quiz, indique áreas compatíveis, explique o porquê e sugira próximos passos concretos. Responda em português brasileiro.",
-  },
 };
 
 export function getToolConfig(toolKey: string): AiToolConfig | null {
