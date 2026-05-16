@@ -186,7 +186,12 @@ export default function EstudosDiario() {
 
     try {
       setSaving(true);
-      const entry = await createStudyEntry({ text: trimmed, minutes, mode });
+      const entry = await createStudyEntry({
+        text: trimmed,
+        minutes,
+        mode,
+        studied_at: new Date().toISOString(),
+      });
       setEntries((current) => [
         {
           id: entry.id,
