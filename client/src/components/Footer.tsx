@@ -13,7 +13,7 @@ type SocialIconProps = {
 function SocialIcon({ icon, href, label }: SocialIconProps) {
   const isPlaceholder = !href;
   const baseClass =
-    "inline-flex h-10 w-10 items-center justify-center rounded-lg border-2 border-slate-800 bg-slate-900 text-slate-400 transition-all duration-200";
+    "inline-flex h-11 w-11 items-center justify-center rounded-lg border-2 border-slate-800 bg-slate-900 text-slate-400 transition-all duration-200";
   const stateClass = isPlaceholder
     ? "cursor-not-allowed opacity-60"
     : "hover:border-amber-400 hover:text-amber-400 hover:-translate-y-0.5";
@@ -22,7 +22,7 @@ function SocialIcon({ icon, href, label }: SocialIconProps) {
   if (isPlaceholder) {
     return (
       <span className={className} aria-label={`${label} (em breve)`} title={`${label} (em breve)`}>
-        <Icon icon={icon} style={{ fontSize: "20px" }} aria-hidden="true" />
+        <Icon icon={icon} style={{ fontSize: "32px" }} aria-hidden="true" />
       </span>
     );
   }
@@ -74,7 +74,7 @@ export default function Footer() {
           </p>
         </div>
 
-        <div className="grid gap-10 py-12 lg:grid-cols-[1fr_1fr_1fr_1fr_1.5fr]">
+        <div className="grid grid-cols-2 gap-8 py-12 sm:grid-cols-3 md:grid-cols-4 md:gap-10 lg:grid-cols-[1fr_1fr_1fr_1fr_1.5fr]">
           {Object.values(FOOTER_COLUMNS).map((column) => (
             <nav key={column.title} aria-label={column.title}>
               <h3 className="mb-4 font-display text-xs font-black tracking-widest text-amber-400">
@@ -95,7 +95,7 @@ export default function Footer() {
             </nav>
           ))}
 
-          <div>
+          <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-1">
             <h3 className="mb-4 font-display text-xs font-black tracking-widest text-amber-400">
               NEWSLETTER
             </h3>
@@ -123,10 +123,10 @@ export default function Footer() {
 
         <div className="border-y-2 border-slate-800 py-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <span className="font-display text-xs font-black tracking-widest text-amber-400">
+            <span className="text-center font-display text-xs font-black tracking-widest text-amber-400 md:text-left">
               VEM COM A GENTE
             </span>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-4 md:justify-start">
               {SOCIAL_ITEMS.map((item) => (
                 <SocialIcon key={item.key} icon={item.icon} href={item.href} label={item.label} />
               ))}

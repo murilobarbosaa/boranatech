@@ -411,7 +411,13 @@ const TerminalCard = forwardRef<TerminalCardHandle>(function TerminalCard(_props
   }, [history, reduce]);
 
   useEffect(() => {
-    inputRef.current?.focus({ preventScroll: true });
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      window.matchMedia("(pointer: coarse)").matches;
+
+    if (!isTouchDevice) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
   }, []);
 
   useEffect(() => {

@@ -222,11 +222,11 @@ function dropdownItemClass({ isActive, isPro }: { isActive: boolean; isPro?: boo
     "block rounded-xl border px-3 py-2.5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200";
 
   if (isActive && isPro) {
-    return `${base} pro-glare border-[#FFB800] bg-[#FFF7D6] shadow-[2px_2px_0_#FFB800] hover:border-[#FFB800] hover:bg-[#FFF2B8]`;
+    return `${base} pro-glare border-violet-700 bg-violet-50 shadow-[2px_2px_0_#6d28d9] hover:border-violet-700 hover:bg-violet-100`;
   }
 
   if (isActive) {
-    return `${base} border-slate-900 bg-[#FFF7D6] shadow-[2px_2px_0_#0f172a] hover:bg-[#FFF2B8]`;
+    return `${base} border-violet-700 bg-violet-50 shadow-[2px_2px_0_#6d28d9] hover:bg-violet-100`;
   }
 
   if (isPro) {
@@ -238,7 +238,7 @@ function dropdownItemClass({ isActive, isPro }: { isActive: boolean; isPro?: boo
 
 function ActiveRouteDot() {
   return (
-    <span className="ml-1.5 mt-[5px] inline-flex h-2 w-2 shrink-0 rounded-full border border-slate-900 bg-[#FFB800] shadow-[1px_1px_0_#0f172a]" aria-hidden="true" />
+    <span className="ml-1.5 mt-[5px] inline-flex h-2 w-2 shrink-0 rounded-full border border-slate-900 bg-violet-700 shadow-[1px_1px_0_#0f172a]" aria-hidden="true" />
   );
 }
 
