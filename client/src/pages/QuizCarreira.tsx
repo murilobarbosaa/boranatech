@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import posthog from "posthog-js";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModal";
 import { areasTI } from "@/lib/data";
 import { quizQuestions } from "@/lib/platformData";
 import { persistQuizResult } from "@/services/careerQuizService";
@@ -105,6 +106,7 @@ export default function QuizCarreira() {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [resumeAvailable, setResumeAvailable] = useState(false);
+  const [resetModalOpen, setResetModalOpen] = useState(false);
 
   useEffect(() => {
     const saved = loadProgress();
@@ -157,17 +159,15 @@ export default function QuizCarreira() {
   };
 
   const handleReset = () => {
-    if (
-      window.confirm(
-        "Tem certeza que quer reiniciar o quiz? Você vai perder o progresso atual.",
-      )
-    ) {
-      setAnswers({});
-      setCurrentIndex(0);
-      clearProgress();
-      setResumeAvailable(false);
-      setPhase("intro");
-    }
+    setResetModalOpen(true);
+  };
+
+  const handleResetConfirmed = () => {
+    setAnswers({});
+    setCurrentIndex(0);
+    clearProgress();
+    setResumeAvailable(false);
+    setPhase("intro");
   };
 
   const handleComplete = (finalAnswers: Record<string, number>) => {
@@ -347,6 +347,12 @@ export default function QuizCarreira() {
           {phase === "completing" && <CompletingScreen key="completing" />}
         </AnimatePresence>
       </div>
+
+      <ResetQuizConfirmModal
+        open={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
+        onConfirm={handleResetConfirmed}
+      />
     </Layout>
   );
 }
