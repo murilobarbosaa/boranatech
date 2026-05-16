@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import {
   BookOpen,
-  CalendarDays,
   Check,
-  Compass,
   Edit3,
+  FileText,
+  Flame,
+  Github,
   KeyRound,
-  Lock,
+  Linkedin,
   LogOut,
-  ShieldAlert,
+  MapPin,
+  MessageSquare,
   Star,
   Trash2,
 } from "lucide-react";
@@ -18,7 +20,11 @@ import {
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import UserAvatar from "@/components/UserAvatar";
-import { ProInlineBadge } from "@/components/pro/ProStarIcon";
+import { CancelSubscriptionModal } from "@/components/profile/CancelSubscriptionModal";
+import { ConquistasPreview } from "@/components/profile/ConquistasPreview";
+import { ProfileBackground } from "@/components/profile/ProfileBackground";
+import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
+import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -38,7 +44,15 @@ import {
 } from "@/constants/avatarOptions";
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import { getStudyEntries, getStudyStats, type StudyEntry, type StudyStats } from "@/services/studyService";
+import { getStatusLabel, type SubscriptionStatusVariant } from "@/lib/subscriptionLabels";
+import {
+  getStudyEntries,
+  getStudyHeatmap,
+  getStudyStats,
+  type StudyEntry,
+  type StudyHeatmapDay,
+  type StudyStats,
+} from "@/services/studyService";
 import type { Profile } from "@/services/contracts";
 
 type SubscriptionPlan = {
@@ -52,12 +66,22 @@ type SubscriptionData = {
   plans?: SubscriptionPlan | null;
   created_at?: string | null;
   current_period_end?: string | null;
+  cancel_at_period_end?: boolean;
 };
 
+type CancelReasonCode = "expensive" | "unused" | "missing_feature" | "paused" | "other";
+
+const HEATMAP_TOTAL_WEEKS = 52;
+const HEATMAP_DAYS = 365;
+
 type RoadmapProgress = {
-  title?: string;
-  progress?: number;
-  area?: string;
+  id: string;
+  slug: string;
+  title: string;
+  area?: string | null;
+  total_steps: number;
+  completed_steps: number;
+  progress: number;
 };
 
 type AvatarSection = "border" | "icon" | "bg";
@@ -83,26 +107,18 @@ const avatarSections: Array<{ id: AvatarSection; label: string; title: string; d
   },
 ];
 
-const proBenefits = [
-  "Quiz de área com IA",
-  "Roadmaps completos",
-  "Plano de estudos personalizado",
-  "Analisador de GitHub",
-  "Analisador de currículo com IA",
-  "Otimizador de LinkedIn com IA",
-  "Comparativo de salários",
-  "Análise de empregabilidade",
-  "Preparação para entrevistas",
-  "Networking e comunidade",
-  "Notícias tech filtradas",
-  "Comparador de áreas",
-];
-
 const modeEmoji: Record<string, string> = {
   produtiva: "🔥",
   ritmo: "⚡",
   dispersa: "🌧",
   revisar: "🧠",
+};
+
+const statusBadgeStyles: Record<SubscriptionStatusVariant, string> = {
+  success: "bg-emerald-200 text-emerald-900 border-emerald-700",
+  warning: "bg-amber-200 text-amber-900 border-amber-700",
+  danger: "bg-rose-200 text-rose-900 border-rose-700",
+  neutral: "bg-slate-200 text-slate-900 border-slate-700",
 };
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -140,31 +156,42 @@ function formatDate(value?: string | null) {
   return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-function renewalDate(subscription: SubscriptionData | null) {
-  if (!subscription?.created_at) return null;
-  if (subscription.current_period_end) return subscription.current_period_end;
+function formatPeriodEnd(periodEnd?: string | null) {
+  return formatDate(periodEnd);
+}
 
-  const created = new Date(subscription.created_at);
-  const code = `${subscription.plans?.code || ""} ${subscription.plans?.name || ""}`.toLowerCase();
-  if (code.includes("annual") || code.includes("anual")) created.setFullYear(created.getFullYear() + 1);
-  else if (code.includes("semi") || code.includes("semes")) created.setMonth(created.getMonth() + 6);
-  else created.setMonth(created.getMonth() + 1);
-
-  return created.toISOString();
+function formatProSince(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
 function truncate(value: string, max = 120) {
   return value.length > max ? `${value.slice(0, max).trim()}...` : value;
 }
 
-function EmptyBox({ title, text, action }: { title: string; text: string; action?: ReactNode }) {
-  return (
-    <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-5 shadow-[4px_4px_0_#0f172a]">
-      <p className="font-display text-xl font-black text-[#1a1a1a]">{title}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-500">{text}</p>
-      {action ? <div className="mt-4">{action}</div> : null}
-    </div>
-  );
+function toSaoPauloDateString(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+function getHeatmapCellColor(minutes: number) {
+  if (minutes <= 0) return "bg-slate-100 border-slate-200";
+  if (minutes < 30) return "bg-emerald-200 border-emerald-400";
+  if (minutes < 60) return "bg-emerald-400 border-emerald-600";
+  if (minutes < 120) return "bg-emerald-600 border-emerald-800";
+  return "bg-emerald-800 border-emerald-950";
 }
 
 function optionButtonClass(selected: boolean, accentClassName?: string) {
@@ -234,7 +261,11 @@ function AvatarSectionTabs({
   onChange: (section: AvatarSection) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-white p-1" role="tablist" aria-label="Categoria do avatar">
+    <div
+      className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-white p-1"
+      role="tablist"
+      aria-label="Categoria do avatar"
+    >
       {avatarSections.map((section) => {
         const selected = active === section.id;
 
@@ -259,6 +290,234 @@ function AvatarSectionTabs({
   );
 }
 
+type MetricVariant = "market" | "technical" | "application";
+
+const metricCardStyles: Record<MetricVariant, { card: string; icon: string }> = {
+  market: {
+    card: "bg-amber-50 border-amber-300 text-amber-900",
+    icon: "bg-amber-200 text-amber-800",
+  },
+  technical: {
+    card: "bg-emerald-50 border-emerald-300 text-emerald-900",
+    icon: "bg-emerald-200 text-emerald-800",
+  },
+  application: {
+    card: "bg-blue-50 border-blue-300 text-blue-900",
+    icon: "bg-blue-200 text-blue-800",
+  },
+};
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  unit,
+  variant,
+  subtext,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number | string;
+  unit: string;
+  variant: MetricVariant;
+  subtext?: string | null;
+}) {
+  const styles = metricCardStyles[variant];
+
+  return (
+    <div className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 ${styles.card}`}>
+      <div className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.icon}`}>
+        {icon}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] opacity-70">{label}</p>
+        <div className="flex items-baseline gap-1">
+          <span className="font-display text-xl font-black leading-none">{value}</span>
+          <span className="font-mono text-[11px] opacity-70">{unit}</span>
+        </div>
+        {subtext ? <p className="mt-0.5 truncate font-mono text-[10px] opacity-60">{subtext}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function StreakHeatmap({ data, isEmpty }: { data: StudyHeatmapDay[]; isEmpty: boolean }) {
+  const dataMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const day of data) map.set(day.date, day.minutes);
+    return map;
+  }, [data]);
+
+  const todayStr = useMemo(() => toSaoPauloDateString(new Date()), []);
+  const totalWeeks = HEATMAP_TOTAL_WEEKS;
+
+  const weeks = useMemo(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const daysToSaturday = 6 - dayOfWeek;
+    const lastSaturday = new Date(today);
+    lastSaturday.setDate(today.getDate() + daysToSaturday);
+
+    const result: Array<
+      Array<{
+        dateStr: string;
+        minutes: number;
+        label: string;
+        isToday: boolean;
+        isFuture: boolean;
+        month: number;
+      }>
+    > = [];
+
+    for (let weekOffset = totalWeeks - 1; weekOffset >= 0; weekOffset--) {
+      const week: Array<{
+        dateStr: string;
+        minutes: number;
+        label: string;
+        isToday: boolean;
+        isFuture: boolean;
+        month: number;
+      }> = [];
+
+      for (let dayInWeek = 0; dayInWeek < 7; dayInWeek++) {
+        const date = new Date(lastSaturday);
+        date.setDate(lastSaturday.getDate() - weekOffset * 7 - (6 - dayInWeek));
+
+        const dateStr = toSaoPauloDateString(date);
+        const minutes = dataMap.get(dateStr) || 0;
+        const label = date.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        });
+        const isToday = dateStr === todayStr;
+        const isFuture = date > today;
+        const month = date.getMonth();
+
+        week.push({ dateStr, minutes, label, isToday, isFuture, month });
+      }
+
+      result.push(week);
+    }
+
+    return result;
+  }, [dataMap, todayStr, totalWeeks]);
+
+  const monthLabels = useMemo(() => {
+    const labels: Array<{ weekIdx: number; label: string }> = [];
+    const monthNames = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    let lastMonth = -1;
+
+    weeks.forEach((week, weekIdx) => {
+      const firstDay = week[0];
+      if (firstDay.month !== lastMonth) {
+        labels.push({ weekIdx, label: monthNames[firstDay.month] });
+        lastMonth = firstDay.month;
+      }
+    });
+
+    return labels;
+  }, [weeks]);
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="font-display text-sm font-black text-slate-700">Atividade recente</h3>
+        <p className="font-mono text-xs text-slate-500">últimos 12 meses</p>
+      </div>
+
+      <div className="w-full overflow-x-auto pb-2 lg:overflow-x-visible">
+        <div className="w-full lg:min-w-0" style={{ minWidth: `${totalWeeks * 10}px` }}>
+          <div className="relative mb-1 h-4">
+            {monthLabels.map(({ weekIdx, label }) => (
+              <span
+                key={`${weekIdx}-${label}`}
+                className="absolute font-mono text-[10px] text-slate-500"
+                style={{ left: `${(weekIdx / totalWeeks) * 100}%` }}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
+
+          <div className="flex gap-[3px]">
+            {weeks.map((week, weekIdx) => (
+              <div key={weekIdx} className="flex flex-1 flex-col gap-[3px]">
+                {week.map((cell) => {
+                  if (cell.isFuture) {
+                    return (
+                      <div key={cell.dateStr} className="aspect-square rounded-[2px]" aria-hidden="true" />
+                    );
+                  }
+
+                  const colorClass = getHeatmapCellColor(cell.minutes);
+                  const todayRing = cell.isToday
+                    ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-white"
+                    : "";
+
+                  return (
+                    <div
+                      key={cell.dateStr}
+                      className={`group relative aspect-square rounded-[2px] border ${colorClass} ${todayRing}`}
+                      title={`${cell.label}: ${cell.minutes} min`}
+                      aria-label={`${cell.label}: ${cell.minutes} minutos`}
+                    >
+                      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+                        {cell.label} · {cell.minutes} min
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-end gap-1.5 font-mono text-[11px] text-slate-500">
+        <span>menos</span>
+        {[0, 15, 45, 90, 150].map((minutes) => (
+          <span
+            key={minutes}
+            className={`h-2.5 w-2.5 rounded-sm border ${getHeatmapCellColor(minutes)}`}
+            aria-hidden="true"
+          />
+        ))}
+        <span>mais</span>
+      </div>
+
+      {isEmpty ? (
+        <div className="mt-4 rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/50 p-4 text-center">
+          <p className="text-sm font-semibold text-violet-900">
+            Sua atividade aparece aqui quando você registra estudos no diário.
+          </p>
+          <Link
+            href="/estudos/diario"
+            className="mt-2 inline-block text-sm font-bold text-violet-700 underline-offset-2 hover:text-violet-900 hover:underline"
+          >
+            Comece sua primeira entrada →
+          </Link>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProToolCard({ href, icon, title }: { href: string; icon: ReactNode; title: string }) {
+  return (
+    <Link
+      href={href}
+      className="group flex flex-col items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+    >
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 transition-colors group-hover:bg-amber-200">
+        {icon}
+      </div>
+      <h3 className="font-display text-sm font-black leading-tight text-slate-950">{title}</h3>
+    </Link>
+  );
+}
+
 export default function Perfil() {
   const [, setLocation] = useLocation();
   const { loading: authLoading, profile, refreshProfile, signOut, user } = useAuth();
@@ -267,9 +526,10 @@ export default function Perfil() {
   const [localProfile, setLocalProfile] = useState<Profile | null>(profile);
   const [studyStats, setStudyStats] = useState<StudyStats | null>(null);
   const [recentEntries, setRecentEntries] = useState<StudyEntry[]>([]);
-  const [allEntries, setAllEntries] = useState<StudyEntry[]>([]);
+  const [heatmapData, setHeatmapData] = useState<StudyHeatmapDay[]>([]);
   const [roadmaps, setRoadmaps] = useState<RoadmapProgress[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+  const [heatmapLoading, setHeatmapLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editName, setEditName] = useState("");
   const [editAvatarBorder, setEditAvatarBorder] = useState<AvatarBorderId>(defaultAvatarBorder);
@@ -278,6 +538,9 @@ export default function Perfil() {
   const [activeAvatarSection, setActiveAvatarSection] = useState<AvatarSection>("border");
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelingSubscription, setCancelingSubscription] = useState(false);
+  const [signOutModalOpen, setSignOutModalOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const subscriptionData = subscription as SubscriptionData | null;
@@ -297,20 +560,26 @@ export default function Perfil() {
 
     let cancelled = false;
     setDataLoading(true);
+    setHeatmapLoading(true);
 
     async function loadData() {
-      const [statsResult, recentResult, allResult, roadmapResult] = await Promise.allSettled([
-        getStudyStats("7d"),
+      const [statsResult, recentResult, roadmapResult, heatmapResult] = await Promise.allSettled([
+        getStudyStats("30d"),
         getStudyEntries({ limit: 3 }),
-        getStudyEntries({ limit: 100 }),
         apiFetch("/api/me/roadmaps"),
+        getStudyHeatmap(HEATMAP_DAYS),
       ]);
 
       if (cancelled) return;
       setStudyStats(statsResult.status === "fulfilled" ? statsResult.value : null);
       setRecentEntries(recentResult.status === "fulfilled" ? recentResult.value : []);
-      setAllEntries(allResult.status === "fulfilled" ? allResult.value : []);
-      setRoadmaps(roadmapResult.status === "fulfilled" && Array.isArray(roadmapResult.value.data) ? roadmapResult.value.data : []);
+      setRoadmaps(
+        roadmapResult.status === "fulfilled" && Array.isArray(roadmapResult.value?.data)
+          ? (roadmapResult.value.data as RoadmapProgress[])
+          : [],
+      );
+      setHeatmapData(heatmapResult.status === "fulfilled" ? heatmapResult.value : []);
+      setHeatmapLoading(false);
       setDataLoading(false);
     }
 
@@ -318,8 +587,9 @@ export default function Perfil() {
       if (!cancelled) {
         setStudyStats(null);
         setRecentEntries([]);
-        setAllEntries([]);
         setRoadmaps([]);
+        setHeatmapData([]);
+        setHeatmapLoading(false);
         setDataLoading(false);
       }
     });
@@ -336,33 +606,17 @@ export default function Perfil() {
   const avatarBorder = normalizeAvatarBorder(localProfile?.avatar_border);
   const avatarIcon = normalizeAvatarIcon(localProfile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(localProfile?.avatar_bg);
-  const activeAvatarSectionConfig = avatarSections.find((section) => section.id === activeAvatarSection) || avatarSections[0];
+  const activeAvatarSectionConfig = avatarSections.find((s) => s.id === activeAvatarSection) || avatarSections[0];
   const planName = subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
-  const planPrice = subscriptionData?.plans?.price_cents ? formatCurrencyFromCents(subscriptionData.plans.price_cents) : "Não informado";
-
-  const metricCards = useMemo(
-    () => [
-      {
-        label: "Sessões de estudo",
-        value: dataLoading ? "..." : String(allEntries.length),
-        detail: allEntries.length ? "Registros no diário" : "Comece estudando hoje",
-        icon: <BookOpen className="h-6 w-6" />,
-      },
-      {
-        label: "Streak atual",
-        value: dataLoading ? "..." : String(studyStats?.current_streak || 0),
-        detail: (studyStats?.current_streak || 0) > 0 ? "dias em sequência" : "Comece estudando hoje",
-        icon: <CalendarDays className="h-6 w-6" />,
-      },
-      {
-        label: "Favoritos salvos",
-        value: favoritesLoading ? "..." : String(favorites.length),
-        detail: favorites.length ? "itens guardados" : "Comece salvando conteúdos",
-        icon: <Star className="h-6 w-6" />,
-      },
-    ],
-    [allEntries.length, dataLoading, favorites.length, favoritesLoading, studyStats?.current_streak],
-  );
+  const planPrice = subscriptionData?.plans?.price_cents
+    ? formatCurrencyFromCents(subscriptionData.plans.price_cents)
+    : "—";
+  const subscriptionStatus = subscriptionData?.status ?? (isPro ? "active" : "free");
+  const statusInfo = getStatusLabel(subscriptionStatus);
+  const proSince = formatProSince(subscriptionData?.created_at);
+  const currentStreak = studyStats?.current_streak ?? 0;
+  const longestStreak = studyStats?.longest_streak ?? 0;
+  const totalHours = Math.round((studyStats?.total_minutes ?? 0) / 60);
 
   function openEditProfile() {
     if (profileLoading) return;
@@ -397,13 +651,34 @@ export default function Perfil() {
     }
   }
 
-  async function handleSignOut() {
+  async function handleCancelSubscription(data: { reason_code?: CancelReasonCode; reason_text?: string }) {
+    setCancelingSubscription(true);
+    try {
+      const json = await apiFetch("/api/billing/cancel", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+      toast.success(json.data?.message || "Assinatura cancelada com sucesso.");
+      setCancelModalOpen(false);
+      await refreshSubscription().catch(() => undefined);
+    } catch {
+      toast.error("Erro ao cancelar. Tente novamente ou contate o suporte.");
+    } finally {
+      setCancelingSubscription(false);
+    }
+  }
+
+  async function handleConfirmSignOut() {
+    setSigningOut(true);
     try {
       await signOut();
-      toast.success("Você saiu da plataforma.");
+      toast.success("Até breve! 👋");
       setLocation("/login", { replace: true });
     } catch {
       toast.error("Não foi possível sair agora. Tente novamente.");
+    } finally {
+      setSigningOut(false);
+      setSignOutModalOpen(false);
     }
   }
 
@@ -437,31 +712,68 @@ export default function Perfil() {
     );
   }
 
+  const sectionStyle = (delay: number): CSSProperties => ({ animationDelay: `${delay}ms` });
+
   return (
     <Layout>
-      <SEO title="Perfil — Bora na Tech?" url="/perfil" noindex />
-      <section className="bg-[#faf8f4] py-12">
-        <div className="container space-y-8">
-          <div className="rounded-[2rem] border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
+      <SEO title="Meu Perfil · Bora na Tech?" url="/perfil" noindex />
+      <div className="relative isolate min-h-screen">
+        <ProfileBackground />
+        <div className="container relative space-y-6 py-8 md:space-y-8 md:py-12">
+          {/* Bloco 1 — Hero pessoal */}
+          <section
+            style={sectionStyle(0)}
+            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+          >
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <UserAvatar name={userName} border={avatarBorder} icon={avatarIcon} bg={avatarBg} size="lg" loading={profileLoading} />
-                <div>
-                  <span className={`mb-3 inline-flex rounded-full border-2 border-[#1a1a1a] px-3 py-1 text-xs font-black ${isPro ? "bg-[#FFB800] text-[#1a1a1a]" : "bg-slate-100 text-slate-700"}`}>
-                    {subscriptionLoading ? "CARREGANDO" : isPro ? <ProInlineBadge label="PRO" /> : "GRATUITO"}
-                  </span>
-                  <h1 className="font-display text-4xl font-black text-[#1a1a1a] md:text-5xl">{userName}</h1>
-                  <p className="mt-2 text-lg font-black text-slate-500">@{String(username).replace(/^@/, "")}</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-400">{email}</p>
+                <UserAvatar
+                  name={userName}
+                  border={avatarBorder}
+                  icon={avatarIcon}
+                  bg={avatarBg}
+                  size="xl"
+                  loading={profileLoading}
+                />
+                <div className="min-w-0">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">
+                    Bem-vinda(o) de volta
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    <h1 className="font-display text-3xl font-black text-[#1a1a1a] md:text-4xl">{userName}</h1>
+                    {isPro ? (
+                      <span className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-3 py-1 text-xs font-black text-[#1a1a1a]">
+                        <ProInlineBadge label="PRO" />
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full border-2 border-slate-300 bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                        GRATUITO
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-sm font-semibold text-slate-600">
+                    {username ? `@${String(username).replace(/^@/, "")} · ` : ""}
+                    <span className="text-slate-400">{email}</span>
+                  </p>
+
+                  {currentStreak > 0 ? (
+                    <div className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-amber-400 bg-amber-100 px-3 py-1.5 text-amber-900">
+                      <Flame className="h-4 w-4" strokeWidth={2.5} />
+                      <span className="font-display text-sm font-black">
+                        {currentStreak} {currentStreak === 1 ? "dia seguido" : "dias seguidos"}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
+
               <button
                 type="button"
                 onClick={openEditProfile}
                 disabled={profileLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                className="inline-flex items-center justify-center gap-2 self-start rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none md:self-auto"
               >
-                <Edit3 className="h-5 w-5" />
+                <Edit3 className="h-4 w-4" />
                 Editar perfil
               </button>
             </div>
@@ -480,7 +792,9 @@ export default function Perfil() {
                 <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4">
                   <div className="flex flex-col gap-1">
                     <h3 className="font-display text-xl font-black text-[#1a1a1a]">Personalização do avatar</h3>
-                    <p className="text-sm font-semibold text-slate-500">Escolha uma combinação para deixar seu perfil com a sua cara.</p>
+                    <p className="text-sm font-semibold text-slate-500">
+                      Escolha uma combinação para deixar seu perfil com a sua cara.
+                    </p>
                   </div>
 
                   <div className="mt-5 grid gap-5 lg:grid-cols-[240px_1fr]">
@@ -495,7 +809,9 @@ export default function Perfil() {
                         />
                         <div className="mt-5 min-w-0">
                           <p className="text-xs font-black uppercase text-slate-500">Preview</p>
-                          <p className="mt-1 max-w-[180px] truncate text-sm font-black text-[#1a1a1a]">{editName || userName}</p>
+                          <p className="mt-1 max-w-[180px] truncate text-sm font-black text-[#1a1a1a]">
+                            {editName || userName}
+                          </p>
                         </div>
                       </div>
                       <AvatarSectionTabs active={activeAvatarSection} onChange={setActiveAvatarSection} />
@@ -503,8 +819,12 @@ export default function Perfil() {
 
                     <div className="rounded-3xl border border-slate-200 bg-[#faf8f4] p-4">
                       <div>
-                        <h4 className="font-display text-xl font-black text-[#1a1a1a]">{activeAvatarSectionConfig.title}</h4>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">{activeAvatarSectionConfig.description}</p>
+                        <h4 className="font-display text-xl font-black text-[#1a1a1a]">
+                          {activeAvatarSectionConfig.title}
+                        </h4>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">
+                          {activeAvatarSectionConfig.description}
+                        </p>
                       </div>
 
                       {activeAvatarSection === "border" ? (
@@ -514,7 +834,13 @@ export default function Perfil() {
                           selected={editAvatarBorder}
                           onSelect={setEditAvatarBorder}
                           renderPreview={(option) => (
-                            <UserAvatar name={editName || userName} border={option.id} icon={editAvatarIcon} bg={editAvatarBg} size="preview" />
+                            <UserAvatar
+                              name={editName || userName}
+                              border={option.id}
+                              icon={editAvatarIcon}
+                              bg={editAvatarBg}
+                              size="preview"
+                            />
                           )}
                         />
                       ) : null}
@@ -526,7 +852,13 @@ export default function Perfil() {
                           selected={editAvatarIcon}
                           onSelect={setEditAvatarIcon}
                           renderPreview={(option) => (
-                            <UserAvatar name={editName || userName} border={editAvatarBorder} icon={option.id} bg={editAvatarBg} size="preview" />
+                            <UserAvatar
+                              name={editName || userName}
+                              border={editAvatarBorder}
+                              icon={option.id}
+                              bg={editAvatarBg}
+                              size="preview"
+                            />
                           )}
                         />
                       ) : null}
@@ -538,7 +870,13 @@ export default function Perfil() {
                           selected={editAvatarBg}
                           onSelect={setEditAvatarBg}
                           renderPreview={(option) => (
-                            <UserAvatar name={editName || userName} border={editAvatarBorder} icon={editAvatarIcon} bg={option.id} size="preview" />
+                            <UserAvatar
+                              name={editName || userName}
+                              border={editAvatarBorder}
+                              icon={editAvatarIcon}
+                              bg={option.id}
+                              size="preview"
+                            />
                           )}
                         />
                       ) : null}
@@ -546,7 +884,11 @@ export default function Perfil() {
                   </div>
                 </div>
                 <div className="mt-5 flex justify-end gap-3">
-                  <button type="button" onClick={() => setEditingProfile(false)} className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-2 font-black">
+                  <button
+                    type="button"
+                    onClick={() => setEditingProfile(false)}
+                    className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-2 font-black"
+                  >
                     Cancelar
                   </button>
                   <button
@@ -560,184 +902,476 @@ export default function Perfil() {
                 </div>
               </div>
             ) : null}
-          </div>
+          </section>
 
-          <section className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase text-slate-500">Minha assinatura</p>
-                <h2 className="font-display mt-1 text-3xl font-black text-[#1a1a1a]">
-                  {subscriptionLoading ? "Carregando plano..." : isPro ? `${planName}` : "Plano Gratuito — recursos limitados"}
+          {/* Bloco 2 — Progresso */}
+          <section
+            style={sectionStyle(100)}
+            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+          >
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-display text-2xl font-black text-slate-950 md:text-3xl">Seu progresso</h2>
+              <p className="font-mono text-xs text-slate-500">últimos 30 dias</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_200px]">
+              <div className="w-full">
+                <StreakHeatmap data={heatmapData} isEmpty={!heatmapLoading && heatmapData.length === 0} />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <MetricCard
+                  icon={<Flame className="h-5 w-5" strokeWidth={2.5} />}
+                  label="Streak atual"
+                  value={dataLoading ? "…" : currentStreak}
+                  unit={currentStreak === 1 ? "dia" : "dias"}
+                  variant="market"
+                  subtext={longestStreak > 0 ? `recorde: ${longestStreak}` : null}
+                />
+                <MetricCard
+                  icon={<BookOpen className="h-5 w-5" strokeWidth={2.5} />}
+                  label="Total estudado"
+                  value={dataLoading ? "…" : totalHours}
+                  unit="horas"
+                  variant="technical"
+                  subtext={
+                    studyStats?.days_studied
+                      ? `${studyStats.days_studied} ${studyStats.days_studied === 1 ? "dia" : "dias"} ativos`
+                      : null
+                  }
+                />
+                <MetricCard
+                  icon={<Star className="h-5 w-5" strokeWidth={2.5} />}
+                  label="Favoritos"
+                  value={favoritesLoading ? "…" : favorites.length}
+                  unit={favorites.length === 1 ? "item" : "itens"}
+                  variant="application"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Bloco 2.5 — Conquistas (preview real) */}
+          <section
+            style={sectionStyle(150)}
+            className="animate-fade-slide-up overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+          >
+            <ConquistasPreview />
+          </section>
+
+          {/* Bloco 3 — Ferramentas Pro */}
+          {isPro ? (
+            <section
+              style={sectionStyle(200)}
+              className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+            >
+              <div className="mb-6 flex items-center gap-3">
+                <ProStarIcon className="h-5 w-5" />
+                <h2 className="font-display text-2xl font-black text-slate-950 md:text-3xl">
+                  Suas ferramentas Pro
                 </h2>
               </div>
-              {isPro ? <span className="rounded-full border-2 border-emerald-900 bg-emerald-100 px-4 py-2 text-sm font-black text-emerald-800">ATIVO</span> : null}
-            </div>
 
-            {subscriptionLoading ? (
-              <div className="mt-6 grid gap-3 md:grid-cols-3">
-                {[1, 2, 3].map((item) => <div key={item} className="h-24 animate-pulse rounded-2xl bg-slate-100" />)}
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <ProToolCard
+                  href="/curriculo/analisar"
+                  icon={<FileText className="h-5 w-5" strokeWidth={2.5} />}
+                  title="Analisar currículo"
+                />
+                <ProToolCard
+                  href="/curriculo/linkedin"
+                  icon={<Linkedin className="h-5 w-5" strokeWidth={2.5} />}
+                  title="Otimizar LinkedIn"
+                />
+                <ProToolCard
+                  href="/portfolio/analisar"
+                  icon={<Github className="h-5 w-5" strokeWidth={2.5} />}
+                  title="Analisar portfólio"
+                />
+                <ProToolCard
+                  href="/entrevistas/simulador"
+                  icon={<MessageSquare className="h-5 w-5" strokeWidth={2.5} />}
+                  title="Simular entrevista"
+                />
               </div>
-            ) : isPro ? (
-              <div className="mt-6 grid gap-4 md:grid-cols-4">
-                {[
-                  ["Valor", planPrice],
-                  ["Início", formatDate(subscriptionData?.created_at)],
-                  ["Renovação", formatDate(renewalDate(subscriptionData))],
-                  ["Status", subscriptionData?.status || "active"],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-4">
-                    <p className="text-xs font-black uppercase text-slate-500">{label}</p>
-                    <p className="mt-1 text-sm font-black">{value}</p>
-                  </div>
-                ))}
-                <div className="md:col-span-4">
-                  <button type="button" onClick={() => setCancelModalOpen(true)} className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-black text-[#1a1a1a] shadow-[3px_3px_0_#0f172a]">
-                    Cancelar assinatura
-                  </button>
-                  <p className="mt-3 text-sm font-semibold text-slate-500">Cancele quando quiser, sem taxa.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-                <div className="grid gap-2 md:grid-cols-2">
-                  {proBenefits.map((benefit) => (
-                    <div key={benefit} className="flex items-center gap-2 rounded-2xl border-2 border-[#1a1a1a] bg-slate-50 p-3 text-sm font-black text-slate-700">
-                      <Lock className="h-4 w-4 text-slate-500" />
-                      {benefit}
-                    </div>
-                  ))}
-                </div>
-                <div className="rounded-3xl border-2 border-[#1a1a1a] bg-[#FFB800] p-6 shadow-[4px_4px_0_#0f172a]">
-                  <p className="font-display text-2xl font-black text-[#1a1a1a]">Desbloqueie tudo.</p>
-                  <p className="mt-2 text-sm font-bold text-[#1a1a1a]">A partir de R$ 14,99/mês no plano anual.</p>
-                  <Link href="/pro" className="mt-5 inline-flex w-full items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-black shadow-[3px_3px_0_#0f172a]">
-                    <ProInlineBadge label="Assinar Pro" />
-                  </Link>
-                </div>
-              </div>
-            )}
-          </section>
+            </section>
+          ) : null}
 
-          <section>
-            <h2 className="font-display text-3xl font-black text-[#1a1a1a]">Meu progresso</h2>
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {metricCards.map((metric) => (
-                <div key={metric.label} className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-5 shadow-[4px_4px_0_#0f172a]">
-                  <span className="inline-flex rounded-2xl border-2 border-[#1a1a1a] bg-[#FFB800] p-3 text-[#1a1a1a]">{metric.icon}</span>
-                  <p className="mt-4 text-xs font-black uppercase text-slate-500">{metric.label}</p>
-                  <p className="font-display mt-1 text-4xl font-black text-[#1a1a1a]">{metric.value}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-500">{metric.detail}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+          {/* Bloco 4 — Continue de onde parou */}
+          <section
+            style={sectionStyle(300)}
+            className="animate-fade-slide-up grid grid-cols-1 gap-6 lg:grid-cols-2"
+          >
             <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="font-display text-3xl font-black text-[#1a1a1a]">Diário de estudos</h2>
-                <Link href="/estudos/diario" className="rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a]">
-                  Abrir diário completo
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="font-display text-xl font-black text-slate-950">Diário de estudos</h2>
+                <Link href="/estudos/diario" className="text-sm font-bold text-violet-700 hover:text-violet-900">
+                  Abrir →
                 </Link>
               </div>
-              <div className="mt-5 space-y-3">
-                {recentEntries.length ? (
-                  recentEntries.slice(0, 3).map((entry) => (
-                    <div key={entry.id} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm font-black text-[#1a1a1a]">{formatDate(entry.studied_at)}</p>
-                        <span className="rounded-full border-2 border-[#1a1a1a] bg-white px-3 py-1 text-xs font-black">
-                          {modeEmoji[entry.mode] || "📝"} {entry.minutes} min
+
+              {recentEntries.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center">
+                  <BookOpen className="mx-auto h-10 w-10 text-slate-400" strokeWidth={2} />
+                  <p className="mt-2 text-sm font-semibold text-slate-600">Comece sua primeira entrada hoje.</p>
+                  <Link
+                    href="/estudos/diario"
+                    className="mt-3 inline-block rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                  >
+                    Criar primeira entrada
+                  </Link>
+                </div>
+              ) : (
+                <ul className="space-y-2">
+                  {recentEntries.slice(0, 3).map((entry) => (
+                    <li key={entry.id} className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-3">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="text-xl leading-none">{modeEmoji[entry.mode] || "📝"}</span>
+                        <span className="font-mono text-[11px] text-slate-500">
+                          {entry.minutes} min · {formatDate(entry.studied_at)}
                         </span>
                       </div>
-                      <p className="mt-3 text-sm font-semibold text-slate-600">{truncate(entry.text)}</p>
-                    </div>
-                  ))
-                ) : (
-                  <EmptyBox
-                    title="Nenhuma entrada ainda"
-                    text="Crie sua primeira entrada para acompanhar consistência e evolução."
-                    action={<Link href="/estudos/diario" className="rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a]">Criar primeira entrada</Link>}
-                  />
-                )}
-              </div>
+                      <p className="text-sm font-semibold text-slate-700">
+                        {truncate(entry.text || "(sem descrição)", 120)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
-              <h2 className="font-display text-3xl font-black text-[#1a1a1a]">Minhas trilhas</h2>
-              <div className="mt-5 space-y-3">
-                {roadmaps.length ? (
-                  roadmaps.map((roadmap, index) => (
-                    <div key={`${roadmap.title}-${index}`} className="rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-4">
-                      <p className="font-display text-xl font-black text-[#1a1a1a]">{roadmap.title || "Roadmap em andamento"}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">{roadmap.area || "Área não informada"}</p>
-                      <div className="mt-3 h-3 rounded-full border-2 border-[#1a1a1a] bg-white">
-                        <div className="h-full rounded-full bg-[#FFB800]" style={{ width: `${Math.min(Math.max(roadmap.progress || 0, 0), 100)}%` }} />
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="font-display text-xl font-black text-slate-950">Minhas trilhas</h2>
+                <Link href="/roadmaps" className="text-sm font-bold text-violet-700 hover:text-violet-900">
+                  Ver todas →
+                </Link>
+              </div>
+
+              {roadmaps.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center">
+                  <MapPin className="mx-auto h-10 w-10 text-slate-400" strokeWidth={2} />
+                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                    Escolha um caminho e comece por etapas pequenas.
+                  </p>
+                  <Link
+                    href="/roadmaps"
+                    className="mt-3 inline-block rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                  >
+                    Ver roadmaps
+                  </Link>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {roadmaps.slice(0, 3).map((roadmap) => (
+                    <li key={roadmap.id} className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <h3 className="font-display text-sm font-black text-slate-950">
+                          {truncate(roadmap.title, 40)}
+                        </h3>
+                        <span className="font-mono text-[11px] text-slate-500">{roadmap.progress}%</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full border border-slate-300 bg-white">
+                        <div
+                          className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                          style={{ width: `${Math.min(Math.max(roadmap.progress, 0), 100)}%` }}
+                        />
+                      </div>
+                      <p className="mt-1.5 font-mono text-[11px] text-slate-600">
+                        {roadmap.completed_steps}/{roadmap.total_steps} etapas
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          {/* Blocos 5 + 6 — Pôsteres editoriais lado a lado em desktop */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_2fr]">
+            {/* Bloco 5 — Assinatura (pôster amber) */}
+            <section
+              style={sectionStyle(400)}
+              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+            >
+              <div
+                className="absolute inset-0 z-0"
+                style={{ background: "linear-gradient(135deg, #fffbeb 0%, #ffffff 50%, #fff7ed 100%)" }}
+                aria-hidden="true"
+              />
+
+              <svg
+                className="absolute right-4 top-4 z-0 h-16 w-16 rotate-12 text-amber-300 opacity-60"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 2l2.5 7.5H22l-6 4.5 2.5 7.5L12 17l-6.5 4.5L8 14l-6-4.5h7.5z" />
+              </svg>
+              <svg
+                className="absolute left-6 top-1/2 z-0 h-5 w-5 -rotate-12 text-amber-400 opacity-40"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 2l2.5 7.5H22l-6 4.5 2.5 7.5L12 17l-6.5 4.5L8 14l-6-4.5h7.5z" />
+              </svg>
+              <svg
+                className="absolute bottom-8 right-12 z-0 h-4 w-4 rotate-45 text-orange-400 opacity-50"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 2l2.5 7.5H22l-6 4.5 2.5 7.5L12 17l-6.5 4.5L8 14l-6-4.5h7.5z" />
+              </svg>
+
+              <div className="relative z-10">
+                {subscriptionLoading ? (
+                  <p className="font-display text-xl font-black text-slate-950">Carregando assinatura...</p>
+                ) : isPro ? (
+                  <>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
+                      Assinatura
+                    </p>
+
+                    <h2
+                      className="font-display mt-2 font-black leading-none text-slate-950"
+                      style={{ fontSize: "clamp(3rem, 7vw, 5.5rem)" }}
+                    >
+                      PRO
+                    </h2>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-block rounded-full border-2 px-3 py-1 font-display text-[11px] font-black uppercase tracking-[0.18em] ${
+                          statusBadgeStyles[statusInfo.variant]
+                        }`}
+                      >
+                        {statusInfo.label}
+                      </span>
+                      {proSince ? (
+                        <span className="font-mono text-xs text-slate-600">desde {proSince}</span>
+                      ) : null}
+                    </div>
+
+                    <div className="my-6 border-t-2 border-dashed border-amber-200" />
+
+                    <div className="space-y-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                          Plano
+                        </span>
+                        <span className="font-display font-black text-slate-950">{planName}</span>
+                      </div>
+
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                          Valor
+                        </span>
+                        <span className="font-display font-black text-slate-950">{planPrice}</span>
+                      </div>
+
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                          Próxima renovação
+                        </span>
+                        <span className="font-display font-black text-slate-950">
+                          {formatPeriodEnd(subscriptionData?.current_period_end)}
+                        </span>
                       </div>
                     </div>
-                  ))
+
+                    {subscriptionData?.cancel_at_period_end && subscriptionData?.current_period_end ? (
+                      <div className="mt-5 rounded-2xl border-2 border-amber-400 bg-amber-50 p-3">
+                        <p className="text-sm font-bold text-amber-900">
+                          ⚠️ Cancelamento agendado. Acesso Pro até{" "}
+                          {formatPeriodEnd(subscriptionData.current_period_end)}.
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {!subscriptionData?.cancel_at_period_end ? (
+                      <button
+                        type="button"
+                        onClick={() => setCancelModalOpen(true)}
+                        className="mt-6 text-sm font-bold text-rose-700 underline-offset-2 hover:text-rose-900 hover:underline"
+                      >
+                        Cancelar assinatura
+                      </button>
+                    ) : null}
+                  </>
                 ) : (
-                  <EmptyBox
-                    title="Nenhuma trilha iniciada ainda"
-                    text="Escolha um caminho e comece por etapas pequenas."
-                    action={<Link href="/roadmaps" className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 text-sm font-black shadow-[3px_3px_0_#0f172a]"><Compass className="h-4 w-4" /> Ver roadmaps</Link>}
-                  />
+                  <>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
+                      Plano atual
+                    </p>
+
+                    <h2
+                      className="font-display mt-2 font-black leading-none text-slate-950"
+                      style={{ fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }}
+                    >
+                      GRATUITO
+                    </h2>
+
+                    <p className="mt-3 text-sm font-semibold text-slate-600">
+                      Desbloqueie 8 ferramentas de IA pra acelerar sua carreira.
+                    </p>
+
+                    <Link
+                      href="/planos"
+                      className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                    >
+                      <ProStarIcon className="h-4 w-4" />
+                      Ver planos Pro
+                    </Link>
+                  </>
                 )}
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
-            <h2 className="font-display text-3xl font-black text-[#1a1a1a]">Configurações da conta</h2>
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              <Link href="/nova-senha" className="flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#faf8f4] px-5 py-3 font-black shadow-[3px_3px_0_#0f172a]">
-                <KeyRound className="h-5 w-5" />
-                Trocar senha
-              </Link>
-              <button type="button" onClick={() => void handleSignOut()} className="flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-black shadow-[3px_3px_0_#0f172a]">
-                <LogOut className="h-5 w-5" />
-                Sair
-              </button>
-              <button type="button" onClick={() => setDeleteModalOpen(true)} className="flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-rose-100 px-5 py-3 font-black text-rose-800 shadow-[3px_3px_0_#0f172a]">
-                <Trash2 className="h-5 w-5" />
-                Excluir conta
-              </button>
-            </div>
-          </section>
+            {/* Bloco 6 — Conta (pôster violet) */}
+            <section
+              style={sectionStyle(500)}
+              className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+            >
+              <div
+                className="absolute inset-0 z-0"
+                style={{ background: "linear-gradient(225deg, #faf5ff 0%, #ffffff 50%, #fdf4ff 100%)" }}
+                aria-hidden="true"
+              />
 
-          {cancelModalOpen ? (
-            <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-[#1a1a1a]"><ShieldAlert className="h-6 w-6" /> Cancelamento</h2>
-              <p className="mt-2 text-sm font-semibold text-slate-500">O cancelamento será implementado em uma próxima etapa. Por enquanto, entre em contato com suporte.</p>
-              <button type="button" onClick={() => setCancelModalOpen(false)} className="mt-4 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2 font-black shadow-[3px_3px_0_#0f172a]">Fechar</button>
-            </div>
-          ) : null}
+              <div
+                className="pointer-events-none absolute -bottom-8 -right-8 z-0 hidden opacity-[0.08] md:block"
+                aria-hidden="true"
+              >
+                <UserAvatar
+                  name={userName}
+                  border={avatarBorder}
+                  icon={avatarIcon}
+                  bg={avatarBg}
+                  size="xl"
+                  loading={false}
+                />
+              </div>
+
+              <div className="absolute right-6 top-6 z-0 h-3 w-3 rounded-full bg-violet-400 opacity-40" aria-hidden="true" />
+              <div className="absolute right-14 top-12 z-0 h-2 w-2 rounded-full bg-fuchsia-400 opacity-30" aria-hidden="true" />
+              <div className="absolute right-20 top-8 z-0 h-1.5 w-1.5 rounded-full bg-violet-500 opacity-50" aria-hidden="true" />
+
+              <div className="relative z-10">
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">Conta</p>
+
+                <h2
+                  className="font-display mt-2 break-words font-black uppercase leading-none text-slate-950"
+                  style={{ fontSize: "clamp(2.5rem, 6vw, 5rem)" }}
+                >
+                  {(localProfile?.name || "Olá").split(" ")[0]}
+                </h2>
+
+                <div className="mt-3 space-y-1">
+                  {username ? (
+                    <p className="font-mono text-sm font-bold text-violet-700">
+                      @{String(username).replace(/^@/, "")}
+                    </p>
+                  ) : null}
+                  <p className="break-all font-mono text-xs text-slate-500">{email}</p>
+                </div>
+
+                <div className="my-6 border-t-2 border-dashed border-violet-200" />
+
+                <div className="flex flex-col gap-2">
+                  <Link
+                    href="/nova-senha"
+                    className="inline-flex items-center gap-2 self-start rounded-full border-2 border-violet-300 bg-white/80 px-4 py-2 text-sm font-bold text-violet-700 backdrop-blur-sm transition-colors hover:border-violet-500 hover:bg-white hover:text-violet-900"
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    Trocar senha
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => setSignOutModalOpen(true)}
+                    className="inline-flex items-center gap-2 self-start rounded-full border-2 border-slate-300 bg-white/80 px-4 py-2 text-sm font-bold text-slate-700 backdrop-blur-sm transition-colors hover:border-slate-500 hover:bg-white hover:text-slate-900"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sair
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalOpen(true)}
+                    className="inline-flex items-center gap-2 self-start rounded-full border-2 border-rose-200 bg-white/80 px-4 py-2 text-sm font-bold text-rose-700 backdrop-blur-sm transition-colors hover:border-rose-500 hover:bg-rose-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir conta
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <CancelSubscriptionModal
+            isOpen={cancelModalOpen}
+            onClose={() => setCancelModalOpen(false)}
+            onConfirm={handleCancelSubscription}
+            periodEnd={subscriptionData?.current_period_end}
+            isLoading={cancelingSubscription}
+          />
+
+          <SignOutConfirmModal
+            isOpen={signOutModalOpen}
+            onClose={() => setSignOutModalOpen(false)}
+            onConfirm={handleConfirmSignOut}
+            isLoading={signingOut}
+          />
 
           {deleteModalOpen ? (
-            <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-rose-800"><Trash2 className="h-6 w-6" /> Excluir conta</h2>
-              <p className="mt-2 text-sm font-semibold text-slate-500">
-                Esta ação é permanente e irreversível. Todos os seus dados, favoritos, histórico de estudos e assinatura serão apagados.
-              </p>
-              <div className="mt-4 flex gap-3">
-                <button type="button" onClick={() => setDeleteModalOpen(false)} disabled={deletingAccount} className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-2 font-black disabled:opacity-60">Cancelar</button>
-                <button
-                  type="button"
-                  onClick={() => void handleDeleteAccount()}
-                  disabled={deletingAccount}
-                  className="rounded-full border-2 border-[#1a1a1a] bg-rose-100 px-5 py-2 font-black text-rose-800 disabled:opacity-60"
-                >
-                  {deletingAccount ? "Excluindo..." : "Confirmar exclusão"}
-                </button>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
+              onClick={() => {
+                if (!deletingAccount) setDeleteModalOpen(false);
+              }}
+            >
+              <div
+                className="relative w-full max-w-md rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]"
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-modal-title"
+              >
+                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-rose-700 bg-rose-100">
+                  <Trash2 className="h-5 w-5 text-rose-700" strokeWidth={2.5} />
+                </div>
+                <h2 id="delete-modal-title" className="font-display text-2xl font-black text-rose-800">
+                  Excluir conta
+                </h2>
+                <p className="mt-2 text-sm font-semibold text-slate-600">
+                  Esta ação é permanente e irreversível. Todos os seus dados, favoritos, histórico de estudos e
+                  assinatura serão apagados.
+                </p>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalOpen(false)}
+                    disabled={deletingAccount}
+                    className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-700 shadow-[3px_3px_0_#0f172a] disabled:opacity-60"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteAccount()}
+                    disabled={deletingAccount}
+                    className="flex-1 rounded-full border-2 border-rose-900 bg-rose-100 px-5 py-3 font-display font-black text-rose-800 shadow-[3px_3px_0_#7f1d1d] disabled:opacity-60"
+                  >
+                    {deletingAccount ? "Excluindo..." : "Confirmar exclusão"}
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
-
-          <button type="button" onClick={() => void refreshSubscription()} className="hidden">
-            Atualizar assinatura
-          </button>
         </div>
-      </section>
+      </div>
     </Layout>
   );
 }
