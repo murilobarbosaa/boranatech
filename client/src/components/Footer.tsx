@@ -1,111 +1,155 @@
-/*
-  BORA NA TECH? — Footer Component
-  Style: Neo-Brutalism Suavizado
-  - Dark background with violet accent
-  - Links organized in columns
-*/
-
 import { Link } from "wouter";
-import { Compass, Heart } from "lucide-react";
+import { Icon } from "@iconify/react";
+import { Heart } from "lucide-react";
+import Logo from "@/components/Logo";
+import { FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/footerData";
+
+type SocialIconProps = {
+  icon: string;
+  href: string;
+  label: string;
+};
+
+function SocialIcon({ icon, href, label }: SocialIconProps) {
+  const isPlaceholder = !href;
+  const baseClass =
+    "inline-flex h-10 w-10 items-center justify-center rounded-lg border-2 border-slate-800 bg-slate-900 text-slate-400 transition-all duration-200";
+  const stateClass = isPlaceholder
+    ? "cursor-not-allowed opacity-60"
+    : "hover:border-amber-400 hover:text-amber-400 hover:-translate-y-0.5";
+  const className = `${baseClass} ${stateClass}`;
+
+  if (isPlaceholder) {
+    return (
+      <span className={className} aria-label={`${label} (em breve)`} title={`${label} (em breve)`}>
+        <Icon icon={icon} style={{ fontSize: "20px" }} aria-hidden="true" />
+      </span>
+    );
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={className}
+      aria-label={label}
+      title={label}
+    >
+      <Icon icon={icon} style={{ fontSize: "20px" }} aria-hidden="true" />
+    </a>
+  );
+}
+
+const SOCIAL_ITEMS = [
+  { key: "instagram", icon: "ph:instagram-logo-bold", href: SOCIAL_LINKS.instagram, label: "Instagram" },
+  { key: "linkedin", icon: "ph:linkedin-logo-bold", href: SOCIAL_LINKS.linkedin, label: "LinkedIn" },
+  { key: "tiktok", icon: "ph:tiktok-logo-bold", href: SOCIAL_LINKS.tiktok, label: "TikTok" },
+  { key: "twitter", icon: "ph:x-logo-bold", href: SOCIAL_LINKS.twitter, label: "X (Twitter)" },
+  { key: "youtube", icon: "ph:youtube-logo-bold", href: SOCIAL_LINKS.youtube, label: "YouTube" },
+  { key: "discord", icon: "ph:discord-logo-bold", href: SOCIAL_LINKS.discord, label: "Discord" },
+] as const;
 
 export default function Footer() {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="bg-slate-900 text-white border-t-4 border-violet-700" role="contentinfo">
-      <div className="container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-violet-600 rounded-md flex items-center justify-center border-2 border-white">
-                <Compass className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-display font-bold text-lg">
-                BORA NA TECH<span className="text-amber-400">?</span>
-              </span>
-            </div>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Sua porta de entrada para o universo da tecnologia. Simples, organizado e feito para quem está começando.
-            </p>
-          </div>
+    <footer className="relative overflow-hidden bg-slate-950 text-slate-300" role="contentinfo">
+      <div
+        className="pointer-events-none absolute left-1/2 top-0 h-[200px] w-[600px] -translate-x-1/2"
+        style={{
+          background: "radial-gradient(ellipse at top, rgba(255,184,0,0.08) 0%, transparent 70%)",
+          filter: "blur(40px)",
+        }}
+        aria-hidden="true"
+      />
 
-          {/* Explorar */}
-          <nav aria-label="Explorar">
-            <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-violet-400 mb-4">Explorar</h3>
-            <ul className="space-y-2">
-              {[
-                { path: "/areas", label: "Áreas da TI" },
-                { path: "/roadmaps", label: "Roadmaps" },
-                { path: "/cursos", label: "Cursos" },
-                { path: "/plataformas", label: "Plataformas" },
-                { path: "/faculdades", label: "Faculdades" },
-                { path: "/dicionario", label: "Dicionário" },
-              ].map((item) => (
-                <li key={item.path}>
-                  <Link href={item.path} className="text-slate-400 hover:text-white text-sm transition-colors">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* Carreira */}
-          <nav aria-label="Carreira">
-            <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-violet-400 mb-4">Carreira</h3>
-            <ul className="space-y-2">
-              {[
-                { path: "/eventos", label: "Eventos Tech" },
-                { path: "/projetos", label: "Projetos" },
-                { path: "/estagio", label: "Estágio, Trainee e Carreira" },
-                { path: "/noticias", label: "Notícias" },
-                { path: "/comunidades", label: "Comunidades" },
-                { path: "/mulheres", label: "Área de Mulheres" },
-                { path: "/dicas", label: "Dicas" },
-              ].map((item) => (
-                <li key={item.path}>
-                  <Link href={item.path} className="text-slate-400 hover:text-white text-sm transition-colors">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* Sobre */}
-          <nav aria-label="Projeto">
-            <h3 className="font-display font-semibold text-sm uppercase tracking-wider text-violet-400 mb-4">Projeto</h3>
-            <ul className="space-y-2">
-              {[
-                { path: "/sobre", label: "Sobre o Projeto" },
-                { path: "/comparador", label: "Comparador" },
-                { path: "/quiz-carreira", label: "Quiz de Carreira" },
-                { path: "/sobre#missao", label: "Missão e Valores" },
-                { path: "/licenca", label: "Licença Creative Commons" },
-                { path: "/termos-de-uso", label: "Termos de Uso" },
-                { path: "/privacidade", label: "Política de Privacidade" },
-              ].map((item) => (
-                <li key={item.path}>
-                  <Link href={item.path} className="text-slate-400 hover:text-white text-sm transition-colors">
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6 p-3 bg-slate-800 rounded-lg border border-slate-700">
-              <p className="text-xs text-slate-400">
-                Os conteúdos externos (cursos, plataformas, links) pertencem aos seus respectivos criadores. O BORA NA TECH? é um projeto de curadoria.
-              </p>
-            </div>
-          </nav>
+      <div className="container relative z-10">
+        <div className="flex flex-col gap-6 border-b-2 border-slate-800 pb-12 pt-16 md:flex-row md:items-end md:justify-between">
+          <Link href="/" className="group inline-flex">
+            <Logo variant="dark" size="lg" />
+          </Link>
+          <p className="max-w-sm text-base text-slate-400 md:text-right md:text-lg">
+            Sua porta de entrada para o universo da tecnologia. Simples, organizado e feito pra quem está começando.
+          </p>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-slate-500 text-sm">
-            © 2025 BORA NA TECH? — Feito com <Heart className="inline w-3 h-3 text-red-400" /> para quem está começando.
-          </p>
-          <p className="text-slate-600 text-xs">
-            Conteúdo original sob CC BY-NC-SA 4.0. Plataforma educativa e de curadoria. Não garantimos emprego ou resultados.
-          </p>
+        <div className="grid gap-10 py-12 lg:grid-cols-[1fr_1fr_1fr_1fr_1.5fr]">
+          {Object.values(FOOTER_COLUMNS).map((column) => (
+            <nav key={column.title} aria-label={column.title}>
+              <h3 className="mb-4 font-display text-xs font-black tracking-widest text-amber-400">
+                {column.title}
+              </h3>
+              <ul className="space-y-2.5">
+                {column.links.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-slate-400 transition-colors duration-200 hover:text-white"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
+
+          <div>
+            <h3 className="mb-4 font-display text-xs font-black tracking-widest text-amber-400">
+              NEWSLETTER
+            </h3>
+            <p className="mb-4 text-sm text-slate-400">
+              Novidades da tech direto no seu inbox. Em breve.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="email"
+                placeholder="seu@email.com"
+                disabled
+                aria-label="Email para newsletter (em breve)"
+                className="min-w-0 flex-1 cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-500 placeholder:text-slate-600"
+              />
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-800 px-4 py-2 font-display text-xs font-black text-slate-500"
+              >
+                Em breve
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-y-2 border-slate-800 py-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <span className="font-display text-xs font-black tracking-widest text-amber-400">
+              VEM COM A GENTE
+            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              {SOCIAL_ITEMS.map((item) => (
+                <SocialIcon key={item.key} icon={item.icon} href={item.href} label={item.label} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="border-b-2 border-slate-800 py-6 text-center text-xs text-slate-500">
+          Os conteúdos externos (cursos, plataformas, links) pertencem aos seus respectivos criadores. O{" "}
+          <span className="font-bold text-amber-400">BORA NA TECH?</span> é um projeto de curadoria.
+        </div>
+
+        <div className="flex flex-col gap-3 py-6 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
+          <div>
+            © {year} BORA NA TECH? — Feito{" "}
+            <Heart className="inline h-3.5 w-3.5 text-amber-400" aria-hidden="true" /> pra quem está começando.
+          </div>
+          <div>
+            Conteúdo original sob{" "}
+            <Link href="/licenca" className="text-slate-400 transition-colors hover:text-white">
+              CC BY-NC-SA 4.0
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
