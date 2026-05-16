@@ -1,6 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "wouter";
-import { ArrowRight, BrainCircuit } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
+import {
+  ArrowRight,
+  BrainCircuit,
+  ChevronLeft,
+  Loader2,
+  RotateCcw,
+} from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import posthog from "posthog-js";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -8,69 +15,252 @@ import { areasTI } from "@/lib/data";
 import { quizQuestions } from "@/lib/platformData";
 import { persistQuizResult } from "@/services/careerQuizService";
 
+type QuizPhase = "intro" | "questions" | "completing";
+
+const RESULT_SESSION_KEY = "quiz-carreira.last-result";
+
+interface StoredResultArea {
+  area: string;
+  score: number;
+  percentage: number;
+  slug?: string;
+}
+
+interface StoredResult {
+  resultArea: string;
+  resultAreaSlug: string;
+  confidence: number;
+  topAreas: StoredResultArea[];
+  reasons: string[];
+  completedAt: string;
+}
+
+interface QuizOption {
+  label: string;
+  area: string;
+  scores: Record<string, number>;
+}
+
+interface QuizQuestion {
+  id: string;
+  category: string;
+  question: string;
+  options: QuizOption[];
+}
+
+const STORAGE_KEY = "boranatech.quiz-carreira.progress.v1";
+const STORAGE_TTL_DAYS = 30;
+
+interface StoredProgress {
+  answers: Record<string, number>;
+  currentIndex: number;
+  savedAt: number;
+}
+
+function loadProgress(): StoredProgress | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredProgress;
+    const ageDays = (Date.now() - parsed.savedAt) / (1000 * 60 * 60 * 24);
+    if (ageDays > STORAGE_TTL_DAYS) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveProgress(
+  answers: Record<string, number>,
+  currentIndex: number,
+) {
+  try {
+    const data: StoredProgress = {
+      answers,
+      currentIndex,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage cheio ou indisponível — silencioso
+  }
+}
+
+function clearProgress() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // silencioso
+  }
+}
+
+const questions = quizQuestions as unknown as ReadonlyArray<QuizQuestion>;
+
 export default function QuizCarreira() {
+  const [, setLocation] = useLocation();
+  const [phase, setPhase] = useState<QuizPhase>("intro");
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const persistedSignature = useRef("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [resumeAvailable, setResumeAvailable] = useState(false);
+
+  useEffect(() => {
+    const saved = loadProgress();
+    if (saved && Object.keys(saved.answers).length > 0) {
+      setResumeAvailable(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (phase === "questions" && Object.keys(answers).length > 0) {
+      saveProgress(answers, currentIndex);
+    }
+  }, [answers, currentIndex, phase]);
+
   const answeredCount = Object.keys(answers).length;
-  const progress = Math.round((answeredCount / quizQuestions.length) * 100);
 
-  const quizResult = useMemo(() => {
+  const handleStart = (resume: boolean) => {
+    if (resume) {
+      const saved = loadProgress();
+      if (saved) {
+        setAnswers(saved.answers);
+        setCurrentIndex(saved.currentIndex);
+      }
+    } else {
+      setAnswers({});
+      setCurrentIndex(0);
+      clearProgress();
+    }
+    setPhase("questions");
+  };
+
+  const handleAnswer = (optionIndex: number) => {
+    const question = questions[currentIndex];
+    const newAnswers = { ...answers, [question.id]: optionIndex };
+    setAnswers(newAnswers);
+
+    window.setTimeout(() => {
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        handleComplete(newAnswers);
+      }
+    }, 400);
+  };
+
+  const handleBack = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const handleReset = () => {
+    if (
+      window.confirm(
+        "Tem certeza que quer reiniciar o quiz? Você vai perder o progresso atual.",
+      )
+    ) {
+      setAnswers({});
+      setCurrentIndex(0);
+      clearProgress();
+      setResumeAvailable(false);
+      setPhase("intro");
+    }
+  };
+
+  const handleComplete = (finalAnswers: Record<string, number>) => {
+    setPhase("completing");
+
     const scores: Record<string, number> = {};
-    const reasons: Record<string, string[]> = {};
+    const reasonsByArea: Record<string, string[]> = {};
+    const principalCounts: Record<string, number> = {};
 
-    quizQuestions.forEach((question) => {
-      const optionIndex = answers[question.id];
+    questions.forEach((question) => {
+      const optionIndex = finalAnswers[question.id];
       if (optionIndex === undefined) return;
-
       const option = question.options[optionIndex];
       if (!option) return;
+
+      principalCounts[option.area] = (principalCounts[option.area] || 0) + 1;
 
       Object.entries(option.scores).forEach(([area, score]) => {
         scores[area] = (scores[area] || 0) + score;
         if (score >= 3) {
-          reasons[area] = [...(reasons[area] || []), option.label];
+          reasonsByArea[area] = [
+            ...(reasonsByArea[area] || []),
+            option.label,
+          ];
         }
       });
     });
 
-    const topMatches = Object.entries(scores)
-      .sort((a, b) => b[1] - a[1])
+    const finalTop = Object.entries(scores)
+      .sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1];
+        const aPrincipal = principalCounts[a[0]] || 0;
+        const bPrincipal = principalCounts[b[0]] || 0;
+        if (bPrincipal !== aPrincipal) return bPrincipal - aPrincipal;
+        return a[0].localeCompare(b[0], "pt-BR");
+      })
       .slice(0, 5);
-    const topScore = topMatches[0]?.[1] || 0;
-    const confidence = answeredCount
-      ? Math.min(100, Math.round((topScore / (answeredCount * 5)) * 100))
+    const finalResultArea = finalTop[0]?.[0];
+
+    if (!finalResultArea) {
+      setPhase("intro");
+      return;
+    }
+
+    const finalAnswered = Object.keys(finalAnswers).length;
+    const finalTopScore = finalTop[0]?.[1] || 0;
+    const maxPerQuestion = 5;
+    const finalConfidence = finalAnswered
+      ? Math.min(
+          100,
+          Math.round((finalTopScore / (finalAnswered * maxPerQuestion)) * 100),
+        )
       : 0;
 
-    return { topMatches, confidence, reasons };
-  }, [answers]);
+    const finalResultMeta = areasTI.find((a) => a.nome === finalResultArea);
 
-  const topMatches = quizResult.topMatches;
-  const result = topMatches[0]?.[0];
-  const resultArea = areasTI.find((area) => area.nome === result);
-  const resultReasons = result
-    ? (quizResult.reasons[result] || []).slice(0, 3)
-    : [];
+    const topAreasWithPct: StoredResultArea[] = finalTop.map(
+      ([area, score]) => {
+        const meta = areasTI.find((a) => a.nome === area);
+        return {
+          area,
+          score,
+          percentage: Math.min(
+            100,
+            Math.round((score / (finalAnswered * maxPerQuestion)) * 100),
+          ),
+          slug: meta?.slug,
+        };
+      },
+    );
 
-  const completed = answeredCount === quizQuestions.length;
+    const reasons = (reasonsByArea[finalResultArea] || []).slice(0, 3);
 
-  useEffect(() => {
-    if (!completed) return;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [completed]);
+    const payload: StoredResult = {
+      resultArea: finalResultArea,
+      resultAreaSlug: finalResultMeta?.slug || "",
+      confidence: finalConfidence,
+      topAreas: topAreasWithPct,
+      reasons,
+      completedAt: new Date().toISOString(),
+    };
 
-  useEffect(() => {
-    if (!completed || !result) return;
+    try {
+      sessionStorage.setItem(RESULT_SESSION_KEY, JSON.stringify(payload));
+    } catch {
+      // sessionStorage indisponível — fallback de /history cobre o caso
+    }
 
-    const signature = JSON.stringify(answers);
-    if (persistedSignature.current === signature) return;
-    persistedSignature.current = signature;
-
-    const quizAnswers = quizQuestions.flatMap((question) => {
-      const optionIndex = answers[question.id];
+    const quizAnswers = questions.flatMap((question) => {
+      const optionIndex = finalAnswers[question.id];
       const option =
         optionIndex === undefined ? null : question.options[optionIndex];
       if (!option) return [];
-
       return [
         {
           question_id: question.id,
@@ -83,207 +273,371 @@ export default function QuizCarreira() {
 
     void persistQuizResult({
       answers: quizAnswers,
-      result_area: result,
-      result_area_slug: resultArea?.slug,
-      confidence: quizResult.confidence,
+      result_area: finalResultArea,
+      result_area_slug: finalResultMeta?.slug,
+      confidence: finalConfidence,
       result_json: {
-        scores: Object.fromEntries(topMatches),
-        topAreas: topMatches.map(([area, score]) => ({ area, score })),
+        scores: Object.fromEntries(finalTop),
+        topAreas: topAreasWithPct,
+        reasons,
       },
     });
 
     posthog.capture("quiz_completed", {
-      result_area: result,
-      confidence: quizResult.confidence,
-      questions_answered: answeredCount,
+      result_area: finalResultArea,
+      confidence: finalConfidence,
+      questions_answered: finalAnswered,
     });
-  }, [
-    answers,
-    answeredCount,
-    completed,
-    quizResult.confidence,
-    result,
-    resultArea?.slug,
-    topMatches,
-  ]);
+
+    clearProgress();
+    setResumeAvailable(false);
+    setLocation("/quiz-carreira/resultado");
+  };
 
   return (
     <Layout>
       <SEO
         title="Quiz de Carreira em TI — Descubra qual área combina com você"
         description="Responda perguntas rápidas e descubra qual área da tecnologia combina mais com seu perfil. Quiz gratuito feito para iniciantes."
-        keywords={["quiz carreira ti", "qual área da ti escolher", "teste vocacional tecnologia", "qual carreira em ti seguir"]}
+        keywords={[
+          "quiz carreira ti",
+          "qual área da ti escolher",
+          "teste vocacional tecnologia",
+          "qual carreira em ti seguir",
+        ]}
         url="/quiz-carreira"
         schemaType="WebPage"
       />
-      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-100 py-12">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />
-        <div className="container relative">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
-            <BrainCircuit className="h-4 w-4" />
-            quiz de descoberta com IA
-          </p>
-          <h1 className="font-display text-4xl font-black text-slate-950">
-            Descubra uma área para começar.
-          </h1>
-          <p className="mt-3 max-w-2xl text-slate-950">
-            Responda perguntas sobre rotina, raciocínio, comunicação,
-            ferramentas, tolerância a abstração e tipo de problema para receber
-            um direcionamento mais preciso.
-          </p>
-        </div>
-      </section>
 
-      <section className="bg-violet-50 py-12">
-        <div className="container grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-5">
-            <div className="card-brutal rounded-2xl bg-white p-5">
-              <div className="mb-2 flex items-center justify-between gap-3 text-xs font-black uppercase text-violet-700">
-                <span>Progresso do diagnóstico</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="h-3 overflow-hidden rounded-full border-2 border-slate-900 bg-violet-100">
-                <div
-                  className="h-full bg-amber-300 transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="mt-3 text-sm font-medium text-slate-600">
-                O cálculo considera pesos por área. Uma resposta pode indicar
-                afinidade com mais de um caminho, deixando o resultado menos
-                raso.
-              </p>
-            </div>
+      <div className="min-h-screen bg-[#faf8f4]">
+        {phase === "questions" && (
+          <ProgressBar
+            current={currentIndex + 1}
+            total={questions.length}
+            answeredCount={answeredCount}
+          />
+        )}
 
-            {quizQuestions.map((question, index) => (
-              <div
-                key={question.id}
-                className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#c4b5fd]"
-              >
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-black uppercase text-violet-700">
-                    Pergunta {index + 1} de {quizQuestions.length}
-                  </p>
-                  <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase text-violet-700">
-                    {question.category}
-                  </span>
-                </div>
-                <h2 className="font-display text-2xl font-black text-slate-950">
-                  {question.question}
-                </h2>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {question.options.map((option, optionIndex) => (
-                    <button
-                      key={option.label}
-                      onClick={() =>
-                        setAnswers((current) => ({
-                          ...current,
-                          [question.id]: optionIndex,
-                        }))
-                      }
-                      className={`rounded-2xl border-2 p-4 text-left text-sm font-bold transition-all ${
-                        answers[question.id] === optionIndex
-                          ? "border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]"
-                          : "border-slate-200 bg-white hover:border-slate-900"
-                      }`}
-                    >
-                      <span className="block">{option.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+        <AnimatePresence mode="wait">
+          {phase === "intro" && (
+            <IntroScreen
+              key="intro"
+              onStart={() => handleStart(false)}
+              onResume={
+                resumeAvailable ? () => handleStart(true) : undefined
+              }
+            />
+          )}
 
-          <aside className="card-brutal h-fit rounded-2xl bg-violet-700 p-6 text-white">
-            <h2 className="font-display text-2xl font-black">Resultado</h2>
-            <p className="mt-2 text-xs font-bold uppercase tracking-wide text-amber-100">
-              {answeredCount}/{quizQuestions.length} respostas
-            </p>
-            {completed && result ? (
-              <>
-                <p className="mt-3 text-amber-100">
-                  Sua direção inicial mais forte é:
-                </p>
-                <p className="font-display mt-2 text-3xl font-black">
-                  {result}
-                </p>
-                <div className="mt-3 rounded-2xl border-2 border-slate-900 bg-white p-4 text-slate-900">
-                  <p className="text-xs font-black uppercase text-violet-700">
-                    Confiança do diagnóstico
-                  </p>
-                  <p className="font-display mt-1 text-2xl font-black">
-                    {quizResult.confidence}%
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-slate-600">
-                    Baseada na força das respostas para a área principal, não em
-                    uma verdade absoluta.
-                  </p>
-                </div>
-                {resultReasons.length ? (
-                  <div className="mt-4 rounded-2xl border-2 border-violet-300 bg-violet-900/40 p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-amber-100">
-                      Por que esse resultado apareceu
-                    </p>
-                    <ul className="mt-3 space-y-2">
-                      {resultReasons.map((reason) => (
-                        <li
-                          key={reason}
-                          className="text-sm font-medium text-violet-50"
-                        >
-                          • {reason}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {topMatches.length > 1 ? (
-                  <div className="mt-4 rounded-2xl border-2 border-violet-300 bg-violet-900/40 p-4">
-                    <p className="text-xs font-black uppercase tracking-wide text-amber-100">
-                      Outras afinidades
-                    </p>
-                    <div className="mt-3 space-y-2">
-                      {topMatches.slice(1).map(([area, score]) => (
-                        <div
-                          key={area}
-                          className="flex items-center justify-between gap-3 text-sm"
-                        >
-                          <span className="font-bold text-white">{area}</span>
-                          <span className="rounded-full bg-amber-300 px-2 py-0.5 text-xs font-black text-slate-950">
-                            {Math.min(
-                              100,
-                              Math.round(
-                                (score / (quizQuestions.length * 5)) * 100,
-                              ),
-                            )}
-                            %
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                <p className="mt-3 text-sm text-slate-300">
-                  Use isso como bússola, não como sentença. O ideal é testar um
-                  projeto pequeno antes de decidir.
-                </p>
-                <Link
-                  href={resultArea ? `/areas/${resultArea.slug}` : "/roadmaps"}
-                  className="btn-brutal-accent mt-5 inline-flex items-center gap-2 rounded-full px-5 py-3 font-black"
-                >
-                  Ver caminho recomendado
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </>
-            ) : (
-              <p className="mt-3 text-sm text-slate-300">
-                Responda todas as perguntas para receber uma sugestão de
-                carreira.
-              </p>
-            )}
-          </aside>
-        </div>
-      </section>
+          {phase === "questions" && (
+            <QuestionScreen
+              key={`q-${currentIndex}`}
+              question={questions[currentIndex]}
+              currentIndex={currentIndex}
+              totalQuestions={questions.length}
+              selectedOption={
+                answers[questions[currentIndex].id] ?? null
+              }
+              onAnswer={handleAnswer}
+              onBack={currentIndex > 0 ? handleBack : undefined}
+              onReset={handleReset}
+            />
+          )}
+
+          {phase === "completing" && <CompletingScreen key="completing" />}
+        </AnimatePresence>
+      </div>
     </Layout>
   );
 }
+
+function IntroScreen({
+  onStart,
+  onResume,
+}: {
+  onStart: () => void;
+  onResume?: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="container max-w-2xl py-12 md:py-20"
+    >
+      <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        <BrainCircuit className="h-4 w-4" />
+        Quiz de Carreira
+      </p>
+
+      <h1
+        className="font-display font-black leading-[0.95] text-slate-950"
+        style={{ fontSize: "clamp(2.5rem, 7vw, 5rem)" }}
+      >
+        Descubra qual área tech
+        <br />
+        combina com você
+      </h1>
+
+      <p className="mt-6 max-w-xl text-lg font-semibold text-slate-700 md:text-xl">
+        {questions.length} perguntas rápidas sobre seus interesses, como você
+        gosta de trabalhar e quais problemas você gostaria de resolver. Sem
+        certo ou errado.
+      </p>
+
+      <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-violet-700">
+            Duração
+          </p>
+          <p className="font-display text-2xl font-black text-slate-950">
+            ~5 min
+          </p>
+        </div>
+
+        <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a]">
+          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+            Perguntas
+          </p>
+          <p className="font-display text-2xl font-black text-slate-950">
+            {questions.length}
+          </p>
+        </div>
+
+        <div className="col-span-2 rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a] md:col-span-1">
+          <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-700">
+            Resultado
+          </p>
+          <p className="font-display text-2xl font-black text-slate-950">
+            Áreas afins
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+        {onResume && (
+          <button
+            type="button"
+            onClick={onResume}
+            className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-amber-300 px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
+            Continuar de onde parei
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={onStart}
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-violet-600 px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+        >
+          {onResume ? "Começar do zero" : "Começar agora"}
+          <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+        </button>
+      </div>
+
+      <p className="mt-8 font-mono text-xs text-slate-500">
+        Seu progresso é salvo automaticamente. Você pode voltar e continuar
+        depois.
+      </p>
+    </motion.div>
+  );
+}
+
+function QuestionScreen({
+  question,
+  currentIndex,
+  totalQuestions,
+  selectedOption,
+  onAnswer,
+  onBack,
+  onReset,
+}: {
+  question: QuizQuestion;
+  currentIndex: number;
+  totalQuestions: number;
+  selectedOption: number | null;
+  onAnswer: (optionIndex: number) => void;
+  onBack?: () => void;
+  onReset?: () => void;
+}) {
+  const [transitioning, setTransitioning] = useState(false);
+  const [localSelection, setLocalSelection] = useState<number | null>(
+    selectedOption,
+  );
+
+  const effectiveSelection = transitioning ? localSelection : selectedOption;
+
+  const handleClick = (idx: number) => {
+    if (transitioning) return;
+    setLocalSelection(idx);
+    setTransitioning(true);
+    onAnswer(idx);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="container max-w-2xl py-12 md:py-16"
+    >
+      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
+        <span className="font-mono text-xs uppercase tracking-[0.22em] text-violet-700">
+          {question.category}
+        </span>
+        <span className="font-mono text-sm text-slate-500">
+          Pergunta {currentIndex + 1} de {totalQuestions}
+        </span>
+      </div>
+
+      <h2
+        className="mb-8 font-display font-black leading-tight text-slate-950"
+        style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+      >
+        {question.question}
+      </h2>
+
+      <div className="mb-8 space-y-3">
+        {question.options.map((option, idx) => {
+          const isSelected = effectiveSelection === idx;
+          const letter = String.fromCharCode(65 + idx);
+          const dimmed =
+            transitioning && effectiveSelection !== null && !isSelected;
+
+          return (
+            <button
+              key={option.label}
+              type="button"
+              onClick={() => handleClick(idx)}
+              disabled={transitioning}
+              className={`group flex w-full items-start gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200 ${
+                isSelected
+                  ? "border-[#1a1a1a] bg-amber-300 shadow-[3px_3px_0_#0f172a]"
+                  : "border-slate-300 bg-white hover:-translate-y-0.5 hover:border-slate-900 hover:shadow-[3px_3px_0_#0f172a]"
+              } ${dimmed ? "opacity-40" : ""} disabled:cursor-not-allowed`}
+            >
+              <span
+                className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-display text-base font-black transition-colors ${
+                  isSelected
+                    ? "bg-slate-950 text-amber-300"
+                    : "bg-slate-100 text-slate-600 group-hover:bg-slate-950 group-hover:text-white"
+                }`}
+              >
+                {letter}
+              </span>
+
+              <span className="pt-1 text-base font-bold text-slate-950">
+                {option.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-4">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              disabled={transitioning}
+              className="inline-flex items-center gap-1.5 font-mono text-sm font-bold text-slate-600 transition-colors hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
+              Voltar
+            </button>
+          )}
+
+          {onReset && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={transitioning}
+              className="inline-flex items-center gap-1.5 font-mono text-xs font-medium text-slate-400 transition-colors hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RotateCcw className="h-3 w-3" strokeWidth={2.5} />
+              Reiniciar
+            </button>
+          )}
+        </div>
+
+        <span className="font-mono text-sm text-slate-400">
+          Selecione uma opção
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
+function ProgressBar({
+  current,
+  total,
+  answeredCount,
+}: {
+  current: number;
+  total: number;
+  answeredCount: number;
+}) {
+  const percentage = (answeredCount / total) * 100;
+
+  return (
+    <div
+      role="progressbar"
+      aria-label={`Progresso: ${answeredCount} de ${total} respondidas`}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-valuenow={answeredCount}
+      className="sticky top-16 z-30 border-b border-slate-200 bg-[#faf8f4]/80 backdrop-blur-sm"
+    >
+      <div className="container max-w-2xl py-3">
+        <div className="flex items-center gap-3">
+          <span className="shrink-0 font-mono text-xs uppercase tracking-[0.18em] text-slate-600">
+            {current} / {total}
+          </span>
+
+          <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-200">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${percentage}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
+
+          <span className="shrink-0 font-mono text-xs font-bold text-slate-700">
+            {Math.round(percentage)}%
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompletingScreen() {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.4 }}
+      className="container max-w-2xl py-20 text-center"
+    >
+      <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-violet-100">
+        <Loader2 className="h-8 w-8 animate-spin text-violet-700" />
+      </div>
+
+      <h2 className="mb-3 font-display text-3xl font-black text-slate-950">
+        Analisando suas respostas...
+      </h2>
+
+      <p className="text-base font-semibold text-slate-600">
+        Estamos cruzando seus dados pra encontrar as áreas mais alinhadas com
+        você.
+      </p>
+    </motion.div>
+  );
+}
+
