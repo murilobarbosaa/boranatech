@@ -37,16 +37,21 @@ export interface StudyEntry {
   text: string;
   minutes: number;
   mode: "produtiva" | "ritmo" | "dispersa" | "revisar";
-  studied_at: string;
-  created_at: string;
+  studied_at: string; // ISO timestamp (timestamptz no banco)
+  created_at: string; // ISO timestamp (timestamptz no banco)
 }
 
 export interface StudyStats {
-  total_minutes: number;
   days_studied: number;
-  avg_minutes_per_day: number;
+  total_minutes: number;
   current_streak: number;
-  mode_counts: Record<string, number>;
+  longest_streak: number;
+}
+
+export interface StudyHeatmapDay {
+  date: string;
+  minutes: number;
+  entries: number;
 }
 
 export async function getStudyEntries(params?: {
@@ -96,4 +101,9 @@ export async function deleteStudyEntry(id: string): Promise<void> {
 export async function getStudyStats(range: "7d" | "30d" | "90d" = "7d"): Promise<StudyStats> {
   const json = await apiFetch(`/stats?range=${range}`);
   return json.data;
+}
+
+export async function getStudyHeatmap(days = 365): Promise<StudyHeatmapDay[]> {
+  const json = await apiFetch(`/heatmap?days=${days}`);
+  return json.data || [];
 }
