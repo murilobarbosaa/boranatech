@@ -116,7 +116,7 @@ export const areasTI = [
     id: "produto",
     nome: "Produto Digital",
     slug: "produto",
-    emoji: "📱",
+    emoji: "🎯",
     tagClass: "tag-produto",
     descricaoCurta: "Lidera a estratégia e evolução de produtos digitais.",
     descricaoCompleta: "O gerente de produto (PM) é responsável por definir a visão, estratégia e roadmap de um produto digital. Conecta negócio, tecnologia e usuário para garantir que o produto certo seja construído da forma certa.",
@@ -198,7 +198,8 @@ export const areasTI = [
     roadmapInicial: ["Aprender Scrum e Kanban", "Obter certificação PSM I ou PSPO I", "Aprender ferramentas como Jira e Trello", "Praticar facilitação de reuniões", "Buscar estágio em PMO"],
     projetos: ["Plano de projeto fictício", "Documentação de sprint", "Roadmap de produto"],
     termosEssenciais: ["Scrum", "Kanban", "Sprint", "Backlog", "Stakeholder", "PMO"],
-    dicasIniciais: "Obtenha a certificação PSM I (Scrum). É gratuita para estudar e muito reconhecida no mercado."
+    dicasIniciais: "Obtenha a certificação PSM I (Scrum). É gratuita para estudar e muito reconhecida no mercado.",
+    roadmapStatus: "coming-soon" as const
   },
   {
     id: "qa",
@@ -264,7 +265,8 @@ export const areasTI = [
     roadmapInicial: ["Aprender Linux", "Aprender Git e GitHub", "Aprender Docker", "Estudar CI/CD com GitHub Actions", "Aprender Kubernetes básico"],
     projetos: ["Pipeline CI/CD para projeto pessoal", "Containerizar aplicação com Docker", "Configurar monitoramento básico"],
     termosEssenciais: ["CI/CD", "Container", "Docker", "Kubernetes", "Pipeline", "IaC"],
-    dicasIniciais: "Comece com Linux e Docker. São fundamentais para qualquer área de DevOps e Cloud."
+    dicasIniciais: "Comece com Linux e Docker. São fundamentais para qualquer área de DevOps e Cloud.",
+    roadmapStatus: "coming-soon" as const
   }
 ];
 
@@ -272,7 +274,7 @@ export const roadmaps = [
   {
     id: "zero-ti",
     nome: "Começar do Zero em TI",
-    area: "Geral",
+    areaSlug: null as string | null,
     nivel: "Iniciante Absoluto",
     duracaoDias: "10 dias",
     descricao: "Para quem nunca teve contato com tecnologia e quer entender por onde começar.",
@@ -295,7 +297,7 @@ export const roadmaps = [
   {
     id: "frontend",
     nome: "Front-end do Zero",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     duracaoDias: "30 dias",
     descricao: "Trilha completa para se tornar desenvolvedor front-end, do HTML básico ao React.",
@@ -318,7 +320,7 @@ export const roadmaps = [
   {
     id: "uxui",
     nome: "UX/UI Design do Zero",
-    area: "UX/UI Design",
+    areaSlug: "uxui" as string | null,
     nivel: "Iniciante",
     duracaoDias: "30 dias",
     descricao: "Trilha para se tornar designer UX/UI, do conceito ao portfólio no Behance.",
@@ -341,7 +343,7 @@ export const roadmaps = [
   {
     id: "dados",
     nome: "Ciência de Dados do Zero",
-    area: "Ciência de Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Iniciante",
     duracaoDias: "60 dias",
     descricao: "Trilha para entrar na área de dados, de Python básico a análises reais.",
@@ -364,7 +366,7 @@ export const roadmaps = [
   {
     id: "linkedin",
     nome: "LinkedIn para Estágio e Trainee",
-    area: "Carreira",
+    areaSlug: "carreira" as string | null,
     nivel: "Iniciante",
     duracaoDias: "20 dias",
     descricao: "Como montar um LinkedIn atrativo mesmo sem experiência formal.",
@@ -387,7 +389,7 @@ export const roadmaps = [
   {
     id: "backend",
     nome: "Back-end do Zero",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Iniciante",
     duracaoDias: "30 dias",
     descricao: "Trilha para criar APIs, entender banco de dados e publicar seu primeiro serviço.",
@@ -410,7 +412,7 @@ export const roadmaps = [
   {
     id: "qa-testes",
     nome: "QA e Testes para Entrar em Tech",
-    area: "QA",
+    areaSlug: "qa" as string | null,
     nivel: "Iniciante",
     duracaoDias: "20 dias",
     descricao: "Trilha para entender qualidade, escrever casos de teste e criar seu primeiro portfólio de QA.",
@@ -433,7 +435,7 @@ export const roadmaps = [
   {
     id: "mobile",
     nome: "Mobile com React Native",
-    area: "Mobile",
+    areaSlug: "mobile" as string | null,
     nivel: "Iniciante",
     duracaoDias: "30 dias",
     descricao: "Trilha para criar seu primeiro aplicativo mobile com telas, navegação e consumo de API.",
@@ -456,7 +458,7 @@ export const roadmaps = [
   {
     id: "cloud",
     nome: "Cloud para Iniciantes",
-    area: "Cloud",
+    areaSlug: "cloud" as string | null,
     nivel: "Iniciante",
     duracaoDias: "60 dias",
     descricao: "Trilha para entender nuvem, redes, serviços principais e fazer seu primeiro deploy cloud.",
@@ -479,7 +481,7 @@ export const roadmaps = [
   {
     id: "ciberseguranca",
     nome: "Cibersegurança do Zero",
-    area: "Cibersegurança",
+    areaSlug: "ciberseguranca" as string | null,
     nivel: "Iniciante",
     duracaoDias: "60 dias",
     descricao: "Trilha para construir base em redes, Linux, segurança web e prática em laboratórios guiados.",
@@ -502,7 +504,7 @@ export const roadmaps = [
   {
     id: "produto-digital",
     nome: "Produto Digital para Tech",
-    area: "Produto Digital",
+    areaSlug: "produto" as string | null,
     nivel: "Iniciante",
     duracaoDias: "20 dias",
     descricao: "Trilha para entender discovery, métricas, priorização e criar seu primeiro case de produto.",
@@ -525,7 +527,7 @@ export const roadmaps = [
   {
     id: "ia-aplicada",
     nome: "IA Aplicada para Iniciantes",
-    area: "Inteligência Artificial",
+    areaSlug: "ia" as string | null,
     nivel: "Iniciante",
     duracaoDias: "60 dias",
     descricao: "Trilha para usar IA com responsabilidade, aprender fundamentos e criar um projeto simples.",
@@ -554,7 +556,7 @@ export const cursosGratuitos = [
     canal: "Curso em Vídeo",
     plataforma: "YouTube",
     link: "https://www.youtube.com/c/CursoemV%C3%ADdeo",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     duracao: "40+ horas",
     idioma: "Português",
@@ -569,7 +571,7 @@ export const cursosGratuitos = [
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
     link: "https://www.freecodecamp.org/learn/2022/responsive-web-design/",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     duracao: "300 horas",
     idioma: "Inglês (com suporte em português)",
@@ -584,7 +586,7 @@ export const cursosGratuitos = [
     canal: "Rocketseat",
     plataforma: "Rocketseat",
     link: "https://app.rocketseat.com.br/discover",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     duracao: "20+ horas",
     idioma: "Português",
@@ -599,7 +601,7 @@ export const cursosGratuitos = [
     canal: "Curso em Vídeo",
     plataforma: "YouTube",
     link: "https://www.youtube.com/playlist?list=PLvE-ZAFRgX8hnECDn1v9HNTI71veL3oW0",
-    area: "Back-end / Dados",
+    areaSlug: "backend" as string | null,
     nivel: "Iniciante",
     duracao: "40+ horas",
     idioma: "Português",
@@ -614,7 +616,7 @@ export const cursosGratuitos = [
     canal: "Figma",
     plataforma: "YouTube / Figma",
     link: "https://www.youtube.com/playlist?list=PLXDU_eVOJTx6zk5MDarIs0asNoZqlRG23",
-    area: "UX/UI Design",
+    areaSlug: "uxui" as string | null,
     nivel: "Iniciante",
     duracao: "4 horas",
     idioma: "Inglês",
@@ -629,7 +631,7 @@ export const cursosGratuitos = [
     canal: "DIO",
     plataforma: "DIO",
     link: "https://web.dio.me/",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Iniciante",
     duracao: "20+ horas",
     idioma: "Português",
@@ -644,7 +646,7 @@ export const cursosGratuitos = [
     canal: "Kaggle",
     plataforma: "Kaggle",
     link: "https://www.kaggle.com/learn/python",
-    area: "Ciência de Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Iniciante",
     duracao: "5 horas",
     idioma: "Inglês",
@@ -659,7 +661,7 @@ export const cursosGratuitos = [
     canal: "AWS",
     plataforma: "AWS Skill Builder",
     link: "https://explore.skillbuilder.aws/learn/course/external/view/elearning/134/aws-cloud-practitioner-essentials",
-    area: "Cloud",
+    areaSlug: "cloud" as string | null,
     nivel: "Iniciante",
     duracao: "6 horas",
     idioma: "Inglês / Português",
@@ -674,7 +676,7 @@ export const cursosGratuitos = [
     canal: "TryHackMe",
     plataforma: "TryHackMe",
     link: "https://tryhackme.com/path/outline/presecurity",
-    area: "Cibersegurança",
+    areaSlug: "ciberseguranca" as string | null,
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Inglês",
@@ -689,7 +691,7 @@ export const cursosGratuitos = [
     canal: "Microsoft",
     plataforma: "Microsoft Learn",
     link: "https://learn.microsoft.com/pt-br/training/paths/az-900-describe-cloud-concepts/",
-    area: "Cloud",
+    areaSlug: "cloud" as string | null,
     nivel: "Iniciante",
     duracao: "8 horas",
     idioma: "Português",
@@ -704,7 +706,7 @@ export const cursosGratuitos = [
     canal: "Origamid",
     plataforma: "Origamid",
     link: "https://www.origamid.com/",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     duracao: "100+ horas",
     idioma: "Português",
@@ -721,7 +723,7 @@ export const cursosGratuitos = [
     canal: "Alura",
     plataforma: "Alura",
     link: "https://www.alura.com.br/formacao-front-end",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     duracao: "80+ horas",
     idioma: "Português",
@@ -738,7 +740,7 @@ export const cursosGratuitos = [
     canal: "Alura",
     plataforma: "Alura",
     link: "https://www.alura.com.br/formacao-data-science",
-    area: "Ciência de Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Iniciante",
     duracao: "70+ horas",
     idioma: "Português",
@@ -755,7 +757,7 @@ export const cursosGratuitos = [
     canal: "Udemy",
     plataforma: "Udemy",
     link: "https://www.udemy.com/course/react-do-zero-a-maestria-c-hooks-router-api-projetos/",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     duracao: "30+ horas",
     idioma: "Português",
@@ -772,7 +774,7 @@ export const cursosGratuitos = [
     canal: "Rocketseat",
     plataforma: "Rocketseat",
     link: "https://www.rocketseat.com.br/",
-    area: "Full Stack",
+    areaSlug: null as string | null,
     nivel: "Iniciante",
     duracao: "Trilhas contínuas",
     idioma: "Português",
@@ -789,7 +791,7 @@ export const cursosGratuitos = [
     canal: "Full Cycle",
     plataforma: "Full Cycle",
     link: "https://fullcycle.com.br/",
-    area: "DevOps",
+    areaSlug: "devops" as string | null,
     nivel: "Intermediário",
     duracao: "Trilhas contínuas",
     idioma: "Português",
@@ -806,7 +808,7 @@ export const cursosGratuitos = [
     canal: "Filipe Deschamps",
     plataforma: "curso.dev",
     link: "https://curso.dev/",
-    area: "Full Stack",
+    areaSlug: null as string | null,
     nivel: "Iniciante",
     duracao: "Trilha completa",
     idioma: "Português",
@@ -823,7 +825,7 @@ export const cursosGratuitos = [
     canal: "Awari",
     plataforma: "Awari",
     link: "https://awari.com.br/",
-    area: "UX/UI Design",
+    areaSlug: "uxui" as string | null,
     nivel: "Iniciante",
     duracao: "Varia por turma",
     idioma: "Português",
@@ -840,7 +842,7 @@ export const cursosGratuitos = [
     canal: "PM3",
     plataforma: "PM3",
     link: "https://www.cursospm3.com.br/",
-    area: "Produto / Gestão",
+    areaSlug: "gestao" as string | null,
     nivel: "Iniciante",
     duracao: "40+ horas",
     idioma: "Português",
@@ -857,7 +859,7 @@ export const cursosGratuitos = [
     canal: "EBAC",
     plataforma: "EBAC",
     link: "https://ebaconline.com.br/",
-    area: "QA",
+    areaSlug: "qa" as string | null,
     nivel: "Iniciante",
     duracao: "Varia por turma",
     idioma: "Português",
@@ -2585,7 +2587,7 @@ export const projetos = [
   {
     id: "landing-page-pessoal",
     nome: "Página Pessoal / Portfólio",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     objetivo: "Criar uma página pessoal para apresentar quem você é e seus projetos.",
     ferramentas: ["HTML", "CSS", "JavaScript (opcional)"],
@@ -2598,7 +2600,7 @@ export const projetos = [
   {
     id: "todo-list",
     nome: "To-Do List com JavaScript",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Básico",
     objetivo: "Criar uma lista de tarefas funcional com JavaScript puro.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
@@ -2611,7 +2613,7 @@ export const projetos = [
   {
     id: "dashboard-figma",
     nome: "Dashboard no Figma",
-    area: "UX/UI Design",
+    areaSlug: "uxui" as string | null,
     nivel: "Básico",
     objetivo: "Criar um dashboard de dados fictícios no Figma.",
     ferramentas: ["Figma"],
@@ -2624,7 +2626,7 @@ export const projetos = [
   {
     id: "analise-dados-publicos",
     nome: "Análise de Dados Públicos",
-    area: "Ciência de Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Intermediário",
     objetivo: "Analisar um dataset público e extrair insights interessantes.",
     ferramentas: ["Python", "Pandas", "Matplotlib", "Jupyter Notebook"],
@@ -2637,7 +2639,7 @@ export const projetos = [
   {
     id: "plano-testes",
     nome: "Plano de Testes para App",
-    area: "QA",
+    areaSlug: "qa" as string | null,
     nivel: "Básico",
     objetivo: "Criar um plano de testes completo para um aplicativo existente.",
     ferramentas: ["Google Docs ou Notion", "Postman (para APIs)"],
@@ -2650,7 +2652,7 @@ export const projetos = [
   {
     id: "documento-requisitos",
     nome: "Documento de Requisitos",
-    area: "Produto / Gestão",
+    areaSlug: "gestao" as string | null,
     nivel: "Intermediário",
     objetivo: "Criar um documento de requisitos para um sistema fictício.",
     ferramentas: ["Notion", "Google Docs", "Figma (para wireframes)"],
@@ -2663,7 +2665,7 @@ export const projetos = [
   {
     id: "primeira-pagina-html",
     nome: "Minha Primeira Página HTML",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Iniciante",
     objetivo: "Criar uma página simples com título, texto, imagem e link, sem precisar saber programar ainda.",
     ferramentas: ["HTML", "Navegador", "Editor de texto"],
@@ -2676,7 +2678,7 @@ export const projetos = [
   {
     id: "glossario-tech",
     nome: "Glossário Tech Pessoal",
-    area: "Carreira",
+    areaSlug: "carreira" as string | null,
     nivel: "Iniciante",
     objetivo: "Montar um glossário com termos que você está aprendendo para transformar confusão em repertório.",
     ferramentas: ["Notion", "Google Docs", "Dicionário da plataforma"],
@@ -2689,7 +2691,7 @@ export const projetos = [
   {
     id: "calculadora-js",
     nome: "Calculadora com JavaScript",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Básico",
     objetivo: "Criar uma calculadora simples para praticar eventos, funções e manipulação do DOM.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
@@ -2702,7 +2704,7 @@ export const projetos = [
   {
     id: "buscador-cep",
     nome: "Buscador de CEP com API",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
     objetivo: "Consumir uma API pública e mostrar dados de endereço a partir de um CEP.",
     ferramentas: ["HTML", "CSS", "JavaScript", "API ViaCEP"],
@@ -2715,7 +2717,7 @@ export const projetos = [
   {
     id: "api-habitos",
     nome: "API de Hábitos",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Intermediário",
     objetivo: "Criar uma API simples para cadastrar hábitos, listar registros e marcar progresso diário.",
     ferramentas: ["Node.js", "Express", "SQLite ou PostgreSQL", "Postman"],
@@ -2728,7 +2730,7 @@ export const projetos = [
   {
     id: "app-fullstack-estudos",
     nome: "App Full Stack de Estudos",
-    area: "Full Stack",
+    areaSlug: null as string | null,
     nivel: "Avançado",
     objetivo: "Construir um app completo com login, banco de dados, dashboard e deploy.",
     ferramentas: ["React", "Node.js", "PostgreSQL", "Autenticação", "Deploy"],
@@ -2741,7 +2743,7 @@ export const projetos = [
   {
     id: "pipeline-ci-cd",
     nome: "Pipeline CI/CD para Projeto",
-    area: "DevOps",
+    areaSlug: "devops" as string | null,
     nivel: "Avançado",
     objetivo: "Automatizar checagens, testes e build de um projeto usando pipeline de integração contínua.",
     ferramentas: ["GitHub Actions", "Node.js", "Testes", "Deploy"],
@@ -2754,7 +2756,7 @@ export const projetos = [
   {
     id: "modelo-ml-sentimentos",
     nome: "Modelo de Análise de Sentimentos",
-    area: "IA / Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Avançado",
     objetivo: "Treinar ou usar um modelo para classificar sentimentos em textos curtos.",
     ferramentas: ["Python", "Pandas", "Scikit-learn", "Notebook"],
@@ -2767,7 +2769,7 @@ export const projetos = [
   {
     id: "readme-primeiro-repo",
     nome: "README que explica um projeto",
-    area: "Carreira",
+    areaSlug: "carreira" as string | null,
     nivel: "Iniciante",
     objetivo: "Aprender a documentar um repositório para recrutadores e colegas entenderem seu trabalho.",
     ferramentas: ["Markdown", "GitHub", "Editor de texto"],
@@ -2780,7 +2782,7 @@ export const projetos = [
   {
     id: "clone-landing-one-page",
     nome: "Clone de landing page famosa",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Básico",
     objetivo: "Reproduzir visual e layout de uma landing conhecida para treinar HTML, CSS e detalhamento.",
     ferramentas: ["HTML", "CSS", "Figma ou inspetor do navegador"],
@@ -2793,7 +2795,7 @@ export const projetos = [
   {
     id: "cronometro-pomodoro",
     nome: "Cronômetro Pomodoro",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Básico",
     objetivo: "Criar timer de foco com intervalos curtos para praticar estado, timers e UX simples.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
@@ -2806,7 +2808,7 @@ export const projetos = [
   {
     id: "jogo-memoria-cartas",
     nome: "Jogo da memória com cartas",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Básico",
     objetivo: "Implementar lógica de jogo, embaralhamento e comparação de pares.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
@@ -2819,7 +2821,7 @@ export const projetos = [
   {
     id: "app-clima-open-meteo",
     nome: "App de clima com API pública",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
     objetivo: "Consumir API de clima, geolocalização (opcional) e exibir previsão amigável.",
     ferramentas: ["JavaScript ou React", "Open-Meteo ou similar", "CSS"],
@@ -2832,7 +2834,7 @@ export const projetos = [
   {
     id: "blog-estatico-markdown",
     nome: "Blog estático com Markdown",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
     objetivo: "Publicar artigos em Markdown gerando HTML estático ou com framework leve.",
     ferramentas: ["Markdown", "Astro, Eleventy ou Vite + MD"],
@@ -2845,7 +2847,7 @@ export const projetos = [
   {
     id: "cli-tarefas-terminal",
     nome: "CLI de tarefas no terminal",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Básico",
     objetivo: "Criar ferramenta de linha de comando para adicionar/listar tarefas sem interface gráfica.",
     ferramentas: ["Node.js ou Python", "Arquivo JSON local"],
@@ -2858,7 +2860,7 @@ export const projetos = [
   {
     id: "url-shortener-api",
     nome: "Encurtador de URLs (API)",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Intermediário",
     objetivo: "Gerar slugs curtos, redirecionar e contar cliques com banco simples.",
     ferramentas: ["Node.js ou Go", "PostgreSQL ou Redis", "Express ou framework leve"],
@@ -2871,7 +2873,7 @@ export const projetos = [
   {
     id: "e-commerce-minimo-pagamento-mock",
     nome: "Checkout fictício com carrinho",
-    area: "Full Stack",
+    areaSlug: null as string | null,
     nivel: "Avançado",
     objetivo: "Simular fluxo de carrinho, pedidos e pagamento mockado com regras de estoque.",
     ferramentas: ["React ou Next.js", "API própria", "Banco relacional"],
@@ -2884,7 +2886,7 @@ export const projetos = [
   {
     id: "persona-journey-mapa",
     nome: "Persona + mapa de jornada",
-    area: "UX/UI Design",
+    areaSlug: "uxui" as string | null,
     nivel: "Iniciante",
     objetivo: "Representar uma pessoa usuária fictícia e sua jornada em um serviço digital.",
     ferramentas: ["Figma", "Miro ou papel digital"],
@@ -2897,7 +2899,7 @@ export const projetos = [
   {
     id: "design-system-mini",
     nome: "Mini design system no Figma",
-    area: "UX/UI Design",
+    areaSlug: "uxui" as string | null,
     nivel: "Intermediário",
     objetivo: "Definir tokens de cor, tipo, espaçamento e componentes reutilizáveis.",
     ferramentas: ["Figma", "Variáveis e componentes"],
@@ -2910,7 +2912,7 @@ export const projetos = [
   {
     id: "formulario-pesquisa-usuario",
     nome: "Formulário de pesquisa com análise",
-    area: "Ciência de Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Básico",
     objetivo: "Coletar respostas fictícias ou reais (amigos) e resumir em gráficos.",
     ferramentas: ["Google Forms ou Tally", "Python", "Pandas", "Matplotlib"],
@@ -2923,7 +2925,7 @@ export const projetos = [
   {
     id: "previsao-churn-tabular",
     nome: "Previsão de churn (dados tabulares)",
-    area: "IA / Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Avançado",
     objetivo: "Classificar clientes com risco de cancelar usando dados sintéticos ou públicos.",
     ferramentas: ["Python", "Scikit-learn", "Pandas"],
@@ -2936,7 +2938,7 @@ export const projetos = [
   {
     id: "automacao-api-postman-newman",
     nome: "Coleção Postman + smoke tests",
-    area: "QA",
+    areaSlug: "qa" as string | null,
     nivel: "Intermediário",
     objetivo: "Documentar API com testes automatizados na coleção e rodar em CI.",
     ferramentas: ["Postman", "Newman", "GitHub Actions"],
@@ -2949,7 +2951,7 @@ export const projetos = [
   {
     id: "metricas-produto-north-star",
     nome: "Definir métricas e hipóteses de produto",
-    area: "Produto / Gestão",
+    areaSlug: "gestao" as string | null,
     nivel: "Básico",
     objetivo: "Para um app fictício, escolher north star, métrias de entrada e experimentos.",
     ferramentas: ["Notion", "Planilha"],
@@ -2962,7 +2964,7 @@ export const projetos = [
   {
     id: "terraform-vm-hello",
     nome: "Infra mínima com Terraform",
-    area: "DevOps",
+    areaSlug: "devops" as string | null,
     nivel: "Intermediário",
     objetivo: "Provisionar um recurso simples na nuvem com código versionado.",
     ferramentas: ["Terraform", "AWS, GCP ou Azure (free tier)"],
@@ -2975,7 +2977,7 @@ export const projetos = [
   {
     id: "app-notas-react-native-expo",
     nome: "App de notas rápidas (mobile)",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
     objetivo: "Lista local de notas com criar/editar/apagar em React Native ou Expo.",
     ferramentas: ["Expo", "React Native", "AsyncStorage"],
@@ -2988,7 +2990,7 @@ export const projetos = [
   {
     id: "relatorio-seguranca-app",
     nome: "Checklist de segurança em app web",
-    area: "QA",
+    areaSlug: "qa" as string | null,
     nivel: "Avançado",
     objetivo: "Revisar headers, cookies, formulários e fluxo auth de um app público (responsável).",
     ferramentas: ["Navegador", "OWASP checklist resumido", "Documento"],
@@ -3001,7 +3003,7 @@ export const projetos = [
   {
     id: "ranking-filmes-tmdb",
     nome: "Explorador de filmes com TMDB",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Básico",
     objetivo: "Listar filmes populares, buscar por título e mostrar detalhes usando API do The Movie Database.",
     ferramentas: ["JavaScript ou React", "API TMDB", "CSS"],
@@ -3014,7 +3016,7 @@ export const projetos = [
   {
     id: "rag-chat-documentos",
     nome: "Assistente que responde com seus documentos (RAG)",
-    area: "IA / Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Avançado",
     objetivo: "Montar busca semântica em PDFs ou artigos e gerar respostas baseadas só no que está nos arquivos — habilidade muito pedida em vagas de produto com IA.",
     ferramentas: ["Python ou TypeScript", "Embeddings (API ou modelo local)", "Vector store (ex.: Chroma, pgvector)", "LLM via API"],
@@ -3027,7 +3029,7 @@ export const projetos = [
   {
     id: "saas-next-stripe",
     nome: "Mini-SaaS com Next.js, auth e Stripe (modo teste)",
-    area: "Full Stack",
+    areaSlug: null as string | null,
     nivel: "Avançado",
     objetivo: "Reproduzir o núcleo de um produto digital: login, área logada, plano pago e webhook de pagamento — combinação recorrente em vagas full stack e startups.",
     ferramentas: ["Next.js (App Router)", "Auth (NextAuth, Clerk ou Supabase Auth)", "Stripe em modo teste", "PostgreSQL"],
@@ -3040,7 +3042,7 @@ export const projetos = [
   {
     id: "crud-supabase-react",
     nome: "CRUD com Supabase + React",
-    area: "Full Stack",
+    areaSlug: null as string | null,
     nivel: "Intermediário",
     objetivo: "Usar BaaS real (auth opcional, tabelas, políticas RLS) no front — stack muito comum em 2024–2026 para MVPs e vagas júnior/pleno.",
     ferramentas: ["React ou Next.js", "Supabase (Postgres + API)", "Tailwind opcional"],
@@ -3053,7 +3055,7 @@ export const projetos = [
   {
     id: "chat-sala-websocket",
     nome: "Sala de chat em tempo real (WebSocket)",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Intermediário",
     objetivo: "Construir comunicação tempo real — conceito central em notificações, colaboração e jogos, ótimo para diferenciar o portfólio de back-end.",
     ferramentas: ["Node.js + ws ou Socket.io", "React ou HTML simples no cliente", "Redis opcional para escalar"],
@@ -3066,7 +3068,7 @@ export const projetos = [
   {
     id: "api-prisma-postgres",
     nome: "API REST com Prisma e PostgreSQL",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Intermediário",
     objetivo: "Dominar ORM moderno, migrações e tipagem — pedido explícito em muitas vagas Node/TypeScript.",
     ferramentas: ["Node.js", "TypeScript", "Prisma", "PostgreSQL", "Express ou Fastify"],
@@ -3079,7 +3081,7 @@ export const projetos = [
   {
     id: "graphql-api-apollo",
     nome: "API GraphQL (consultas e mutações)",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Intermediário",
     objetivo: "Expor um domínio via GraphQL com schema claro — skill valorizada em empresas de produto e ecossistemas móveis.",
     ferramentas: ["Node.js", "Apollo Server ou Mercurius", "TypeScript", "SQLite ou Postgres"],
@@ -3092,7 +3094,7 @@ export const projetos = [
   {
     id: "oauth-login-social",
     nome: "Login social (OAuth 2.0 / OpenID)",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Intermediário",
     objetivo: "Implementar fluxo Authorization Code com provedor (GitHub ou Google) e sessão/JWT — requisito frequente em sistemas reais.",
     ferramentas: ["Node.js ou framework equivalente", "OAuth app no provedor", "Cookies seguros ou JWT"],
@@ -3105,7 +3107,7 @@ export const projetos = [
   {
     id: "docker-compose-fullstack",
     nome: "Ambiente local com Docker Compose (API + banco + front)",
-    area: "DevOps",
+    areaSlug: "devops" as string | null,
     nivel: "Intermediário",
     objetivo: "Empacotar stack completa para `docker compose up` — esperado em times que prezam onboarding e paridade com produção.",
     ferramentas: ["Docker", "Docker Compose", "Seu app full stack existente ou mínimo novo"],
@@ -3118,7 +3120,7 @@ export const projetos = [
   {
     id: "playwright-e2e-criticos",
     nome: "Testes E2E críticos com Playwright",
-    area: "QA",
+    areaSlug: "qa" as string | null,
     nivel: "Intermediário",
     objetivo: "Automatizar jornadas que não podem quebrar (login, checkout feliz, criação de registro) — Playwright é referência atual em vagas de QA e eng com qualidade.",
     ferramentas: ["Playwright", "TypeScript", "Projeto web seu ou open source permitido"],
@@ -3131,7 +3133,7 @@ export const projetos = [
   {
     id: "storybook-componentes",
     nome: "Biblioteca de componentes com Storybook",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
     objetivo: "Documentar componentes isolados, estados e acessibilidade — comum em design systems e vagas front React.",
     ferramentas: ["React", "Storybook 8+", "Tailwind ou CSS modules", "addon a11y opcional"],
@@ -3144,7 +3146,7 @@ export const projetos = [
   {
     id: "kanban-dnd-kit",
     nome: "Quadro Kanban com arrastar e soltar",
-    area: "Front-end",
+    areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
     objetivo: "Treinar estado complexo, performance e UX de drag-and-drop — tipo de interação cobrada em ferramentas de produto e gestão.",
     ferramentas: ["React", "dnd-kit ou similar", "TypeScript"],
@@ -3157,7 +3159,7 @@ export const projetos = [
   {
     id: "etl-pipeline-python",
     nome: "Pipeline ETL com Python (arquivo → limpeza → destino)",
-    area: "Ciência de Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Intermediário",
     objetivo: "Simular engenharia de dados: extrair, validar, transformar e carregar — base para vagas de analista/engineer de dados júnior.",
     ferramentas: ["Python", "Pandas", "SQLite ou DuckDB", "cron ou Makefile"],
@@ -3170,7 +3172,7 @@ export const projetos = [
   {
     id: "dashboard-streamlit-produto",
     nome: "Dashboard executivo de produto (Streamlit)",
-    area: "Ciência de Dados",
+    areaSlug: "dados" as string | null,
     nivel: "Básico",
     objetivo: "Entregar painel interativo para ‘stakeholders’ — formato pedido para cases de dados em negócios e produto.",
     ferramentas: ["Python", "Streamlit", "Pandas", "CSV ou API mock"],
@@ -3183,7 +3185,7 @@ export const projetos = [
   {
     id: "prd-feature-ia",
     nome: "PRD de feature com uso responsável de IA",
-    area: "Produto / Gestão",
+    areaSlug: "gestao" as string | null,
     nivel: "Intermediário",
     objetivo: "Escrever documento que engenheiros e design consigam executar — formato padrão em PM para iniciativas com LLM ou recomendação.",
     ferramentas: ["Notion, Google Docs ou template ADR+PRD"],
@@ -3196,7 +3198,7 @@ export const projetos = [
   {
     id: "n8n-automacao-workflow",
     nome: "Automação de processo com n8n (ou Make)",
-    area: "Back-end",
+    areaSlug: "backend" as string | null,
     nivel: "Básico",
     objetivo: "Integrar sistemas sem código pesado — competência crescente em operações, growth e squads enxutos.",
     ferramentas: ["n8n self-host ou cloud trial", "Webhooks", "Google Sheets ou Notion API"],
