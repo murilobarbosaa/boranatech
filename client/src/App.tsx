@@ -11,6 +11,7 @@ import { useAffiliate } from "./hooks/useAffiliate";
 import Home from "./pages/home/HomeLanding";
 import Areas from "./pages/Areas";
 import AreaDetalhe from "./pages/AreaDetalhe";
+import SubAreaDetalhe from "./pages/SubAreaDetalhe";
 import Roadmaps from "./pages/Roadmaps";
 import Cursos from "./pages/Cursos";
 import Plataformas from "./pages/Plataformas";
@@ -74,6 +75,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/areas" component={Areas} />
+      <Route path="/areas/:parent/:subarea" component={SubAreaDetalhe} />
       <Route path="/areas/:slug" component={AreaDetalhe} />
       <Route path="/tecnologias" component={Tecnologias} />
       <Route path="/tecnologias/comparar" component={TecnologiaComparador} />
