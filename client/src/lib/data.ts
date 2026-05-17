@@ -667,7 +667,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "design-systems",
         nome: "Design Systems",
-        descricaoCurta: "Construção e manutenção de bibliotecas de componentes e tokens de design pra produtos grandes."
+        descricaoCurta: "Construção e manutenção de bibliotecas de componentes e tokens de design pra produtos grandes.",
+        descricaoCompleta: "Design System Designer é o profissional sênior que constrói e mantém o sistema de design de uma empresa — biblioteca de componentes reutilizáveis, tokens de design (cores, espaçamento, tipografia), padrões de interação e documentação. Diferente do Product Designer (que usa o design system pra criar telas) ou UI puro (que faz interfaces visuais), o DS Designer constrói a fundação que todos os outros designers usam. Cargo super sênior — raramente entry-level. Salários: pleno gira R$ 8-15k, sêniores em empresas com produtos complexos (Nubank, iFood, Magalu) chegam a R$ 18-25k. Mercado em crescimento — toda empresa madura precisa.",
+        oQueFaz: "No dia a dia: define tokens de design (cores, tipografia, espaçamento, elevações) e versiona como código, constrói componentes reutilizáveis no Figma com variants e propriedades, documenta padrões de uso e boas práticas, trabalha próximo aos devs front-end pra garantir aderência (Storybook, Tailwind, MUI), faz workshops e treina outros designers a usar o sistema, e itera baseado em feedback de uso. Em times maduros, gerencia versão do design system como produto interno.",
+        diferencasDaAreaMae: "Dentro de UX/UI, o Design System é a especialização mais técnica — diferente do Product Designer (que usa o sistema) e do UI Designer (que cria interfaces), o DS Designer constrói a base. Aproxima-se de Front-end Engineer: precisa entender tokens, componentes, lógica de propriedades. Diferente do UX Designer (foco em pesquisa), o DS Designer foca em sistematização visual. Cargo SÊNIOR — não tente entrar sem 3+ anos de design de produto. Caminho típico: Product/UI Designer experiente → DS Designer.",
+        habilidadesEspecificas: [
+          "Figma avançado (variants, properties, variables, modes)",
+          "Tokens de design (Tokens Studio, Style Dictionary)",
+          "Conhecimento básico de front-end (HTML, CSS, React/Vue)",
+          "Acessibilidade (WCAG AA/AAA) aplicada a componentes",
+          "Documentação técnica clara (Storybook, Zeroheight, ZenHub)"
+        ],
+        ferramentasEspecificas: [
+          "Figma + Tokens Studio (combinação padrão)",
+          "Storybook (documentação de componentes pra devs)",
+          "Style Dictionary (tokens como código)",
+          "Zeroheight (documentação visual de design system)",
+          "GitHub (versionamento de tokens e componentes)",
+          "Chromatic ou Percy (visual regression testing)"
+        ],
+        cargos: [
+          "Design Systems Designer Pleno (vindo de Product Designer)",
+          "Design Systems Designer Sênior (5+ anos)",
+          "Design Systems Lead / Staff Designer",
+          "Head of Design Systems / Design Technology"
+        ],
+        faixaSalarial: "R$ 6.000 (entrada) a R$ 25.000+ (sênior em big techs). Pleno gira em R$ 8-15k. Sêniores em Nubank, iFood, Magalu, Stone chegam a R$ 18-25k. Remoto pra fora paga US$ 5-10k/mês.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "Brad Frost — Atomic Design (livro online gratuito, referência mundial)",
+          "Design Systems Repo (designsystemsrepo.com) — coleção de sistemas reais",
+          "Figma Academy — Design Systems track (cursos oficiais gratuitos)"
+        ],
+        projetosSugeridos: [
+          "Construir design system completo (cores, tipografia, 20+ componentes) com docs",
+          "Versionar tokens em GitHub + integrar com Style Dictionary",
+          "Documentar 1 componente complexo (input com 8 estados) no Storybook + Figma"
+        ],
+        roadmapEspecifico: [
+          "Ter 2-3 anos de Product Designer ou UI sênior antes de mirar DS",
+          "Estudar Atomic Design (Brad Frost) e padrões de DS modernos",
+          "Dominar Figma profundamente (variants, properties, variables, modes)",
+          "Aprender fundamentos de front-end (HTML, CSS, React básico)",
+          "Construir DS público no Figma + GitHub como portfólio"
+        ],
+        dicasIniciais: "DS é cargo SÊNIOR — não tente entrar como júnior. Brad Frost (Atomic Design) é leitura obrigatória. Conhecimento básico de front-end é o diferencial real — separa DS Designer de UI puro. Domine Figma absurdamente (variants, properties, modes). Acompanhe sistemas grandes: Material Design (Google), Polaris (Shopify), Lightning (Salesforce) — todos públicos. Cargo perfeito pra perfis sistemáticos e organizados."
       },
       {
         slug: "product-design",
@@ -851,7 +895,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "visao-computacional",
         nome: "Visão Computacional",
-        descricaoCurta: "Modelos pra entender imagens e vídeos. Detecção de objetos, reconhecimento facial, OCR, segmentação."
+        descricaoCurta: "Modelos pra entender imagens e vídeos. Detecção de objetos, reconhecimento facial, OCR, segmentação.",
+        descricaoCompleta: "Engenheiro de Visão Computacional é o especialista em fazer máquinas interpretarem imagens e vídeos. Em 2026, é uma das áreas mais transversais e inovadoras de IA — carros autônomos (Tesla), drones agrícolas, robôs cirúrgicos, reconhecimento facial em segurança, detecção de defeitos em linhas de produção, leitura automática de documentos (OCR). Cargo super especializado e bem pago: nos EUA Computer Vision Engineer ganha US$ 162k/ano (Glassdoor 2026), 74% mais que Analista de Dados. No Brasil, mercado em crescimento — Sigmoidal aponta crescimento de 150% ao ano. Salários: pleno R$ 10-18k, sêniores em empresas industriais e fintechs chegam a R$ 20-30k+.",
+        oQueFaz: "No dia a dia: treina modelos de detecção de objetos (YOLO, Faster R-CNN) pra aplicações reais, trabalha com OpenCV pra processamento clássico de imagens, faz fine-tuning de modelos pré-treinados (CNNs, Vision Transformers), prepara datasets anotados (CVAT, Roboflow) com data augmentation, otimiza inferência embarcada (NVIDIA Jetson, TensorRT) pra rodar em dispositivos edge, e produtiza modelos com MLOps (versionamento, monitoring). Em indústria, trabalha com calibração de câmeras e integração físico-digital.",
+        diferencasDaAreaMae: "Dentro de IA, Visão Computacional separa-se de NLP pela modalidade — uma trabalha com imagens/vídeos, outra com texto/fala. Diferente do Machine Learning Engineer genérico, especialização profunda em CNNs, Vision Transformers e processamento de imagens. Mais técnica que NLP em alguns aspectos — exige álgebra linear, geometria 3D, calibração óptica. Cargo perfeito pra quem gosta de IA aplicada a problemas físicos (robótica, indústria 4.0, agronegócio, saúde).",
+        habilidadesEspecificas: [
+          "Python avançado + PyTorch ou TensorFlow",
+          "OpenCV profundo (processamento clássico + integração com deep learning)",
+          "Arquiteturas modernas (CNNs, Vision Transformers, YOLO, Segment Anything)",
+          "Otimização de inferência (TensorRT, ONNX, CUDA, edge computing)",
+          "Anotação e preparação de datasets (CVAT, Roboflow, data augmentation)"
+        ],
+        ferramentasEspecificas: [
+          "Python + PyTorch (padrão moderno) ou TensorFlow",
+          "OpenCV (processamento clássico de imagens)",
+          "Ultralytics YOLO (detecção de objetos state-of-the-art)",
+          "CVAT ou Roboflow (anotação de datasets)",
+          "NVIDIA Jetson + TensorRT (inferência embarcada)",
+          "MLflow ou Weights & Biases (tracking de experimentos)"
+        ],
+        cargos: [
+          "Engenheiro de Visão Computacional Júnior (raro, 0-2 anos)",
+          "Engenheiro de Visão Computacional Pleno (3-5 anos)",
+          "Engenheiro de Visão Computacional Sênior (5+ anos)",
+          "Staff Computer Vision Engineer / Lead AI"
+        ],
+        faixaSalarial: "R$ 5.621 (júnior raro) a R$ 30.000+ (sênior em indústria/big tech). Pleno gira em R$ 10-18k. Especialistas em empresas industriais (agro, manufatura) e remoto pra fora chegam a R$ 25-35k. Nos EUA, US$ 162k médio.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Sigmoidal (sigmoidal.ai) — tutoriais gratuitos em PT-BR sobre Visão Computacional",
+          "PyImageSearch (Adrian Rosebrock) — tutoriais práticos OpenCV + Deep Learning",
+          "Stanford CS231n — Convolutional Neural Networks for Visual Recognition (YouTube grátis)"
+        ],
+        projetosSugeridos: [
+          "Sistema de detecção de objetos em tempo real (YOLO + webcam) com classificação customizada",
+          "OCR completo: extração de texto de imagens de documentos (recibos, RG) com pós-processamento",
+          "Segmentação de imagens médicas ou agrícolas com U-Net ou SAM (Segment Anything)"
+        ],
+        roadmapEspecifico: [
+          "Ter base sólida em Python + Machine Learning + álgebra linear",
+          "Aprender OpenCV (processamento clássico ainda muito usado)",
+          "Estudar arquiteturas CNN (ResNet, EfficientNet) profundamente",
+          "Aprofundar em modelos modernos: YOLO, Vision Transformers, Segment Anything",
+          "Construir portfólio público com 2-3 projetos completos (GitHub + Kaggle)"
+        ],
+        dicasIniciais: "Subárea mais técnica de IA — não tente entrar sem base sólida em ML. Sigmoidal é a referência BR — siga blog e cursos. Para projetos: comece com YOLO (mais acessível) antes de modelos mais complexos. Inglês é obrigatório (papers em arxiv, doc em inglês). Especialização em agronegócio ou indústria 4.0 paga muito bem no BR. Cargo perfeito pra quem ama o lado físico/visual da IA."
       },
       {
         slug: "prompt-engineering",
@@ -1179,7 +1267,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "product-ops",
         nome: "Product Ops",
-        descricaoCurta: "Padroniza processos de produto, ferramentas e métricas em times maiores. Cargo emergente."
+        descricaoCurta: "Padroniza processos de produto, ferramentas e métricas em times maiores. Cargo emergente.",
+        descricaoCompleta: "Product Operations (Product Ops) é a especialização emergente que cuida da infraestrutura, processos e dados que permitem times de produto escalarem com qualidade. Diferente do PM (foco em estratégia) e PO (foco em execução), o Product Ops cuida do 'como' do trabalho de produto: documentação centralizada, métricas unificadas, ferramentas, onboarding de novos PMs. Cargo nasceu em big techs (Atlassian, HubSpot) e está chegando ao BR via fintechs e scale-ups. Salários: pleno gira R$ 10-18k, sêniores em fintechs e empresas com 30+ PMs chegam a R$ 20-28k. Mercado em formação — quem entrar agora pega salários acima do normal.",
+        oQueFaz: "No dia a dia: centraliza documentação de produto (PRDs, decisões, contextos) em ferramentas como Notion, define padrões e templates pra PRDs e roadmaps, gerencia ferramentas do time (Jira, Linear, Mixpanel, Productboard), constrói dashboards unificados de métricas de produto, faz onboarding de novos PMs, organiza rituais transversais (product review, sprint planning de produto), e atua como ponte entre Produto, Engenharia, Design e Negócio. Em times grandes, virou função essencial.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o Product Ops é a evolução em escala — diferente do PM (que toma decisões sobre produto) e PO (que executa), o Product Ops cuida da 'engrenagem' que permite múltiplos PMs trabalharem bem. Não toma decisões sobre o produto em si — toma decisões sobre como o time trabalha. Cargo super valorizado em empresas com 10+ PMs (escalabilidade), inútil em startups pequenas. Caminho típico: PM ou PO sênior que ama processos → Product Ops.",
+        habilidadesEspecificas: [
+          "Visão sistêmica de processos de produto (do discovery ao launch)",
+          "Domínio profundo de ferramentas de produto (Jira, Linear, Productboard, Notion)",
+          "Análise de dados e SQL básico (medir o trabalho do time)",
+          "Documentação clara e versionada (criar templates e padrões)",
+          "Comunicação executiva (apresentar métricas pra C-level)"
+        ],
+        ferramentasEspecificas: [
+          "Notion ou Confluence (centralização de conhecimento)",
+          "Productboard ou Aha! (gestão de roadmap em escala)",
+          "Jira ou Linear (gestão de execução)",
+          "Mixpanel ou Amplitude (analytics unificado)",
+          "Looker ou Mode (dashboards de métricas de produto)",
+          "Loom (comunicação assíncrona)"
+        ],
+        cargos: [
+          "Product Ops Pleno (vindo de PM/PO, 3+ anos)",
+          "Senior Product Ops (5+ anos)",
+          "Lead Product Ops / Head of Product Operations",
+          "VP Product Operations (empresas com 50+ PMs)"
+        ],
+        faixaSalarial: "R$ 8.000 (entrada) a R$ 28.000+ (sênior em fintechs). Pleno gira em R$ 10-18k. Sêniores em empresas com times grandes de produto chegam a R$ 20-28k. Cargo emergente no BR — salários acima do esperado por gap de profissionais.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "Product Operations Council — recursos gratuitos sobre a disciplina",
+          "Lenny's Newsletter — artigos gratuitos sobre Product Ops (Marin Smiljanic é referência)",
+          "PM3 — Blog com artigos sobre escalabilidade de produto"
+        ],
+        projetosSugeridos: [
+          "Auditoria de processos de produto de empresa fictícia: mapear gaps + propor melhorias",
+          "Construir template de PRD + processo de discovery padrão pra time hipotético de 5 PMs",
+          "Dashboard unificado de métricas de produto: definir KPIs principais + visualização"
+        ],
+        roadmapEspecifico: [
+          "Ter 3+ anos como PM ou PO em times com múltiplas pessoas de produto",
+          "Estudar Product Operations Council e artigos do Lenny's Newsletter",
+          "Dominar ferramentas modernas (Productboard, Linear, Mixpanel, Looker)",
+          "Aprender SQL básico pra construir dashboards próprios",
+          "Identificar gaps no seu time atual e propor melhorias como transição interna"
+        ],
+        dicasIniciais: "Cargo SÊNIOR e nicho — não tente entrar sem experiência prévia em produto. Caminho ideal: PM sênior que ama processos → propor função internamente → migrar. Em startups pequenas (<10 PMs) não existe — mire scale-ups e empresas estabelecidas. Comunidade BR ainda pequena — produzir conteúdo público abre portas. Inglês é importante (a maior parte da literatura está em inglês). Mercado em formação — quem entra agora vai estar na primeira onda."
       }
     ]
   },
@@ -1316,17 +1448,149 @@ export const areasTI: AreaTI[] = [
       {
         slug: "appsec",
         nome: "Application Security",
-        descricaoCurta: "Segurança aplicada ao desenvolvimento. Code review seguro, SAST/DAST, DevSecOps, hardening de APIs."
+        descricaoCurta: "Segurança aplicada ao desenvolvimento. Code review seguro, SAST/DAST, DevSecOps, hardening de APIs.",
+        descricaoCompleta: "AppSec (Application Security) Engineer é o profissional especializado em segurança de aplicações — código, APIs, microsserviços, mobile, web. Diferente do Red Team (que ataca pra testar) e Blue Team (que defende em tempo real), o AppSec foca em prevenção: integra segurança no ciclo de desenvolvimento (SDLC), faz threat modeling, secure code review, e treina devs em práticas seguras. Cargo super valorizado em fintechs, bancos e empresas que vivem de software. Salário top de Cibersegurança: Glassdoor mostra média R$ 21.838 (Application Security Specialist), com sêniores chegando a R$ 25-35k. Mercado super aquecido — 4.470+ vagas no BeBee.",
+        oQueFaz: "No dia a dia: integra ferramentas de SAST (Semgrep, SonarQube), DAST (OWASP ZAP, Burp Suite) e SCA (Snyk, Dependabot) em pipelines CI/CD, faz threat modeling (STRIDE, PASTA) em arquiteturas novas, conduz secure code reviews em PRs críticos, treina devs em OWASP Top 10 e boas práticas, responde a vulnerabilidades reportadas (bug bounty, disclosures), e atua próximo ao DevSecOps na esteira de segurança. Em times maduros, foca em shift-left security.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o AppSec é o lado de prevenção em código — diferente do Red Team (ofensivo), Blue Team (defensivo reativo) ou GRC (compliance). Foco profundo em código e aplicações. Diferente do DevSecOps (que cuida do pipeline inteiro), o AppSec é mais especializado em código de aplicação e revisão de segurança. Cargo perfeito pra quem vem de desenvolvimento e quer migrar pra segurança — sua experiência em código se traduz diretamente. Carreira de transição clássica.",
+        habilidadesEspecificas: [
+          "OWASP Top 10 + padrões secure coding (Web/API/Mobile)",
+          "SAST, DAST, SCA (Semgrep, SonarQube, Burp, Snyk)",
+          "Threat modeling (STRIDE, PASTA, OWASP Threat Dragon)",
+          "Programação em uma ou mais linguagens (Python, Go, Java, JS)",
+          "Knowledge de criptografia aplicada (TLS, hashing, JWT, OAuth)"
+        ],
+        ferramentasEspecificas: [
+          "Semgrep ou SonarQube (SAST)",
+          "Burp Suite ou OWASP ZAP (DAST)",
+          "Snyk ou Dependabot (SCA + dependencies)",
+          "GitHub Advanced Security (integrado a repos)",
+          "Threat Dragon ou IriusRisk (threat modeling)",
+          "JFrog Xray (security em registries)"
+        ],
+        cargos: [
+          "AppSec Engineer Pleno (vindo de dev ou segurança, 3+ anos)",
+          "Senior AppSec Engineer (5+ anos)",
+          "Staff AppSec Engineer / Security Champion",
+          "Head of Application Security"
+        ],
+        faixaSalarial: "R$ 8.000 (entrada) a R$ 35.000+ (sênior em fintechs/bancos). Média BR R$ 21.838 — Glassdoor 2026 (Application Security Specialist). Pleno gira em R$ 12-20k. Sêniores em PagSeguro, Stone, Nubank, bancos chegam a R$ 25-32k.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "OWASP Cheat Sheet Series (referência mundial gratuita)",
+          "PortSwigger Web Security Academy (curso completo gratuito em inglês)",
+          "Alura — Trilha AppSec (parte gratuita, com referências BR)"
+        ],
+        projetosSugeridos: [
+          "Pipeline CI/CD completo com SAST + DAST + SCA em projeto público no GitHub",
+          "Threat modeling de arquitetura real ou fictícia com diagrama + ações de mitigação",
+          "Bug bounty: reportar 2-3 vulnerabilidades reais via HackerOne/Bugcrowd"
+        ],
+        roadmapEspecifico: [
+          "Ter base de desenvolvimento (1-2 anos) OU base de segurança (Blue Team/Red Team)",
+          "Estudar OWASP Top 10 + secure coding profundamente",
+          "Aprender ferramentas SAST/DAST/SCA + integração CI/CD",
+          "Praticar threat modeling em arquiteturas reais",
+          "Tirar certificação CSSLP (ISC2) ou OSWE (Offensive Security)"
+        ],
+        dicasIniciais: "Caminho ideal: dev sênior que quer migrar pra segurança — sua experiência em código vale ouro. PortSwigger Academy é OBRIGATÓRIO — curso gratuito mais completo da área. Comece com OWASP Top 10 + linguagem que você já domina. Inglês é absolutamente obrigatório. Bug bounty é portfólio real — vulnerabilidades reportadas no HackerOne valem muito. Cargo super valorizado em fintechs e bancos."
       },
       {
         slug: "grc",
         nome: "GRC (Governança, Risco e Compliance)",
-        descricaoCurta: "Camada estratégica. Trabalha com LGPD, ISO 27001, NIST e auditoria. Equilibra tecnologia e regulamentação."
+        descricaoCurta: "Camada estratégica. Trabalha com LGPD, ISO 27001, NIST e auditoria. Equilibra tecnologia e regulamentação.",
+        descricaoCompleta: "GRC (Governance, Risk and Compliance) é o pilar estratégico de Cibersegurança — profissional que define políticas, garante conformidade regulatória (LGPD, ISO 27001, SOC 2, PCI-DSS) e gerencia riscos da organização. Diferente das áreas técnicas (Red Team, Blue Team, AppSec), GRC é mais estratégico e jurídico — atua próximo a executivos e jurídico. Cargo essencial em fintechs, bancos, healthtechs e empresas reguladas. Cresce muito com LGPD em vigor no BR (2020+) e exigências internacionais (SOC 2 pra clientes US). Salários: pleno gira R$ 8-15k, sêniores em bancos e fintechs chegam a R$ 18-30k+.",
+        oQueFaz: "No dia a dia: define políticas e procedimentos de segurança da informação, gerencia processo de adequação a frameworks (ISO 27001, SOC 2, NIST, PCI-DSS), conduz análises de risco (matriz probabilidade x impacto), audita controles internos e responde a auditorias externas, treina colaboradores em segurança e LGPD, gerencia relacionamento com encarregado de dados (DPO), e produz relatórios pra alta gestão e órgãos reguladores. Em empresas grandes, lidera comitê de segurança.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o GRC é o lado estratégico — diferente das áreas técnicas (Red Team, Blue Team, AppSec, Forense), GRC trabalha com políticas, conformidade e gestão de riscos. Aproxima-se de auditoria interna e jurídico. Cargo perfeito pra perfis mais organizacionais e menos técnicos — alguns GRCs vêm de auditoria, direito, administração. Não precisa programar — precisa entender frameworks regulatórios profundamente.",
+        habilidadesEspecificas: [
+          "Frameworks de segurança (ISO 27001, NIST, CIS Controls, COBIT)",
+          "Regulações brasileiras (LGPD) e internacionais (GDPR, HIPAA)",
+          "Padrões setoriais (PCI-DSS para fintechs, SOX para empresas listadas)",
+          "Gestão de riscos (matriz, KRIs, treatment plans)",
+          "Comunicação executiva e jurídica (relatórios pra C-level e auditores)"
+        ],
+        ferramentasEspecificas: [
+          "Excel avançado e Power BI (matrizes de risco, dashboards)",
+          "Drata ou Vanta (automação de SOC 2, ISO 27001)",
+          "GRC platforms (ServiceNow GRC, RSA Archer, OneTrust)",
+          "Notion ou Confluence (documentação de políticas)",
+          "Frameworks oficiais (ISO 27001 PDF, NIST CSF)",
+          "Power BI (dashboards de compliance)"
+        ],
+        cargos: [
+          "Analista de GRC Júnior (0-2 anos)",
+          "Analista de GRC Pleno (2-5 anos)",
+          "Especialista GRC / Auditor Interno Sênior (5+ anos)",
+          "Gerente GRC / Chief Information Security Officer (CISO)"
+        ],
+        faixaSalarial: "R$ 5.000 (júnior) a R$ 30.000+ (sênior em bancos). Pleno gira em R$ 8-15k. Sêniores em fintechs (Stone, Nubank, PagBank), bancos e healthtechs chegam a R$ 18-28k. CISO ultrapassa R$ 40k em empresas grandes.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "ANPD — Material gratuito sobre LGPD (autoridade nacional, referência oficial)",
+          "ISACA — recursos gratuitos sobre governança (referência mundial)",
+          "ISO 27001 Foundation — cursos introdutórios gratuitos no Coursera"
+        ],
+        projetosSugeridos: [
+          "Política de Segurança da Informação completa pra empresa fictícia",
+          "Matriz de risco de TI com 20+ riscos identificados + planos de mitigação",
+          "Análise de gap pra ISO 27001 em organização real ou hipotética"
+        ],
+        roadmapEspecifico: [
+          "Estudar LGPD profundamente (obrigatório no BR)",
+          "Aprender frameworks principais (ISO 27001, NIST CSF, CIS Controls)",
+          "Estudar gestão de riscos aplicada a TI",
+          "Tirar certificação inicial (ISFS da EXIN ou Security+ da CompTIA)",
+          "Avançar para CISA (auditoria) ou CISSP (gestão) após 3-5 anos"
+        ],
+        dicasIniciais: "Porta de entrada acessível em Cibersegurança pra quem NÃO quer ser técnico — não precisa programar. Vindo de auditoria, direito ou administração? Caminho natural. LGPD é a porta de entrada essencial no BR — domine. ISO 27001 é o framework mais respeitado mundialmente. CISA e CISSP são certificações de ouro pra carreira de longo prazo. Cargo perfeito pra perfis organizacionais e detalhistas."
       },
       {
         slug: "forense-digital",
         nome: "Forense Digital e Resposta a Incidentes",
-        descricaoCurta: "Investigação pós-ataque. Análise de evidências digitais, contenção de incidentes e recuperação de sistemas."
+        descricaoCurta: "Investigação pós-ataque. Análise de evidências digitais, contenção de incidentes e recuperação de sistemas.",
+        descricaoCompleta: "Forense Digital (ou Digital Forensics) é o especialista em investigar incidentes de segurança após o fato — analisa evidências digitais (logs, dispositivos, redes) pra responder 'o que aconteceu, como, e quem fez'. Atua em CSIRT corporativo (response a incidentes) ou como perito (criminal ou civil). Cargo super específico e técnico — exige conhecimento profundo de sistemas, redes, e direito digital. Salários variam muito: Glassdoor mostra média R$ 9.033 (Analista Forense Digital) com sêniores em R$ 10.800; peritos federais ganham R$ 14.000+; em CSIRTs de bancos chega a R$ 18-25k. Mercado pequeno mas valorizado.",
+        oQueFaz: "No dia a dia: coleta e preserva evidências digitais (HD, RAM, logs) seguindo cadeia de custódia, analisa malwares (engenharia reversa básica), investiga incidentes (timeline, root cause analysis), recupera dados deletados, analisa tráfego de rede capturado, produz laudos técnicos detalhados (em formato pericial), e apoia juridicamente em processos. Em CSIRT corporativo, atua próximo ao Blue Team na resposta a incidentes complexos.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, Forense Digital é o lado investigativo PÓS-incidente — diferente do Red Team (ataque), Blue Team (defesa em tempo real) e AppSec (prevenção), o Forense trabalha depois que o ataque ocorreu. Aproxima-se de investigação criminal e perícia judicial. Cargo super nicho — empresas grandes têm 1-2 especialistas, mercado é pequeno mas estável. Caminho público (perito policial/federal via concurso) ou privado (CSIRT/consultoria).",
+        habilidadesEspecificas: [
+          "Análise forense de sistemas operacionais (Windows, Linux, macOS)",
+          "Análise de memória (RAM dumps) com Volatility ou similares",
+          "Engenharia reversa básica de malware",
+          "Análise de tráfego de rede (Wireshark, NetworkMiner)",
+          "Conhecimento de direito digital e cadeia de custódia"
+        ],
+        ferramentasEspecificas: [
+          "Autopsy ou EnCase (análise forense de discos)",
+          "Volatility (análise de memória RAM)",
+          "Wireshark (análise de tráfego)",
+          "IDA Pro ou Ghidra (engenharia reversa)",
+          "FTK Imager (aquisição forense de dispositivos)",
+          "X-Ways Forensics (análise avançada)"
+        ],
+        cargos: [
+          "Analista Forense Júnior (0-2 anos, raro)",
+          "Analista Forense Digital Pleno (3-5 anos)",
+          "Perito Forense / Especialista CSIRT Sênior (5+ anos)",
+          "Perito Federal / Lead Forensics"
+        ],
+        faixaSalarial: "R$ 3.367 (júnior) a R$ 25.000+ (sênior em bancos/CSIRT). Média BR R$ 9.033 — Glassdoor 2026. Pleno gira em R$ 7-12k. Peritos federais (concursados) ganham R$ 14k+. Sêniores em fintechs grandes chegam a R$ 18-22k.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "SANS DFIR — recursos gratuitos (cheat sheets, posters, blog)",
+          "Cyber5w — labs gratuitos de forense digital",
+          "DFIR.training — comunidade gratuita com recursos massivos"
+        ],
+        projetosSugeridos: [
+          "Análise forense de máquina virtual comprometida intencionalmente (CTF de forense)",
+          "Análise de malware em ambiente controlado (sandbox) com relatório técnico",
+          "Resolver 10+ desafios em plataformas como CyberDefenders ou DFIR Madness"
+        ],
+        roadmapEspecifico: [
+          "Aprender fundamentos profundos de sistemas (Windows, Linux, redes)",
+          "Estudar análise forense (livro 'File System Forensic Analysis' é referência)",
+          "Praticar com ferramentas reais (Autopsy é gratuito)",
+          "Tirar certificação inicial: GCFA (SANS) ou EnCase Certified Examiner",
+          "Decidir caminho: público (concurso PF/PCs) ou privado (CSIRT/consultoria)"
+        ],
+        dicasIniciais: "Cargo nicho e SÊNIOR — não tente entrar sem base sólida de redes/sistemas. Decida cedo: caminho público (concurso de Perito Federal/Estadual, salários previsíveis) ou privado (CSIRT corporativo, salários mais altos mas voláteis). SANS DFIR é referência mundial — siga. Cargo perfeito pra mentes investigativas e detalhistas. Inglês é obrigatório (toda doc em inglês). Mercado BR pequeno mas estável."
       }
     ]
   },
@@ -1414,12 +1678,100 @@ export const areasTI: AreaTI[] = [
       {
         slug: "cloud-security",
         nome: "Cloud Security",
-        descricaoCurta: "Especialista em segurança em ambiente cloud. IAM, hardening de workloads, CSPM, conformidade."
+        descricaoCurta: "Especialista em segurança em ambiente cloud. IAM, hardening de workloads, CSPM, conformidade.",
+        descricaoCompleta: "Cloud Security Engineer é o especialista em segurança específica de ambientes em nuvem — diferente da segurança tradicional, cloud tem desafios únicos: IAM complexo, shared responsibility model, escala dinâmica, multi-tenancy. Cargo crítico em qualquer empresa que rode em AWS, Azure ou GCP — todas correm risco massivo de misconfiguração que vaza dados. Cresce explosivamente: empresas brasileiras migrando pra cloud precisam desse perfil urgentemente. Salários: pleno R$ 12-20k, sêniores em fintechs e empresas com workload massivo em cloud chegam a R$ 25-35k. Combina expertise em cloud + segurança — pool de profissionais pequeno = salários altos.",
+        oQueFaz: "No dia a dia: configura e audita IAM em AWS/Azure/GCP (least privilege, MFA, role assumption), define network security (VPC, security groups, NACLs, WAF), implementa criptografia em repouso e trânsito, faz hardening de configurações cloud (CIS Benchmarks), monitora com ferramentas cloud-native (GuardDuty, Security Hub, Defender), responde a incidentes em cloud, e garante compliance (PCI-DSS, LGPD em ambiente cloud). Em empresas maduras, automatiza políticas como código (CSPM, Cloud Custodian).",
+        diferencasDaAreaMae: "Dentro de Cloud, o Cloud Security é a especialização defensiva — diferente do Arquiteto Cloud (que projeta sistemas), FinOps (que cuida de custos) ou Cloud Engineer (que opera), o Security foca em proteger esse ambiente. Diferente do AppSec (foco em código) ou Blue Team (foco em SOC tradicional), o Cloud Security é hiper-especializado em infraestrutura cloud. Caminho típico: vem de DevOps ou Cloud Engineer e se especializa em segurança, ou vem de segurança tradicional e migra pra cloud.",
+        habilidadesEspecificas: [
+          "Domínio profundo de IAM em pelo menos uma cloud (AWS é o mais procurado no BR)",
+          "Network security em cloud (VPC, security groups, WAF, DDoS protection)",
+          "CIS Benchmarks e hardening de configurações cloud",
+          "CSPM (Cloud Security Posture Management) e ferramentas (Wiz, Prisma, Lacework)",
+          "Compliance em cloud (LGPD, PCI-DSS, SOC 2 aplicados a AWS/Azure/GCP)"
+        ],
+        ferramentasEspecificas: [
+          "AWS Security Hub + GuardDuty + Inspector + Config",
+          "Wiz, Prisma Cloud ou Lacework (CSPM)",
+          "Terraform (Infrastructure as Code com security baseline)",
+          "Vault (gestão de secrets em cloud)",
+          "Cloud Custodian (políticas de segurança como código)",
+          "Datadog ou Splunk (SIEM integrado a cloud)"
+        ],
+        cargos: [
+          "Cloud Security Engineer Pleno (vindo de DevOps ou segurança, 3+ anos)",
+          "Senior Cloud Security Engineer (5+ anos)",
+          "Cloud Security Architect (7+ anos)",
+          "Head of Cloud Security / Cloud CISO"
+        ],
+        faixaSalarial: "R$ 8.000 (entrada) a R$ 35.000+ (sênior em fintechs/big techs). Pleno gira em R$ 12-20k. Sêniores em Stone, Nubank, iFood, bancos chegam a R$ 22-30k. Remoto pra fora paga US$ 8-15k/mês.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "AWS Skill Builder — Security Learning Path (parte gratuita)",
+          "CIS Benchmarks (gratuitos via CIS Center for Internet Security)",
+          "AWS re:Inforce — talks gratuitos sobre segurança em cloud (YouTube)"
+        ],
+        projetosSugeridos: [
+          "AWS Landing Zone segura completa (Organizations + SCP + GuardDuty habilitado)",
+          "Análise CSPM de conta AWS própria com 20+ findings + remediações documentadas",
+          "Pipeline com security as code: Terraform + checkov + tfsec validando antes de aplicar"
+        ],
+        roadmapEspecifico: [
+          "Ter base sólida em DevOps ou Cibersegurança tradicional",
+          "Dominar uma cloud profundamente (AWS é o mais procurado)",
+          "Tirar AWS Security Specialty (ou equivalente Azure/GCP)",
+          "Aprender CIS Benchmarks e ferramentas CSPM",
+          "Construir portfólio: 2 projetos públicos com Landing Zone segura documentada"
+        ],
+        dicasIniciais: "Cargo SÊNIOR — não tente entrar sem base de cloud OU segurança. AWS Security Specialty (US$ 300) é a certificação mais respeitada. Combine com CIS Benchmarks (gratuitos) — referência absoluta. Inglês é obrigatório. Mercado pequeno mas em explosão — quem entra agora pega salários acima do normal. Em fintechs e bancos, cargo paga muito acima da média. Caminho ideal: vem de DevOps → migra pra Cloud Security."
       },
       {
         slug: "finops",
         nome: "FinOps",
-        descricaoCurta: "Otimização financeira de cloud. Reduz custos, monitora gastos, aplica práticas de billing e governança."
+        descricaoCurta: "Otimização financeira de cloud. Reduz custos, monitora gastos, aplica práticas de billing e governança.",
+        descricaoCompleta: "FinOps (Financial Operations) é a disciplina emergente que une finanças, tecnologia e operações pra gerenciar custos de cloud com responsabilidade. Em 2026, empresas brasileiras gastam milhões em AWS/Azure/GCP sem visibilidade clara — FinOps muda isso: aloca custos por time, identifica desperdícios, propõe Reserved Instances/Savings Plans, e cria cultura de accountability. Cargo nasceu em big techs e está chegando ao BR em fintechs, varejistas e empresas com workload massivo. Salários: pleno gira R$ 12-18k (Glassdoor R$ 17.006), sêniores em empresas com gasto de cloud massivo (Mercado Livre, iFood, Stone) chegam a R$ 20-30k.",
+        oQueFaz: "No dia a dia: monitora custos de cloud em tempo real com ferramentas nativas (AWS Cost Explorer, Azure Cost Management), aloca gastos por time/produto via tagging, identifica oportunidades (compute idle, storage desnecessário, queries caras), propõe compras de Reserved Instances e Savings Plans baseado em uso histórico, treina engenheiros em cost-awareness, constrói dashboards de custo pra liderança, e participa de decisões arquiteturais avaliando trade-off performance vs custo.",
+        diferencasDaAreaMae: "Dentro de Cloud, o FinOps é a especialização financeira — diferente do Arquiteto Cloud (que projeta), Cloud Security (que protege) ou Cloud Engineer (que opera), o FinOps cuida do dinheiro. Cargo híbrido entre tecnologia e finanças — alguns FinOps vêm de finanças/controladoria e migram pra cloud; outros vêm de DevOps e aprendem finanças. Cargo emergente no BR — empresas que gastam mais de R$ 1M/mês em cloud precisam.",
+        habilidadesEspecificas: [
+          "Conhecimento profundo de modelo de cobrança da cloud (AWS Pricing, Azure pricing)",
+          "SQL avançado pra análise de billing data (CUR no AWS, Azure billing export)",
+          "Power BI ou Tableau pra dashboards de custo",
+          "Compreensão de finanças corporativas (budget, forecast, unit economics)",
+          "Negociação com vendors (volume discounts, EDPs, commitments)"
+        ],
+        ferramentasEspecificas: [
+          "AWS Cost Explorer + Cost and Usage Report (CUR)",
+          "Azure Cost Management + Billing",
+          "GCP Cloud Billing reports",
+          "Cloudability, Apptio ou Vantage (FinOps platforms)",
+          "Power BI ou Tableau (dashboards executivos)",
+          "Kubecost (FinOps específico pra Kubernetes)"
+        ],
+        cargos: [
+          "Analista FinOps Júnior (0-2 anos)",
+          "Analista FinOps Pleno / Especialista (3-5 anos)",
+          "Senior FinOps Specialist (5+ anos)",
+          "Head of FinOps / Cloud Economics"
+        ],
+        faixaSalarial: "R$ 6.000 (júnior) a R$ 30.000+ (sênior). Média BR R$ 17.006 — Glassdoor 2026 (FinOps Specialist). Pleno gira em R$ 12-18k. Sêniores em empresas com gasto massivo em cloud chegam a R$ 22-30k. FinOps Certified Practitioner (FOCP) é diferencial real.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "FinOps Foundation — recursos gratuitos (referência mundial oficial)",
+          "AWS Cost Optimization (parte gratuita do AWS Skill Builder)",
+          "FinOps Open Cost & Usage Spec (OpenCost) — referência open source"
+        ],
+        projetosSugeridos: [
+          "Análise de gastos de uma conta AWS pública/teste: identificar 10 otimizações com impacto estimado",
+          "Dashboard de custo com tagging strategy completa pra empresa fictícia",
+          "Plano de otimização: Reserved Instances + Savings Plans com cálculo de ROI"
+        ],
+        roadmapEspecifico: [
+          "Estudar modelo de cobrança da cloud principal (AWS é o mais procurado)",
+          "Aprender SQL pra analisar billing data (CUR no AWS é complexo)",
+          "Dominar uma ferramenta de visualização (Power BI ou Tableau)",
+          "Tirar certificação FinOps Certified Practitioner (FOCP) — US$ 250",
+          "Construir portfólio: análise pública de gastos cloud + propostas de otimização"
+        ],
+        dicasIniciais: "Cargo emergente — quem entrar agora pega salários acima do normal por 3-5 anos. FOCP (FinOps Certified Practitioner) é A certificação da área — vale o investimento. Caminho ideal: vem de DevOps/Cloud → aprende finanças OU vem de finanças → aprende cloud. SQL é cobrado pra análise de billing data (CUR no AWS tem terabytes). Inglês é importante. Cargo perfeito pra perfis analíticos que gostam de números."
       }
     ]
   },
@@ -1968,7 +2320,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "flutter",
         nome: "Flutter",
-        descricaoCurta: "Framework do Google pra apps cross-platform com Dart. Ganhou força em 2024-2026, principalmente em startups."
+        descricaoCurta: "Framework do Google pra apps cross-platform com Dart. Ganhou força em 2024-2026, principalmente em startups.",
+        descricaoCompleta: "Desenvolvedor Flutter é o profissional que constrói apps mobile cross-platform usando Flutter (framework do Google) e Dart (linguagem do Google). Diferente do React Native (JavaScript, framework do Meta), Flutter renderiza tudo via Skia/Impeller — entrega performance superior próxima ao nativo. Mercado BR menor que React Native (Glassdoor mostra 158 salários vs 1.000+ de RN), mas em crescimento. Salários: júnior gira R$ 4.271, sêniores chegam a R$ 21k+ (90º percentil R$ 31k Glassdoor 2026). Empresas que escolhem Flutter geralmente valorizam performance e produtos premium. Comunidade BR ativa e crescente.",
+        oQueFaz: "No dia a dia: desenvolve apps em Dart usando widgets Flutter (Stateless/Stateful), gerencia estado com Provider, Riverpod ou BLoC, integra com APIs REST/GraphQL, navega entre telas (GoRouter, AutoRoute), implementa recursos nativos via plugins (câmera, push, deep links), publica apps em App Store e Google Play (single codebase), e otimiza performance pra dispositivos variados. Trabalha com Android Studio ou VS Code.",
+        diferencasDaAreaMae: "Dentro de Mobile, o Flutter compete diretamente com React Native — ambos cross-platform, decisão entre eles é tecnológica. Flutter usa Dart (linguagem própria, curva de aprendizado maior) e renderiza widgets via Skia (performance superior, look idêntico em iOS/Android). React Native usa JavaScript (pool gigante de devs web) e componentes nativos (visual nativo por plataforma). Diferente de iOS/Android Nativos, Flutter sacrifica acesso completo a APIs em troca de cross-platform. No BR, mercado menor que RN mas crescente — empresas Google-friendly preferem Flutter.",
+        habilidadesEspecificas: [
+          "Dart profundo (linguagem do Google, similar a Java/Kotlin)",
+          "Flutter framework (widgets, ciclo de vida, animações)",
+          "Gerenciamento de estado (Provider, Riverpod, BLoC, GetX)",
+          "Integração com APIs (REST e GraphQL via http, Dio, graphql_flutter)",
+          "Plugins nativos e configuração platform-specific"
+        ],
+        ferramentasEspecificas: [
+          "Flutter SDK + Dart (oficial Google)",
+          "Android Studio ou VS Code (IDE)",
+          "Provider, Riverpod ou BLoC (gestão de estado)",
+          "GoRouter ou AutoRoute (navegação)",
+          "Firebase (backend mais comum com Flutter)",
+          "Sentry ou Crashlytics (crash reporting)"
+        ],
+        cargos: [
+          "Desenvolvedor Flutter Júnior (0-2 anos)",
+          "Desenvolvedor Flutter Pleno (2-5 anos)",
+          "Desenvolvedor Flutter Sênior (5+ anos)",
+          "Tech Lead Mobile (Flutter)"
+        ],
+        faixaSalarial: "R$ 3.677 (júnior) a R$ 31.300 (90º percentil sênior). Média BR R$ 5.688 — Glassdoor 2026 (158 respondentes). Pleno gira em R$ 6-12k. Sêniores em empresas que apostam no Flutter (Boticário, Drogaria Araujo, Turbi) chegam a R$ 15-21k. Remoto pra fora paga em dólar.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Flutter.dev — Documentação oficial e codelabs (Google, gratuitos, excelentes)",
+          "Cod3r / Cleyton (YouTube) — Flutter completo em PT-BR gratuito",
+          "Flutter Brasil (comunidade Discord + Telegram) — referência BR ativa"
+        ],
+        projetosSugeridos: [
+          "Clone funcional de app conhecido (Spotify, Instagram feed) com Flutter + Firebase",
+          "App próprio resolvendo problema seu — publicar nas DUAS lojas (Google Play + App Store)",
+          "Contribuir pra pacote pub.dev (gerenciador de pacotes Flutter) com biblioteca útil"
+        ],
+        roadmapEspecifico: [
+          "Aprender Dart (linguagem nova mas similar a Java/Kotlin/Swift)",
+          "Dominar Flutter widgets básicos (Stateless, Stateful, layouts)",
+          "Estudar gerenciamento de estado (Riverpod é o mais moderno em 2026)",
+          "Construir 2-3 apps próprios completos com publicação nas lojas",
+          "Especializar em área (animations, performance, multiplataforma desktop/web)"
+        ],
+        dicasIniciais: "Mercado BR menor que React Native — pense bem antes de escolher. Vantagem do Flutter: performance superior, código único entre iOS/Android, apps visualmente idênticos. Desvantagem: comunidade BR menor, vagas mais restritas. Dart é linguagem nova mas fácil pra quem já programa em Java/Kotlin/Swift. Cod3r e Flutter Brasil são as melhores fontes em PT-BR. Inglês é importante (doc oficial em inglês). Cargo perfeito pra quem ama Google ecosystem."
       }
     ]
   },
