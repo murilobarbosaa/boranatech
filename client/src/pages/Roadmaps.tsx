@@ -5,7 +5,7 @@
 */
 
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { ArrowRight, Clock, ChevronDown, ChevronUp, CheckCircle, AlertTriangle } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import { AiCtaButton } from "@/components/shared/AiCta";
@@ -14,17 +14,27 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { roadmaps } from "@/lib/data";
+import { areasTI, roadmaps } from "@/lib/data";
 import { roadmapPlans } from "@/lib/platformData";
 import { getRoadmaps } from "@/services/contentService";
 
 const roadmapImage = "https://d2xsxph8kpxj0f.cloudfront.net/310519663616665753/DXr9t3ifzyjk6U8zXioqGk/roadmap-banner-BKcp4QThC94ci8swjT8tVt.webp";
 
+const FILTER_ALL = "todos";
+const SPECIAL_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+
+function labelForAreaSlug(slug: string | null | undefined): string {
+  if (!slug) return "Geral";
+  return areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug;
+}
+
 export default function Roadmaps() {
   const { isPro } = useSubscription();
+  const search = useSearch();
+  const initialAreaFromUrl = new URLSearchParams(search).get("area");
   const [roadmapItems, setRoadmapItems] = useState(roadmaps);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState("todos");
+  const [filter, setFilter] = useState<string>(initialAreaFromUrl ?? FILTER_ALL);
   const [durationFilter, setDurationFilter] = useState("todos");
   const [showAiCreator, setShowAiCreator] = useState(false);
 
@@ -32,10 +42,13 @@ export default function Roadmaps() {
     getRoadmaps().then(setRoadmapItems).catch(() => setRoadmapItems(roadmaps));
   }, []);
 
-  const areas = ["todos", ...Array.from(new Set(roadmapItems.map((r) => r.area)))];
+  const areaSlugs: (string | null)[] = [
+    FILTER_ALL,
+    ...Array.from(new Set(roadmapItems.map((r) => r.areaSlug))),
+  ];
 
   const filtered = roadmapItems.filter((r) => {
-    const matchesArea = filter === "todos" || r.area === filter;
+    const matchesArea = filter === FILTER_ALL || r.areaSlug === filter;
     const matchesDuration = durationFilter === "todos" || r.duracaoDias === durationFilter;
 
     return matchesArea && matchesDuration;
@@ -87,19 +100,24 @@ export default function Roadmaps() {
       <section className="bg-emerald-50 border-b-2 border-emerald-200 py-4 sticky top-16 z-40">
         <div className="container">
           <div className="flex flex-wrap gap-2">
-            {areas.map((area) => (
-              <button
-                key={area}
-                onClick={() => setFilter(area)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
-                  filter === area
-                    ? "bg-slate-900 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
-                    : "bg-white text-slate-700 border-slate-300 hover:border-slate-500"
-                }`}
-              >
-                {area === "todos" ? "Todos" : area}
-              </button>
-            ))}
+            {areaSlugs.map((slug) => {
+              const key = slug ?? "__null__";
+              const active = filter === slug || (slug === FILTER_ALL && filter === FILTER_ALL);
+              const label = slug === FILTER_ALL ? "Todos" : labelForAreaSlug(slug);
+              return (
+                <button
+                  key={key}
+                  onClick={() => setFilter(slug === FILTER_ALL ? FILTER_ALL : slug ?? "")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                    active
+                      ? "bg-slate-900 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      : "bg-white text-slate-700 border-slate-300 hover:border-slate-500"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -160,7 +178,7 @@ export default function Roadmaps() {
                 description="Clientes Pro podem gerar uma trilha personalizada por objetivo, área, rotina e prazo."
                 buttonLabel="Criar meu roadmap"
                 fields={[
-                  { name: "area", label: "Área", type: "select", options: areas.filter((area) => area !== "todos") },
+                  { name: "area", label: "Área", type: "select", options: areaSlugs.filter((slug) => slug !== FILTER_ALL).map((slug) => labelForAreaSlug(slug)) },
                   { name: "level", label: "Nível atual", type: "select", options: ["Começando do zero", "Já sei o básico", "Intermediário"] },
                   { name: "deadline", label: "Prazo desejado", type: "select", options: roadmapPlans.map((plan) => plan.days) },
                   { name: "hours", label: "Tempo disponível por dia", placeholder: "Ex: 1 hora por dia, 5 dias por semana" },
@@ -198,7 +216,7 @@ export default function Roadmaps() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium mb-2 inline-block ${
                       selected === r.id ? "bg-emerald-500 text-white" : "bg-emerald-100 text-emerald-700"
                     }`}>
-                      {r.area}
+                      {labelForAreaSlug(r.areaSlug)}
                     </span>
                     <h3 className={`font-display font-bold text-base ${selected === r.id ? "text-white" : "text-slate-900"}`}>
                       {r.nome}
@@ -213,7 +231,7 @@ export default function Roadmaps() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <FavoriteButton compact item={{ id: r.id, type: "roadmap", title: r.nome, subtitle: r.area }} />
+                    <FavoriteButton compact item={{ id: r.id, type: "roadmap", title: r.nome, subtitle: labelForAreaSlug(r.areaSlug) }} />
                     {selected === r.id ? (
                       <ChevronUp className="w-4 h-4 shrink-0 mt-1" />
                     ) : (
@@ -240,9 +258,9 @@ export default function Roadmaps() {
                 <div className="card-brutal bg-emerald-700 rounded-xl p-6 text-white">
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <span className="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full font-medium inline-block">
-                      {selectedRoadmap.area}
+                      {labelForAreaSlug(selectedRoadmap.areaSlug)}
                     </span>
-                    <FavoriteButton item={{ id: selectedRoadmap.id, type: "roadmap", title: selectedRoadmap.nome, subtitle: selectedRoadmap.area }} />
+                    <FavoriteButton item={{ id: selectedRoadmap.id, type: "roadmap", title: selectedRoadmap.nome, subtitle: labelForAreaSlug(selectedRoadmap.areaSlug) }} />
                   </div>
                   <h2 className="font-display font-bold text-2xl mb-2">{selectedRoadmap.nome}</h2>
                   <p className="text-emerald-200 mb-4">{selectedRoadmap.descricao}</p>

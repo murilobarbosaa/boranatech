@@ -35,6 +35,13 @@ const typeLabels: Record<string, string> = {
   roadmap: "Roadmap",
 };
 
+const SPECIAL_AREA_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+
+function labelForAreaSlug(slug: string | null | undefined): string {
+  if (!slug) return "Geral";
+  return areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_AREA_LABELS[slug] ?? slug;
+}
+
 function searchAll(query: string): SearchResult[] {
   if (!query.trim()) return [];
   const q = query.toLowerCase();
@@ -69,14 +76,15 @@ function searchAll(query: string): SearchResult[] {
   });
 
   cursosGratuitos.forEach((c) => {
+    const areaLabel = labelForAreaSlug(c.areaSlug);
     if (
       c.titulo.toLowerCase().includes(q) ||
-      c.area.toLowerCase().includes(q)
+      areaLabel.toLowerCase().includes(q)
     ) {
       results.push({
         type: "Curso Grátis",
         title: c.titulo,
-        description: `${c.canal} · ${c.area}`,
+        description: `${c.canal} · ${areaLabel}`,
         path: "/cursos",
       });
     }
@@ -108,11 +116,12 @@ function searchAll(query: string): SearchResult[] {
   });
 
   projetos.forEach((p) => {
-    if (p.nome.toLowerCase().includes(q) || p.area.toLowerCase().includes(q)) {
+    const areaLabel = labelForAreaSlug(p.areaSlug);
+    if (p.nome.toLowerCase().includes(q) || areaLabel.toLowerCase().includes(q)) {
       results.push({
         type: "Projeto",
         title: p.nome,
-        description: `${p.area} · ${p.nivel}`,
+        description: `${areaLabel} · ${p.nivel}`,
         path: "/projetos",
       });
     }

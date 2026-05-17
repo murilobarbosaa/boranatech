@@ -78,7 +78,7 @@ type RoadmapProgress = {
   id: string;
   slug: string;
   title: string;
-  area?: string | null;
+  areaSlug?: string | null;
   total_steps: number;
   completed_steps: number;
   progress: number;

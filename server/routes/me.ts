@@ -190,7 +190,7 @@ router.get("/roadmaps", async (req, res, next) => {
           id: roadmap.id,
           slug: roadmap.slug,
           title: roadmap.title,
-          area: roadmap.area_slug,
+          areaSlug: roadmap.area_slug,
           total_steps: totalSteps,
           completed_steps: completed,
           progress: progressPercent,
