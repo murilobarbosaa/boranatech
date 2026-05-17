@@ -75,7 +75,16 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender HTML básico", "Aprender CSS (flexbox, grid)", "Aprender JavaScript básico", "Criar projeto simples (landing page)", "Aprender React", "Publicar no GitHub"],
     projetos: ["Landing page pessoal", "Clone de site famoso", "To-do list com JavaScript"],
     termosEssenciais: ["HTML", "CSS", "JavaScript", "Framework", "Responsividade", "DOM"],
-    dicasIniciais: "Comece pelo HTML e CSS antes de qualquer framework. Construa projetos pequenos desde o início."
+    dicasIniciais: "Comece pelo HTML e CSS antes de qualquer framework. Construa projetos pequenos desde o início.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "6-12 meses até primeira vaga",
+    crescimentoMercado: "medio",
+    faculdadesRelacionadas: [
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ]
   },
   {
     id: "backend",
@@ -98,7 +107,16 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender lógica de programação", "Escolher uma linguagem (Python ou Node.js)", "Aprender banco de dados SQL", "Criar uma API simples", "Aprender Git e GitHub"],
     projetos: ["API de lista de tarefas", "Sistema de cadastro simples", "API de consulta de CEP"],
     termosEssenciais: ["API", "REST", "Banco de dados", "Servidor", "Autenticação", "JSON"],
-    dicasIniciais: "Domine lógica de programação antes de escolher linguagem. Python é ótima opção para começar."
+    dicasIniciais: "Domine lógica de programação antes de escolher linguagem. Python é ótima opção para começar.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "9-18 meses até primeira vaga",
+    crescimentoMercado: "medio",
+    faculdadesRelacionadas: [
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ]
   },
   {
     id: "dados",
@@ -121,7 +139,15 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender Python básico", "Aprender SQL", "Estudar estatística básica", "Praticar com Pandas", "Criar análise de dataset público"],
     projetos: ["Análise de dados do IBGE", "Dashboard de vendas fictícias", "Análise exploratória de dataset do Kaggle"],
     termosEssenciais: ["Dataset", "Machine Learning", "SQL", "Pandas", "Visualização", "Modelo preditivo"],
-    dicasIniciais: "Comece com Python e SQL. Kaggle tem datasets gratuitos ótimos para praticar."
+    dicasIniciais: "Comece com Python e SQL. Kaggle tem datasets gratuitos ótimos para praticar.",
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "1-2 anos com base em matemática",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ]
   },
   {
     id: "uxui",
@@ -144,7 +170,11 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender conceitos de UX", "Aprender Figma", "Criar wireframes simples", "Estudar heurísticas de Nielsen", "Criar protótipo de app", "Publicar no Behance"],
     projetos: ["Redesign de app existente", "Protótipo de app de delivery", "Pesquisa de usabilidade simples"],
     termosEssenciais: ["Wireframe", "Protótipo", "Usabilidade", "Heurísticas", "Design System", "Persona"],
-    dicasIniciais: "Comece aprendendo Figma e fazendo redesigns de apps que você usa. Publique no Behance desde o início."
+    dicasIniciais: "Comece aprendendo Figma e fazendo redesigns de apps que você usa. Publique no Behance desde o início.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "6-12 meses com portfólio",
+    crescimentoMercado: "medio",
+    faculdadesRelacionadas: []
   },
   {
     id: "ia",
@@ -167,7 +197,14 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender Python", "Aprender estatística básica", "Estudar Machine Learning com Scikit-learn", "Praticar no Kaggle", "Aprender Deep Learning básico"],
     projetos: ["Classificador de imagens simples", "Análise de sentimentos em textos", "Modelo de recomendação básico"],
     termosEssenciais: ["Machine Learning", "Rede Neural", "Dataset", "Treinamento", "Modelo", "Overfitting"],
-    dicasIniciais: "Tenha base sólida em Python e estatística antes de entrar em Deep Learning. Kaggle é excelente para praticar."
+    dicasIniciais: "Tenha base sólida em Python e estatística antes de entrar em Deep Learning. Kaggle é excelente para praticar.",
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "2-3 anos com base em programação",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Ciência da Computação",
+      "Engenharia de Software"
+    ]
   },
   {
     id: "produto",
@@ -190,7 +227,11 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Entender o que é produto digital", "Aprender metodologias ágeis (Scrum, Kanban)", "Estudar métricas de produto", "Fazer curso de Product Management", "Criar documento de produto fictício"],
     projetos: ["Documento de requisitos de app fictício", "Análise de produto existente", "Roadmap de produto para startup imaginária"],
     termosEssenciais: ["Roadmap", "Backlog", "Sprint", "KPI", "Discovery", "Stakeholder"],
-    dicasIniciais: "Comece entendendo metodologias ágeis e métricas. Analise produtos que você usa no dia a dia criticamente."
+    dicasIniciais: "Comece entendendo metodologias ágeis e métricas. Analise produtos que você usa no dia a dia criticamente.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "1-2 anos via transição de carreira",
+    crescimentoMercado: "medio",
+    faculdadesRelacionadas: []
   },
   {
     id: "ciberseguranca",
@@ -213,7 +254,16 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender redes de computadores", "Aprender Linux básico", "Estudar conceitos de segurança", "Praticar no TryHackMe", "Obter certificação CompTIA Security+"],
     projetos: ["Lab de segurança em máquina virtual", "CTF (Capture The Flag) para iniciantes", "Análise de vulnerabilidades em ambiente controlado"],
     termosEssenciais: ["Pentest", "Firewall", "Criptografia", "Phishing", "Vulnerabilidade", "SOC"],
-    dicasIniciais: "Comece com redes e Linux. TryHackMe tem trilhas gratuitas excelentes para iniciantes absolutos."
+    dicasIniciais: "Comece com redes e Linux. TryHackMe tem trilhas gratuitas excelentes para iniciantes absolutos.",
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "1-2 anos com certificações",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ]
   },
   {
     id: "cloud",
@@ -236,7 +286,16 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender Linux básico", "Entender redes de computadores", "Criar conta gratuita na AWS", "Completar trilha AWS Cloud Practitioner", "Obter certificação Cloud Practitioner"],
     projetos: ["Hospedar site estático na AWS S3", "Criar servidor virtual na nuvem", "Configurar pipeline CI/CD básico"],
     termosEssenciais: ["AWS", "Azure", "GCP", "Container", "Kubernetes", "Serverless"],
-    dicasIniciais: "Comece com a certificação AWS Cloud Practitioner. É acessível para iniciantes e muito valorizada no mercado."
+    dicasIniciais: "Comece com a certificação AWS Cloud Practitioner. É acessível para iniciantes e muito valorizada no mercado.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "1-2 anos com certificações",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ]
   },
   {
     id: "gestao",
@@ -260,7 +319,16 @@ export const areasTI: AreaTI[] = [
     projetos: ["Plano de projeto fictício", "Documentação de sprint", "Roadmap de produto"],
     termosEssenciais: ["Scrum", "Kanban", "Sprint", "Backlog", "Stakeholder", "PMO"],
     dicasIniciais: "Obtenha a certificação PSM I (Scrum). É gratuita para estudar e muito reconhecida no mercado.",
-    roadmapStatus: "coming-soon" as const
+    roadmapStatus: "coming-soon" as const,
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "1-2 anos com certificação",
+    crescimentoMercado: "medio",
+    faculdadesRelacionadas: [
+      "Sistemas de Informação",
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Engenharia de Software"
+    ]
   },
   {
     id: "qa",
@@ -283,7 +351,16 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Entender o que é QA", "Aprender testes manuais", "Aprender a escrever casos de teste", "Aprender Postman para APIs", "Aprender automação básica com Cypress"],
     projetos: ["Plano de testes para app existente", "Automação de testes de login", "Relatório de bugs documentado"],
     termosEssenciais: ["Caso de teste", "Bug", "Automação", "Regressão", "Smoke test", "Cobertura de testes"],
-    dicasIniciais: "Comece pelos testes manuais e documentação. QA é uma ótima porta de entrada para a tecnologia."
+    dicasIniciais: "Comece pelos testes manuais e documentação. QA é uma ótima porta de entrada para a tecnologia.",
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "6-12 meses com certificação ISTQB",
+    crescimentoMercado: "medio",
+    faculdadesRelacionadas: [
+      "Engenharia de Software",
+      "Ciência da Computação",
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Sistemas de Informação"
+    ]
   },
   {
     id: "mobile",
@@ -306,7 +383,16 @@ export const areasTI: AreaTI[] = [
     roadmapInicial: ["Aprender JavaScript (para React Native) ou Dart (para Flutter)", "Escolher entre React Native ou Flutter", "Criar app simples (lista de tarefas)", "Aprender integração com APIs", "Publicar app na Play Store"],
     projetos: ["App de lista de tarefas", "App de clima simples", "Clone de tela de app famoso"],
     termosEssenciais: ["React Native", "Flutter", "APK", "Play Store", "App Store", "Expo"],
-    dicasIniciais: "Se já sabe JavaScript, comece com React Native. Se está do zero, Flutter com Dart é excelente opção."
+    dicasIniciais: "Se já sabe JavaScript, comece com React Native. Se está do zero, Flutter com Dart é excelente opção.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "9-15 meses até primeira vaga",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ]
   },
   {
     id: "devops",
@@ -330,7 +416,16 @@ export const areasTI: AreaTI[] = [
     projetos: ["Pipeline CI/CD para projeto pessoal", "Containerizar aplicação com Docker", "Configurar monitoramento básico"],
     termosEssenciais: ["CI/CD", "Container", "Docker", "Kubernetes", "Pipeline", "IaC"],
     dicasIniciais: "Comece com Linux e Docker. São fundamentais para qualquer área de DevOps e Cloud.",
-    roadmapStatus: "coming-soon" as const
+    roadmapStatus: "coming-soon" as const,
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "2-3 anos com base em backend/sysadmin",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação",
+      "Análise e Desenvolvimento de Sistemas (ADS)"
+    ]
   }
 ];
 
