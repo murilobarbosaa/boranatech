@@ -147,6 +147,33 @@ export const areasTI: AreaTI[] = [
       "Ciência da Computação",
       "Engenharia de Software",
       "Sistemas de Informação"
+    ],
+    subareas: [
+      {
+        slug: "analista-dados",
+        nome: "Analista de Dados",
+        descricaoCurta: "Coleta, limpa e analisa dados pra gerar relatórios e dashboards de suporte a decisão. Porta de entrada da área."
+      },
+      {
+        slug: "cientista-dados",
+        nome: "Cientista de Dados",
+        descricaoCurta: "Constrói modelos preditivos, aplica estatística avançada e machine learning pra resolver problemas de negócio."
+      },
+      {
+        slug: "engenheiro-dados",
+        nome: "Engenheiro de Dados",
+        descricaoCurta: "Projeta e mantém pipelines (ETL/ELT), data lakes e infraestrutura que alimenta toda a área de dados."
+      },
+      {
+        slug: "analista-bi",
+        nome: "Analista de BI",
+        descricaoCurta: "Especialista em ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra dashboards executivos."
+      },
+      {
+        slug: "analytics-engineer",
+        nome: "Analytics Engineer",
+        descricaoCurta: "Atua entre engenharia e análise. Cria modelos de dados confiáveis com SQL + dbt pra times de analistas."
+      }
     ]
   },
   {
@@ -174,7 +201,34 @@ export const areasTI: AreaTI[] = [
     requiresGraduation: "opcional",
     tempoMedioFormacao: "6-12 meses com portfólio",
     crescimentoMercado: "medio",
-    faculdadesRelacionadas: []
+    faculdadesRelacionadas: [],
+    subareas: [
+      {
+        slug: "ux-design",
+        nome: "UX Design",
+        descricaoCurta: "Pesquisa com usuários, fluxos, wireframes e testes de usabilidade. Foco em como o produto funciona."
+      },
+      {
+        slug: "ui-design",
+        nome: "UI Design",
+        descricaoCurta: "Interface visual, paletas, tipografia, componentes. Foco em como o produto se parece."
+      },
+      {
+        slug: "ux-research",
+        nome: "UX Research",
+        descricaoCurta: "Especialização em pesquisa qualitativa e quantitativa de usuários. Entrevistas, testes, análise comportamental."
+      },
+      {
+        slug: "design-systems",
+        nome: "Design Systems",
+        descricaoCurta: "Construção e manutenção de bibliotecas de componentes e tokens de design pra produtos grandes."
+      },
+      {
+        slug: "product-design",
+        nome: "Product Designer",
+        descricaoCurta: "Generalista que cobre UX + UI + estratégia de produto. Cargo mais comum em startups."
+      }
+    ]
   },
   {
     id: "ia",
@@ -204,6 +258,33 @@ export const areasTI: AreaTI[] = [
     faculdadesRelacionadas: [
       "Ciência da Computação",
       "Engenharia de Software"
+    ],
+    subareas: [
+      {
+        slug: "machine-learning",
+        nome: "Machine Learning Engineer",
+        descricaoCurta: "Constrói e implanta modelos de ML em produção. Foca na infraestrutura, MLOps e escala dos modelos."
+      },
+      {
+        slug: "nlp",
+        nome: "NLP / LLMs",
+        descricaoCurta: "Processamento de linguagem natural. Cria chatbots, sistemas de busca semântica, análise de sentimentos, integrações com LLMs."
+      },
+      {
+        slug: "visao-computacional",
+        nome: "Visão Computacional",
+        descricaoCurta: "Modelos pra entender imagens e vídeos. Detecção de objetos, reconhecimento facial, OCR, segmentação."
+      },
+      {
+        slug: "prompt-engineering",
+        nome: "Engenharia de Prompt",
+        descricaoCurta: "Especialização em projetar prompts eficazes pra LLMs. Subárea emergente, crescimento explosivo."
+      },
+      {
+        slug: "mlops",
+        nome: "MLOps",
+        descricaoCurta: "Engenharia de operações pra ML. Pipelines de treinamento, deploy contínuo de modelos, monitoramento."
+      }
     ]
   },
   {
@@ -231,7 +312,34 @@ export const areasTI: AreaTI[] = [
     requiresGraduation: "opcional",
     tempoMedioFormacao: "1-2 anos via transição de carreira",
     crescimentoMercado: "medio",
-    faculdadesRelacionadas: []
+    faculdadesRelacionadas: [],
+    subareas: [
+      {
+        slug: "product-manager",
+        nome: "Product Manager",
+        descricaoCurta: "Define visão, estratégia e roadmap do produto. Conecta negócio, tecnologia e usuários."
+      },
+      {
+        slug: "product-owner",
+        nome: "Product Owner",
+        descricaoCurta: "Foco em execução: backlog, priorização, refinamento com o time de devs. Mais tático que estratégico."
+      },
+      {
+        slug: "product-marketing",
+        nome: "Product Marketing Manager",
+        descricaoCurta: "Posicionamento, go-to-market, mensagem do produto. Ponte entre produto e marketing."
+      },
+      {
+        slug: "growth-product",
+        nome: "Growth Product Manager",
+        descricaoCurta: "Especialista em métricas de aquisição, ativação, retenção. Foco em experimentação e funil."
+      },
+      {
+        slug: "product-ops",
+        nome: "Product Ops",
+        descricaoCurta: "Padroniza processos de produto, ferramentas e métricas em times maiores. Cargo emergente."
+      }
+    ]
   },
   {
     id: "ciberseguranca",
@@ -263,6 +371,33 @@ export const areasTI: AreaTI[] = [
       "Ciência da Computação",
       "Engenharia de Software",
       "Sistemas de Informação"
+    ],
+    subareas: [
+      {
+        slug: "red-team",
+        nome: "Red Team / Pentest",
+        descricaoCurta: "Especialistas em simular ataques. Realizam pentests, exploram vulnerabilidades e testam defesas das empresas."
+      },
+      {
+        slug: "blue-team",
+        nome: "Blue Team / SOC",
+        descricaoCurta: "Defesa em tempo real. Monitoram sistemas, analisam incidentes e atuam em Security Operations Centers."
+      },
+      {
+        slug: "appsec",
+        nome: "Application Security",
+        descricaoCurta: "Segurança aplicada ao desenvolvimento. Code review seguro, SAST/DAST, DevSecOps, hardening de APIs."
+      },
+      {
+        slug: "grc",
+        nome: "GRC (Governança, Risco e Compliance)",
+        descricaoCurta: "Camada estratégica. Trabalha com LGPD, ISO 27001, NIST e auditoria. Equilibra tecnologia e regulamentação."
+      },
+      {
+        slug: "forense-digital",
+        nome: "Forense Digital e Resposta a Incidentes",
+        descricaoCurta: "Investigação pós-ataque. Análise de evidências digitais, contenção de incidentes e recuperação de sistemas."
+      }
     ]
   },
   {
@@ -295,6 +430,23 @@ export const areasTI: AreaTI[] = [
       "Ciência da Computação",
       "Engenharia de Software",
       "Sistemas de Informação"
+    ],
+    subareas: [
+      {
+        slug: "arquiteto-cloud",
+        nome: "Arquiteto Cloud",
+        descricaoCurta: "Projeta soluções em AWS, Azure ou GCP. Define topologias, integrações e padrões pra grandes ambientes corporativos."
+      },
+      {
+        slug: "cloud-security",
+        nome: "Cloud Security",
+        descricaoCurta: "Especialista em segurança em ambiente cloud. IAM, hardening de workloads, CSPM, conformidade."
+      },
+      {
+        slug: "finops",
+        nome: "FinOps",
+        descricaoCurta: "Otimização financeira de cloud. Reduz custos, monitora gastos, aplica práticas de billing e governança."
+      }
     ]
   },
   {
@@ -328,6 +480,23 @@ export const areasTI: AreaTI[] = [
       "Análise e Desenvolvimento de Sistemas (ADS)",
       "Ciência da Computação",
       "Engenharia de Software"
+    ],
+    subareas: [
+      {
+        slug: "scrum-master",
+        nome: "Scrum Master",
+        descricaoCurta: "Facilitador de times ágeis. Garante que o time siga Scrum, remove impedimentos e dissemina cultura ágil."
+      },
+      {
+        slug: "agile-coach",
+        nome: "Agile Coach",
+        descricaoCurta: "Transformação ágil em larga escala. Atua com múltiplos times, treina lideranças e implanta cultura ágil na organização."
+      },
+      {
+        slug: "pmo",
+        nome: "PMO — Project Management Office",
+        descricaoCurta: "Estrutura escritórios de projetos. Padroniza processos, controla portfólio, reporta a alta gestão. Forte em empresas tradicionais."
+      }
     ]
   },
   {
@@ -360,6 +529,23 @@ export const areasTI: AreaTI[] = [
       "Ciência da Computação",
       "Análise e Desenvolvimento de Sistemas (ADS)",
       "Sistemas de Informação"
+    ],
+    subareas: [
+      {
+        slug: "qa-automacao",
+        nome: "QA Automação",
+        descricaoCurta: "Especialista em automação de testes. Cria suites com Cypress, Selenium, Playwright e integra em pipelines CI/CD."
+      },
+      {
+        slug: "qa-manual",
+        nome: "QA Manual",
+        descricaoCurta: "Foco em testes exploratórios, planos de teste e validação funcional. Porta de entrada mais comum em QA."
+      },
+      {
+        slug: "qa-performance",
+        nome: "QA Performance",
+        descricaoCurta: "Testes de carga e estresse. Usa JMeter, k6, Gatling pra validar comportamento de sistemas sob alta demanda."
+      }
     ]
   },
   {
@@ -392,6 +578,28 @@ export const areasTI: AreaTI[] = [
       "Ciência da Computação",
       "Engenharia de Software",
       "Sistemas de Informação"
+    ],
+    subareas: [
+      {
+        slug: "ios-nativo",
+        nome: "iOS Nativo",
+        descricaoCurta: "Desenvolvimento exclusivo pra Apple com Swift e Xcode. Foco em apps que aproveitam ao máximo recursos do iOS."
+      },
+      {
+        slug: "android-nativo",
+        nome: "Android Nativo",
+        descricaoCurta: "Desenvolvimento exclusivo pra Android com Kotlin e Android Studio. Performance e integração profunda com o sistema."
+      },
+      {
+        slug: "react-native",
+        nome: "React Native",
+        descricaoCurta: "Framework do Meta pra apps cross-platform com JavaScript. Mercado BR muito aquecido (40k+ vagas)."
+      },
+      {
+        slug: "flutter",
+        nome: "Flutter",
+        descricaoCurta: "Framework do Google pra apps cross-platform com Dart. Ganhou força em 2024-2026, principalmente em startups."
+      }
     ]
   },
   {
@@ -425,6 +633,23 @@ export const areasTI: AreaTI[] = [
       "Engenharia de Software",
       "Sistemas de Informação",
       "Análise e Desenvolvimento de Sistemas (ADS)"
+    ],
+    subareas: [
+      {
+        slug: "sre",
+        nome: "SRE — Site Reliability Engineer",
+        descricaoCurta: "Engenharia de confiabilidade. Mantém sistemas de larga escala estáveis usando SLIs/SLOs, automação e gestão de incidentes."
+      },
+      {
+        slug: "platform-engineer",
+        nome: "Platform Engineer",
+        descricaoCurta: "Constrói plataformas internas que outros times de dev consomem. Foco em developer experience e self-service."
+      },
+      {
+        slug: "devsecops",
+        nome: "DevSecOps",
+        descricaoCurta: "Integra segurança no ciclo CI/CD. SAST/DAST, secrets management, hardening de pipelines. Subárea em forte crescimento (3.4k+ vagas BR)."
+      }
     ]
   }
 ];
