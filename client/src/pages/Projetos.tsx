@@ -8,7 +8,7 @@ import { ChevronDown, ChevronUp, Lightbulb, ArrowRight, ExternalLink, PlayCircle
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
-import { projetos } from "@/lib/data";
+import { areasTI, projetos } from "@/lib/data";
 import { projectHelpVideos } from "@/lib/platformData";
 import { getProjects } from "@/services/contentService";
 
@@ -20,17 +20,23 @@ const nivelGuides = [
   { label: "Avançado", desc: "Para quem já está a fundo em TI e quer projetos completos, deploy, testes ou IA.", className: "bg-violet-100 text-violet-800 shadow-[4px_4px_0_#a78bfa]" },
 ];
 
+const AREA_ALL = "Todas";
+const SPECIAL_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+
+function labelForAreaSlug(slug: string | null | undefined): string {
+  if (!slug) return "Geral";
+  return areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug;
+}
+
 const areaColors: Record<string, string> = {
-  "Front-end": "bg-blue-100 text-blue-700",
-  "UX/UI Design": "bg-pink-100 text-pink-700",
-  "Ciência de Dados": "bg-amber-100 text-amber-700",
-  "QA": "bg-blue-100 text-blue-700",
-  "Produto / Gestão": "bg-violet-100 text-violet-700",
-  "Carreira": "bg-amber-100 text-amber-700",
-  "Back-end": "bg-emerald-100 text-emerald-700",
-  "Full Stack": "bg-violet-100 text-violet-700",
-  "DevOps": "bg-slate-100 text-slate-700",
-  "IA / Dados": "bg-fuchsia-100 text-fuchsia-700",
+  frontend: "bg-blue-100 text-blue-700",
+  uxui: "bg-pink-100 text-pink-700",
+  dados: "bg-amber-100 text-amber-700",
+  qa: "bg-blue-100 text-blue-700",
+  gestao: "bg-violet-100 text-violet-700",
+  carreira: "bg-amber-100 text-amber-700",
+  backend: "bg-emerald-100 text-emerald-700",
+  devops: "bg-slate-100 text-slate-700",
 };
 
 const nivelColors: Record<string, string> = {
@@ -42,17 +48,20 @@ const nivelColors: Record<string, string> = {
 
 export default function Projetos() {
   const [projectItems, setProjectItems] = useState(projetos);
-  const [area, setArea] = useState("Todas");
+  const [area, setArea] = useState(AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
   const [expanded, setExpanded] = useState<string | null>(null);
-  const areas = useMemo(() => ["Todas", ...Array.from(new Set(projectItems.map((p) => p.area)))], [projectItems]);
+  const areaSlugOptions = useMemo<(string | null)[]>(
+    () => [AREA_ALL, ...Array.from(new Set(projectItems.map((p) => p.areaSlug)))],
+    [projectItems],
+  );
 
   useEffect(() => {
     getProjects().then(setProjectItems).catch(() => setProjectItems(projetos));
   }, []);
 
   const filtered = projectItems.filter((p) => {
-    const matchArea = area === "Todas" || p.area === area;
+    const matchArea = area === AREA_ALL || p.areaSlug === area;
     const matchNivel = nivel === "Todos" || p.nivel === nivel;
     return matchArea && matchNivel;
   });
@@ -98,7 +107,12 @@ export default function Projetos() {
         <div className="container">
           <div className="flex flex-wrap gap-3">
             <select value={area} onChange={(e) => setArea(e.target.value)} className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white">
-              {areas.map((a) => <option key={a}>{a}</option>)}
+              {areaSlugOptions.map((slug) => {
+                const value = slug === AREA_ALL ? AREA_ALL : slug ?? "";
+                const key = slug ?? "__null__";
+                const label = slug === AREA_ALL ? AREA_ALL : labelForAreaSlug(slug);
+                return <option key={key} value={value}>{label}</option>;
+              })}
             </select>
             <select value={nivel} onChange={(e) => setNivel(e.target.value)} className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white">
               {niveis.map((n) => <option key={n}>{n}</option>)}
@@ -118,8 +132,8 @@ export default function Projetos() {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${areaColors[projeto.area] || "bg-slate-100 text-slate-600"}`}>
-                        {projeto.area}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${(projeto.areaSlug && areaColors[projeto.areaSlug]) || "bg-slate-100 text-slate-600"}`}>
+                        {labelForAreaSlug(projeto.areaSlug)}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}>{projeto.nivel}</span>
                     </div>
@@ -127,7 +141,7 @@ export default function Projetos() {
                     <p className="text-sm text-slate-600 mt-1">{projeto.objetivo}</p>
                   </div>
                   <div className="ml-4 flex shrink-0 items-center gap-2">
-                    <FavoriteButton compact item={{ id: projeto.id, type: "projeto", title: projeto.nome, subtitle: projeto.area }} />
+                    <FavoriteButton compact item={{ id: projeto.id, type: "projeto", title: projeto.nome, subtitle: labelForAreaSlug(projeto.areaSlug) }} />
                     {expanded === projeto.id ? (
                       <ChevronUp className="w-5 h-5 text-slate-400" />
                     ) : (

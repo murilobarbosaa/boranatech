@@ -1,7 +1,14 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Calendar, GraduationCap, MapPin, Clock, Tag } from "lucide-react";
-import { noticias, eventos, cursosGratuitos } from "@/lib/data";
+import { areasTI, noticias, eventos, cursosGratuitos } from "@/lib/data";
+
+const CURSO_AREA_SPECIAL_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+
+function labelForCursoArea(slug: string | null | undefined): string {
+  if (!slug) return "Geral";
+  return areasTI.find((a) => a.slug === slug)?.nome ?? CURSO_AREA_SPECIAL_LABELS[slug] ?? slug;
+}
 
 // =========================================
 // CONFIGURAÇÕES
@@ -19,12 +26,12 @@ const EVENTO_EVERGREEN: Record<string, string> = {
 // delays pra desincronizar a animação e criar profundidade.
 const NUVENS = [
   { top: "3%",  left: "5%",   width: 120, opacity: 0.78, duration: "7s",   delay: "0s"   },
-  { top: "7%",  left: "84%",  width: 92,  opacity: 0.62, duration: "9s",   delay: "1.5s" },
+  { top: "7%",  left: "84%",  width: 92,  opacity: 0.62, duration: "9s",   delay: "1.5s", hideOnMobile: true },
   { top: "18%", left: "44%",  width: 80,  opacity: 0.55, duration: "8.5s", delay: "3.2s" },
-  { top: "38%", left: "-2%",  width: 110, opacity: 0.72, duration: "8s",   delay: "2s"   },
-  { top: "52%", left: "92%",  width: 100, opacity: 0.6,  duration: "10s",  delay: "0.5s" },
+  { top: "38%", left: "-2%",  width: 110, opacity: 0.72, duration: "8s",   delay: "2s",   hideOnMobile: true },
+  { top: "52%", left: "92%",  width: 100, opacity: 0.6,  duration: "10s",  delay: "0.5s", hideOnMobile: true },
   { top: "78%", left: "3%",   width: 132, opacity: 0.82, duration: "7.5s", delay: "2.7s" },
-  { top: "84%", left: "80%",  width: 96,  opacity: 0.7,  duration: "8.5s", delay: "1s"   },
+  { top: "84%", left: "80%",  width: 96,  opacity: 0.7,  duration: "8.5s", delay: "1s",   hideOnMobile: true },
 ];
 
 // =========================================
@@ -69,10 +76,7 @@ export default function PraVoce() {
             Conteúdo curado pra{" "}
             {/* Text-stroke transparente em "começar." — palavra curta isolada
                 lê melhor com outline 2px do que duas palavras com stroke. */}
-            <span
-              className="text-transparent [-webkit-text-stroke:2.5px_#0369a1]"
-              style={{ WebkitTextStroke: "2.5px #0369a1" }}
-            >
+            <span className="text-[#0369a1] sm:text-transparent sm:[-webkit-text-stroke:2.5px_#0369a1]">
               começar.
             </span>
           </motion.h2>
@@ -89,9 +93,9 @@ export default function PraVoce() {
         </div>
 
         {/* GRID PRINCIPAL: Notícia destaque + 2 eventos */}
-        <div className="mt-16 grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {/* Coluna 1-2: Notícia destaque ocupa 2 colunas em desktop */}
-          <div className="lg:col-span-2">
+          <div className="md:col-span-2 lg:col-span-2">
             <NoticiaDestaque noticia={noticiaDestaque} />
           </div>
 
@@ -130,7 +134,7 @@ function NoticiaDestaque({ noticia }: { noticia: typeof noticias[0] }) {
       className="h-full"
     >
       <Link href="/noticias">
-        <div className="group h-full cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-8 md:p-10 shadow-[6px_6px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_#0f172a] flex flex-col">
+        <div className="group h-full cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 lg:p-10 shadow-[4px_4px_0_#0f172a] md:shadow-[6px_6px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_#0f172a] flex flex-col">
           {/* Badge da categoria (no topo agora — label "Notícia em destaque" removida) */}
           <div className="inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-100 px-3 py-1 shadow-[2px_2px_0_#0f172a]">
             <Tag size={12} className="text-amber-700" strokeWidth={2.5} />
@@ -142,7 +146,7 @@ function NoticiaDestaque({ noticia }: { noticia: typeof noticias[0] }) {
           {/* Título grande */}
           <h3
             className="mt-5 font-display font-black text-slate-950 leading-tight"
-            style={{ fontSize: "clamp(24px, 3vw, 36px)" }}
+            style={{ fontSize: "clamp(20px, 3vw, 36px)" }}
           >
             {noticia.titulo}
           </h3>
@@ -275,18 +279,17 @@ function EventoLogo({ logoUrl, nome }: { logoUrl?: string; nome: string }) {
 // =========================================
 
 function CursoCard({ curso, delay }: { curso: typeof cursosGratuitos[0]; delay: number }) {
-  // Mapping de cores por área pra manter consistência com Mapa
   const areaColors: Record<string, { bg: string; text: string }> = {
-    "Front-end": { bg: "bg-violet-100", text: "text-violet-700" },
-    "Back-end": { bg: "bg-emerald-100", text: "text-emerald-700" },
-    "Mobile": { bg: "bg-orange-100", text: "text-orange-700" },
-    "Dados": { bg: "bg-sky-100", text: "text-sky-700" },
-    "UX/UI Design": { bg: "bg-fuchsia-100", text: "text-fuchsia-700" },
-    "Cloud": { bg: "bg-cyan-100", text: "text-cyan-700" },
-    "DevOps": { bg: "bg-amber-100", text: "text-amber-700" },
-    "Cibersegurança": { bg: "bg-rose-100", text: "text-rose-700" },
+    frontend: { bg: "bg-violet-100", text: "text-violet-700" },
+    backend: { bg: "bg-emerald-100", text: "text-emerald-700" },
+    mobile: { bg: "bg-orange-100", text: "text-orange-700" },
+    dados: { bg: "bg-sky-100", text: "text-sky-700" },
+    uxui: { bg: "bg-fuchsia-100", text: "text-fuchsia-700" },
+    cloud: { bg: "bg-cyan-100", text: "text-cyan-700" },
+    devops: { bg: "bg-amber-100", text: "text-amber-700" },
+    ciberseguranca: { bg: "bg-rose-100", text: "text-rose-700" },
   };
-  const colors = areaColors[curso.area] || { bg: "bg-slate-100", text: "text-slate-700" };
+  const colors = (curso.areaSlug && areaColors[curso.areaSlug]) || { bg: "bg-slate-100", text: "text-slate-700" };
 
   return (
     <motion.article
@@ -306,7 +309,7 @@ function CursoCard({ curso, delay }: { curso: typeof cursosGratuitos[0]; delay: 
           <div className={`mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 ${colors.bg} px-3 py-1 shadow-[2px_2px_0_#0f172a]`}>
             <Tag size={12} className={`${colors.text}`} strokeWidth={2.5} />
             <span className={`font-display text-xs font-black uppercase tracking-wider ${colors.text}`}>
-              {curso.area}
+              {labelForCursoArea(curso.areaSlug)}
             </span>
           </div>
 
@@ -352,9 +355,10 @@ type NuvemProps = {
   opacity: number;
   duration: string;
   delay: string;
+  hideOnMobile?: boolean;
 };
 
-function NuvemSvg({ top, left, width, opacity, duration, delay }: NuvemProps) {
+function NuvemSvg({ top, left, width, opacity, duration, delay, hideOnMobile }: NuvemProps) {
   // CSS custom properties tipadas pra duração e delay (lidas no keyframe via var()).
   const style = {
     top,
@@ -367,7 +371,7 @@ function NuvemSvg({ top, left, width, opacity, duration, delay }: NuvemProps) {
 
   return (
     <div
-      className="absolute pointer-events-none z-0 animate-float-cloud"
+      className={`absolute pointer-events-none z-0 animate-float-cloud ${hideOnMobile ? "hidden md:block" : ""}`}
       style={style}
       aria-hidden="true"
     >

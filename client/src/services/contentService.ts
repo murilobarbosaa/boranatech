@@ -48,7 +48,7 @@ function courseFromApi(row: any) {
     canal: row.provider || "",
     plataforma: row.provider || "",
     link: row.url || "#",
-    area: row.area_slug || "",
+    areaSlug: row.area_slug || null,
     nivel: row.level || "Iniciante",
     duracao: row.workload_hours ? `${row.workload_hours} horas` : "",
     idioma: row.language || "pt-BR",
@@ -86,7 +86,7 @@ function projectFromApi(row: any) {
   return {
     id: row.slug || row.id,
     nome: row.title,
-    area: row.area_slug || "",
+    areaSlug: row.area_slug || null,
     nivel: row.level || "Iniciante",
     objetivo: row.objective || row.description || "",
     ferramentas: row.tools || [],
@@ -102,7 +102,7 @@ function roadmapFromApi(row: any) {
   return {
     id: row.slug,
     nome: row.title,
-    area: row.area_slug || "Geral",
+    areaSlug: row.area_slug || null,
     nivel: row.level || "Iniciante",
     duracaoDias: row.estimated_duration_weeks ? `${row.estimated_duration_weeks} semanas` : "30 dias",
     descricao: row.description || "",

@@ -9,41 +9,52 @@ import { Search, ExternalLink, Clock, Globe } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
-import { cursosGratuitos } from "@/lib/data";
+import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
 
 const nivelOptions = ["Todos", "Iniciante", "Intermediário", "Avançado"];
 const idiomaOptions = ["Todos", "Português", "Inglês"];
 const tipoOptions = ["Todos", "Gratuito", "Pago"];
 
+const AREA_ALL = "Todas";
+const SPECIAL_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+
+function labelForAreaSlug(slug: string | null | undefined): string {
+  if (!slug) return "Geral";
+  return areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug;
+}
+
 const areaTagClass: Record<string, string> = {
-  "Front-end": "tag-frontend",
-  "Back-end / Dados": "tag-dados",
-  "Back-end": "tag-backend",
-  "UX/UI Design": "tag-uxui",
-  "Cloud": "tag-cloud",
-  "Cibersegurança": "tag-seguranca",
-  "Ciência de Dados": "tag-dados",
+  frontend: "tag-frontend",
+  backend: "tag-backend",
+  uxui: "tag-uxui",
+  cloud: "tag-cloud",
+  ciberseguranca: "tag-seguranca",
+  dados: "tag-dados",
 };
 
 export default function Cursos() {
   const [courses, setCourses] = useState(cursosGratuitos);
   const [search, setSearch] = useState("");
-  const [area, setArea] = useState("Todas");
+  const [area, setArea] = useState(AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
   const [idioma, setIdioma] = useState("Todos");
   const [tipo, setTipo] = useState("Todos");
-  const areaOptions = useMemo(() => ["Todas", ...Array.from(new Set(courses.map((c) => c.area)))], [courses]);
+  const areaSlugOptions = useMemo<(string | null)[]>(
+    () => [AREA_ALL, ...Array.from(new Set(courses.map((c) => c.areaSlug)))],
+    [courses],
+  );
 
   useEffect(() => {
     getCourses().then(setCourses).catch(() => setCourses(cursosGratuitos));
   }, []);
 
   const filtered = courses.filter((c) => {
+    const slugLabel = labelForAreaSlug(c.areaSlug);
     const matchSearch = c.titulo.toLowerCase().includes(search.toLowerCase()) ||
       c.canal.toLowerCase().includes(search.toLowerCase()) ||
-      c.area.toLowerCase().includes(search.toLowerCase());
-    const matchArea = area === "Todas" || c.area === area;
+      slugLabel.toLowerCase().includes(search.toLowerCase());
+    const matchArea = area === AREA_ALL || c.areaSlug === area;
     const matchNivel = nivel === "Todos" || c.nivel === nivel;
     const matchIdioma = idioma === "Todos" || c.idioma.includes(idioma);
     const matchTipo = tipo === "Todos" || (c.tipo || "Gratuito") === tipo;
@@ -97,7 +108,12 @@ export default function Cursos() {
               onChange={(e) => setArea(e.target.value)}
               className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
             >
-              {areaOptions.map((o) => <option key={o}>{o}</option>)}
+              {areaSlugOptions.map((slug) => {
+                const value = slug === AREA_ALL ? AREA_ALL : slug ?? "";
+                const key = slug ?? "__null__";
+                const label = slug === AREA_ALL ? AREA_ALL : labelForAreaSlug(slug);
+                return <option key={key} value={value}>{label}</option>;
+              })}
             </select>
             {/* Nivel */}
             <select
@@ -137,7 +153,7 @@ export default function Cursos() {
               <p className="text-3xl mb-3">📚</p>
               <p className="text-slate-600 font-medium">Nenhum curso encontrado.</p>
               <p className="text-slate-400 text-sm mt-1">Tente outros filtros.</p>
-              <button onClick={() => { setSearch(""); setArea("Todas"); setNivel("Todos"); setIdioma("Todos"); setTipo("Todos"); }} className="mt-4 text-slate-950 text-sm font-medium hover:underline">
+              <button onClick={() => { setSearch(""); setArea(AREA_ALL); setNivel("Todos"); setIdioma("Todos"); setTipo("Todos"); }} className="mt-4 text-slate-950 text-sm font-medium hover:underline">
                 Limpar filtros
               </button>
             </div>
@@ -148,8 +164,8 @@ export default function Cursos() {
                   {/* Tags */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex flex-wrap gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${areaTagClass[curso.area] || "bg-slate-100 text-slate-600"}`}>
-                        {curso.area}
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}>
+                        {labelForAreaSlug(curso.areaSlug)}
                       </span>
                       <span className={`text-xs px-2 py-1 rounded-full font-bold border-2 ${
                         (curso.tipo || "Gratuito") === "Pago" ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-emerald-100 text-emerald-700 border-emerald-200"

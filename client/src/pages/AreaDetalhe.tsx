@@ -6,7 +6,7 @@
 
 import { Link, useParams } from "wouter";
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, ExternalLink, Lightbulb, Sparkles } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, ExternalLink, Lightbulb, Sparkles } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
@@ -39,7 +39,10 @@ export default function AreaDetalhe() {
 
   useEffect(() => {
     if (!params.slug) return;
-    getArea(params.slug).then(setArea).catch(() => setArea(areasTI.find((a) => a.slug === params.slug) || null));
+    const localRoadmapStatus = areasTI.find((a) => a.slug === params.slug)?.roadmapStatus;
+    getArea(params.slug)
+      .then((fetched) => setArea(fetched ? { ...fetched, roadmapStatus: localRoadmapStatus } : null))
+      .catch(() => setArea(areasTI.find((a) => a.slug === params.slug) || null));
   }, [params.slug]);
 
   if (!area) {
@@ -139,7 +142,7 @@ export default function AreaDetalhe() {
                 ))}
               </div>
               <div className="mt-4 pt-4 border-t border-slate-100">
-                <Link href="/roadmaps" className={cn("flex items-center gap-1 text-sm font-medium", ac.link, ac.linkHover)}>
+                <Link href={`/roadmaps?area=${area.slug}`} className={cn("flex items-center gap-1 text-sm font-medium", ac.link, ac.linkHover)}>
                   Ver roadmaps completos <ExternalLink className="h-3 w-3" aria-hidden />
                 </Link>
               </div>
@@ -287,20 +290,37 @@ export default function AreaDetalhe() {
             </div>
 
             {/* CTA */}
-            <div className={cn("card-brutal rounded-xl border-2 p-5", ac.panelBorder, ac.panelSoft)}>
-              <div className="mb-3 flex items-center gap-3">
-                <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]", ac.tableBanner)}>
-                  <Sparkles className="h-5 w-5 text-white" aria-hidden />
+            {area.roadmapStatus === "coming-soon" ? (
+              <div className="card-brutal rounded-xl border-2 border-slate-300 bg-white p-5 opacity-80">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-400 bg-slate-100 shadow-[2px_2px_0_#cbd5e1]">
+                    <Clock className="h-5 w-5 text-slate-500" strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <p className="font-display text-sm font-bold text-slate-900">Roadmap em construção</p>
+                </div>
+                <p className="mb-3 text-xs font-medium text-slate-600">
+                  Estamos preparando uma trilha caprichada para essa área. Volte em breve.
+                </p>
+                <span className="block rounded-lg border-2 border-dashed border-slate-400 bg-slate-50 py-2.5 text-center text-sm font-black uppercase tracking-wider text-slate-500">
+                  Em breve
                 </span>
-                <p className="font-display text-sm font-bold text-slate-900">Pronta para começar?</p>
               </div>
-              <Link
-                href="/roadmaps"
-                className="btn-brutal-accent block rounded-lg py-2.5 text-center text-sm font-black"
-              >
-                Ver roadmap completo
-              </Link>
-            </div>
+            ) : (
+              <div className={cn("card-brutal rounded-xl border-2 p-5", ac.panelBorder, ac.panelSoft)}>
+                <div className="mb-3 flex items-center gap-3">
+                  <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]", ac.tableBanner)}>
+                    <Sparkles className="h-5 w-5 text-white" aria-hidden />
+                  </span>
+                  <p className="font-display text-sm font-bold text-slate-900">Pronta para começar?</p>
+                </div>
+                <Link
+                  href={`/roadmaps?area=${area.slug}`}
+                  className="btn-brutal-accent block rounded-lg py-2.5 text-center text-sm font-black"
+                >
+                  Ver roadmap completo
+                </Link>
+              </div>
+            )}
           </div>
         </div>
         </div>
