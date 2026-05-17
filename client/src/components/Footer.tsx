@@ -46,8 +46,6 @@ const SOCIAL_ITEMS = [
   { key: "linkedin", icon: "ph:linkedin-logo-bold", href: SOCIAL_LINKS.linkedin, label: "LinkedIn" },
   { key: "tiktok", icon: "ph:tiktok-logo-bold", href: SOCIAL_LINKS.tiktok, label: "TikTok" },
   { key: "twitter", icon: "ph:x-logo-bold", href: SOCIAL_LINKS.twitter, label: "X (Twitter)" },
-  { key: "youtube", icon: "ph:youtube-logo-bold", href: SOCIAL_LINKS.youtube, label: "YouTube" },
-  { key: "discord", icon: "ph:discord-logo-bold", href: SOCIAL_LINKS.discord, label: "Discord" },
 ] as const;
 
 export default function Footer() {

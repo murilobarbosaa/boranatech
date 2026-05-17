@@ -84,8 +84,14 @@ function CtaFinalInteractive() {
 
       <div className="container relative z-10">
         <div className="mx-auto max-w-5xl">
+          <div className="md:hidden mb-4">
+            <CommandChipsMobile onCommand={handleCommandClick} />
+          </div>
+
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr] md:gap-6">
-            <CommandSidebar onCommand={handleCommandClick} />
+            <div className="hidden md:block">
+              <CommandSidebar onCommand={handleCommandClick} />
+            </div>
             <TerminalCard ref={terminalRef} />
           </div>
         </div>
@@ -179,7 +185,7 @@ function CommandSidebar({ onCommand }: { onCommand: (cmd: string) => void }) {
   return (
     <aside
       aria-label="Lista de comandos disponíveis"
-      className="self-start overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-900 shadow-[8px_8px_0_#0f172a]"
+      className="self-start overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-900 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]"
     >
       <div className="flex items-center border-b-2 border-slate-950 bg-slate-800 px-4 py-2.5">
         <span className="font-mono text-xs font-bold tracking-wider text-slate-400">
@@ -239,6 +245,57 @@ function CommandItem({
       </span>
       <span>{command}</span>
     </button>
+  );
+}
+
+// =========================================
+// CommandChipsMobile — variante condensada (chips horizontais)
+// =========================================
+
+const CHIP_STYLES: Record<SidebarVariant, string> = {
+  primary: "text-amber-300 border-amber-700",
+  explorer: "text-violet-300 border-violet-700",
+  muted: "text-slate-400 border-slate-700",
+};
+
+function CommandChipsMobile({ onCommand }: { onCommand: (cmd: string) => void }) {
+  const allCommands = SIDEBAR_SECTIONS.flatMap((section) => section.commands);
+
+  return (
+    <aside
+      aria-label="Comandos disponíveis"
+      className="rounded-2xl border-2 border-slate-950 bg-slate-900 p-3 shadow-[5px_5px_0_#0f172a]"
+    >
+      <div className="mb-2 px-1">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+          Comandos
+        </span>
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {allCommands.map((cmd) => {
+          const ariaLabel =
+            cmd.label === "clear"
+              ? "Executar comando clear"
+              : `Inserir comando ${cmd.label} no terminal`;
+
+          return (
+            <button
+              key={cmd.label}
+              type="button"
+              onClick={() => onCommand(cmd.label)}
+              aria-label={ariaLabel}
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 bg-slate-950 px-3 py-2 font-mono text-xs font-bold transition-colors hover:bg-slate-800 ${CHIP_STYLES[cmd.variant]}`}
+            >
+              <span aria-hidden="true" className="opacity-50">
+                {">"}
+              </span>
+              <span>{cmd.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 
@@ -432,11 +489,15 @@ const TerminalCard = forwardRef<TerminalCardHandle>(function TerminalCard(_props
   };
 
   const handleBodyClick = () => {
+    const isTouchDevice =
+      typeof window !== "undefined" &&
+      window.matchMedia("(pointer: coarse)").matches;
+    if (isTouchDevice) return;
     if (!isLoadingNav) inputRef.current?.focus({ preventScroll: true });
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border-2 border-slate-950 shadow-[8px_8px_0_#0f172a]">
+    <div className="overflow-hidden rounded-2xl border-2 border-slate-950 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]">
       <div className="relative flex items-center border-b-2 border-slate-950 bg-slate-800 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full border border-red-700 bg-red-500" aria-hidden="true" />
@@ -451,7 +512,7 @@ const TerminalCard = forwardRef<TerminalCardHandle>(function TerminalCard(_props
       <div
         ref={scrollRef}
         onClick={handleBodyClick}
-        className="max-h-[600px] min-h-[500px] overflow-y-auto bg-slate-950 p-6 md:p-8"
+        className="max-h-[600px] min-h-[320px] overflow-y-auto bg-slate-950 p-4 md:min-h-[500px] md:p-8"
       >
         {isInitialMode && <InitialWelcome reduce={!!reduce} />}
 
@@ -513,7 +574,7 @@ function InitialWelcome({ reduce }: { reduce: boolean }) {
         id="cta-final-title"
         aria-label={HEADLINE_TEXT}
         className="font-display font-black text-white"
-        style={{ fontSize: "clamp(2rem, 4.5vw, 3.5rem)", lineHeight: 1.1 }}
+        style={{ fontSize: "clamp(1.5rem, 4.5vw, 3.5rem)", lineHeight: 1.1 }}
       >
         {reduce ? (
           HEADLINE_TEXT
