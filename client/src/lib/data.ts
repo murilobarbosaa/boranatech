@@ -1,7 +1,42 @@
 // BORA NA TECH? — Central Data Store
 // All static content for the platform
 
-export const areasTI = [
+export interface SubArea {
+  slug: string;
+  nome: string;
+  descricaoCurta?: string;
+}
+
+export interface AreaTI {
+  id: string;
+  nome: string;
+  slug: string;
+  emoji: string;
+  tagClass: string;
+  descricaoCurta: string;
+  descricaoCompleta: string;
+  oQueFaz: string;
+  tarefasDiarias: string[];
+  perfilIndicado: string;
+  habilidades: string[];
+  ferramentas: string[];
+  dificuldade: number;
+  cargos: string[];
+  faixaSalarial: string;
+  cursosGratuitos: string[];
+  roadmapInicial: string[];
+  projetos: string[];
+  termosEssenciais: string[];
+  dicasIniciais: string;
+  roadmapStatus?: "available" | "coming-soon";
+  requiresGraduation?: "obrigatorio" | "recomendado" | "opcional";
+  tempoMedioFormacao?: string;
+  crescimentoMercado?: "alto" | "medio" | "estavel" | "baixo";
+  subareas?: SubArea[];
+  faculdadesRelacionadas?: string[];
+}
+
+export const areasTI: AreaTI[] = [
   {
     id: "frontend",
     nome: "Front-end",
