@@ -5,6 +5,7 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import { Search, ExternalLink, Clock, Globe } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -34,9 +35,11 @@ const areaTagClass: Record<string, string> = {
 };
 
 export default function Cursos() {
+  const search = useSearch();
+  const initialAreaFromUrl = new URLSearchParams(search).get("area");
   const [courses, setCourses] = useState(cursosGratuitos);
-  const [search, setSearch] = useState("");
-  const [area, setArea] = useState(AREA_ALL);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [area, setArea] = useState(initialAreaFromUrl ?? AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
   const [idioma, setIdioma] = useState("Todos");
   const [tipo, setTipo] = useState("Todos");
@@ -51,9 +54,9 @@ export default function Cursos() {
 
   const filtered = courses.filter((c) => {
     const slugLabel = labelForAreaSlug(c.areaSlug);
-    const matchSearch = c.titulo.toLowerCase().includes(search.toLowerCase()) ||
-      c.canal.toLowerCase().includes(search.toLowerCase()) ||
-      slugLabel.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
     const matchArea = area === AREA_ALL || c.areaSlug === area;
     const matchNivel = nivel === "Todos" || c.nivel === nivel;
     const matchIdioma = idioma === "Todos" || c.idioma.includes(idioma);
@@ -96,8 +99,8 @@ export default function Cursos() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Buscar curso..."
                 className="w-full pl-9 pr-4 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
               />
@@ -153,7 +156,7 @@ export default function Cursos() {
               <p className="text-3xl mb-3">📚</p>
               <p className="text-slate-600 font-medium">Nenhum curso encontrado.</p>
               <p className="text-slate-400 text-sm mt-1">Tente outros filtros.</p>
-              <button onClick={() => { setSearch(""); setArea(AREA_ALL); setNivel("Todos"); setIdioma("Todos"); setTipo("Todos"); }} className="mt-4 text-slate-950 text-sm font-medium hover:underline">
+              <button onClick={() => { setSearchQuery(""); setArea(AREA_ALL); setNivel("Todos"); setIdioma("Todos"); setTipo("Todos"); }} className="mt-4 text-slate-950 text-sm font-medium hover:underline">
                 Limpar filtros
               </button>
             </div>
