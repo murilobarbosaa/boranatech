@@ -25,6 +25,18 @@ export interface SubArea {
   slug: string;
   nome: string;
   descricaoCurta?: string;
+  descricaoCompleta?: string;
+  oQueFaz?: string;
+  diferencasDaAreaMae?: string;
+  habilidadesEspecificas?: string[];
+  ferramentasEspecificas?: string[];
+  cargos?: string[];
+  faixaSalarial?: string;
+  dificuldade?: number;
+  cursosGratuitos?: string[];
+  projetosSugeridos?: string[];
+  roadmapEspecifico?: string[];
+  dicasIniciais?: string;
 }
 
 export interface AreaTI {
