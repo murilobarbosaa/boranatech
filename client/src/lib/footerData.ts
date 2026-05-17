@@ -6,8 +6,6 @@ export const SOCIAL_LINKS = {
   linkedin: "",
   tiktok: "",
   twitter: "",
-  youtube: "",
-  discord: "",
 } as const;
 
 type FooterLink = { label: string; href: string };

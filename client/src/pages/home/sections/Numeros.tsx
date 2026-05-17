@@ -96,14 +96,18 @@ function AnimatedNumber({
 function StatBlock({
   stat,
   index,
-  shouldAnimate,
   isLast,
 }: {
   stat: Stat;
   index: number;
-  shouldAnimate: boolean;
   isLast: boolean;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const isCardInView = useInView(cardRef, {
+    once: true,
+    margin: "-50px",
+  });
+
   const colorClasses: Record<StatColor, string> = {
     amber: "text-amber-400",
     violet: "text-violet-400",
@@ -112,6 +116,7 @@ function StatBlock({
 
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-100px" }}
@@ -122,7 +127,7 @@ function StatBlock({
         className={`font-display font-black leading-none ${colorClasses[stat.color]}`}
         style={{ fontSize: "clamp(64px, 9vw, 120px)" }}
       >
-        <AnimatedNumber value={stat.value} shouldAnimate={shouldAnimate} prefix={stat.prefix} />
+        <AnimatedNumber value={stat.value} shouldAnimate={isCardInView} prefix={stat.prefix} />
       </div>
 
       <p className="mt-4 font-display text-lg md:text-xl font-black text-white uppercase tracking-wider">
@@ -235,14 +240,8 @@ function BackgroundDecoration() {
 // =========================================
 
 export default function Numeros() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const isInView = useInView(sectionRef, {
-    once: true,
-    margin: "-100px",
-  });
-
   return (
-    <section ref={sectionRef} className="relative overflow-hidden py-20 md:py-32 bg-slate-950">
+    <section className="relative overflow-hidden py-20 md:py-32 bg-slate-950">
       <BackgroundDecoration />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4">
@@ -276,7 +275,6 @@ export default function Numeros() {
               key={stat.label}
               stat={stat}
               index={index}
-              shouldAnimate={isInView}
               isLast={index === STATS.length - 1}
             />
           ))}
