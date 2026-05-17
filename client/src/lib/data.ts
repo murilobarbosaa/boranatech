@@ -330,12 +330,100 @@ export const areasTI: AreaTI[] = [
       {
         slug: "analista-bi",
         nome: "Analista de BI",
-        descricaoCurta: "Especialista em ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra dashboards executivos."
+        descricaoCurta: "Especialista em ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra dashboards executivos.",
+        descricaoCompleta: "Analista de BI (Business Intelligence) é o profissional especializado em transformar dados em dashboards executivos que apoiam decisões estratégicas. Domina ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra construir relatórios que monitoram KPIs do negócio em tempo real. Cargo super comum em empresas tradicionais e médias no BR — varejo, financeiro, indústria, saúde. Salário típico: R$ 3-5.5k júnior, R$ 6-10k pleno, R$ 10-18k sênior. Diferente do Analista de Dados generalista, o de BI é especialista em construir dashboards corporativos consumidos por executivos.",
+        oQueFaz: "No dia a dia: extrai dados via SQL de sistemas corporativos (ERP, CRM), modela os dados pra consumo em ferramentas de BI, constrói dashboards interativos no Power BI ou Tableau com KPIs do negócio (vendas, financeiro, operacional), apresenta relatórios pra lideranças, automatiza atualizações periódicas, e treina usuários de negócio a navegar pelos dashboards. Faz BI operacional (acompanhamento diário) e BI estratégico (decisões de médio-longo prazo).",
+        diferencasDaAreaMae: "Dentro de Ciência de Dados, o Analista de BI é o mais especializado em visualização e dashboards executivos — diferente do Analista de Dados (que faz análises mais variadas) e do Analytics Engineer (que constrói modelos no warehouse). Cargo super comum em empresas tradicionais brasileiras que ainda estão maturando seu uso de dados. Porta de entrada relativamente acessível — pode-se começar dominando Power BI + SQL sem precisar de Python ou estatística.",
+        habilidadesEspecificas: [
+          "Power BI ou Tableau (essencial, escolher um e dominar)",
+          "SQL intermediário-avançado (joins, agregações, CTEs)",
+          "Modelagem para BI (star schema simplificado)",
+          "DAX (linguagem Power BI) ou LookML (Looker)",
+          "Storytelling com dados (transformar gráficos em insights)"
+        ],
+        ferramentasEspecificas: [
+          "Power BI (mais procurado no BR)",
+          "Tableau (segundo mais comum)",
+          "SQL Server, PostgreSQL ou Oracle (bancos corporativos)",
+          "Excel avançado (ainda essencial no BR)",
+          "Looker ou Looker Studio (algumas empresas modernas)",
+          "DAX Studio (otimização Power BI)"
+        ],
+        cargos: [
+          "Analista de BI Júnior (0-2 anos)",
+          "Analista de BI Pleno (2-5 anos)",
+          "Analista de BI Sênior (5+ anos)",
+          "Coordenador BI / Lead Analytics"
+        ],
+        faixaSalarial: "R$ 3.000 (júnior) a R$ 18.000 (sênior). Média BR R$ 4.614-6.192 — Glassdoor/Indeed 2026. Pleno gira em R$ 6-10k. Em fintechs e empresas grandes, sênior chega a R$ 12-18k.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Microsoft Learn — Power BI fundamentals (oficial gratuito)",
+          "Curso em Vídeo — SQL Completo (Gustavo Guanabara)",
+          "Tableau Public — recursos gratuitos + galeria de exemplos"
+        ],
+        projetosSugeridos: [
+          "Dashboard executivo de vendas com 4-5 visualizações conectadas (Power BI ou Tableau)",
+          "Dashboard de RH/operacional com filtros interativos e drill-down",
+          "Relatório financeiro completo com KPIs principais publicado no Tableau Public"
+        ],
+        roadmapEspecifico: [
+          "Aprender SQL profundamente (joins, agregações, window functions)",
+          "Escolher Power BI ou Tableau e dominar profundamente",
+          "Estudar modelagem básica pra BI (star schema simplificado)",
+          "Aprender DAX (Power BI) ou LookML (Looker) — diferencial salarial real",
+          "Construir portfólio com 3-4 dashboards publicados (Tableau Public é gratuito)"
+        ],
+        dicasIniciais: "Power BI é o mais procurado no BR — comece por ele. Tableau vale pra quem mira empresas internacionais ou agências. Portfólio público no Tableau Public é grátis e impressiona recrutadores. Domine DAX se for Power BI — separa juniores de plenos. Certificação Microsoft PL-300 (Power BI) custa US$ 165 e vale o investimento."
       },
       {
         slug: "analytics-engineer",
         nome: "Analytics Engineer",
-        descricaoCurta: "Atua entre engenharia e análise. Cria modelos de dados confiáveis com SQL + dbt pra times de analistas."
+        descricaoCurta: "Atua entre engenharia e análise. Cria modelos de dados confiáveis com SQL + dbt pra times de analistas.",
+        descricaoCompleta: "Analytics Engineer é o cargo híbrido mais quente da área de dados em 2026: profissional que vive entre o Engenheiro de Dados e o Analista. Surgiu com o movimento Modern Data Stack (dbt + Snowflake + BigQuery) e virou padrão em empresas data-driven. Constrói modelos de dados confiáveis e reutilizáveis em SQL — não pipelines de ingestão (engenheiro), nem dashboards finais (analista), mas a camada intermediária que alimenta tudo. Salário típico fica entre Analista e Engenheiro: R$ 8-18k pleno, sêniores R$ 18-25k. Mercado BR ainda em formação — quem domina dbt + SQL avançado pega salários acima da média de Analista.",
+        oQueFaz: "No dia a dia: modela dados brutos do warehouse em camadas confiáveis (staging → marts), escreve transformações SQL versionadas em dbt, documenta lineage e testes de qualidade, colabora com Engenheiros de Dados (consome pipelines) e Analistas (entrega modelos prontos), implementa testes automatizados de qualidade de dados, e gerencia o data warehouse pra que múltiplos times consumam dados consistentes. Conecta o mundo de eng. de dados com o mundo de análise.",
+        diferencasDaAreaMae: "Dentro de Ciência de Dados, o Analytics Engineer separa-se claramente: enquanto o Analista usa dados prontos pra fazer relatórios, e o Engenheiro de Dados move dados de origem pro warehouse, o Analytics Engineer transforma dados brutos em modelos confiáveis dentro do warehouse. Diferente do Cientista (matemática + ML), o foco aqui é SQL e modelagem dimensional. É a evolução natural de Analistas que querem mais profundidade técnica sem virar engenheiro de dados puro.",
+        habilidadesEspecificas: [
+          "SQL avançado (window functions, CTEs, otimização)",
+          "dbt (data build tool) — referência absoluta da área",
+          "Modelagem dimensional (Kimball, star schema)",
+          "Versionamento e Git (modelos como código)",
+          "Testes de qualidade de dados (dbt tests, data contracts)"
+        ],
+        ferramentasEspecificas: [
+          "dbt (essencial)",
+          "SQL (PostgreSQL, BigQuery, Snowflake)",
+          "Git/GitHub (modelos versionados)",
+          "Airflow ou Dagster (orquestração)",
+          "Snowflake ou BigQuery (data warehouses modernos)",
+          "Looker ou Lightdash (BI baseado em modelos)"
+        ],
+        cargos: [
+          "Analytics Engineer Júnior (vindo de Analista, 1-2 anos)",
+          "Analytics Engineer Pleno (2-5 anos)",
+          "Analytics Engineer Sênior (5+ anos)",
+          "Staff Analytics Engineer / Lead Data Modeling"
+        ],
+        faixaSalarial: "R$ 6.000 (júnior, vindo de Analista) a R$ 20.000+ (sênior). Pleno gira em R$ 10-15k. Especialistas dbt em empresas data-driven (iFood, Stone, Nubank) chegam a R$ 18-25k.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "dbt Learn (cursos oficiais grátis em inglês)",
+          "DataTalksClub — Analytics Engineering Zoomcamp (gratuito, completo)",
+          "GitLab Data Team handbook (referência pública sobre data modeling)"
+        ],
+        projetosSugeridos: [
+          "Projeto dbt público: ingestão CSV → staging → marts com testes (publicar no GitHub)",
+          "Modelo dimensional completo de domínio fictício (e-commerce, SaaS) com documentação",
+          "Pipeline analytics: dbt + Airflow + BigQuery com dashboards consumindo modelos"
+        ],
+        roadmapEspecifico: [
+          "Dominar SQL profundo (window functions, CTEs, otimização de queries)",
+          "Aprender dbt do zero (oficial dbt Learn é gratuito e completo)",
+          "Estudar modelagem dimensional (Kimball é referência absoluta)",
+          "Praticar com data warehouse moderno (BigQuery é gratuito até certo volume)",
+          "Construir 1-2 projetos públicos no GitHub com dbt + docs + tests"
+        ],
+        dicasIniciais: "Analytics Engineer é o caminho mais inteligente pra Analistas que querem subir salário sem virar Engenheiro de Dados puro. dbt é A ferramenta da carreira — invista 1-2 meses dominando. SQL é 80% do trabalho — se não está fluente, foque aí antes. Inglês é importante (toda a community dbt está em inglês). Cargo ainda em formação no BR — quem entra agora pega salários acima do normal."
       }
     ]
   },
@@ -481,12 +569,100 @@ export const areasTI: AreaTI[] = [
       {
         slug: "ui-design",
         nome: "UI Design",
-        descricaoCurta: "Interface visual, paletas, tipografia, componentes. Foco em como o produto se parece."
+        descricaoCurta: "Interface visual, paletas, tipografia, componentes. Foco em como o produto se parece.",
+        descricaoCompleta: "UI Designer (User Interface) é o profissional especialista na camada visual da experiência: cores, tipografia, espaçamento, componentes, iconografia. Trabalha próximo ao UX Designer e ao desenvolvedor, traduzindo conceitos e fluxos em interfaces visualmente atraentes e funcionais. Diferente do UX (que pensa estrutura) e do Product Designer (que faz UX + UI + estratégia), o UI puro é cargo mais raro hoje — empresas preferem Product Designers que cobrem ambos. Mas em design systems, agências e jogos digitais, UI puro segue valorizado. Salários: R$ 2.4-7k típico — abaixo do mercado de UX e Product Design.",
+        oQueFaz: "No dia a dia: cria interfaces visuais detalhadas a partir de wireframes do UX, define paletas de cores, sistemas tipográficos, componentes reutilizáveis, micro-interações e estados visuais (hover, disabled, error). Trabalha próximo a desenvolvedores pra garantir aderência fiel ao design (handoff via Figma). Em produtos com design system maduro, contribui pra evolução do sistema. Em agências ou produtos novos, cria do zero o visual da marca.",
+        diferencasDaAreaMae: "Dentro de UX/UI, o UI Designer separa-se do UX pela camada: UX cuida da estrutura e comportamento, UI cuida da estética e visual. Diferente do Product Designer (que faz tudo), o UI puro é mais especializado. Cargo menos procurado em startups (que preferem Product Designers híbridos), mas valorizado em agências, design systems e produtos com grande maturidade visual. Quem ama composição visual e tipografia mas não tem paciência pra pesquisa profunda se encaixa bem aqui.",
+        habilidadesEspecificas: [
+          "Composição visual (grid, hierarquia, proximidade)",
+          "Tipografia aplicada (escolha, escala, espaçamento)",
+          "Color systems e teoria de cores",
+          "Design systems (tokens, componentes, variantes)",
+          "Micro-interações e animações sutis (Lottie, Framer)"
+        ],
+        ferramentasEspecificas: [
+          "Figma (padrão absoluto da indústria)",
+          "Adobe Photoshop e Illustrator (ainda comum)",
+          "Tokens Studio ou Figma Variables (design systems)",
+          "Lottie (animações exportáveis)",
+          "Iconify ou Lucide (bibliotecas de ícones)",
+          "Coolors ou Adobe Color (paletas)"
+        ],
+        cargos: [
+          "UI Designer Júnior (0-2 anos)",
+          "UI Designer Pleno (2-5 anos)",
+          "UI Designer Sênior (5+ anos)",
+          "Lead UI / Design System Designer"
+        ],
+        faixaSalarial: "R$ 2.401 (piso CAGED) a R$ 7.018 (teto CAGED 2026). Média BR R$ 3.725. Em fintechs e empresas grandes, sênior chega a R$ 10-12k. Mercado em queda relativa (-8% contratações) — UI puro está sendo absorvido por Product Design.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Figma Academy (cursos oficiais gratuitos)",
+          "Refactoring UI (livro pago, mas amostras gratuitas valiosas)",
+          "UI Movement (referência visual + tutoriais gratuitos)"
+        ],
+        projetosSugeridos: [
+          "Redesign visual de app conhecido (Instagram, Spotify) mantendo o UX original",
+          "Design system mínimo (cores, tipografia, 15 componentes) no Figma",
+          "Landing page completa com 5+ seções, responsiva, com animações sutis"
+        ],
+        roadmapEspecifico: [
+          "Estudar fundamentos visuais (composição, tipografia, cor, hierarquia)",
+          "Dominar Figma absurdamente (auto-layout, variants, components, variables)",
+          "Aprender design systems (tokens, escalas, padrões)",
+          "Construir portfólio com 3-4 projetos visuais detalhados",
+          "Considerar transição pra Product Designer (UI puro tem mercado mais limitado)"
+        ],
+        dicasIniciais: "UI puro tem mercado mais limitado em 2026 — considere ampliar pra Product Designer (UX + UI + estratégia). Se ficar em UI puro, mire agências, design systems ou produtos visualmente complexos (games, finanças premium). Domine Figma profundamente — variants e auto-layout são essenciais. Portfólio visual forte vale mais que diploma. Estude tipografia — separa UI bom de UI medíocre."
       },
       {
         slug: "ux-research",
         nome: "UX Research",
-        descricaoCurta: "Especialização em pesquisa qualitativa e quantitativa de usuários. Entrevistas, testes, análise comportamental."
+        descricaoCurta: "Especialização em pesquisa qualitativa e quantitativa de usuários. Entrevistas, testes, análise comportamental.",
+        descricaoCompleta: "UX Researcher é o especialista em descobrir verdades sobre usuários através de pesquisa rigorosa — entrevistas, observação, testes, análise comportamental. Diferente do UX Designer que faz pesquisa como parte do trabalho, o Researcher vive de pesquisa: planeja estudos, recruta participantes, conduz entrevistas, analisa transcrições, sintetiza insights e influencia decisões de produto e estratégia. Cargo mais sênior em UX, valorizado em empresas grandes (Nubank, iFood, big techs internacionais) onde a complexidade exige profundidade investigativa. Salários: R$ 6-22k, com sêniores em fintechs/big techs chegando a R$ 18-25k.",
+        oQueFaz: "No dia a dia: planeja estudos de pesquisa (definir objetivos, métodos, métricas), recruta participantes (com perfis específicos), conduz entrevistas em profundidade (1 a 2 horas), facilita testes de usabilidade moderados e não-moderados, analisa transcrições e identifica padrões (análise temática, affinity mapping), sintetiza insights em narrativas pra times de produto, e treina outras pessoas a fazer research básico (democratização). Trabalha com PMs, designers e desenvolvedores.",
+        diferencasDaAreaMae: "Dentro de UX/UI, o Researcher é o cargo mais especializado e mais sênior — diferente do UX Designer (que faz pesquisa como parte do trabalho), o Researcher vive de research. Diferente do Product Designer (que é generalista UX+UI+estratégia), o Researcher é hyper-especializado. Cargo raro em startups (não cabe no orçamento), comum em empresas grandes com 100+ designers. Carreira longa: pode-se ser Researcher Sênior por 10+ anos sem virar gestor.",
+        habilidadesEspecificas: [
+          "Métodos qualitativos (entrevistas em profundidade, observação contextual)",
+          "Métodos quantitativos (surveys, análise estatística básica, A/B testing)",
+          "Recrutamento e screening de participantes",
+          "Análise temática e affinity mapping",
+          "Storytelling de research (transformar dados em narrativas acionáveis)"
+        ],
+        ferramentasEspecificas: [
+          "Dovetail ou Notion (organização de research repositório)",
+          "Maze, UserTesting ou Lookback (testes remotos)",
+          "Typeform ou Google Forms (surveys quantitativos)",
+          "Otter.ai ou Fireflies (transcrição automática de entrevistas)",
+          "Miro ou Mural (synthesis colaborativa)",
+          "Hotjar ou FullStory (análise comportamental real)"
+        ],
+        cargos: [
+          "UX Researcher Júnior (0-2 anos, raro)",
+          "UX Researcher Pleno (2-5 anos)",
+          "UX Researcher Sênior (5+ anos)",
+          "Lead/Staff UX Researcher / Head of Research"
+        ],
+        faixaSalarial: "R$ 6.000 (pleno típico no BR) a R$ 25.000 (sênior em big techs). Médias BR R$ 8-15k. Vagas internacionais remotas pagam US$ 5-10k/mês. Cargo mais sênior em UX no geral.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "NN/g (Nielsen Norman Group) — artigos gratuitos sobre research (referência mundial)",
+          "Interaction Design Foundation — artigos gratuitos sobre research methods",
+          "Dovetail Academy — recursos gratuitos sobre research repositórios"
+        ],
+        projetosSugeridos: [
+          "Estudo qualitativo completo: 5-8 entrevistas + análise temática + insights pra um produto",
+          "Survey quantitativo com 100+ respondentes + análise estatística publicada",
+          "Estudo misto (qual + quant): hipótese inicial → entrevistas → survey de validação"
+        ],
+        roadmapEspecifico: [
+          "Estudar métodos qualitativos a fundo (entrevistas, observação contextual)",
+          "Aprender métodos quantitativos básicos (surveys, estatística descritiva, A/B)",
+          "Praticar entrevistas com pessoas reais (5-10 entrevistas antes de procurar vaga)",
+          "Construir repositório público de estudos no Medium ou portfólio próprio",
+          "Conseguir vaga como UX Researcher Júnior em empresa grande (raro mas existe)"
+        ],
+        dicasIniciais: "Researcher é cargo mais sênior em UX — raramente entry-level. Caminho comum: começa como UX Designer ou Product Designer, descobre paixão por research, especializa. Domine entrevistas em profundidade — é a habilidade-chave. Inglês é altamente diferencial (boa parte da literatura está em inglês). Background em psicologia, sociologia ou antropologia ajuda (mas não é obrigatório). Cargo perfeito pra perfis curiosos e investigativos."
       },
       {
         slug: "design-systems",
@@ -626,7 +802,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "nlp",
         nome: "NLP / LLMs",
-        descricaoCurta: "Processamento de linguagem natural. Cria chatbots, sistemas de busca semântica, análise de sentimentos, integrações com LLMs."
+        descricaoCurta: "Processamento de linguagem natural. Cria chatbots, sistemas de busca semântica, análise de sentimentos, integrações com LLMs.",
+        descricaoCompleta: "Engenheiro de NLP (Natural Language Processing) é o especialista em fazer máquinas entenderem linguagem humana — texto, fala, comandos. Em 2026, a área se mistura cada vez mais com LLMs (Large Language Models como GPT, Claude, Gemini): NLP moderno é largamente sobre integrar e adaptar esses modelos pra problemas específicos. Aplicações: chatbots inteligentes, análise de sentimento em redes sociais, sistemas de busca semântica, classificação automática de documentos, tradução, geração de conteúdo. Salários sêniores chegam a R$ 25-35k em fintechs e big techs (cargo entre os melhor pagos em IA).",
+        oQueFaz: "No dia a dia: constrói pipelines pra processar grandes volumes de texto (tokenização, limpeza, embeddings), treina ou fine-tuna modelos pra tarefas específicas (classificação de tickets, extração de entidades, análise de sentimento), integra LLMs em produtos via APIs (OpenAI, Anthropic, Google), implementa sistemas de busca semântica com vector databases (Pinecone, Weaviate), avalia qualidade de modelos (acurácia, latência, custo de tokens) e produtiza modelos com MLOps.",
+        diferencasDaAreaMae: "Dentro de IA, o NLP separa-se do Machine Learning Engineer geral pela especialização: trabalha exclusivamente com dados de texto e fala, não imagens ou números. Diferente do Cientista de Dados (que pode usar NLP como uma ferramenta), o engenheiro de NLP vive disso. Em 2026, fronteira entre NLP clássico e Engenharia de Prompt está borrada — quem é forte tecnicamente faz os dois. Cargo super valorizado em chatbots, search e qualquer produto que processe linguagem.",
+        habilidadesEspecificas: [
+          "Python avançado + bibliotecas (Hugging Face Transformers, spaCy, NLTK)",
+          "Fine-tuning de LLMs (PEFT, LoRA, RLHF básico)",
+          "Embeddings e vector search (sentence-transformers, cosine similarity)",
+          "Conhecimento profundo de arquitetura Transformer",
+          "MLOps específico pra NLP (model serving, monitoring de drift linguístico)"
+        ],
+        ferramentasEspecificas: [
+          "Hugging Face Transformers + Hub (biblioteca padrão da área)",
+          "spaCy (NLP tradicional e pipelines)",
+          "PyTorch ou TensorFlow",
+          "Vector databases (Pinecone, Weaviate, Qdrant)",
+          "OpenAI/Anthropic/Google APIs (LLMs em produção)",
+          "LangChain ou LlamaIndex (orquestração de LLMs)"
+        ],
+        cargos: [
+          "NLP Engineer Júnior (0-2 anos, raro)",
+          "NLP Engineer Pleno (2-5 anos)",
+          "NLP Engineer Sênior (5+ anos)",
+          "Staff NLP / Lead AI Engineer"
+        ],
+        faixaSalarial: "R$ 8.000 (júnior) a R$ 35.000+ (sênior). Pleno gira em R$ 13-20k. Sêniores em big techs e fintechs chegam a R$ 25-35k. Remoto pra fora paga US$ 8-15k/mês.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Hugging Face — NLP Course (curso oficial gratuito, completo, em inglês)",
+          "Stanford CS224N (NLP with Deep Learning) — playlists no YouTube gratuitas",
+          "DeepLearning.AI — NLP Specialization (Coursera audit gratuito)"
+        ],
+        projetosSugeridos: [
+          "Classificador de sentimento fine-tuned (BERT ou similar) com dataset público",
+          "Sistema de busca semântica completo (embeddings + vector DB + interface)",
+          "Chatbot especialista em domínio usando LLM + RAG (retrieval augmented generation)"
+        ],
+        roadmapEspecifico: [
+          "Ter base sólida em Python e Machine Learning tradicional",
+          "Aprender arquitetura Transformer profundamente (paper Attention Is All You Need)",
+          "Dominar Hugging Face Transformers (fine-tuning, inference, deployment)",
+          "Estudar RAG e vector search (essencial em 2026)",
+          "Construir portfólio público: 2-3 projetos com modelos em produção"
+        ],
+        dicasIniciais: "NLP em 2026 é largamente sobre LLMs — não fica preso só em NLP clássico (spaCy, NLTK). Domine Hugging Face: é a porta de entrada da área. Inglês é absolutamente obrigatório (toda doc, papers e community estão em inglês). Acompanhe papers de NLP no arxiv (busca por 'arxiv-sanity'). Subárea com salários top da IA — vale o investimento técnico pesado."
       },
       {
         slug: "visao-computacional",
@@ -685,7 +905,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "mlops",
         nome: "MLOps",
-        descricaoCurta: "Engenharia de operações pra ML. Pipelines de treinamento, deploy contínuo de modelos, monitoramento."
+        descricaoCurta: "Engenharia de operações pra ML. Pipelines de treinamento, deploy contínuo de modelos, monitoramento.",
+        descricaoCompleta: "MLOps Engineer é o profissional que aplica princípios de DevOps especificamente pra Machine Learning: automatiza pipelines de treino, faz deploy contínuo de modelos em produção, monitora drift e performance, e garante reprodutibilidade. Não é o mesmo que ML Engineer — MLOps é mais focado em infraestrutura e operação, menos em código de modelagem. Cargo crítico em empresas que rodam dezenas de modelos em produção (Nubank, iFood, Stone). Salário super competitivo: média BR R$ 18.667 (Glassdoor), sêniores em fintechs ultrapassam R$ 32k. Mercado em expansão acelerada — 379k+ vagas relacionadas no BeBee.",
+        oQueFaz: "No dia a dia: constrói pipelines automatizados de treino de modelos (data → train → eval → deploy), implementa CI/CD específico pra ML (model testing, A/B testing em produção), monitora modelos em produção (drift detection, performance metrics, custo de cloud), versiona modelos e datasets (MLflow, DVC), gerencia feature stores, e otimiza infraestrutura (GPU usage, latência de inferência, custo). Trabalha próximo a Cientistas de Dados (entrega input) e ML Engineers (compartilha responsabilidades).",
+        diferencasDaAreaMae: "Dentro de IA, o MLOps separa-se do ML Engineer pela ênfase: ML Engineer toca código de modelagem + produção; MLOps Engineer foca quase exclusivamente em operação, infraestrutura e governança de modelos. Diferente do DevOps tradicional, MLOps lida com complexidades específicas de ML (drift de dados, retreino contínuo, versionamento de datasets, custo de GPU). Cargo super especializado — entrada exige base de DevOps ou ML Engineer.",
+        habilidadesEspecificas: [
+          "Kubernetes e Docker pra deploy de modelos",
+          "Pipelines de ML (Kubeflow, Airflow, MLflow Pipelines)",
+          "Versionamento de modelos e dados (MLflow, DVC, Weights & Biases)",
+          "Monitoring de produção (Evidently, WhyLabs, Prometheus)",
+          "Cloud específico pra ML (SageMaker, Vertex AI, Azure ML)"
+        ],
+        ferramentasEspecificas: [
+          "MLflow (tracking + registry de modelos)",
+          "Kubeflow ou Vertex AI Pipelines",
+          "Docker + Kubernetes",
+          "Weights & Biases ou Comet (experiment tracking)",
+          "DVC (data version control)",
+          "Evidently AI ou Arize (monitoring de drift)"
+        ],
+        cargos: [
+          "MLOps Engineer Pleno (vindo de DevOps ou ML, 3+ anos)",
+          "MLOps Engineer Sênior (5+ anos)",
+          "Staff MLOps / Lead ML Platform",
+          "Principal MLOps / Head of ML Engineering"
+        ],
+        faixaSalarial: "R$ 7.917 (júnior raro) a R$ 32.667 (sênior). Média BR R$ 18.667 — Glassdoor 2026. Pleno gira em R$ 15-22k. Sêniores em fintechs e big techs chegam a R$ 30k+. Cargo mais bem pago da área de IA.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Made With ML (madewithml.com) — curso completo grátis de MLOps em inglês",
+          "Full Stack Deep Learning — bootcamp gratuito sobre ML em produção",
+          "Google Cloud — MLOps Engineer Learning Path (parte gratuita)"
+        ],
+        projetosSugeridos: [
+          "Pipeline MLOps completo: GitHub Actions + MLflow + deploy em K8s + monitoring",
+          "Sistema de retreino automático: drift detected → trigger retrain → A/B deploy",
+          "Feature store funcional + serving online + offline com Feast ou Tecton"
+        ],
+        roadmapEspecifico: [
+          "Ter base sólida em DevOps (Docker, K8s, CI/CD, cloud) — 2+ anos",
+          "Aprender fundamentos de ML (não precisa ser cientista, mas entender pipeline)",
+          "Estudar MLflow profundamente (referência absoluta da área)",
+          "Dominar uma cloud focada em ML (SageMaker é o mais procurado)",
+          "Construir portfólio: 1-2 sistemas MLOps completos em produção (open source)"
+        ],
+        dicasIniciais: "MLOps é o cargo mais bem pago de IA em 2026 — vale o investimento pesado. Não tente entrar sem base de DevOps OU ML Engineering — esse cargo cobra os dois mundos. Vindo de DevOps, foque em ML (pipelines, model serving, monitoring). Vindo de ML, foque em DevOps (K8s, CI/CD, observabilidade). Inglês é obrigatório. Acompanhe MLOps Community (Slack ativo) e neptune.ai blog."
       }
     ]
   },
@@ -817,12 +1081,100 @@ export const areasTI: AreaTI[] = [
       {
         slug: "product-marketing",
         nome: "Product Marketing Manager",
-        descricaoCurta: "Posicionamento, go-to-market, mensagem do produto. Ponte entre produto e marketing."
+        descricaoCurta: "Posicionamento, go-to-market, mensagem do produto. Ponte entre produto e marketing.",
+        descricaoCompleta: "Product Marketing Manager (PMM) é a ponte entre produto e marketing: traduz capacidades técnicas em valor pro usuário, define posicionamento (como o produto é percebido), constrói narrativa de lançamento, e influencia decisões de produto baseado em pesquisa de mercado e concorrência. Cargo essencial em produtos SaaS, fintechs e empresas que vendem soluções complexas. Diferente do PM (que pensa o quê construir), o PMM pensa como comunicar e vender. Salários: pleno em fintechs gira R$ 12-18k, sêniores ultrapassam R$ 25k. Mercado BR em crescimento acelerado em 2026.",
+        oQueFaz: "No dia a dia: define posicionamento e mensagem do produto (quem é o usuário, qual problema resolve, por que escolher), constrói materiais de go-to-market (landing pages, sales decks, FAQs), faz pesquisa de concorrência e benchmarking constante, treina times de vendas e suporte sobre o produto, lança features com narrativa coordenada (email + landing + redes), e mede impacto (ativação, conversão, retenção). Trabalha com PMs, marketing, vendas e customer success.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o PMM separa-se claramente do Product Manager pelo foco: PM pensa o quê construir; PMM pensa como vender. Diferente do Marketing tradicional (focado em campanhas e brand), o PMM é mais técnico — entende o produto profundamente. Cargo super comum em SaaS B2B (Hubspot, Salesforce, RD Station) onde a complexidade do produto exige tradução constante. Em B2C, é menos comum. Caminho natural pra quem vem de marketing e quer se especializar em produto.",
+        habilidadesEspecificas: [
+          "Posicionamento e mensagem (frameworks como April Dunford)",
+          "Pesquisa de mercado e análise competitiva",
+          "Go-to-market strategy (lançamento coordenado)",
+          "Copywriting técnico (landing pages, materiais de venda)",
+          "Métricas de produto e marketing (CAC, LTV, ativação, retenção)"
+        ],
+        ferramentasEspecificas: [
+          "Notion ou Confluence (documentação de posicionamento)",
+          "Figma (criar materiais visuais junto com design)",
+          "Mixpanel ou Amplitude (analytics de produto)",
+          "HubSpot ou similar (gestão de campanhas)",
+          "Crayon ou Klue (competitive intelligence)",
+          "Linear ou Jira (acompanhar lançamentos)"
+        ],
+        cargos: [
+          "Product Marketing Manager Júnior (0-2 anos)",
+          "Product Marketing Manager Pleno (2-5 anos)",
+          "Senior Product Marketing Manager (5+ anos)",
+          "Lead/Director of Product Marketing"
+        ],
+        faixaSalarial: "R$ 6.000 (júnior) a R$ 25.000+ (sênior em fintechs/big techs). Pleno gira em R$ 12-18k. Em SaaS B2B grandes (RD Station, Resultados Digitais, Tomtocom), sêniores chegam a R$ 20-30k.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "April Dunford — Obviously Awesome (livro pago, mas resumos gratuitos disponíveis)",
+          "Reforge — Product Marketing artigos gratuitos",
+          "PMM Alliance — recursos gratuitos da maior comunidade global de PMMs"
+        ],
+        projetosSugeridos: [
+          "Análise de posicionamento de produto existente + proposta de reposicionamento",
+          "Plano de go-to-market completo pra um lançamento hipotético",
+          "Battle card competitivo: produto X vs concorrente Y (formato comercial)"
+        ],
+        roadmapEspecifico: [
+          "Estudar posicionamento (April Dunford é referência absoluta)",
+          "Aprender frameworks de go-to-market e competitive analysis",
+          "Dominar copywriting técnico (landing pages, narrativas de venda)",
+          "Construir portfólio: 2-3 análises públicas de posicionamento de produtos conhecidos",
+          "Network com PMMs em LinkedIn — comunidade BR ainda pequena, fácil de entrar"
+        ],
+        dicasIniciais: "Caminho ideal pra quem vem de marketing e quer entrar em produto. April Dunford é leitura obrigatória — 'Obviously Awesome' é a bíblia da área. Cargo super valorizado em SaaS B2B — busque vagas nessas empresas. Inglês é importante (boa parte da literatura está em inglês). Comunidade BR ainda pequena — é fácil ser visto se você produz conteúdo público sobre posicionamento."
       },
       {
         slug: "growth-product",
         nome: "Growth Product Manager",
-        descricaoCurta: "Especialista em métricas de aquisição, ativação, retenção. Foco em experimentação e funil."
+        descricaoCurta: "Especialista em métricas de aquisição, ativação, retenção. Foco em experimentação e funil.",
+        descricaoCompleta: "Growth Product Manager (Growth PM) é uma especialização de PM focada exclusivamente em crescimento — não no produto inteiro, mas em mover métricas específicas: aquisição, ativação, retenção, monetização (modelo AARRR). Trabalha com experimentação contínua (A/B tests semanais), análise profunda de funil, e otimização de conversão em pontos críticos. Cargo super valorizado em empresas em escala rápida (fintechs, e-commerces, SaaS). Salário top da família PM: média BR R$ 16.661 (Glassdoor), pleno R$ 15-22k, sênior em fintechs/big techs chega a R$ 28-35k+.",
+        oQueFaz: "No dia a dia: identifica gargalos no funil de produto (onde usuários caem), formula hipóteses pra reduzir esses gargalos, projeta experimentos (A/B tests, holdouts), analisa resultados estatisticamente, escala o que funciona e mata o que não funciona, e itera continuamente. Trabalha próximo a engenheiros (implementar experimentos), data analysts (medir resultados) e marketing (alinhar canais de aquisição). Pensamento orientado a métricas é a base do trabalho.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o Growth PM separa-se do Product Manager pelo foco: PM pensa visão de longo prazo (roadmap, problemas grandes); Growth PM pensa otimização de curto prazo (métricas movendo agora). Diferente do Product Marketing Manager (que cuida de posicionamento e go-to-market), Growth PM é mais técnico e analítico — vive de A/B testing. Cargo perfeito pra quem vem de marketing performance ou data analytics e quer entrar em produto com viés quantitativo.",
+        habilidadesEspecificas: [
+          "Análise estatística básica (significância, intervalos de confiança, sample size)",
+          "Domínio profundo de funil AARRR (Aquisição, Ativação, Retenção, Receita, Recomendação)",
+          "Experimentação rigorosa (A/B testing, multivariado, holdouts)",
+          "SQL avançado pra análise de dados (não pode depender só de analista)",
+          "Storytelling com dados pra defender decisões pra liderança"
+        ],
+        ferramentasEspecificas: [
+          "Mixpanel ou Amplitude (analytics de produto)",
+          "Statsig, LaunchDarkly ou GrowthBook (feature flags + A/B testing)",
+          "SQL (PostgreSQL, BigQuery, Snowflake)",
+          "Hotjar ou FullStory (análise comportamental)",
+          "Notion ou Coda (documentar hipóteses e experimentos)",
+          "Looker ou Tableau (dashboards de growth)"
+        ],
+        cargos: [
+          "Growth PM Júnior (0-2 anos, raro)",
+          "Growth PM Pleno (2-5 anos)",
+          "Senior Growth PM (5+ anos)",
+          "Head of Growth / VP Growth"
+        ],
+        faixaSalarial: "R$ 8.000 (júnior) a R$ 35.000+ (sênior). Média BR R$ 16.661 — Glassdoor 2026. Pleno gira em R$ 15-22k. Sêniores em fintechs e big techs (Nubank, iFood, Stone) ultrapassam R$ 28-35k.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "Reforge — artigos gratuitos sobre growth (referência mundial)",
+          "Lenny's Newsletter — gratuita, com 1-2 posts/mês sobre growth",
+          "GrowthHackers Community + casos públicos de A/B tests (gratuito)"
+        ],
+        projetosSugeridos: [
+          "Análise de funil de produto existente: identificar gargalos + propor 3 experimentos",
+          "Documentar 5 A/B tests hipotéticos completos (hipótese, métrica, sample size, resultado esperado)",
+          "Estudo de growth de produto conhecido: deconstruir estratégia de aquisição + retenção"
+        ],
+        roadmapEspecifico: [
+          "Ter base de PM tradicional (discovery, priorização, métricas)",
+          "Estudar funil AARRR a fundo (livro 'Lean Analytics' é referência)",
+          "Aprender estatística aplicada a A/B tests (significância, poder estatístico)",
+          "Dominar SQL pra análises sem depender de analista",
+          "Conseguir transição interna: PM tradicional → Growth PM no mesmo time"
+        ],
+        dicasIniciais: "Growth PM é cargo mais técnico que PM tradicional — invista em SQL e estatística. Mira fintechs e produtos em escala (eles precisam de growth). Inglês é importante (Reforge, Lenny's, melhores recursos em inglês). Comunidade brasileira de growth ainda pequena — produzir conteúdo público sobre experimentos abre portas. Cargo perfeito pra perfis analíticos."
       },
       {
         slug: "product-ops",
@@ -915,7 +1267,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "blue-team",
         nome: "Blue Team / SOC",
-        descricaoCurta: "Defesa em tempo real. Monitoram sistemas, analisam incidentes e atuam em Security Operations Centers."
+        descricaoCurta: "Defesa em tempo real. Monitoram sistemas, analisam incidentes e atuam em Security Operations Centers.",
+        descricaoCompleta: "Blue Team / Analista SOC é o profissional da defesa em tempo real: monitora sistemas continuamente, detecta ameaças, responde a incidentes. Diferente do Red Team (que ataca pra testar), o Blue Team protege e reage. Trabalha em Security Operations Centers (SOC) — centros de monitoramento 24/7 de empresas com ativos digitais críticos (bancos, fintechs, e-commerce). Cargo super demandado em 2026: BeBee mostra centenas de vagas, com plenos em R$ 6-11k e sêniores em fintechs/bancos chegando a R$ 15-25k. Porta de entrada mais acessível em Cibersegurança — empresas oferecem programas de formação pra estagiários e juniores.",
+        oQueFaz: "No dia a dia: monitora alertas em SIEM (Security Information and Event Management) — QRadar, Splunk, Wazuh — identificando comportamentos anômalos, faz análise inicial de incidentes (triage) e escalonamento, conduz investigações de eventos suspeitos (logs, endpoints, redes), responde a incidentes seguindo playbooks (containment, eradication, recovery), atualiza regras de correlação no SIEM, mapeia ameaças usando MITRE ATT&CK, e produz relatórios técnicos e executivos pós-incidente. Trabalha em escalas (N1/N2/N3) — N1 é triagem, N2 análise, N3 resposta avançada.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o Blue Team é o lado defensivo — reage e detecta ameaças. Diferente do Red Team (que simula ataques), o Blue Team protege continuamente. Diferente do AppSec (foco em código), Blue Team foca em infra e detecção. Diferente do GRC (estratégia e compliance), Blue Team é operacional e técnico. Porta de entrada MAIS acessível em Cibersegurança — empresas oferecem estágio e júnior, diferente de Red Team que exige base prévia mais sólida.",
+        habilidadesEspecificas: [
+          "Operação de SIEM (QRadar, Splunk, Wazuh, Sentinel)",
+          "Análise de logs (sistemas, rede, aplicação) e correlação",
+          "Resposta a incidentes (frameworks NIST, SANS)",
+          "Conhecimento profundo de MITRE ATT&CK",
+          "Fundamentos de rede, Linux, Windows e cloud (AWS, Azure)"
+        ],
+        ferramentasEspecificas: [
+          "IBM QRadar ou Splunk (SIEMs corporativos mais comuns)",
+          "Wazuh (SIEM open-source mais popular)",
+          "EDR/XDR (CrowdStrike, SentinelOne, Microsoft Defender)",
+          "SOAR (Palo Alto XSOAR, Splunk SOAR) — automação de resposta",
+          "Wireshark (análise de tráfego)",
+          "MITRE ATT&CK Navigator"
+        ],
+        cargos: [
+          "Analista SOC N1 (estagiário/júnior, 0-2 anos)",
+          "Analista SOC N2 / Analista Blue Team Pleno (2-5 anos)",
+          "Analista Blue Team Sênior / SOC N3 (5+ anos)",
+          "Lead Blue Team / SOC Manager / CSIRT Lead"
+        ],
+        faixaSalarial: "R$ 3.000 (estagiário) a R$ 25.000+ (sênior em bancos/fintechs). Pleno gira em R$ 6-11k. Sêniores em PagSeguro, Stone, Itaú, fintechs chegam a R$ 15-20k. Especialistas em CSIRT financeiro ultrapassam R$ 25k.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "TryHackMe — Blue Team Path (gratuito, prático)",
+          "Letsdefend.io — labs gratuitos de análise de incidentes",
+          "SANS Cyber Aces (cursos gratuitos sobre fundamentos)"
+        ],
+        projetosSugeridos: [
+          "Home lab: SIEM Wazuh em VM + simulação de ataques + detecção documentada",
+          "Resolver 20+ labs do Letsdefend.io ou Blue Team Labs Online",
+          "Análise pública de incidente real (de relatórios públicos de empresas) com timeline + recomendações"
+        ],
+        roadmapEspecifico: [
+          "Aprender fundamentos: redes (TCP/IP), Linux, Windows, sistemas operacionais",
+          "Estudar OWASP Top 10 e MITRE ATT&CK profundamente",
+          "Dominar pelo menos um SIEM (Wazuh é gratuito e popular)",
+          "Tirar certificação inicial (Security+ ou CySA+ da CompTIA)",
+          "Buscar vaga como Analista SOC N1 (estágio ou júnior) pra ganhar experiência prática"
+        ],
+        dicasIniciais: "Blue Team é a porta de entrada mais acessível em Cibersegurança — empresas oferecem estágios e juniores com formação interna. SIEM é A skill da área — comece com Wazuh (gratuito). Certificação Security+ da CompTIA vale o investimento (US$ 370, dura 3 anos). MITRE ATT&CK é leitura obrigatória — domine. Inglês é obrigatório (toda doc, framework e community em inglês). Mercado super aquecido — fácil de conseguir estágio."
       },
       {
         slug: "appsec",
