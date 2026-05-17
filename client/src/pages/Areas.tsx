@@ -12,6 +12,7 @@ import { Search, ArrowRight } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import { areasTI } from "@/lib/data";
 import { influencerTips } from "@/lib/platformData";
 import { getAreas } from "@/services/contentService";
@@ -143,7 +144,7 @@ export default function Areas() {
                     className="card-brutal bg-white rounded-xl p-6 flex flex-col group"
                   >
                   <div className="flex items-start justify-between mb-4 pr-12">
-                    <span className="text-4xl">{area.emoji}</span>
+                    <AreaIconBox icon={area.icon} areaSlug={area.slug} size="md" />
                     <DifficultyDots level={area.dificuldade} />
                   </div>
                   <h3 className="font-display font-bold text-xl text-slate-900 mb-2 group-hover:text-violet-700 transition-colors">

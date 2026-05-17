@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { areasTI } from "@/lib/data";
+import { AreaIconBox } from "@/components/areas/AreaIconBox";
 
 export default function AnimatedAreaMarquee() {
   const items = [...areasTI, ...areasTI];
@@ -16,7 +17,7 @@ export default function AnimatedAreaMarquee() {
               href={`/areas/${area.slug}`}
               className="bnt-pressable inline-flex min-w-max items-center gap-2 rounded-2xl border-2 border-slate-950 bg-white px-4 py-2.5 text-sm font-black text-slate-950 shadow-[4px_4px_0_#c4b5fd] transition hover:-translate-y-1 hover:bg-[#fff7d6] hover:shadow-[5px_5px_0_#FFB800]"
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-xl border border-slate-200 bg-violet-50 text-base">{area.emoji}</span>
+              <AreaIconBox icon={area.icon} areaSlug={area.slug} size="xs" />
               {area.nome}
             </Link>
           ))}

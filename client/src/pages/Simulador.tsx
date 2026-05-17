@@ -287,18 +287,22 @@ export default function Simulador() {
               <h2 className="font-display text-2xl font-black">Qual área te interessa?</h2>
               <p className="mt-2 text-sm font-medium text-slate-600">Áreas mais complexas tendem a exigir mais tempo de base e projetos.</p>
               <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {areasTI.map((item) => (
+                {areasTI.map((item) => {
+                  const Icon = item.icon;
+                  return (
                   <button
                     key={item.slug}
                     type="button"
                     onClick={() => setArea(item.nome)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
+                    className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 p-4 text-left font-black transition-all ${
                       area === item.nome ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
                     }`}
                   >
-                    {item.emoji} {item.nome}
+                    <Icon className="h-5 w-5 shrink-0 text-slate-700" strokeWidth={2.5} aria-hidden />
+                    {item.nome}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

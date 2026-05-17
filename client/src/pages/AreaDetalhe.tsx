@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import PageHero from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
@@ -193,14 +194,7 @@ export default function AreaDetalhe() {
             <ArrowLeft className="h-4 w-4" aria-hidden /> Todas as áreas
           </Link>
         }
-        titlePrefix={
-          <span
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white text-5xl shadow-[4px_4px_0_#0f172a]"
-            aria-hidden
-          >
-            {area.emoji}
-          </span>
-        }
+        titlePrefix={<AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" />}
         actions={
           <FavoriteButton
             item={{ id: area.id, type: "area", title: area.nome, subtitle: area.descricaoCurta }}

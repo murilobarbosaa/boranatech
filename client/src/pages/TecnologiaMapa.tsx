@@ -59,20 +59,24 @@ export default function TecnologiaMapa() {
                 >
                   Todas as áreas
                 </button>
-                {areasTI.map((area) => (
-                  <button
-                    key={area.slug}
-                    type="button"
-                    onClick={() => setFocusedSlug(area.slug)}
-                    title={area.descricaoCurta}
-                    className={cn(
-                      "rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0",
-                      focusedSlug === area.slug ? ac.filterActive : ac.filterInactive,
-                    )}
-                  >
-                    {area.emoji} {area.nome}
-                  </button>
-                ))}
+                {areasTI.map((area) => {
+                  const Icon = area.icon;
+                  return (
+                    <button
+                      key={area.slug}
+                      type="button"
+                      onClick={() => setFocusedSlug(area.slug)}
+                      title={area.descricaoCurta}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0",
+                        focusedSlug === area.slug ? ac.filterActive : ac.filterInactive,
+                      )}
+                    >
+                      <Icon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                      {area.nome}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <p className="mt-3 text-xs font-medium text-slate-600">
