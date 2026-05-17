@@ -15,6 +15,10 @@ import {
   BadgeCheck,
   Smartphone,
   GitBranch,
+  Workflow,
+  Database,
+  Activity,
+  Gamepad2,
 } from "lucide-react";
 
 export interface SubArea {
@@ -119,6 +123,70 @@ export const areasTI: AreaTI[] = [
     ]
   },
   {
+    id: "fullstack",
+    nome: "Full-stack",
+    slug: "fullstack",
+    emoji: "🔄",
+    icon: Workflow,
+    tagClass: "tag-fullstack",
+    descricaoCurta: "Desenvolvedor versátil que atua no front-end E back-end. Constrói aplicações de ponta a ponta — interface, servidor, banco de dados.",
+    descricaoCompleta: "Full-stack é o desenvolvedor que domina tanto o front-end (interface visível ao usuário) quanto o back-end (servidor, lógica, banco de dados). Em vez de focar numa única camada, atua em todas. É o cargo mais buscado em equipes pequenas e startups, onde uma pessoa precisa entregar features completas: do design da tela até o deploy. Em empresas maiores, o full-stack é valorizado pela visão sistêmica e flexibilidade entre times.",
+    oQueFaz: "O dev full-stack constrói aplicações completas. Hoje ele pode estar criando uma tela em React, amanhã ajustando uma API em Node.js, e depois otimizando uma query no PostgreSQL. Trabalha em features de ponta a ponta, garantindo que toda a stack funcione bem junta.",
+    tarefasDiarias: [
+      "Criar telas e componentes no front-end (HTML, CSS, JavaScript/TypeScript)",
+      "Desenvolver APIs e lógica de negócio no back-end",
+      "Modelar e consultar bancos de dados (SQL ou NoSQL)",
+      "Integrar front-end com back-end via APIs REST ou GraphQL",
+      "Fazer deploy de aplicações em ambientes cloud (AWS, Vercel, Railway)",
+      "Participar de code reviews e cerimônias ágeis com o time"
+    ],
+    perfilIndicado: "Pessoa curiosa que gosta de variedade, não tem medo de mudar de contexto várias vezes ao dia e aprecia ver o produto funcionando completo. Tem boa visão sistêmica e prefere amplitude a profundidade. Ideal pra quem quer trabalhar em startups ou ter autonomia pra entregar features sozinho.",
+    habilidades: [
+      "HTML, CSS e JavaScript/TypeScript",
+      "Pelo menos um framework front-end (React, Vue ou Angular)",
+      "Pelo menos uma linguagem back-end (Node.js, Python ou Java)",
+      "SQL e modelagem de banco de dados",
+      "Git e versionamento",
+      "Lógica de programação e pensamento sistêmico"
+    ],
+    ferramentas: ["React", "Node.js", "TypeScript", "PostgreSQL", "Git/GitHub", "Docker", "AWS", "VS Code"],
+    dificuldade: 4,
+    cargos: ["Desenvolvedor Full-stack Júnior", "Desenvolvedor Full-stack Pleno", "Desenvolvedor Full-stack Sênior", "Tech Lead"],
+    faixaSalarial: "R$ 3.250 (júnior) a R$ 15.900 (pleno) — fonte Robert Half/Glassdoor 2026",
+    cursosGratuitos: [
+      "Curso em Vídeo — Web Moderno (Gustavo Guanabara)",
+      "The Odin Project (em inglês, gratuito, completo)",
+      "freeCodeCamp — Responsive Web Design + APIs and Microservices",
+      "Rocketseat Ignite (versão grátis das trilhas)"
+    ],
+    roadmapInicial: [
+      "Aprender HTML, CSS e JavaScript básico",
+      "Estudar um framework front-end (React é o mais procurado)",
+      "Aprender Node.js + Express ou outra linguagem back-end",
+      "Estudar bancos de dados (SQL — começar com PostgreSQL)",
+      "Aprender Git e GitHub na prática",
+      "Construir 3 projetos full-stack pessoais (com deploy)"
+    ],
+    projetos: [
+      "App de lista de tarefas full-stack (React + Node + PostgreSQL)",
+      "Clone de rede social simples (login, posts, comentários)",
+      "Sistema de cadastro com autenticação JWT",
+      "E-commerce básico com carrinho e checkout"
+    ],
+    termosEssenciais: ["API REST", "SPA (Single Page Application)", "CRUD", "Autenticação JWT", "Deploy", "Endpoint"],
+    dicasIniciais: "Comece pelo front-end (HTML/CSS/JS), depois aprenda back-end (Node.js ou Python). Construa pelo menos 3 projetos completos antes de procurar emprego. Domine Git desde o dia 1.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "12-18 meses até primeira vaga",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ],
+    subareas: []
+  },
+  {
     id: "dados",
     nome: "Ciência de Dados",
     slug: "dados",
@@ -160,11 +228,6 @@ export const areasTI: AreaTI[] = [
         descricaoCurta: "Constrói modelos preditivos, aplica estatística avançada e machine learning pra resolver problemas de negócio."
       },
       {
-        slug: "engenheiro-dados",
-        nome: "Engenheiro de Dados",
-        descricaoCurta: "Projeta e mantém pipelines (ETL/ELT), data lakes e infraestrutura que alimenta toda a área de dados."
-      },
-      {
         slug: "analista-bi",
         nome: "Analista de BI",
         descricaoCurta: "Especialista em ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra dashboards executivos."
@@ -175,6 +238,69 @@ export const areasTI: AreaTI[] = [
         descricaoCurta: "Atua entre engenharia e análise. Cria modelos de dados confiáveis com SQL + dbt pra times de analistas."
       }
     ]
+  },
+  {
+    id: "engenharia-dados",
+    nome: "Engenharia de Dados",
+    slug: "engenharia-dados",
+    emoji: "🔧",
+    icon: Database,
+    tagClass: "tag-engenharia-dados",
+    descricaoCurta: "Quem constrói toda a infraestrutura que faz os dados chegarem aos cientistas e analistas. Pipelines, data lakes e arquitetura de dados em larga escala.",
+    descricaoCompleta: "O Engenheiro de Dados é o arquiteto invisível por trás de qualquer projeto sério de dados. Enquanto o cientista de dados gera insights e o analista monta dashboards, é o engenheiro quem garante que esses dados existam, sejam confiáveis e estejam disponíveis. Constrói pipelines de ETL/ELT, mantém data lakes e data warehouses, integra dezenas de fontes (APIs, bancos, eventos em tempo real) e garante que tudo escale. É uma das áreas em maior crescimento no Brasil — 306% nos últimos anos segundo o LinkedIn — e com salários acima da média de TI.",
+    oQueFaz: "O engenheiro de dados trabalha invisível mas fundamental. No dia a dia: cria pipelines que coletam dados de várias fontes (APIs, eventos, bancos), transforma e limpa esses dados, e disponibiliza pra times de analytics, ciência de dados e IA. Garante que tudo isso rode com performance, custo controlado e qualidade. Sem engenheiro de dados, não há dashboard nem modelo de IA confiável.",
+    tarefasDiarias: [
+      "Construir pipelines de ETL/ELT pra coletar dados de várias fontes",
+      "Modelar e manter data lakes, data warehouses e data lakehouses",
+      "Garantir qualidade, integridade e segurança dos dados (LGPD)",
+      "Otimizar consultas, custos de cloud e performance dos fluxos",
+      "Colaborar com cientistas de dados e analistas pra entender necessidades",
+      "Implementar testes, observabilidade e alertas pros pipelines"
+    ],
+    perfilIndicado: "Pessoa que gosta de construir sistemas sólidos, pensa em escala e tem paciência pra debugar pipeline que falha às 3h da manhã. Combina visão de arquitetura, pensamento analítico e foco em qualidade. Quem gosta de programação backend mas também tem curiosidade pelo mundo de dados costuma se dar muito bem.",
+    habilidades: [
+      "SQL avançado (essencial)",
+      "Python pra processamento e automação",
+      "Modelagem de dados (dimensional, star schema, normalização)",
+      "Sistemas distribuídos e processamento em larga escala",
+      "Cloud (AWS, GCP ou Azure)",
+      "Conceitos de DataOps e versionamento"
+    ],
+    ferramentas: ["Python", "SQL (PostgreSQL, BigQuery)", "Apache Airflow", "Apache Spark", "dbt (data build tool)", "AWS (S3, Glue, Redshift) / GCP BigQuery", "Apache Kafka", "Docker"],
+    dificuldade: 4,
+    cargos: ["Engenheiro de Dados Júnior", "Engenheiro de Dados Pleno", "Engenheiro de Dados Sênior", "Arquiteto de Dados"],
+    faixaSalarial: "R$ 5.952 (júnior) a R$ 17.913 (sênior) — Glassdoor 2026. Especialistas chegam a R$ 25.000+",
+    cursosGratuitos: [
+      "Data Engineering Zoomcamp (DataTalksClub — gratuito, em inglês)",
+      "Asimov Academy — Trilha de Engenharia de Dados (parte gratuita)",
+      "AWS Skill Builder — Data Engineering (grátis)",
+      "Curso em Vídeo — SQL completo (Gustavo Guanabara)"
+    ],
+    roadmapInicial: [
+      "Dominar SQL (até consultas complexas, window functions)",
+      "Aprender Python pra processamento de dados (Pandas)",
+      "Estudar modelagem de dados e arquitetura (dimensional, OLTP vs OLAP)",
+      "Conhecer um orquestrador (Apache Airflow é o mais usado)",
+      "Aprender uma cloud (AWS é o mais buscado)",
+      "Construir 2 pipelines completos do zero com deploy"
+    ],
+    projetos: [
+      "Pipeline ETL completo: API pública → transformação → data warehouse",
+      "Dashboard de vendas alimentado por pipeline automatizado",
+      "Sistema de processamento de eventos em tempo real (Kafka)",
+      "Data lake simples no AWS S3 com Glue + Athena"
+    ],
+    termosEssenciais: ["ETL/ELT", "Data Lake", "Data Warehouse", "Pipeline", "Schema", "Big Data"],
+    dicasIniciais: "Domine SQL avançado primeiro — é a base de tudo. Depois Python pra ETL, e então escolha um cloud (AWS é o mais comum). Construa pelo menos 1 pipeline público no GitHub com dados reais.",
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "1-2 anos com base em programação",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação"
+    ],
+    subareas: []
   },
   {
     id: "uxui",
@@ -636,11 +762,6 @@ export const areasTI: AreaTI[] = [
     ],
     subareas: [
       {
-        slug: "sre",
-        nome: "SRE — Site Reliability Engineer",
-        descricaoCurta: "Engenharia de confiabilidade. Mantém sistemas de larga escala estáveis usando SLIs/SLOs, automação e gestão de incidentes."
-      },
-      {
         slug: "platform-engineer",
         nome: "Platform Engineer",
         descricaoCurta: "Constrói plataformas internas que outros times de dev consomem. Foco em developer experience e self-service."
@@ -651,6 +772,133 @@ export const areasTI: AreaTI[] = [
         descricaoCurta: "Integra segurança no ciclo CI/CD. SAST/DAST, secrets management, hardening de pipelines. Subárea em forte crescimento (3.4k+ vagas BR)."
       }
     ]
+  },
+  {
+    id: "sre",
+    nome: "SRE — Confiabilidade de Sistemas",
+    slug: "sre",
+    emoji: "📡",
+    icon: Activity,
+    tagClass: "tag-sre",
+    descricaoCurta: "Engenharia de confiabilidade: garantir que sistemas críticos fiquem no ar, escalem sob pressão e se recuperem rápido de falhas. Cargo sênior, salário top de TI.",
+    descricaoCompleta: "SRE — Site Reliability Engineer — é a evolução do DevOps com foco específico em confiabilidade e disponibilidade de sistemas em larga escala. Conceito criado pelo Google, espalhou pelo mercado e hoje é cargo distinto. O SRE define SLIs (indicadores), SLOs (metas) e error budgets, automatiza operações, lida com incidentes críticos e codifica infraestrutura. Diferente do DevOps tradicional, o SRE pensa em confiabilidade como produto: cada minuto de downtime é mensurável. É um dos cargos mais bem pagos de TI no Brasil (R$ 12k-32k+) e raramente uma vaga de entrada — você chega como SRE após anos como dev backend, sysadmin ou DevOps.",
+    oQueFaz: "O SRE garante que sistemas críticos não caiam. No dia a dia: define métricas de confiabilidade (SLIs/SLOs), automatiza tarefas operacionais que eram manuais, responde a incidentes em produção, faz post-mortems detalhados de falhas e implementa mudanças sistêmicas pra evitar que se repitam. Codifica infraestrutura, monta sistemas de observabilidade e participa de on-call (plantão técnico). Pensa em escala, latência e resiliência o tempo todo.",
+    tarefasDiarias: [
+      "Definir e monitorar SLIs (indicadores) e SLOs (metas) de confiabilidade",
+      "Responder a incidentes em produção e conduzir post-mortems",
+      "Automatizar tarefas operacionais com código (toil reduction)",
+      "Manter sistemas de observabilidade (logs, métricas, traces)",
+      "Participar de on-call e plantão técnico",
+      "Trabalhar com times de dev pra integrar confiabilidade no ciclo de release"
+    ],
+    perfilIndicado: "Pessoa com perfil sistêmico e investigativo, que gosta de entender o porquê dos problemas em profundidade. Tolerante a ambiguidade técnica, calma sob pressão (incidentes acontecem) e com mentalidade de automação — se uma tarefa precisa ser feita 3x, vira script. Combina conhecimento de software com infraestrutura. Não é cargo pra quem está começando: tipicamente vem de dev backend, DevOps ou sysadmin com 2-3+ anos de experiência.",
+    habilidades: [
+      "Programação sólida (Python, Go ou similar)",
+      "Linux, redes e sistemas distribuídos",
+      "Cloud (AWS, GCP ou Azure)",
+      "Observabilidade (Prometheus, Grafana, Datadog)",
+      "Infrastructure as Code (Terraform, Ansible)",
+      "Gestão de incidentes e pensamento sistêmico"
+    ],
+    ferramentas: ["Kubernetes", "Terraform", "Prometheus", "Grafana", "AWS (EC2, EKS, CloudWatch)", "Datadog ou New Relic", "Python ou Go", "PagerDuty"],
+    dificuldade: 5,
+    cargos: ["Site Reliability Engineer Pleno", "Site Reliability Engineer Sênior", "Staff SRE / Tech Lead SRE", "Principal SRE / Coordenador SRE"],
+    faixaSalarial: "R$ 8.000 (júnior raro) a R$ 32.000 (sênior). Pleno gira em R$ 12-22k — Glassdoor 2026",
+    cursosGratuitos: [
+      "Livro 'Site Reliability Engineering' do Google (gratuito online)",
+      "Google Cloud Skills Boost — DevOps Engineer (parte gratuita)",
+      "AWS Skill Builder — DevOps Path (gratuito)",
+      "Linux Foundation — Introduction to SRE (Coursera, audit gratuito)"
+    ],
+    roadmapInicial: [
+      "Dominar Linux, redes e sistemas distribuídos",
+      "Aprender programação sólida (Python ou Go)",
+      "Estudar cloud profundamente (AWS recomendado)",
+      "Entender Kubernetes e containers",
+      "Praticar observabilidade (Prometheus + Grafana)",
+      "Estudar SRE Book do Google + praticar SLIs/SLOs"
+    ],
+    projetos: [
+      "Configurar stack de observabilidade completo (Prometheus + Grafana + alertas)",
+      "Aplicação em K8s com SLI/SLO definidos e dashboard",
+      "Pipeline de chaos engineering (simular falhas controladas)",
+      "Sistema de auto-recovery automatizado pra falhas comuns"
+    ],
+    termosEssenciais: ["SLI / SLO / SLA", "Error Budget", "Toil", "Observability", "Incident Response", "Postmortem"],
+    dicasIniciais: "Não tente entrar direto como SRE. Comece como dev backend ou DevOps, pegue 2-3 anos de experiência real com produção, e migre. Leia o livro 'Site Reliability Engineering' do Google (gratuito online). Pratique muito SLI/SLO/error budget.",
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "3-5 anos (cargo de evolução, não de entrada)",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Ciência da Computação",
+      "Engenharia de Software",
+      "Sistemas de Informação",
+      "Análise e Desenvolvimento de Sistemas (ADS)"
+    ],
+    subareas: []
+  },
+  {
+    id: "gamedev",
+    nome: "Game Dev",
+    slug: "gamedev",
+    emoji: "🎮",
+    icon: Gamepad2,
+    tagClass: "tag-gamedev",
+    descricaoCurta: "Programação de jogos digitais. Mecânicas, IA, física, gráficos. Mercado BR pequeno mas crescente, principalmente em mobile e estúdios médios.",
+    descricaoCompleta: "Game Dev é a programação por trás dos jogos digitais — desde mobile casual até console AAA. O desenvolvedor de jogos cria mecânicas, sistemas de IA pra inimigos, física, multiplayer, otimização de performance gráfica e integração com motores como Unity ou Unreal Engine. É uma área de mercado pequeno mas com paixão grande no Brasil — estúdios como Wildlife, Aquiris, Tapps Games e Hoplon empregam centenas, principalmente em jogos mobile. Salário fica abaixo da média geral de TI no início, mas seniores em estúdios internacionais ou remoto pra fora ganham bem. Recomendado pra quem tem paixão real por games, não só pelo salário.",
+    oQueFaz: "O dev de jogos programa tudo que faz um jogo funcionar — controles, IA, sistemas de combate, física, multiplayer, salvamento de progresso, otimização. Trabalha em motores como Unity (C#) ou Unreal Engine (C++). Colabora intensamente com designers de jogo, artistas 3D, animadores e sound designers. Faz muitos testes, ajustes finos de dificuldade e otimizações pra rodar bem em hardware variado.",
+    tarefasDiarias: [
+      "Programar mecânicas de jogo (movimentação, combate, sistemas de pontos)",
+      "Implementar IA de inimigos, NPCs e comportamentos do mundo",
+      "Trabalhar com física, animações e renderização",
+      "Integrar arte (modelos 3D, sprites, sons) com a engine",
+      "Otimizar performance pra rodar bem em diferentes plataformas",
+      "Testar, debugar e ajustar dificuldade com base em feedback"
+    ],
+    perfilIndicado: "Pessoa apaixonada por jogos com paciência pra testes infinitos. Combina lógica de programação com sensibilidade pra experiência do jogador. Tolerante a ferramentas complexas, gosta de matemática (vetores, álgebra linear) e tem perfil colaborativo — game dev é trabalho em equipe multidisciplinar. Importante: o salário inicial é menor que outras áreas de dev, então paixão pela área conta muito.",
+    habilidades: [
+      "Programação em C# (Unity) ou C++ (Unreal Engine)",
+      "Lógica de programação e estrutura de dados",
+      "Matemática aplicada (vetores, álgebra linear, trigonometria)",
+      "Domínio de pelo menos uma game engine",
+      "Conhecimento básico de design de jogos (game design)",
+      "Otimização e profiling de performance"
+    ],
+    ferramentas: ["Unity", "Unreal Engine", "Godot", "Visual Studio", "Git (com Git LFS pra assets grandes)", "Blender (visualização básica de assets)", "Steam / Itch.io (publicação)", "Trello ou Jira"],
+    dificuldade: 4,
+    cargos: ["Programador de Jogos Júnior", "Programador de Jogos Pleno", "Programador de Jogos Sênior", "Gameplay Programmer / Engine Programmer"],
+    faixaSalarial: "R$ 2.550 (júnior) a R$ 16.000 (sênior). Média BR R$ 8.200 — Jobted/Glassdoor 2026",
+    cursosGratuitos: [
+      "Unity Learn (cursos oficiais grátis em inglês e PT-BR)",
+      "Brackeys (canal YouTube, referência mundial Unity em inglês — biblioteca enorme)",
+      "Curso em Vídeo — Lógica de Programação (Gustavo Guanabara, base sólida)",
+      "Godot Engine Documentation + Tutoriais oficiais (gratuitos)"
+    ],
+    roadmapInicial: [
+      "Aprender lógica de programação e C# (ou C++ se for direto pra Unreal)",
+      "Escolher uma engine: Unity (mais empregos), Unreal (gráfico AAA) ou Godot (open-source)",
+      "Construir 2 jogos simples completos (Pong, Breakout, Endless Runner)",
+      "Estudar fundamentos de game design e UX em jogos",
+      "Participar de pelo menos 1 game jam",
+      "Publicar 1 jogo na Itch.io ou Google Play"
+    ],
+    projetos: [
+      "Plataformer 2D com física, inimigos e fases (Unity ou Godot)",
+      "Top-down shooter com IA de inimigos (Unity)",
+      "Sistema de inventário e save/load completo",
+      "Jogo mobile casual publicado na Google Play"
+    ],
+    termosEssenciais: ["Game Loop", "Engine", "Asset", "Prefab", "Sprite", "Game Jam"],
+    dicasIniciais: "Comece com Unity ou Godot (mais leves). Faça 3-5 jogos pequenos completos, não 1 grande pela metade. Participe de game jams (Global Game Jam, Ludum Dare) — é a forma mais rápida de aprender e fazer networking. Inglês é mais importante aqui que em outras áreas — quase toda doc e comunidade é em inglês.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "12-24 meses até primeira vaga",
+    crescimentoMercado: "medio",
+    faculdadesRelacionadas: [
+      "Jogos Digitais",
+      "Design de Games",
+      "Ciência da Computação"
+    ],
+    subareas: []
   }
 ];
 
@@ -3114,7 +3362,7 @@ export const projetos = [
   {
     id: "app-fullstack-estudos",
     nome: "App Full Stack de Estudos",
-    areaSlug: null as string | null,
+    areaSlug: "fullstack" as string | null,
     nivel: "Avançado",
     objetivo: "Construir um app completo com login, banco de dados, dashboard e deploy.",
     ferramentas: ["React", "Node.js", "PostgreSQL", "Autenticação", "Deploy"],
@@ -3257,7 +3505,7 @@ export const projetos = [
   {
     id: "e-commerce-minimo-pagamento-mock",
     nome: "Checkout fictício com carrinho",
-    areaSlug: null as string | null,
+    areaSlug: "fullstack" as string | null,
     nivel: "Avançado",
     objetivo: "Simular fluxo de carrinho, pedidos e pagamento mockado com regras de estoque.",
     ferramentas: ["React ou Next.js", "API própria", "Banco relacional"],
@@ -3413,7 +3661,7 @@ export const projetos = [
   {
     id: "saas-next-stripe",
     nome: "Mini-SaaS com Next.js, auth e Stripe (modo teste)",
-    areaSlug: null as string | null,
+    areaSlug: "fullstack" as string | null,
     nivel: "Avançado",
     objetivo: "Reproduzir o núcleo de um produto digital: login, área logada, plano pago e webhook de pagamento — combinação recorrente em vagas full stack e startups.",
     ferramentas: ["Next.js (App Router)", "Auth (NextAuth, Clerk ou Supabase Auth)", "Stripe em modo teste", "PostgreSQL"],
@@ -3426,7 +3674,7 @@ export const projetos = [
   {
     id: "crud-supabase-react",
     nome: "CRUD com Supabase + React",
-    areaSlug: null as string | null,
+    areaSlug: "fullstack" as string | null,
     nivel: "Intermediário",
     objetivo: "Usar BaaS real (auth opcional, tabelas, políticas RLS) no front — stack muito comum em 2024–2026 para MVPs e vagas júnior/pleno.",
     ferramentas: ["React ou Next.js", "Supabase (Postgres + API)", "Tailwind opcional"],
@@ -3909,6 +4157,44 @@ export const faculdades = {
         subtitulo: "Estágio em análise de processos · empresarial",
         texto:
           "Aqui você aprende a traduzir “o negócio pediu isto” em requisitos e ferramentas. Se você gosta da ponte TI–processo, faz mais sentido que um bacharel puro só de código pesado nos primeiros anos.",
+      },
+    },
+    {
+      nome: "Jogos Digitais",
+      duracao: "2-3 anos",
+      tipo: "Tecnólogo",
+      oQueEstuda: "Tecnólogo focado em desenvolvimento de jogos digitais. Combina programação (C#, Unity), design, narrativa e modelagem 2D/3D. Mais prático e direto que cursos de TI generalistas.",
+      perfilIndicado: "Quem tem paixão por games e quer entrar rápido em estúdios ou produção indie.",
+      diferencas: "Mais curto e prático que bacharelado em design de games. Foco em produção real com engines de mercado.",
+      areasAtuacao: ["Programador de Jogos", "Game Designer Júnior", "Desenvolvedor Indie", "Level Designer"],
+      matematica: "Médio-Alto",
+      programacao: "Alto",
+      pontoPositivos: ["Foco prático", "Duração curta", "Permite portfólio desde os primeiros semestres"],
+      pontosAtencao: ["Mercado BR menor que TI tradicional", "Salário inicial abaixo da média de dev"],
+      depoimento: {
+        nome: "Lucas Pereira",
+        subtitulo: "Egresso · indie em fase de lançamento",
+        texto:
+          "O tecnólogo serviu como acelerador: já no segundo semestre eu estava num projeto de game jam que virou portfólio. Se você quer botar jogo no ar, é o caminho mais direto.",
+      },
+    },
+    {
+      nome: "Design de Games",
+      duracao: "4 anos",
+      tipo: "Bacharelado",
+      oQueEstuda: "Bacharelado generalista em design de jogos. Aborda programação, design, arte digital, narrativa, UX e produção. Forma o profissional 'completo' pra equipes de game dev.",
+      perfilIndicado: "Quem quer formação mais ampla e considera atuar em design, arte ou produção (não só código).",
+      diferencas: "Mais longo e abrangente que o tecnólogo. Boa base teórica e multidisciplinar.",
+      areasAtuacao: ["Game Designer", "Programador de Jogos", "Artista Técnico", "Produtor de Jogos"],
+      matematica: "Médio",
+      programacao: "Médio-Alto",
+      pontoPositivos: ["Formação multidisciplinar", "Boa pra quem ainda não decidiu papel específico", "Visão completa de pipeline"],
+      pontosAtencao: ["4 anos é longo pra área dinâmica", "Pode ser generalista demais sem especialização paralela"],
+      depoimento: {
+        nome: "Bianca Almeida",
+        subtitulo: "Discente · grupo de pesquisa em narrativa interativa",
+        texto:
+          "A grade me obriga a sair da bolha do código e pensar em narrativa, sound design, playtest. Pra quem ainda não sabe se vai ser dev, designer ou produtor, o bacharel cobre mais terreno.",
       },
     },
   ],
