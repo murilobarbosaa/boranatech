@@ -237,7 +237,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "cientista-dados",
         nome: "Cientista de Dados",
-        descricaoCurta: "Constrói modelos preditivos, aplica estatística avançada e machine learning pra resolver problemas de negócio."
+        descricaoCurta: "Constrói modelos preditivos, aplica estatística avançada e machine learning pra resolver problemas de negócio.",
+        descricaoCompleta: "Cientista de Dados é o profissional que vai além de relatórios: aplica estatística avançada e machine learning pra construir modelos que preveem o futuro. Detecta fraudes antes que aconteçam, prevê quais clientes vão cancelar serviço, recomenda produtos baseado em padrões invisíveis a olho nu. É um dos cargos mais técnicos e mais bem pagos do mercado de dados, com salário médio de R$ 10.825 e topo em R$ 24.000+ (Nubank, fintechs grandes). Combina três pilares — matemática/estatística, programação (Python/R) e visão de negócio — que poucos profissionais dominam ao mesmo tempo.",
+        oQueFaz: "No dia a dia: coleta dados de múltiplas fontes, explora padrões com análise estatística (Python + Pandas + Matplotlib), formula hipóteses de negócio (ex: 'quais clientes têm maior risco de churn?'), treina modelos de machine learning pra responder essas perguntas, e apresenta resultados pra stakeholders não-técnicos em formato visual e narrativo. Em fintechs e bancos, trabalha em modelos de risco de crédito, prevenção de fraude e segmentação de clientes.",
+        diferencasDaAreaMae: "Enquanto o Analista de Dados foca em relatórios e dashboards sobre o que já aconteceu, o Cientista de Dados constrói modelos preditivos sobre o que vai acontecer. Onde o analista usa Excel e Power BI, o cientista usa Python, scikit-learn e TensorFlow. A barreira de entrada é maior — exige base sólida de estatística inferencial e álgebra linear — mas o salário compensa: cientista júnior pode começar acima do pleno analista.",
+        habilidadesEspecificas: [
+          "Estatística inferencial e álgebra linear (base matemática forte)",
+          "Python avançado com Pandas, NumPy e Matplotlib",
+          "Machine Learning supervisionado e não-supervisionado (regressão, classificação, clustering)",
+          "Deep Learning (redes neurais com TensorFlow ou PyTorch)",
+          "Storytelling de dados — traduzir modelos complexos em insights pra liderança"
+        ],
+        ferramentasEspecificas: [
+          "Python (Pandas, NumPy, scikit-learn)",
+          "Jupyter Notebooks",
+          "TensorFlow ou PyTorch (Deep Learning)",
+          "R (estatística aplicada)",
+          "SQL avançado",
+          "Kaggle (treino e portfólio público)"
+        ],
+        cargos: [
+          "Cientista de Dados Júnior (0-2 anos)",
+          "Cientista de Dados Pleno (2-5 anos)",
+          "Cientista de Dados Sênior (5+ anos)",
+          "Staff/Principal Data Scientist (lidera projetos, mentora time)"
+        ],
+        faixaSalarial: "R$ 6.000 (júnior) a R$ 24.000 (sênior em grandes empresas). Média BR R$ 10.825 — CAGED/Glassdoor 2026. Remoto pra EUA passa R$ 50.000.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Sigmoidal — Conteúdo gratuito de Data Science (artigos, tutoriais e cursos introdutórios)",
+          "Kaggle Learn — Trilhas oficiais Kaggle (Python, ML, Deep Learning) — todas gratuitas",
+          "StatQuest with Josh Starmer (YouTube) — estatística e ML em vídeo"
+        ],
+        projetosSugeridos: [
+          "Modelo preditivo de churn (cancelamento) com dados públicos de telecom",
+          "Sistema de classificação de imagens com CNN (deep learning, Kaggle datasets)",
+          "Análise exploratória + dashboard de dados de e-commerce/varejo com insights de negócio"
+        ],
+        roadmapEspecifico: [
+          "Estudar estatística inferencial (livro: 'An Introduction to Statistical Learning' — gratuito)",
+          "Aprender Python + Pandas + Matplotlib até dominar análise exploratória",
+          "Estudar Machine Learning — começar pelo Kaggle Learn (regressão → classificação → clustering)",
+          "Aprofundar em Deep Learning (TensorFlow ou PyTorch) — área de maior crescimento salarial",
+          "Construir portfólio público: 3 projetos no GitHub + 1 competição Kaggle com posição decente"
+        ],
+        dicasIniciais: "Não pula a estatística — é a base que separa cientista bom de cientista que só copia código. Use Kaggle como academia de treino: cada competição é uma oportunidade real de portfólio. Foque em comunicar resultados quanto em construir modelos — quem traduz números pra negócio sobe rápido. Inglês é obrigatório aqui: papers, comunidade, doc, tudo em inglês."
       },
       {
         slug: "analista-bi",
@@ -344,7 +388,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "ux-design",
         nome: "UX Design",
-        descricaoCurta: "Pesquisa com usuários, fluxos, wireframes e testes de usabilidade. Foco em como o produto funciona."
+        descricaoCurta: "Pesquisa com usuários, fluxos, wireframes e testes de usabilidade. Foco em como o produto funciona.",
+        descricaoCompleta: "UX Design é o coração da experiência do usuário: o profissional que investiga, planeja e estrutura como pessoas interagem com produtos digitais antes de uma linha de código ser escrita. Trabalha com pesquisa, entrevistas, fluxos de navegação, wireframes e testes de usabilidade. O foco está em como o produto funciona, não em como ele parece (essa é a praia do UI Designer). É a porta de entrada mais comum em UX/UI no Brasil — salários partem de R$ 4k pra júnior e chegam a R$ 12k+ pra sênior, com mercado aquecido em startups e produtos digitais.",
+        oQueFaz: "No dia a dia: conduz entrevistas com usuários reais, mapeia jornadas (do primeiro contato até a conversão), monta wireframes de baixa fidelidade, prototipia fluxos no Figma, organiza testes de usabilidade pra validar hipóteses, e apresenta resultados de pesquisa pro time de produto. Trabalha lado a lado com PM, dev e UI Designer pra garantir que a solução resolva o problema real do usuário, não só uma intuição do time.",
+        diferencasDaAreaMae: "Dentro de UX/UI, o UX Design separa-se do UI Design pelo foco: enquanto UI cuida da parte visual (cores, tipografia, componentes), UX cuida da estrutura e do comportamento (fluxos, decisões, hierarquia). Diferente do Product Designer (que mistura UX + UI + estratégia), o UX puro investe mais profundamente em pesquisa e validação. É a melhor porta de entrada pra quem gosta mais de raciocinar sobre problemas que de desenhar telas bonitas.",
+        habilidadesEspecificas: [
+          "Pesquisa com usuários (entrevistas, surveys, análise comportamental)",
+          "Construção de wireframes e protótipos de baixa-média fidelidade",
+          "Mapeamento de jornadas e fluxos de usuário",
+          "Testes de usabilidade e análise heurística",
+          "Princípios de acessibilidade digital (WCAG)"
+        ],
+        ferramentasEspecificas: [
+          "Figma (padrão da indústria pra prototipagem)",
+          "Miro ou FigJam (mapeamento de jornadas)",
+          "Maze ou UserTesting (testes de usabilidade remoto)",
+          "Notion (documentação de pesquisa)",
+          "Hotjar ou Microsoft Clarity (análise comportamental real)",
+          "Optimal Workshop (card sorting, tree testing)"
+        ],
+        cargos: [
+          "UX Designer Júnior (0-2 anos)",
+          "UX Designer Pleno (2-5 anos)",
+          "UX Designer Sênior (5+ anos)",
+          "Lead UX Designer / Head of UX"
+        ],
+        faixaSalarial: "R$ 4.000 (júnior) a R$ 12.000 (sênior). Especialistas em pesquisa ou design de interação chegam a R$ 10-12k. Remoto pra fora paga em dólar.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Google UX Design Professional Certificate (Coursera, audit gratuito)",
+          "UX Collective (publicação Medium + tutoriais em PT-BR e EN)",
+          "Interaction Design Foundation (IDF) — artigos gratuitos sobre fundamentos"
+        ],
+        projetosSugeridos: [
+          "Redesign de um app que você usa (com pesquisa + protótipo + justificativa)",
+          "Estudo de caso completo: definir problema, fazer 3-5 entrevistas, propor solução",
+          "Auditoria de usabilidade de um site público com análise heurística + recomendações"
+        ],
+        roadmapEspecifico: [
+          "Aprender fundamentos de UX (Design Thinking, Double Diamond, heurísticas de Nielsen)",
+          "Dominar Figma (prototipagem, auto-layout, componentes)",
+          "Estudar pesquisa qualitativa (como conduzir entrevistas, análise temática)",
+          "Fazer 2-3 estudos de caso reais ou hipotéticos pro portfólio",
+          "Construir portfólio público (Behance ou site próprio) com processo, não só telas finais"
+        ],
+        dicasIniciais: "Portfólio vale mais que diploma — recrutadores olham processo, não título. Mostre como você pensou, não só o que entregou. Faça pelo menos 1 estudo de caso completo (problema → pesquisa → protótipo → teste → solução). Domine Figma cedo: é o padrão da indústria e quase obrigatório em qualquer vaga. Inglês ajuda mas não é deal-breaker como em Cientista de Dados."
       },
       {
         slug: "ui-design",
@@ -401,7 +489,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "machine-learning",
         nome: "Machine Learning Engineer",
-        descricaoCurta: "Constrói e implanta modelos de ML em produção. Foca na infraestrutura, MLOps e escala dos modelos."
+        descricaoCurta: "Constrói e implanta modelos de ML em produção. Foca na infraestrutura, MLOps e escala dos modelos.",
+        descricaoCompleta: "Machine Learning Engineer é o profissional que transforma modelos de pesquisa em produtos reais. Enquanto o Cientista de Dados experimenta e treina modelos em notebooks, o ML Engineer pega esses modelos e os coloca em produção: cria APIs, monta pipelines de treino contínuo, monitora performance em tempo real, escala pra milhões de requisições. É a interseção entre engenharia de software e IA — junta backend, cloud, MLOps e domínio de modelos. Cargo super aquecido em 2026 (BeBee registra 1.28M+ vagas relacionadas no Brasil) e um dos mais bem pagos da área de IA.",
+        oQueFaz: "No dia a dia: pega modelos treinados pelos cientistas de dados e empacota pra produção (Docker, APIs REST), constrói pipelines automatizados de treino e re-treino, configura observabilidade pra modelos em produção (model drift, performance metrics), otimiza inferência pra reduzir latência e custo de cloud, e implementa testes automatizados pra garantir que mudanças não degradem qualidade. Trabalha com Cientistas de Dados (entrega input) e Engenheiros de Dados (consome dados via pipelines).",
+        diferencasDaAreaMae: "Dentro de IA, o ML Engineer separa-se do Cientista de Dados pelo foco: cientista descobre soluções com matemática e estatística; ML Engineer entrega essas soluções em produção. Diferente do MLOps Engineer (que cuida só de infra de modelos), o ML Engineer ainda toca código de modelagem e tunning. É a porta de entrada ideal pra quem vem de backend ou DevOps e quer migrar pra IA — mais código, menos matemática pesada que o cientista puro.",
+        habilidadesEspecificas: [
+          "Python avançado e engenharia de software (testes, design patterns, APIs)",
+          "Frameworks de ML em produção (scikit-learn, TensorFlow ou PyTorch)",
+          "MLOps: pipelines, versionamento de modelos (MLflow, DVC), monitoramento",
+          "Cloud (AWS SageMaker, GCP Vertex AI ou Azure ML)",
+          "Otimização de inferência e arquitetura distribuída"
+        ],
+        ferramentasEspecificas: [
+          "Python (com FastAPI ou Flask pra servir modelos)",
+          "TensorFlow ou PyTorch",
+          "MLflow (tracking + versionamento)",
+          "Docker + Kubernetes (containerização e orquestração)",
+          "AWS SageMaker / GCP Vertex AI",
+          "Apache Airflow (orquestração de pipelines)"
+        ],
+        cargos: [
+          "ML Engineer Júnior (0-2 anos)",
+          "ML Engineer Pleno (2-5 anos)",
+          "ML Engineer Sênior (5+ anos)",
+          "Staff/Principal ML Engineer (lidera arquitetura ML da empresa)"
+        ],
+        faixaSalarial: "R$ 5.445 (júnior) a R$ 18.667 (sênior). Pleno gira em R$ 11.000-13.000. Especialistas em MLOps chegam a R$ 32.000+. Mercado super aquecido (BeBee: 1.28M+ vagas relacionadas).",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Made With ML (madewithml.com) — curso completo grátis de MLOps em inglês",
+          "Google ML Crash Course — fundamentos práticos gratuitos",
+          "Full Stack Deep Learning — bootcamp gratuito sobre como colocar ML em produção"
+        ],
+        projetosSugeridos: [
+          "API REST que serve modelo de ML (FastAPI + Docker + deploy em cloud)",
+          "Pipeline completo de re-treino: dados → treino → validação → deploy automático",
+          "Sistema de monitoramento de modelo em produção com alertas de drift"
+        ],
+        roadmapEspecifico: [
+          "Ter base sólida em Python + engenharia de software (testes, APIs, Git)",
+          "Aprender ML básico (regressão, classificação, clustering com scikit-learn)",
+          "Estudar MLOps: containerização (Docker), CI/CD pra modelos, versionamento",
+          "Aprender uma cloud focada em ML (AWS SageMaker é o mais procurado)",
+          "Construir portfólio: 2 projetos públicos com modelo em produção real"
+        ],
+        dicasIniciais: "Não tente entrar como ML Engineer sem experiência prévia em código de produção — esse cargo cobra engenharia tanto quanto IA. Se você vem de backend, é o caminho mais rápido de entrar em IA (sua experiência de produção já vale). Se vem de ciência de dados, foque em DevOps e cloud (essa é sua lacuna). MLOps é o diferencial salarial: especialistas chegam a R$ 32k+."
       },
       {
         slug: "nlp",
@@ -455,7 +587,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "product-manager",
         nome: "Product Manager",
-        descricaoCurta: "Define visão, estratégia e roadmap do produto. Conecta negócio, tecnologia e usuários."
+        descricaoCurta: "Define visão, estratégia e roadmap do produto. Conecta negócio, tecnologia e usuários.",
+        descricaoCompleta: "Product Manager (ou PM) é o profissional que decide o que construir e por quê — não é quem implementa o código nem desenha as telas, mas é quem orquestra tudo. Conecta visão de negócio com necessidade do usuário e capacidade técnica do time. É um dos cargos mais estratégicos em produtos digitais: define roadmap, prioriza features, mede sucesso, lidera (sem ter autoridade direta) times de dev, design e marketing. Mercado super aquecido no Brasil — Glassdoor registra 6.646 salários, com média de R$ 14.667. Em fintechs e big techs (Nubank, Shopee, iFood, XP), sêniores podem ultrapassar R$ 28k.",
+        oQueFaz: "No dia a dia: conversa com usuários e stakeholders pra entender problemas reais, define hipóteses e métricas de sucesso (OKRs), prioriza backlog com frameworks (RICE, MoSCoW), escreve PRDs (Product Requirements Documents), faz discovery contínuo com pesquisa qualitativa e análise de dados, alinha visão com lideranças e comunica decisões pra todos os times. Toma centenas de pequenas decisões por semana — quem o produto deve servir, quais features adiar, quando lançar, como medir impacto.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o PM separa-se do Product Owner pelo escopo: PO foca em execução tática (backlog, refinamento com devs); PM cobre estratégia e visão completa do produto. Diferente do Product Marketing Manager (que cuida do posicionamento e go-to-market), o PM trabalha mais cedo no ciclo — antes do produto existir. É o cargo mais procurado e mais bem pago de Produto, mas também o mais ambíguo: o que se espera de um PM varia muito entre startup early stage e big tech.",
+        habilidadesEspecificas: [
+          "Product discovery (entrevistas com usuário, pesquisa qualitativa)",
+          "Análise de dados e métricas de produto (SQL básico, GA4, Mixpanel)",
+          "Frameworks de priorização (RICE, ICE, MoSCoW, Kano)",
+          "Storytelling e comunicação com stakeholders de diferentes níveis",
+          "Visão estratégica de negócio (unit economics, modelos de receita, métricas de saúde)"
+        ],
+        ferramentasEspecificas: [
+          "Jira ou Linear (gestão de backlog)",
+          "Figma (revisar designs e prototipar fluxos básicos)",
+          "Notion ou Confluence (documentação de produto e PRDs)",
+          "Mixpanel, Amplitude ou Google Analytics (analytics de produto)",
+          "Miro ou FigJam (mapeamento e workshops)",
+          "Hotjar ou Microsoft Clarity (análise comportamental)"
+        ],
+        cargos: [
+          "Product Manager Júnior / APM — Associate Product Manager (0-2 anos)",
+          "Product Manager Pleno (2-5 anos)",
+          "Product Manager Sênior (5+ anos)",
+          "Group/Lead PM ou Head of Product (liderança de múltiplos times)"
+        ],
+        faixaSalarial: "R$ 7.000 (júnior) a R$ 28.000 (sênior em fintechs/big techs). Média BR R$ 12-15k — PM3 Panorama 2025-2026 e Glassdoor (6.646 salários). Especialistas em produto técnico ou growth chegam a R$ 32k+.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "PM3 — Blog e webinars gratuitos (referência BR em produto)",
+          "Reforge (reforge.com) — newsletter e conteúdos gratuitos sobre produto e growth",
+          "Lenny's Newsletter — newsletter gratuita do Lenny Rachitsky (referência global em PM)"
+        ],
+        projetosSugeridos: [
+          "Análise crítica de um produto existente: o que mudaria, por quê, qual métrica esperaria mover",
+          "PRD completo de uma feature hipotética: contexto, problema, solução, métricas de sucesso",
+          "Plano de discovery de 4 semanas pra um produto novo (entrevistas, hipóteses, validação)"
+        ],
+        roadmapEspecifico: [
+          "Estudar fundamentos de produto (PM3 Blog, Lenny's Newsletter, livro 'Inspired' do Marty Cagan)",
+          "Aprender frameworks de priorização e discovery (RICE, Jobs to be Done, Continuous Discovery)",
+          "Construir base de dados — SQL básico + ferramentas de analytics (Mixpanel, GA4)",
+          "Fazer um case real: escrever PRD detalhado de um produto que você usa",
+          "Conectar com PMs no LinkedIn, fazer mentoria, e candidatar-se a APM em startups"
+        ],
+        dicasIniciais: "Não precisa de graduação específica — PMs vêm de engenharia, design, marketing, negócios. O que importa é portfólio + comunicação. Escreva análises públicas de produtos que você usa (Medium, LinkedIn) — isso é currículo. Foque em entender discovery profundo: a maioria dos PMs juniores erra ao pular pesquisa pra ir direto pra solução. SQL básico é cada vez mais cobrado — invista 2 semanas pra dominar consultas básicas."
       },
       {
         slug: "product-owner",
@@ -514,7 +690,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "red-team",
         nome: "Red Team / Pentest",
-        descricaoCurta: "Especialistas em simular ataques. Realizam pentests, exploram vulnerabilidades e testam defesas das empresas."
+        descricaoCurta: "Especialistas em simular ataques. Realizam pentests, exploram vulnerabilidades e testam defesas das empresas.",
+        descricaoCompleta: "Red Team / Pentester é o hacker ético: profissional pago pra atacar sistemas e descobrir falhas antes dos criminosos. Simula ataques reais — phishing, exploração de vulnerabilidades web, escalação de privilégios, evasão de defesas — pra testar a resiliência da empresa. Diferente do hacker malicioso, atua com escopo definido, ética rigorosa e relatórios detalhados. Mercado super aquecido em 2026: cargo de Pentester paga de R$ 4.500 (júnior) a R$ 25.000 (sênior). Robert Half estima faixa pleno-sênior entre R$ 13.350 e R$ 18.300. Empresas multinacionais e fintechs pagam acima da média.",
+        oQueFaz: "No dia a dia: planeja e executa testes de intrusão em escopos definidos (aplicações web, mobile, APIs, infraestrutura, cloud), explora vulnerabilidades (OWASP Top 10, falhas de autenticação, injeção), escreve scripts customizados em Python/Bash/PowerShell pra automatizar testes, simula campanhas de phishing pra avaliar conscientização, faz movimentação lateral em ambientes Windows/AD, e produz relatórios técnicos e executivos com achados, criticidade e recomendações. Em Red Team avançado, emula adversários reais (Kill Chain baseada em TTPs do MITRE ATT&CK).",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o Red Team é o lado ofensivo — ataca pra defender. Diferente do Blue Team (SOC, defesa em tempo real, monitora e responde a incidentes), o Red Team é proativo: encontra falhas antes que sejam exploradas. Diferente do AppSec (que integra segurança no ciclo de dev), o Red Team valida defesas existentes simulando atacantes reais. É o caminho mais visado por iniciantes — gosto pelo 'lado hacker' — mas exige base sólida de redes, sistemas e programação.",
+        habilidadesEspecificas: [
+          "Linux profundo (Kali, Parrot OS) + Windows / Active Directory Internals",
+          "Programação e scripting (Python, Bash, PowerShell, JavaScript)",
+          "OWASP Top 10 e exploração de aplicações web e APIs",
+          "Redes, protocolos TCP/IP, criptografia, certificados SSL/TLS",
+          "Engenharia social e técnicas de evasão de defesa (EDR/AV/WAF)"
+        ],
+        ferramentasEspecificas: [
+          "Kali Linux (distribuição padrão pra pentest)",
+          "Metasploit Framework",
+          "Burp Suite (testes em aplicações web)",
+          "Nmap (varredura de redes)",
+          "Wireshark (análise de tráfego)",
+          "Hashcat ou John the Ripper (quebra de hashes)"
+        ],
+        cargos: [
+          "Pentester Júnior (0-2 anos)",
+          "Pentester Pleno (2-5 anos)",
+          "Pentester Sênior / Red Team Operator (5+ anos)",
+          "Lead Red Team / Offensive Security Consultant"
+        ],
+        faixaSalarial: "R$ 4.500 (júnior) a R$ 25.000 (sênior). Pleno gira em R$ 8-14k. Consultores e freelas: R$ 150-400/hora. Certificações como OSCP, CRTO e CRTP aumentam significativamente a remuneração.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "TryHackMe (paths gratuitos pra iniciantes — pré-OSCP)",
+          "HackTheBox (CTFs práticos, free tier disponível)",
+          "PortSwigger Web Security Academy — curso completo gratuito sobre vulnerabilidades web"
+        ],
+        projetosSugeridos: [
+          "Home Lab: VM Kali + máquinas vulneráveis (Metasploitable, DVWA) pra prática diária",
+          "Resolver 20+ máquinas no HackTheBox/TryHackMe + documentar no GitHub/blog",
+          "Participar de programas de Bug Bounty (HackerOne, Bugcrowd) e reportar vulnerabilidade real"
+        ],
+        roadmapEspecifico: [
+          "Aprender Linux profundamente + base de redes (TCP/IP, DNS, HTTP, AD)",
+          "Estudar OWASP Top 10 + praticar em ambientes controlados (DVWA, Juice Shop)",
+          "Aprender Python + Bash pra automação de testes",
+          "Tirar certificação inicial (eJPT é boa porta de entrada) e mirar OSCP a médio prazo",
+          "Construir portfólio: writeups de máquinas resolvidas + reports em programas de bug bounty"
+        ],
+        dicasIniciais: "OSCP é a certificação que abre portas — mire ela como meta de 12-18 meses. Antes, TryHackMe e HackTheBox são as melhores plataformas de treino. Documente tudo: cada máquina resolvida vira writeup, cada CVE encontrada vira post — recrutadores adoram. Mantenha sempre escopo e ética rigorosos: a diferença entre Red Team e hacker malicioso é a autorização. Inglês obrigatório."
       },
       {
         slug: "blue-team",
@@ -573,7 +793,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "arquiteto-cloud",
         nome: "Arquiteto Cloud",
-        descricaoCurta: "Projeta soluções em AWS, Azure ou GCP. Define topologias, integrações e padrões pra grandes ambientes corporativos."
+        descricaoCurta: "Projeta soluções em AWS, Azure ou GCP. Define topologias, integrações e padrões pra grandes ambientes corporativos.",
+        descricaoCompleta: "Arquiteto Cloud é o profissional sênior que projeta a infraestrutura de nuvem pra grandes empresas — define quais serviços usar (compute, storage, networking, banco), como integrar com sistemas legados, como garantir alta disponibilidade, segurança e custo controlado. Não é cargo de entrada: chega-se como Arquiteto Cloud depois de 5+ anos como engenheiro de cloud, DevOps ou desenvolvedor. Cargo super valorizado em 2026 — médias de R$ 6 mil a R$ 16 mil, com sêniores em ambientes financeiros ou multinacionais chegando a R$ 18-25k+. Certificações como AWS Solutions Architect Professional ou Azure Architect Expert são quase obrigatórias.",
+        oQueFaz: "No dia a dia: levanta requisitos técnicos e de negócio com clientes ou times internos, desenha arquiteturas escaláveis e resilientes (multi-AZ, multi-região quando necessário), avalia trade-offs de custo vs performance vs disponibilidade, define padrões de segurança (IAM, criptografia, compliance), apresenta soluções pra stakeholders técnicos e executivos, orienta times de implementação, e revisa arquiteturas existentes pra modernização. Trabalha lado a lado com DevOps, SREs, engenheiros de dados e times de produto.",
+        diferencasDaAreaMae: "Dentro de Cloud, o Arquiteto separa-se do Engenheiro Cloud pelo escopo: engenheiro implementa; arquiteto projeta. Diferente do Cloud Security (foco específico em segurança) ou FinOps (foco em custo), o Arquiteto Cloud tem visão completa do ambiente — segurança, custo, performance, resiliência. É cargo de evolução, não de entrada — você chega aqui depois de anos como engenheiro de cloud, desenvolvedor ou DevOps com vivência em projetos grandes.",
+        habilidadesEspecificas: [
+          "Domínio profundo de pelo menos uma cloud (AWS, Azure ou GCP) — preferencialmente 2",
+          "Arquitetura de sistemas distribuídos, alta disponibilidade e tolerância a falhas",
+          "Infrastructure as Code (Terraform, CloudFormation)",
+          "Segurança em cloud (IAM, criptografia, compliance, LGPD)",
+          "Visão de negócio e comunicação executiva (traduzir tech pra C-level)"
+        ],
+        ferramentasEspecificas: [
+          "AWS (EC2, S3, RDS, Lambda, VPC, IAM)",
+          "Azure ou GCP como segunda cloud (multi-cloud é tendência)",
+          "Terraform (Infrastructure as Code padrão)",
+          "Draw.io ou Lucidchart (diagramação de arquiteturas)",
+          "AWS Well-Architected Framework (framework de referência)",
+          "Datadog ou CloudWatch (observabilidade)"
+        ],
+        cargos: [
+          "Arquiteto Cloud Júnior raro — geralmente vem de Cloud Engineer (3+ anos)",
+          "Arquiteto Cloud Pleno (5+ anos de cloud)",
+          "Arquiteto Cloud Sênior (7+ anos de cloud)",
+          "Principal Cloud Architect / Chief Architect (líder técnico da empresa)"
+        ],
+        faixaSalarial: "R$ 7.600 (entrada) a R$ 18.000 (sênior). Em grandes empresas, fintechs ou setor financeiro, sêniores chegam a R$ 25.000+. Vagas remotas pra fora pagam em dólar (US$ 100-150k/ano).",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "AWS Skill Builder — Cloud Practitioner + Solutions Architect Associate (planos gratuitos)",
+          "Google Cloud Skills Boost — fundamentos gratuitos e labs práticos",
+          "Microsoft Learn — trilhas Azure Fundamentals e Azure Architect (gratuitas)"
+        ],
+        projetosSugeridos: [
+          "Arquitetar e implementar aplicação 3-tier completa na AWS (VPC + EC2 + RDS + ELB + S3)",
+          "Migração de aplicação on-premise pra cloud com plano de modernização documentado",
+          "Multi-cloud setup: aplicação rodando em AWS + Azure com failover automático"
+        ],
+        roadmapEspecifico: [
+          "Dominar uma cloud profundamente (AWS é o mais procurado no BR — comece por ela)",
+          "Tirar certificação foundational (AWS Cloud Practitioner) e depois Associate (Solutions Architect)",
+          "Aprender Terraform e arquitetura de sistemas distribuídos",
+          "Conseguir vaga como Cloud Engineer ou DevOps pra ganhar experiência prática",
+          "Após 3-5 anos, mirar certificação Professional (AWS SAP-C02 ou equivalente Azure/GCP)"
+        ],
+        dicasIniciais: "Não tente entrar direto como Arquiteto — passe primeiro por Cloud Engineer ou DevOps. Certificação AWS Associate é o primeiro grande objetivo: estude 3-6 meses + tire o exame (custa US$ 150, mas vale cada centavo no currículo). Foque em entender padrões de arquitetura (microservices, serverless, event-driven) — não basta saber nomes de serviços. Inglês obrigatório."
       },
       {
         slug: "cloud-security",
