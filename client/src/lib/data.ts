@@ -1,6 +1,22 @@
 // BORA NA TECH? — Central Data Store
 // All static content for the platform
 
+import type { LucideIcon } from "lucide-react";
+import {
+  Layout,
+  Server,
+  BarChart3,
+  Palette,
+  Brain,
+  Target,
+  Shield,
+  Cloud,
+  ClipboardList,
+  BadgeCheck,
+  Smartphone,
+  GitBranch,
+} from "lucide-react";
+
 export interface SubArea {
   slug: string;
   nome: string;
@@ -12,6 +28,7 @@ export interface AreaTI {
   nome: string;
   slug: string;
   emoji: string;
+  icon: LucideIcon;
   tagClass: string;
   descricaoCurta: string;
   descricaoCompleta: string;
@@ -42,6 +59,7 @@ export const areasTI: AreaTI[] = [
     nome: "Front-end",
     slug: "frontend",
     emoji: "🖥️",
+    icon: Layout,
     tagClass: "tag-frontend",
     descricaoCurta: "Cria tudo que você vê e interage em sites e aplicativos.",
     descricaoCompleta: "O desenvolvedor front-end é responsável por construir a interface visual dos produtos digitais — tudo que o usuário vê, clica, lê e interage. Trabalha com HTML, CSS e JavaScript para transformar designs em páginas funcionais e bonitas.",
@@ -64,6 +82,7 @@ export const areasTI: AreaTI[] = [
     nome: "Back-end",
     slug: "backend",
     emoji: "⚙️",
+    icon: Server,
     tagClass: "tag-backend",
     descricaoCurta: "Desenvolve a lógica e os dados por trás dos sistemas.",
     descricaoCompleta: "O desenvolvedor back-end cuida de tudo que acontece 'por baixo dos panos': servidores, bancos de dados, APIs e a lógica de negócio que faz os sistemas funcionarem. É quem garante que os dados sejam salvos, processados e entregues corretamente.",
@@ -86,6 +105,7 @@ export const areasTI: AreaTI[] = [
     nome: "Ciência de Dados",
     slug: "dados",
     emoji: "📊",
+    icon: BarChart3,
     tagClass: "tag-dados",
     descricaoCurta: "Analisa dados para gerar insights e tomar decisões.",
     descricaoCompleta: "O cientista de dados coleta, limpa, analisa e interpreta grandes volumes de dados para ajudar empresas a tomar decisões mais inteligentes. Combina estatística, programação e conhecimento de negócio.",
@@ -108,6 +128,7 @@ export const areasTI: AreaTI[] = [
     nome: "UX/UI Design",
     slug: "uxui",
     emoji: "🎨",
+    icon: Palette,
     tagClass: "tag-uxui",
     descricaoCurta: "Projeta experiências digitais centradas no usuário.",
     descricaoCompleta: "O designer de UX/UI cria a experiência e a interface visual dos produtos digitais. UX (User Experience) foca em tornar o produto fácil e agradável de usar. UI (User Interface) foca na aparência visual: cores, tipografia, ícones e componentes.",
@@ -130,6 +151,7 @@ export const areasTI: AreaTI[] = [
     nome: "Inteligência Artificial",
     slug: "ia",
     emoji: "🤖",
+    icon: Brain,
     tagClass: "tag-ia",
     descricaoCurta: "Cria sistemas que aprendem e tomam decisões automaticamente.",
     descricaoCompleta: "A área de IA desenvolve sistemas capazes de aprender com dados, reconhecer padrões e tomar decisões de forma autônoma. Inclui Machine Learning, Deep Learning, Processamento de Linguagem Natural e Visão Computacional.",
@@ -152,6 +174,7 @@ export const areasTI: AreaTI[] = [
     nome: "Produto Digital",
     slug: "produto",
     emoji: "🎯",
+    icon: Target,
     tagClass: "tag-produto",
     descricaoCurta: "Lidera a estratégia e evolução de produtos digitais.",
     descricaoCompleta: "O gerente de produto (PM) é responsável por definir a visão, estratégia e roadmap de um produto digital. Conecta negócio, tecnologia e usuário para garantir que o produto certo seja construído da forma certa.",
@@ -174,6 +197,7 @@ export const areasTI: AreaTI[] = [
     nome: "Cibersegurança",
     slug: "ciberseguranca",
     emoji: "🔒",
+    icon: Shield,
     tagClass: "tag-seguranca",
     descricaoCurta: "Protege sistemas, dados e redes contra ameaças digitais.",
     descricaoCompleta: "O profissional de cibersegurança protege sistemas, redes e dados contra ataques, invasões e vulnerabilidades. Trabalha tanto na prevenção quanto na detecção e resposta a incidentes de segurança.",
@@ -196,6 +220,7 @@ export const areasTI: AreaTI[] = [
     nome: "Cloud Computing",
     slug: "cloud",
     emoji: "☁️",
+    icon: Cloud,
     tagClass: "tag-cloud",
     descricaoCurta: "Gerencia infraestrutura e serviços na nuvem.",
     descricaoCompleta: "Cloud Computing envolve o uso de servidores, armazenamento, bancos de dados e outros recursos de TI pela internet, através de provedores como AWS, Azure e Google Cloud. O profissional de cloud projeta, implementa e gerencia essas infraestruturas.",
@@ -218,6 +243,7 @@ export const areasTI: AreaTI[] = [
     nome: "Gestão de Projetos Tech",
     slug: "gestao",
     emoji: "📋",
+    icon: ClipboardList,
     tagClass: "tag-gestao",
     descricaoCurta: "Planeja, organiza e lidera projetos de tecnologia.",
     descricaoCompleta: "O gerente de projetos tech coordena equipes, recursos e prazos para entregar projetos de tecnologia com sucesso. Combina habilidades de liderança, comunicação e conhecimento técnico.",
@@ -241,6 +267,7 @@ export const areasTI: AreaTI[] = [
     nome: "QA / Testes de Software",
     slug: "qa",
     emoji: "🧪",
+    icon: BadgeCheck,
     tagClass: "tag-qa",
     descricaoCurta: "Garante a qualidade e o funcionamento correto dos sistemas.",
     descricaoCompleta: "O profissional de QA (Quality Assurance) é responsável por garantir que os sistemas funcionem corretamente, sem bugs e com boa experiência para o usuário. Cria e executa testes manuais e automatizados.",
@@ -263,6 +290,7 @@ export const areasTI: AreaTI[] = [
     nome: "Desenvolvimento Mobile",
     slug: "mobile",
     emoji: "📱",
+    icon: Smartphone,
     tagClass: "tag-mobile",
     descricaoCurta: "Cria aplicativos para celulares e tablets.",
     descricaoCompleta: "O desenvolvedor mobile cria aplicativos para dispositivos móveis (iOS e Android). Pode trabalhar com desenvolvimento nativo (Swift para iOS, Kotlin para Android) ou multiplataforma (React Native, Flutter).",
@@ -285,6 +313,7 @@ export const areasTI: AreaTI[] = [
     nome: "DevOps",
     slug: "devops",
     emoji: "🔄",
+    icon: GitBranch,
     tagClass: "tag-devops",
     descricaoCurta: "Une desenvolvimento e operações para entregas mais rápidas.",
     descricaoCompleta: "DevOps é uma cultura e conjunto de práticas que une desenvolvimento de software e operações de TI, com foco em automação, integração contínua e entrega contínua (CI/CD) para acelerar e melhorar as entregas.",

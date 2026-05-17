@@ -1,6 +1,7 @@
 import type { ContentSourceStatus } from "./contracts";
+import { Layout as LayoutIcon } from "lucide-react";
 import { apiUrl } from "@/lib/api";
-import { areasTI, cursosGratuitos, noticias, plataformas, projetos, roadmaps } from "@/lib/data";
+import { areasTI, cursosGratuitos, noticias, plataformas, projetos, roadmaps, type AreaTI } from "@/lib/data";
 import { technologies, technologyRanking } from "@/lib/technologyData";
 
 const API_BASE = apiUrl("/api/content");
@@ -16,12 +17,14 @@ async function apiFetch(path: string) {
   return res.json();
 }
 
-function areaFromApi(row: any) {
+function areaFromApi(row: any): AreaTI {
+  const local = areasTI.find((a) => a.slug === row.slug);
   return {
     id: row.slug,
     nome: row.name,
     slug: row.slug,
     emoji: row.icon || "💻",
+    icon: local?.icon ?? LayoutIcon,
     tagClass: row.tag_class || "tag-frontend",
     descricaoCurta: row.short_description || "",
     descricaoCompleta: row.full_description || row.short_description || "",
