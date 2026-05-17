@@ -1459,17 +1459,149 @@ export const areasTI: AreaTI[] = [
       {
         slug: "scrum-master",
         nome: "Scrum Master",
-        descricaoCurta: "Facilitador de times ágeis. Garante que o time siga Scrum, remove impedimentos e dissemina cultura ágil."
+        descricaoCurta: "Facilitador de times ágeis. Garante que o time siga Scrum, remove impedimentos e dissemina cultura ágil.",
+        descricaoCompleta: "Scrum Master é o facilitador do framework Scrum: profissional que ajuda o time a aplicar Scrum corretamente, remove impedimentos e protege contra interferências externas. Não é gestor (não tem autoridade direta sobre o time) nem dono do produto (isso é PO) — é um servant leader que serve o time pra que ele entregue valor. Cargo super comum em empresas que adotam ágil no Brasil (bancos, fintechs, indústrias). Mercado maduro mas saturado em níveis júnior — diferencial está em sêniores e Agile Coaches. Salário médio: R$ 9.750 (Glassdoor 2.574 respostas), Robert Half estima R$ 10.900-17.600 pra pleno-sênior. Sêniores em fintechs chegam a R$ 20-25k.",
+        oQueFaz: "No dia a dia: conduz cerimônias Scrum (daily, planning, review, retrospectiva), remove impedimentos identificados pelo time, protege o time de interrupções externas, ensina e treina o time em práticas ágeis, facilita conflitos e melhoria contínua, e atua como ponte entre o time e a organização. Em empresas grandes, trabalha próximo a outros Scrum Masters e Agile Coaches num modelo de Comunidade de Prática. Não atribui tarefas nem cobra entregas — facilita o auto-gerenciamento do time.",
+        diferencasDaAreaMae: "Dentro de Gestão, o Scrum Master separa-se do Product Owner pelo papel: PO é dono do produto e prioriza o quê construir; Scrum Master é facilitador do processo e cuida de como o time trabalha. Diferente do Project Manager tradicional (que cobra prazo e escopo), Scrum Master não comanda — facilita auto-organização. Diferente do Agile Coach (que atua em nível organizacional, transformação cultural), o Scrum Master é tático e foca em 1-2 times específicos. Porta de entrada da carreira ágil — sêniores migram pra Agile Coach.",
+        habilidadesEspecificas: [
+          "Domínio profundo do framework Scrum (papéis, eventos, artefatos)",
+          "Facilitação de cerimônias e workshops",
+          "Coaching individual e de times (escuta ativa, perguntas poderosas)",
+          "Resolução de conflitos e mediação",
+          "Métricas ágeis (velocity, burndown, throughput, cycle time)"
+        ],
+        ferramentasEspecificas: [
+          "Jira ou Linear (gestão de backlog e sprints)",
+          "Miro ou FigJam (retrospectivas e workshops)",
+          "Notion ou Confluence (documentação de processos)",
+          "Slack ou Teams (comunicação assíncrona)",
+          "Trello ou Azure DevOps (boards alternativos)",
+          "Mural ou EasyRetro (retrospectivas remotas)"
+        ],
+        cargos: [
+          "Scrum Master Júnior (0-2 anos)",
+          "Scrum Master Pleno (2-5 anos)",
+          "Scrum Master Sênior (5+ anos)",
+          "Agile Coach / Lead Scrum Master (carreira evolutiva)"
+        ],
+        faixaSalarial: "R$ 5.200 (júnior) a R$ 25.000 (sênior em fintechs/big techs). Média BR R$ 9.750 — Glassdoor 2026 (2.574 respondentes). Robert Half estima R$ 10.900-17.600 pra pleno-sênior. Certificação PSM I é essencial.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Scrum.org — Scrum Guide oficial (gratuito, leitura essencial antes de qualquer curso)",
+          "Atlassian Agile Coach — cursos gratuitos sobre Scrum, Kanban e ferramentas",
+          "Mountain Goat Software (Mike Cohn) — artigos gratuitos, referência mundial em Scrum"
+        ],
+        projetosSugeridos: [
+          "Aplicar Scrum em projeto pessoal ou voluntário com 2-3 amigos (real, não teórico)",
+          "Facilitar 5 retrospectivas hipotéticas usando técnicas diferentes (Sailboat, 4Ls, Mad-Sad-Glad)",
+          "Documentar 3 estudos de caso: situações de impedimento e como removeria"
+        ],
+        roadmapEspecifico: [
+          "Ler o Scrum Guide oficial integralmente (pequeno, mas denso)",
+          "Estudar facilitação de cerimônias e técnicas de retrospectiva",
+          "Aprender métricas ágeis (velocity, burndown, predictability)",
+          "Tirar certificação PSM I da Scrum.org (custa US$ 200, vale pra sempre)",
+          "Conseguir vaga como Scrum Master Júnior ou facilitar time interno (transição)"
+        ],
+        dicasIniciais: "PSM I da Scrum.org é a certificação mais respeitada — vale o investimento. Cuidado com a saturação em níveis júnior: muita gente migra pra Scrum Master sem base sólida e o mercado percebe. Pratique facilitação de verdade — leitura não substitui experiência. Sêniores que viram Agile Coach saltam pra R$ 20-25k+. Inglês é diferencial em multinacionais. Não é cargo de comando — quem busca poder se frustra."
       },
       {
         slug: "agile-coach",
         nome: "Agile Coach",
-        descricaoCurta: "Transformação ágil em larga escala. Atua com múltiplos times, treina lideranças e implanta cultura ágil na organização."
+        descricaoCurta: "Transformação ágil em larga escala. Atua com múltiplos times, treina lideranças e implanta cultura ágil na organização.",
+        descricaoCompleta: "Agile Coach é o profissional sênior que atua em transformações ágeis organizacionais — não apenas com 1 time, mas com múltiplos times, lideranças e a cultura da empresa inteira. Diferente do Scrum Master (foco tático em um time), o Agile Coach trabalha em nível estratégico: ajuda empresas a adotar agilidade em escala, treina lideranças, redesenha estruturas organizacionais, e aplica frameworks como SAFe, LeSS ou Spotify Model. Cargo super sênior — exige 5+ anos como Scrum Master + experiência em transformações reais. Salário top da carreira ágil: média BR R$ 25.006 (Glassdoor), sêniores em consultorias e bancos ultrapassam R$ 35k. Mercado aquecido em transformações digitais corporativas.",
+        oQueFaz: "No dia a dia: trabalha com lideranças (C-level e gerentes) pra desenhar transformações ágeis, treina e mentora múltiplos Scrum Masters e POs, facilita workshops de melhoria contínua em níveis organizacionais, ajuda na implementação de frameworks em escala (SAFe, LeSS, Spotify Model), mede maturidade ágil e propõe roadmaps de evolução, e atua como consultor interno ou externo. Em consultorias (ThoughtWorks, Cesar, Aoop), trabalha em projetos de 6-18 meses com clientes corporativos.",
+        diferencasDaAreaMae: "Dentro de Gestão, o Agile Coach é a evolução natural do Scrum Master sênior — mais estratégico, mais transversal. Diferente do Scrum Master (foco tático em 1-2 times), o Agile Coach atua em nível organizacional. Diferente do Consultor de Gestão tradicional (que prescreve soluções), o Agile Coach usa coaching e perguntas poderosas pra que a organização descubra suas próprias respostas. Cargo mais sênior da carreira ágil — não existe Agile Coach Júnior. Caminho típico: 5-8 anos como Scrum Master → Agile Coach.",
+        habilidadesEspecificas: [
+          "Coaching profissional (técnicas ICF, perguntas poderosas)",
+          "Frameworks de escala (SAFe, LeSS, Spotify Model, Nexus)",
+          "Gestão de mudança organizacional (Kotter, ADKAR)",
+          "Treinamento e facilitação de grupos grandes (50+ pessoas)",
+          "Visão sistêmica e diagnóstico de cultura organizacional"
+        ],
+        ferramentasEspecificas: [
+          "Miro ou Mural (workshops virtuais grandes)",
+          "Frameworks visuais (SAFe Big Picture, Spotify Health Check)",
+          "Jira Align ou Targetprocess (gestão ágil em escala)",
+          "EasyRetro ou Parabol (retrospectivas em escala)",
+          "PowerPoint ou Keynote (apresentações executivas)",
+          "Notion ou Confluence (documentação de transformações)"
+        ],
+        cargos: [
+          "Agile Coach Pleno (5-8 anos de Scrum Master)",
+          "Senior Agile Coach (8+ anos)",
+          "Enterprise Agile Coach (especialista em grandes transformações)",
+          "Head of Agility / VP Transformation"
+        ],
+        faixaSalarial: "R$ 15.000 (entrada) a R$ 40.000+ (sênior). Média BR R$ 25.006 — Glassdoor 2026. Em consultorias top (ThoughtWorks, Bertha, Aoop) sêniores ultrapassam R$ 35k. Internacional remoto paga US$ 8-15k/mês.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "Scrum.org — Scaled Professional Scrum (artigos gratuitos)",
+          "SAFe Framework — Big Picture e fundamentos (consulta gratuita)",
+          "ICAgile — recursos gratuitos sobre Agile Coaching e Lean-Agile"
+        ],
+        projetosSugeridos: [
+          "Estudo de caso completo: transformação ágil de empresa fictícia com baseline + ações + métricas",
+          "Workshop de 4h sobre Agile Mindset pra lideranças (slides + dinâmicas)",
+          "Diagnóstico de maturidade ágil de organização real ou hipotética com recomendações priorizadas"
+        ],
+        roadmapEspecifico: [
+          "Ter base sólida como Scrum Master sênior (mínimo 5 anos de prática)",
+          "Estudar frameworks de escala (SAFe é o mais procurado no BR)",
+          "Tirar certificação ICAgile (ICP-ACC é a porta de entrada formal pra Agile Coach)",
+          "Aprender coaching profissional (cursos ICF ou formação específica)",
+          "Conseguir transição interna: Scrum Master Sênior → Agile Coach (caminho mais comum)"
+        ],
+        dicasIniciais: "Cargo SÊNIOR — não tente entrar como júnior, vai dar errado. Acumule experiência real como Scrum Master primeiro (5+ anos). ICP-ACC é a certificação mais respeitada da área (custa US$ 1.500-2.500). SAFe SPC é diferencial em multinacionais. Coaching é A skill — invista em formação real (não só leitura). Cargo perfeito pra quem ama transformações e gosta de trabalhar com lideranças. Inglês é altamente diferencial."
       },
       {
         slug: "pmo",
         nome: "PMO — Project Management Office",
-        descricaoCurta: "Estrutura escritórios de projetos. Padroniza processos, controla portfólio, reporta a alta gestão. Forte em empresas tradicionais."
+        descricaoCurta: "Estrutura escritórios de projetos. Padroniza processos, controla portfólio, reporta a alta gestão. Forte em empresas tradicionais.",
+        descricaoCompleta: "PMO (Project Management Office) é a estrutura organizacional que cuida da governança de projetos numa empresa — não é cargo único, é uma função que abrange Gerente de Projetos, Analista de PMO e Coordenador de PMO. Em empresas tradicionais (bancos, indústrias, varejo grandes), PMO é o coração da entrega: cuida de prazos, orçamentos, riscos, status reports e governança de portfólio inteiro. Diferente do mundo ágil (Scrum Master, Agile Coach), PMO geralmente segue PMBOK e abordagem mais tradicional/híbrida. Salários: R$ 4-8k júnior, R$ 8-15k pleno, R$ 15-25k sênior. Cargo super estabelecido — mercado maduro em empresas tradicionais.",
+        oQueFaz: "No dia a dia: monitora projetos do portfólio (prazos, orçamento, riscos), produz status reports semanais pra lideranças, garante aderência a metodologias e padrões internos, facilita comunicação entre projetos e patrocinadores, gerencia riscos e issues escalados, mantém histórico de projetos pra lições aprendidas, e treina gerentes de projeto da empresa em melhores práticas. Em empresas grandes, atua em PMO Estratégico (define padrões), PMO Tático (monitora portfólio) ou PMO Operacional (executa projetos).",
+        diferencasDaAreaMae: "Dentro de Gestão, o PMO separa-se das funções ágeis pela abordagem: PMO é tradicional/híbrido (PMBOK, prazos fixos, escopo controlado); Scrum Master e Agile Coach são ágeis (iterativo, adaptável). Em muitas empresas brasileiras tradicionais (bancos, indústrias), PMO ainda é o padrão dominante — agilidade complementa, não substitui. Caminho de carreira distinto: PMO costuma virar Gerente de Projetos → Gerente Sênior → Diretor de Projetos. Certificação PMP é a mais valorizada.",
+        habilidadesEspecificas: [
+          "PMBOK e ciclo de vida de projetos tradicionais (iniciação, planejamento, execução, controle, encerramento)",
+          "Gestão de cronograma (MS Project, Smartsheet)",
+          "Gestão de orçamento, EVA (Earned Value Analysis)",
+          "Gestão de riscos (matriz de probabilidade x impacto)",
+          "Comunicação executiva (status reports, dashboards)"
+        ],
+        ferramentasEspecificas: [
+          "MS Project (padrão em empresas tradicionais)",
+          "Smartsheet ou Monday.com (alternativas modernas)",
+          "Power BI ou Tableau (dashboards executivos de portfólio)",
+          "Excel avançado (ainda massivo no BR)",
+          "PowerPoint (apresentações de status pra C-level)",
+          "Jira ou Azure DevOps (em empresas híbridas)"
+        ],
+        cargos: [
+          "Analista de PMO Júnior (0-2 anos)",
+          "Analista de PMO Pleno / Gerente de Projetos Júnior (2-5 anos)",
+          "Gerente de Projetos Sênior / Coordenador PMO (5+ anos)",
+          "Gerente de PMO / Diretor de Projetos"
+        ],
+        faixaSalarial: "R$ 4.000 (analista júnior) a R$ 25.000+ (sênior em bancos/multinacionais). Pleno gira em R$ 8-15k. Em bancos grandes (Itaú, Bradesco, Santander), Gerente de Projetos Sênior chega a R$ 18-25k. PMP aumenta significativamente.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "PMI Brasil — artigos e webinars gratuitos (referência nacional)",
+          "Project Management Institute — Project Management Basics (curso gratuito)",
+          "Google Project Management Certificate (Coursera audit gratuito)"
+        ],
+        projetosSugeridos: [
+          "Plano de projeto completo (PMBOK) pra projeto fictício: charter, EAP, cronograma, orçamento, riscos",
+          "Dashboard executivo de portfólio com 5 projetos hipotéticos no Power BI",
+          "Análise pós-projeto: lições aprendidas + recomendações de melhoria"
+        ],
+        roadmapEspecifico: [
+          "Estudar PMBOK 7ª edição (mais moderna, balanceando ágil e tradicional)",
+          "Aprender MS Project profundamente (ainda padrão em empresas tradicionais)",
+          "Dominar Excel avançado pra orçamentos e cronogramas complexos",
+          "Tirar certificação CAPM (entrada) ou PMP (após 4.500h de experiência)",
+          "Construir portfólio de projetos gerenciados (CV detalhado com métricas de sucesso)"
+        ],
+        dicasIniciais: "PMP é A certificação da área — custa US$ 405 (membro PMI) e exige experiência prévia, mas vale o investimento. Em empresas tradicionais, PMO ainda domina sobre ágil — boa carreira se você prefere ambiente estruturado. Combine com conhecimento ágil: profissional híbrido (PMP + PSM I) é o mais procurado em 2026. Inglês é diferencial em multinacionais. Cargo perfeito pra perfis organizados e que gostam de governança."
       }
     ]
   },
@@ -1508,17 +1640,149 @@ export const areasTI: AreaTI[] = [
       {
         slug: "qa-automacao",
         nome: "QA Automação",
-        descricaoCurta: "Especialista em automação de testes. Cria suites com Cypress, Selenium, Playwright e integra em pipelines CI/CD."
+        descricaoCurta: "Especialista em automação de testes. Cria suites com Cypress, Selenium, Playwright e integra em pipelines CI/CD.",
+        descricaoCompleta: "QA Automação (ou SDET — Software Development Engineer in Test) é o profissional que constrói e mantém suítes de testes automatizados pra garantir qualidade contínua. Em 2026, é a especialização mais procurada de QA — empresas modernas exigem CI/CD com testes automatizados, e quem só faz teste manual fica pra trás. Domina ferramentas como Cypress, Playwright, Selenium ou Appium (mobile), integra testes em pipelines, e cobre tipos diversos (E2E, integração, API, contrato). Salário em alta: pleno gira R$ 6-12k, sêniores em fintechs e produtos digitais chegam a R$ 14-20k+. Mercado em transformação por IA (TestBooster, Mabl) — quem domina ferramentas modernas pega vaga rápido.",
+        oQueFaz: "No dia a dia: escreve testes E2E em Cypress, Playwright ou Selenium pra cobrir jornadas críticas do usuário, automatiza testes de API (Postman, REST Assured, Karate), integra suítes em pipelines CI/CD (Jenkins, GitHub Actions, GitLab CI), trabalha em paralelo com devs pra TDD e BDD, mantém suítes existentes (reduz flaky tests, melhora performance), e participa de cerimônias ágeis garantindo definição de testes. Em times maduros, ajuda na arquitetura de qualidade do produto.",
+        diferencasDaAreaMae: "Dentro de QA, a Automação separa-se claramente do QA Manual: enquanto o Manual executa testes humanamente (clica, valida, reporta), o Automação escreve código que faz isso por ele continuamente. Diferente do QA Performance (que mede carga e latência), o Automação foca em funcionalidade e regressão. Cargo mais técnico de QA — exige programação real (JavaScript/TypeScript ou Java). Em 2026 é o caminho mais lucrativo dentro de QA — empresas pagam mais por automação que por manual.",
+        habilidadesEspecificas: [
+          "JavaScript/TypeScript (mais comum em 2026 com Cypress/Playwright)",
+          "Frameworks de automação (Cypress, Playwright, Selenium)",
+          "Testes de API (Postman, REST Assured, Karate)",
+          "Integração CI/CD (GitHub Actions, GitLab CI, Jenkins)",
+          "BDD/TDD e padrões de teste (Page Object Model, fixtures)"
+        ],
+        ferramentasEspecificas: [
+          "Cypress (mais popular pra frontend moderno)",
+          "Playwright (Microsoft, multi-browser, em alta)",
+          "Selenium (legado, ainda comum em corporações)",
+          "Postman ou Insomnia (testes de API)",
+          "Appium (testes mobile cross-platform)",
+          "GitHub Actions ou Jenkins (pipelines)"
+        ],
+        cargos: [
+          "QA Automação Júnior (0-2 anos)",
+          "QA Automação Pleno / SDET (2-5 anos)",
+          "QA Automação Sênior / Senior SDET (5+ anos)",
+          "QA Tech Lead / Test Architect"
+        ],
+        faixaSalarial: "R$ 3.500 (júnior) a R$ 20.000+ (sênior). Pleno gira em R$ 6-12k. Sêniores em fintechs e produtos digitais (Stone, iFood, Magalu) chegam a R$ 14-18k. Remoto pra fora paga em dólar (US$ 4-8k/mês).",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "Cypress Real World App (tutorial oficial gratuito, completo)",
+          "Playwright Documentação Oficial (excelente, com exemplos práticos)",
+          "Test Automation University (Applitools) — cursos gratuitos sobre todas as ferramentas"
+        ],
+        projetosSugeridos: [
+          "Suíte de testes E2E completa pra site público (e-commerce, blog) usando Cypress",
+          "Testes de API REST pra serviço público (PokeAPI, JSONPlaceholder) com Playwright",
+          "Pipeline CI/CD funcional no GitHub Actions executando testes a cada PR"
+        ],
+        roadmapEspecifico: [
+          "Aprender JavaScript/TypeScript profundamente (não basta usar — entender)",
+          "Escolher ferramenta principal: Cypress (mais fácil) ou Playwright (mais moderno)",
+          "Estudar padrões de teste (Page Object Model, fixtures, custom commands)",
+          "Aprender CI/CD básico (GitHub Actions é o mais acessível)",
+          "Construir portfólio público no GitHub com 2-3 projetos de automação"
+        ],
+        dicasIniciais: "Cypress é a porta de entrada mais fácil — comece por ele. Playwright é mais moderno e pago melhor — vale migrar depois. Não tente entrar em automação sem JavaScript/TypeScript decente — vaga vai pedir código. Inglês é importante (toda doc em inglês). Mercado mudando rápido com IA — acompanhe TestBooster, Mabl, mas domine as ferramentas open-source primeiro. Cargo super valorizado em 2026."
       },
       {
         slug: "qa-manual",
         nome: "QA Manual",
-        descricaoCurta: "Foco em testes exploratórios, planos de teste e validação funcional. Porta de entrada mais comum em QA."
+        descricaoCurta: "Foco em testes exploratórios, planos de teste e validação funcional. Porta de entrada mais comum em QA.",
+        descricaoCompleta: "QA Manual é o profissional que executa testes humanamente — clica em botões, preenche formulários, valida fluxos, descobre bugs sutis que automação não pega. É a porta de entrada mais acessível em QA no Brasil, mas também a mais saturada — em 2026, mercado prefere quem combina manual com noções de automação. Bom QA Manual é especialista em exploração: encontra bugs em edge cases, valida UX rigorosamente, e produz relatórios claros pra devs. Salário menor que automação: R$ 2.5-5k júnior, R$ 5-9k pleno, R$ 9-14k sênior. Pra escalar carreira: migrar pra automação após 1-2 anos.",
+        oQueFaz: "No dia a dia: executa casos de teste planejados (manual scripted), faz testes exploratórios (descobre bugs sem roteiro), valida UX em diferentes dispositivos/navegadores, reporta bugs com clareza (steps to reproduce, evidências, severidade), participa de cerimônias ágeis (refinamento, sprint review), valida correções de bugs, e contribui pra base de conhecimento de qualidade do produto. Em times maduros, faz validação de acessibilidade e usabilidade.",
+        diferencasDaAreaMae: "Dentro de QA, o Manual é o caminho mais acessível — não precisa programar pra começar. Diferente do QA Automação (que escreve código), o Manual usa raciocínio analítico e atenção a detalhes. Diferente do QA Performance (que mede carga), o Manual valida funcionalidade humanamente. Mercado em transformação: empresas modernas exigem QA Manual com pelo menos noções de automação. Caminho ideal: começa como Manual, aprende automação em 1-2 anos, migra. Quem fica só manual longo prazo encontra teto salarial.",
+        habilidadesEspecificas: [
+          "Atenção a detalhes e raciocínio analítico (essencial)",
+          "Técnicas de teste exploratório (heurísticas, charters)",
+          "Documentação clara de bugs (steps to reproduce, evidências)",
+          "Conhecimento de ferramentas de gestão (Jira, Azure DevOps)",
+          "Comunicação efetiva com devs e stakeholders"
+        ],
+        ferramentasEspecificas: [
+          "Jira ou Azure DevOps (gestão de bugs e casos de teste)",
+          "Postman (testes de API básicos)",
+          "TestRail ou Zephyr (gestão de casos de teste)",
+          "Chrome DevTools (debugging em navegadores)",
+          "BrowserStack ou LambdaTest (testes cross-browser)",
+          "Charles Proxy ou Fiddler (inspeção de tráfego)"
+        ],
+        cargos: [
+          "QA Júnior / Analista de Testes Júnior (0-2 anos)",
+          "QA Pleno / Analista de Testes Pleno (2-5 anos)",
+          "QA Sênior / Analista de Testes Sênior (5+ anos)",
+          "QA Tech Lead (caminho evolutivo: migrar pra automação)"
+        ],
+        faixaSalarial: "R$ 2.500 (júnior) a R$ 14.000 (sênior). Pleno gira em R$ 5-9k. Sêniores especialistas em domínios complexos (finanças, saúde) chegam a R$ 12k+. Cuidado com teto: QA Manual puro raramente passa de R$ 14k.",
+        dificuldade: 2,
+        cursosGratuitos: [
+          "Curso em Vídeo / Júlio de Lima — Trilha de QA gratuita no YouTube (referência BR)",
+          "Test Automation University — cursos manuais e exploratórios gratuitos",
+          "Ministry of Testing — comunidade global com recursos gratuitos"
+        ],
+        projetosSugeridos: [
+          "Documentar 50+ casos de teste detalhados pra produto público (Magazine Luiza, iFood)",
+          "Sessão de teste exploratório de 2h em site público + bugs documentados em formato real",
+          "Bug report estruturado completo (steps, expected vs actual, severidade, screenshots)"
+        ],
+        roadmapEspecifico: [
+          "Aprender fundamentos de testes (heurísticas, técnicas de design, ciclo de vida de bugs)",
+          "Praticar documentação clara de bugs (formato STAR ou similar)",
+          "Estudar ferramentas básicas (Jira, Postman para APIs)",
+          "Conseguir vaga como QA Júnior (porta de entrada mais fácil em tech)",
+          "Após 1-2 anos: aprender automação (Cypress/Playwright) pra escalar carreira"
+        ],
+        dicasIniciais: "QA Manual é a porta de entrada mais acessível em tech — não precisa programar pra começar. MAS: cuidado com o teto salarial — quem fica só manual longo prazo trava em R$ 10-14k. Use o cargo como trampolim: aprenda automação no 2º ano e migre. Júlio de Lima no YouTube é referência BR — assista tudo. Inglês ajuda mas não é deal-breaker como em automação. Mercado saturado em júnior — diferencial é exploração e comunicação clara."
       },
       {
         slug: "qa-performance",
         nome: "QA Performance",
-        descricaoCurta: "Testes de carga e estresse. Usa JMeter, k6, Gatling pra validar comportamento de sistemas sob alta demanda."
+        descricaoCurta: "Testes de carga e estresse. Usa JMeter, k6, Gatling pra validar comportamento de sistemas sob alta demanda.",
+        descricaoCompleta: "QA Performance é o especialista em testes de carga, stress e capacidade — garante que o sistema aguenta picos de uso reais (Black Friday, eventos, lançamentos virais) sem cair. Diferente do QA funcional (que valida 'funciona certo?'), o Performance valida 'aguenta a carga?'. Cargo nicho mas super valorizado em e-commerces, fintechs, gateways de pagamento e qualquer produto com alta concorrência. Salário acima da média de QA: pleno R$ 8-15k, sêniores em fintechs e e-commerces grandes chegam a R$ 18-25k. Pouca gente no mercado — quem domina JMeter, k6, Gatling pega vagas raramente competitivas.",
+        oQueFaz: "No dia a dia: planeja testes de carga simulando cenários reais (picos de venda, eventos), constrói scripts em JMeter, k6 ou Gatling, executa testes em ambientes de homologação (ou produção controlada), analisa métricas (latência p95/p99, throughput, taxa de erro), identifica gargalos de performance (DB, código, infra), trabalha com devs e DevOps pra otimizar, e produz relatórios técnicos detalhados. Em e-commerces, prepara o sistema pra Black Friday meses antes.",
+        diferencasDaAreaMae: "Dentro de QA, o Performance é o cargo mais técnico e especializado — diferente do QA Manual (foco em UX e funcionalidade) e Automação (foco em regressão), o Performance lida com capacidade e escala. Mais próximo de SRE/DevOps que de QA tradicional — precisa entender infraestrutura, banco de dados, profiling. Cargo nicho — empresas pequenas terceirizam; empresas grandes têm 1-2 especialistas. Caminho de carreira: pode virar SRE ou Performance Engineer (cargo internacional bem pago).",
+        habilidadesEspecificas: [
+          "Ferramentas de teste de carga (JMeter, k6, Gatling, Locust)",
+          "Análise de métricas (latência, throughput, percentis, taxa de erro)",
+          "Profiling de aplicações (identificar gargalos em código)",
+          "Banco de dados (queries lentas, índices, locks)",
+          "Infraestrutura básica (load balancers, cache, CDN, scaling)"
+        ],
+        ferramentasEspecificas: [
+          "JMeter (clássico, ainda padrão em corporações)",
+          "k6 (moderno, JavaScript, em alta)",
+          "Gatling (Scala, performance superior pra cargas pesadas)",
+          "Locust (Python, fácil pra quem já programa)",
+          "Grafana + Prometheus (visualização de métricas)",
+          "New Relic ou Datadog (APM em produção)"
+        ],
+        cargos: [
+          "QA Performance Júnior (raro, geralmente vem de QA Automação)",
+          "QA Performance Pleno (3+ anos)",
+          "QA Performance Sênior (5+ anos)",
+          "Performance Engineer / Site Reliability Engineer (transição comum)"
+        ],
+        faixaSalarial: "R$ 5.000 (júnior raro) a R$ 25.000+ (sênior em fintechs/e-commerces). Pleno gira em R$ 8-15k. Especialistas em e-commerce de grande porte (Magalu, Americanas, Mercado Livre) chegam a R$ 18-22k. Remoto pra fora paga em dólar.",
+        dificuldade: 4,
+        cursosGratuitos: [
+          "k6 Documentation Oficial (excelente, com exemplos práticos completos)",
+          "JMeter Tutorial — Apache (oficial, ainda referência)",
+          "Test Automation University — Performance Testing tracks gratuitas"
+        ],
+        projetosSugeridos: [
+          "Teste de carga em API pública: 100 → 1.000 → 10.000 usuários simultâneos",
+          "Identificar gargalo em projeto open-source: rodar perfil + propor otimização",
+          "Dashboard Grafana mostrando métricas de teste em tempo real"
+        ],
+        roadmapEspecifico: [
+          "Ter base de QA (manual ou automação) — 2+ anos",
+          "Aprender fundamentos de redes, banco de dados e cloud",
+          "Dominar uma ferramenta principal (k6 é o mais moderno e versátil)",
+          "Estudar análise de métricas (latência, percentis, throughput)",
+          "Construir portfólio: 2-3 testes públicos com análise técnica detalhada"
+        ],
+        dicasIniciais: "Nicho mais técnico de QA — não tente entrar sem base sólida. k6 é o caminho mais inteligente em 2026 (JavaScript, moderno, fácil de aprender). JMeter ainda é importante pra corporações tradicionais. Vale muito a pena se você vem de DevOps ou Backend — sua experiência se traduz bem. Inglês é obrigatório. Cargo raro = pouca competição = salário acima da média de QA."
       }
     ]
   },
@@ -1557,12 +1821,100 @@ export const areasTI: AreaTI[] = [
       {
         slug: "ios-nativo",
         nome: "iOS Nativo",
-        descricaoCurta: "Desenvolvimento exclusivo pra Apple com Swift e Xcode. Foco em apps que aproveitam ao máximo recursos do iOS."
+        descricaoCurta: "Desenvolvimento exclusivo pra Apple com Swift e Xcode. Foco em apps que aproveitam ao máximo recursos do iOS.",
+        descricaoCompleta: "Desenvolvedor iOS Nativo é o profissional que constrói apps especificamente pra ecossistema Apple (iPhone, iPad, Apple Watch, Vision Pro) usando Swift e SwiftUI. Diferente do React Native (cross-platform), iOS Nativo entrega performance máxima e acesso completo às APIs Apple (Face ID, ARKit, HealthKit, etc). Cargo mais raro que React Native no Brasil mas super valorizado — Glassdoor mostra média de R$ 6.042, mas faixa real é R$ 4-8k júnior, R$ 7-12k pleno, R$ 11-20k sênior (Melhores Empregos confirma R$ 11-20k pra sênior). Mercado BR menor que React Native (apps brasileiros priorizam cross-platform), mas internacional remoto super aquecido.",
+        oQueFaz: "No dia a dia: desenvolve apps em Swift com UIKit (antigo) ou SwiftUI (moderno), integra com APIs REST/GraphQL, implementa recursos exclusivos iOS (Face ID, push notifications, deep links, widgets, Live Activities), otimiza performance (memory, battery, CPU), publica na App Store seguindo guidelines rigorosos da Apple, e atualiza apps conforme novas versões do iOS. Trabalha com Xcode (IDE da Apple, exige Mac obrigatoriamente).",
+        diferencasDaAreaMae: "Dentro de Mobile, o iOS Nativo separa-se do React Native pelo modelo: nativo entrega performance máxima e acesso 100% às APIs Apple; React Native sacrifica algumas em troca de cross-platform. Diferente do Android Nativo (Kotlin/Java), iOS usa Swift + ecossistema Apple — Mac obrigatório, App Store rigorosa, padrões visuais específicos (Human Interface Guidelines). Mercado BR menor que React Native, mas internacional é forte. Cargo perfeito pra quem ama produtos premium e tem Mac (obrigatório).",
+        habilidadesEspecificas: [
+          "Swift profundo (linguagem oficial Apple)",
+          "SwiftUI (moderno) + UIKit (legado, ainda comum)",
+          "Combine ou async/await (programação reativa Apple)",
+          "Integração com APIs Apple (Face ID, ARKit, HealthKit, MapKit)",
+          "App Store submission e guidelines (HIG da Apple)"
+        ],
+        ferramentasEspecificas: [
+          "Xcode (IDE obrigatória, só roda em Mac)",
+          "Swift Package Manager (gestão de dependências)",
+          "TestFlight (distribuição beta)",
+          "Instruments (profiling de performance)",
+          "Firebase ou OneSignal (push notifications)",
+          "Sentry ou Bugsnag (crash reporting)"
+        ],
+        cargos: [
+          "Desenvolvedor iOS Júnior (0-2 anos)",
+          "Desenvolvedor iOS Pleno (2-5 anos)",
+          "Desenvolvedor iOS Sênior (5+ anos)",
+          "Tech Lead iOS / Staff Engineer Mobile"
+        ],
+        faixaSalarial: "R$ 4.000 (júnior) a R$ 20.000+ (sênior). Média BR R$ 6.042-6.877 — Glassdoor/Indeed 2026. Pleno gira em R$ 7-12k. Sênior em fintechs e remoto pra fora chega a R$ 15-20k+. Internacional remoto paga US$ 5-10k/mês.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Apple Developer — Swift e SwiftUI Tutorials (oficial gratuito, excelente)",
+          "Hacking with Swift (Paul Hudson) — referência mundial, conteúdo gratuito massivo",
+          "Stanford CS193p — Developing Apps for iOS (curso completo no YouTube)"
+        ],
+        projetosSugeridos: [
+          "Clone funcional de app conhecido (Calculator, Weather, Notes) com SwiftUI",
+          "App próprio resolvendo problema seu — publicar na App Store (US$ 99/ano)",
+          "Contribuir pra biblioteca open-source iOS no GitHub (peso enorme no CV)"
+        ],
+        roadmapEspecifico: [
+          "ATENÇÃO: precisa de Mac (Apple obrigatório pra desenvolver iOS)",
+          "Aprender Swift profundamente (linguagem moderna, expressiva)",
+          "Estudar SwiftUI (futuro) + UIKit (legado, ainda em projetos antigos)",
+          "Construir 2-3 apps próprios completos com publicação na App Store",
+          "Contribuir pra projetos open-source iOS (Alamofire, Kingfisher, etc)"
+        ],
+        dicasIniciais: "Mac é OBRIGATÓRIO — sem ele, esquece iOS. Apple Developer Program custa US$ 99/ano pra publicar. Comece com SwiftUI (futuro) mas saiba UIKit (ainda em projetos legados). Inglês é altamente diferencial — comunidade quase 100% em inglês. Mercado BR menor que Android e React Native, MAS remoto internacional paga muito bem. Considere combinar com Kotlin Multiplatform (KMP) — empresas pagam mais por quem cobre os dois."
       },
       {
         slug: "android-nativo",
         nome: "Android Nativo",
-        descricaoCurta: "Desenvolvimento exclusivo pra Android com Kotlin e Android Studio. Performance e integração profunda com o sistema."
+        descricaoCurta: "Desenvolvimento exclusivo pra Android com Kotlin e Android Studio. Performance e integração profunda com o sistema.",
+        descricaoCompleta: "Desenvolvedor Android Nativo é o profissional que constrói apps especificamente pra ecossistema Android usando Kotlin (linguagem oficial Google desde 2017) e Jetpack Compose (UI moderna). Diferente do React Native (cross-platform), o Android Nativo entrega performance máxima e acesso completo às APIs Android. Mercado BR muito maior que iOS — BeBee registra 1.04M+ vagas relacionadas a Android, vs ~250k de iOS. Salários: média de Desenvolvedor Mobile R$ 5.626 (Trybe/Glassdoor), com sêniores chegando a R$ 10.963. Em fintechs (Nubank, PicPay, Stone), sêniores ultrapassam R$ 15-20k. Brasil é mercado-chave: 80%+ dos smartphones rodam Android.",
+        oQueFaz: "No dia a dia: desenvolve apps em Kotlin com Jetpack Compose (moderno) ou XML/Views (legado), integra com APIs REST/GraphQL, implementa recursos Android (notifications, deep links, widgets, work manager), otimiza performance pra dispositivos variados (Android é fragmentado — de devices baratos a flagships), publica na Google Play seguindo guidelines, e atualiza apps conforme novas versões do Android. Trabalha com Android Studio (IDE do Google, gratuita, roda em qualquer OS).",
+        diferencasDaAreaMae: "Dentro de Mobile, o Android Nativo separa-se do React Native pelo modelo: nativo entrega performance máxima e acesso 100% às APIs Android; React Native sacrifica em troca de cross-platform. Diferente do iOS Nativo (Swift, Mac obrigatório), Android usa Kotlin/Java e roda em Windows/Linux/Mac — barreira de entrada menor. Mercado BR MUITO maior que iOS (1M+ vagas Android vs 250k iOS) — brasileiro usa Android massivamente. Cargo perfeito pra quem quer profundidade em uma plataforma com mercado grande.",
+        habilidadesEspecificas: [
+          "Kotlin profundo (linguagem oficial Android desde 2017)",
+          "Jetpack Compose (UI moderna) + XML/Views (legado, ainda comum)",
+          "Arquitetura MVVM, MVI, Clean Architecture",
+          "Coroutines e Flow (programação assíncrona Kotlin)",
+          "Google Play submission e Material Design Guidelines"
+        ],
+        ferramentasEspecificas: [
+          "Android Studio (IDE oficial Google, gratuita)",
+          "Gradle (build system)",
+          "Retrofit + OkHttp (clientes HTTP)",
+          "Room (banco SQLite local)",
+          "Firebase (push, analytics, crash)",
+          "LeakCanary ou Sentry (debugging avançado)"
+        ],
+        cargos: [
+          "Desenvolvedor Android Júnior (0-2 anos)",
+          "Desenvolvedor Android Pleno (2-5 anos)",
+          "Desenvolvedor Android Sênior (5+ anos)",
+          "Tech Lead Android / Staff Engineer Mobile"
+        ],
+        faixaSalarial: "R$ 3.215 (júnior) a R$ 20.000+ (sênior). Média BR R$ 5.626 — Trybe/Glassdoor 2026. Pleno gira em R$ 6-11k. Sênior em fintechs (Nubank, PicPay, Inter, Stone) chega a R$ 15-22k. Remoto pra fora paga US$ 5-10k/mês.",
+        dificuldade: 3,
+        cursosGratuitos: [
+          "Android Developers — cursos oficiais do Google (gratuitos, completos)",
+          "Kotlin Documentation Oficial + Kotlin Koans (gratuito, interativo)",
+          "Philipp Lackner (YouTube) — referência mundial em Android com Kotlin"
+        ],
+        projetosSugeridos: [
+          "Clone funcional de app conhecido (Notes, Weather, Calculator) com Jetpack Compose",
+          "App próprio resolvendo problema seu — publicar na Google Play (US$ 25 uma vez)",
+          "Contribuir pra biblioteca open-source Android no GitHub"
+        ],
+        roadmapEspecifico: [
+          "Aprender Kotlin profundamente (linguagem moderna, expressiva)",
+          "Estudar Jetpack Compose (futuro) + Views/XML (legado, ainda em projetos antigos)",
+          "Aprender arquitetura MVVM ou Clean Architecture",
+          "Construir 2-3 apps próprios completos com publicação na Google Play",
+          "Especializar em área específica (security, performance, ML on-device)"
+        ],
+        dicasIniciais: "Não precisa de Mac (vantagem sobre iOS) — Android Studio roda em qualquer OS. Google Play custa US$ 25 uma vez (vs US$ 99/ano da Apple). Comece com Jetpack Compose (futuro) mas saiba Views/XML (legado). Brasil é gigante em Android — vagas abundam. Inglês é diferencial. Considere combinar com Kotlin Multiplatform (KMP) pra também cobrir iOS — empresas pagam mais por quem cobre os dois."
       },
       {
         slug: "react-native",
@@ -1656,7 +2008,51 @@ export const areasTI: AreaTI[] = [
       {
         slug: "platform-engineer",
         nome: "Platform Engineer",
-        descricaoCurta: "Constrói plataformas internas que outros times de dev consomem. Foco em developer experience e self-service."
+        descricaoCurta: "Constrói plataformas internas que outros times de dev consomem. Foco em developer experience e self-service.",
+        descricaoCompleta: "Platform Engineer é a evolução do DevOps em 2026: profissional que constrói Internal Developer Platforms (IDPs) — plataformas internas de self-service que abstraem complexidade de Kubernetes, Terraform e cloud, deixando devs focarem em produto. Diferente do DevOps tradicional (que opera infra), o Platform Engineer trata desenvolvedores internos como clientes e a plataforma como produto. Gartner prevê que 80% das empresas terão times de plataforma até 2027. No BR, Mercado Livre, iFood, Nubank já operam com times maduros. Salário top do DevOps: média SP R$ 15.583, pleno R$ 11k-22k, sêniores chegam a R$ 44.500 (90º percentil — Glassdoor 2026). Mercado super aquecido pelo gap de profissionais.",
+        oQueFaz: "No dia a dia: constrói plataformas internas usando Backstage (Spotify, padrão global), Crossplane (provisionamento) e ArgoCD (GitOps), define 'Golden Paths' — caminhos padronizados pra criar serviços novos, automatiza provisionamento de recursos (databases, caches, queues), reduz cognitive load dos devs, mede adoção da plataforma (devs como clientes), e itera baseado em feedback. Trabalha como product manager de uma plataforma técnica — produto-thinking aplicado a infra.",
+        diferencasDaAreaMae: "Dentro de DevOps, o Platform Engineer é a evolução natural — diferente do DevOps tradicional (que opera infra reativamente, com tickets), o Platform Engineer constrói self-service proativo. Diferente do SRE (que foca em confiabilidade), o Platform Engineer foca em developer experience (DX). Diferente do DevSecOps (que adiciona segurança), o Platform Engineer adiciona produto-thinking. É o cargo mais sênior e bem pago de DevOps em 2026 — exige experiência sólida em DevOps + visão de produto.",
+        habilidadesEspecificas: [
+          "Kubernetes profundo (CKA é cobrada em ~40% das vagas)",
+          "Infrastructure as Code (Terraform, Crossplane, Pulumi)",
+          "Backstage (Spotify) — padrão global pra developer portals",
+          "GitOps (ArgoCD, Flux) e CI/CD avançado",
+          "Product-thinking aplicado a plataforma (devs como clientes)"
+        ],
+        ferramentasEspecificas: [
+          "Backstage (Spotify, padrão global pra IDPs)",
+          "Crossplane (provisionamento declarativo)",
+          "ArgoCD ou Flux (GitOps)",
+          "Terraform ou OpenTofu (IaC)",
+          "Kubernetes + Helm (orquestração)",
+          "Datadog ou Grafana (observabilidade)"
+        ],
+        cargos: [
+          "Platform Engineer Pleno (vindo de DevOps, 3+ anos)",
+          "Senior Platform Engineer (5+ anos)",
+          "Staff Platform Engineer (arquitetura de plataforma)",
+          "Principal Platform Engineer / Head of Platform"
+        ],
+        faixaSalarial: "R$ 11.063 (pleno baixo) a R$ 44.500 (sênior top 10%). Média SP R$ 15.583 — Glassdoor 2026. Sêniores em Mercado Livre, iFood, Nubank passam R$ 25-35k. Remoto pra fora paga US$ 8-15k/mês. Cargo mais bem pago de DevOps.",
+        dificuldade: 5,
+        cursosGratuitos: [
+          "Backstage Documentação Oficial (excelente, com tutoriais completos)",
+          "CNCF Platforms Working Group — recursos gratuitos sobre Platform Engineering",
+          "PlatformCon (conferência gratuita anual, todas talks no YouTube)"
+        ],
+        projetosSugeridos: [
+          "Setup completo do Backstage com 3-5 plugins em cluster K8s próprio",
+          "Crossplane composition pra provisionar PostgreSQL + cache + monitoring automaticamente",
+          "GitOps end-to-end: dev faz commit → ArgoCD detecta → deploy automático em produção"
+        ],
+        roadmapEspecifico: [
+          "Ter base sólida de DevOps (Docker, K8s, CI/CD, cloud, Terraform) — 3+ anos",
+          "Estudar Platform Engineering como disciplina (Team Topologies, Platform as Product)",
+          "Aprender Backstage profundamente (padrão da área)",
+          "Aprender Crossplane + ArgoCD (Kubernetes-native)",
+          "Construir IDP completo em ambiente próprio + documentar como produto"
+        ],
+        dicasIniciais: "Cargo mais sênior do DevOps — não tente entrar sem 3+ anos de DevOps tradicional. Backstage é A ferramenta — invista 2-3 meses dominando. Mindset de produto é o diferencial: tratar devs como clientes muda tudo. CKA é cobrada em quase metade das vagas — vale tirar. Inglês é obrigatório (toda doc, talks e community em inglês). Brasil está atrasado nessa onda (~2 anos) — quem entrar agora pega salários acima do normal por 3-5 anos."
       },
       {
         slug: "devsecops",
