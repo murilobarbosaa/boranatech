@@ -327,6 +327,22 @@
     background-color: #0e7490;
     color: #ecfeff;
   }
+  .tag-fullstack {
+    background-color: #5b21b6;
+    color: #f5f3ff;
+  }
+  .tag-engenharia-dados {
+    background-color: #0891b2;
+    color: #ecfeff;
+  }
+  .tag-sre {
+    background-color: #c2410c;
+    color: #fff7ed;
+  }
+  .tag-gamedev {
+    background-color: #a21caf;
+    color: #fdf4ff;
+  }
 
   /* Section alternating background */
   .section-alt {
