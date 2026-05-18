@@ -5,8 +5,11 @@ import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import { GENDER_VALUES } from "../../shared/gender";
 
 const router = Router();
+
+const GENDER_SET = new Set<string>(GENDER_VALUES);
 
 const EDITABLE_FIELDS = [
   "name",
@@ -21,6 +24,7 @@ const EDITABLE_FIELDS = [
   "onboarding_completed",
   "onboarding_step",
   "preferences",
+  "gender",
 ];
 
 const AVATAR_VALUES = {
@@ -116,6 +120,13 @@ router.patch("/", async (req, res, next) => {
       if (field in updates) {
         const validationError = validateAvatarPreference(field, updates[field]);
         if (validationError) return next(validationError);
+      }
+    }
+
+    if ("gender" in updates) {
+      const value = updates.gender;
+      if (value !== null && (typeof value !== "string" || !GENDER_SET.has(value))) {
+        return next(createError(400, "invalid_gender", "Valor inválido para gender."));
       }
     }
 

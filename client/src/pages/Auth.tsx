@@ -8,6 +8,7 @@ import SEO from "@/components/SEO";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthErrorMessage, type FriendlyError } from "@/lib/authErrors";
+import { GENDER_VALUES, type Gender } from "@shared/gender";
 
 const passwordSchema = z
   .string()
@@ -21,7 +22,15 @@ const signupSchema = z.object({
   name: z.string().trim().min(2, "Informe seu nome.").max(80, "Use um nome mais curto."),
   email: z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(160, "Use um e-mail mais curto."),
   password: passwordSchema,
+  gender: z.enum(GENDER_VALUES, { message: "Selecione como você se identifica." }),
 });
+
+const GENDER_OPTIONS: Array<{ value: Gender; label: string }> = [
+  { value: "feminino", label: "Feminino" },
+  { value: "masculino", label: "Masculino" },
+  { value: "outro", label: "Outro" },
+  { value: "prefiro_nao_dizer", label: "Prefiro não dizer" },
+];
 
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(160, "Use um e-mail mais curto."),
@@ -45,12 +54,13 @@ export default function Auth({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [gender, setGender] = useState<Gender | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
 
   useEffect(() => {
     setError(null);
-  }, [name, email, password]);
+  }, [name, email, password, gender]);
 
   const passwordChecks = useMemo(
     () => [
@@ -70,7 +80,7 @@ export default function Auth({
 
     try {
       if (isSignup) {
-        const parsed = signupSchema.safeParse({ name, email, password });
+        const parsed = signupSchema.safeParse({ name, email, password, gender });
         if (!parsed.success) {
           toast.error(firstIssueMessage(parsed.error));
           return;
@@ -160,6 +170,38 @@ export default function Auth({
                     value={name}
                   />
                 </label>
+              )}
+              {isSignup && (
+                <fieldset className="block">
+                  <legend className="mb-1 block text-xs font-black uppercase text-slate-600">
+                    Como você se identifica?
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {GENDER_OPTIONS.map((option) => {
+                      const selected = gender === option.value;
+                      return (
+                        <label
+                          key={option.value}
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2 text-sm font-bold transition ${
+                            selected
+                              ? "border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                              : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="gender"
+                            value={option.value}
+                            checked={selected}
+                            onChange={() => setGender(option.value)}
+                            className="sr-only"
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
               )}
               <label className="block">
                 <span className="mb-1 block text-xs font-black uppercase text-slate-600">E-mail</span>
