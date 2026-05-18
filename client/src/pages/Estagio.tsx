@@ -258,7 +258,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                   </div>
                 ) : (
                   <div className="rounded-xl border-2 border-amber-200 bg-white p-5 text-sm font-semibold text-slate-600">
-                    Nenhuma vaga externa sincronizada ainda. Use as plataformas acima enquanto a integração Jooble não tiver uma chave configurada.
+                    Nenhuma vaga sincronizada no momento. Confira as plataformas acima pra encontrar oportunidades.
                   </div>
                 )}
               </div>
