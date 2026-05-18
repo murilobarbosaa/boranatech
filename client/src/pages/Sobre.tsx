@@ -62,7 +62,7 @@ export default function Sobre() {
             <Eyebrow>SOBRE O PROJETO</Eyebrow>
             <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
               <div>
-                <h1 className="font-display text-5xl font-black leading-tight sm:text-6xl lg:text-7xl">
+                <h1 className="font-display text-4xl font-black leading-tight sm:text-5xl lg:text-6xl xl:text-7xl">
                   A TI é enorme. A gente organiza para você.
                 </h1>
                 <p className="mt-6 max-w-3xl text-lg font-bold leading-relaxed text-slate-700 sm:text-xl">

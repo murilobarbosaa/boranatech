@@ -87,7 +87,7 @@ export default function Mulheres() {
               <Sparkles className="h-5 w-5 text-pink-800" />
               <h2 className="font-display text-2xl font-black text-slate-950">Trilhas de apoio para entrar com mais segurança</h2>
             </div>
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {womenArea.supportTracks.map((track) => (
                 <div key={track.title} className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#db2777]">
                   <h3 className="font-display font-black text-slate-950">{track.title}</h3>
