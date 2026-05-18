@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { syncJobs } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
 import { cancelAsaasSubscription } from "../lib/asaas";
+import { recordCronRun } from "../lib/cron-logs";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
@@ -69,9 +70,22 @@ router.post("/sync-news", async (_req, res, next) => {
   try {
     const result = await syncNews();
     await recordSync("currents", startedAt, result);
+    await recordCronRun({
+      jobName: "sync-news",
+      status: result.failed > 0 ? "partial" : "success",
+      startedAt,
+      payload: { ...result },
+    });
     res.json({ data: result });
   } catch (err) {
-    await recordSync("currents", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, err instanceof Error ? err.message : String(err));
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await recordSync("currents", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, errorMessage);
+    await recordCronRun({
+      jobName: "sync-news",
+      status: "error",
+      startedAt,
+      errorMessage,
+    });
     next(err);
   }
 });
@@ -82,14 +96,29 @@ router.post("/sync-jobs", async (_req, res, next) => {
   try {
     const result = await syncJobs();
     await recordSync("jooble", startedAt, result);
+    await recordCronRun({
+      jobName: "sync-jobs",
+      status: result.failed > 0 ? "partial" : "success",
+      startedAt,
+      payload: { ...result },
+    });
     res.json({ data: result });
   } catch (err) {
-    await recordSync("jooble", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, err instanceof Error ? err.message : String(err));
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await recordSync("jooble", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, errorMessage);
+    await recordCronRun({
+      jobName: "sync-jobs",
+      status: "error",
+      startedAt,
+      errorMessage,
+    });
     next(err);
   }
 });
 
 router.post("/process-cancellations", async (_req, res, next) => {
+  const startedAt = new Date();
+
   try {
     const nowIso = new Date().toISOString();
 
@@ -101,6 +130,12 @@ router.post("/process-cancellations", async (_req, res, next) => {
       .lte("current_period_end", nowIso);
 
     if (dueError) {
+      await recordCronRun({
+        jobName: "process-cancellations",
+        status: "error",
+        startedAt,
+        errorMessage: dueError.message,
+      });
       return next(createError(500, "db_error", "Erro ao buscar cancelamentos pendentes."));
     }
 
@@ -139,8 +174,22 @@ router.post("/process-cancellations", async (_req, res, next) => {
       }
     }
 
-    res.json({ data: { processed: subscriptions.length, canceled, failed, failures } });
+    const processed = subscriptions.length;
+    await recordCronRun({
+      jobName: "process-cancellations",
+      status: failed > 0 ? "partial" : "success",
+      startedAt,
+      payload: { processed, canceled, failed },
+    });
+
+    res.json({ data: { processed, canceled, failed, failures } });
   } catch (err) {
+    await recordCronRun({
+      jobName: "process-cancellations",
+      status: "error",
+      startedAt,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
     next(err);
   }
 });
