@@ -8,7 +8,9 @@ import SEO from "@/components/SEO";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthErrorMessage, type FriendlyError } from "@/lib/authErrors";
+import { getMyProfile } from "@/services/profileService";
 import { GENDER_VALUES, type Gender } from "@shared/gender";
+import { greet } from "@shared/greeting";
 
 const passwordSchema = z
   .string()
@@ -88,7 +90,10 @@ export default function Auth({
 
         await signUp(parsed.data);
         localStorage.setItem("bnt_signup_completed", "true");
-        toast.success("Cadastro criado com segurança. Bem-vinda à plataforma!");
+        getMyProfile().catch((triggerErr) => {
+          console.warn("[Auth] failed to trigger welcome email:", triggerErr);
+        });
+        toast.success(`Cadastro criado com segurança. ${greet(parsed.data.gender)} à plataforma!`);
       } else {
         const parsed = loginSchema.safeParse({ email, password });
         if (!parsed.success) {

@@ -54,6 +54,7 @@ import {
   type StudyStats,
 } from "@/services/studyService";
 import type { Profile } from "@/services/contracts";
+import { greet } from "@shared/greeting";
 
 type SubscriptionPlan = {
   name?: string | null;
@@ -737,7 +738,7 @@ export default function Perfil() {
                 />
                 <div className="min-w-0">
                   <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">
-                    Bem-vinda(o) de volta
+                    {greet(profile?.gender)} de volta
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-3">
                     <h1 className="font-display text-3xl font-black text-[#1a1a1a] md:text-4xl">{userName}</h1>
