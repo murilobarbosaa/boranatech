@@ -13,7 +13,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModal";
 import { areasTI } from "@/lib/data";
-import { quizQuestions } from "@/lib/platformData";
+import { quizQuestions, QUIZ_ESTIMATED_MINUTES } from "@/lib/platformData";
 import { persistQuizResult } from "@/services/careerQuizService";
 
 type QuizPhase = "intro" | "questions" | "completing";
@@ -398,7 +398,7 @@ function IntroScreen({
             Duração
           </p>
           <p className="font-display text-2xl font-black text-slate-950">
-            ~5 min
+            ~{QUIZ_ESTIMATED_MINUTES} min
           </p>
         </div>
 

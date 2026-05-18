@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
+import { quizQuestions } from "@/lib/platformData";
 
 // =========================================
 // DADOS DOS NÚMEROS
@@ -38,8 +39,8 @@ const STATS: Stat[] = [
     color: "white",
   },
   {
-    value: 90,
-    prefix: "+",
+    value: quizQuestions.length,
+    prefix: "",
     label: "perguntas",
     description: "no quiz de carreira",
     color: "amber",

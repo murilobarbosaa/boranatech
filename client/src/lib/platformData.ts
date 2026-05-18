@@ -464,6 +464,8 @@ export const comparisonMatrix = [
   { label: "Risco para iniciantes", faculdades: "Escolher sem comparar", areas: "Ficar só pesquisando", cursos: "Não praticar", plataformas: "Excesso de opções" },
 ];
 
+export const QUIZ_ESTIMATED_MINUTES = 5;
+
 export const quizQuestions = [
   {
     id: "energy",
