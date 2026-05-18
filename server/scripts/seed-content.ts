@@ -57,7 +57,6 @@ async function seedAreas() {
         full_description: area.descricaoCompleta,
         tag: area.nome,
         tag_class: area.tagClass,
-        icon: area.emoji,
         daily_tasks: area.tarefasDiarias,
         profile_indicated: area.perfilIndicado,
         skills: area.habilidades,
