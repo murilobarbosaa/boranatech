@@ -314,7 +314,7 @@ function DesktopMenuItem({
 
       <div
         onMouseEnter={() => setOpenMenu(menu.id)}
-        className={`absolute left-0 top-full z-[1001] min-w-[520px] pt-3 transition-all duration-150 ${
+        className={`absolute left-0 top-full z-[1001] min-w-[480px] max-w-[calc(100vw-2rem)] pt-3 transition-all duration-150 ${
           isOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1.5 opacity-0 pointer-events-none"
         }`}
       >
@@ -393,7 +393,7 @@ function DesktopNav({ location }: { location: string }) {
   }, []);
 
   return (
-    <nav className="hidden flex-1 items-center justify-center gap-1 lg:flex" aria-label="Navegação principal">
+    <nav className="hidden flex-1 items-center justify-center gap-1 xl:flex" aria-label="Navegação principal">
       {menuData.map((menu) => (
         <DesktopMenuItem
           key={menu.id}
@@ -541,7 +541,7 @@ export default function Header() {
 
           <DesktopNav location={location} />
 
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className="hidden items-center gap-2 xl:flex">
             {!user ? (
               <>
                 <Link
@@ -597,7 +597,7 @@ export default function Header() {
           </div>
 
           <button
-            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] lg:hidden"
+            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] xl:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menu"
             type="button"
@@ -607,10 +607,10 @@ export default function Header() {
         </div>
       </header>
 
-      {mobileOpen ? <div className="fixed inset-0 z-[1001] bg-black/50 lg:hidden" onClick={closeMobileDrawer} /> : null}
+      {mobileOpen ? <div className="fixed inset-0 z-[1001] bg-black/50 xl:hidden" onClick={closeMobileDrawer} /> : null}
 
       <div
-        className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 lg:hidden ${
+        className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 xl:hidden ${
           mobileOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
