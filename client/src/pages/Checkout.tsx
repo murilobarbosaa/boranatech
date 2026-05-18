@@ -34,6 +34,7 @@ import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import { createCheckout } from "@/services/subscriptionService";
+import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
 
 const plans = [
   {
@@ -70,113 +71,20 @@ const plans = [
   },
 ];
 
-type ProFeature = {
-  icon: LucideIcon;
-  number: string;
-  title: string;
-  label: string;
-  description: string;
-  color: "emerald" | "blue" | "violet" | "sky" | "orange" | "amber" | "fuchsia" | "pink" | "cyan";
-  badge?: string;
-  group: "main" | "extra";
+const PRO_FEATURE_ICONS: Record<string, LucideIcon> = {
+  FileText,
+  Map,
+  Mic,
+  CalendarCheck,
+  Linkedin,
+  Github,
+  TrendingUp,
+  Send,
+  Users,
 };
 
-// TODO(débito-técnico): centralizar lista de features Pro em arquivo compartilhado.
-// Hoje existe duplicação em:
-//   - client/src/pages/Checkout.tsx (este arquivo — array proFeatures com shape rico)
-//   - server/lib/email.ts (array proBenefits — só strings)
-// Próximo passo: criar shared/proFeatures.ts com a fonte única (shape rico)
-// e derivar as strings do email a partir do campo `label`.
-const proFeatures: ProFeature[] = [
-  {
-    number: "01",
-    icon: FileText,
-    title: "Currículo",
-    label: "Analisador de currículo com IA",
-    description: "Cola seu currículo, recebe feedback acionável em segundos. Cada bullet point reescrito.",
-    color: "violet",
-    group: "main",
-  },
-  {
-    number: "02",
-    icon: Map,
-    title: "Roadmaps",
-    label: "Roadmaps completos com IA",
-    description:
-      "Pra cada área, o caminho exato do zero ao primeiro emprego. Gerados sob medida pra sua realidade.",
-    color: "emerald",
-    group: "main",
-  },
-  {
-    number: "03",
-    icon: Mic,
-    title: "Entrevistas",
-    label: "Simulador de entrevistas com IA",
-    description:
-      "Simulação por chat de entrevistas reais com feedback instantâneo. Treina antes de precisar.",
-    color: "amber",
-    group: "main",
-  },
-  {
-    number: "04",
-    icon: CalendarCheck,
-    title: "Plano de estudos",
-    label: "Plano de estudos personalizado",
-    description: "Sua semana planejada com base no seu tempo e nos seus objetivos. Sem improviso.",
-    color: "blue",
-    group: "extra",
-  },
-  {
-    number: "05",
-    icon: Linkedin,
-    title: "LinkedIn",
-    label: "Otimizador de LinkedIn com IA",
-    description:
-      "Headline, sobre, experiências. Sua presença profissional traduzida pra linguagem de recrutador.",
-    color: "sky",
-    group: "extra",
-  },
-  {
-    number: "06",
-    icon: Github,
-    title: "Portfólio",
-    label: "Analisador de portfólio (GitHub)",
-    description: "Manda seu GitHub. IA aponta o que tá faltando, o que tá bom, o que rouba pontos.",
-    color: "orange",
-    group: "extra",
-  },
-  {
-    number: "07",
-    icon: TrendingUp,
-    title: "Empregabilidade",
-    label: "Análise de empregabilidade com IA",
-    description: "Onde você tá hoje vs onde o mercado quer. Métricas reais, plano de ação.",
-    color: "fuchsia",
-    group: "extra",
-  },
-  {
-    number: "08",
-    icon: Send,
-    title: "Networking",
-    label: "Gerador de mensagens de networking",
-    description: "Mensagens personalizadas pra LinkedIn, eventos, processos seletivos.",
-    color: "pink",
-    group: "extra",
-  },
-  {
-    number: "09",
-    icon: Users,
-    title: "Comunidade",
-    label: "Comunidade exclusiva Pro",
-    description: "Discord só pra assinantes. Networking, dúvidas, conexões reais.",
-    color: "cyan",
-    badge: "em breve",
-    group: "extra",
-  },
-];
-
-const mainFeatures = proFeatures.filter((f) => f.group === "main");
-const extraFeatures = proFeatures.filter((f) => f.group === "extra");
+const mainFeatures = PRO_FEATURES.filter((f) => f.group === "main");
+const extraFeatures = PRO_FEATURES.filter((f) => f.group === "extra");
 
 const FREE_ITEMS: Array<{ icon: LucideIcon; text: string }> = [
   { icon: Layers, text: "Catálogo de 12 áreas de TI" },
@@ -499,7 +407,7 @@ function FeaturesZigZagSection() {
 
 function ZigZagBlock({ feature, reverse }: { feature: ProFeature; reverse: boolean }) {
   const tokens = COLOR_TOKENS[feature.color];
-  const Icon = feature.icon;
+  const Icon = PRO_FEATURE_ICONS[feature.iconName];
 
   return (
     <motion.div
@@ -960,7 +868,7 @@ function ExtraFeaturesSection() {
 
 function ExtraFeatureCard({ feature, index }: { feature: ProFeature; index: number }) {
   const tokens = COLOR_TOKENS[feature.color];
-  const Icon = feature.icon;
+  const Icon = PRO_FEATURE_ICONS[feature.iconName];
 
   return (
     <motion.article
