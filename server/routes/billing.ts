@@ -34,18 +34,29 @@ function extractSubscriptionId(event: Record<string, unknown>): string | null {
 
 router.get("/subscription", requireAuth, async (req, res, next) => {
   try {
-    const { data: subscription, error } = await supabaseAdmin
-      .from("subscriptions")
-      .select("*, plans(*)")
-      .eq("user_id", req.user!.id)
-      .in("status", ["active", "trialing", "past_due"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const userId = req.user!.id;
+
+    const [{ data: subscription, error }, { data: isProRpc, error: rpcError }] = await Promise.all([
+      supabaseAdmin
+        .from("subscriptions")
+        .select("*, plans(*)")
+        .eq("user_id", userId)
+        .in("status", ["active", "trialing", "past_due"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
+    ]);
 
     if (error) {
       return next(createError(500, "db_error", "Erro ao buscar assinatura."));
     }
+
+    if (rpcError) {
+      console.error("[billing/subscription] is_user_pro RPC failed:", rpcError);
+    }
+
+    const isPro = !rpcError && isProRpc === true;
 
     if (!subscription) {
       const { data: freePlan } = await supabaseAdmin.from("plans").select("*").eq("code", "free").single();
@@ -54,7 +65,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         data: {
           plan: freePlan,
           status: "free",
-          isPro: false,
+          isPro,
         },
       });
     }
@@ -62,7 +73,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
     res.json({
       data: {
         ...subscription,
-        isPro: subscription.status === "active" || subscription.status === "trialing",
+        isPro,
       },
     });
   } catch (err) {
