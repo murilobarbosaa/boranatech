@@ -2,31 +2,13 @@ import { Resend } from "resend";
 
 import type { Gender } from "../../shared/gender";
 import { greet } from "../../shared/greeting";
+import { getProBenefitLabels } from "../../shared/proFeatures";
 import { env } from "./env";
 
 const resend = env.resendApiKey ? new Resend(env.resendApiKey) : null;
 
 const FROM_TRANSACTIONAL = '"Bora na Tech?" <noreply@boranatech.com.br>';
 const FROM_RELATIONSHIP = '"Bora na Tech?" <oi@boranatech.com.br>';
-
-// TODO(débito-técnico): centralizar lista de features Pro em arquivo compartilhado.
-// Hoje existe duplicação em:
-//   - client/src/pages/Checkout.tsx (array proFeatures — shape rico: icon, title, label, description, color, group)
-//   - server/lib/email.ts (array proBenefits — este arquivo; só strings)
-// O Perfil.tsx foi simplificado pra CTA simples e não precisa mais da lista.
-// Próximo passo: criar shared/proFeatures.ts com a fonte única (shape rico)
-// e derivar os strings do email a partir do campo `label`.
-const proBenefits = [
-  "Roadmaps completos com IA",
-  "Plano de estudos personalizado",
-  "Analisador de currículo com IA",
-  "Otimizador de LinkedIn com IA",
-  "Analisador de portfólio (GitHub)",
-  "Análise de empregabilidade com IA",
-  "Simulador de entrevistas com IA",
-  "Gerador de mensagens de networking",
-  "Comunidade exclusiva Pro (em breve)",
-];
 
 function escapeHtml(value: string) {
   return value
@@ -108,7 +90,7 @@ export async function sendProUpgradeEmail(to: string, name: string, planName: st
       `${hello} ao Pro, ${safeName}!`,
       `
         <p style="font-size:16px;line-height:1.6;font-weight:700;">Sua assinatura ${safePlanName} está ativa. Todos os recursos estão desbloqueados.</p>
-        ${list(proBenefits)}
+        ${list(getProBenefitLabels())}
         ${button("Acessar recursos Pro", "https://boranatech.com.br/planos/sucesso")}
         <p style="margin-top:20px;font-size:14px;font-weight:700;">Em caso de dúvidas, responda este e-mail.</p>
       `,
