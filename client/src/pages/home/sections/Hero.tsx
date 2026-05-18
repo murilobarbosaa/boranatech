@@ -10,6 +10,7 @@ import {
 } from "framer-motion";
 import { ArrowRight, Compass } from "lucide-react";
 import { areasTI } from "@/lib/data";
+import { apiUrl } from "@/lib/api";
 
 // =========================================
 // DADOS
@@ -376,6 +377,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
 
 export default function Hero() {
   const [currentHighlight, setCurrentHighlight] = useState(0);
+  const [usersCount, setUsersCount] = useState(4800);
   const sectionRef = useRef<HTMLElement>(null);
 
   // Alterna o highlight do headline a cada 3s.
@@ -384,6 +386,21 @@ export default function Hero() {
       setCurrentHighlight((prev) => (prev + 1) % HIGHLIGHTS.length);
     }, 3000);
     return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(apiUrl("/api/stats/users-count"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.count === "number") {
+          setUsersCount(data.count);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -405,8 +422,7 @@ export default function Hero() {
           <Compass size={18} className="text-violet-600" aria-hidden="true" />
           <span className="text-sm font-bold text-slate-950">
             +
-            {/* TODO: substituir 4800 por fetch de /api/stats/users-count quando disponível */}
-            <AnimatedCounter value={4800} /> pessoas já encontraram seu caminho
+            <AnimatedCounter value={usersCount} /> pessoas já encontraram seu caminho
           </span>
           <div
             className="absolute -bottom-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-slate-950 bg-white"
