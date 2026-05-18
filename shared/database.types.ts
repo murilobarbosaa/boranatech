@@ -520,6 +520,42 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_run_logs: {
+        Row: {
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          finished_at: string
+          id: string
+          job_name: string
+          payload: Json | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at: string
+          id?: string
+          job_name: string
+          payload?: Json | null
+          started_at: string
+          status: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          finished_at?: string
+          id?: string
+          job_name?: string
+          payload?: Json | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       external_jobs: {
         Row: {
           area_slug: string | null
@@ -1300,6 +1336,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      call_cron_endpoint: { Args: { endpoint_path: string }; Returns: number }
       get_ai_usage_today: { Args: { p_user_id: string }; Returns: number }
       get_study_heatmap: {
         Args: { p_days?: number; p_user_id: string }
