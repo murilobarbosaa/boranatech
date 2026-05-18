@@ -776,18 +776,3 @@ export const collegeSuggestions: CollegeSuggestion[] = [
     nacional: true,
   },
 ];
-
-function influencerRecommendation(tip: string) {
-  return {
-    name: "Ana Moura",
-    handle: creatorHandle,
-    photo: creatorPhotoUrl,
-    tip,
-  };
-}
-
-export const influencerTips: Record<string, { name: string; handle: string; photo: string; tip: string }> = {
-  frontend: influencerRecommendation("Crie projetos pequenos, publique o processo e explique o que você aprendeu."),
-  backend: influencerRecommendation("Base de lógica, Git e APIs simples vale mais do que decorar mil ferramentas."),
-  default: influencerRecommendation("Escolha um próximo passo pequeno o suficiente para terminar nesta semana."),
-};
