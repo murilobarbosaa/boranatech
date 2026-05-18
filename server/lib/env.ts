@@ -67,7 +67,6 @@ export const env = {
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
   currentsApiKey: process.env.CURRENTS_API_KEY || "",
   joobleApiKey: process.env.JOOBLE_API_KEY || "",
-  symplaApiKey: process.env.SYMPLA_API_KEY || "",
   posthogApiKey: process.env.POSTHOG_API_KEY || "",
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
   resendApiKey: process.env.RESEND_API_KEY || "",
