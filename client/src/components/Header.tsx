@@ -380,6 +380,8 @@ function DesktopMenuItem({
 
 function DesktopNav({ location }: { location: string }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const { profile } = useAuth();
+  const showWomenSection = profile != null && profile.gender !== "masculino";
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
@@ -422,17 +424,19 @@ function DesktopNav({ location }: { location: string }) {
       >
         Mentorias
       </Link>
-      <Link
-        href="/mulheres"
-        aria-current={isPathActive("/mulheres", location) ? "page" : undefined}
-        className={`nav-pill rounded-full border-2 px-3 py-1.5 text-sm font-black shadow-[2px_2px_0_#0f172a] ${
-          isPathActive("/mulheres", location)
-            ? "border-slate-900 bg-pink-300 text-slate-950"
-            : "border-pink-300 bg-pink-100 text-pink-800 hover:bg-pink-200"
-        }`}
-      >
-        Mulheres
-      </Link>
+      {showWomenSection && (
+        <Link
+          href="/mulheres"
+          aria-current={isPathActive("/mulheres", location) ? "page" : undefined}
+          className={`nav-pill rounded-full border-2 px-3 py-1.5 text-sm font-black shadow-[2px_2px_0_#0f172a] ${
+            isPathActive("/mulheres", location)
+              ? "border-slate-900 bg-pink-300 text-slate-950"
+              : "border-pink-300 bg-pink-100 text-pink-800 hover:bg-pink-200"
+          }`}
+        >
+          Mulheres
+        </Link>
+      )}
     </nav>
   );
 }
@@ -508,6 +512,7 @@ export default function Header() {
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
   const [location] = useLocation();
   const { loading: authLoading, profile, signOut, user } = useAuth();
+  const showWomenSection = profile != null && profile.gender !== "masculino";
   const { isAdmin } = useAdmin();
   const { isPro, loading: subscriptionLoading } = useSubscription();
   const userName = profile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
@@ -709,18 +714,20 @@ export default function Header() {
           >
             Mentorias
           </Link>
-          <Link
-            href="/mulheres"
-            onClick={closeMobileDrawer}
-            aria-current={isPathActive("/mulheres", location) ? "page" : undefined}
-            className={`mx-4 mt-3 block rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
-              isPathActive("/mulheres", location)
-                ? "border-slate-900 bg-pink-300 text-slate-950"
-                : "border-pink-300 bg-pink-100 text-pink-800"
-            }`}
-          >
-            Mulheres
-          </Link>
+          {showWomenSection && (
+            <Link
+              href="/mulheres"
+              onClick={closeMobileDrawer}
+              aria-current={isPathActive("/mulheres", location) ? "page" : undefined}
+              className={`mx-4 mt-3 block rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
+                isPathActive("/mulheres", location)
+                  ? "border-slate-900 bg-pink-300 text-slate-950"
+                  : "border-pink-300 bg-pink-100 text-pink-800"
+              }`}
+            >
+              Mulheres
+            </Link>
+          )}
         </nav>
 
         {!user ? (
