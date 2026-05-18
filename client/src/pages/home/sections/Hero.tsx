@@ -8,42 +8,39 @@ import {
   useMotionValue,
   useTransform,
 } from "framer-motion";
-import {
-  ArrowRight,
-  BarChart3,
-  Cloud,
-  Compass,
-  GitBranch,
-  Monitor,
-  Palette,
-  Server,
-  Shield,
-  Smartphone,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, Compass } from "lucide-react";
+import { areasTI } from "@/lib/data";
 
 // =========================================
 // DADOS
 // =========================================
 
-type Area = {
-  nome: string;
-  Icon: LucideIcon;
-  bg: string;
-  color: string;
-  exemplos: string;
+const FEATURED_SLUGS = [
+  "frontend",
+  "backend",
+  "mobile",
+  "dados",
+  "uxui",
+  "cloud",
+  "devops",
+  "ciberseguranca",
+] as const;
+
+const FEATURED_OVERRIDES: Record<(typeof FEATURED_SLUGS)[number], { bg: string; color: string; exemplos: string }> = {
+  frontend: { bg: "bg-violet-50", color: "#8b5cf6", exemplos: "React, Vue" },
+  backend: { bg: "bg-emerald-50", color: "#10b981", exemplos: "Node, Python" },
+  mobile: { bg: "bg-orange-50", color: "#f97316", exemplos: "iOS, Android" },
+  dados: { bg: "bg-sky-50", color: "#0ea5e9", exemplos: "SQL, Python" },
+  uxui: { bg: "bg-fuchsia-50", color: "#d946ef", exemplos: "Figma, Design" },
+  cloud: { bg: "bg-cyan-50", color: "#06b6d4", exemplos: "AWS, GCP" },
+  devops: { bg: "bg-amber-50", color: "#f59e0b", exemplos: "Docker, K8s" },
+  ciberseguranca: { bg: "bg-rose-50", color: "#f43f5e", exemplos: "Pentest, Hash" },
 };
 
-const AREAS: Area[] = [
-  { nome: "Front-end", Icon: Monitor, bg: "bg-violet-50", color: "#8b5cf6", exemplos: "React, Vue" },
-  { nome: "Back-end", Icon: Server, bg: "bg-emerald-50", color: "#10b981", exemplos: "Node, Python" },
-  { nome: "Mobile", Icon: Smartphone, bg: "bg-orange-50", color: "#f97316", exemplos: "iOS, Android" },
-  { nome: "Dados", Icon: BarChart3, bg: "bg-sky-50", color: "#0ea5e9", exemplos: "SQL, Python" },
-  { nome: "UX/UI", Icon: Palette, bg: "bg-fuchsia-50", color: "#d946ef", exemplos: "Figma, Design" },
-  { nome: "Cloud", Icon: Cloud, bg: "bg-cyan-50", color: "#06b6d4", exemplos: "AWS, GCP" },
-  { nome: "DevOps", Icon: GitBranch, bg: "bg-amber-50", color: "#f59e0b", exemplos: "Docker, K8s" },
-  { nome: "Cibersegurança", Icon: Shield, bg: "bg-rose-50", color: "#f43f5e", exemplos: "Pentest, Hash" },
-];
+const FEATURED_AREAS = FEATURED_SLUGS.flatMap((slug) => {
+  const area = areasTI.find((a) => a.slug === slug);
+  return area ? [{ ...area, ...FEATURED_OVERRIDES[slug] }] : [];
+});
 
 const HIGHLIGHTS = ["TI de verdade", "carreira em tech", "primeiro emprego"];
 
@@ -508,14 +505,14 @@ export default function Hero() {
           className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4"
           aria-label="Áreas da tecnologia"
         >
-          {AREAS.map(({ nome, Icon, bg, color, exemplos }) => (
+          {FEATURED_AREAS.map(({ nome, slug, icon: Icon, bg, color, exemplos }) => (
             <motion.li
-              key={nome}
+              key={slug}
               variants={{
                 hidden: { opacity: 0, y: 20 },
                 show: { opacity: 1, y: 0 },
               }}
-              className={`relative ${bg} cursor-pointer rounded-2xl border-2 border-slate-950 p-4 text-left transition hover:-translate-y-1`}
+              className={`relative ${bg} rounded-2xl border-2 border-slate-950 text-left transition hover:-translate-y-1`}
               style={{ boxShadow: `4px 4px 0 ${color}` }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.boxShadow = `6px 6px 0 ${color}`;
@@ -524,22 +521,28 @@ export default function Hero() {
                 e.currentTarget.style.boxShadow = `4px 4px 0 ${color}`;
               }}
             >
-              <motion.div
-                className="absolute right-3 top-3 rounded-full"
-                style={{ width: 8, height: 8, backgroundColor: color }}
-                animate={{
-                  scale: [1, 1.5, 1],
-                  opacity: [0.7, 0.3, 0.7],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-                aria-hidden="true"
-              />
-              <Icon size={32} className="text-slate-950" aria-hidden="true" />
-              <h3 className="font-display mt-3 text-base font-black text-slate-950">{nome}</h3>
-              <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                <span>▶</span>
-                <span>{exemplos}</span>
-              </p>
+              <Link
+                href={`/areas/${slug}`}
+                aria-label={`Explorar área de ${nome}`}
+                className="block rounded-2xl p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-950"
+              >
+                <motion.div
+                  className="absolute right-3 top-3 rounded-full"
+                  style={{ width: 8, height: 8, backgroundColor: color }}
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [0.7, 0.3, 0.7],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  aria-hidden="true"
+                />
+                <Icon size={32} className="text-slate-950" aria-hidden="true" />
+                <h3 className="font-display mt-3 text-base font-black text-slate-950">{nome}</h3>
+                <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                  <span>▶</span>
+                  <span>{exemplos}</span>
+                </p>
+              </Link>
             </motion.li>
           ))}
         </motion.ul>
