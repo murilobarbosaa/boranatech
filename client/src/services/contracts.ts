@@ -1,3 +1,5 @@
+import type { Gender } from "@shared/gender";
+
 export interface CareerQuizAnswer {
   questionId: string;
   area: string;
@@ -43,6 +45,7 @@ export interface Profile {
   onboarding_completed: boolean;
   onboarding_step: number;
   preferences: Record<string, unknown>;
+  gender: Gender | null;
   created_at: string;
   updated_at: string;
 }

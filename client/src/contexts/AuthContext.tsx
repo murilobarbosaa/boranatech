@@ -1,6 +1,7 @@
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Profile } from "@/services/contracts";
 import { getMyProfile } from "@/services/profileService";
+import type { Gender } from "@shared/gender";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import {
   createContext,
@@ -16,6 +17,7 @@ interface SignUpInput {
   name: string;
   email: string;
   password: string;
+  gender: Gender;
 }
 
 interface SignInInput {
@@ -117,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signUp = useCallback(async ({ name, email, password }: SignUpInput) => {
+  const signUp = useCallback(async ({ name, email, password, gender }: SignUpInput) => {
     try {
       const client = assertSupabaseConfigured();
       const { error } = await client.auth.signUp({
@@ -126,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             name: name.trim(),
+            gender,
           },
           emailRedirectTo: `${window.location.origin}/perfil`,
         },
