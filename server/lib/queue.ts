@@ -1,6 +1,7 @@
 import { Queue, Worker, type Job } from "bullmq";
 import IORedis from "ioredis";
 
+import type { Gender } from "../../shared/gender";
 import { env } from "./env";
 import {
   sendCancellationEmail,
@@ -10,12 +11,14 @@ import {
   sendWelcomeEmail,
 } from "./email";
 
+type Recipient = { to: string; name: string; gender?: Gender | null };
+
 export type EmailJobData =
-  | { type: "welcome"; to: string; name: string }
-  | { type: "pro_upgrade"; to: string; name: string; planName: string }
-  | { type: "cancellation"; to: string; name: string }
-  | { type: "cancellation_scheduled"; to: string; name: string; effectiveAt: string }
-  | { type: "payment_failed"; to: string; name: string };
+  | ({ type: "welcome" } & Recipient)
+  | ({ type: "pro_upgrade"; planName: string } & Recipient)
+  | ({ type: "cancellation" } & Recipient)
+  | ({ type: "cancellation_scheduled"; effectiveAt: string } & Recipient)
+  | ({ type: "payment_failed" } & Recipient);
 
 export const redisConnection = env.redisUrl
   ? new IORedis(env.redisUrl, {
