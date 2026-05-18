@@ -512,25 +512,14 @@ export const quizQuestions = [
     ],
   },
   {
-    id: "tools",
-    category: "Ferramentas",
-    question: "Qual conjunto de ferramentas chama mais sua atenção?",
-    options: [
-      { label: "HTML, CSS, JavaScript, React e animações de interface", area: "Front-end", scores: { "Front-end": 5, "Desenvolvimento Mobile": 1 } },
-      { label: "APIs, banco de dados, autenticação e arquitetura", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1, DevOps: 1 } },
-      { label: "Python, notebooks, dashboards, estatística e modelos", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 3 } },
-      { label: "Figma, pesquisa, wireframes, protótipos e design system", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 2 } },
-    ],
-  },
-  {
     id: "routine",
     category: "Rotina",
-    question: "Qual rotina parece mais interessante para você?",
+    question: "O que você gostaria de fazer no trabalho todos os dias?",
     options: [
-      { label: "Programar, testar e publicar melhorias visíveis", area: "Front-end", scores: { "Front-end": 4, "Desenvolvimento Mobile": 3, "QA / Testes de Software": 1 } },
-      { label: "Monitorar sistemas, logs, deploys e incidentes", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 4, Cibersegurança: 1 } },
-      { label: "Analisar riscos, permissões, vulnerabilidades e acessos", area: "Cibersegurança", scores: { Cibersegurança: 5, "Cloud Computing": 2, DevOps: 1 } },
-      { label: "Conversar com áreas diferentes para decidir prioridades", area: "Produto Digital", scores: { "Produto Digital": 5, "Gestão de Projetos Tech": 4, "UX/UI Design": 1 } },
+      { label: "Construir coisas novas e ver elas aparecerem na tela rapidinho", area: "Front-end", scores: { "Front-end": 4, "Desenvolvimento Mobile": 3, "QA / Testes de Software": 1 } },
+      { label: "Cuidar dos sistemas da empresa pra tudo continuar funcionando", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 4, Cibersegurança: 1 } },
+      { label: "Caçar coisas suspeitas e proteger empresas de ataques", area: "Cibersegurança", scores: { Cibersegurança: 5, "Cloud Computing": 2, DevOps: 1 } },
+      { label: "Falar com várias áreas pra decidir o que vai ser feito primeiro", area: "Produto Digital", scores: { "Produto Digital": 5, "Gestão de Projetos Tech": 4, "UX/UI Design": 1 } },
     ],
   },
   {
@@ -542,17 +531,6 @@ export const quizQuestions = [
       { label: "Com exercícios de lógica, APIs e problemas bem definidos", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
       { label: "Com planilhas, gráficos, datasets e perguntas investigativas", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
       { label: "Com entrevistas, pesquisa, protótipos e feedback de pessoas", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
-    ],
-  },
-  {
-    id: "patience",
-    category: "Paciência",
-    question: "Qual desafio você teria mais paciência para investigar?",
-    options: [
-      { label: "Um bug visual que só aparece em alguns celulares", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 3, "QA / Testes de Software": 1 } },
-      { label: "Uma API lenta, instável ou com erro intermitente", area: "Back-end", scores: { "Back-end": 5, DevOps: 2, "Cloud Computing": 1 } },
-      { label: "Um teste que revela comportamento inesperado no produto", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Produto Digital": 1 } },
-      { label: "Uma configuração de nuvem que precisa escalar melhor", area: "Cloud Computing", scores: { "Cloud Computing": 5, DevOps: 4, Cibersegurança: 1 } },
     ],
   },
   {
@@ -580,23 +558,12 @@ export const quizQuestions = [
   {
     id: "first-portfolio",
     category: "Portfólio",
-    question: "Qual projeto de portfólio você teria mais vontade de construir primeiro?",
+    question: "Qual desses primeiros projetos te empolga mais?",
     options: [
-      { label: "Um site interativo publicado com animações e responsividade", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1 } },
-      { label: "Uma API com autenticação, banco de dados e documentação", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1, DevOps: 1 } },
-      { label: "Um dashboard com análise de dados reais e conclusões", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 1 } },
-      { label: "Um plano de testes completo, com bugs reportados e automação", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
-    ],
-  },
-  {
-    id: "goal",
-    category: "Entrega",
-    question: "Qual entrega você gostaria de mostrar primeiro?",
-    options: [
-      { label: "Uma landing page publicada e bem apresentada", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1 } },
-      { label: "Uma API simples funcionando e documentada", area: "Back-end", scores: { "Back-end": 5, DevOps: 1 } },
-      { label: "Um dashboard com insights e explicação do raciocínio", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 1 } },
-      { label: "Um protótipo navegável no Figma com pesquisa por trás", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 2 } },
+      { label: "Um site interativo bonito de mostrar pra família", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1 } },
+      { label: "Um programa que guarda informações e responde quando alguém pede", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1, DevOps: 1 } },
+      { label: "Uma análise mostrando o que dados de verdade revelam sobre um tema", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 1 } },
+      { label: "Uma lista organizada de problemas encontrados em um app, com sugestões de conserto", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
     ],
   },
   {
@@ -657,23 +624,12 @@ export const quizQuestions = [
   {
     id: "debug-style",
     category: "Investigação",
-    question: "Se algo dá errado em produção, o que você teria mais vontade de fazer?",
+    question: "Se um app que você usa começa a falhar, o que dá mais vontade de investigar?",
     options: [
-      { label: "Reproduzir o erro na interface e entender o comportamento do usuário", area: "Front-end", scores: { "Front-end": 4, "QA / Testes de Software": 3, "UX/UI Design": 1 } },
-      { label: "Ler logs, checar banco de dados e encontrar a regra que falhou", area: "Back-end", scores: { "Back-end": 5, DevOps: 2 } },
-      { label: "Ver métricas, alertas, deploys e infraestrutura", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 4 } },
-      { label: "Investigar se houve brecha, abuso ou comportamento suspeito", area: "Cibersegurança", scores: { Cibersegurança: 5, DevOps: 2, "Cloud Computing": 1 } },
-    ],
-  },
-  {
-    id: "entry-path",
-    category: "Entrada no mercado",
-    question: "Qual caminho de entrada parece mais realista para você agora?",
-    options: [
-      { label: "Montar um portfólio visual e aplicar para front-end/mobile", area: "Front-end", scores: { "Front-end": 4, "Desenvolvimento Mobile": 3, "UX/UI Design": 1 } },
-      { label: "Criar APIs/projetos completos e aplicar para back-end/full stack", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1 } },
-      { label: "Entrar por QA, suporte técnico ou testes e crescer tecnicamente", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Cibersegurança": 1, "Back-end": 1 } },
-      { label: "Entrar por dados, produto ou projetos usando minha visão de negócio", area: "Produto Digital", scores: { "Produto Digital": 4, "Ciência de Dados": 4, "Gestão de Projetos Tech": 3 } },
+      { label: "Reproduzir o que aconteceu na tela e entender o que o usuário viu", area: "Front-end", scores: { "Front-end": 4, "QA / Testes de Software": 3, "UX/UI Design": 1 } },
+      { label: "Olhar onde a informação fica guardada pra achar a regra que quebrou", area: "Back-end", scores: { "Back-end": 5, DevOps: 2 } },
+      { label: "Ver gráficos do sistema pra descobrir quando e por que começou", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 4 } },
+      { label: "Descobrir se alguém tentou usar o sistema de um jeito errado", area: "Cibersegurança", scores: { Cibersegurança: 5, DevOps: 2, "Cloud Computing": 1 } },
     ],
   },
 ];
