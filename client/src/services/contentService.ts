@@ -23,7 +23,6 @@ function areaFromApi(row: any): AreaTI {
     id: row.slug,
     nome: row.name,
     slug: row.slug,
-    emoji: row.icon || "💻",
     icon: local?.icon ?? LayoutIcon,
     tagClass: row.tag_class || "tag-frontend",
     descricaoCurta: row.short_description || "",

@@ -8,7 +8,19 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Search, ArrowRight } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  Brain,
+  ClipboardList,
+  LayoutGrid,
+  Lock,
+  Paintbrush,
+  Search,
+  SearchX,
+  Users,
+} from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -17,14 +29,14 @@ import { areasTI } from "@/lib/data";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
 
-const perfilFiltros = [
-  { id: "todos", label: "Todas as áreas" },
-  { id: "criatividade", label: "🎨 Criatividade" },
-  { id: "logica", label: "🧠 Lógica" },
-  { id: "pessoas", label: "👥 Pessoas" },
-  { id: "organizacao", label: "📋 Organização" },
-  { id: "seguranca", label: "🔒 Segurança" },
-  { id: "dados", label: "📊 Dados" },
+const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
+  { id: "todos", label: "Todas as áreas", icon: LayoutGrid },
+  { id: "criatividade", label: "Criatividade", icon: Paintbrush },
+  { id: "logica", label: "Lógica", icon: Brain },
+  { id: "pessoas", label: "Pessoas", icon: Users },
+  { id: "organizacao", label: "Organização", icon: ClipboardList },
+  { id: "seguranca", label: "Segurança", icon: Lock },
+  { id: "dados", label: "Dados", icon: BarChart3 },
 ];
 
 const perfilMap: Record<string, string[]> = {
@@ -99,19 +111,23 @@ export default function Areas() {
             </div>
             {/* Profile filters */}
             <div className="flex flex-wrap gap-2">
-              {perfilFiltros.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setPerfil(f.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
-                    perfil === f.id
-                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
-                      : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+              {perfilFiltros.map((f) => {
+                const Icon = f.icon;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => setPerfil(f.id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                      perfil === f.id
+                        ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                        : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" aria-hidden />
+                    {f.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -122,7 +138,7 @@ export default function Areas() {
         <div className="container">
           {filtered.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-2xl mb-2">🔍</p>
+              <SearchX className="mx-auto mb-3 h-12 w-12 text-slate-400" aria-hidden />
               <p className="text-slate-600 font-medium">Nenhuma área encontrada.</p>
               <p className="text-slate-400 text-sm mt-1">Tente outro termo ou remova os filtros.</p>
               <button onClick={() => { setSearch(""); setPerfil("todos"); }} className="mt-4 text-violet-700 text-sm font-medium hover:underline">
