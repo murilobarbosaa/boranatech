@@ -19,6 +19,7 @@ import meRouter from "./routes/me";
 import quizRouter from "./routes/quiz";
 import searchRouter from "./routes/search";
 import sitemapRouter from "./routes/sitemap";
+import statsRouter from "./routes/stats";
 import studyRouter from "./routes/study";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -123,6 +124,7 @@ app.use(express.json({ limit: "2mb" }));
 
 app.use(sitemapRouter);
 app.use("/api/affiliates", affiliatesRouter);
+app.use("/api/stats", statsRouter);
 
 app.use("/api", validateSupabaseJwt);
 
