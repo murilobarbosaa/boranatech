@@ -1,6 +1,5 @@
 import { NextFunction, Request, Response, Router } from "express";
 
-import { syncEvents } from "../jobs/syncEvents";
 import { syncJobs } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
 import { cancelAsaasSubscription } from "../lib/asaas";
@@ -86,19 +85,6 @@ router.post("/sync-jobs", async (_req, res, next) => {
     res.json({ data: result });
   } catch (err) {
     await recordSync("jooble", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, err instanceof Error ? err.message : String(err));
-    next(err);
-  }
-});
-
-router.post("/sync-events", async (_req, res, next) => {
-  const startedAt = new Date();
-
-  try {
-    const result = await syncEvents();
-    await recordSync("sympla", startedAt, result);
-    res.json({ data: result });
-  } catch (err) {
-    await recordSync("sympla", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, err instanceof Error ? err.message : String(err));
     next(err);
   }
 });

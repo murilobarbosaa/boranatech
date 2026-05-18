@@ -152,7 +152,6 @@ app.get("/api/health", async (_req, res) => {
   checks.openai = env.openaiApiKey ? "ok" : "error";
   checks.currents = env.currentsApiKey ? "ok" : "error";
   checks.jooble = env.joobleApiKey ? "ok" : "error";
-  checks.sympla = env.symplaApiKey ? "ok" : "error";
   if (redisConnection) {
     try {
       await redisConnection.ping();
