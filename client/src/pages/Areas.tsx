@@ -148,7 +148,7 @@ export default function Areas() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filtered.map((area) => (
-                <div key={area.id} className="relative">
+                <div key={area.id} className="relative h-full">
                   <FavoriteButton
                     compact
                     className="absolute right-4 top-4 z-10"
@@ -156,7 +156,7 @@ export default function Areas() {
                   />
                   <Link
                     href={`/areas/${area.slug}`}
-                    className="card-brutal bg-white rounded-xl p-6 flex flex-col group"
+                    className="card-brutal bg-white rounded-xl p-6 flex flex-col group h-full"
                   >
                   <div className="flex items-start justify-between mb-4 pr-12">
                     <AreaIconBox icon={area.icon} areaSlug={area.slug} size="md" />
@@ -165,17 +165,17 @@ export default function Areas() {
                   <h3 className="font-display font-bold text-xl text-slate-900 mb-2 group-hover:text-violet-700 transition-colors">
                     {area.nome}
                   </h3>
-                  <p className="text-sm text-slate-600 mb-4 flex-1">{area.descricaoCurta}</p>
+                  <p className="text-sm text-slate-600 mb-4 line-clamp-2">{area.descricaoCurta}</p>
                   <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
                     <p className="text-xs font-black uppercase text-slate-500">Personalidade da área</p>
-                    <p className="mt-1 text-xs text-slate-700">{area.perfilIndicado}</p>
+                    <p className="mt-1 text-xs text-slate-700 line-clamp-3">{area.perfilIndicado}</p>
                   </div>
-                  <div className="flex flex-wrap gap-1 mb-4">
+                  <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
                     {area.habilidades.slice(0, 3).map((h) => (
                       <span key={h} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{h}</span>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                  <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
                     <span className="text-xs text-slate-400">{area.cargos[0]}</span>
                     <span className="flex items-center gap-1 text-violet-700 text-sm font-medium group-hover:gap-2 transition-all">
                       Explorar <ArrowRight className="w-4 h-4" />
