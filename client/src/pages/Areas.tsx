@@ -14,7 +14,6 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import { areasTI } from "@/lib/data";
-import { influencerTips } from "@/lib/platformData";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
 
@@ -154,17 +153,6 @@ export default function Areas() {
                   <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
                     <p className="text-xs font-black uppercase text-slate-500">Personalidade da área</p>
                     <p className="mt-1 text-xs text-slate-700">{area.perfilIndicado}</p>
-                  </div>
-                  <div className="mb-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-                    <img
-                      src={(influencerTips[area.id] || influencerTips.default).photo}
-                      alt={(influencerTips[area.id] || influencerTips.default).name}
-                      className="h-10 w-10 rounded-full border-2 border-slate-900 object-cover"
-                    />
-                    <div>
-                      <p className="text-xs font-black text-slate-950">{(influencerTips[area.id] || influencerTips.default).handle}</p>
-                      <p className="text-xs text-slate-600">{(influencerTips[area.id] || influencerTips.default).tip}</p>
-                    </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-4">
                     {area.habilidades.slice(0, 3).map((h) => (

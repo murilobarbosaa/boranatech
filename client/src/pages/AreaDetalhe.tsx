@@ -25,7 +25,6 @@ import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { influencerTips } from "@/lib/platformData";
 import { technologies } from "@/lib/technologyData";
 import { cn } from "@/lib/utils";
 import { getArea } from "@/services/contentService";
@@ -171,7 +170,6 @@ export default function AreaDetalhe() {
 
   const accent = accentForAreaSlug(area.slug);
   const ac = getPageAccentUi(accent);
-  const influencer = influencerTips[area.id] || influencerTips.default;
   const comingSoon = area.roadmapStatus === "coming-soon";
 
   const cursosDaArea = cursosGratuitos.filter((c) => c.areaSlug === area.slug).slice(0, 3);
@@ -452,23 +450,18 @@ export default function AreaDetalhe() {
                   Aprofundamento
                 </p>
 
-                {/* 4.1 Influencer */}
-                <div className={cn("card-brutal rounded-xl border-2 p-6", ac.panelBorder, ac.panelSoft)}>
+                {/* 4.1 Influencer — placeholder enquanto curadoria não está pronta */}
+                <div className={cn("card-brutal rounded-xl border-2 border-dashed p-6 text-center", ac.panelBorder, ac.panelSoft)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
-                    Dica de influenciador da área
+                    Influenciadores da área
                   </h2>
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={influencer.photo}
-                      alt={influencer.name}
-                      className="h-16 w-16 rounded-full border-2 border-slate-900 object-cover shadow-[3px_3px_0_#0f172a]"
-                    />
-                    <div>
-                      <p className="font-display font-black text-slate-950">{influencer.name}</p>
-                      <p className={cn("text-sm font-bold", ac.tbodyAccentBold)}>{influencer.handle}</p>
-                      <p className="mt-2 text-sm text-slate-700">{influencer.tip}</p>
-                    </div>
+                  <div className={cn("mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-white", ac.iconMuted)}>
+                    <Sparkles className="h-6 w-6" aria-hidden />
                   </div>
+                  <p className="font-display font-black text-slate-950">Curadoria em breve</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    Estamos selecionando criadores relevantes para esta área. Em breve trazemos recomendações reais aqui.
+                  </p>
                 </div>
 
                 {/* 4.2 Tecnologias */}
