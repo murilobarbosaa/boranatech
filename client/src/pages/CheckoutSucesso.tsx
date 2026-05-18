@@ -5,10 +5,13 @@ import { Check, Clock } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { greet } from "@shared/greeting";
 
 export default function CheckoutSucesso() {
   const { isPro, loading, refreshSubscription, subscription } = useSubscription();
+  const { profile } = useAuth();
   const [checking, setChecking] = useState(true);
   const [processed, setProcessed] = useState(false);
 
@@ -75,7 +78,7 @@ export default function CheckoutSucesso() {
             ) : showSuccess ? (
               <>
                 <h1 className="font-display mt-8 inline-flex items-center justify-center gap-2 text-4xl font-black text-[#1a1a1a]">
-                  Bem-vindo ao Pro!
+                  {greet(profile?.gender)} ao Pro!
                   <ProStarIcon className="h-7 w-7 [&>svg]:h-5 [&>svg]:w-5" />
                 </h1>
                 <p className="mx-auto mt-3 max-w-lg text-base font-semibold leading-relaxed text-slate-600">
