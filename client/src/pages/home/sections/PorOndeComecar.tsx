@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Sparkles, Map, Code2, Clock, ListChecks, Target } from "lucide-react";
+import { quizQuestions, QUIZ_ESTIMATED_MINUTES } from "@/lib/platformData";
 
 // =========================================
 // SEÇÃO PRINCIPAL
@@ -75,7 +76,7 @@ export default function PorOndeComecar() {
                     Faça o Quiz de Carreira
                   </h3>
                   <p className="mt-3 text-base md:text-lg font-medium text-slate-700 leading-relaxed">
-                    Em 2 minutos, a gente descobre seu perfil e te diz exatamente qual área da TI combina com você.
+                    Em {QUIZ_ESTIMATED_MINUTES} minutos, a gente descobre seu perfil e te diz exatamente qual área da TI combina com você.
                   </p>
 
                   {/* CTA + Microinfos */}
@@ -88,12 +89,12 @@ export default function PorOndeComecar() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-slate-600">
                       <span className="inline-flex items-center gap-1.5">
                         <Clock size={14} className="text-violet-600" />
-                        2 minutos
+                        {QUIZ_ESTIMATED_MINUTES} minutos
                       </span>
                       <span className="text-slate-400">·</span>
                       <span className="inline-flex items-center gap-1.5">
                         <ListChecks size={14} className="text-violet-600" />
-                        8 perguntas
+                        {quizQuestions.length} perguntas
                       </span>
                       <span className="text-slate-400">·</span>
                       <span className="inline-flex items-center gap-1.5">
