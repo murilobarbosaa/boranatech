@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import type { Gender } from "../../shared/gender";
+import { greet } from "../../shared/greeting";
 import { env } from "./env";
 
 const resend = env.resendApiKey ? new Resend(env.resendApiKey) : null;
@@ -70,16 +72,17 @@ async function sendEmail(params: { to: string; from: string; subject: string; ht
   await resend.emails.send(params);
 }
 
-export async function sendWelcomeEmail(to: string, name: string) {
+export async function sendWelcomeEmail(to: string, name: string, gender?: Gender | null) {
   const safeName = escapeHtml(name);
+  const hello = greet(gender);
   await sendEmail({
     to,
     from: FROM_RELATIONSHIP,
-    subject: `Bem-vindo ao Bora na Tech?, ${safeName}! 🧭`,
+    subject: `${hello} ao Bora na Tech?, ${safeName}! 🧭`,
     html: layout(
       "Sua bússola está pronta.",
       `
-        <p style="font-size:16px;line-height:1.6;font-weight:700;">Olá ${safeName}, sua conta foi criada com sucesso. Agora você tem acesso a áreas, roadmaps, cursos gratuitos e muito mais.</p>
+        <p style="font-size:16px;line-height:1.6;font-weight:700;">${hello}, ${safeName}! Sua conta foi criada com sucesso. Agora você tem acesso a áreas, roadmaps, cursos gratuitos e muito mais.</p>
         ${list([
           "Descubra sua área ideal com o Quiz de Carreira",
           "Explore os roadmaps para sua área",
@@ -93,15 +96,16 @@ export async function sendWelcomeEmail(to: string, name: string) {
   });
 }
 
-export async function sendProUpgradeEmail(to: string, name: string, planName: string) {
+export async function sendProUpgradeEmail(to: string, name: string, planName: string, gender?: Gender | null) {
   const safeName = escapeHtml(name);
   const safePlanName = escapeHtml(planName);
+  const hello = greet(gender);
   await sendEmail({
     to,
     from: FROM_TRANSACTIONAL,
     subject: "Você é Pro agora! ⚡",
     html: layout(
-      `Bem-vindo ao Pro, ${safeName}!`,
+      `${hello} ao Pro, ${safeName}!`,
       `
         <p style="font-size:16px;line-height:1.6;font-weight:700;">Sua assinatura ${safePlanName} está ativa. Todos os recursos estão desbloqueados.</p>
         ${list(proBenefits)}
@@ -112,7 +116,7 @@ export async function sendProUpgradeEmail(to: string, name: string, planName: st
   });
 }
 
-export async function sendCancellationScheduledEmail(to: string, name: string, effectiveAt: string) {
+export async function sendCancellationScheduledEmail(to: string, name: string, effectiveAt: string, _gender?: Gender | null) {
   const safeName = escapeHtml(name);
   const date = new Date(effectiveAt);
   const formattedDate = Number.isNaN(date.getTime())
@@ -136,7 +140,7 @@ export async function sendCancellationScheduledEmail(to: string, name: string, e
   });
 }
 
-export async function sendCancellationEmail(to: string, name: string) {
+export async function sendCancellationEmail(to: string, name: string, _gender?: Gender | null) {
   const safeName = escapeHtml(name);
   await sendEmail({
     to,
@@ -154,8 +158,9 @@ export async function sendCancellationEmail(to: string, name: string) {
   });
 }
 
-export async function sendPaymentFailedEmail(to: string, name: string) {
+export async function sendPaymentFailedEmail(to: string, name: string, gender?: Gender | null) {
   const safeName = escapeHtml(name);
+  const hello = greet(gender);
   await sendEmail({
     to,
     from: FROM_TRANSACTIONAL,
@@ -163,7 +168,7 @@ export async function sendPaymentFailedEmail(to: string, name: string) {
     html: layout(
       "Não conseguimos processar seu pagamento.",
       `
-        <p style="font-size:16px;line-height:1.6;font-weight:700;">Olá ${safeName}, houve um problema ao cobrar sua assinatura Pro. Para manter o acesso, atualize seu método de pagamento.</p>
+        <p style="font-size:16px;line-height:1.6;font-weight:700;">${hello}, ${safeName}! Houve um problema ao cobrar sua assinatura Pro. Para manter o acesso, atualize seu método de pagamento.</p>
         ${button("Atualizar pagamento", "https://boranatech.com.br/perfil")}
         <p style="margin-top:20px;font-size:14px;font-weight:700;">Se não resolver, sua assinatura será cancelada em breve.</p>
       `,

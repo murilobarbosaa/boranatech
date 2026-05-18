@@ -7,6 +7,7 @@ import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import type { Gender } from "../../shared/gender";
 
 const router = Router();
 const PLAN_VALUES: Record<string, number> = {
@@ -147,12 +148,19 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
       const userName = String(
         authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário",
       );
+      const { data: profileData } = await supabaseAdmin
+        .from("profiles")
+        .select("gender")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const userGender = (profileData?.gender as Gender | null | undefined) ?? null;
 
       if (userEmail && subscription.current_period_end) {
         await enqueueEmail({
           type: "cancellation_scheduled",
           to: userEmail,
           name: userName,
+          gender: userGender,
           effectiveAt: subscription.current_period_end,
         });
       }
@@ -363,17 +371,23 @@ router.post("/webhook", async (req, res, next) => {
       const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
       const userEmail = authData?.user?.email || "";
       const userName = String(authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário");
+      const { data: profileData } = await supabaseAdmin
+        .from("profiles")
+        .select("gender")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const userGender = (profileData?.gender as Gender | null | undefined) ?? null;
 
       if (userEmail && ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(eventType) && newStatus === "active") {
-        await enqueueEmail({ type: "pro_upgrade", to: userEmail, name: userName, planName: proPlan.name || planCode });
+        await enqueueEmail({ type: "pro_upgrade", to: userEmail, name: userName, gender: userGender, planName: proPlan.name || planCode });
       }
 
       if (userEmail && newStatus === "canceled") {
-        await enqueueEmail({ type: "cancellation", to: userEmail, name: userName });
+        await enqueueEmail({ type: "cancellation", to: userEmail, name: userName, gender: userGender });
       }
 
       if (userEmail && eventType === "PAYMENT_OVERDUE") {
-        await enqueueEmail({ type: "payment_failed", to: userEmail, name: userName });
+        await enqueueEmail({ type: "payment_failed", to: userEmail, name: userName, gender: userGender });
       }
     } catch (emailError) {
       console.error("[email] Erro ao processar e-mail transacional", emailError);
