@@ -16,3 +16,9 @@ yarn-error.log*
 .agents/
 skills-lock.json
 
+.env
+.env.local
+
+# Supabase CLI artifacts
+supabase/.temp/
+supabase/.branches/

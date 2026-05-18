@@ -15,7 +15,13 @@
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
-    "postbuild": "echo 'Build complete'"
+    "postbuild": "echo 'Build complete'",
+    "db:pull": "supabase db pull -p $SUPABASE_DB_PASSWORD",
+    "db:diff": "supabase db diff --linked",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push -p $SUPABASE_DB_PASSWORD",
+    "db:types": "supabase gen types typescript --linked > shared/database.types.ts",
+    "db:new": "supabase migration new"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
