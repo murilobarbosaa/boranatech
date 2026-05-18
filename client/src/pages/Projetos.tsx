@@ -4,6 +4,7 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import { ChevronDown, ChevronUp, Lightbulb, ArrowRight, ExternalLink, PlayCircle } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -47,8 +48,10 @@ const nivelColors: Record<string, string> = {
 };
 
 export default function Projetos() {
+  const search = useSearch();
+  const initialAreaFromUrl = new URLSearchParams(search).get("area");
   const [projectItems, setProjectItems] = useState(projetos);
-  const [area, setArea] = useState(AREA_ALL);
+  const [area, setArea] = useState(initialAreaFromUrl ?? AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
   const [expanded, setExpanded] = useState<string | null>(null);
   const areaSlugOptions = useMemo<(string | null)[]>(
