@@ -393,7 +393,7 @@ function DesktopNav({ location }: { location: string }) {
   }, []);
 
   return (
-    <nav className="hidden flex-1 items-center justify-center gap-1 xl:flex" aria-label="Navegação principal">
+    <nav className="hidden flex-1 items-center justify-center gap-1 2xl:flex" aria-label="Navegação principal">
       {menuData.map((menu) => (
         <DesktopMenuItem
           key={menu.id}
@@ -541,7 +541,7 @@ export default function Header() {
 
           <DesktopNav location={location} />
 
-          <div className="hidden items-center gap-2 xl:flex">
+          <div className="hidden items-center gap-2 2xl:flex">
             {!user ? (
               <>
                 <Link
@@ -597,7 +597,7 @@ export default function Header() {
           </div>
 
           <button
-            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] xl:hidden"
+            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] 2xl:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menu"
             type="button"
@@ -607,10 +607,10 @@ export default function Header() {
         </div>
       </header>
 
-      {mobileOpen ? <div className="fixed inset-0 z-[1001] bg-black/50 xl:hidden" onClick={closeMobileDrawer} /> : null}
+      {mobileOpen ? <div className="fixed inset-0 z-[1001] bg-black/50 2xl:hidden" onClick={closeMobileDrawer} /> : null}
 
       <div
-        className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 xl:hidden ${
+        className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 2xl:hidden ${
           mobileOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
