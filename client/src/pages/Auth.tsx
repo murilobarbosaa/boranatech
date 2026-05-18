@@ -1,4 +1,5 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
@@ -6,6 +7,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthErrorMessage, type FriendlyError } from "@/lib/authErrors";
 
 const passwordSchema = z
   .string()
@@ -44,6 +46,11 @@ export default function Auth({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<FriendlyError | null>(null);
+
+  useEffect(() => {
+    setError(null);
+  }, [name, email, password]);
 
   const passwordChecks = useMemo(
     () => [
@@ -58,6 +65,7 @@ export default function Auth({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(null);
     setIsSubmitting(true);
 
     try {
@@ -83,13 +91,9 @@ export default function Auth({
       }
 
       setLocation(isSignup ? "/planos" : "/perfil", { replace: true });
-    } catch (error) {
-      console.error("[Auth] handleSubmit failed", error);
-      toast.error(
-        isSignup
-          ? "Não foi possível concluir o cadastro. Verifique os dados e tente novamente."
-          : "Não foi possível entrar. Verifique suas credenciais e tente novamente."
-      );
+    } catch (err) {
+      console.error("[Auth] handleSubmit failed", err);
+      setError(getAuthErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -119,6 +123,30 @@ export default function Auth({
             </p>
             {isSignup && signupBanner ? <div className="mt-5">{signupBanner}</div> : null}
             <SocialAuthButtons mode={mode} />
+            {error && (
+              <div
+                role="alert"
+                className="mt-5 rounded-2xl border-2 border-red-300 bg-red-50 p-4 text-sm shadow-[3px_3px_0_#fca5a5]"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+                  <div className="flex-1">
+                    <p className="font-black text-red-900">{error.message}</p>
+                    {error.hint && (
+                      <p className="mt-1 font-bold text-red-700">{error.hint}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setError(null)}
+                    className="text-red-400 hover:text-red-600"
+                    aria-label="Fechar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               {isSignup && (
                 <label className="block">
