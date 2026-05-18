@@ -49,19 +49,19 @@ export const emailQueue = redisConnection
 async function sendDirect(data: EmailJobData) {
   switch (data.type) {
     case "welcome":
-      await sendWelcomeEmail(data.to, data.name);
+      await sendWelcomeEmail(data.to, data.name, data.gender);
       break;
     case "pro_upgrade":
-      await sendProUpgradeEmail(data.to, data.name, data.planName);
+      await sendProUpgradeEmail(data.to, data.name, data.planName, data.gender);
       break;
     case "cancellation":
-      await sendCancellationEmail(data.to, data.name);
+      await sendCancellationEmail(data.to, data.name, data.gender);
       break;
     case "cancellation_scheduled":
-      await sendCancellationScheduledEmail(data.to, data.name, data.effectiveAt);
+      await sendCancellationScheduledEmail(data.to, data.name, data.effectiveAt, data.gender);
       break;
     case "payment_failed":
-      await sendPaymentFailedEmail(data.to, data.name);
+      await sendPaymentFailedEmail(data.to, data.name, data.gender);
       break;
   }
 }

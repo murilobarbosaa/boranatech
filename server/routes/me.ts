@@ -5,7 +5,7 @@ import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
-import { GENDER_VALUES } from "../../shared/gender";
+import { GENDER_VALUES, type Gender } from "../../shared/gender";
 
 const router = Router();
 
@@ -58,11 +58,19 @@ async function enqueueWelcomeEmailIfNeeded(profile: Record<string, unknown>, use
       type: "welcome",
       to: email,
       name: String(profile.name || email.split("@")[0]),
+      gender: (profile.gender as Gender | null | undefined) ?? null,
     });
-
-    await supabaseAdmin.from("profiles").update({ welcome_email_sent: true }).eq("user_id", userId);
   } catch (emailError) {
     console.error("[email] Erro ao enfileirar boas-vindas", emailError);
+    return;
+  }
+
+  const { error: flagError } = await supabaseAdmin
+    .from("profiles")
+    .update({ welcome_email_sent: true })
+    .eq("user_id", userId);
+  if (flagError) {
+    console.error("[email] Erro ao marcar welcome_email_sent", flagError);
   }
 }
 
