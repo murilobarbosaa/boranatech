@@ -31,7 +31,7 @@ export default function DiscoveryModal({ open, onClose }: DiscoveryModalProps) {
           <div>
             <div className="social-badge mb-3 inline-flex items-center gap-2 px-3 py-1 text-xs font-black uppercase tracking-wide">
               <Sparkles className="h-3.5 w-3.5" />
-              descoberta com IA
+              descubra sua área
             </div>
             <h2 className="font-display text-3xl font-black text-slate-950">Vamos descobrir seu próximo passo?</h2>
             <p className="mt-2 text-sm text-slate-600">
