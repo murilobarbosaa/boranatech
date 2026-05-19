@@ -1,7 +1,7 @@
 import type { ContentSourceStatus } from "./contracts";
 import { Layout as LayoutIcon } from "lucide-react";
 import { apiUrl } from "@/lib/api";
-import { areasTI, cursosGratuitos, noticias, plataformas, projetos, roadmaps, type AreaTI } from "@/lib/data";
+import { areasTI, cursosGratuitos, plataformas, projetos, roadmaps, type AreaTI } from "@/lib/data";
 import { technologies, technologyRanking } from "@/lib/technologyData";
 
 const API_BASE = apiUrl("/api/content");
@@ -147,21 +147,60 @@ function technologyFromApi(row: any) {
   };
 }
 
-function newsFromApi(row: any) {
+export type NewsLevel = "iniciante" | "intermediario" | "avancado";
+
+export interface NewsItem {
+  id: string;
+  titulo: string;
+  resumo: string;
+  fonte: string;
+  data: string;
+  link: string;
+  imagem: string | null;
+  nivel: NewsLevel | null;
+  porQueImporta: string | null;
+  categoria: string;
+}
+
+export interface NewsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface NewsResponse {
+  items: NewsItem[];
+  pagination: NewsPagination;
+}
+
+export interface GetNewsParams {
+  page?: number;
+  limit?: number;
+  level?: NewsLevel;
+  q?: string;
+}
+
+const VALID_LEVELS: NewsLevel[] = ["iniciante", "intermediario", "avancado"];
+
+function newsFromApi(row: any): NewsItem {
   const tags = Array.isArray(row.tags) ? row.tags.filter((tag: unknown) => typeof tag === "string") : [];
   const publishedAt = row.published_at ? new Date(row.published_at) : null;
   const categoria = tags[0] || "Tecnologia";
+  const nivel = VALID_LEVELS.includes(row.level) ? (row.level as NewsLevel) : null;
 
   return {
     id: row.slug || row.id,
-    titulo: row.title,
-    resumo: row.summary || "",
+    titulo: row.title_pt_br || row.title,
+    resumo: row.summary_pt_br || row.summary || "",
     fonte: row.source || "Fonte externa",
     data: publishedAt && !Number.isNaN(publishedAt.getTime()) ? publishedAt.toLocaleDateString("pt-BR") : "",
     link: row.url,
-    area: categoria,
-    impacto: "Médio para iniciantes",
-    porQueImporta: "Acompanhar notícias ajuda você a entender tendências, ferramentas e oportunidades do mercado tech.",
+    imagem: row.image_url || null,
+    nivel,
+    porQueImporta: row.why_it_matters || null,
     categoria,
   };
 }
@@ -312,17 +351,29 @@ export async function getRoadmap(slug: string) {
   }
 }
 
-export async function getNews(params?: { limit?: number; offset?: number; tag?: string }) {
+export async function getNews(params: GetNewsParams = {}): Promise<NewsResponse | null> {
   try {
     const qs = new URLSearchParams();
-    if (params?.limit) qs.set("limit", String(params.limit));
-    if (params?.offset) qs.set("offset", String(params.offset));
-    if (params?.tag) qs.set("tag", params.tag);
+    if (params.page) qs.set("page", String(params.page));
+    if (params.limit) qs.set("limit", String(params.limit));
+    if (params.level) qs.set("level", params.level);
+    if (params.q) qs.set("q", params.q);
     const json = await apiFetch(`/news${qs.toString() ? `?${qs}` : ""}`);
-    const data = json.data.map(newsFromApi);
-    return data.length > 0 ? data : noticias;
+    const items = Array.isArray(json.data) ? json.data.map(newsFromApi) : [];
+    const p = json.pagination ?? {};
+    return {
+      items,
+      pagination: {
+        page: p.page ?? 1,
+        limit: p.limit ?? items.length,
+        total: p.total ?? items.length,
+        totalPages: p.total_pages ?? 1,
+        hasNext: p.has_next ?? false,
+        hasPrev: p.has_prev ?? false,
+      },
+    };
   } catch {
-    return noticias;
+    return null;
   }
 }
 
