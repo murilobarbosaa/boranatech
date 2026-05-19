@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, Search, TrendingUp } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import NewsImagePlaceholder from "@/components/NewsImagePlaceholder";
 import SEO from "@/components/SEO";
 import { getNews, type NewsItem, type NewsLevel, type NewsResponse } from "@/services/contentService";
 
@@ -34,19 +35,13 @@ const LEVEL_LABEL: Record<NewsLevel, string> = {
 function NewsCard({ item }: { item: NewsItem }) {
   return (
     <article className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#7dd3fc]">
-      {item.imagem && (
-        <div className="mb-4 -mt-2 -mx-2 overflow-hidden rounded-lg border-2 border-slate-100">
-          <img
-            src={item.imagem}
-            alt=""
-            className="w-full h-40 object-cover"
-            loading="lazy"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = "none";
-            }}
-          />
-        </div>
-      )}
+      <div className="mb-4 -mt-2 -mx-2 overflow-hidden rounded-lg border-2 border-slate-100">
+        {item.imagem ? (
+          <img src={item.imagem} alt="" className="w-full h-40 object-cover" loading="lazy" />
+        ) : (
+          <NewsImagePlaceholder keyword={item.sourceKeyword} />
+        )}
+      </div>
 
       <div className="flex items-start justify-between mb-3 gap-2">
         <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{item.categoria}</span>
