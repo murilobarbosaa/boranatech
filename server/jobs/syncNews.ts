@@ -1,8 +1,15 @@
+import { enrichArticle } from "../lib/aiEnrich";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const FETCH_TIMEOUT_MS = 10_000;
-const KEYWORDS = ["tecnologia", "programação", "inteligência artificial", "startups"];
+const ENRICH_SLEEP_MS = 200;
+const KEYWORDS = [
+  "artificial intelligence",
+  "software engineering",
+  "cybersecurity",
+  "startup funding",
+];
 const PER_KEYWORD_LIMIT = 10;
 
 type SyncNewsResult = {
@@ -10,6 +17,7 @@ type SyncNewsResult = {
   created: number;
   updated: number;
   failed: number;
+  enriched: number;
 };
 
 type CurrentsArticle = {
@@ -28,7 +36,7 @@ async function fetchKeyword(keyword: string, apiKey: string): Promise<CurrentsAr
 
   try {
     const url = new URL("https://api.currentsapi.services/v1/search");
-    url.searchParams.set("language", "pt");
+    url.searchParams.set("language", "en");
     url.searchParams.set("keywords", keyword);
     url.searchParams.set("apiKey", apiKey);
     url.searchParams.set("limit", String(PER_KEYWORD_LIMIT));
@@ -47,8 +55,10 @@ async function fetchKeyword(keyword: string, apiKey: string): Promise<CurrentsAr
   }
 }
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export async function syncNews(): Promise<SyncNewsResult> {
-  const result = { found: 0, created: 0, updated: 0, failed: 0 };
+  const result = { found: 0, created: 0, updated: 0, failed: 0, enriched: 0 };
 
   if (!env.currentsApiKey) {
     console.log("[sync-news] CURRENTS_API_KEY não configurada, pulando");
@@ -80,10 +90,22 @@ export async function syncNews(): Promise<SyncNewsResult> {
   const articles = Array.from(byUrl.values());
   result.found = articles.length;
 
+  const enrichStart = Date.now();
+  let enrichFailures = 0;
+
   for (const article of articles) {
     const urlValue = typeof article.url === "string" ? article.url : "";
     const title = typeof article.title === "string" ? article.title : "";
     if (!urlValue || !title) continue;
+
+    const summary = typeof article.description === "string" ? article.description : "";
+
+    const enrichment = await enrichArticle(title, summary);
+    if (enrichment) {
+      result.enriched += 1;
+    } else {
+      enrichFailures += 1;
+    }
 
     const slug = urlValue
       .replace(/https?:\/\//, "")
@@ -95,7 +117,7 @@ export async function syncNews(): Promise<SyncNewsResult> {
       {
         slug,
         title,
-        summary: typeof article.description === "string" ? article.description : null,
+        summary: summary || null,
         url: urlValue,
         image_url: typeof article.image === "string" ? article.image : null,
         source: typeof article.author === "string" && article.author.trim() ? article.author : "Currents API",
@@ -103,14 +125,24 @@ export async function syncNews(): Promise<SyncNewsResult> {
         tags: typeof article.category === "string" ? [article.category] : [],
         is_external: true,
         is_published: true,
+        title_pt_br: enrichment?.title_pt_br ?? null,
+        summary_pt_br: enrichment?.summary_pt_br ?? null,
+        level: enrichment?.level ?? null,
+        why_it_matters: enrichment?.why_it_matters ?? null,
+        enriched_at: enrichment ? new Date().toISOString() : null,
       },
       { onConflict: "url" },
     );
 
     if (error) result.failed += 1;
     else result.created += 1;
+
+    await sleep(ENRICH_SLEEP_MS);
   }
 
-  console.log(`[sync-news] Resultado: ${result.found} únicos, ${result.created} salvas, ${result.failed} falhas`);
+  const enrichDuration = Date.now() - enrichStart;
+  console.log(
+    `[sync-news] Resultado: ${result.found} únicos, ${result.created} salvas, ${result.enriched} enriquecidas, ${enrichFailures} sem enrichment, ${result.failed} falhas (enrichment+upsert em ${enrichDuration}ms)`,
+  );
   return result;
 }
