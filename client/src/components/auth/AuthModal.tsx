@@ -121,7 +121,7 @@ export default function AuthModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] gap-2 overflow-y-auto rounded-xl border-2 border-slate-950 bg-white p-4 shadow-[6px_6px_0_#0f172a] sm:max-w-md sm:gap-4 sm:p-6">
-        <DialogHeader className="mt-2 mb-3 gap-2">
+        <DialogHeader className="mt-2 mb-3 gap-3">
           <DialogTitle className="px-8 text-center font-display text-lg font-black leading-tight text-slate-950 sm:text-2xl">{title}</DialogTitle>
           <DialogDescription className="text-center text-sm text-slate-600">{description}</DialogDescription>
         </DialogHeader>
