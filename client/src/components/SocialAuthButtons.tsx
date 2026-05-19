@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 type SocialAuthButtonsProps = {
   mode: "login" | "cadastro";
+  onBeforeOAuth?: () => void;
 };
 
 type SocialProvider = "google";
@@ -45,7 +46,7 @@ const providers: Array<{
   },
 ];
 
-export default function SocialAuthButtons({ mode }: SocialAuthButtonsProps) {
+export default function SocialAuthButtons({ mode, onBeforeOAuth }: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
   const enabledProviders = useMemo(() => providers.filter((provider) => provider.enabled()), []);
@@ -56,6 +57,7 @@ export default function SocialAuthButtons({ mode }: SocialAuthButtonsProps) {
     setLoadingProvider(provider);
 
     try {
+      onBeforeOAuth?.();
       if (mode === "cadastro") {
         localStorage.setItem("bnt_social_signup_pending", "true");
       }
