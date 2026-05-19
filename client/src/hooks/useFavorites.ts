@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUrl } from "@/lib/api";
+import {
+  consumePendingIntent,
+  savePendingIntent,
+  type FavoriteIntent,
+} from "@/lib/pendingIntent";
 import { supabase } from "@/lib/supabase";
 
 export type FavoriteType =
@@ -38,7 +43,23 @@ export interface BookmarkItem {
   url_snapshot?: string;
 }
 
-const FAVORITES_STORAGE_KEY = "bora-na-tech:favorites";
+export interface PendingAuthFavorite {
+  type: FavoriteType;
+  itemKey: string;
+  snapshot?: {
+    title?: string;
+    subtitle?: string;
+    url?: string;
+  };
+}
+
+export interface ToggleResult {
+  ok: boolean;
+  requiresAuth?: boolean;
+  isNowFavorited?: boolean;
+}
+
+const LEGACY_FAVORITES_KEY = "bora-na-tech:favorites";
 const FAVORITES_UPDATED_EVENT = "bora-na-tech:favorites-updated";
 
 function favoriteKey(item: Pick<FavoriteItem, "id" | "type">) {
@@ -65,31 +86,17 @@ function favoriteToBookmark(item: FavoriteItem): BookmarkItem {
   };
 }
 
-function readFavorites(): FavoriteItem[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
+function readLegacyBookmarks(): BookmarkItem[] {
+  if (typeof window === "undefined") return [];
   try {
-    const stored = window.localStorage.getItem(FAVORITES_STORAGE_KEY);
-    if (!stored) {
-      return [];
-    }
-
+    const stored = window.localStorage.getItem(LEGACY_FAVORITES_KEY);
+    if (!stored) return [];
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return (parsed as FavoriteItem[]).map(favoriteToBookmark);
   } catch {
     return [];
   }
-}
-
-function readLocalBookmarks(): BookmarkItem[] {
-  return readFavorites().map(favoriteToBookmark);
-}
-
-function writeFavorites(favorites: FavoriteItem[]) {
-  window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
-  window.dispatchEvent(new CustomEvent(FAVORITES_UPDATED_EVENT));
 }
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -115,92 +122,119 @@ async function apiFetch(path: string, options?: RequestInit) {
 }
 
 export function useFavorites() {
-  const { user } = useAuth();
-  const [favorites, setFavorites] = useState<FavoriteItem[]>(() =>
-    readFavorites(),
-  );
+  const { user, loading: authLoading } = useAuth();
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [migrated, setMigrated] = useState(false);
+  const [pendingAuthFavorite, setPendingAuthFavorite] =
+    useState<PendingAuthFavorite | null>(null);
+  const nextLoadFavoriteRef = useRef<PendingAuthFavorite | null>(null);
+  const prevUserIdRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    const syncFavorites = () => setFavorites(readFavorites());
-
-    window.addEventListener("storage", syncFavorites);
-    window.addEventListener(FAVORITES_UPDATED_EVENT, syncFavorites);
-
-    return () => {
-      window.removeEventListener("storage", syncFavorites);
-      window.removeEventListener(FAVORITES_UPDATED_EVENT, syncFavorites);
-    };
+  const refreshFromServer = useCallback(async () => {
+    const res = await apiFetch("/");
+    if (!res.ok) throw new Error("Erro ao buscar favoritos");
+    const json = (await res.json()) as { data?: BookmarkItem[] };
+    setFavorites((json.data || []).map(bookmarkToFavorite));
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!user) {
-      setFavorites(readFavorites());
+      setFavorites([]);
       setLoading(false);
-      setMigrated(false);
+      prevUserIdRef.current = null;
       return;
     }
 
-    setLoading(true);
-    apiFetch("/")
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao buscar favoritos");
-        return res.json() as Promise<{ data?: BookmarkItem[] }>;
-      })
-      .then((json) => {
-        setFavorites((json.data || []).map(bookmarkToFavorite));
-      })
-      .catch(() => {
-        setFavorites(readFavorites());
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [user]);
+    const prevUserId = prevUserIdRef.current;
+    prevUserIdRef.current = user.id;
+    const justSignedIn = !prevUserId;
 
-  useEffect(() => {
-    if (!user || migrated) return;
-
-    const localItems = readLocalBookmarks();
-    if (localItems.length === 0) {
-      setMigrated(true);
-      return;
+    if (justSignedIn) {
+      setPendingAuthFavorite(null);
     }
 
-    const migratedKey = `bora-na-tech:favorites-migrated:${user.id}`;
-    if (window.localStorage.getItem(migratedKey)) {
-      setMigrated(true);
-      return;
-    }
+    let cancelled = false;
 
-    apiFetch("/migrate", {
-      method: "POST",
-      body: JSON.stringify({ bookmarks: localItems }),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao migrar favoritos");
-        return res.json() as Promise<{ data?: { migrated?: number } }>;
-      })
-      .then((json) => {
-        if (typeof json.data?.migrated === "number") {
-          window.localStorage.setItem(migratedKey, "1");
-          window.localStorage.removeItem(FAVORITES_STORAGE_KEY);
-          setMigrated(true);
-          return apiFetch("/").then(
-            (res) => res.json() as Promise<{ data?: BookmarkItem[] }>,
-          );
+    async function load() {
+      setLoading(true);
+
+      try {
+        if (justSignedIn) {
+          await maybeMigrateLegacyBookmarks(user!.id);
+          await maybeConsumeOAuthFavorite();
         }
 
-        return null;
-      })
-      .then((json) => {
-        if (json?.data) setFavorites(json.data.map(bookmarkToFavorite));
-      })
-      .catch(() => {
-        setMigrated(true);
-      });
-  }, [migrated, user]);
+        const res = await apiFetch("/");
+        if (!res.ok) throw new Error("Erro ao buscar favoritos");
+        const json = (await res.json()) as { data?: BookmarkItem[] };
+        if (cancelled) return;
+
+        let nextFavorites = (json.data || []).map(bookmarkToFavorite);
+
+        const queued = nextLoadFavoriteRef.current;
+        if (queued) {
+          nextLoadFavoriteRef.current = null;
+          const key = favoriteKey({ id: queued.itemKey, type: queued.type });
+          const alreadyHas = nextFavorites.some((fav) => favoriteKey(fav) === key);
+          if (!alreadyHas) {
+            const optimistic: FavoriteItem = {
+              id: queued.itemKey,
+              type: queued.type,
+              title: queued.snapshot?.title || queued.itemKey,
+              subtitle: queued.snapshot?.subtitle,
+              url: queued.snapshot?.url,
+            };
+            nextFavorites = [optimistic, ...nextFavorites];
+            void apiFetch("/", {
+              method: "POST",
+              body: JSON.stringify(favoriteToBookmark(optimistic)),
+            }).catch((err) => {
+              console.error("[useFavorites] queued favorite POST failed", err);
+              setFavorites((prev) =>
+                prev.filter((fav) => favoriteKey(fav) !== key),
+              );
+            });
+            posthog.capture("favorite_toggled", {
+              action: "added",
+              resource_type: optimistic.type,
+              resource_title: optimistic.title,
+              via: "auth_intent",
+            });
+          }
+        }
+
+        setFavorites(nextFavorites);
+      } catch (err) {
+        console.error("[useFavorites] load failed", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, authLoading]);
+
+  useEffect(() => {
+    const syncFromStorage = () => {
+      // Legacy storage event listener: triggers a server re-fetch in case
+      // another tab migrated bookmarks between mounts.
+      if (user) void refreshFromServer().catch(() => {});
+    };
+
+    window.addEventListener("storage", syncFromStorage);
+    window.addEventListener(FAVORITES_UPDATED_EVENT, syncFromStorage);
+
+    return () => {
+      window.removeEventListener("storage", syncFromStorage);
+      window.removeEventListener(FAVORITES_UPDATED_EVENT, syncFromStorage);
+    };
+  }, [user, refreshFromServer]);
 
   const favoriteKeys = useMemo(
     () => new Set(favorites.map(favoriteKey)),
@@ -222,68 +256,74 @@ export function useFavorites() {
   );
 
   const toggleFavorite = useCallback(
-    (item: FavoriteItem) => {
-      const normalizedItem = { ...item, id: String(item.id) };
-      const currentFavorites = user ? favorites : readFavorites();
-      const key = favoriteKey(normalizedItem);
-      const isCurrentlyFavorite = currentFavorites.some(
-        (favorite) => favoriteKey(favorite) === key,
-      );
+    async (item: FavoriteItem): Promise<ToggleResult> => {
+      const normalizedItem: FavoriteItem = { ...item, id: String(item.id) };
 
       if (!user) {
-        const nextFavorites = isCurrentlyFavorite
-          ? currentFavorites.filter((favorite) => favoriteKey(favorite) !== key)
-          : [normalizedItem, ...currentFavorites];
-
-        writeFavorites(nextFavorites);
-        setFavorites(nextFavorites);
-        posthog.capture("favorite_toggled", {
-          action: isCurrentlyFavorite ? "removed" : "added",
-          resource_type: normalizedItem.type,
-          resource_title: normalizedItem.title,
-        });
-        return nextFavorites.some((favorite) => favoriteKey(favorite) === key);
+        const pending: PendingAuthFavorite = {
+          type: normalizedItem.type,
+          itemKey: normalizedItem.id,
+          snapshot: {
+            title: normalizedItem.title,
+            subtitle: normalizedItem.subtitle,
+            url: normalizedItem.url,
+          },
+        };
+        setPendingAuthFavorite(pending);
+        nextLoadFavoriteRef.current = pending;
+        return { ok: false, requiresAuth: true };
       }
 
-      if (isCurrentlyFavorite) {
+      const key = favoriteKey(normalizedItem);
+      const wasFavorited = favorites.some((fav) => favoriteKey(fav) === key);
+
+      if (wasFavorited) {
         setFavorites((current) =>
-          current.filter((favorite) => favoriteKey(favorite) !== key),
+          current.filter((fav) => favoriteKey(fav) !== key),
         );
 
-        void apiFetch(
-          `/${normalizedItem.type}/${encodeURIComponent(normalizedItem.id)}`,
-          { method: "DELETE" },
-        ).catch(() => {
+        try {
+          const res = await apiFetch(
+            `/${normalizedItem.type}/${encodeURIComponent(normalizedItem.id)}`,
+            { method: "DELETE" },
+          );
+          if (!res.ok) throw new Error("delete failed");
+          posthog.capture("favorite_toggled", {
+            action: "removed",
+            resource_type: normalizedItem.type,
+            resource_title: normalizedItem.title,
+          });
+          return { ok: true, isNowFavorited: false };
+        } catch (err) {
+          console.error("[useFavorites] delete failed", err);
           setFavorites((current) => [normalizedItem, ...current]);
-        });
-
-        posthog.capture("favorite_toggled", {
-          action: "removed",
-          resource_type: normalizedItem.type,
-          resource_title: normalizedItem.title,
-        });
-        return false;
+          return { ok: false, isNowFavorited: true };
+        }
       }
 
       setFavorites((current) => [normalizedItem, ...current]);
-      posthog.capture("favorite_toggled", {
-        action: "added",
-        resource_type: normalizedItem.type,
-        resource_title: normalizedItem.title,
-      });
 
-      void apiFetch("/", {
-        method: "POST",
-        body: JSON.stringify(favoriteToBookmark(normalizedItem)),
-      }).catch(() => {
+      try {
+        const res = await apiFetch("/", {
+          method: "POST",
+          body: JSON.stringify(favoriteToBookmark(normalizedItem)),
+        });
+        if (!res.ok) throw new Error("insert failed");
+        posthog.capture("favorite_toggled", {
+          action: "added",
+          resource_type: normalizedItem.type,
+          resource_title: normalizedItem.title,
+        });
+        return { ok: true, isNowFavorited: true };
+      } catch (err) {
+        console.error("[useFavorites] insert failed", err);
         setFavorites((current) =>
-          current.filter((favorite) => favoriteKey(favorite) !== key),
+          current.filter((fav) => favoriteKey(fav) !== key),
         );
-      });
-
-      return true;
+        return { ok: false, isNowFavorited: false };
+      }
     },
-    [favorites, user],
+    [user, favorites],
   );
 
   const getFavoritesByType = useCallback(
@@ -292,5 +332,85 @@ export function useFavorites() {
     [favorites],
   );
 
-  return { favorites, loading, isFavorite, toggleFavorite, getFavoritesByType };
+  const queueFavoriteOnNextLoad = useCallback(
+    (pending: PendingAuthFavorite) => {
+      nextLoadFavoriteRef.current = pending;
+    },
+    [],
+  );
+
+  const clearPendingAuth = useCallback(() => {
+    setPendingAuthFavorite(null);
+    nextLoadFavoriteRef.current = null;
+  }, []);
+
+  return {
+    favorites,
+    loading,
+    isFavorite,
+    toggleFavorite,
+    getFavoritesByType,
+    pendingAuthFavorite,
+    clearPendingAuth,
+    queueFavoriteOnNextLoad,
+  };
+}
+
+async function maybeMigrateLegacyBookmarks(userId: string): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  const migratedKey = `bora-na-tech:favorites-migrated:${userId}`;
+  if (window.localStorage.getItem(migratedKey)) return;
+
+  const legacyItems = readLegacyBookmarks();
+  if (legacyItems.length === 0) {
+    window.localStorage.setItem(migratedKey, "1");
+    return;
+  }
+
+  try {
+    const res = await apiFetch("/migrate", {
+      method: "POST",
+      body: JSON.stringify({ bookmarks: legacyItems }),
+    });
+    if (res.ok) {
+      window.localStorage.setItem(migratedKey, "1");
+      window.localStorage.removeItem(LEGACY_FAVORITES_KEY);
+    }
+  } catch (err) {
+    console.error("[useFavorites] legacy migration failed", err);
+  }
+}
+
+async function maybeConsumeOAuthFavorite(): Promise<void> {
+  const intent = consumePendingIntent();
+  if (!intent) return;
+
+  if (intent.kind !== "favorite") {
+    savePendingIntent(intent);
+    return;
+  }
+
+  const fav = intent as FavoriteIntent;
+  try {
+    const bookmark: BookmarkItem = {
+      resource_type: fav.type as FavoriteType,
+      resource_id: fav.itemKey,
+      title_snapshot: fav.snapshot?.title,
+      subtitle_snapshot: fav.snapshot?.subtitle,
+      url_snapshot: fav.snapshot?.url,
+    };
+    await apiFetch("/", {
+      method: "POST",
+      body: JSON.stringify(bookmark),
+    });
+    posthog.capture("favorite_toggled", {
+      action: "added",
+      resource_type: fav.type,
+      resource_title: fav.snapshot?.title || fav.itemKey,
+      via: "oauth_intent",
+    });
+  } catch (err) {
+    console.error("[useFavorites] oauth favorite apply failed", err);
+  }
 }
