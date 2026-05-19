@@ -298,23 +298,55 @@ router.get("/sources/status", async (_req, res, next) => {
 
 router.get("/news", async (req, res, next) => {
   try {
-    const limit = Math.min(parseInt(String(req.query.limit || "20"), 10) || 20, 50);
-    const offset = Math.max(parseInt(String(req.query.offset || "0"), 10) || 0, 0);
-    const tag = req.query.tag ? String(req.query.tag) : "";
+    const page = Math.max(1, parseInt(String(req.query.page || "1"), 10) || 1);
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || "21"), 10) || 21, 1), 100);
+    const level = req.query.level ? String(req.query.level) : "";
+    const q = req.query.q ? String(req.query.q).trim() : "";
 
     let query = supabaseAdmin
       .from("news")
-      .select("id, slug, title, summary, url, image_url, source, published_at, tags")
+      .select(
+        "id, slug, title, title_pt_br, summary, summary_pt_br, level, why_it_matters, url, image_url, source, author, published_at, tags, enriched_at",
+        { count: "exact" },
+      )
       .eq("is_published", true)
-      .order("published_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .not("enriched_at", "is", null);
 
-    if (tag) query = query.contains("tags", [tag]);
+    if (level && ["iniciante", "intermediario", "avancado"].includes(level)) {
+      query = query.eq("level", level);
+    }
 
-    const { data, error } = await query;
+    if (q) {
+      const safe = q.replace(/[%,()]/g, " ");
+      const term = `%${safe}%`;
+      query = query.or(
+        `title_pt_br.ilike.${term},summary_pt_br.ilike.${term},why_it_matters.ilike.${term}`,
+      );
+    }
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    query = query
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .range(from, to);
+
+    const { data, count, error } = await query;
     if (error) return next(createError(500, "db_error", "Erro ao buscar notícias."));
 
-    res.json({ data: data || [] });
+    const total = count ?? 0;
+    const total_pages = Math.max(1, Math.ceil(total / limit));
+
+    res.json({
+      data: data || [],
+      pagination: {
+        page,
+        limit,
+        total,
+        total_pages,
+        has_next: page < total_pages,
+        has_prev: page > 1,
+      },
+    });
   } catch (err) {
     next(err);
   }
