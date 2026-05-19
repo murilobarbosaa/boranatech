@@ -10,7 +10,7 @@ import PageHero from "@/components/shared/PageHero";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePortfolioChecklist } from "@/hooks/usePortfolioChecklist";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { consumePendingIntent } from "@/lib/pendingIntent";
+import { consumePendingIntent, savePendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
 import { portfolioChecklist, portfolioGuides, readmeTemplates } from "@/lib/careerToolsData";
 
@@ -45,8 +45,18 @@ export default function Portfolio() {
     if (prevUser) return;
 
     const oauthIntent = consumePendingIntent();
-    if (oauthIntent && oauthIntent.context === "portfolio_checklist") {
+    if (
+      oauthIntent &&
+      oauthIntent.kind === "progress" &&
+      oauthIntent.context === "portfolio_checklist"
+    ) {
       queueMarkOnNextLoad(oauthIntent.itemKey);
+    } else if (oauthIntent) {
+      savePendingIntent(oauthIntent);
+      if (pendingAuthItemId) {
+        queueMarkOnNextLoad(pendingAuthItemId);
+        clearPendingAuth();
+      }
     } else if (pendingAuthItemId) {
       queueMarkOnNextLoad(pendingAuthItemId);
       clearPendingAuth();
@@ -234,7 +244,7 @@ export default function Portfolio() {
         onAuthenticated={handleAuthenticated}
         title={<>Faça login pra salvar seu <span className="text-[#FFB800]">Progresso</span></>}
         description="Seu progresso fica salvo na sua conta."
-        pendingIntent={pendingAuthItemId ? { context: "portfolio_checklist", itemKey: pendingAuthItemId } : undefined}
+        pendingIntent={pendingAuthItemId ? { kind: "progress", context: "portfolio_checklist", itemKey: pendingAuthItemId } : undefined}
       />
     </Layout>
   );

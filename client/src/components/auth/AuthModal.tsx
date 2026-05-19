@@ -21,7 +21,7 @@ import {
 } from "@/lib/authSchemas";
 import {
   savePendingIntent,
-  type PendingIntentContext,
+  type PendingIntent,
 } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
 import { getMyProfile } from "@/services/profileService";
@@ -37,7 +37,7 @@ interface AuthModalProps {
   defaultTab?: Tab;
   title?: ReactNode;
   description?: ReactNode;
-  pendingIntent?: { context: PendingIntentContext; itemKey: string };
+  pendingIntent?: PendingIntent;
 }
 
 export default function AuthModal({
@@ -74,7 +74,7 @@ export default function AuthModal({
 
   function persistIntentForOAuth() {
     if (pendingIntent) {
-      savePendingIntent(pendingIntent.context, pendingIntent.itemKey);
+      savePendingIntent(pendingIntent);
     }
   }
 
