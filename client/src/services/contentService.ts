@@ -226,7 +226,7 @@ export function inferKeyword(title: string, summary: string): NewsKeyword | null
 
 function sanitizeImageUrl(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  if (raw === "None" || !raw || raw.length < 8) return null;
+  if (!/^https?:\/\//.test(raw)) return null;
   return raw;
 }
 
