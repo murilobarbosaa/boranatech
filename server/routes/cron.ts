@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response, Router } from "express";
 
+import { enrichBacklog } from "../jobs/enrichBacklog";
 import { syncJobs } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
 import { cancelAsaasSubscription } from "../lib/asaas";
@@ -189,6 +190,30 @@ router.post("/process-cancellations", async (_req, res, next) => {
       status: "error",
       startedAt,
       errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    next(err);
+  }
+});
+
+router.post("/enrich-backlog", async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    const result = await enrichBacklog();
+    await recordCronRun({
+      jobName: "enrich-backlog",
+      status: result.failed > 0 ? "partial" : "success",
+      startedAt,
+      payload: { ...result },
+    });
+    res.json({ data: result });
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await recordCronRun({
+      jobName: "enrich-backlog",
+      status: "error",
+      startedAt,
+      errorMessage,
     });
     next(err);
   }
