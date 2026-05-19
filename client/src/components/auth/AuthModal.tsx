@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { GenderSelect } from "@/components/auth/GenderSelect";
+import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ export default function AuthModal({
   const [gender, setGender] = useState<Gender | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -67,17 +69,6 @@ export default function AuthModal({
   useEffect(() => {
     setError(null);
   }, [name, email, password, gender, tab]);
-
-  const passwordChecks = useMemo(
-    () => [
-      { label: "8+ caracteres", valid: password.length >= 8 },
-      { label: "letra maiúscula", valid: /[A-Z]/.test(password) },
-      { label: "letra minúscula", valid: /[a-z]/.test(password) },
-      { label: "número", valid: /[0-9]/.test(password) },
-      { label: "caractere especial", valid: /[^A-Za-z0-9]/.test(password) },
-    ],
-    [password],
-  );
 
   const isSignup = tab === "signup";
 
@@ -230,28 +221,13 @@ export default function AuthModal({
               autoComplete={isSignup ? "new-password" : "current-password"}
               className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
               onChange={(event) => setPassword(event.target.value)}
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
               placeholder="Sua senha"
               value={password}
             />
           </label>
-          {isSignup && (
-            <div className="rounded-2xl bg-slate-50 p-3 text-xs font-bold text-slate-600">
-              <p className="mb-2 text-slate-800">Sua senha precisa ter:</p>
-              <div className="flex flex-wrap gap-2">
-                {passwordChecks.map((check) => (
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-1",
-                      check.valid ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-500",
-                    )}
-                    key={check.label}
-                  >
-                    {check.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          {isSignup && <PasswordRequirements value={password} isFocused={passwordFocused} />}
           <button
             className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isSubmitting}
