@@ -8,7 +8,7 @@ const KEYWORDS = [
   "artificial intelligence",
   "software engineering",
   "cybersecurity",
-  "startup funding",
+  "tech startup",
 ];
 const PER_KEYWORD_LIMIT = 10;
 
