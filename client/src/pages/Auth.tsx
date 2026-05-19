@@ -5,11 +5,11 @@ import { Link, useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
+import { GenderSelect } from "@/components/auth/GenderSelect";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthErrorMessage, type FriendlyError } from "@/lib/authErrors";
 import {
-  GENDER_OPTIONS,
   firstIssueMessage,
   loginSchema,
   signupSchema,
@@ -152,36 +152,16 @@ export default function Auth({
                 </label>
               )}
               {isSignup && (
-                <fieldset className="block">
-                  <legend className="mb-1 block text-xs font-black uppercase text-slate-600">
+                <div className="block">
+                  <label htmlFor="auth-gender" className="mb-1 block text-xs font-black uppercase text-slate-600">
                     Como você se identifica?
-                  </legend>
-                  <div className="grid grid-cols-2 gap-2">
-                    {GENDER_OPTIONS.map((option) => {
-                      const selected = gender === option.value;
-                      return (
-                        <label
-                          key={option.value}
-                          className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 px-3 py-2 text-sm font-bold transition ${
-                            selected
-                              ? "border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a]"
-                              : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="gender"
-                            value={option.value}
-                            checked={selected}
-                            onChange={() => setGender(option.value)}
-                            className="sr-only"
-                          />
-                          <span>{option.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
+                  </label>
+                  <GenderSelect
+                    id="auth-gender"
+                    value={gender || undefined}
+                    onChange={(value) => setGender(value as Gender)}
+                  />
+                </div>
               )}
               <label className="block">
                 <span className="mb-1 block text-xs font-black uppercase text-slate-600">E-mail</span>
