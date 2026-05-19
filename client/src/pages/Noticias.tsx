@@ -33,11 +33,19 @@ const LEVEL_LABEL: Record<NewsLevel, string> = {
 };
 
 function NewsCard({ item }: { item: NewsItem }) {
+  const [imageBroken, setImageBroken] = useState(false);
+  const showImage = item.imagem && !imageBroken;
   return (
     <article className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#7dd3fc]">
       <div className="mb-4 -mt-2 -mx-2 overflow-hidden rounded-lg border-2 border-slate-100">
-        {item.imagem ? (
-          <img src={item.imagem} alt="" className="w-full h-40 object-cover" loading="lazy" />
+        {showImage ? (
+          <img
+            src={item.imagem!}
+            alt=""
+            className="w-full h-40 object-cover"
+            loading="lazy"
+            onError={() => setImageBroken(true)}
+          />
         ) : (
           <NewsImagePlaceholder keyword={item.sourceKeyword} />
         )}
