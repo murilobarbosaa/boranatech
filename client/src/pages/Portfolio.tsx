@@ -1,20 +1,87 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Check, ClipboardList, FolderGit2, Info, Sparkles, Target } from "lucide-react";
+import { toast } from "sonner";
+import AuthModal from "@/components/auth/AuthModal";
 import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePortfolioChecklist } from "@/hooks/usePortfolioChecklist";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { consumePendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
 import { portfolioChecklist, portfolioGuides, readmeTemplates } from "@/lib/careerToolsData";
 
 const ac = getPageAccentUi("emerald");
 
 export default function Portfolio() {
-  const [checked, setChecked] = useState<string[]>([]);
-  const allDone = checked.length === portfolioChecklist.length;
-  const progress = Math.round((checked.length / portfolioChecklist.length) * 100);
+  const { user } = useAuth();
+  const {
+    checkedIds,
+    isLoading,
+    toggle,
+    queueMarkOnNextLoad,
+    pendingAuthItemId,
+    clearPendingAuth,
+  } = usePortfolioChecklist();
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const authJustSucceededRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingAuthItemId && !user) {
+      setAuthModalOpen(true);
+    }
+  }, [pendingAuthItemId, user]);
+
+  const prevUserRef = useRef(user);
+  useEffect(() => {
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
+
+    if (!user) return;
+    if (prevUser) return;
+
+    const oauthIntent = consumePendingIntent();
+    if (oauthIntent && oauthIntent.context === "portfolio_checklist") {
+      queueMarkOnNextLoad(oauthIntent.itemKey);
+    } else if (pendingAuthItemId) {
+      queueMarkOnNextLoad(pendingAuthItemId);
+      clearPendingAuth();
+    }
+  }, [user, pendingAuthItemId, clearPendingAuth, queueMarkOnNextLoad]);
+
+  const allDone = !isLoading && checkedIds.size === portfolioChecklist.length;
+  const progress = Math.round((checkedIds.size / portfolioChecklist.length) * 100);
+
+  async function handleToggle(itemId: string) {
+    const result = await toggle(itemId);
+    if (result.requiresAuth) return;
+    if (!result.ok) {
+      if (user) {
+        toast.error("Sua sessão expirou. Faça login novamente.");
+      } else {
+        toast.error("Não foi possível salvar. Tente novamente.");
+      }
+    }
+  }
+
+  function handleModalOpenChange(open: boolean) {
+    setAuthModalOpen(open);
+    if (!open) {
+      if (authJustSucceededRef.current) {
+        authJustSucceededRef.current = false;
+        return;
+      }
+      clearPendingAuth();
+    }
+  }
+
+  function handleAuthenticated() {
+    authJustSucceededRef.current = true;
+  }
 
   return (
     <Layout>
@@ -68,10 +135,12 @@ export default function Portfolio() {
           <div className={cn("mt-5 h-5 overflow-hidden rounded-full border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]", ac.panelSoft)}>
             <div className={cn("h-full transition-all duration-300", ac.progressFill)} style={{ width: `${progress}%` }} />
           </div>
-          <p className="mt-2 text-xs font-bold text-slate-500">{checked.length} de {portfolioChecklist.length} itens concluídos</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <p className="mt-2 text-xs font-bold text-slate-500">
+            {isLoading ? "Carregando seu progresso..." : `${checkedIds.size} de ${portfolioChecklist.length} itens concluídos`}
+          </p>
+          <div className={cn("mt-4 grid gap-3 md:grid-cols-2", isLoading && "opacity-60")}>
             {portfolioChecklist.map((item) => {
-              const isChecked = checked.includes(item.id);
+              const isChecked = checkedIds.has(item.id);
 
               return (
               <label
@@ -81,12 +150,14 @@ export default function Portfolio() {
                   isChecked
                     ? cn("border-slate-900 shadow-[3px_3px_0_#0f172a]", ac.panelSoft)
                     : "border-emerald-200 bg-slate-50 hover:border-emerald-500 hover:bg-emerald-50",
+                  isLoading && "pointer-events-none",
                 )}
               >
                 <input
                   type="checkbox"
                   checked={isChecked}
-                  onChange={(event) => setChecked((current) => event.target.checked ? [...current, item.id] : current.filter((value) => value !== item.id))}
+                  onChange={() => handleToggle(item.id)}
+                  disabled={isLoading}
                   className="sr-only"
                 />
                 <span
@@ -157,6 +228,14 @@ export default function Portfolio() {
         </div>
         </div>
       </section>
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={handleModalOpenChange}
+        onAuthenticated={handleAuthenticated}
+        title="Faça login pra salvar seu progresso"
+        description="Crie sua conta ou entre pra que seus itens marcados não se percam."
+        pendingIntent={pendingAuthItemId ? { context: "portfolio_checklist", itemKey: pendingAuthItemId } : undefined}
+      />
     </Layout>
   );
 }
