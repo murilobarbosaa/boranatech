@@ -233,7 +233,7 @@ export default function Portfolio() {
         onOpenChange={handleModalOpenChange}
         onAuthenticated={handleAuthenticated}
         title={<>Faça login pra salvar seu <span className="text-[#FFB800]">progresso</span></>}
-        description="Crie sua conta ou entre pra que seus itens marcados não se percam."
+        description="Seu progresso fica salvo na sua conta."
         pendingIntent={pendingAuthItemId ? { context: "portfolio_checklist", itemKey: pendingAuthItemId } : undefined}
       />
     </Layout>
