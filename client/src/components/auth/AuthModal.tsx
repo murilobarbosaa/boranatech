@@ -120,19 +120,19 @@ export default function AuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl font-black text-slate-950">{title}</DialogTitle>
-          <DialogDescription className="text-sm text-slate-600">{description}</DialogDescription>
+      <DialogContent className="max-h-[90vh] gap-2 overflow-y-auto p-4 sm:max-w-md sm:gap-4 sm:p-6">
+        <DialogHeader className="gap-1">
+          <DialogTitle className="pr-8 font-display text-lg font-black leading-tight text-slate-950 sm:text-2xl">{title}</DialogTitle>
+          <DialogDescription className="hidden text-sm text-slate-600 sm:block">{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="mt-2 inline-flex rounded-full border-2 border-slate-200 bg-slate-100 p-1">
+        <div className="inline-flex self-start rounded-full border-2 border-slate-200 bg-slate-100 p-1">
           <button
             type="button"
             onClick={() => setTab("signin")}
             aria-pressed={!isSignup}
             className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wide transition-all",
+              "rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
               !isSignup ? "bg-slate-950 text-white shadow-[2px_2px_0_#FFB800]" : "text-slate-600 hover:text-slate-900",
             )}
           >
@@ -143,7 +143,7 @@ export default function AuthModal({
             onClick={() => setTab("signup")}
             aria-pressed={isSignup}
             className={cn(
-              "rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-wide transition-all",
+              "rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
               isSignup ? "bg-slate-950 text-white shadow-[2px_2px_0_#FFB800]" : "text-slate-600 hover:text-slate-900",
             )}
           >
@@ -176,7 +176,7 @@ export default function AuthModal({
           </div>
         )}
 
-        <form className="space-y-3" onSubmit={handleSubmit}>
+        <form className="space-y-2 sm:space-y-3" onSubmit={handleSubmit}>
           {isSignup && (
             <label className="block">
               <span className="mb-1 block text-xs font-black uppercase text-slate-600">Nome</span>
