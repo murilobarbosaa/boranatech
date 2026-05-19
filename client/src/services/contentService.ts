@@ -149,6 +149,12 @@ function technologyFromApi(row: any) {
 
 export type NewsLevel = "iniciante" | "intermediario" | "avancado";
 
+export type NewsKeyword =
+  | "artificial intelligence"
+  | "software engineering"
+  | "cybersecurity"
+  | "tech startup";
+
 export interface NewsItem {
   id: string;
   titulo: string;
@@ -160,6 +166,7 @@ export interface NewsItem {
   nivel: NewsLevel | null;
   porQueImporta: string | null;
   categoria: string;
+  sourceKeyword: NewsKeyword | null;
 }
 
 export interface NewsPagination {
@@ -185,23 +192,64 @@ export interface GetNewsParams {
 
 const VALID_LEVELS: NewsLevel[] = ["iniciante", "intermediario", "avancado"];
 
+const KEYWORD_PATTERNS: Array<{ keyword: NewsKeyword; pattern: RegExp }> = [
+  {
+    keyword: "cybersecurity",
+    pattern:
+      /\b(cybersecurity|cyber[\s-]?security|cyberattack|hack(?:er|ers|ing|ed)?|breach(?:es|ed)?|ransomware|malware|phishing|cve-\d|zero[\s-]?day|exploit(?:s|ed|ing)?|vulnerab(?:le|ility|ilities))\b/i,
+  },
+  {
+    keyword: "artificial intelligence",
+    pattern:
+      /\b(ai|a\.i\.|artificial intelligence|machine learning|deep learning|neural network|llm|llms|gpt-?\d?|chatgpt|openai|anthropic|claude|gemini|mistral|generative ai|copilot|nvidia)\b/i,
+  },
+  {
+    keyword: "tech startup",
+    pattern:
+      /\b(startup|series\s+[a-f]|ipo|funding|venture|vc\b|raised|valuation|founders?|seed round|pre-?seed|unicorn)\b/i,
+  },
+  {
+    keyword: "software engineering",
+    pattern:
+      /\b(developer|programming|software|framework|open[\s-]?source|github|api|sdk|kubernetes|docker|javascript|typescript|python|node\.?js|react|coding|backend|frontend|devops)\b/i,
+  },
+];
+
+export function inferKeyword(title: string, summary: string): NewsKeyword | null {
+  if (!title) return null;
+  const text = `${title} ${summary || ""}`;
+  for (const { keyword, pattern } of KEYWORD_PATTERNS) {
+    if (pattern.test(text)) return keyword;
+  }
+  return null;
+}
+
+function sanitizeImageUrl(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  if (raw === "None" || !raw || raw.length < 8) return null;
+  return raw;
+}
+
 function newsFromApi(row: any): NewsItem {
   const tags = Array.isArray(row.tags) ? row.tags.filter((tag: unknown) => typeof tag === "string") : [];
   const publishedAt = row.published_at ? new Date(row.published_at) : null;
   const categoria = tags[0] || "Tecnologia";
   const nivel = VALID_LEVELS.includes(row.level) ? (row.level as NewsLevel) : null;
+  const title = typeof row.title === "string" ? row.title : "";
+  const summary = typeof row.summary === "string" ? row.summary : "";
 
   return {
     id: row.slug || row.id,
-    titulo: row.title_pt_br || row.title,
-    resumo: row.summary_pt_br || row.summary || "",
+    titulo: row.title_pt_br || title,
+    resumo: row.summary_pt_br || summary,
     fonte: row.source || "Fonte externa",
     data: publishedAt && !Number.isNaN(publishedAt.getTime()) ? publishedAt.toLocaleDateString("pt-BR") : "",
     link: row.url,
-    imagem: row.image_url || null,
+    imagem: sanitizeImageUrl(row.image_url),
     nivel,
     porQueImporta: row.why_it_matters || null,
     categoria,
+    sourceKeyword: inferKeyword(title, summary),
   };
 }
 
