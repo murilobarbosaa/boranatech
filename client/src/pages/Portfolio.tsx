@@ -71,11 +71,11 @@ export default function Portfolio() {
           <p className="mt-2 text-xs font-bold text-slate-500">{checked.length} de {portfolioChecklist.length} itens concluídos</p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {portfolioChecklist.map((item) => {
-              const isChecked = checked.includes(item);
+              const isChecked = checked.includes(item.id);
 
               return (
               <label
-                key={item}
+                key={item.id}
                 className={cn(
                   "flex cursor-pointer items-center gap-3 rounded-2xl border-2 p-3 text-sm font-bold transition-all",
                   isChecked
@@ -86,7 +86,7 @@ export default function Portfolio() {
                 <input
                   type="checkbox"
                   checked={isChecked}
-                  onChange={(event) => setChecked((current) => event.target.checked ? [...current, item] : current.filter((value) => value !== item))}
+                  onChange={(event) => setChecked((current) => event.target.checked ? [...current, item.id] : current.filter((value) => value !== item.id))}
                   className="sr-only"
                 />
                 <span
@@ -97,7 +97,7 @@ export default function Portfolio() {
                 >
                   <Check className="h-4 w-4 stroke-[4]" />
                 </span>
-                <span className={isChecked ? "text-slate-950" : "text-slate-700"}>{item}</span>
+                <span className={isChecked ? "text-slate-950" : "text-slate-700"}>{item.label}</span>
               </label>
               );
             })}
