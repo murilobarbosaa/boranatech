@@ -126,14 +126,16 @@ export default function AuthModal({
           <DialogDescription className="hidden text-sm text-slate-600 sm:block">{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="inline-flex self-start rounded-full border-2 border-slate-200 bg-slate-100 p-1">
+        <div className="inline-flex self-start rounded-full bg-slate-100 p-1">
           <button
             type="button"
             onClick={() => setTab("signin")}
             aria-pressed={!isSignup}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
-              !isSignup ? "bg-slate-950 text-white shadow-[2px_2px_0_#FFB800]" : "text-slate-600 hover:text-slate-900",
+              "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
+              !isSignup
+                ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             Entrar
@@ -143,15 +145,21 @@ export default function AuthModal({
             onClick={() => setTab("signup")}
             aria-pressed={isSignup}
             className={cn(
-              "rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
-              isSignup ? "bg-slate-950 text-white shadow-[2px_2px_0_#FFB800]" : "text-slate-600 hover:text-slate-900",
+              "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
+              isSignup
+                ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                : "text-slate-600 hover:text-slate-900",
             )}
           >
             Criar conta
           </button>
         </div>
 
-        <SocialAuthButtons mode={isSignup ? "cadastro" : "login"} onBeforeOAuth={persistIntentForOAuth} />
+        <SocialAuthButtons
+          mode={isSignup ? "cadastro" : "login"}
+          onBeforeOAuth={persistIntentForOAuth}
+          showDivider={false}
+        />
 
         {error && (
           <div
@@ -179,7 +187,7 @@ export default function AuthModal({
         <form className="space-y-2 sm:space-y-3" onSubmit={handleSubmit}>
           {isSignup && (
             <label className="block">
-              <span className="mb-1 block text-xs font-black uppercase text-slate-600">Nome</span>
+              <span className="mb-2 block text-xs font-black uppercase text-slate-600">Nome</span>
               <input
                 autoComplete="name"
                 className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -192,7 +200,7 @@ export default function AuthModal({
           )}
           {isSignup && (
             <div className="block">
-              <label htmlFor="auth-modal-gender" className="mb-1 block text-xs font-black uppercase text-slate-600">
+              <label htmlFor="auth-modal-gender" className="mb-2 block text-xs font-black uppercase text-slate-600">
                 Como você se identifica?
               </label>
               <GenderSelect
@@ -203,7 +211,7 @@ export default function AuthModal({
             </div>
           )}
           <label className="block">
-            <span className="mb-1 block text-xs font-black uppercase text-slate-600">E-mail</span>
+            <span className="mb-2 block text-xs font-black uppercase text-slate-600">E-mail</span>
             <input
               autoComplete="email"
               className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -216,7 +224,7 @@ export default function AuthModal({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-black uppercase text-slate-600">Senha</span>
+            <span className="mb-2 block text-xs font-black uppercase text-slate-600">Senha</span>
             <PasswordInput
               autoComplete={isSignup ? "new-password" : "current-password"}
               className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"

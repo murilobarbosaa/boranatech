@@ -29,7 +29,7 @@ export function GenderSelect({
         id={id}
         aria-label={ariaLabel ?? "Como você se identifica?"}
         className={cn(
-          "h-auto w-full rounded-xl border-2 border-slate-300 bg-white p-3 text-sm font-medium text-slate-700 data-[placeholder]:text-slate-400",
+          "h-auto w-full cursor-pointer rounded-xl border-2 border-slate-300 bg-white p-3 text-sm font-medium text-slate-700 data-[placeholder]:text-slate-400",
           hasError && "border-red-500",
         )}
       >
@@ -37,7 +37,7 @@ export function GenderSelect({
       </SelectTrigger>
       <SelectContent className="rounded-xl border-2 border-slate-300">
         {GENDER_OPTIONS.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value} className="text-sm font-medium">
+          <SelectItem key={opt.value} value={opt.value} className="cursor-pointer text-sm font-medium">
             {opt.label}
           </SelectItem>
         ))}
