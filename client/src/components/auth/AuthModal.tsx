@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
@@ -35,8 +35,8 @@ interface AuthModalProps {
   onOpenChange: (open: boolean) => void;
   onAuthenticated?: () => void;
   defaultTab?: Tab;
-  title?: string;
-  description?: string;
+  title?: ReactNode;
+  description?: ReactNode;
   pendingIntent?: { context: PendingIntentContext; itemKey: string };
 }
 
@@ -120,39 +120,41 @@ export default function AuthModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] gap-2 overflow-y-auto p-4 sm:max-w-md sm:gap-4 sm:p-6">
+      <DialogContent className="max-h-[90vh] gap-2 overflow-y-auto rounded-xl border-2 border-slate-950 bg-white p-4 shadow-[6px_6px_0_#0f172a] sm:max-w-md sm:gap-4 sm:p-6">
         <DialogHeader className="gap-1">
-          <DialogTitle className="pr-8 font-display text-lg font-black leading-tight text-slate-950 sm:text-2xl">{title}</DialogTitle>
+          <DialogTitle className="px-8 text-center font-display text-lg font-black leading-tight text-slate-950 sm:text-2xl">{title}</DialogTitle>
           <DialogDescription className="hidden text-sm text-slate-600 sm:block">{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="inline-flex self-start rounded-full bg-slate-100 p-1">
-          <button
-            type="button"
-            onClick={() => setTab("signin")}
-            aria-pressed={!isSignup}
-            className={cn(
-              "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
-              !isSignup
-                ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
-                : "text-slate-600 hover:text-slate-900",
-            )}
-          >
-            Entrar
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("signup")}
-            aria-pressed={isSignup}
-            className={cn(
-              "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
-              isSignup
-                ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
-                : "text-slate-600 hover:text-slate-900",
-            )}
-          >
-            Criar conta
-          </button>
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-full bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => setTab("signin")}
+              aria-pressed={!isSignup}
+              className={cn(
+                "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
+                !isSignup
+                  ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                  : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("signup")}
+              aria-pressed={isSignup}
+              className={cn(
+                "cursor-pointer rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide transition-all sm:px-4 sm:py-1.5",
+                isSignup
+                  ? "bg-[#FFB800] text-[#1a1a1a] shadow-[2px_2px_0_#0f172a]"
+                  : "text-slate-600 hover:text-slate-900",
+              )}
+            >
+              Criar conta
+            </button>
+          </div>
         </div>
 
         <SocialAuthButtons
