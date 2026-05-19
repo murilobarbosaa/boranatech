@@ -88,22 +88,25 @@ export const portfolioGuides = [
   ["UX/UI", "3 cases", "Processo, pesquisa, wireframes e protótipo", "Só telas bonitas sem problema"],
 ];
 
-export const portfolioChecklist = [
-  "Tem README em todos os repositórios",
-  "GitHub com foto e bio preenchidos",
-  "Projetos com deploy acessível",
-  "Commits com mensagens descritivas",
-  "Links para LinkedIn e portfólio",
-  "README explica problema e solução",
-  "Prints ou GIFs dos projetos",
-  "Tecnologias listadas com honestidade",
-  "Projetos fixados no GitHub",
-  "Sem chaves ou dados sensíveis",
-  "Código formatado",
-  "Instruções de instalação",
-  "Descrição do que você aprendeu",
-  "Contato fácil de encontrar",
-  "Pelo menos um projeto autoral",
+// IDs são CONTRATO PERMANENTE — usados como chave de persistência por usuário
+// (tabela user_progress, context = 'portfolio_checklist'). Se o label mudar,
+// o id NUNCA muda; caso contrário, o progresso salvo do usuário se perde.
+export const portfolioChecklist: { id: string; label: string }[] = [
+  { id: "readme-todos-repos", label: "Tem README em todos os repositórios" },
+  { id: "github-perfil-completo", label: "GitHub com foto e bio preenchidos" },
+  { id: "projetos-deploy", label: "Projetos com deploy acessível" },
+  { id: "commits-descritivos", label: "Commits com mensagens descritivas" },
+  { id: "links-rede-portfolio", label: "Links para LinkedIn e portfólio" },
+  { id: "readme-problema-solucao", label: "README explica problema e solução" },
+  { id: "prints-projetos", label: "Prints ou GIFs dos projetos" },
+  { id: "tecnologias-honestas", label: "Tecnologias listadas com honestidade" },
+  { id: "projetos-fixados", label: "Projetos fixados no GitHub" },
+  { id: "sem-segredos-expostos", label: "Sem chaves ou dados sensíveis" },
+  { id: "codigo-formatado", label: "Código formatado" },
+  { id: "instrucoes-instalacao", label: "Instruções de instalação" },
+  { id: "descricao-aprendizado", label: "Descrição do que você aprendeu" },
+  { id: "contato-visivel", label: "Contato fácil de encontrar" },
+  { id: "projeto-autoral", label: "Pelo menos um projeto autoral" },
 ];
 
 export const readmeTemplates = [
