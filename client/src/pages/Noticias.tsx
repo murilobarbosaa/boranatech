@@ -25,8 +25,26 @@ export default function Noticias() {
 
   useEffect(() => {
     getNews({ limit: 20 })
-      .then((items) => {
-        setNews(items.length > 0 ? items : fallbackNoticias);
+      .then((response) => {
+        if (!response || response.items.length === 0) {
+          setNews(fallbackNoticias);
+          setError("Não foi possível carregar notícias externas agora. Mostrando curadoria local.");
+          return;
+        }
+        setNews(
+          response.items.map((item) => ({
+            id: item.id,
+            titulo: item.titulo,
+            resumo: item.resumo,
+            fonte: item.fonte,
+            data: item.data,
+            link: item.link,
+            area: item.categoria,
+            impacto: "Médio para iniciantes",
+            porQueImporta: item.porQueImporta ?? "Acompanhar notícias ajuda você a entender tendências do mercado tech.",
+            categoria: item.categoria,
+          })),
+        );
         setError("");
       })
       .catch(() => {
