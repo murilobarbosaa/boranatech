@@ -186,7 +186,7 @@ function Pagination({
 }
 
 export default function Noticias() {
-  const [page, setPage] = useState(1);
+  const [page, setPageRaw] = useState(1);
   const [level, setLevel] = useState<NewsLevel | "">("");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -194,6 +194,13 @@ export default function Noticias() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const firstFetchRef = useRef(true);
+
+  const setPage = (next: number) => {
+    setPageRaw(next);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 300);
