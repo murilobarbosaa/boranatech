@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
 type SocialAuthButtonsProps = {
   mode: "login" | "cadastro";
   onBeforeOAuth?: () => void;
+  showDivider?: boolean;
 };
 
 type SocialProvider = "google";
@@ -46,7 +48,7 @@ const providers: Array<{
   },
 ];
 
-export default function SocialAuthButtons({ mode, onBeforeOAuth }: SocialAuthButtonsProps) {
+export default function SocialAuthButtons({ mode, onBeforeOAuth, showDivider = true }: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
   const enabledProviders = useMemo(() => providers.filter((provider) => provider.enabled()), []);
@@ -70,16 +72,18 @@ export default function SocialAuthButtons({ mode, onBeforeOAuth }: SocialAuthBut
   }
 
   return (
-    <div className="mt-6">
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-[11px] font-black uppercase text-slate-500">
-          {mode === "cadastro" ? "cadastro rápido" : "entrada rápida"}
-        </span>
-        <div className="h-px flex-1 bg-slate-200" />
-      </div>
+    <div className={showDivider ? "mt-6" : undefined}>
+      {showDivider && (
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-[11px] font-black uppercase text-slate-500">
+            {mode === "cadastro" ? "cadastro rápido" : "entrada rápida"}
+          </span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+      )}
 
-      <div className="mt-4 grid gap-3">
+      <div className={cn("grid gap-3", showDivider && "mt-4")}>
         {enabledProviders.map((provider) => {
           const isLoading = loadingProvider === provider.id;
           return (
