@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
 
 const passwordSchema = z
@@ -83,23 +84,21 @@ export default function NovaSenha() {
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               <label className="block">
                 <span className="mb-1 block text-xs font-black uppercase text-slate-600">Nova senha</span>
-                <input
+                <PasswordInput
                   autoComplete="new-password"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Nova senha"
-                  type="password"
                   value={password}
                 />
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-black uppercase text-slate-600">Confirmar senha</span>
-                <input
+                <PasswordInput
                   autoComplete="new-password"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   placeholder="Repita a senha"
-                  type="password"
                   value={confirmPassword}
                 />
               </label>

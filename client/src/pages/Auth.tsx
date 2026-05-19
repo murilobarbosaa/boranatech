@@ -6,6 +6,7 @@ import { z } from "zod";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAuthErrorMessage, type FriendlyError } from "@/lib/authErrors";
 import { getMyProfile } from "@/services/profileService";
@@ -223,12 +224,11 @@ export default function Auth({
               </label>
               <label className="block">
                 <span className="mb-1 block text-xs font-black uppercase text-slate-600">Senha</span>
-                <input
+                <PasswordInput
                   autoComplete={isSignup ? "new-password" : "current-password"}
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder="Sua senha"
-                  type="password"
                   value={password}
                 />
               </label>
