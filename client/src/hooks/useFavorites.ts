@@ -24,8 +24,7 @@ export type FavoriteType =
   | "faculdade"
   | "tecnologia"
   | "empresa"
-  | "vaga"
-  | "dicionario";
+  | "vaga";
 
 export type FavoriteItem = {
   id: string;

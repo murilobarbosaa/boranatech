@@ -21,7 +21,6 @@ const VALID_RESOURCE_TYPES = [
   "tecnologia",
   "empresa",
   "vaga",
-  "dicionario",
 ];
 
 router.use(requireAuth);
