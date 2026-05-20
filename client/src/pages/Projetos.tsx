@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
-import { ChevronDown, ChevronUp, Lightbulb, ArrowRight, ExternalLink, PlayCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, Lightbulb, ExternalLink, PlayCircle } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -215,10 +215,10 @@ export default function Projetos() {
                           <p className="text-xs text-slate-700 italic">"{projeto.sugestaoLinkedIn}"</p>
                         </div>
 
-                        {/* Próximo projeto */}
-                        <div className="mt-4 flex items-center gap-2 text-sm text-slate-950 font-medium">
-                          <ArrowRight className="w-4 h-4" />
-                          <span>Próximo: {projeto.proximoProjeto}</span>
+                        {/* Sugestão editorial pra praticar depois (não-clicável) */}
+                        <div className="mt-4 text-sm text-slate-700">
+                          <span className="font-medium">Sugestão pra praticar depois:</span>{" "}
+                          <span>{projeto.proximoProjeto}</span>
                         </div>
                       </div>
                     </div>
