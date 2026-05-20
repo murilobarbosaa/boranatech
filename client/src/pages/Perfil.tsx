@@ -1288,7 +1288,7 @@ export default function Perfil() {
 
                 <div className="flex flex-col gap-2">
                   <Link
-                    href="/nova-senha"
+                    href="/trocar-senha"
                     className="inline-flex items-center gap-2 self-start rounded-full border-2 border-violet-300 bg-white/80 px-4 py-2 text-sm font-bold text-violet-700 backdrop-blur-sm transition-colors hover:border-violet-500 hover:bg-white hover:text-violet-900"
                   >
                     <KeyRound className="h-4 w-4" />
