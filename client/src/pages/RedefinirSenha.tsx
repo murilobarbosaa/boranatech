@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import { z } from "zod";
@@ -25,6 +26,7 @@ export default function RedefinirSenha() {
   const { updatePassword } = useAuth();
   const [recoveryReady, setRecoveryReady] = useState(false);
   const [hydrating, setHydrating] = useState(true);
+  const [linkError, setLinkError] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,7 +39,24 @@ export default function RedefinirSenha() {
       return;
     }
 
+    const initialHash = window.__BNT_INITIAL_HASH ?? window.location.hash ?? "";
+    const hasRecoveryHash = initialHash.includes("type=recovery");
+
     let cancelled = false;
+
+    if (!hasRecoveryHash) {
+      void supabase.auth.getSession().then(({ data: { session } }) => {
+        if (cancelled) return;
+        if (session) {
+          setLocation("/trocar-senha", { replace: true });
+          return;
+        }
+        setHydrating(false);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (cancelled) return;
@@ -48,21 +67,16 @@ export default function RedefinirSenha() {
       }
     });
 
-    const graceTimer = window.setTimeout(async () => {
-      if (cancelled || recoveryEverSeenRef.current || !supabase) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (session) {
-        setLocation("/trocar-senha", { replace: true });
-        return;
-      }
+    const expiryTimer = window.setTimeout(() => {
+      if (cancelled || recoveryEverSeenRef.current) return;
+      setLinkError(true);
       setHydrating(false);
-    }, 800);
+    }, 5000);
 
     return () => {
       cancelled = true;
       data.subscription.unsubscribe();
-      window.clearTimeout(graceTimer);
+      window.clearTimeout(expiryTimer);
     };
   }, [setLocation]);
 
@@ -102,7 +116,49 @@ export default function RedefinirSenha() {
         <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
         <section className="hero-pattern py-16">
           <div className="container">
-            <p className="text-sm text-slate-500">Carregando…</p>
+            <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8 text-center">
+              <p className="text-sm font-bold text-slate-600">Verificando link de recuperação…</p>
+            </div>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
+  if (linkError) {
+    return (
+      <Layout>
+        <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+        <section className="hero-pattern py-16">
+          <div className="container">
+            <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
+              <span
+                aria-hidden
+                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-red-100 text-red-700 shadow-[3px_3px_0_#0f172a]"
+              >
+                <AlertCircle className="h-5 w-5" strokeWidth={2.5} />
+              </span>
+              <h1 className="font-display text-2xl font-black text-slate-950">
+                Link expirado ou inválido
+              </h1>
+              <p className="mt-2 text-sm text-slate-600">
+                O link de recuperação não funcionou. Pode ter expirado ou já ter sido usado.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/recuperar-senha"
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                >
+                  Solicitar novo link
+                </Link>
+              </div>
+              <Link
+                href="/login"
+                className="mt-4 inline-block text-sm font-bold text-slate-600 hover:text-slate-900 hover:underline"
+              >
+                Voltar ao login
+              </Link>
+            </div>
           </div>
         </section>
       </Layout>
