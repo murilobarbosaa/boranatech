@@ -941,13 +941,19 @@ export default function Perfil() {
                       : null
                   }
                 />
-                <MetricCard
-                  icon={<Star className="h-5 w-5" strokeWidth={2.5} />}
-                  label="Favoritos"
-                  value={favoritesLoading ? "…" : favorites.length}
-                  unit={favorites.length === 1 ? "item" : "itens"}
-                  variant="application"
-                />
+                <Link
+                  href="/perfil/favoritos"
+                  aria-label="Ver todos os favoritos"
+                  className="block rounded-2xl transition-transform hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2"
+                >
+                  <MetricCard
+                    icon={<Star className="h-5 w-5" strokeWidth={2.5} />}
+                    label="Favoritos"
+                    value={favoritesLoading ? "…" : favorites.length}
+                    unit={favorites.length === 1 ? "item" : "itens"}
+                    variant="application"
+                  />
+                </Link>
               </div>
             </div>
           </section>
