@@ -7,6 +7,7 @@ type SocialAuthButtonsProps = {
   mode: "login" | "cadastro";
   onBeforeOAuth?: () => void;
   showDivider?: boolean;
+  redirectTo?: string;
 };
 
 type SocialProvider = "google";
@@ -48,7 +49,7 @@ const providers: Array<{
   },
 ];
 
-export default function SocialAuthButtons({ mode, onBeforeOAuth, showDivider = true }: SocialAuthButtonsProps) {
+export default function SocialAuthButtons({ mode, onBeforeOAuth, showDivider = true, redirectTo }: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
   const enabledProviders = useMemo(() => providers.filter((provider) => provider.enabled()), []);
@@ -63,7 +64,7 @@ export default function SocialAuthButtons({ mode, onBeforeOAuth, showDivider = t
       if (mode === "cadastro") {
         localStorage.setItem("bnt_social_signup_pending", "true");
       }
-      await signInWithOAuth(provider);
+      await signInWithOAuth(provider, redirectTo ? { redirectTo } : undefined);
     } catch (error) {
       console.error("[SocialAuthButtons] OAuth failed", error);
       setLoadingProvider(null);

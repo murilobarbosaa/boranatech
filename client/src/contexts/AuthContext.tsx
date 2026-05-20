@@ -34,7 +34,10 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (input: SignUpInput) => Promise<void>;
   signIn: (input: SignInInput) => Promise<void>;
-  signInWithOAuth: (provider: OAuthProvider) => Promise<void>;
+  signInWithOAuth: (
+    provider: OAuthProvider,
+    options?: { redirectTo?: string },
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
@@ -158,23 +161,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signInWithOAuth = useCallback(async (provider: OAuthProvider) => {
-    const client = assertSupabaseConfigured();
-    posthog.capture("oauth_sign_in_started", { provider });
+  const signInWithOAuth = useCallback(
+    async (
+      provider: OAuthProvider,
+      options?: { redirectTo?: string },
+    ) => {
+      const client = assertSupabaseConfigured();
+      posthog.capture("oauth_sign_in_started", { provider });
 
-    const { error } = await client.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: authRedirectTo(),
-        queryParams: {
-          access_type: "offline",
-          prompt: "select_account",
+      const { error } = await client.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: options?.redirectTo ?? authRedirectTo(),
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
         },
-      },
-    });
+      });
 
-    if (error) throw error;
-  }, []);
+      if (error) throw error;
+    },
+    [],
+  );
 
   const refreshProfile = useCallback(async () => {
     if (!session) {

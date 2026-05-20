@@ -161,6 +161,7 @@ export default function AuthModal({
           mode={isSignup ? "cadastro" : "login"}
           onBeforeOAuth={persistIntentForOAuth}
           showDivider={false}
+          redirectTo={typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}${window.location.search}` : undefined}
         />
 
         {error && (
