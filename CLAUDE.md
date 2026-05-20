@@ -12,12 +12,9 @@
 - **Package manager**: pnpm 10
 
 ## Path Aliases
-
-```
 @/*        → client/src/*
 @shared/*  → shared/*
 @assets    → attached_assets/   (vite.config apenas)
-```
 
 ## Comandos
 
@@ -34,28 +31,23 @@ pnpm format         # prettier --write .
 > Sem script `test` no package.json — vitest instalado mas não exposto.
 
 ## Estrutura
-
-```
 client/src/
-  components/
-    ui/         # shadcn primitivos gerados — não editar manualmente
-    shared/     # componentes reutilizáveis entre páginas
-    pro/        # badges Pro, paywalls
-    admin/
-  contexts/     # AuthContext, SubscriptionContext, ThemeContext
-  hooks/
-  lib/          # utils.ts, supabase.ts, aiClient.ts, data files estáticos
-  pages/        # 60+ páginas, uma por rota, nomeadas em português
-  services/     # contracts.ts (tipos), profileService.ts
-
+components/
+ui/         # shadcn primitivos gerados — não editar manualmente
+shared/     # componentes reutilizáveis entre páginas
+pro/        # badges Pro, paywalls
+admin/
+contexts/     # AuthContext, SubscriptionContext, ThemeContext
+hooks/
+lib/          # utils.ts, supabase.ts, aiClient.ts, data files estáticos
+pages/        # 60+ páginas, uma por rota, nomeadas em português
+services/     # contracts.ts (tipos), profileService.ts
 server/
-  routes/       # admin, ai, billing, bookmarks, content, cron, me, quiz, search, sitemap, study
-  middleware/   # auth.ts (requireAuth, checkProStatus), error.ts (createError)
-  lib/          # env, supabaseAdmin, openai, aiTools, queue
-
+routes/       # admin, ai, billing, bookmarks, content, cron, me, quiz, search, sitemap, study
+middleware/   # auth.ts (requireAuth, checkProStatus), error.ts (createError)
+lib/          # env, supabaseAdmin, openai, aiTools, queue
 shared/const.ts   # COOKIE_NAME, ONE_YEAR_MS
 supabase/migrations/
-```
 
 ## Convenções de Componentes
 
@@ -72,6 +64,40 @@ supabase/migrations/
 - Guarda de auth: `router.use(requireAuth)` e/ou `router.use(checkProStatus)` no topo
 - Erros: `return next(createError(statusCode, "code_slug", "Mensagem."))` — nunca throw direto
 - Queries via `supabaseAdmin` (service role) — nunca o client Supabase do frontend no server
+
+## Convenções de Git / Commits
+
+**REGRA CRÍTICA — sempre seguir:**
+
+Commits são **uma única linha** no formato `tipo(escopo): descrição curta`.
+
+- **NUNCA** escrever mensagens multi-linha
+- **NUNCA** adicionar parágrafos de contexto, bullet points, ou descrição estendida
+- **NUNCA** adicionar `Co-Authored-By:` ou qualquer trailer
+- O subject é a única coisa que vai no commit — sem body, sem footer
+
+**Tipos permitidos**: `feat`, `fix`, `refactor`, `style`, `docs`, `chore`, `test`, `perf`
+
+**Exemplos corretos:**
+feat(noticias): scroll to top on page change
+fix(auth): replace 800ms race with url-based recovery detection
+refactor(jobs): switch syncNews to EN keywords with inline enrichment
+chore(db): remove legacy PT-PT news rows without enrichment
+
+**Exemplos errados (NÃO fazer):**
+fix(auth): replace 800ms race
+The previous 800ms grace timer redirected legitimate recovery visits to...
+[parágrafos explicando o que mudou]
+Co-Authored-By: Claude Opus 4.7 noreply@anthropic.com
+
+Se o contexto da mudança precisar de explicação detalhada, isso vai em PR description ou em documentação separada — nunca no commit message.
+
+**Como fazer commit no terminal sem cair na armadilha:**
+```bash
+git commit -m "tipo(escopo): descrição curta"
+```
+
+Usar `-m` direto evita o editor abrir e tentar gerar descrição estendida automaticamente.
 
 ## Paleta & Design System
 
