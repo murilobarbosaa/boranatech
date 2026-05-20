@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { AlertCircle, X } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
 import { GenderSelect } from "@/components/auth/GenderSelect";
 import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
@@ -50,6 +51,7 @@ export default function AuthModal({
   pendingIntent,
 }: AuthModalProps) {
   const { signIn, signUp } = useAuth();
+  const [, setLocation] = useLocation();
   const [tab, setTab] = useState<Tab>(defaultTab);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -247,6 +249,18 @@ export default function AuthModal({
             {isSubmitting ? "Processando..." : isSignup ? "Criar conta" : "Entrar"}
           </button>
         </form>
+        {!isSignup && (
+          <button
+            type="button"
+            onClick={() => {
+              onOpenChange(false);
+              setLocation("/recuperar-senha");
+            }}
+            className="mt-1 block w-full text-center text-sm font-bold text-slate-600 hover:text-slate-900 hover:underline"
+          >
+            Esqueci minha senha
+          </button>
+        )}
       </DialogContent>
     </Dialog>
   );
