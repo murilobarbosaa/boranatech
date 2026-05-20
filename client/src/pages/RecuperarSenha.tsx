@@ -28,10 +28,12 @@ export default function RecuperarSenha() {
 
     try {
       await resetPassword(parsed.data.email);
-      toast.success("Se esse e-mail estiver cadastrado, enviaremos um link seguro para redefinir sua senha.");
+      toast.success(
+        "Se esse e-mail tem conta no BoraNaTech, vai chegar um link em até 2 minutos. Verifica também a pasta de spam.",
+      );
       setEmail("");
     } catch {
-      toast.error("Não foi possível enviar o link agora. Tente novamente em instantes.");
+      toast.error("Não foi possível enviar o link agora. Tenta novamente em alguns instantes.");
     } finally {
       setIsSubmitting(false);
     }
@@ -70,9 +72,20 @@ export default function RecuperarSenha() {
                 {isSubmitting ? "Enviando..." : "Enviar link de recuperação"}
               </button>
             </form>
-            <Link href="/login" className="mt-4 block text-center text-sm font-bold text-violet-700">
-              Voltar para o login
-            </Link>
+            <div className="mt-6 space-y-2 text-center text-sm text-slate-600">
+              <p>
+                Lembrou a senha?{" "}
+                <Link href="/login" className="font-bold text-slate-700 hover:text-slate-950 hover:underline">
+                  Entrar
+                </Link>
+              </p>
+              <p>
+                Não tem conta ainda?{" "}
+                <Link href="/cadastro" className="font-bold text-slate-700 hover:text-slate-950 hover:underline">
+                  Criar conta
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </section>
