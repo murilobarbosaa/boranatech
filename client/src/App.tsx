@@ -37,7 +37,6 @@ import Cadastro from "./pages/Cadastro";
 import Checkout from "./pages/Checkout";
 import CheckoutSucesso from "./pages/CheckoutSucesso";
 import RecuperarSenha from "./pages/RecuperarSenha";
-import NovaSenha from "./pages/NovaSenha";
 import TrocarSenha from "./pages/TrocarSenha";
 import RedefinirSenha from "./pages/RedefinirSenha";
 import Tecnologias from "./pages/Tecnologias";
@@ -142,7 +141,6 @@ function Router() {
       <Route path="/recuperar-senha" component={RecuperarSenha} />
       <Route path="/trocar-senha" component={TrocarSenha} />
       <Route path="/redefinir-senha" component={RedefinirSenha} />
-      <Route path="/nova-senha" component={NovaSenha} />
       <Route path="/licenca" component={Licenca} />
       <Route path="/privacidade" component={Privacidade} />
       <Route path="/termos-de-uso" component={TermosDeUso} />

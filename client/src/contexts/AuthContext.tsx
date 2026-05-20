@@ -209,7 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await client.auth.resetPasswordForEmail(
       normalizeEmail(email),
       {
-        redirectTo: `${window.location.origin}/nova-senha`,
+        redirectTo: `${window.location.origin}/redefinir-senha`,
       },
     );
 
