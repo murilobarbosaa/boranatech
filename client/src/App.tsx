@@ -30,6 +30,7 @@ import Comparador from "./pages/Comparador";
 import QuizCarreira from "./pages/QuizCarreira";
 import QuizCarreiraResultado from "./pages/quiz-carreira/QuizCarreiraResultado";
 import Perfil from "./pages/Perfil";
+import PerfilFavoritos from "./pages/PerfilFavoritos";
 import Conquistas from "./pages/conquistas/Conquistas";
 import Auth from "./pages/Auth";
 import Cadastro from "./pages/Cadastro";
@@ -126,6 +127,7 @@ function Router() {
       <Route path="/quiz-carreira/resultado" component={QuizCarreiraResultado} />
       <Route path="/quiz-carreira" component={QuizCarreira} />
       <Route path="/perfil/conquistas" component={Conquistas} />
+      <Route path="/perfil/favoritos" component={PerfilFavoritos} />
       <Route path="/perfil" component={Perfil} />
       <Route path="/planos/sucesso" component={CheckoutSucesso} />
       <Route path="/planos" component={Checkout} />
