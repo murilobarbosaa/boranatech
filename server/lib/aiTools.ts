@@ -402,10 +402,28 @@ Nas responsabilidades e conquistas, escreva bullets com verbos de ação (em PT 
 Pra persona "estudante", o array "experiencias" pode representar atividades estruturadas que a pessoa mencionou (freelas, voluntariado, monitorias, hackathons como entrada formal) E o array "projetos" representa projetos pessoais ou acadêmicos. Se a pessoa tem MUITO pouco, concentre tudo em "projetos" e deixe "experiencias" como array vazio.
 
 ## 4. Proibido inventar
-JAMAIS preencha campo com placeholder fictício (ex: "Empresa Exemplo", "dev@email.com", "01/01/2020"). Se a pessoa não forneceu o dado:
-Campo nullable: deixe null.
-Array: deixe vazio [].
-Campo obrigatório que faltou (não deveria acontecer, o Natechinho coleta antes do marcador): use a melhor inferência razoável do contexto, NUNCA invente fato. Em casos extremos, repita um campo equivalente (ex: cargo = "Desenvolvedor" se só conhece "dev", evitar inventar título mais específico).
+JAMAIS preencha campo com placeholder fictício (ex: "Empresa Exemplo", "dev@email.com", "01/01/2020"). Trate cada caso como segue:
+
+Campos nullable. Se a pessoa não forneceu, mande null direto. Não invente, não repita outro campo no lugar. Lista exaustiva dos nullables:
+dadosPessoais.telefone, dadosPessoais.linkedin, dadosPessoais.github, dadosPessoais.cidade.
+formacao[].instituicao, formacao[].periodo, formacao[].status.
+experiencias[].periodo.
+projetos[].descricao, projetos[].link.
+certificacoes[].instituicao, certificacoes[].ano.
+
+Arrays. Se a pessoa não trouxe nada do tipo, deixe array vazio []. Vale pra: formacao, experiencias, projetos, habilidades, idiomas, experiencias[].responsabilidades, experiencias[].conquistas, projetos[].tecnologias.
+certificacoes pode ser null (não só []), porque o schema é Array | null.
+
+Campos identificadores ESSENCIAIS do ITEM. Estes são os que dão IDENTIDADE ao item:
+formacao[].curso.
+experiencias[].empresa, experiencias[].cargo.
+projetos[].nome.
+idiomas[].idioma, idiomas[].nivel.
+certificacoes[].nome.
+
+Se um identificador essencial faltar genuinamente no histórico (caso patológico, porque o Natechinho deveria ter cavado), OMITA O ITEM INTEIRO do array em vez de inventar. Melhor 2 experiências bem preenchidas do que 3 com uma vazia ou fictícia. Esta omissão é paraquedas de último recurso: na prática o Natechinho cava os identificadores com prioridade, então o array vai vir completo no histórico.
+
+Campos top-level obrigatórios (nome, email, objetivo.cargo, objetivo.area, objetivo.nivel, idioma, formato, persona, resumoProfissional). Estes não devem faltar nunca. Nome e email vêm do cadastro. Os outros, infira do histórico inteiro com o melhor entendimento, sem inventar fato (use formulações genéricas se necessário: cargo "Profissional de Tecnologia", area "tecnologia", nivel "júnior" como fallbacks razoáveis quando o histórico realmente não dá pista).
 
 ## 5. Dados do cadastro
 Nome e email vêm da mensagem [dados do cadastro] no início do contexto. Sempre preencha dadosPessoais.nome e dadosPessoais.email com esses valores. NUNCA tire nome/email do que a pessoa digitou no meio da conversa, a menos que a pessoa tenha pedido explicitamente pra usar outro nome/email no currículo.
