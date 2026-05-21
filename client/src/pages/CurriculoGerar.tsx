@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, FileJson, RefreshCw } from "lucide-react";
+import { CheckCircle2, FileJson, Loader2, RefreshCw } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
@@ -13,14 +13,15 @@ import type { Curriculo } from "@shared/curriculo/schema";
 
 const ac = getPageAccentUi("amber");
 
-function firstName(full: string | null | undefined, emailFallback: string | undefined): string {
-  if (full && full.trim()) {
-    return full.trim().split(/\s+/)[0];
-  }
-  if (emailFallback) {
-    return emailFallback.split("@")[0];
-  }
-  return "";
+/**
+ * Pega o primeiro nome da pessoa. Nunca cai pra email: se não temos um nome
+ * real do perfil, o chat usa "Oi!" sem nome em vez de cuspir um login.
+ */
+function firstName(full: string | null | undefined): string {
+  if (!full) return "";
+  const trimmed = full.trim();
+  if (!trimmed) return "";
+  return trimmed.split(/\s+/)[0];
 }
 
 function buildGreeting(name: string): string {
@@ -32,13 +33,13 @@ Pra gente começar, me conta um pouco sobre você. Em que momento da carreira tu
 
 export default function CurriculoGerar() {
   const { isPro } = useSubscription();
-  const { profile, user } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const [generated, setGenerated] = useState<Curriculo | null>(null);
 
-  const greeting = useMemo(
-    () => buildGreeting(firstName(profile?.name, user?.email)),
-    [profile?.name, user?.email],
-  );
+  // useAuth().loading só vira false depois que loadProfile resolveu (ver
+  // AuthContext linhas 86-93). Esperar aqui evita renderizar a saudação com
+  // nome vazio e ter que recalcular depois.
+  const greeting = useMemo(() => buildGreeting(firstName(profile?.name)), [profile?.name]);
 
   function handleReset() {
     setGenerated(null);
@@ -57,6 +58,8 @@ export default function CurriculoGerar() {
         <div className="container">
           {!isPro ? (
             <ProGate description="A geração assistida do currículo (e os formatos Híbrido, Cronológico e Harvard) é uma feature do Plano Pro. Assina pra desbloquear." />
+          ) : authLoading ? (
+            <PreparingChat />
           ) : (
             <div className="grid gap-8 lg:grid-cols-5">
               <div className="lg:col-span-3">
@@ -73,6 +76,18 @@ export default function CurriculoGerar() {
         </div>
       </section>
     </Layout>
+  );
+}
+
+function PreparingChat() {
+  return (
+    <div className="card-brutal mx-auto max-w-md rounded-2xl border-slate-950 bg-white p-8 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-100 shadow-[3px_3px_0_#0f172a]">
+        <Loader2 className="h-5 w-5 animate-spin text-slate-950" strokeWidth={2.5} aria-hidden />
+      </div>
+      <p className="mt-4 font-display text-lg font-black text-slate-950">Preparando teu chat...</p>
+      <p className="mt-1 text-sm font-medium text-slate-600">Carregando teu perfil pra começar.</p>
+    </div>
   );
 }
 
