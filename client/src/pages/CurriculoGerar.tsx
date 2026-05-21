@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle2, FileDown, Loader2, RefreshCw } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
@@ -139,6 +139,44 @@ interface GeneratedViewProps {
   onReset: () => void;
 }
 
+/**
+ * Sanitiza um nome pra usar como nome de arquivo. Remove caracteres
+ * proibidos em filesystems comuns (Windows é o mais restritivo).
+ */
+function sanitizeFileName(name: string): string {
+  return name
+    .replace(/[\\/:*?"<>|]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Dispara o diálogo de impressão do navegador (que oferece "Salvar como
+ * PDF"). Antes de imprimir, troca o document.title pra que o nome sugerido
+ * do arquivo PDF saia como "Curriculo - Nome Da Pessoa" em vez do título
+ * genérico da página. Restaura o título depois (via afterprint event, com
+ * fallback por setTimeout pra browsers que não disparam o evento).
+ */
+function downloadAsPdf(nome: string) {
+  const safe = sanitizeFileName(nome);
+  const newTitle = safe ? `Curriculo - ${safe}` : "Curriculo";
+  const originalTitle = document.title;
+  document.title = newTitle;
+
+  function restore() {
+    document.title = originalTitle;
+    window.removeEventListener("afterprint", restore);
+  }
+  window.addEventListener("afterprint", restore);
+
+  window.print();
+
+  // Fallback: se o browser não disparar afterprint, restaura no próximo tick.
+  window.setTimeout(() => {
+    if (document.title !== originalTitle) document.title = originalTitle;
+  }, 200);
+}
+
 function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
   const formatoLabel =
     curriculo.formato === "hibrido"
@@ -157,6 +195,10 @@ function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
 
   const pretty = JSON.stringify(curriculo, null, 2);
 
+  function handleDownload() {
+    downloadAsPdf(curriculo.dadosPessoais.nome);
+  }
+
   return (
     <div>
       <div className="print-hide mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -169,15 +211,28 @@ function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
             Formato {formatoLabel} · Persona {personaLabel} · {curriculo.idioma === "en" ? "English" : "Português"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onReset}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-        >
-          <RefreshCw className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-          Começar de novo
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+          >
+            <FileDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            Baixar PDF
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+          >
+            <RefreshCw className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            Começar de novo
+          </button>
+        </div>
       </div>
+      <p className="print-hide -mt-3 mb-6 text-xs font-medium text-slate-600">
+        Abre o diálogo de impressão do navegador. Escolhe "Salvar como PDF" pra baixar.
+      </p>
 
       <div className="curriculo-preview-stage rounded-2xl bg-slate-100 p-4 sm:p-8">
         <CurriculoPreview curriculo={curriculo} />
@@ -193,7 +248,7 @@ function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
           </pre>
         </details>
         <p className="mt-3 text-xs font-medium text-slate-600">
-          O botão de download em PDF chega na próxima fase. Por enquanto, dá pra usar Ctrl+P do navegador (já tá com layout de impressão pronto).
+          Quer a versão editável depois? Esse JSON é o que vira o PDF, pode salvar pra reaproveitar.
         </p>
       </div>
     </div>
