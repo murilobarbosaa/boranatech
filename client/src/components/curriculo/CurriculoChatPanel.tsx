@@ -54,10 +54,15 @@ export default function CurriculoChatPanel({
   const [chatLoading, setChatLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Scrollar SÓ o container interno de mensagens (overflow-y-auto). Antes
+  // estava usando scrollIntoView, que pode arrastar a viewport inteira se
+  // o elemento alvo não estiver totalmente visível, fazendo a página descer.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages, chatLoading, generating]);
 
   async function handleSend() {
@@ -134,7 +139,10 @@ export default function CurriculoChatPanel({
           aria-live="polite"
           aria-relevant="additions"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4">
+          <div
+            ref={scrollContainerRef}
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4"
+          >
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
               {messages.map((m, i) => {
                 if (m.role === "assistant") {
@@ -196,7 +204,6 @@ export default function CurriculoChatPanel({
                 </div>
               ) : null}
 
-              <div ref={bottomRef} className="h-0.5 w-full shrink-0" aria-hidden />
             </div>
           </div>
         </div>
