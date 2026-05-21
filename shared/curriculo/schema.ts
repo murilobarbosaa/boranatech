@@ -29,16 +29,25 @@ export const ObjetivoSchema = z.object({
 });
 
 export const FormacaoItemSchema = z.object({
-  curso: z.string().min(1).describe("Nome do curso ou bootcamp."),
-  instituicao: z.string().min(1).describe("Instituição."),
-  periodo: z.string().min(1).describe("Período (ex: '2023 - 2025', '2024', 'em andamento desde 2023')."),
+  curso: z.string().min(1).describe("Nome do curso ou bootcamp. Identificador essencial do item."),
+  instituicao: z
+    .string()
+    .nullable()
+    .describe("Instituição se a pessoa forneceu, senão null. Cursos online sem instituição formal podem ficar null."),
+  periodo: z
+    .string()
+    .nullable()
+    .describe("Período (ex: '2023 - 2025', '2024', 'em andamento desde 2023') se a pessoa forneceu, senão null."),
   status: z.string().nullable().describe("Status como 'concluído', 'em andamento', 'trancado', ou null."),
 });
 
 export const ExperienciaItemSchema = z.object({
-  empresa: z.string().min(1).describe("Nome da empresa, projeto ou atividade."),
-  cargo: z.string().min(1).describe("Cargo ou função exercida."),
-  periodo: z.string().min(1).describe("Período (ex: 'jan/2024 até hoje', '2022 - 2024')."),
+  empresa: z.string().min(1).describe("Nome da empresa, projeto ou atividade. Identificador essencial do item."),
+  cargo: z.string().min(1).describe("Cargo ou função exercida. Identificador essencial do item."),
+  periodo: z
+    .string()
+    .nullable()
+    .describe("Período (ex: 'jan/2024 até hoje', '2022 - 2024') se a pessoa forneceu, senão null."),
   responsabilidades: z
     .array(z.string())
     .describe("Bullets de responsabilidades em verbos de ação. Vazio se nada foi dito."),
@@ -48,8 +57,11 @@ export const ExperienciaItemSchema = z.object({
 });
 
 export const ProjetoItemSchema = z.object({
-  nome: z.string().min(1).describe("Nome do projeto."),
-  descricao: z.string().min(1).describe("Descrição curta do que o projeto faz."),
+  nome: z.string().min(1).describe("Nome do projeto. Identificador essencial do item."),
+  descricao: z
+    .string()
+    .nullable()
+    .describe("Descrição curta do que o projeto faz, ou null se a pessoa só citou o nome."),
   tecnologias: z.array(z.string()).describe("Lista de tecnologias usadas."),
   link: z.string().nullable().describe("Link do projeto (repo, deploy, etc) ou null."),
 });
@@ -60,8 +72,11 @@ export const IdiomaItemSchema = z.object({
 });
 
 export const CertificacaoItemSchema = z.object({
-  nome: z.string().min(1).describe("Nome da certificação."),
-  instituicao: z.string().min(1).describe("Quem emitiu."),
+  nome: z.string().min(1).describe("Nome da certificação. Identificador essencial do item."),
+  instituicao: z
+    .string()
+    .nullable()
+    .describe("Quem emitiu se a pessoa forneceu, senão null. Certificações informais podem ficar null."),
   ano: z.string().nullable().describe("Ano de emissão ou null."),
 });
 
