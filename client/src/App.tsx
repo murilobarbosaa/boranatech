@@ -56,6 +56,7 @@ import Portfolio from "./pages/Portfolio";
 import PortfolioAnalisar from "./pages/PortfolioAnalisar";
 import Curriculo from "./pages/Curriculo";
 import CurriculoAnalisar from "./pages/CurriculoAnalisar";
+import CurriculoGerar from "./pages/CurriculoGerar";
 import CurriculoLinkedin from "./pages/CurriculoLinkedin";
 import Estudos from "./pages/Estudos";
 import EstudosDiario from "./pages/EstudosDiario";
@@ -96,6 +97,7 @@ function Router() {
       <Route path="/portfolio/analisar" component={PortfolioAnalisar} />
       <Route path="/curriculo" component={Curriculo} />
       <Route path="/curriculo/analisar" component={CurriculoAnalisar} />
+      <Route path="/curriculo/gerar" component={CurriculoGerar} />
       <Route path="/curriculo/linkedin" component={CurriculoLinkedin} />
       <Route path="/estudos" component={Estudos} />
       <Route path="/estudos/diario" component={EstudosDiario} />
