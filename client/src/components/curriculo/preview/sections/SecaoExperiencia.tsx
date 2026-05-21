@@ -27,7 +27,9 @@ export default function SecaoExperiencia({ title, items, compact = false }: Seca
                 {item.cargo}
                 <span className="font-medium text-slate-700"> · {item.empresa}</span>
               </h3>
-              <span className="text-[10.5px] font-medium text-slate-500">{item.periodo}</span>
+              {item.periodo ? (
+                <span className="text-[10.5px] font-medium text-slate-500">{item.periodo}</span>
+              ) : null}
             </div>
             {item.responsabilidades.length > 0 || item.conquistas.length > 0 ? (
               <ul className="mt-1.5 list-outside list-disc pl-4 text-[11px] leading-[1.5] text-slate-800 marker:text-slate-400">

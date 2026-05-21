@@ -23,7 +23,9 @@ export default function SecaoProjetos({ title, items, compact = false }: SecaoPr
                 <span className="text-[10.5px] font-medium text-slate-500">{stripUrl(item.link)}</span>
               ) : null}
             </div>
-            <p className="mt-0.5 text-[11px] leading-[1.5] text-slate-800">{item.descricao}</p>
+            {item.descricao ? (
+              <p className="mt-0.5 text-[11px] leading-[1.5] text-slate-800">{item.descricao}</p>
+            ) : null}
             {item.tecnologias.length > 0 ? (
               <p className="mt-0.5 text-[10.5px] font-medium text-slate-600">
                 {item.tecnologias.join(" · ")}

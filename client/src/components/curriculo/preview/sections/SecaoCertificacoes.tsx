@@ -17,7 +17,9 @@ export default function SecaoCertificacoes({ title, items }: SecaoCertificacoesP
           <li key={idx} className="flex flex-wrap items-baseline justify-between gap-x-3">
             <span>
               <span className="font-semibold">{item.nome}</span>
-              <span className="text-slate-700"> · {item.instituicao}</span>
+              {item.instituicao ? (
+                <span className="text-slate-700"> · {item.instituicao}</span>
+              ) : null}
             </span>
             {item.ano ? <span className="text-[10.5px] font-medium text-slate-500">{item.ano}</span> : null}
           </li>

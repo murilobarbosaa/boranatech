@@ -20,9 +20,13 @@ export default function SecaoFormacao({ title, items, compact = false }: SecaoFo
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
               <h3 className="text-[12px] font-bold text-slate-900">
                 {item.curso}
-                <span className="font-medium text-slate-700"> · {item.instituicao}</span>
+                {item.instituicao ? (
+                  <span className="font-medium text-slate-700"> · {item.instituicao}</span>
+                ) : null}
               </h3>
-              <span className="text-[10.5px] font-medium text-slate-500">{item.periodo}</span>
+              {item.periodo ? (
+                <span className="text-[10.5px] font-medium text-slate-500">{item.periodo}</span>
+              ) : null}
             </div>
             {item.status ? (
               <p className="mt-0.5 text-[10.5px] italic text-slate-600">{item.status}</p>
