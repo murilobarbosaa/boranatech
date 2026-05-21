@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from "express";
 
 import { env } from "../lib/env";
 import { estimateCost, getToolConfig } from "../lib/aiTools";
+import { buildLoginContextMessage } from "../lib/loginContext";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../lib/openai";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -57,6 +58,15 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
   const systemMessages: Array<{ role: "system"; content: string }> = [
     { role: "system", content: toolConfig.systemPrompt },
   ];
+
+  if (toolConfig.injectLoginContext && req.user) {
+    try {
+      const loginCtx = await buildLoginContextMessage(req.user);
+      systemMessages.push({ role: "system", content: loginCtx });
+    } catch (err) {
+      console.warn("[ai] Falha ao montar loginContext, seguindo sem ele:", err);
+    }
+  }
 
   if (Array.isArray(rawMessages) && rawMessages.length > 0) {
     const cleaned: Array<{ role: "user" | "assistant"; content: string }> = [];
