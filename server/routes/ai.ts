@@ -54,6 +54,10 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
   let openaiMessages: Array<{ role: string; content: string }>;
   let inputText = "";
 
+  const systemMessages: Array<{ role: "system"; content: string }> = [
+    { role: "system", content: toolConfig.systemPrompt },
+  ];
+
   if (Array.isArray(rawMessages) && rawMessages.length > 0) {
     const cleaned: Array<{ role: "user" | "assistant"; content: string }> = [];
     for (const item of rawMessages) {
@@ -72,12 +76,12 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     }
 
     inputText = cleaned.map((message) => message.content).join(" ");
-    openaiMessages = [{ role: "system", content: toolConfig.systemPrompt }, ...cleaned];
+    openaiMessages = [...systemMessages, ...cleaned];
   } else {
     const payloadText = JSON.stringify(req.body, null, 2);
     inputText = payloadText;
     openaiMessages = [
-      { role: "system", content: toolConfig.systemPrompt },
+      ...systemMessages,
       {
         role: "user",
         content: `Responda em português do Brasil, com formato prático e escaneável. Dados enviados:\n${payloadText}`,
@@ -97,15 +101,28 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     return next(createError(503, "upstream_error", "Serviço de IA não configurado."));
   }
 
+  const requestBody: Record<string, unknown> = {
+    model: toolConfig.model || DEFAULT_MODEL,
+    temperature: toolConfig.temperature,
+    messages: openaiMessages,
+  };
+
+  if (toolConfig.responseFormat) {
+    requestBody.response_format = {
+      type: "json_schema",
+      json_schema: {
+        name: toolConfig.responseFormat.name,
+        strict: true,
+        schema: toolConfig.responseFormat.jsonSchema,
+      },
+    };
+  }
+
   try {
     const response = await fetch(OPENAI_BASE_URL, {
       method: "POST",
       headers: buildOpenAIHeaders(env.openaiApiKey),
-      body: JSON.stringify({
-        model: toolConfig.model || DEFAULT_MODEL,
-        temperature: toolConfig.temperature,
-        messages: openaiMessages,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -121,6 +138,65 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     };
     const result = data.choices?.[0]?.message?.content || "A IA não retornou conteúdo.";
     const outputChars = result.length;
+
+    if (toolConfig.responseFormat) {
+      let parsedJson: unknown;
+      try {
+        parsedJson = JSON.parse(result);
+      } catch (parseErr) {
+        console.error("[ai] JSON parse falhou pra tool com responseFormat:", toolKey, parseErr, "raw:", result.slice(0, 500));
+        await logUsage({
+          userId,
+          tool: toolKey,
+          requestId,
+          status: "error",
+          errorMessage: "JSON parse failed",
+          inputChars,
+          outputChars,
+          model: toolConfig.model,
+        });
+        return next(createError(502, "upstream_error", "Resposta da IA não veio em JSON válido."));
+      }
+
+      const validation = toolConfig.responseFormat.zodSchema.safeParse(parsedJson);
+      if (!validation.success) {
+        console.error(
+          "[ai] Zod validation falhou pra tool",
+          toolKey,
+          JSON.stringify(validation.error.issues, null, 2).slice(0, 1500),
+        );
+        await logUsage({
+          userId,
+          tool: toolKey,
+          requestId,
+          status: "error",
+          errorMessage: "Zod validation failed",
+          inputChars,
+          outputChars,
+          inputTokens: data.usage?.prompt_tokens || 0,
+          outputTokens: data.usage?.completion_tokens || 0,
+          model: toolConfig.model,
+          costEstimate: estimateCost(inputChars, outputChars),
+        });
+        return next(createError(502, "upstream_error", "Resposta da IA não bateu com o schema esperado."));
+      }
+
+      await logUsage({
+        userId,
+        tool: toolKey,
+        requestId,
+        status: "success",
+        inputChars,
+        outputChars,
+        inputTokens: data.usage?.prompt_tokens || 0,
+        outputTokens: data.usage?.completion_tokens || 0,
+        model: toolConfig.model,
+        costEstimate: estimateCost(inputChars, outputChars),
+      });
+
+      res.json({ data: validation.data });
+      return;
+    }
 
     await logUsage({
       userId,

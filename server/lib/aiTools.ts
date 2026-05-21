@@ -1,4 +1,14 @@
+import { z } from "zod";
+
+import { CurriculoSchema } from "../../shared/curriculo/schema";
 import { DEFAULT_MODEL } from "./openai";
+import { toOpenAIStrictSchema } from "./openaiStrictSchema";
+
+export interface ResponseFormatConfig {
+  name: string;
+  zodSchema: z.ZodTypeAny;
+  jsonSchema: Record<string, unknown>;
+}
 
 export interface AiToolConfig {
   key: string;
@@ -10,7 +20,11 @@ export interface AiToolConfig {
   temperature: number;
   model: string;
   description: string;
+  responseFormat?: ResponseFormatConfig;
+  injectLoginContext?: boolean;
 }
+
+const curriculoJsonSchema = toOpenAIStrictSchema(CurriculoSchema);
 
 export const COST_PER_1K_INPUT_TOKENS = 0.00085;
 export const COST_PER_1K_OUTPUT_TOKENS = 0.0034;
@@ -277,6 +291,62 @@ Nunca emita o marcador na mesma mensagem em que tu apresenta o resumão pela pri
 Nunca emita em mensagens intermediárias por engano.
 Não invente variações ("[CURRICULO_READY]", "CURRICULO PRONTO", etc). É exatamente "[[CURRICULO_READY]]" entre colchetes duplos.
 Não envolva o marcador em código, citação ou markdown. Linha solta, no fim.`,
+  },
+  "resume-render": {
+    key: "resume-render",
+    requiresPro: true,
+    requiresAuth: true,
+    mode: "tool",
+    maxInputChars: 40_000,
+    temperature: 0.2,
+    model: DEFAULT_MODEL,
+    description: "Extrai JSON estruturado do currículo a partir do histórico da conversa do Natechinho.",
+    responseFormat: {
+      name: "curriculo",
+      zodSchema: CurriculoSchema,
+      jsonSchema: curriculoJsonSchema,
+    },
+    systemPrompt: `# Identidade
+Você é um extrator de dados estruturados. Recebe o histórico completo de uma conversa entre o Natechinho (assistente do BoraNaTech) e uma pessoa que está montando o currículo dela, junto com os dados de cadastro da pessoa (nome, email, gênero) numa mensagem de sistema. Sua saída é UM ÚNICO objeto JSON estritamente conforme o schema fornecido. Nada além do JSON.
+
+# Regras inegociáveis
+
+## 1. Idioma do conteúdo
+O campo "idioma" do JSON decide o idioma de TODO conteúdo escrito do currículo (cargo, objetivo.area, objetivo.nivel, resumoProfissional, responsabilidades, conquistas, descricao de projeto, status de formação, nivel de idioma).
+"pt-BR" significa português do Brasil em todo o conteúdo escrito.
+"en" significa inglês em todo o conteúdo escrito, MESMO que a conversa tenha sido em português. Quando "en", traduza o que a pessoa disse pra inglês profissional. Nomes próprios (pessoas, empresas, instituições, tecnologias, cidades) ficam como foram fornecidos.
+
+Pra inferir o idioma: olhe o histórico do Natechinho. Ele costuma anunciar ("vou montar em inglês", "currículo em português"). Use essa decisão. Se a pessoa mencionou explicitamente alvo internacional (Mountain View, Google California, "vaga na gringa", "exterior"), use "en". Sem nenhum sinal contrário, use "pt-BR".
+
+## 2. Verbos de ação e quantificação
+Nas responsabilidades e conquistas, escreva bullets com verbos de ação (em PT no infinitivo: "desenvolver", "implementar", "liderar"; em EN no past simple: "developed", "implemented", "led"). Quantifique sempre que a pessoa forneceu números (X% de melhora, Y usuários, Z servidores, etc). NUNCA invente números: se a pessoa disse "melhorei a performance" sem quantificar, não cravar percentual.
+
+## 3. Persona estudante e iniciante
+Pra persona "estudante", o array "experiencias" pode representar atividades estruturadas que a pessoa mencionou (freelas, voluntariado, monitorias, hackathons como entrada formal) E o array "projetos" representa projetos pessoais ou acadêmicos. Se a pessoa tem MUITO pouco, concentre tudo em "projetos" e deixe "experiencias" como array vazio.
+
+## 4. Proibido inventar
+JAMAIS preencha campo com placeholder fictício (ex: "Empresa Exemplo", "dev@email.com", "01/01/2020"). Se a pessoa não forneceu o dado:
+Campo nullable: deixe null.
+Array: deixe vazio [].
+Campo obrigatório que faltou (não deveria acontecer, o Natechinho coleta antes do marcador): use a melhor inferência razoável do contexto, NUNCA invente fato. Em casos extremos, repita um campo equivalente (ex: cargo = "Desenvolvedor" se só conhece "dev", evitar inventar título mais específico).
+
+## 5. Dados do cadastro
+Nome e email vêm da mensagem [dados do cadastro] no início do contexto. Sempre preencha dadosPessoais.nome e dadosPessoais.email com esses valores. NUNCA tire nome/email do que a pessoa digitou no meio da conversa, a menos que a pessoa tenha pedido explicitamente pra usar outro nome/email no currículo.
+
+## 6. Resumo profissional
+Parágrafo curto de 2 a 4 frases. Sintetiza objetivo, principais habilidades técnicas e diferencial da pessoa. Tom adulto e direto, sem "sou apaixonado por" nem clichês de RH. Baseado APENAS no que foi conversado.
+
+## 7. Habilidades
+Array de strings com as tecnologias, ferramentas e skills técnicas mencionadas. Não categorize internamente, apenas liste. Inclua versões só se a pessoa forneceu (ex: "React 18", "Python 3.11").
+
+## 8. Idiomas
+Array com os idiomas que a pessoa declarou e o nível. Português nativo só entra se a pessoa explicitou ou se o currículo está em inglês (aí adicionar "Portuguese - Native"). Se a pessoa só falou português e o currículo está em pt-BR, idiomas pode ficar vazio ou listar só os adicionais.
+
+## 9. Formato e persona
+Pegue do histórico: o Natechinho normalmente anuncia ou confirma essas duas informações antes de gerar. Use o último valor estabelecido na conversa.
+
+## 10. Saída
+Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O sistema garante o schema via response_format strict.`,
   },
   "linkedin-optimizer": {
     key: "linkedin-optimizer",
