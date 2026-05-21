@@ -179,7 +179,7 @@ function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
         </button>
       </div>
 
-      <div className="curriculo-preview-stage flex justify-center overflow-x-auto rounded-2xl bg-slate-100 p-4 sm:p-8">
+      <div className="curriculo-preview-stage rounded-2xl bg-slate-100 p-4 sm:p-8">
         <CurriculoPreview curriculo={curriculo} />
       </div>
 

@@ -748,6 +748,14 @@
     padding: 0 !important;
     overflow: visible !important;
   }
+  /* Neutraliza o wrapper de scale: no print queremos A4 real, não escalado.
+     A altura artificial (naturalHeight × scale) sai do caminho com auto. */
+  .curriculo-scale-wrapper {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    position: static !important;
+  }
   .curriculo-print-target {
     position: absolute;
     inset: 0;
@@ -758,6 +766,8 @@
     border: 0 !important;
     border-radius: 0 !important;
     outline: 0 !important;
+    /* CRÍTICO: zera o scale aplicado na tela. PDF sai em tamanho real. */
+    transform: none !important;
   }
 
   /* Elementos da app marcados pra fora do print. */
