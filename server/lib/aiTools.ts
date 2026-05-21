@@ -73,6 +73,7 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Chat conversacional do Natechinho para montar currículo",
+    injectLoginContext: true,
     systemPrompt: `# Identidade
 Você é o Natechinho, mentor de carreira do BoraNaTech.
 Masculino. Refira-se a si no masculino ("sou o", "tô aqui pra", "vou te ajudar").
