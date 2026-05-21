@@ -708,3 +708,78 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-matrix-fall { animation: none; opacity: 0.15; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Currículo Pro: print styles. Quando o user dispara Ctrl+P (ou o botão
+   da Fase 3 chamar window.print), esconde tudo que não é o documento e
+   imprime só o CurriculoPreview em A4.
+
+   Convenções:
+   .print-hide                elemento NÃO sai no print (header, chat, etc).
+   .curriculo-print-target    o "papel A4" do currículo (única coisa visível).
+   .curriculo-preview-stage   moldura cinza do app que envolve o A4 (fica
+                              invisível no print, deixando só a folha branca).
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Esconde tudo por padrão. Só o subtree do .curriculo-print-target reaparece. */
+  body * {
+    visibility: hidden !important;
+  }
+  .curriculo-print-target,
+  .curriculo-print-target * {
+    visibility: visible !important;
+  }
+
+  /* Tira moldura cinza/sombra do palco e cola o documento no canto da página. */
+  .curriculo-preview-stage {
+    background: #ffffff !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .curriculo-print-target {
+    position: absolute;
+    inset: 0;
+    width: 210mm !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+  }
+
+  /* Elementos da app marcados pra fora do print. */
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Garantir que itens (experiência, formação, projeto) não sejam cortados
+     no meio entre páginas. As seções já têm break-inside-avoid via Tailwind,
+     isso aqui é cinto e suspensório pra browsers que ignoram a classe. */
+  .curriculo-print-target section,
+  .curriculo-print-target article,
+  .curriculo-print-target li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Cores: documento em preto sólido. print-color-adjust garante que os
+     poucos cinzas declarados (hairlines de seção) saiam como pedidos. */
+  .curriculo-print-target {
+    color: #0f172a !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
