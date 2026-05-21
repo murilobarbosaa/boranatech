@@ -9,8 +9,17 @@ import { cn } from "@/lib/utils";
 import type { Curriculo } from "@shared/curriculo/schema";
 
 const MARKER = "[[CURRICULO_READY]]";
-const GREETING_CHARS_PER_TICK = 3;
-const GREETING_TICK_MS = 22;
+const PARTIAL_MARKER_HEAD = "[[";
+
+// ────────────────────────────────────────────────────────────────────────────
+// Velocidade do typewriter. Vale tanto pra saudação inicial (typewriter local)
+// quanto pra resposta streamada do Natechinho (chars revelados em ritmo
+// constante mesmo se a OpenAI manda em rajadas). Mexer aqui pra calibrar.
+// Referência: ChatGPT roda em torno de 40 a 60. Subir = mais rápido, descer
+// = mais lento. O resto do código deriva o tick em ms a partir daqui.
+// ────────────────────────────────────────────────────────────────────────────
+const TYPING_CHARS_PER_SECOND = 45;
+const TYPING_TICK_MS = Math.max(8, Math.round(1000 / TYPING_CHARS_PER_SECOND));
 
 function getAiErrorMessage(err: unknown): string {
   if (!(err instanceof Error)) return "Não foi possível enviar agora.";
@@ -22,6 +31,25 @@ function getAiErrorMessage(err: unknown): string {
 
 function stripMarker(text: string): string {
   return text.replace(/\[\[CURRICULO_READY\]\]/g, "").trimEnd();
+}
+
+/**
+ * Recorta o buffer pra exibição durante o stream. Se o marcador completo
+ * apareceu, corta tudo dele em diante. Enquanto o stream está rodando e
+ * apareceu só o início "[[" (marcador parcial), espera o marcador fechar
+ * antes de revelar esses chars, pra não vazar "[[CURRIC..." na tela.
+ *
+ * Quando o stream termina sem o marcador completo, devolve o buffer inteiro
+ * (assume que o "[[" era falso alarme e libera pro reveal).
+ */
+function clipForReveal(buf: string, streamDone: boolean): string {
+  const markerIdx = buf.indexOf(MARKER);
+  if (markerIdx >= 0) return buf.slice(0, markerIdx).trimEnd();
+  if (!streamDone) {
+    const partialIdx = buf.indexOf(PARTIAL_MARKER_HEAD);
+    if (partialIdx >= 0) return buf.slice(0, partialIdx);
+  }
+  return buf;
 }
 
 interface CurriculoChatPanelProps {
@@ -69,28 +97,22 @@ export default function CurriculoChatPanel({
   }, [messages, chatLoading, generating]);
 
   // Typewriter local pra saudação inicial. Sem chamada de API: o texto é
-  // fixo, então economiza custo e dá o mesmo efeito visual do streaming.
+  // fixo. Mesma cadência do reveal das respostas reais (TYPING_TICK_MS).
   useEffect(() => {
     setGreetingDone(false);
     setMessages([{ role: "assistant", content: "" }]);
-    let cancelled = false;
-    let cursor = 0;
     const target = initialAssistantMessage;
-
-    function tick() {
-      if (cancelled) return;
-      cursor = Math.min(target.length, cursor + GREETING_CHARS_PER_TICK);
-      setMessages([{ role: "assistant", content: target.slice(0, cursor) }]);
-      if (cursor < target.length) {
-        window.setTimeout(tick, GREETING_TICK_MS);
-      } else {
+    let cursor = 0;
+    const timer = window.setInterval(() => {
+      if (cursor >= target.length) {
+        window.clearInterval(timer);
         setGreetingDone(true);
+        return;
       }
-    }
-    tick();
-    return () => {
-      cancelled = true;
-    };
+      cursor += 1;
+      setMessages([{ role: "assistant", content: target.slice(0, cursor) }]);
+    }, TYPING_TICK_MS);
+    return () => window.clearInterval(timer);
   }, [initialAssistantMessage]);
 
   async function handleSend() {
@@ -104,33 +126,57 @@ export default function CurriculoChatPanel({
     setInput("");
     setChatLoading(true);
 
-    let buffer = "";
-    let firstTokenSeen = false;
-    try {
-      await callAiChatStream("resume-builder", afterUser, {
-        onToken: (delta) => {
-          if (!firstTokenSeen) {
-            firstTokenSeen = true;
-            setChatLoading(false);
-          }
-          buffer += delta;
+    // Pipeline de revelação controlada:
+    // - onToken só acumula no buffer (não atualiza UI direto).
+    // - Um setInterval separado revela 1 char por tick num ritmo fixo.
+    // - Marcador só é processado depois que o reveal esvazia o buffer E
+    //   o stream fechou, garantindo que a UI não pula chunks.
+    const fullBufferRef = { current: "" };
+    const streamDoneRef = { current: false };
+    let revealedLength = 0;
+
+    const revealDone = new Promise<void>((resolve) => {
+      const timer = window.setInterval(() => {
+        const target = clipForReveal(fullBufferRef.current, streamDoneRef.current);
+        if (revealedLength < target.length) {
+          revealedLength = Math.min(target.length, revealedLength + 1);
+          const slice = target.slice(0, revealedLength);
           setMessages((prev) => {
             const next = [...prev];
             const last = next[next.length - 1];
             if (last?.role === "assistant") {
-              next[next.length - 1] = { role: "assistant", content: buffer };
+              next[next.length - 1] = { role: "assistant", content: slice };
             }
             return next;
           });
+        } else if (streamDoneRef.current) {
+          window.clearInterval(timer);
+          resolve();
+        }
+      }, TYPING_TICK_MS);
+    });
+
+    let streamError: unknown = null;
+    try {
+      await callAiChatStream("resume-builder", afterUser, {
+        onToken: (delta) => {
+          fullBufferRef.current += delta;
         },
         onError: (msg) => {
           console.warn("[CurriculoChatPanel] stream error:", msg);
         },
       });
     } catch (err) {
-      setError(getAiErrorMessage(err));
-      setChatLoading(false);
-      // Remove o placeholder de assistente se ele ficou vazio (sem nenhum token).
+      streamError = err;
+    }
+
+    streamDoneRef.current = true;
+    await revealDone;
+    setChatLoading(false);
+
+    if (streamError) {
+      setError(getAiErrorMessage(streamError));
+      // Remove o placeholder se nada foi revelado (token nunca chegou).
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last?.role === "assistant" && last.content === "") {
@@ -140,13 +186,12 @@ export default function CurriculoChatPanel({
       });
       return;
     }
-    setChatLoading(false);
 
-    // Marcador SÓ é processado depois do stream completo. Cheça no buffer final.
-    if (buffer.includes(MARKER)) {
+    // Marcador só é checado agora (stream fechou E reveal esvaziou o buffer).
+    if (fullBufferRef.current.includes(MARKER)) {
       const historyForRender: AiChatMessage[] = [
         ...afterUser,
-        { role: "assistant", content: buffer },
+        { role: "assistant", content: fullBufferRef.current },
       ];
       setGenerating(true);
       try {
@@ -170,6 +215,9 @@ export default function CurriculoChatPanel({
   }
 
   const inputDisabled = chatLoading || generating || !greetingDone;
+  const lastMessage = messages[messages.length - 1];
+  const showTypingDots =
+    chatLoading && lastMessage?.role === "assistant" && lastMessage.content === "";
 
   return (
     <div className="card-brutal w-full overflow-hidden rounded-2xl bg-white">
@@ -231,7 +279,7 @@ export default function CurriculoChatPanel({
                 );
               })}
 
-              {chatLoading ? (
+              {showTypingDots ? (
                 <div className="flex justify-start">
                   <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
                     <span className="sr-only">Natechinho digitando</span>
