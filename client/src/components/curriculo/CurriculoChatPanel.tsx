@@ -4,11 +4,13 @@ import { Streamdown } from "streamdown";
 
 import { Spinner } from "@/components/ui/spinner";
 import type { AiChatMessage } from "@/lib/aiClient";
-import { callAiChat, callAiStructured } from "@/lib/aiClient";
+import { callAiChatStream, callAiStructured } from "@/lib/aiClient";
 import { cn } from "@/lib/utils";
 import type { Curriculo } from "@shared/curriculo/schema";
 
 const MARKER = "[[CURRICULO_READY]]";
+const GREETING_CHARS_PER_TICK = 3;
+const GREETING_TICK_MS = 22;
 
 function getAiErrorMessage(err: unknown): string {
   if (!(err instanceof Error)) return "Não foi possível enviar agora.";
@@ -47,9 +49,10 @@ export default function CurriculoChatPanel({
   description = "Conversa de uns 10 minutinhos. No fim, sai o PDF.",
   placeholder = "Manda tua resposta",
 }: CurriculoChatPanelProps) {
-  const [messages, setMessages] = useState<AiChatMessage[]>([
-    { role: "assistant", content: initialAssistantMessage },
-  ]);
+  // A saudação começa vazia e é preenchida pelo efeito de typewriter abaixo
+  // pra dar a mesma sensação visual do streaming das respostas reais.
+  const [messages, setMessages] = useState<AiChatMessage[]>([{ role: "assistant", content: "" }]);
+  const [greetingDone, setGreetingDone] = useState(false);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -65,39 +68,90 @@ export default function CurriculoChatPanel({
     el.scrollTop = el.scrollHeight;
   }, [messages, chatLoading, generating]);
 
+  // Typewriter local pra saudação inicial. Sem chamada de API: o texto é
+  // fixo, então economiza custo e dá o mesmo efeito visual do streaming.
+  useEffect(() => {
+    setGreetingDone(false);
+    setMessages([{ role: "assistant", content: "" }]);
+    let cancelled = false;
+    let cursor = 0;
+    const target = initialAssistantMessage;
+
+    function tick() {
+      if (cancelled) return;
+      cursor = Math.min(target.length, cursor + GREETING_CHARS_PER_TICK);
+      setMessages([{ role: "assistant", content: target.slice(0, cursor) }]);
+      if (cursor < target.length) {
+        window.setTimeout(tick, GREETING_TICK_MS);
+      } else {
+        setGreetingDone(true);
+      }
+    }
+    tick();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialAssistantMessage]);
+
   async function handleSend() {
-    if (chatLoading || generating) return;
+    if (chatLoading || generating || !greetingDone) return;
     const trimmed = input.trim();
     if (!trimmed) return;
 
     setError("");
     const afterUser: AiChatMessage[] = [...messages, { role: "user", content: trimmed }];
-    setMessages(afterUser);
+    setMessages([...afterUser, { role: "assistant", content: "" }]);
     setInput("");
     setChatLoading(true);
 
-    let reply: string;
+    let buffer = "";
+    let firstTokenSeen = false;
     try {
-      const response = await callAiChat("resume-builder", afterUser);
-      reply = response.result;
+      await callAiChatStream("resume-builder", afterUser, {
+        onToken: (delta) => {
+          if (!firstTokenSeen) {
+            firstTokenSeen = true;
+            setChatLoading(false);
+          }
+          buffer += delta;
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") {
+              next[next.length - 1] = { role: "assistant", content: buffer };
+            }
+            return next;
+          });
+        },
+        onError: (msg) => {
+          console.warn("[CurriculoChatPanel] stream error:", msg);
+        },
+      });
     } catch (err) {
       setError(getAiErrorMessage(err));
       setChatLoading(false);
+      // Remove o placeholder de assistente se ele ficou vazio (sem nenhum token).
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.content === "") {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
       return;
     }
-
-    const afterAssistant: AiChatMessage[] = [
-      ...afterUser,
-      { role: "assistant", content: reply },
-    ];
-    setMessages(afterAssistant);
     setChatLoading(false);
 
-    if (reply.includes(MARKER)) {
+    // Marcador SÓ é processado depois do stream completo. Cheça no buffer final.
+    if (buffer.includes(MARKER)) {
+      const historyForRender: AiChatMessage[] = [
+        ...afterUser,
+        { role: "assistant", content: buffer },
+      ];
       setGenerating(true);
       try {
         const { data } = await callAiStructured<Curriculo>("resume-render", {
-          messages: afterAssistant,
+          messages: historyForRender,
         });
         onCurriculoReady(data);
       } catch (err) {
@@ -115,7 +169,7 @@ export default function CurriculoChatPanel({
     }
   }
 
-  const inputDisabled = chatLoading || generating;
+  const inputDisabled = chatLoading || generating || !greetingDone;
 
   return (
     <div className="card-brutal w-full overflow-hidden rounded-2xl bg-white">
