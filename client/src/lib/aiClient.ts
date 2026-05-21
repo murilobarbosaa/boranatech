@@ -5,6 +5,10 @@ interface AiResponse {
   result: string;
 }
 
+interface AiStructuredResponse<T> {
+  data: T;
+}
+
 export type AiChatMessage = { role: "user" | "assistant"; content: string };
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -68,4 +72,38 @@ export async function callAiTool(endpoint: string, payload: Record<string, unkno
   });
 
   return parseAiResponse(response);
+}
+
+/**
+ * Chama uma tool de IA com response_format estruturado (tipo resume-render).
+ * Diferente das tools de chat, o backend devolve { data: T } em vez de { result: string }.
+ */
+export async function callAiStructured<T>(
+  endpoint: string,
+  payload: Record<string, unknown>,
+): Promise<AiStructuredResponse<T>> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(apiUrl(`/api/ai/${endpoint}`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 401) throw new Error("LOGIN_REQUIRED");
+  if (response.status === 403) throw new Error("PRO_REQUIRED");
+  if (response.status === 429) {
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(`RATE_LIMITED: ${errBody.error?.message || "Limite atingido"}`);
+  }
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({}));
+    throw new Error(errBody.error?.message || "Erro ao gerar conteúdo estruturado.");
+  }
+
+  const body = (await response.json()) as Partial<AiStructuredResponse<T>>;
+  if (!body.data) throw new Error("Resposta sem campo data.");
+  return { data: body.data };
 }
