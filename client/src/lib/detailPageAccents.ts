@@ -72,7 +72,6 @@ const AREA_SLUG_ACCENT: Record<string, PageHeroAccent> = {
   backend: "orange",
   fullstack: "violet",
   dados: "blue",
-  "engenharia-dados": "cyan",
   uxui: "fuchsia",
   ia: "violet",
   produto: "amber",
@@ -82,7 +81,6 @@ const AREA_SLUG_ACCENT: Record<string, PageHeroAccent> = {
   qa: "teal",
   mobile: "fuchsia",
   devops: "cyan",
-  sre: "orange",
   gamedev: "fuchsia",
 };
 
