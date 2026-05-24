@@ -195,6 +195,7 @@ export default function AreaDetalhe() {
         titlePrefix={<AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" />}
         actions={
           <FavoriteButton
+            compact
             item={{ id: area.id, type: "area", title: area.nome, subtitle: area.descricaoCurta }}
           />
         }
