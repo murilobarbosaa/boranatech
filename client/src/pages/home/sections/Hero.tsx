@@ -449,7 +449,7 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.6 }}
           className="font-display mx-auto mt-4 max-w-4xl font-black leading-tight text-balance text-slate-950"
-          style={{ fontSize: "clamp(44px, 6vw, 76px)" }}
+          style={{ fontSize: "clamp(36px, 6vw, 76px)" }}
         >
           Cada ferramenta que você precisa pra entrar em{" "}
           <span className="relative isolate inline-block px-3 py-1">
