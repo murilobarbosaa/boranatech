@@ -1,3 +1,5 @@
+import { usageEvidence } from "./surveyData2025";
+
 export type TechnologyCategory = "Linguagens" | "Frameworks" | "Banco de Dados" | "Ferramentas" | "Cloud" | "DevOps";
 export type DemandLevel = "Alta" | "Média" | "Baixa";
 export type DifficultyLabel = "Iniciante" | "Intermediário" | "Avançado";
@@ -351,94 +353,6 @@ const logoUrls: Record<string, string> = {
   PyTorch: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg",
 };
 
-const stackOverflowSource = {
-  sourceName: "Stack Overflow Developer Survey 2024",
-  sourceUrl: "https://survey.stackoverflow.co/2024/technology/",
-};
-
-const githubOctoverseSource = {
-  sourceName: "GitHub Octoverse 2024",
-  sourceUrl: "https://github.blog/news-insights/octoverse/octoverse-2024/",
-};
-
-const usageEvidence: Record<string, Pick<Technology, "usagePercent" | "usageLabel" | "sourceName" | "sourceUrl" | "sourceNote">> = {
-  JavaScript: { usagePercent: 62.3, usageLabel: "62,3% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  HTML: { usagePercent: 52.9, usageLabel: "52,9% em HTML/CSS", ...stackOverflowSource, sourceNote: "Stack Overflow agrupa HTML e CSS na pesquisa" },
-  CSS: { usagePercent: 52.9, usageLabel: "52,9% em HTML/CSS", ...stackOverflowSource, sourceNote: "Stack Overflow agrupa HTML e CSS na pesquisa" },
-  Python: { usagePercent: 51, usageLabel: "51% dos respondentes", ...stackOverflowSource, sourceNote: "GitHub Octoverse 2024 também aponta Python como linguagem mais usada no GitHub" },
-  SQL: { usagePercent: 51, usageLabel: "51% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  TypeScript: { usagePercent: 38.5, usageLabel: "38,5% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  Java: { usagePercent: 30.3, usageLabel: "30,3% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  "C#": { usagePercent: 27.1, usageLabel: "27,1% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  PHP: { usagePercent: 18.2, usageLabel: "18,2% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  Go: { usagePercent: 13.5, usageLabel: "13,5% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  Rust: { usagePercent: 12.6, usageLabel: "12,6% dos respondentes", ...stackOverflowSource, sourceNote: "Rust também aparece como linguagem mais admirada na pesquisa" },
-  Kotlin: { usagePercent: 9.4, usageLabel: "9,4% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  Swift: { usagePercent: 4.7, usageLabel: "4,7% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  R: { usagePercent: 4.3, usageLabel: "4,3% dos respondentes", ...stackOverflowSource, sourceNote: "Linguagens de programação, scripting e markup" },
-  PostgreSQL: { usagePercent: 48.7, usageLabel: "48,7% dos respondentes", ...stackOverflowSource, sourceNote: "Bancos de dados" },
-  MySQL: { usagePercent: 40.3, usageLabel: "40,3% dos respondentes", ...stackOverflowSource, sourceNote: "Bancos de dados" },
-  MongoDB: { usagePercent: 24.8, usageLabel: "24,8% dos respondentes", ...stackOverflowSource, sourceNote: "Bancos de dados" },
-  Redis: { usagePercent: 20, usageLabel: "20% dos respondentes", ...stackOverflowSource, sourceNote: "Bancos de dados" },
-  AWS: { usagePercent: 48, usageLabel: "48% dos respondentes", ...stackOverflowSource, sourceNote: "Plataformas de cloud" },
-  Azure: { usagePercent: 27.8, usageLabel: "27,8% dos respondentes", ...stackOverflowSource, sourceNote: "Plataformas de cloud" },
-  "Google Cloud": { usagePercent: 25.1, usageLabel: "25,1% dos respondentes", ...stackOverflowSource, sourceNote: "Plataformas de cloud" },
-  Docker: { usagePercent: 53.9, usageLabel: "53,9% dos respondentes", ...stackOverflowSource, sourceNote: "Ferramentas de build e deploy" },
-  Kubernetes: { usagePercent: 19.4, usageLabel: "19,4% dos respondentes", ...stackOverflowSource, sourceNote: "Ferramentas de build e deploy" },
-  "Node.js": { usagePercent: 40.8, usageLabel: "40,8% dos respondentes", ...stackOverflowSource, sourceNote: "Web frameworks e tecnologias" },
-  React: { usagePercent: 39.5, usageLabel: "39,5% dos respondentes", ...stackOverflowSource, sourceNote: "Web frameworks e tecnologias" },
-  "Next.js": { usagePercent: 17.9, usageLabel: "17,9% dos respondentes", ...stackOverflowSource, sourceNote: "Web frameworks e tecnologias" },
-  Angular: { usagePercent: 17.1, usageLabel: "17,1% dos respondentes", ...stackOverflowSource, sourceNote: "Web frameworks e tecnologias" },
-  "Vue.js": { usagePercent: 15.4, usageLabel: "15,4% dos respondentes", ...stackOverflowSource, sourceNote: "Web frameworks e tecnologias" },
-  Pandas: { usagePercent: 20.7, usageLabel: "20,7% dos respondentes", ...stackOverflowSource, sourceNote: "Outros frameworks e bibliotecas" },
-  TensorFlow: { usagePercent: 10.1, usageLabel: "10,1% dos respondentes", ...stackOverflowSource, sourceNote: "Outros frameworks e bibliotecas" },
-  Flutter: { usagePercent: 9.4, usageLabel: "9,4% dos respondentes", ...stackOverflowSource, sourceNote: "Outros frameworks e bibliotecas" },
-  Spark: { usagePercent: 4.4, usageLabel: "4,4% em Apache Spark", ...stackOverflowSource, sourceNote: "Outros frameworks e bibliotecas" },
-  "Tailwind CSS": {
-    usageLabel: "Utility-first CSS dominante em muitos bootcamps e greenfield web",
-    sourceName: "Curadoria BORA NA TECH?",
-    sourceNote:
-      "O Stack Overflow 2024 agrega várias tecnologias de web frameworks/CSS; não use este quadro como percentual oficial só do Tailwind.",
-  },
-  Vite: { usageLabel: "Build tool de front-end muito adotado em projetos React/Vue modernos", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Sem linha dedicada comparável no gráfico principal do Stack Overflow 2024" },
-  "Express.js": { usageLabel: "Ecossistema Node.js com ampla adoção em APIs e microserviços", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Frequentemente agrupado com Node.js em estatísticas agregadas" },
-  FastAPI: { usageLabel: "Framework Python em crescimento para APIs e modelos de IA", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; compare com Python/Pandas na mesma pesquisa" },
-  Django: { usageLabel: "Framework web Python tradicional em produtos e admin interno", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo complementar a Python" },
-  "Spring Boot": { usageLabel: "Padrão em APIs Java em empresas e sistemas legados", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo complementar a Java" },
-  "React Native": { usageLabel: "Base comum de apps móveis em times que já usam React", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; React e Flutter têm percentuais na pesquisa" },
-  GraphQL: { usageLabel: "Camada de API adotada em produtos com múltiplos clientes", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; REST permanece majoritário na maioria dos relatórios" },
-  Redux: { usageLabel: "Estado global ainda presente em bases React maiores", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; tendência a soluções mais leves em apps novos" },
-  Webpack: { usageLabel: "Bundler histórico; ainda usado em codebases maduras", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; Vite e ferramentas nativas competem em projetos novos" },
-  Storybook: { usageLabel: "Padrão em design systems e documentação de componentes", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo de adoção em times de front e design" },
-  Cypress: { usageLabel: "E2E popular em front-end; comum em pipelines de CI", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo em QA de interface" },
-  Playwright: { usageLabel: "E2E multi-browser em forte ascensão em times web", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; compare com outras ferramentas de teste na sua stack" },
-  Sass: { usageLabel: "Pré-processador CSS ainda presente em design systems", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; Tailwind e CSS moderno reduzem necessidade em apps novos" },
-  Terraform: { usageLabel: "IaC de referência em cloud e plataformas", sourceName: "HashiCorp / ecossistema cloud", sourceUrl: "https://www.terraform.io/", sourceNote: "Indicador qualitativo de adoção em DevOps" },
-  Ansible: { usageLabel: "Automação de servidores e configuração sem agente pesado", sourceName: "Red Hat Ansible", sourceUrl: "https://www.ansible.com/", sourceNote: "Indicador qualitativo em operações" },
-  "GitHub Actions": { usageLabel: "CI/CD integrado ao GitHub, muito usado em repos open source e empresas", sourceName: "GitHub Docs", sourceUrl: "https://docs.github.com/actions", sourceNote: "Indicador qualitativo; Git aparece com alta penetração no Octoverse" },
-  Jenkins: { usageLabel: "CI clássico ainda presente em corporações", sourceName: "Jenkins", sourceUrl: "https://www.jenkins.io/", sourceNote: "Indicador qualitativo; muitos times migram para SaaS de CI" },
-  Prometheus: { usageLabel: "Métricas e alertas padrão em ambientes Kubernetes", sourceName: "Prometheus", sourceUrl: "https://prometheus.io/", sourceNote: "Indicador qualitativo em observabilidade" },
-  Grafana: { usageLabel: "Dashboards e visualização em SRE e plataformas", sourceName: "Grafana Labs", sourceUrl: "https://grafana.com/", sourceNote: "Indicador qualitativo; frequentemente com Prometheus" },
-  Kafka: { usageLabel: "Streaming e filas de alto volume em arquiteturas distribuídas", sourceName: "Apache Kafka", sourceUrl: "https://kafka.apache.org/", sourceNote: "Indicador qualitativo em engenharia de dados e eventos" },
-  RabbitMQ: { usageLabel: "Message broker amplamente usado em filas e microserviços", sourceName: "RabbitMQ", sourceUrl: "https://www.rabbitmq.com/", sourceNote: "Indicador qualitativo" },
-  Elasticsearch: {
-    usageLabel: "Busca e logs em grande escala; stack ELK comum",
-    sourceName: "Elastic",
-    sourceUrl: "https://www.elastic.co/elasticsearch/",
-    sourceNote: "Indicador qualitativo",
-  },
-  NumPy: { usageLabel: "Base numérica indispensável em ciência de dados Python", sourceName: "Curadoria BORA NA TECH?", sourceNote: "Indicador qualitativo; Pandas aparece na pesquisa Stack Overflow" },
-  PyTorch: { usageLabel: "Framework de ML muito citado em pesquisa e indústria", sourceName: "Curadoria BORA NA TECH?", sourceNote: "TensorFlow aparece com percentual na pesquisa; PyTorch complementa ecossistema" },
-  "Power BI": {
-    usageLabel: "BI self-service muito comum em dados e negócios",
-    sourceName: "Microsoft Power BI",
-    sourceUrl: "https://powerbi.microsoft.com/",
-    sourceNote: "Indicador qualitativo; mercado corporativo forte",
-  },
-  Figma: { usageLabel: "Ferramenta de design amplamente usada em times de produto", sourceName: "Figma Customers", sourceUrl: "https://www.figma.com/customers/", sourceNote: "Figma divulga estudos de caso de clientes publicamente" },
-  Git: { usageLabel: "GitHub registrou mais de 5,2 bilhões de contribuições em 2024", ...githubOctoverseSource, sourceNote: "Git é a base de versionamento usada em plataformas como GitHub" },
-  Linux: { usageLabel: "Base comum em servidores, cloud e DevOps", sourceName: "The Linux Foundation", sourceUrl: "https://www.linuxfoundation.org/", sourceNote: "Ecossistema aberto mantido por uma fundação pública" },
-};
 
 const notableCompanies: Record<string, string[]> = {
   HTML: ["Google", "Wikipedia", "Netflix"],
@@ -515,7 +429,7 @@ export const technologies: Technology[] = names.map((name, index) => {
   const category = categoryFor(name);
   const difficulty = difficulties[name] || "Intermediário";
   const jobs = Math.max(140, Math.round(6400 - index * 103));
-  const evidence = usageEvidence[name];
+  const evidence = usageEvidence[slugify(name)];
   return {
     slug: slugify(name),
     name,
