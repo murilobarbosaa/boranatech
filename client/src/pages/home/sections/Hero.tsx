@@ -54,11 +54,17 @@ type CardinalNode = {
   bottom?: string;
 };
 
+// Posicionamento horizontal ancorado nas margens externas do grid central
+// (max-w-5xl = 1024px). Garante que os labels nunca sobreponham o conteúdo
+// em viewports estreitos como 1536px, onde % do viewport caía dentro do grid.
+// 175px = largura aproximada do label + respiro. Piso de 16px pra borda.
+const SIDE_OFFSET = "max(16px, calc((100vw - 1024px) / 2 - 175px))";
+
 const CARDINAL_NODES: CardinalNode[] = [
-  { label: "N · Descobrir", color: "#7c3aed", top: "8%", left: "12%" },
-  { label: "L · Estudar", color: "#059669", top: "35%", right: "4%" },
-  { label: "S · Praticar", color: "#ea580c", bottom: "8%", right: "12%" },
-  { label: "O · Conseguir", color: "#2563eb", bottom: "35%", left: "4%" },
+  { label: "N · Descobrir", color: "#7c3aed", top: "8%", left: SIDE_OFFSET },
+  { label: "L · Estudar", color: "#059669", top: "35%", right: SIDE_OFFSET },
+  { label: "S · Praticar", color: "#ea580c", bottom: "8%", right: SIDE_OFFSET },
+  { label: "O · Conseguir", color: "#2563eb", bottom: "35%", left: SIDE_OFFSET },
 ];
 
 // =========================================
@@ -223,7 +229,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
           Renderiza só quando todas as 4 posições estão medidas. */}
       {nodePositions.N && nodePositions.L && nodePositions.S && nodePositions.O && (
         <svg
-          className="absolute inset-0 hidden h-full w-full md:block pointer-events-none"
+          className="absolute inset-0 hidden h-full w-full xl:block pointer-events-none"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
         >
@@ -341,7 +347,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
             ref={(el) => {
               nodeRefs.current[key] = el;
             }}
-            className="absolute hidden items-center gap-2 md:flex"
+            className="absolute hidden items-center gap-2 xl:flex"
             style={{ top, left, right, bottom }}
           >
             <motion.div
