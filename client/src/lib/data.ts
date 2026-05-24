@@ -429,7 +429,7 @@ export const areasTI: AreaTI[] = [
     icon: Database,
     tagClass: "tag-engenharia-dados",
     descricaoCurta: "Quem constrói toda a infraestrutura que faz os dados chegarem aos cientistas e analistas. Pipelines, data lakes e arquitetura de dados em larga escala.",
-    descricaoCompleta: "O Engenheiro de Dados é o arquiteto invisível por trás de qualquer projeto sério de dados. Enquanto o cientista de dados gera insights e o analista monta dashboards, é o engenheiro quem garante que esses dados existam, sejam confiáveis e estejam disponíveis. Constrói pipelines de ETL/ELT, mantém data lakes e data warehouses, integra dezenas de fontes (APIs, bancos, eventos em tempo real) e garante que tudo escale. É uma das áreas em maior crescimento no Brasil — 306% nos últimos anos segundo o LinkedIn — e com salários acima da média de TI.",
+    descricaoCompleta: "O Engenheiro de Dados é o arquiteto invisível por trás de qualquer projeto sério de dados. Enquanto o cientista de dados gera insights e o analista monta dashboards, é o engenheiro quem garante que esses dados existam, sejam confiáveis e estejam disponíveis. Constrói pipelines de ETL/ELT, mantém data lakes e data warehouses, integra dezenas de fontes (APIs, bancos, eventos em tempo real) e garante que tudo escale. É uma das áreas em maior crescimento no Brasil, com forte demanda no LinkedIn e salários acima da média de TI.",
     oQueFaz: "O engenheiro de dados trabalha invisível mas fundamental. No dia a dia: cria pipelines que coletam dados de várias fontes (APIs, eventos, bancos), transforma e limpa esses dados, e disponibiliza pra times de analytics, ciência de dados e IA. Garante que tudo isso rode com performance, custo controlado e qualidade. Sem engenheiro de dados, não há dashboard nem modelo de IA confiável.",
     tarefasDiarias: [
       "Construir pipelines de ETL/ELT pra coletar dados de várias fontes",
@@ -937,7 +937,7 @@ export const areasTI: AreaTI[] = [
         slug: "prompt-engineering",
         nome: "Engenharia de Prompt",
         descricaoCurta: "Especialização em projetar prompts eficazes pra LLMs. Subárea emergente, crescimento explosivo.",
-        descricaoCompleta: "Engenharia de Prompt (ou Prompt Engineering) é a subárea de IA mais emergente do mercado em 2026: profissional que projeta, testa e otimiza instruções pra modelos de linguagem como ChatGPT, Claude e Gemini. Não é só 'fazer perguntas' — é arquitetar interações que extraem resultados consistentes, escaláveis e alinhados a objetivos de negócio. Subárea explodiu em 2024-2026: mercado cresceu 135% em 2025 e projeção de crescer 350% até final de 2026 (Marfin/Gartner). Salários no Brasil já variam de R$ 4-15k+ pra CLT, com pleno em R$ 12-18k e sênior ultrapassando R$ 20k. Freelancers internacionais cobram US$ 50-200/hora. Não exige diploma — exige portfólio sólido.",
+        descricaoCompleta: "Engenharia de Prompt (ou Prompt Engineering) é a subárea de IA mais emergente do mercado em 2026: profissional que projeta, testa e otimiza instruções pra modelos de linguagem como ChatGPT, Claude e Gemini. Não é só 'fazer perguntas' — é arquitetar interações que extraem resultados consistentes, escaláveis e alinhados a objetivos de negócio. Subárea em expansão rápida desde 2024, uma das áreas de crescimento mais acelerado dentro do mercado de IA. Salários no Brasil já variam de R$ 4-15k+ pra CLT, com pleno em R$ 12-18k e sênior ultrapassando R$ 20k. Freelancers internacionais cobram US$ 50-200/hora. Não exige diploma — exige portfólio sólido.",
         oQueFaz: "No dia a dia: projeta prompts pra casos de uso específicos (atendimento ao cliente, geração de conteúdo, análise de documentos), testa variações e mede qualidade (acurácia, custo, latência), integra LLMs em sistemas via APIs (OpenAI, Anthropic, Google), otimiza custo de tokens em pipelines automatizados, treina equipes a usar IA generativa com eficiência, e desenvolve bibliotecas de prompts pra setores específicos (jurídico, saúde, marketing).",
         diferencasDaAreaMae: "Dentro de IA, o Prompt Engineer separa-se do Machine Learning Engineer pela abordagem: ML Engineer constrói modelos do zero; Prompt Engineer usa modelos prontos e otimiza interações com eles. Diferente do Cientista de Dados (matemática + modelagem), o Prompt Engineer trabalha com linguagem natural e raciocínio sobre como LLMs interpretam instruções. É a porta de entrada mais acessível pra IA em 2026 — não exige cálculo nem programação avançada, só pensamento estruturado e curiosidade pelos modelos.",
         habilidadesEspecificas: [
@@ -1087,7 +1087,7 @@ export const areasTI: AreaTI[] = [
           "Product Manager Sênior (5+ anos)",
           "Group/Lead PM ou Head of Product (liderança de múltiplos times)"
         ],
-        faixaSalarial: "R$ 7.000 (júnior) a R$ 28.000 (sênior em fintechs/big techs). Média BR R$ 12-15k — PM3 Panorama 2025-2026 e Glassdoor (6.646 salários). Especialistas em produto técnico ou growth chegam a R$ 32k+.",
+        faixaSalarial: "R$ 7.000 (júnior) a R$ 28.000 (sênior em fintechs/big techs). Média BR R$ 12-15k, segundo pesquisa da PM3 e Glassdoor (6.646 salários). Especialistas em produto técnico ou growth chegam a R$ 32k+.",
         dificuldade: 4,
         cursosGratuitos: [
           "PM3 — Blog e webinars gratuitos (referência BR em produto)",
