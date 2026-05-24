@@ -7,6 +7,10 @@ import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { technologyRanking } from "@/lib/technologyData";
+import {
+  STACK_OVERFLOW_SURVEY,
+  GITHUB_OCTOVERSE,
+} from "@/lib/surveyData2025";
 import { getTechnologyRanking } from "@/services/contentService";
 
 const ac = getPageAccentUi("amber");
@@ -49,12 +53,12 @@ export default function TecnologiaRanking() {
             <h2 className="mt-5 font-display text-lg font-black text-slate-950">Fonte das informações</h2>
             <p className="mt-2 text-sm font-medium text-slate-700">
               O ranking ordena primeiro por uso declarado quando há percentuais do{" "}
-              <a href="https://survey.stackoverflow.co/2024/technology/" target="_blank" rel="noreferrer" className={cn("font-black underline", ac.link)}>
-                Stack Overflow Developer Survey 2024
+              <a href={STACK_OVERFLOW_SURVEY.sourceUrl} target="_blank" rel="noreferrer" className={cn("font-black underline", ac.link)}>
+                {STACK_OVERFLOW_SURVEY.sourceName}
               </a>
               , combinando quando útil com o{" "}
-              <a href="https://github.blog/news-insights/octoverse/octoverse-2024/" target="_blank" rel="noreferrer" className={cn("font-black underline", ac.link)}>
-                GitHub Octoverse 2024
+              <a href={GITHUB_OCTOVERSE.sourceUrl} target="_blank" rel="noreferrer" className={cn("font-black underline", ac.link)}>
+                {GITHUB_OCTOVERSE.sourceName}
               </a>
               .
             </p>
