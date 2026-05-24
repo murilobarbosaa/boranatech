@@ -258,7 +258,16 @@ export default function CurriculoChatPanel({
                           "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                         )}
                       >
-                        <Streamdown className="prose prose-sm max-w-none break-words text-slate-900 sm:prose-base">
+                        <Streamdown
+                          className={cn(
+                            "prose prose-sm max-w-none break-words text-slate-900 sm:prose-base",
+                            // Garante padding/indentação nas listas markdown,
+                            // pra os marcadores não colarem na borda do balão.
+                            "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:marker:text-slate-400",
+                            "[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:marker:text-slate-400",
+                            "[&_li]:my-0.5 [&_li]:pl-1",
+                          )}
+                        >
                           {visible}
                         </Streamdown>
                       </div>
