@@ -1,14 +1,35 @@
--- Adiciona as áreas "Full-stack" e "Game Dev" na tabela `areas`.
+-- Adiciona as áreas "Full-stack" (posição 3) e "Game Dev" (posição 14) na
+-- tabela `areas`, alinhando o banco ao fallback `areasTI` que tem as mesmas 14.
 --
--- Contexto: o fallback `areasTI` (client/src/lib/data.ts) tinha 16 áreas, mas o
--- banco tinha só 12, causando flash 16→12 a cada carregamento de /areas. Decisão:
--- promover essas duas ao banco (são áreas de carreira reais) e remover do fallback
--- as duas que eram duplicatas de sub-áreas (engenharia-dados e sre).
+-- Contexto: a página /areas tinha um flash 16->12 a cada carregamento porque o
+-- fallback (16) e o banco (12) divergiam. Decisão: promover fullstack e gamedev
+-- ao banco e remover do fallback as duas duplicatas (engenharia-dados, sre).
 --
--- Todos os campos foram copiados literalmente do fallback. Campos sem equivalente
--- direto no fallback (icon emoji, tag, color, is_pro) foram preenchidos com o
--- mesmo padrão das 12 áreas já cadastradas.
+-- Ordem: fullstack entra logo após Front-end e Back-end (lógica de carreira),
+-- então o sort_order 3 que hoje pertence a "dados" precisa abrir espaço. Como
+-- a coluna sort_order NÃO tem UNIQUE constraint (verificado em
+-- 20260517231011_remote_schema.sql:881-1105: só `areas_slug_key UNIQUE (slug)`
+-- e índice composto `(is_published, sort_order)`), o shift em massa é seguro
+-- em uma única instrução sem risco de violar constraint temporariamente.
+--
+-- Idempotência: o INSERT usa ON CONFLICT (slug) DO NOTHING. O UPDATE de
+-- reordenação é envolvido num DO block que só dispara se `fullstack` ainda
+-- não existir — assim, rodar a migration mais de uma vez não shifta de novo.
 
+BEGIN;
+
+-- 1) Abre a posição 3 empurrando todo mundo de sort_order >= 3 em +1.
+--    Só roda se fullstack ainda não está no banco (idempotência).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.areas WHERE slug = 'fullstack') THEN
+    UPDATE public.areas
+       SET sort_order = sort_order + 1
+     WHERE sort_order >= 3;
+  END IF;
+END $$;
+
+-- 2) Insere fullstack (posição 3) e gamedev (posição 14).
 INSERT INTO public.areas (
   slug, name, short_description, full_description, daily_tasks, profile_indicated,
   skills, tools, average_salary, free_courses, initial_roadmap, projects,
@@ -37,7 +58,7 @@ INSERT INTO public.areas (
   NULL,
   false,
   true,
-  13
+  3
 ),
 (
   'gamedev',
@@ -64,3 +85,5 @@ INSERT INTO public.areas (
   14
 )
 ON CONFLICT (slug) DO NOTHING;
+
+COMMIT;
