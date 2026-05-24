@@ -2306,7 +2306,7 @@ export const areasTI: AreaTI[] = [
       {
         slug: "flutter",
         nome: "Flutter",
-        descricaoCurta: "Framework do Google pra apps cross-platform com Dart. Ganhou força em 2024-2026, principalmente em startups.",
+        descricaoCurta: "Framework do Google pra apps cross-platform com Dart. Ganhou força nos últimos anos, principalmente em startups.",
         descricaoCompleta: "Desenvolvedor Flutter é o profissional que constrói apps mobile cross-platform usando Flutter (framework do Google) e Dart (linguagem do Google). Diferente do React Native (JavaScript, framework do Meta), Flutter renderiza tudo via Skia/Impeller — entrega performance superior próxima ao nativo. Mercado BR menor que React Native (Glassdoor mostra 158 salários vs 1.000+ de RN), mas em crescimento. Salários: júnior gira R$ 4.271, sêniores chegam a R$ 21k+ (90º percentil R$ 31k Glassdoor 2026). Empresas que escolhem Flutter geralmente valorizam performance e produtos premium. Comunidade BR ativa e crescente.",
         oQueFaz: "No dia a dia: desenvolve apps em Dart usando widgets Flutter (Stateless/Stateful), gerencia estado com Provider, Riverpod ou BLoC, integra com APIs REST/GraphQL, navega entre telas (GoRouter, AutoRoute), implementa recursos nativos via plugins (câmera, push, deep links), publica apps em App Store e Google Play (single codebase), e otimiza performance pra dispositivos variados. Trabalha com Android Studio ou VS Code.",
         diferencasDaAreaMae: "Dentro de Mobile, o Flutter compete diretamente com React Native — ambos cross-platform, decisão entre eles é tecnológica. Flutter usa Dart (linguagem própria, curva de aprendizado maior) e renderiza widgets via Skia (performance superior, look idêntico em iOS/Android). React Native usa JavaScript (pool gigante de devs web) e componentes nativos (visual nativo por plataforma). Diferente de iOS/Android Nativos, Flutter sacrifica acesso completo a APIs em troca de cross-platform. No BR, mercado menor que RN mas crescente — empresas Google-friendly preferem Flutter.",
@@ -5387,7 +5387,7 @@ export const projetos = [
     nome: "CRUD com Supabase + React",
     areaSlug: "fullstack" as string | null,
     nivel: "Intermediário",
-    objetivo: "Usar BaaS real (auth opcional, tabelas, políticas RLS) no front — stack muito comum em 2024–2026 para MVPs e vagas júnior/pleno.",
+    objetivo: "Usar BaaS real (auth opcional, tabelas, políticas RLS) no front — stack muito comum nos últimos anos para MVPs e vagas júnior/pleno.",
     ferramentas: ["React ou Next.js", "Supabase (Postgres + API)", "Tailwind opcional"],
     passosSimplificados: ["Modele 1–2 tabelas", "Configure Row Level Security básica", "Lista, cria, edita, apaga no client", "Trate loading/erro", "Explique no README o modelo de dados"],
     entregavel: "App ao vivo com seed SQL no repositório.",
