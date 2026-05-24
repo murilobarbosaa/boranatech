@@ -48,19 +48,6 @@ const perfilMap: Record<string, string[]> = {
   dados: ["dados", "ia", "backend"],
 };
 
-function DifficultyDots({ level }: { level: number }) {
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div
-          key={i}
-          className={`w-2 h-2 rounded-full ${i <= level ? "bg-violet-600" : "bg-slate-200"}`}
-        />
-      ))}
-    </div>
-  );
-}
-
 export default function Areas() {
   const [areas, setAreas] = useState(areasTI);
   const [search, setSearch] = useState("");
@@ -158,9 +145,8 @@ export default function Areas() {
                     href={`/areas/${area.slug}`}
                     className="card-brutal bg-white rounded-xl p-6 flex flex-col group h-full"
                   >
-                  <div className="flex items-start justify-between mb-4 pr-12">
+                  <div className="mb-4 pr-12">
                     <AreaIconBox icon={area.icon} areaSlug={area.slug} size="md" />
-                    <DifficultyDots level={area.dificuldade} />
                   </div>
                   <h3 className="font-display font-bold text-xl text-slate-900 mb-2 group-hover:text-violet-700 transition-colors">
                     {area.nome}
