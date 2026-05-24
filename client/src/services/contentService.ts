@@ -3,6 +3,7 @@ import { Layout as LayoutIcon } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { areasTI, cursosGratuitos, plataformas, projetos, roadmaps, type AreaTI } from "@/lib/data";
 import { technologies, technologyRanking } from "@/lib/technologyData";
+import { usageEvidence } from "@/lib/surveyData2025";
 
 const API_BASE = apiUrl("/api/content");
 
@@ -123,6 +124,11 @@ function roadmapFromApi(row: any) {
 }
 
 function technologyFromApi(row: any) {
+  // Enriquece a linha do Supabase (metadados) com os percentuais e fonte do
+  // Survey, casados por slug. O Supabase é dono dos metadados; o arquivo de
+  // survey é dono dos %/fonte. Se a tech não está no arquivo, segue sem
+  // percentual (UI renderiza "Sem percentual comparável").
+  const usage = usageEvidence[row.slug] || {};
   return {
     slug: row.slug,
     name: row.name,
@@ -134,6 +140,11 @@ function technologyFromApi(row: any) {
     difficultyScore: row.beginner_friendly_score || 3,
     demand: row.market_demand || "Média",
     salaryRange: row.salary_context?.label || "",
+    usagePercent: usage.usagePercent,
+    usageLabel: usage.usageLabel,
+    sourceName: usage.sourceName,
+    sourceUrl: usage.sourceUrl,
+    sourceNote: usage.sourceNote,
     areas: row.related_area_slugs || [],
     useCases: row.use_cases || [],
     learningPath: row.learning_path || [],
@@ -330,7 +341,10 @@ export async function getTechnology(slug: string) {
 export async function getTechnologyRanking() {
   try {
     const json = await apiFetch("/technologies/ranking");
-    return json.data.map(technologyFromApi).map((technology: any, index: number) => ({ ...technology, position: index + 1 }));
+    return json.data
+      .map(technologyFromApi)
+      .sort((a: any, b: any) => (b.usagePercent || 0) - (a.usagePercent || 0))
+      .map((technology: any, index: number) => ({ ...technology, position: index + 1 }));
   } catch {
     return technologyRanking;
   }

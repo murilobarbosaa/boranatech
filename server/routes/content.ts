@@ -66,9 +66,7 @@ router.get("/technologies/ranking", async (_req, res, next) => {
       .from("technologies")
       .select("*")
       .eq("is_published", true)
-      .eq("market_demand", "Alta")
-      .order("beginner_friendly_score", { ascending: false })
-      .limit(20);
+      .order("sort_order", { ascending: true });
 
     if (error) return next(createError(500, "db_error", "Erro ao buscar ranking."));
 
