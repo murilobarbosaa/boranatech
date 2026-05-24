@@ -10,6 +10,9 @@ import { technologyRanking } from "@/lib/technologyData";
 import {
   STACK_OVERFLOW_SURVEY,
   GITHUB_OCTOVERSE,
+  surveyExtras,
+  mostAdmiredLanguages,
+  mostDesiredLanguages,
 } from "@/lib/surveyData2025";
 import { getTechnologyRanking } from "@/services/contentService";
 
@@ -214,8 +217,115 @@ export default function TecnologiaRanking() {
               );
             })}
           </div>
+
+          <SurveyExtrasSection />
         </div>
       </section>
     </Layout>
+  );
+}
+
+function SurveyExtrasSection() {
+  return (
+    <div className="mt-12 space-y-8">
+      <header>
+        <h2 className="font-display text-2xl font-black text-slate-950">
+          Mais dados do {STACK_OVERFLOW_SURVEY.sourceName}
+        </h2>
+        <p className="mt-2 text-sm font-medium text-slate-700">
+          Tecnologias do survey que não têm página dedicada na nossa base. Percentuais indicam quantos respondentes declararam ter usado a ferramenta no último ano.{" "}
+          <a
+            href={STACK_OVERFLOW_SURVEY.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="font-black text-amber-800 underline"
+          >
+            Veja o relatório completo
+          </a>
+          .
+        </p>
+      </header>
+
+      <SurveyExtrasBlock title="🌐 Frameworks web" rows={surveyExtras.frameworksWeb} />
+      <SurveyExtrasBlock title="💻 IDEs e editores" rows={surveyExtras.ides} />
+      <SurveyExtrasBlock title="🔤 Linguagens" rows={surveyExtras.languages} />
+      <SurveyExtrasBlock title="🗄️ Bancos de dados" rows={surveyExtras.databases} />
+      <SurveyExtrasBlock title="🛠️ Ferramentas e package managers" rows={surveyExtras.tools} />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <article className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+          <h3 className="font-display text-base font-black uppercase tracking-wider text-emerald-900">
+            ❤️ Linguagens mais admiradas
+          </h3>
+          <p className="mt-1 text-xs font-medium text-slate-500">
+            % de devs que usaram e querem continuar usando
+          </p>
+          <ul className="mt-3 space-y-2">
+            {mostAdmiredLanguages.map((lang) => (
+              <li key={lang.name} className="flex items-center justify-between gap-3">
+                <span className="font-bold text-slate-900">{lang.name}</span>
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-black text-emerald-950 ring-1 ring-emerald-900/40 tabular-nums">
+                  {String(lang.usagePercent).replace(".", ",")}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </article>
+
+        <article className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+          <h3 className="font-display text-base font-black uppercase tracking-wider text-violet-900">
+            ✨ Linguagens mais desejadas
+          </h3>
+          <p className="mt-1 text-xs font-medium text-slate-500">
+            Devs que não usam mas querem aprender
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {mostDesiredLanguages.map((name) => (
+              <li
+                key={name}
+                className="rounded-full bg-violet-100 px-3 py-1 text-sm font-black text-violet-950 ring-1 ring-violet-900/40"
+              >
+                {name}
+              </li>
+            ))}
+          </ul>
+        </article>
+      </div>
+    </div>
+  );
+}
+
+function SurveyExtrasBlock({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { name: string; usagePercent: number }[];
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <section className="rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+      <h3 className="font-display text-base font-black uppercase tracking-wider text-slate-950">
+        {title}
+      </h3>
+      <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map((row, index) => (
+          <li
+            key={row.name}
+            className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-display text-xs font-black tabular-nums text-slate-500">
+                #{index + 1}
+              </span>
+              <span className="truncate font-bold text-slate-900">{row.name}</span>
+            </div>
+            <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-black text-amber-950 ring-1 ring-amber-900/40 tabular-nums">
+              {String(row.usagePercent).replace(".", ",")}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
