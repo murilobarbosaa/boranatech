@@ -423,68 +423,6 @@ export const areasTI: AreaTI[] = [
     ]
   },
   {
-    id: "engenharia-dados",
-    nome: "Engenharia de Dados",
-    slug: "engenharia-dados",
-    icon: Database,
-    tagClass: "tag-engenharia-dados",
-    descricaoCurta: "Quem constrói toda a infraestrutura que faz os dados chegarem aos cientistas e analistas. Pipelines, data lakes e arquitetura de dados em larga escala.",
-    descricaoCompleta: "O Engenheiro de Dados é o arquiteto invisível por trás de qualquer projeto sério de dados. Enquanto o cientista de dados gera insights e o analista monta dashboards, é o engenheiro quem garante que esses dados existam, sejam confiáveis e estejam disponíveis. Constrói pipelines de ETL/ELT, mantém data lakes e data warehouses, integra dezenas de fontes (APIs, bancos, eventos em tempo real) e garante que tudo escale. É uma das áreas em maior crescimento no Brasil, com forte demanda no LinkedIn e salários acima da média de TI.",
-    oQueFaz: "O engenheiro de dados trabalha invisível mas fundamental. No dia a dia: cria pipelines que coletam dados de várias fontes (APIs, eventos, bancos), transforma e limpa esses dados, e disponibiliza pra times de analytics, ciência de dados e IA. Garante que tudo isso rode com performance, custo controlado e qualidade. Sem engenheiro de dados, não há dashboard nem modelo de IA confiável.",
-    tarefasDiarias: [
-      "Construir pipelines de ETL/ELT pra coletar dados de várias fontes",
-      "Modelar e manter data lakes, data warehouses e data lakehouses",
-      "Garantir qualidade, integridade e segurança dos dados (LGPD)",
-      "Otimizar consultas, custos de cloud e performance dos fluxos",
-      "Colaborar com cientistas de dados e analistas pra entender necessidades",
-      "Implementar testes, observabilidade e alertas pros pipelines"
-    ],
-    perfilIndicado: "Pessoa que gosta de construir sistemas sólidos, pensa em escala e tem paciência pra debugar pipeline que falha às 3h da manhã. Combina visão de arquitetura, pensamento analítico e foco em qualidade. Quem gosta de programação backend mas também tem curiosidade pelo mundo de dados costuma se dar muito bem.",
-    habilidades: [
-      "SQL avançado (essencial)",
-      "Python pra processamento e automação",
-      "Modelagem de dados (dimensional, star schema, normalização)",
-      "Sistemas distribuídos e processamento em larga escala",
-      "Cloud (AWS, GCP ou Azure)",
-      "Conceitos de DataOps e versionamento"
-    ],
-    ferramentas: ["Python", "SQL (PostgreSQL, BigQuery)", "Apache Airflow", "Apache Spark", "dbt (data build tool)", "AWS (S3, Glue, Redshift) / GCP BigQuery", "Apache Kafka", "Docker"],
-    dificuldade: 4,
-    cargos: ["Engenheiro de Dados Júnior", "Engenheiro de Dados Pleno", "Engenheiro de Dados Sênior", "Arquiteto de Dados"],
-    faixaSalarial: "R$ 5.952 (júnior) a R$ 17.913 (sênior) — Glassdoor 2026. Especialistas chegam a R$ 25.000+",
-    cursosGratuitos: [
-      "Data Engineering Zoomcamp (DataTalksClub — gratuito, em inglês)",
-      "Asimov Academy — Trilha de Engenharia de Dados (parte gratuita)",
-      "AWS Skill Builder — Data Engineering (grátis)",
-      "Curso em Vídeo — SQL completo (Gustavo Guanabara)"
-    ],
-    roadmapInicial: [
-      "Dominar SQL (até consultas complexas, window functions)",
-      "Aprender Python pra processamento de dados (Pandas)",
-      "Estudar modelagem de dados e arquitetura (dimensional, OLTP vs OLAP)",
-      "Conhecer um orquestrador (Apache Airflow é o mais usado)",
-      "Aprender uma cloud (AWS é o mais buscado)",
-      "Construir 2 pipelines completos do zero com deploy"
-    ],
-    projetos: [
-      "Pipeline ETL completo: API pública → transformação → data warehouse",
-      "Dashboard de vendas alimentado por pipeline automatizado",
-      "Sistema de processamento de eventos em tempo real (Kafka)",
-      "Data lake simples no AWS S3 com Glue + Athena"
-    ],
-    termosEssenciais: ["ETL/ELT", "Data Lake", "Data Warehouse", "Pipeline", "Schema", "Big Data"],
-    dicasIniciais: "Domine SQL avançado primeiro — é a base de tudo. Depois Python pra ETL, e então escolha um cloud (AWS é o mais comum). Construa pelo menos 1 pipeline público no GitHub com dados reais.",
-    requiresGraduation: "recomendado",
-    tempoMedioFormacao: "1-2 anos com base em programação",
-    crescimentoMercado: "alto",
-    faculdadesRelacionadas: [
-      "Ciência da Computação",
-      "Engenharia de Software",
-      "Sistemas de Informação"
-    ],
-    subareas: []
-  },
-  {
     id: "uxui",
     nome: "UX/UI Design",
     slug: "uxui",
@@ -2485,69 +2423,6 @@ export const areasTI: AreaTI[] = [
         dicasIniciais: "Não tente entrar como DevSecOps sem base de DevOps — esse cargo cobra os dois mundos. Vindo de DevOps, foque em OWASP + ferramentas de scan + compliance. Vindo de segurança, foque em CI/CD + containers + cloud. Cargo paga muito bem em fintechs e bancos — invista em entender PCI-DSS e LGPD. Inglês é obrigatório (toda a doc e community estão em inglês). Subárea em crescimento explosivo — quem entra agora pega salários acima do normal."
       }
     ]
-  },
-  {
-    id: "sre",
-    nome: "SRE — Confiabilidade de Sistemas",
-    slug: "sre",
-    icon: Activity,
-    tagClass: "tag-sre",
-    descricaoCurta: "Engenharia de confiabilidade: garantir que sistemas críticos fiquem no ar, escalem sob pressão e se recuperem rápido de falhas. Cargo sênior, salário top de TI.",
-    descricaoCompleta: "SRE — Site Reliability Engineer — é a evolução do DevOps com foco específico em confiabilidade e disponibilidade de sistemas em larga escala. Conceito criado pelo Google, espalhou pelo mercado e hoje é cargo distinto. O SRE define SLIs (indicadores), SLOs (metas) e error budgets, automatiza operações, lida com incidentes críticos e codifica infraestrutura. Diferente do DevOps tradicional, o SRE pensa em confiabilidade como produto: cada minuto de downtime é mensurável. É um dos cargos mais bem pagos de TI no Brasil (R$ 12k-32k+) e raramente uma vaga de entrada — você chega como SRE após anos como dev backend, sysadmin ou DevOps.",
-    oQueFaz: "O SRE garante que sistemas críticos não caiam. No dia a dia: define métricas de confiabilidade (SLIs/SLOs), automatiza tarefas operacionais que eram manuais, responde a incidentes em produção, faz post-mortems detalhados de falhas e implementa mudanças sistêmicas pra evitar que se repitam. Codifica infraestrutura, monta sistemas de observabilidade e participa de on-call (plantão técnico). Pensa em escala, latência e resiliência o tempo todo.",
-    tarefasDiarias: [
-      "Definir e monitorar SLIs (indicadores) e SLOs (metas) de confiabilidade",
-      "Responder a incidentes em produção e conduzir post-mortems",
-      "Automatizar tarefas operacionais com código (toil reduction)",
-      "Manter sistemas de observabilidade (logs, métricas, traces)",
-      "Participar de on-call e plantão técnico",
-      "Trabalhar com times de dev pra integrar confiabilidade no ciclo de release"
-    ],
-    perfilIndicado: "Pessoa com perfil sistêmico e investigativo, que gosta de entender o porquê dos problemas em profundidade. Tolerante a ambiguidade técnica, calma sob pressão (incidentes acontecem) e com mentalidade de automação — se uma tarefa precisa ser feita 3x, vira script. Combina conhecimento de software com infraestrutura. Não é cargo pra quem está começando: tipicamente vem de dev backend, DevOps ou sysadmin com 2-3+ anos de experiência.",
-    habilidades: [
-      "Programação sólida (Python, Go ou similar)",
-      "Linux, redes e sistemas distribuídos",
-      "Cloud (AWS, GCP ou Azure)",
-      "Observabilidade (Prometheus, Grafana, Datadog)",
-      "Infrastructure as Code (Terraform, Ansible)",
-      "Gestão de incidentes e pensamento sistêmico"
-    ],
-    ferramentas: ["Kubernetes", "Terraform", "Prometheus", "Grafana", "AWS (EC2, EKS, CloudWatch)", "Datadog ou New Relic", "Python ou Go", "PagerDuty"],
-    dificuldade: 5,
-    cargos: ["Site Reliability Engineer Pleno", "Site Reliability Engineer Sênior", "Staff SRE / Tech Lead SRE", "Principal SRE / Coordenador SRE"],
-    faixaSalarial: "R$ 8.000 (júnior raro) a R$ 32.000 (sênior). Pleno gira em R$ 12-22k — Glassdoor 2026",
-    cursosGratuitos: [
-      "Livro 'Site Reliability Engineering' do Google (gratuito online)",
-      "Google Cloud Skills Boost — DevOps Engineer (parte gratuita)",
-      "AWS Skill Builder — DevOps Path (gratuito)",
-      "Linux Foundation — Introduction to SRE (Coursera, audit gratuito)"
-    ],
-    roadmapInicial: [
-      "Dominar Linux, redes e sistemas distribuídos",
-      "Aprender programação sólida (Python ou Go)",
-      "Estudar cloud profundamente (AWS recomendado)",
-      "Entender Kubernetes e containers",
-      "Praticar observabilidade (Prometheus + Grafana)",
-      "Estudar SRE Book do Google + praticar SLIs/SLOs"
-    ],
-    projetos: [
-      "Configurar stack de observabilidade completo (Prometheus + Grafana + alertas)",
-      "Aplicação em K8s com SLI/SLO definidos e dashboard",
-      "Pipeline de chaos engineering (simular falhas controladas)",
-      "Sistema de auto-recovery automatizado pra falhas comuns"
-    ],
-    termosEssenciais: ["SLI / SLO / SLA", "Error Budget", "Toil", "Observability", "Incident Response", "Postmortem"],
-    dicasIniciais: "Não tente entrar direto como SRE. Comece como dev backend ou DevOps, pegue 2-3 anos de experiência real com produção, e migre. Leia o livro 'Site Reliability Engineering' do Google (gratuito online). Pratique muito SLI/SLO/error budget.",
-    requiresGraduation: "recomendado",
-    tempoMedioFormacao: "3-5 anos (cargo de evolução, não de entrada)",
-    crescimentoMercado: "alto",
-    faculdadesRelacionadas: [
-      "Ciência da Computação",
-      "Engenharia de Software",
-      "Sistemas de Informação",
-      "Análise e Desenvolvimento de Sistemas (ADS)"
-    ],
-    subareas: []
   },
   {
     id: "gamedev",
