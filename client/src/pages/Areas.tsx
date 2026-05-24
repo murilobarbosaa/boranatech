@@ -25,7 +25,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
-import { areasTI } from "@/lib/data";
+import { areasTI, type AreaTI } from "@/lib/data";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
 
@@ -48,8 +48,34 @@ const perfilMap: Record<string, string[]> = {
   dados: ["dados", "ia", "backend"],
 };
 
+function SkeletonAreaCard() {
+  return (
+    <div className="card-brutal bg-white rounded-xl p-6 flex flex-col h-full animate-pulse">
+      <div className="mb-4 h-12 w-12 rounded-lg bg-slate-200" />
+      <div className="h-5 bg-slate-200 rounded w-2/3 mb-2" />
+      <div className="h-4 bg-slate-100 rounded w-full mb-2" />
+      <div className="h-4 bg-slate-100 rounded w-5/6 mb-4" />
+      <div className="h-16 rounded-xl border-2 border-violet-100 bg-violet-50 mb-4" />
+      <div className="flex gap-1 mb-4 min-h-[1.75rem]">
+        <div className="h-5 w-16 rounded-full bg-slate-100" />
+        <div className="h-5 w-20 rounded-full bg-slate-100" />
+        <div className="h-5 w-14 rounded-full bg-slate-100" />
+      </div>
+      <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
+        <div className="h-3 w-24 bg-slate-100 rounded" />
+        <div className="h-4 w-16 bg-violet-100 rounded" />
+      </div>
+    </div>
+  );
+}
+
+// null = loading (API ainda não respondeu). Evita o flash do fallback que
+// rolava quando o state inicial era `areasTI`: a API tem 14 áreas, o fallback
+// tinha 16, então o primeiro frame mostrava 16 e o segundo (após useEffect)
+// trocava pra 14. Agora começamos vazio e só renderizamos quando a fonte certa
+// chega; fallback fica reservado pro catch (erro de rede).
 export default function Areas() {
-  const [areas, setAreas] = useState(areasTI);
+  const [areas, setAreas] = useState<AreaTI[] | null>(null);
   const [search, setSearch] = useState("");
   const [perfil, setPerfil] = useState("todos");
 
@@ -57,7 +83,8 @@ export default function Areas() {
     getAreas().then(setAreas).catch(() => setAreas(areasTI));
   }, []);
 
-  const filtered = areas.filter((a) => {
+  const isLoading = areas === null;
+  const filtered = (areas ?? []).filter((a) => {
     const matchSearch = a.nome.toLowerCase().includes(search.toLowerCase()) ||
       a.descricaoCurta.toLowerCase().includes(search.toLowerCase());
     const matchPerfil = perfil === "todos" || (perfilMap[perfil] || []).includes(a.id);
@@ -123,7 +150,13 @@ export default function Areas() {
       {/* Grid */}
       <section className="bg-violet-50 py-12">
         <div className="container">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" aria-busy="true" aria-label="Carregando áreas">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <SkeletonAreaCard key={i} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-16">
               <SearchX className="mx-auto mb-3 h-12 w-12 text-slate-400" aria-hidden />
               <p className="text-slate-600 font-medium">Nenhuma área encontrada.</p>
