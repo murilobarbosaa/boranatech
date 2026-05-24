@@ -202,7 +202,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
   }, [sectionRef]);
 
   return (
-    <div className="absolute inset-0 z-0" aria-hidden="true">
+    <div className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
       {/* CAMADA 1 — Grid de coordenadas: latitudes principais (320px) + grid fino (80px) sobrepostos. */}
       <div
         className="absolute inset-0 pointer-events-none"
