@@ -103,7 +103,7 @@ export default function PageHero({
             <p className="text-lg text-slate-950">{subtitle}</p>
           </div>
           {actions ? (
-            <div className="flex w-full max-w-xs shrink-0 flex-col gap-3 md:w-80">
+            <div className="flex w-auto shrink-0 flex-col gap-3 md:w-80 md:max-w-xs">
               {actions}
             </div>
           ) : null}
