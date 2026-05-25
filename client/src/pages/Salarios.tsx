@@ -61,7 +61,11 @@ export default function Salarios() {
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="card-brutal rounded-2xl bg-amber-100 p-6">
             <h2 className="font-display text-2xl font-black">Calculadora CLT vs PJ</h2>
-            <label className="mt-4 block text-sm font-black">Proposta PJ (R$)<input type="number" className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3" value={pj} onChange={(event) => setPj(Number(event.target.value))} /></label>
+            <label className="mt-4 block text-sm font-black">Proposta PJ (R$)<input type="number" min={0} step={1} inputMode="numeric" className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3" value={pj} onChange={(event) => {
+              const normalized = event.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+              event.target.value = normalized;
+              setPj(normalized === "" ? 0 : Number(normalized));
+            }} /></label>
             <label className="mt-3 block text-sm font-black">Estado<select className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3"><option>SP</option><option>RJ</option><option>MG</option></select></label>
             <div className="mt-5 rounded-2xl border-2 border-slate-900 bg-white p-5"><p className="text-sm font-bold">Essa proposta PJ equivale a um salário CLT de</p><p className={cn("font-display text-3xl font-black", ac.link)}>{cltEquivalent.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p></div>
             {["INSS", "FGTS (8%)", "Férias + 1/3", "13º salário", "Benefícios médios"].map((item) => (
