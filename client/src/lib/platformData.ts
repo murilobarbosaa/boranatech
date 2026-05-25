@@ -1,7 +1,7 @@
 export const creatorHandle = "@ana.natech";
 
-/** Foto de perfil da curadora Ana Moura (@ana.natech · via Unavatar/Instagram público). */
-export const creatorPhotoUrl = "https://unavatar.io/instagram/ana.natech";
+/** Foto de perfil da curadora Ana Moura (@ana.natech · via Unavatar/LinkedIn, mesmo provider estável usado pelas demais criadoras). */
+export const creatorPhotoUrl = "https://unavatar.io/linkedin/anajulia-moura";
 
 export const tipCategories = [
   "Dicas gerais",
@@ -122,14 +122,14 @@ export const womenArea = {
       handle: "@cami-la",
       topic: "Comunidade, GitHub, carreira e diversidade",
       url: "https://www.linkedin.com/in/camila-cavalcante/",
-      avatarUrl: "https://unavatar.io/linkedin.com/in/camila-cavalcante",
+      avatarUrl: "https://unavatar.io/linkedin/camila-cavalcante",
     },
     {
       name: "Letícia Caires",
       handle: "@leticiascaires",
       topic: "Produto, carreira e bastidores de tecnologia",
       url: "https://www.linkedin.com/search/results/content/?keywords=Leticia%20Caires%20produto%20tech",
-      avatarUrl: "https://unavatar.io/linkedin.com/in/leticiascaires",
+      avatarUrl: "https://unavatar.io/linkedin/leticiascaires",
     },
   ],
   videos: [

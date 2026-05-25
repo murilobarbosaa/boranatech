@@ -5685,7 +5685,7 @@ export const faculdades = {
         subtitulo: "@ana.natech · Curadora BORA NA TECH?",
         texto:
           "Se a ideia é colocar a mão no código rápido, ADS costuma ser um atalho honesto: pouco enrolação na grade e bastante espaço para montar portfólio em paralelo.",
-        fotoUrl: "https://unavatar.io/instagram/ana.natech",
+        fotoUrl: "https://unavatar.io/linkedin/anajulia-moura",
       },
     },
     {
