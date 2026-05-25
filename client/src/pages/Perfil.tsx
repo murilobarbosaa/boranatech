@@ -1247,20 +1247,6 @@ export default function Perfil() {
                 aria-hidden="true"
               />
 
-              <div
-                className="pointer-events-none absolute -bottom-8 -right-8 z-0 hidden opacity-[0.08] md:block"
-                aria-hidden="true"
-              >
-                <UserAvatar
-                  name={userName}
-                  border={avatarBorder}
-                  icon={avatarIcon}
-                  bg={avatarBg}
-                  size="xl"
-                  loading={false}
-                />
-              </div>
-
               <div className="absolute right-6 top-6 z-0 h-3 w-3 rounded-full bg-violet-400 opacity-40" aria-hidden="true" />
               <div className="absolute right-14 top-12 z-0 h-2 w-2 rounded-full bg-fuchsia-400 opacity-30" aria-hidden="true" />
               <div className="absolute right-20 top-8 z-0 h-1.5 w-1.5 rounded-full bg-violet-500 opacity-50" aria-hidden="true" />
