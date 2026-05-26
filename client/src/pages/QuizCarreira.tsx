@@ -610,8 +610,8 @@ function QuestionScreen({
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className="container max-w-2xl py-12 md:py-16"
     >
-      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-        <span className="font-mono text-xs uppercase tracking-[0.22em] text-violet-700">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <span className="inline-flex items-center rounded-full border-2 border-slate-900 bg-violet-200 px-3 py-1 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-slate-950 shadow-[2px_2px_0_#0f172a]">
           {question.category}
         </span>
         <span className="font-mono text-sm text-slate-500">
@@ -634,22 +634,34 @@ function QuestionScreen({
             transitioning && effectiveSelection !== null && !isSelected;
 
           return (
-            <button
+            <motion.button
               key={option.label}
               type="button"
               onClick={() => handleClick(idx)}
               disabled={transitioning}
-              className={`group flex w-full items-start gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200 ${
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: dimmed ? 0.4 : 1, y: 0 }}
+              transition={{
+                y: {
+                  duration: 0.3,
+                  delay: 0.06 + idx * 0.07,
+                  ease: [0.22, 1, 0.36, 1],
+                },
+                opacity: { duration: 0.2 },
+              }}
+              whileHover={transitioning ? undefined : { y: -2 }}
+              whileTap={transitioning ? undefined : { scale: 0.985 }}
+              className={`group flex w-full items-start gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-[box-shadow,background-color,border-color] duration-200 ${
                 isSelected
-                  ? "border-[#1a1a1a] bg-amber-300 shadow-[3px_3px_0_#0f172a]"
-                  : "border-slate-300 bg-white hover:-translate-y-0.5 hover:border-slate-900 hover:shadow-[3px_3px_0_#0f172a]"
-              } ${dimmed ? "opacity-40" : ""} disabled:cursor-not-allowed`}
+                  ? "border-[#1a1a1a] bg-amber-300 shadow-[4px_4px_0_#0f172a]"
+                  : "border-slate-300 bg-white hover:border-slate-900 hover:shadow-[4px_4px_0_#0f172a]"
+              } disabled:cursor-not-allowed`}
             >
               <span
                 className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-display text-base font-black transition-colors ${
                   isSelected
                     ? "bg-slate-950 text-amber-300"
-                    : "bg-slate-100 text-slate-600 group-hover:bg-slate-950 group-hover:text-white"
+                    : "bg-slate-100 text-slate-600 group-hover:bg-violet-600 group-hover:text-white"
                 }`}
               >
                 {letter}
@@ -658,7 +670,7 @@ function QuestionScreen({
               <span className="pt-1 text-base font-bold text-slate-950">
                 {option.label}
               </span>
-            </button>
+            </motion.button>
           );
         })}
       </div>
@@ -724,9 +736,9 @@ function ProgressBar({
             {current} / {total}
           </span>
 
-          <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-3.5 flex-1 overflow-hidden rounded-full border-2 border-slate-900 bg-white">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400"
               initial={{ width: 0 }}
               animate={{ width: `${percentage}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
