@@ -71,7 +71,6 @@ export default function TecnologiaRanking() {
                     <tr
                       key={technology.slug}
                       style={{ animationDelay: `${Math.min(index * 22, 640)}ms` }}
-                      title={`Demanda projetada na base BORA NA TECH?: ${technology.demand}`}
                       className={cn(
                         "tech-ranking-row group border-t-2 border-slate-100 transition-colors hover:bg-amber-50/60",
                       )}
@@ -108,14 +107,6 @@ export default function TecnologiaRanking() {
                             <div className="mt-1 flex flex-wrap gap-1">
                               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-800 ring-1 ring-slate-300">
                                 {technology.category}
-                              </span>
-                              <span className={cn(
-                                "rounded-full px-2 py-0.5 text-[10px] font-black ring-1",
-                                technology.demand === "Alta" && "bg-emerald-100 text-emerald-950 ring-emerald-900/40",
-                                technology.demand === "Média" && "bg-amber-100 text-amber-950 ring-amber-900/40",
-                                technology.demand === "Baixa" && "bg-slate-100 text-slate-800 ring-slate-400",
-                              )}>
-                                ⚡ {technology.demand}
                               </span>
                             </div>
                           </div>
@@ -174,9 +165,6 @@ export default function TecnologiaRanking() {
                       </Link>
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide">
                         <span className="rounded-full bg-slate-100 px-2 py-1 ring-1 ring-slate-300">{technology.category}</span>
-                        <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-950 ring-1 ring-amber-900/40">
-                          ⚡ {technology.demand}
-                        </span>
                       </div>
                       <p className="mt-3 text-sm font-bold text-slate-900">{technology.usageLabel || "Sem percentual comparável"}</p>
                       {technology.sourceNote ? <p className="mt-1 text-xs text-slate-500">{technology.sourceNote}</p> : null}
