@@ -110,7 +110,11 @@ export default function Faculdades() {
               <div>
                 <h2 className="font-display text-2xl font-black text-slate-950">Encontre faculdades perto de você</h2>
                 <p className="mt-2 text-sm text-slate-600">
-                  Escolha o estado onde você está para ver sugestões iniciais com vantagens e nota MEC aproximada. Ofertas nacionais (EAD) aparecem em qualquer UF.
+                  Escolha o estado onde você está para ver sugestões iniciais com vantagens. Ofertas nacionais (EAD) aparecem em qualquer UF. Confirme cursos e conceitos no{" "}
+                  <a href="https://emec.mec.gov.br" target="_blank" rel="noopener noreferrer" className="font-bold text-violet-700 underline">
+                    e-MEC oficial
+                  </a>
+                  .
                 </p>
                 <label htmlFor="faculdades-estado" className="mt-4 block text-xs font-black uppercase tracking-wide text-slate-500">
                   Estado
@@ -140,7 +144,6 @@ export default function Faculdades() {
                       {item.nacional ? `${item.city} · nacional (EAD)` : `${item.city} · ${item.uf}`}
                     </p>
                     <h3 className="font-display font-black text-slate-950">{item.name}</h3>
-                    <p className="text-sm font-bold text-slate-700">Nota MEC: {item.mec}</p>
                     <p className="mt-2 text-xs text-slate-600">{item.advantages.join(" · ")}</p>
                   </div>
                 ))}
