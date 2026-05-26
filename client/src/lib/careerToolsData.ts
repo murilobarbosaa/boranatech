@@ -1,10 +1,10 @@
 export const interviewSteps = [
-  ["Triagem de currículo (ATS)", "Avaliam aderência, palavras-chave e clareza.", "Adapte o currículo para a vaga e destaque projetos.", "Currículo genérico sem links.", "Use termos da vaga sem inventar experiência."],
-  ["Entrevista de RH / cultura fit", "Avaliam comunicação, motivação e contexto.", "Treine sua história e exemplos reais.", "Responder de forma vaga.", "Use situação, ação e resultado."],
-  ["Teste técnico / desafio de código", "Avaliam raciocínio e entrega.", "Leia o enunciado, documente decisões e entregue algo funcional.", "Tentar fazer complexo demais.", "Explique trade-offs no README."],
-  ["Entrevista técnica com dev", "Avaliam fundamentos e capacidade de explicar.", "Revise projetos e bases da sua stack.", "Chutar respostas.", "Diga como investigaria se não souber."],
-  ["Entrevista com gestor", "Avaliam autonomia e encaixe no time.", "Pergunte sobre expectativas e rotina.", "Não fazer perguntas.", "Mostre vontade de aprender com clareza."],
-  ["Proposta e negociação", "Avaliam alinhamento de salário e disponibilidade.", "Pesquise faixas e saiba seu mínimo.", "Aceitar sem entender benefícios.", "Negocie com dados e calma."],
+  ["Triagem de currículo (ATS)", "Aderência, palavras-chave e clareza.", "Adapte o currículo para a vaga e destaque projetos.", "Currículo genérico sem links.", "Use termos da vaga sem inventar experiência."],
+  ["Entrevista de RH / cultura fit", "Comunicação, motivação e contexto.", "Treine sua história e exemplos reais.", "Responder de forma vaga.", "Use situação, ação e resultado."],
+  ["Teste técnico / desafio de código", "Raciocínio e entrega.", "Leia o enunciado, documente decisões e entregue algo funcional.", "Tentar fazer complexo demais.", "Explique trade-offs no README."],
+  ["Entrevista técnica com dev", "Fundamentos e capacidade de explicar.", "Revise projetos e bases da sua stack.", "Chutar respostas.", "Diga como investigaria se não souber."],
+  ["Entrevista com gestor", "Autonomia e encaixe no time.", "Pergunte sobre expectativas e rotina.", "Não fazer perguntas.", "Mostre vontade de aprender com clareza."],
+  ["Proposta e negociação", "Alinhamento de salário e disponibilidade.", "Pesquise faixas e saiba seu mínimo.", "Aceitar sem entender benefícios.", "Negocie com dados e calma."],
 ].map(([title, evaluate, prepare, mistakes, tip]) => ({ title, evaluate, prepare, mistakes, tip }));
 
 export const interviewQuestions = [
