@@ -3,8 +3,9 @@ import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { cn } from "@/lib/utils";
+import { cn, youtubeEmbedUrl } from "@/lib/utils";
 import { devTools } from "@/lib/careerToolsData";
 
 const ac = getPageAccentUi("orange");
@@ -34,64 +35,64 @@ const shortcuts: ShortcutItem[] = [
 
 const tutorialVideos: Record<string, { title: string; url: string }> = {
   "VS Code": {
-    title: "Tutorial VS Code para iniciantes",
-    url: "https://www.youtube.com/results?search_query=tutorial+vs+code+para+iniciantes+portugu%C3%AAs",
+    title: "Como baixar e configurar o VS Code para iniciantes",
+    url: "https://www.youtube.com/watch?v=aQXVGHLXJew",
   },
   Cursor: {
-    title: "Como usar Cursor com IA",
-    url: "https://www.youtube.com/results?search_query=como+usar+cursor+ia+editor+codigo+portugu%C3%AAs",
+    title: "Cursor: o editor de código com IA que escreve código pra você",
+    url: "https://www.youtube.com/watch?v=hmu3viVmk7A",
   },
   Git: {
-    title: "Git do zero para iniciantes",
-    url: "https://www.youtube.com/results?search_query=git+do+zero+para+iniciantes+portugu%C3%AAs",
+    title: "Git e GitHub: tutorial completo para iniciantes (DevSuperior)",
+    url: "https://www.youtube.com/watch?v=_hZf1teRFNg",
   },
   GitHub: {
-    title: "GitHub para iniciantes",
-    url: "https://www.youtube.com/results?search_query=github+para+iniciantes+portugu%C3%AAs",
+    title: "Tutorial GitHub para iniciantes: como usar o GitHub",
+    url: "https://www.youtube.com/watch?v=BUGZZaChiYw",
   },
   Docker: {
-    title: "Docker para iniciantes",
-    url: "https://www.youtube.com/results?search_query=docker+para+iniciantes+portugu%C3%AAs",
+    title: "Aprenda Docker do zero: tutorial completo (Fernanda Kipper)",
+    url: "https://www.youtube.com/watch?v=DdoncfOdru8",
   },
   Postman: {
-    title: "Postman para testar APIs",
-    url: "https://www.youtube.com/results?search_query=postman+para+testar+api+iniciantes+portugu%C3%AAs",
+    title: "Postman: a melhor forma de gerenciar e testar APIs",
+    url: "https://www.youtube.com/watch?v=H5pKa1A73ak",
   },
   Figma: {
-    title: "Figma para iniciantes",
-    url: "https://www.youtube.com/results?search_query=figma+para+iniciantes+portugu%C3%AAs",
+    title: "Como usar o Figma: tutorial completo para iniciantes",
+    url: "https://www.youtube.com/watch?v=oE_08KTRA9w",
   },
   Jira: {
-    title: "Jira para iniciantes",
-    url: "https://www.youtube.com/results?search_query=jira+para+iniciantes+scrum+portugu%C3%AAs",
+    title: "Como usar o Jira: guia completo para iniciantes",
+    url: "https://www.youtube.com/watch?v=k_zcOLQOII8",
   },
   Slack: {
-    title: "Slack para times e comunidades",
-    url: "https://www.youtube.com/results?search_query=como+usar+slack+para+iniciantes+portugu%C3%AAs",
+    title: "O que é Slack e como usar em 14 minutos",
+    url: "https://www.youtube.com/watch?v=fWfL9E9ChSA",
   },
   Notion: {
-    title: "Notion para organizar estudos",
-    url: "https://www.youtube.com/results?search_query=notion+para+organizar+estudos+portugu%C3%AAs",
+    title: "Como usar o Notion: aula completa para iniciantes",
+    url: "https://www.youtube.com/watch?v=h6OhnMdELDM",
   },
   Terminal: {
-    title: "Terminal para iniciantes",
-    url: "https://www.youtube.com/results?search_query=terminal+linux+comandos+b%C3%A1sicos+iniciantes+portugu%C3%AAs",
+    title: "Comandos básicos do Linux: guia para iniciantes",
+    url: "https://www.youtube.com/watch?v=CnYraL0J_hM",
   },
   npm: {
-    title: "npm para iniciantes",
-    url: "https://www.youtube.com/results?search_query=npm+para+iniciantes+node+javascript+portugu%C3%AAs",
+    title: "npm: o gerenciador de pacotes do Node.js",
+    url: "https://www.youtube.com/watch?v=tFqsmNrWW0M",
   },
   Yarn: {
-    title: "Yarn para projetos JavaScript",
-    url: "https://www.youtube.com/results?search_query=yarn+package+manager+tutorial+portugu%C3%AAs",
+    title: "Yarn: o gerenciador de pacotes JavaScript (Código Fonte TV)",
+    url: "https://www.youtube.com/watch?v=aKzN6sQqDrQ",
   },
   pnpm: {
-    title: "pnpm para projetos JavaScript",
-    url: "https://www.youtube.com/results?search_query=pnpm+tutorial+portugu%C3%AAs",
+    title: "npm, Yarn ou pnpm: qual o gerenciador mais rápido?",
+    url: "https://www.youtube.com/watch?v=K2E5Fu-F_9I",
   },
   "Chrome DevTools": {
-    title: "Chrome DevTools para iniciantes",
-    url: "https://www.youtube.com/results?search_query=chrome+devtools+para+iniciantes+portugu%C3%AAs",
+    title: "Aprenda Chrome DevTools em 10 minutos (Danki Code)",
+    url: "https://www.youtube.com/watch?v=2lBJVEYDwlM",
   },
 };
 
@@ -151,18 +152,37 @@ export default function Ferramentas() {
               <a href={tool.url} target="_blank" rel="noreferrer" className={cn("mt-4 inline-flex items-center gap-1 text-sm font-black hover:underline", ac.link)}>
                 Site oficial <ExternalLink className="h-3 w-3" />
               </a>
-              <a
-                href={tutorialVideos[tool.name].url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
-              >
-                <PlayCircle className="h-5 w-5 shrink-0" />
-                <span>
-                  Ver vídeo
-                  <span className="block text-xs font-bold text-red-500">{tutorialVideos[tool.name].title}</span>
-                </span>
-              </a>
+              {youtubeEmbedUrl(tutorialVideos[tool.name].url) ? (
+                <VideoEmbedDialog
+                  source={tutorialVideos[tool.name].url}
+                  title={tutorialVideos[tool.name].title}
+                  href={tutorialVideos[tool.name].url}
+                >
+                  <button
+                    type="button"
+                    className="mt-3 flex w-full items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-left text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
+                  >
+                    <PlayCircle className="h-5 w-5 shrink-0" />
+                    <span>
+                      Assistir aqui
+                      <span className="block text-xs font-bold text-red-500">{tutorialVideos[tool.name].title}</span>
+                    </span>
+                  </button>
+                </VideoEmbedDialog>
+              ) : (
+                <a
+                  href={tutorialVideos[tool.name].url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
+                >
+                  <PlayCircle className="h-5 w-5 shrink-0" />
+                  <span>
+                    Ver vídeo
+                    <span className="block text-xs font-bold text-red-500">{tutorialVideos[tool.name].title}</span>
+                  </span>
+                </a>
+              )}
             </article>
           ))}
         </div>
