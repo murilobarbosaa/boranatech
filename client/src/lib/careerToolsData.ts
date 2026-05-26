@@ -55,12 +55,12 @@ export const interviewStudySites = [
 ];
 
 export const interviewVideoResources = [
-  { title: "Como se preparar para entrevista técnica", url: "https://www.youtube.com/results?search_query=como+se+preparar+para+entrevista+t%C3%A9cnica+programa%C3%A7%C3%A3o" },
-  { title: "Perguntas de entrevista para estágio, trainee e dev júnior", url: "https://www.youtube.com/results?search_query=perguntas+entrevista+est%C3%A1gio+trainee+dev+j%C3%BAnior+programa%C3%A7%C3%A3o" },
-  { title: "Entrevista comportamental método STAR", url: "https://www.youtube.com/results?search_query=m%C3%A9todo+star+entrevista+comportamental" },
-  { title: "Simulação de entrevista técnica front-end", url: "https://www.youtube.com/results?search_query=simula%C3%A7%C3%A3o+entrevista+t%C3%A9cnica+front-end" },
-  { title: "Simulação de entrevista técnica back-end", url: "https://www.youtube.com/results?search_query=simula%C3%A7%C3%A3o+entrevista+t%C3%A9cnica+back-end" },
-  { title: "Como explicar projetos no portfólio em entrevistas", url: "https://www.youtube.com/results?search_query=como+explicar+projetos+portf%C3%B3lio+entrevista+programa%C3%A7%C3%A3o" },
+  { title: "Como se preparar para entrevista técnica em programação? (Mayk Brito)", url: "https://www.youtube.com/watch?v=pD7NXkjLEa8" },
+  { title: "Entrevista de júnior: as perguntas mais comuns e como responder (O Novo Programador)", url: "https://www.youtube.com/watch?v=YgTE08MaSqg" },
+  { title: "Entrevista comportamental: método STAR (Agilidade+)", url: "https://www.youtube.com/watch?v=gXycGglSyvM" },
+  { title: "Se prepare para entrevistas de Front-End (Hipsters, Alura)", url: "https://www.youtube.com/watch?v=GEljZeWTVec" },
+  { title: "Entrevista técnica de back-end: dicas (Programador a Bordo)", url: "https://www.youtube.com/watch?v=ogqtSovsLYw" },
+  { title: "3 dicas para mandar bem em entrevistas como dev (Full Cycle)", url: "https://www.youtube.com/watch?v=nlbPOC0aQmU" },
 ];
 
 export const technicalChallenges = [

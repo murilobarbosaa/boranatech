@@ -1,7 +1,8 @@
-import { BookOpen, Bot, CheckCircle, ExternalLink, MessageSquareText, PlayCircle, Sparkles } from "lucide-react";
+import { BookOpen, Bot, CheckCircle, MessageSquareText, PlayCircle, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
+import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { englishVocabulary } from "@/lib/careerToolsData";
@@ -51,12 +52,12 @@ const cursorTips = [
 ];
 
 const videoResources = [
-  { title: "BBC Learning English", desc: "Aulas curtas de vocabulário, pronúncia e listening.", url: "https://www.youtube.com/@bbclearningenglish" },
-  { title: "English with Lucy", desc: "Pronúncia, frases úteis e inglês cotidiano com boa didática.", url: "https://www.youtube.com/@EnglishwithLucy" },
-  { title: "freeCodeCamp Talks", desc: "Vídeos longos de tecnologia para treinar listening técnico com legenda.", url: "https://www.youtube.com/@freecodecamp" },
-  { title: "Google Cloud Tech", desc: "Tech talks e demos para cloud, dados, IA e infraestrutura.", url: "https://www.youtube.com/@googlecloudtech" },
-  { title: "Fireship", desc: "Vídeos rápidos sobre tecnologias modernas, ótimo para vocabulário tech.", url: "https://www.youtube.com/@Fireship" },
-  { title: "ThePrimeagen", desc: "Conteúdo dev em inglês natural, bom para quem já tem base.", url: "https://www.youtube.com/@ThePrimeTimeagen" },
+  { title: "BBC Learning English", desc: "Aulas curtas de vocabulário, pronúncia e listening.", sampleId: "WHCsOQvDkeQ", url: "https://www.youtube.com/@bbclearningenglish" },
+  { title: "English with Lucy", desc: "Pronúncia, frases úteis e inglês cotidiano com boa didática.", sampleId: "jrwglP9EQOU", url: "https://www.youtube.com/@EnglishwithLucy" },
+  { title: "freeCodeCamp Talks", desc: "Vídeos longos de tecnologia para treinar listening técnico com legenda.", sampleId: "nLRL_NcnK-4", url: "https://www.youtube.com/@freecodecamp" },
+  { title: "Google Cloud Tech", desc: "Tech talks e demos para cloud, dados, IA e infraestrutura.", sampleId: "kzKFuHk8ovk", url: "https://www.youtube.com/@googlecloudtech" },
+  { title: "Fireship", desc: "Vídeos rápidos sobre tecnologias modernas, ótimo para vocabulário tech.", sampleId: "DHjqpvDnNGE", url: "https://www.youtube.com/@Fireship" },
+  { title: "ThePrimeagen", desc: "Conteúdo dev em inglês natural, bom para quem já tem base.", sampleId: "3q67v12M31M", url: "https://www.youtube.com/@ThePrimeTimeagen" },
 ];
 
 const studyMaterials = [
@@ -191,14 +192,16 @@ export default function Ingles() {
             </div>
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {videoResources.map((item) => (
-                <a key={item.title} href={item.url} target="_blank" rel="noopener noreferrer" className={cn("card-brutal rounded-2xl bg-white p-5 transition-all hover:-translate-y-0.5", ac.liftShadow)}>
-                  <PlayCircle className="mb-3 h-7 w-7 text-red-600" />
-                  <h3 className="font-display text-xl font-black text-slate-950">{item.title}</h3>
-                  <p className="mt-2 text-sm text-slate-600">{item.desc}</p>
-                  <span className={cn("mt-4 inline-flex items-center gap-1 text-xs font-black uppercase", ac.link)}>
-                    Abrir recurso <ExternalLink className="h-3 w-3" />
-                  </span>
-                </a>
+                <VideoEmbedDialog key={item.title} source={item.sampleId} title={item.title} href={item.url}>
+                  <button type="button" className={cn("card-brutal block w-full rounded-2xl bg-white p-5 text-left transition-all hover:-translate-y-0.5", ac.liftShadow)}>
+                    <PlayCircle className="mb-3 h-7 w-7 text-red-600" />
+                    <h3 className="font-display text-xl font-black text-slate-950">{item.title}</h3>
+                    <p className="mt-2 text-sm text-slate-600">{item.desc}</p>
+                    <span className={cn("mt-4 inline-flex items-center gap-1 text-xs font-black uppercase", ac.link)}>
+                      Assistir amostra <PlayCircle className="h-3 w-3" />
+                    </span>
+                  </button>
+                </VideoEmbedDialog>
               ))}
             </div>
           </div>
