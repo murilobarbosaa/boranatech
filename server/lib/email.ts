@@ -12,24 +12,25 @@ const FROM_RELATIONSHIP = '"Bora na Tech?" <oi@boranatech.com.br>';
 
 const APP_URL = "https://boranatech.com.br";
 
-// URLs de destino das redes. Placeholders ate termos as oficiais.
-const SOCIAL = {
-  instagram: "INSTAGRAM_URL",
-  linkedin: "LINKEDIN_URL",
-  tiktok: "TIKTOK_URL",
-  x: "X_URL",
-};
+// Redes do footer. slug = icone simple-icons; url = destino (placeholder ate termos as oficiais).
+const SOCIAL = [
+  { name: "Instagram", slug: "instagram", url: "INSTAGRAM_URL" },
+  { name: "LinkedIn", slug: "linkedin", url: "LINKEDIN_URL" },
+  { name: "TikTok", slug: "tiktok", url: "TIKTOK_URL" },
+  { name: "X", slug: "x", url: "X_URL" },
+];
 
 type EmailTheme = {
   brand: string; // cor principal (faixa do header e fundo do botao)
-  accent: string; // faixa fina, circulo do logo, marcadores de lista
+  accent: string; // faixa fina, circulo do logo, marcadores de lista, circulo dos icones sociais
   buttonText: string; // cor do texto do botao sobre brand
+  accentText: string; // cor que contrasta sobre accent (icones sociais e fallback de alt)
 };
 
 const GENDER_THEMES: Record<"feminino" | "masculino" | "default", EmailTheme> = {
-  feminino: { brand: "#6B1FC9", accent: "#FCC700", buttonText: "#ffffff" },
-  masculino: { brand: "#3B7DD8", accent: "#FCC700", buttonText: "#ffffff" },
-  default: { brand: "#FCC700", accent: "#6B1FC9", buttonText: "#1a1a1a" },
+  feminino: { brand: "#6B1FC9", accent: "#FCC700", buttonText: "#ffffff", accentText: "#1a1a1a" },
+  masculino: { brand: "#3B7DD8", accent: "#FCC700", buttonText: "#ffffff", accentText: "#1a1a1a" },
+  default: { brand: "#FCC700", accent: "#6B1FC9", buttonText: "#1a1a1a", accentText: "#ffffff" },
 };
 
 function themeFor(gender?: Gender | null): EmailTheme {
@@ -74,6 +75,29 @@ function button(label: string, href: string, theme: EmailTheme) {
         </td>
       </tr>
     </table>`;
+}
+
+function socialIcons(theme: EmailTheme) {
+  // Cor embutida na propria URL do icone (simple-icons), sem depender de filter CSS
+  // (ignorado por Outlook e outros). O circulo usa background accent; se a imagem nao
+  // carregar, o alt text aparece na cor accentText e o footer continua legivel.
+  const iconColor = theme.accentText.replace("#", "");
+  const cells = SOCIAL.map(
+    (social) => `
+                  <td style="padding:0 4px;">
+                    <a href="${social.url}" style="text-decoration:none;color:${theme.accentText};font-size:10px;font-weight:bold;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;background:${theme.accent};border-radius:50%;">
+                            <img src="https://cdn.simpleicons.org/${social.slug}/${iconColor}" width="17" height="17" alt="${social.name}" style="display:inline-block;border:0;outline:none;vertical-align:middle;" />
+                          </td>
+                        </tr>
+                      </table>
+                    </a>
+                  </td>`,
+    )
+    .join("");
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr>${cells}</tr></table>`;
 }
 
 function layout(theme: EmailTheme, title: string, body: string) {
@@ -123,14 +147,7 @@ function layout(theme: EmailTheme, title: string, body: string) {
           <!-- FOOTER -->
           <tr>
             <td style="background:#1a1a1a;padding:22px 28px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px;">
-                <tr>
-                  <td style="padding-right:14px;"><a href="${SOCIAL.instagram}" style="color:#ffffff;font-size:12px;text-decoration:none;">Instagram</a></td>
-                  <td style="padding-right:14px;"><a href="${SOCIAL.linkedin}" style="color:#ffffff;font-size:12px;text-decoration:none;">LinkedIn</a></td>
-                  <td style="padding-right:14px;"><a href="${SOCIAL.tiktok}" style="color:#ffffff;font-size:12px;text-decoration:none;">TikTok</a></td>
-                  <td><a href="${SOCIAL.x}" style="color:#ffffff;font-size:12px;text-decoration:none;">X</a></td>
-                </tr>
-              </table>
+              ${socialIcons(theme)}
               <div style="color:#9a9a9a;font-size:11px;line-height:1.5;">Bora na Tech? Sua bússola para começar na tecnologia.</div>
             </td>
           </tr>
