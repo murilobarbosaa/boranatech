@@ -2,7 +2,6 @@ import { Link, useParams } from "wouter";
 import { ArrowLeft, Briefcase, CheckCircle, ExternalLink, GraduationCap, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import FavoriteButton from "@/components/FavoriteButton";
-import { CursoVoiceNote } from "@/components/faculdades/CursoVoiceNote";
 import { faculdades } from "@/lib/data";
 import { companies } from "@/lib/companyData";
 import { salaryRows } from "@/lib/marketData";
@@ -166,12 +165,6 @@ export default function FaculdadeDetalhe() {
               <h2 className="font-display mb-3 text-xl font-black text-slate-950">Quem combina com esse curso?</h2>
               <p className="text-slate-700">{course.perfilIndicado}</p>
               <p className="mt-3 text-sm font-medium text-slate-600">{detail.marketContext}</p>
-            </section>
-
-            <section className="card-brutal rounded-xl bg-white p-6">
-              <h2 className="font-display mb-3 text-xl font-black text-slate-950">Ouvir quem conhece o perfil do curso</h2>
-              <p className="mb-4 text-sm text-slate-600">Comentário curto para complementar a ficha — não substitui pesquisa ou matriz curricular da sua instituição.</p>
-              <CursoVoiceNote depoimento={course.depoimento} />
             </section>
 
             <section className="card-brutal rounded-xl bg-white p-6">
