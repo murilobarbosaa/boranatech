@@ -20,7 +20,7 @@ export default function Estudos() {
 
   return (
     <Layout>
-      <PageHero accent="amber" eyebrow="estudar melhor" title="Planos de Estudo" subtitle="Estudar com plano rende mais do que estudar muito." />
+      <PageHero accent="amber" eyebrow="estudar melhor" title="Planos de Estudo" subtitle="Pare de estudar no escuro. Um plano sob medida para a sua rotina, semana a semana, até a sua primeira vaga." />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
           <div className="mx-auto max-w-3xl text-center">
