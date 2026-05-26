@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import posthog from "posthog-js";
 import App from "./App";
+import "./fonts.css";
 import "./index.css";
 
 posthog.init(import.meta.env.VITE_POSTHOG_KEY, {

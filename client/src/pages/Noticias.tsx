@@ -53,7 +53,7 @@ function NewsCard({ item }: { item: NewsItem }) {
 
       <div className="flex items-start justify-between mb-3 gap-2">
         <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{item.categoria}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {item.nivel && (
             <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${LEVEL_BADGE[item.nivel]}`}>
               {LEVEL_LABEL[item.nivel]}

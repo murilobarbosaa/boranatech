@@ -143,7 +143,7 @@ export default function Projetos() {
                     <h3 className="font-display font-bold text-xl text-slate-900">{projeto.nome}</h3>
                     <p className="text-sm text-slate-600 mt-1">{projeto.objetivo}</p>
                   </div>
-                  <div className="ml-4 flex shrink-0 items-center gap-2">
+                  <div className="ml-4 flex shrink-0 items-center gap-3">
                     <FavoriteButton compact item={{ id: projeto.id, type: "projeto", title: projeto.nome, subtitle: labelForAreaSlug(projeto.areaSlug) }} />
                     {expanded === projeto.id ? (
                       <ChevronUp className="w-5 h-5 text-slate-400" />

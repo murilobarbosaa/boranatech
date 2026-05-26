@@ -176,7 +176,7 @@ export default function Cursos() {
                         {curso.tipo || "Gratuito"}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         curso.nivel === "Iniciante" ? "bg-blue-100 text-blue-700" :
                         curso.nivel === "Intermediário" ? "bg-amber-100 text-amber-700" :

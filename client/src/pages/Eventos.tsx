@@ -196,7 +196,7 @@ export default function Eventos() {
                       {ev.categoria}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span
                       className={`max-w-[220px] rounded-full border-2 px-2 py-0.5 text-xs font-black ${ev.valor.toLowerCase() === "gratuito" ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"}`}
                     >

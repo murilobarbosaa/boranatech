@@ -627,7 +627,7 @@ export default function AreaDetalhe() {
               </div>
 
               {/* Habilidades */}
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
+              <div className={cn("card-brutal rounded-xl border-2 bg-white p-6", ac.panelBorder)}>
                 <h3 className="font-display mb-3 font-semibold text-slate-900">
                   Habilidades importantes
                 </h3>
@@ -641,7 +641,7 @@ export default function AreaDetalhe() {
               </div>
 
               {/* Ferramentas */}
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
+              <div className={cn("card-brutal rounded-xl border-2 bg-white p-6", ac.panelBorder)}>
                 <h3 className="font-display mb-3 font-semibold text-slate-900">Ferramentas comuns</h3>
                 <div className="flex flex-wrap gap-2">
                   {area.ferramentas.map((f) => (
@@ -656,7 +656,7 @@ export default function AreaDetalhe() {
               </div>
 
               {/* Cargos */}
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
+              <div className={cn("card-brutal rounded-xl border-2 bg-white p-6", ac.panelBorder)}>
                 <h3 className="font-display mb-3 font-semibold text-slate-900">Possíveis cargos</h3>
                 <ul className="space-y-1.5">
                   {area.cargos.map((c) => (
@@ -672,7 +672,7 @@ export default function AreaDetalhe() {
               {area.crescimentoMercado ? (
                 <div
                   className={cn(
-                    "card-brutal hidden rounded-xl border-2 bg-white p-5 lg:block",
+                    "card-brutal hidden rounded-xl border-2 bg-white p-6 lg:block",
                     ac.panelBorder,
                   )}
                 >

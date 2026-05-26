@@ -393,7 +393,7 @@ function DesktopNav({ location }: { location: string }) {
   }, []);
 
   return (
-    <nav className="hidden flex-1 items-center justify-center gap-0.5 xl:flex 2xl:gap-1" aria-label="Navegação principal">
+    <nav className="hidden flex-1 items-center justify-center gap-0.5 2xl:flex 2xl:gap-1" aria-label="Navegação principal">
       {menuData.map((menu) => (
         <DesktopMenuItem
           key={menu.id}
@@ -534,14 +534,14 @@ export default function Header() {
   return (
     <>
       <header className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="group">
+        <div className="mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:max-w-[1280px] lg:px-8 2xl:max-w-[1440px]">
+          <Link href="/" className="group shrink-0">
             <Logo variant="light" size="sm" showTagline />
           </Link>
 
           <DesktopNav location={location} />
 
-          <div className="hidden items-center gap-1.5 xl:flex 2xl:gap-2">
+          <div className="hidden items-center gap-1.5 2xl:flex 2xl:gap-2">
             {!user ? (
               <>
                 <Link
@@ -579,7 +579,7 @@ export default function Header() {
                 {!isPro && !subscriptionLoading ? (
                 <Link
                   href="/planos"
-                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-[#FFB800] px-3 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                  className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-2.5 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
                 >
                   <ProInlineBadge label="Assinar Pro" />
                 </Link>
@@ -597,7 +597,7 @@ export default function Header() {
           </div>
 
           <button
-            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] xl:hidden"
+            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] 2xl:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menu"
             type="button"
@@ -607,10 +607,10 @@ export default function Header() {
         </div>
       </header>
 
-      {mobileOpen ? <div className="fixed inset-0 z-[1001] bg-black/50 xl:hidden" onClick={closeMobileDrawer} /> : null}
+      {mobileOpen ? <div className="fixed inset-0 z-[1001] bg-black/50 2xl:hidden" onClick={closeMobileDrawer} /> : null}
 
       <div
-        className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 xl:hidden ${
+        className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 2xl:hidden ${
           mobileOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
