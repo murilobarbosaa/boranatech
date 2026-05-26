@@ -7,7 +7,7 @@ import PageHero from "@/components/shared/PageHero";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn, youtubeEmbedUrl } from "@/lib/utils";
-import { devTools } from "@/lib/careerToolsData";
+import { devTools, setupGuides } from "@/lib/careerToolsData";
 
 const ac = getPageAccentUi("orange");
 
@@ -233,9 +233,18 @@ export default function Ferramentas() {
 
         <div className="card-brutal rounded-2xl bg-white p-6">
           <h2 className="font-display text-2xl font-black">Guia de setup por área</h2>
-          {["Front-end", "Back-end", "Dados", "DevOps", "UX/UI"].map((area) => (
-            <DetailsChevronOnly key={area} className="mt-3 rounded-xl border-2 border-slate-900 p-4" title={<span className="font-black">{area}</span>}>
-              <p className="mt-2 text-sm text-slate-600">Instale navegador, VS Code ou Cursor, Git, ferramenta principal da área, configure conta no GitHub e faça um projeto mínimo.</p>
+          {setupGuides.map((guide) => (
+            <DetailsChevronOnly key={guide.area} className="mt-3 rounded-xl border-2 border-slate-900 p-4" title={<span className="font-black">{guide.area}</span>}>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {guide.stack.map((item) => (
+                  <span key={item} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.panelSoft, ac.tbodyAccent)}>{item}</span>
+                ))}
+              </div>
+              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+                {guide.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
             </DetailsChevronOnly>
           ))}
         </div>

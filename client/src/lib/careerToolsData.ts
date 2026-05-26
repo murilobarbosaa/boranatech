@@ -772,3 +772,56 @@ export const devTools = [
     logoUrl: "https://www.google.com/s2/favicons?domain=kubernetes.io&sz=128",
   },
 ];
+
+export const setupGuides = [
+  {
+    area: "Front-end",
+    stack: ["Navegador + Chrome DevTools", "VS Code ou Cursor", "Node.js (LTS) + npm ou pnpm", "Git + GitHub"],
+    steps: [
+      "Instale o Node.js LTS e confirme com node -v.",
+      "Crie um projeto com Vite e rode npm run dev.",
+      "Instale no editor as extensões de HTML, CSS e do framework.",
+      "Versione com Git e suba o repositório pro GitHub.",
+    ],
+  },
+  {
+    area: "Back-end",
+    stack: ["VS Code ou Cursor", "Node.js (ou a linguagem da sua stack)", "Git + GitHub", "Postman ou Insomnia", "Docker"],
+    steps: [
+      "Instale a linguagem da stack e o gerenciador de pacotes.",
+      "Crie uma API mínima com uma rota que responde um JSON.",
+      "Teste as rotas no Postman ou Insomnia.",
+      "Conecte um banco (ex: PostgreSQL) e leia ou escreva um registro.",
+    ],
+  },
+  {
+    area: "Dados",
+    stack: ["Python (versão recente)", "VS Code ou Jupyter", "Git + GitHub", "Banco SQL + DBeaver"],
+    steps: [
+      "Instale o Python e confirme com python --version.",
+      "Crie um ambiente virtual e instale pandas e jupyter.",
+      "Conecte ao banco no DBeaver e rode uma query SQL simples.",
+      "Versione notebooks e scripts no GitHub.",
+    ],
+  },
+  {
+    area: "DevOps",
+    stack: ["Terminal (Linux ou WSL)", "Git + GitHub", "Docker", "Plataforma de deploy (ex: Vercel)", "Kubernetes"],
+    steps: [
+      "Domine o terminal e os comandos básicos de Git.",
+      "Empacote uma aplicação simples com Docker e rode o container local.",
+      "Configure deploy automático a partir do GitHub (ex: Vercel).",
+      "Estude pipelines de CI/CD para testar e publicar com segurança.",
+    ],
+  },
+  {
+    area: "UX/UI",
+    stack: ["Figma", "Canva", "Excalidraw", "Notion"],
+    steps: [
+      "Crie conta no Figma e explore componentes e auto layout.",
+      "Refaça uma tela existente para treinar hierarquia e espaçamento.",
+      "Monte um fluxo no Excalidraw antes de desenhar telas.",
+      "Organize referências e decisões de design no Notion.",
+    ],
+  },
+];
