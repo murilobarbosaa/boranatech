@@ -570,6 +570,47 @@ export function classifyTriageLevel(levels: QuizLevel[]): QuizLevel {
   );
 }
 
+export interface IntakeOption {
+  label: string;
+  value: string;
+}
+
+export interface IntakeQuestion {
+  id: string;
+  category: string;
+  question: string;
+  options: IntakeOption[];
+}
+
+/**
+ * Etapa inicial (intake): captura objetivo e motivo do usuario.
+ * Sao apenas registrados (result_json + analytics); nao mudam a pontuacao
+ * nem o nivel. O roteamento por objetivo fica para uma etapa futura.
+ */
+export const objetivoQuestion: IntakeQuestion = {
+  id: "tri-objetivo",
+  category: "Objetivo",
+  question: "Pra começar: o que você quer com esse quiz?",
+  options: [
+    { label: "Descobrir uma área que combine comigo", value: "descobrir" },
+    { label: "Mudar de área dentro da tecnologia", value: "mudar" },
+    { label: "Começar do zero em tech", value: "comecar-do-zero" },
+    { label: "Escolher uma tecnologia pra focar", value: "escolher-tecnologia" },
+  ],
+};
+
+export const motivoQuestion: IntakeQuestion = {
+  id: "tri-motivo",
+  category: "Motivo",
+  question: "E o que mais te descreve agora?",
+  options: [
+    { label: "Tô em dúvida sobre qual caminho seguir", value: "em-duvida" },
+    { label: "Quero confirmar se a área que penso combina comigo", value: "confirmar" },
+    { label: "Tô me sentindo perdida(o) e quero uma direção", value: "direcao" },
+    { label: "Curiosidade, só explorando", value: "curiosidade" },
+  ],
+};
+
 /**
  * Quiz por nivel. Cada nivel tem 15 perguntas com o mesmo conjunto de areas
  * e a mesma distribuicao de "principais" (cada area e principal 5 vezes),
