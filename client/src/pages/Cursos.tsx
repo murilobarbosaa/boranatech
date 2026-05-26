@@ -92,9 +92,6 @@ export default function Cursos() {
             <p className="text-slate-950 text-lg">
               Cursos gratuitos e pagos selecionados para iniciantes, organizados por área, nível e tipo.
             </p>
-            <div className="mt-4 inline-flex items-center gap-2 bg-white border-2 border-slate-900 rounded-full px-4 py-1.5 text-slate-900 text-sm font-bold shadow-[3px_3px_0_#f59e0b]">
-              ✅ + de 20 cursos curados
-            </div>
           </div>
         </div>
       </section>
@@ -158,8 +155,6 @@ export default function Cursos() {
       {/* Grid */}
       <section className="bg-[#fff9e7] py-12">
         <div className="container">
-          <p className="text-sm text-slate-500 mb-6">{filtered.length} curso{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}</p>
-
           {filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
