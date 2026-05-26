@@ -51,8 +51,8 @@ function DifficultyDots({ level, fillClass }: { level: number; fillClass: string
 
 function GraduationChip({ value }: { value: NonNullable<AreaTI["requiresGraduation"]> }) {
   const map: Record<NonNullable<AreaTI["requiresGraduation"]>, { bg: string; text: string; label: string }> = {
-    obrigatorio: { bg: "bg-rose-100 border-rose-300", text: "text-rose-800", label: "Exige graduação" },
-    recomendado: { bg: "bg-amber-100 border-amber-300", text: "text-amber-800", label: "Graduação recomendada" },
+    obrigatorio: { bg: "bg-rose-100 border-rose-300", text: "text-rose-800", label: "Costuma exigir graduação" },
+    recomendado: { bg: "bg-amber-100 border-amber-300", text: "text-amber-800", label: "Graduação ajuda bastante" },
     opcional: { bg: "bg-emerald-100 border-emerald-300", text: "text-emerald-800", label: "Graduação opcional" },
   };
   const s = map[value];
