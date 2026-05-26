@@ -19,7 +19,7 @@ export default function Estudos() {
 
   return (
     <Layout>
-      <PageHero accent="amber" eyebrow="estudar melhor" title="Ferramentas de Estudo" subtitle="Aprenda de forma eficiente, não só muito." />
+      <PageHero accent="amber" eyebrow="estudar melhor" title="Planos de Estudo" subtitle="Aprenda de forma eficiente, não só muito." />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
           {!isPro ? (
