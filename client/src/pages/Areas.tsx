@@ -186,7 +186,7 @@ export default function Areas() {
                   </h3>
                   <p className="text-sm text-slate-600 mb-4 line-clamp-2">{area.descricaoCurta}</p>
                   <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
-                    <p className="text-xs font-black uppercase text-slate-500">Personalidade da área</p>
+                    <p className="text-xs font-black uppercase text-slate-500">Perfil que combina</p>
                     <p className="mt-1 text-xs text-slate-700 line-clamp-3">{area.perfilIndicado}</p>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
