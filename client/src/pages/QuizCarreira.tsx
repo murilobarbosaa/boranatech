@@ -15,10 +15,11 @@ import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModa
 import { areasTI } from "@/lib/data";
 import {
   triageQuestions,
+  objetivoQuestion,
+  motivoQuestion,
   quizByLevel,
   classifyTriageLevel,
   type QuizLevel,
-  TRIAGE_QUESTION_COUNT,
   LEVEL_QUESTION_COUNT,
   QUIZ_ESTIMATED_MINUTES,
 } from "@/lib/platformData";
@@ -98,6 +99,22 @@ function clearProgress() {
   }
 }
 
+// Etapa inicial (triagem): objetivo, motivo e as 3 perguntas de nivel, nessa ordem.
+// objetivo/motivo sao so capturados; o nivel e classificado pelas 3 ultimas.
+interface TriageStep {
+  id: string;
+  kind: "objetivo" | "motivo" | "level";
+  question: ScreenQuestion;
+}
+
+const triageSteps: TriageStep[] = [
+  { id: objetivoQuestion.id, kind: "objetivo", question: objetivoQuestion },
+  { id: motivoQuestion.id, kind: "motivo", question: motivoQuestion },
+  ...triageQuestions.map(
+    (q): TriageStep => ({ id: q.id, kind: "level", question: q }),
+  ),
+];
+
 export default function QuizCarreira() {
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<QuizPhase>("intro");
@@ -162,16 +179,17 @@ export default function QuizCarreira() {
   };
 
   const handleTriageAnswer = (optionIndex: number) => {
-    const question = triageQuestions[triageIndex];
-    const newTriage = { ...triageAnswers, [question.id]: optionIndex };
+    const step = triageSteps[triageIndex];
+    const newTriage = { ...triageAnswers, [step.id]: optionIndex };
     setTriageAnswers(newTriage);
 
     window.setTimeout(() => {
-      if (triageIndex < triageQuestions.length - 1) {
+      if (triageIndex < triageSteps.length - 1) {
         setTriageIndex(triageIndex + 1);
         return;
       }
-      // Triagem completa: classifica o nivel de forma deterministica.
+      // Etapa inicial completa: classifica o nivel de forma deterministica
+      // usando apenas as 3 perguntas de nivel (objetivo/motivo nao entram).
       const levels = triageQuestions.map(
         (q) => q.options[newTriage[q.id]].level,
       );
@@ -212,8 +230,8 @@ export default function QuizCarreira() {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     } else {
-      // Voltar da 1a pergunta do nivel retorna a triagem, permitindo revisar o nivel.
-      setTriageIndex(triageQuestions.length - 1);
+      // Voltar da 1a pergunta do nivel retorna a etapa inicial, permitindo revisar.
+      setTriageIndex(triageSteps.length - 1);
       setPhase("triage");
     }
   };
@@ -334,6 +352,12 @@ export default function QuizCarreira() {
       ];
     });
 
+    // Objetivo e motivo vem da etapa inicial. So registrados (sem afetar scoring).
+    const objetivo =
+      objetivoQuestion.options[triageAnswers[objetivoQuestion.id]]?.value ?? null;
+    const motivo =
+      motivoQuestion.options[triageAnswers[motivoQuestion.id]]?.value ?? null;
+
     void persistQuizResult({
       answers: quizAnswers,
       result_area: finalResultArea,
@@ -342,6 +366,8 @@ export default function QuizCarreira() {
       level: level ?? undefined,
       result_json: {
         level,
+        objetivo,
+        motivo,
         scores: Object.fromEntries(finalTop),
         topAreas: topAreasWithPct,
         reasons,
@@ -353,6 +379,8 @@ export default function QuizCarreira() {
       confidence: finalConfidence,
       questions_answered: finalAnswered,
       level,
+      objetivo,
+      motivo,
     });
 
     clearProgress();
@@ -380,7 +408,7 @@ export default function QuizCarreira() {
           <ProgressBar
             current={(phase === "triage" ? triageIndex : currentIndex) + 1}
             total={
-              phase === "triage" ? TRIAGE_QUESTION_COUNT : LEVEL_QUESTION_COUNT
+              phase === "triage" ? triageSteps.length : LEVEL_QUESTION_COUNT
             }
             answeredCount={
               Object.keys(phase === "triage" ? triageAnswers : answers).length
@@ -402,11 +430,11 @@ export default function QuizCarreira() {
           {phase === "triage" && (
             <QuestionScreen
               key={`t-${triageIndex}`}
-              question={triageQuestions[triageIndex]}
+              question={triageSteps[triageIndex].question}
               currentIndex={triageIndex}
-              totalQuestions={triageQuestions.length}
+              totalQuestions={triageSteps.length}
               selectedOption={
-                triageAnswers[triageQuestions[triageIndex].id] ?? null
+                triageAnswers[triageSteps[triageIndex].id] ?? null
               }
               onAnswer={handleTriageAnswer}
               onBack={handleTriageBack}
@@ -459,22 +487,29 @@ function IntroScreen({
     >
       <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
         <BrainCircuit className="h-4 w-4" />
-        Quiz de Carreira
+        Quiz de Carreira em Tech
       </p>
 
       <h1
         className="font-display font-black leading-[0.95] text-slate-950"
         style={{ fontSize: "clamp(2.5rem, 7vw, 5rem)" }}
       >
-        Descubra qual área tech
+        Descubra qual área da tecnologia
         <br />
         combina com você
       </h1>
 
       <p className="mt-6 max-w-xl text-lg font-semibold text-slate-700 md:text-xl">
-        Primeiro, {TRIAGE_QUESTION_COUNT} perguntas rápidas pra entender o seu
-        momento. Depois, {LEVEL_QUESTION_COUNT} perguntas do seu nível sobre
-        interesses e seu jeito de trabalhar. Sem certo ou errado.
+        Tecnologia não é uma coisa só. Tem várias áreas (front-end, back-end,
+        dados, design, segurança, e mais), cada uma resolvendo um tipo de
+        problema e combinando com um perfil diferente. Este quiz te ajuda a
+        achar a que mais tem a ver com você.
+      </p>
+
+      <p className="mt-4 max-w-xl font-semibold text-slate-600 md:text-lg">
+        Primeiro, algumas perguntas rápidas pra entender o seu momento e o seu
+        objetivo. Depois, {LEVEL_QUESTION_COUNT} perguntas do seu nível. No fim,
+        mostramos as áreas que mais combinam com você. Não tem certo nem errado.
       </p>
 
       <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -492,7 +527,7 @@ function IntroScreen({
             Perguntas
           </p>
           <p className="font-display text-2xl font-black text-slate-950">
-            {TRIAGE_QUESTION_COUNT} + {LEVEL_QUESTION_COUNT}
+            {triageSteps.length} + {LEVEL_QUESTION_COUNT}
           </p>
         </div>
 
