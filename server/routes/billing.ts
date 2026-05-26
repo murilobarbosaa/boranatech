@@ -22,6 +22,20 @@ const PLAN_CYCLES: Record<string, "MONTHLY" | "SEMIANNUALLY" | "YEARLY"> = {
   annual: "YEARLY",
 };
 
+const PLAN_CYCLE_MONTHS: Record<string, number> = { monthly: 1, semiannual: 6, annual: 12 };
+
+function addMonths(date: Date, months: number) {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
+const CANCELING_EVENTS = new Set([
+  "SUBSCRIPTION_DELETED",
+  "SUBSCRIPTION_INACTIVATED",
+  "SUBSCRIPTION_EXPIRED",
+]);
+
 function extractSubscriptionId(event: Record<string, unknown>): string | null {
   const payment = event?.payment as Record<string, unknown> | undefined;
   const sub = payment?.subscription ?? event?.subscription;
@@ -281,120 +295,219 @@ router.post("/webhook", async (req, res, next) => {
     }
 
     const event = req.body as Record<string, unknown>;
-    const eventType = event?.event as string;
-    const subscriptionId = extractSubscriptionId(event);
+    const eventType = String(event?.event || "");
+    const rawBody = (req as typeof req & { rawBody?: Buffer }).rawBody;
+    const eventId = String(
+      event.id || crypto.createHash("sha256").update(rawBody || JSON.stringify(event)).digest("hex"),
+    );
+    const eventCreatedAt =
+      typeof event.dateCreated === "string" ? new Date(event.dateCreated.replace(" ", "T")) : null;
+
     const payment = event.payment as Record<string, unknown> | undefined;
     const subscription = event.subscription as Record<string, unknown> | undefined;
+    const subscriptionId = extractSubscriptionId(event);
+    const paymentId = payment?.id ? String(payment.id) : null;
 
-    console.log(`[webhook] Asaas event: ${eventType}`);
+    console.log(`[webhook] Asaas event: ${eventType} (${eventId})`);
 
-    const statusMap: Record<string, string> = {
-      PAYMENT_RECEIVED: "active",
-      PAYMENT_CONFIRMED: "active",
-      PAYMENT_OVERDUE: "past_due",
-      PAYMENT_DELETED: "canceled",
-      SUBSCRIPTION_CREATED: "active",
-      SUBSCRIPTION_UPDATED: "active",
-      SUBSCRIPTION_DELETED: "canceled",
-      SUBSCRIPTION_INACTIVATED: "canceled",
-    };
+    // (3) Dedupe: registra o evento; se ja existia, ignora (idempotencia).
+    const { data: recorded, error: dedupeError } = await supabaseAdmin
+      .from("billing_events")
+      .upsert(
+        {
+          id: eventId,
+          event_type: eventType,
+          provider_subscription_id: subscriptionId,
+          payment_id: paymentId,
+          event_created_at: eventCreatedAt ? eventCreatedAt.toISOString() : null,
+          raw: event,
+        },
+        { onConflict: "id", ignoreDuplicates: true },
+      )
+      .select("id");
 
-    const newStatus = statusMap[eventType];
-    if (!newStatus || !subscriptionId) {
-      return res.json({ received: true });
+    if (dedupeError) {
+      console.error("[webhook] Erro ao registrar billing_event:", dedupeError);
+      return next(createError(500, "db_error", "Erro ao registrar evento."));
+    }
+    if (!recorded || recorded.length === 0) {
+      return res.json({ received: true, deduped: true });
     }
 
-    const externalRef = String(subscription?.externalReference || payment?.externalReference || "");
-    const [userId, planCode = "monthly", affiliateCode] = externalRef?.split(":") || [];
+    // A partir daqui, se algo falhar, removemos o billing_event para o retry do Asaas reprocessar.
+    try {
+      if (!subscriptionId) return res.json({ received: true });
 
-    if (!userId) {
-      console.warn("[webhook] externalReference não encontrado:", event);
-      return res.json({ received: true });
-    }
+      const externalRef = String(subscription?.externalReference || payment?.externalReference || "");
+      const [userId, planCode = "monthly", affiliateCode] = externalRef.split(":");
+      if (!userId) {
+        console.warn("[webhook] externalReference não encontrado:", eventId);
+        return res.json({ received: true });
+      }
 
-    const { data: proPlan } = await supabaseAdmin.from("plans").select("id, name").eq("code", planCode).maybeSingle();
+      const { data: proPlan } = await supabaseAdmin
+        .from("plans")
+        .select("id, name")
+        .eq("code", planCode)
+        .maybeSingle();
+      if (!proPlan) throw createError(500, "db_error", "Plano Pro não encontrado.");
 
-    if (!proPlan) {
-      return next(createError(500, "db_error", "Plano Pro não encontrado."));
-    }
+      const { data: existing } = await supabaseAdmin
+        .from("subscriptions")
+        .select("id, status, cancel_at_period_end, current_period_end, canceled_at, last_event_at")
+        .eq("provider_subscription_id", subscriptionId)
+        .maybeSingle();
 
-    const now = new Date();
-    const periodEnd = new Date(now);
-    periodEnd.setMonth(periodEnd.getMonth() + 1);
+      // (3) Ordenacao: ignora MUTACAO se o evento e mais antigo que o ultimo processado.
+      if (existing?.last_event_at && eventCreatedAt && eventCreatedAt < new Date(existing.last_event_at)) {
+        console.warn(`[webhook] evento fora de ordem ignorado (${eventId})`);
+        return res.json({ received: true, out_of_order: true });
+      }
 
-    const { error } = await supabaseAdmin.from("subscriptions").upsert(
-      {
+      const now = new Date();
+      const lastEventIso = (eventCreatedAt ?? now).toISOString();
+      const isPaymentConfirm = eventType === "PAYMENT_RECEIVED" || eventType === "PAYMENT_CONFIRMED";
+
+      // Decide a transicao.
+      let action: "skip" | "activate" | "past_due" | "cancel" | "create_incomplete" = "skip";
+      if (isPaymentConfirm) {
+        action = existing?.cancel_at_period_end ? "skip" : "activate"; // (s2) nao reanima marcada p/ cancelar
+      } else if (eventType === "PAYMENT_OVERDUE") {
+        action = "past_due";
+      } else if (eventType === "SUBSCRIPTION_CREATED") {
+        action = existing && ["active", "past_due"].includes(existing.status) ? "skip" : "create_incomplete"; // (5)
+      } else if (CANCELING_EVENTS.has(eventType)) {
+        action = "cancel";
+      } else if (eventType === "SUBSCRIPTION_UPDATED") {
+        const subStatus = String(subscription?.status || "").toUpperCase();
+        action = subStatus === "INACTIVE" || subStatus === "EXPIRED" ? "cancel" : "skip"; // (s2) nao forca active
+      }
+      // PAYMENT_DELETED e demais: skip (10).
+
+      const baseRequired = {
         user_id: userId,
         plan_id: proPlan.id,
         provider: "asaas",
         provider_subscription_id: subscriptionId,
         provider_customer_id: String(subscription?.customer || payment?.customer || ""),
-        status: newStatus,
-        current_period_start: now.toISOString(),
-        current_period_end: newStatus === "active" ? periodEnd.toISOString() : now.toISOString(),
-        canceled_at: newStatus === "canceled" ? now.toISOString() : null,
         affiliate_code: affiliateCode || null,
-        raw_provider_payload: event,
-      },
-      {
-        onConflict: "provider_subscription_id",
-      },
-    );
+      };
 
-    if (error) {
-      console.error("[webhook] Erro ao atualizar subscription:", error);
-      return next(createError(500, "db_error", "Erro ao processar webhook."));
-    }
+      let transitionedTo: string | null = null;
 
-    if (affiliateCode && ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(eventType)) {
-      const { data: affiliate } = await supabaseAdmin
-        .from("affiliates")
-        .select("id, sales, revenue_cents, commission_due_cents, commission_percent")
-        .eq("code", affiliateCode)
-        .maybeSingle();
+      if (action === "activate") {
+        const cycleMonths = PLAN_CYCLE_MONTHS[planCode] ?? 1; // (4) cycle-aware
+        const periodStart = payment?.dueDate ? new Date(String(payment.dueDate)) : now;
+        const periodEnd = addMonths(periodStart, cycleMonths);
+        const patch = {
+          status: "active",
+          plan_id: proPlan.id,
+          current_period_start: periodStart.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          canceled_at: null,
+          last_event_at: lastEventIso,
+          raw_provider_payload: event,
+        };
+        const result = existing
+          ? await supabaseAdmin.from("subscriptions").update(patch).eq("provider_subscription_id", subscriptionId)
+          : await supabaseAdmin.from("subscriptions").insert({ ...baseRequired, ...patch });
+        if (result.error) throw createError(500, "db_error", "Erro ao ativar assinatura.");
+        transitionedTo = "active";
+      } else if (action === "past_due") {
+        if (existing) {
+          const { error } = await supabaseAdmin
+            .from("subscriptions")
+            .update({ status: "past_due", last_event_at: lastEventIso, raw_provider_payload: event }) // (10) nao mexe no periodo
+            .eq("provider_subscription_id", subscriptionId);
+          if (error) throw createError(500, "db_error", "Erro ao marcar past_due.");
+          transitionedTo = "past_due";
+        }
+      } else if (action === "cancel") {
+        if (existing && existing.status !== "canceled") {
+          const { error } = await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              status: "canceled",
+              canceled_at: existing.canceled_at || now.toISOString(), // (8) nao sobrescreve
+              last_event_at: lastEventIso,
+              raw_provider_payload: event,
+            })
+            .eq("provider_subscription_id", subscriptionId);
+          if (error) throw createError(500, "db_error", "Erro ao cancelar assinatura.");
+          transitionedTo = "canceled";
+        }
+      } else if (action === "create_incomplete") {
+        const patch = {
+          status: "incomplete",
+          plan_id: proPlan.id,
+          last_event_at: lastEventIso,
+          raw_provider_payload: event,
+        };
+        const result = existing
+          ? await supabaseAdmin.from("subscriptions").update(patch).eq("provider_subscription_id", subscriptionId)
+          : await supabaseAdmin.from("subscriptions").insert({ ...baseRequired, ...patch });
+        if (result.error) throw createError(500, "db_error", "Erro ao registrar assinatura.");
+        transitionedTo = "incomplete";
+      }
+      // action === "skip": estado da subscription inalterado.
 
-      if (affiliate) {
-        const revenueCents = Math.round(Number(payment?.value || subscription?.value || 0) * 100);
-        const commissionCents = Math.round(revenueCents * (Number(affiliate.commission_percent || 0) / 100));
-        await supabaseAdmin
+      // Afiliado: so quando ativou de fato (dedupe ja protege reentrega).
+      if (affiliateCode && action === "activate") {
+        const { data: affiliate } = await supabaseAdmin
           .from("affiliates")
-          .update({
-            sales: Number(affiliate.sales || 0) + 1,
-            revenue_cents: Number(affiliate.revenue_cents || 0) + revenueCents,
-            commission_due_cents: Number(affiliate.commission_due_cents || 0) + commissionCents,
-          })
-          .eq("id", affiliate.id);
+          .select("id, sales, revenue_cents, commission_due_cents, commission_percent")
+          .eq("code", affiliateCode)
+          .maybeSingle();
+
+        if (affiliate) {
+          const revenueCents = Math.round(Number(payment?.value || subscription?.value || 0) * 100);
+          const commissionCents = Math.round(revenueCents * (Number(affiliate.commission_percent || 0) / 100));
+          await supabaseAdmin
+            .from("affiliates")
+            .update({
+              sales: Number(affiliate.sales || 0) + 1,
+              revenue_cents: Number(affiliate.revenue_cents || 0) + revenueCents,
+              commission_due_cents: Number(affiliate.commission_due_cents || 0) + commissionCents,
+            })
+            .eq("id", affiliate.id);
+        }
       }
+
+      // Emails: so em transicao real.
+      try {
+        const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const userEmail = authData?.user?.email || "";
+        const userName = String(authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário");
+        const { data: profileData } = await supabaseAdmin
+          .from("profiles")
+          .select("gender")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const userGender = (profileData?.gender as Gender | null | undefined) ?? null;
+
+        if (userEmail && transitionedTo === "active") {
+          await enqueueEmail({ type: "pro_upgrade", to: userEmail, name: userName, gender: userGender, planName: proPlan.name || planCode });
+        }
+        if (userEmail && transitionedTo === "canceled") {
+          await enqueueEmail({ type: "cancellation", to: userEmail, name: userName, gender: userGender });
+        }
+        if (userEmail && transitionedTo === "past_due") {
+          await enqueueEmail({ type: "payment_failed", to: userEmail, name: userName, gender: userGender });
+        }
+      } catch (emailError) {
+        console.error("[email] Erro ao processar e-mail transacional", emailError);
+      }
+
+      console.log(`[webhook] ${subscriptionId} action=${action} -> ${transitionedTo ?? "no-op"} (user ${userId})`);
+      return res.json({ received: true });
+    } catch (procErr) {
+      try {
+        await supabaseAdmin.from("billing_events").delete().eq("id", eventId);
+      } catch {
+        // ignora falha de cleanup
+      }
+      return next(procErr);
     }
-
-    try {
-      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
-      const userEmail = authData?.user?.email || "";
-      const userName = String(authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário");
-      const { data: profileData } = await supabaseAdmin
-        .from("profiles")
-        .select("gender")
-        .eq("user_id", userId)
-        .maybeSingle();
-      const userGender = (profileData?.gender as Gender | null | undefined) ?? null;
-
-      if (userEmail && ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(eventType) && newStatus === "active") {
-        await enqueueEmail({ type: "pro_upgrade", to: userEmail, name: userName, gender: userGender, planName: proPlan.name || planCode });
-      }
-
-      if (userEmail && newStatus === "canceled") {
-        await enqueueEmail({ type: "cancellation", to: userEmail, name: userName, gender: userGender });
-      }
-
-      if (userEmail && eventType === "PAYMENT_OVERDUE") {
-        await enqueueEmail({ type: "payment_failed", to: userEmail, name: userName, gender: userGender });
-      }
-    } catch (emailError) {
-      console.error("[email] Erro ao processar e-mail transacional", emailError);
-    }
-
-    console.log(`[webhook] Subscription ${subscriptionId} -> ${newStatus} para user ${userId}`);
-    res.json({ received: true });
   } catch (err) {
     next(err);
   }
