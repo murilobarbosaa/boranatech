@@ -31,6 +31,17 @@ function TypingDots() {
   );
 }
 
+function AssistantAvatar() {
+  return (
+    <div
+      className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-full border-2 border-slate-900 bg-violet-600 shadow-[1px_1px_0_#0f172a] sm:h-8 sm:w-8"
+      aria-hidden
+    >
+      <Sparkles className="h-3.5 w-3.5 text-amber-200 sm:h-4 sm:w-4" />
+    </div>
+  );
+}
+
 export default function AiChatPanel({
   endpoint,
   title,
@@ -103,7 +114,8 @@ export default function AiChatPanel({
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
               {messages.map((m, i) =>
                 m.role === "assistant" ? (
-                  <div key={i} className="flex justify-start">
+                  <div key={i} className="flex items-end justify-start gap-2">
+                    <AssistantAvatar />
                     <div
                       className={cn(
                         "max-w-[min(100%,85%)] rounded-[12px] rounded-tl-sm border border-slate-200/90 bg-white px-3 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.1)] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3",
@@ -128,7 +140,8 @@ export default function AiChatPanel({
               )}
 
               {loading ? (
-                <div className="flex justify-start">
+                <div className="flex items-end justify-start gap-2">
+                  <AssistantAvatar />
                   <div className="flex max-w-[min(100%,85%)] items-center rounded-[12px] rounded-tl-sm border border-slate-200/90 bg-white px-3 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.1)] sm:px-4">
                     <span className="sr-only">Digitando</span>
                     <TypingDots />
