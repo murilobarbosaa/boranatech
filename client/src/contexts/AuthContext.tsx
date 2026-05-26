@@ -55,6 +55,20 @@ function authRedirectTo() {
   return `${window.location.origin}${redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`}`;
 }
 
+// Detecta um callback de OAuth em andamento na URL atual.
+// PKCE usa ?code= na query string; o fluxo implicit usa access_token/refresh_token
+// no hash. Cobrimos os dois.
+function hasOAuthCallbackInUrl() {
+  if (typeof window === "undefined") return false;
+  const hasCode = new URLSearchParams(window.location.search).has("code");
+  const rawHash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : window.location.hash;
+  const hashParams = new URLSearchParams(rawHash);
+  const hasToken = hashParams.has("access_token") || hashParams.has("refresh_token");
+  return hasCode || hasToken;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -62,6 +76,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let safetyTimer: number | undefined;
+
+    function clearSafetyTimer() {
+      if (safetyTimer !== undefined) {
+        window.clearTimeout(safetyTimer);
+        safetyTimer = undefined;
+      }
+    }
 
     async function loadProfile(nextSession: Session | null) {
       if (!nextSession) {
@@ -87,37 +109,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .getSession()
       .then(async ({ data }: { data: { session: Session | null } }) => {
         if (!mounted) return;
-        setSession(data.session);
-        await loadProfile(data.session);
+        const session = data.session;
+        setSession(session);
+        await loadProfile(session);
+        if (!mounted) return;
+
+        // Callback de OAuth em andamento: getSession resolveu null mas a URL ainda
+        // tem ?code= (PKCE) / token no hash (implicit). A troca vai concluir e
+        // emitir SIGNED_IN — NÃO feche o loading agora, senão abrimos a janela
+        // (loading=false, user=null) que faz os guards redirecionarem indevidamente.
+        // Deixe o SIGNED_IN subsequente fechar o loading.
+        if (!session && hasOAuthCallbackInUrl()) {
+          console.info("[auth] holding loading for OAuth callback");
+          // Salvaguarda: se o SIGNED_IN nunca chegar (ex.: troca PKCE falha), não
+          // travar em spinner eterno — degrada graciosamente para "não autenticado".
+          safetyTimer = window.setTimeout(() => {
+            if (!mounted) return;
+            console.warn("[auth] safety timeout fired; treating as unauthenticated");
+            setSession(null);
+            setProfile(null);
+            setLoading(false);
+          }, 5000);
+          return;
+        }
+
         setLoading(false);
       });
 
+    function handleAuthChange(event: AuthChangeEvent, nextSession: Session | null) {
+      // Durante um callback de OAuth, um INITIAL_SESSION(null) pode chegar antes
+      // do SIGNED_IN. Ignore esse estado transitório para não fechar o loading
+      // (e reabrir a janela). O SIGNED_IN — ou a salvaguarda — resolve depois.
+      if (!nextSession && event !== "SIGNED_OUT" && hasOAuthCallbackInUrl()) {
+        return;
+      }
+
+      clearSafetyTimer();
+      setSession(nextSession);
+      if (event === "SIGNED_OUT" || !nextSession) {
+        setProfile(null);
+      } else {
+        if (nextSession.user) {
+          posthog.identify(nextSession.user.id);
+        }
+        void loadProfile(nextSession);
+        if (event === "SIGNED_IN" && localStorage.getItem("bnt_social_signup_pending") === "true") {
+          localStorage.removeItem("bnt_social_signup_pending");
+          localStorage.setItem("bnt_signup_completed", "true");
+          window.setTimeout(() => {
+            if (window.location.pathname !== "/planos") window.location.assign("/planos");
+          }, 0);
+        }
+      }
+      setLoading(false);
+    }
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, nextSession: Session | null) => {
-        setSession(nextSession);
-        if (event === "SIGNED_OUT" || !nextSession) {
-          setProfile(null);
-        } else {
-          if (nextSession.user) {
-            posthog.identify(nextSession.user.id);
-          }
-          void loadProfile(nextSession);
-          if (event === "SIGNED_IN" && localStorage.getItem("bnt_social_signup_pending") === "true") {
-            localStorage.removeItem("bnt_social_signup_pending");
-            localStorage.setItem("bnt_signup_completed", "true");
-            window.setTimeout(() => {
-              if (window.location.pathname !== "/planos") window.location.assign("/planos");
-            }, 0);
-          }
-        }
-        setLoading(false);
-      },
-    );
+    } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => {
       mounted = false;
+      clearSafetyTimer();
       subscription.unsubscribe();
     };
   }, []);

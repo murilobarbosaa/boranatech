@@ -552,6 +552,7 @@ export default function Perfil() {
 
   useEffect(() => {
     if (!authLoading && !user) {
+      console.info("[auth] guard: would redirect to /login");
       setLocation("/login", { replace: true });
     }
   }, [authLoading, setLocation, user]);
