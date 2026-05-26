@@ -5873,14 +5873,6 @@ export const comunidades = [
   }
 ];
 
-/** Depoimento exibido na listagem/detalhe de cada curso superior (tom de curadoria ou de quem estuda). */
-export interface FaculdadeCursoDepoimento {
-  nome: string;
-  subtitulo: string;
-  texto: string;
-  fotoUrl?: string;
-}
-
 export const faculdades = {
   cursos: [
     {
@@ -5895,13 +5887,6 @@ export const faculdades = {
       programacao: "Alto",
       pontoPositivos: ["Duração curta (2 anos)", "Foco prático", "Reconhecido pelo mercado"],
       pontosAtencao: ["Tecnólogo tem menos prestígio em alguns contextos", "Menos aprofundamento teórico"],
-      depoimento: {
-        nome: "Ana Moura",
-        subtitulo: "@ana.natech · Curadora BORA NA TECH?",
-        texto:
-          "Se a ideia é colocar a mão no código rápido, ADS costuma ser um atalho honesto: pouco enrolação na grade e bastante espaço para montar portfólio em paralelo.",
-        fotoUrl: "https://unavatar.io/linkedin/anajulia-moura",
-      },
     },
     {
       nome: "Ciência da Computação",
@@ -5915,12 +5900,6 @@ export const faculdades = {
       programacao: "Alto",
       pontoPositivos: ["Base teórica sólida", "Reconhecimento amplo", "Abre portas para pesquisa"],
       pontosAtencao: ["4 anos de duração", "Matemática pesada", "Pode ser muito teórico"],
-      depoimento: {
-        nome: "Rafael Costa",
-        subtitulo: "Discente de CC · comunidade acadêmica",
-        texto:
-          "Espere menos “tutorial pronto no primeiro semestre” e mais base para você encarar problema difícil com calma. Quem curtir prova teórica e maratona vai achar sentido nos primeiros anos.",
-      },
     },
     {
       nome: "Engenharia de Software",
@@ -5934,12 +5913,6 @@ export const faculdades = {
       programacao: "Alto",
       pontoPositivos: ["Foco em mercado", "Metodologias modernas", "Boa empregabilidade"],
       pontosAtencao: ["Duração longa", "Ainda pouco comum no Brasil"],
-      depoimento: {
-        nome: "Marina Duarte",
-        subtitulo: "Monitora voluntária de qualidade de software",
-        texto:
-          "Eu gosto que o curso obrigue a pensar em teste, requisitos e retrabalho antes de ficar só estourando código. Ótimo pra quem se vê fazendo sistema com time, não apenas script sozinho.",
-      },
     },
     {
       nome: "Sistemas de Informação",
@@ -5953,12 +5926,6 @@ export const faculdades = {
       programacao: "Médio-Alto",
       pontoPositivos: ["Visão de negócio", "Versatilidade", "Boa base para gestão"],
       pontosAtencao: ["Menos técnico que Ciência da Computação", "Pode ser generalista demais"],
-      depoimento: {
-        nome: "Diego Monteiro",
-        subtitulo: "Estágio em análise de processos · empresarial",
-        texto:
-          "Aqui você aprende a traduzir “o negócio pediu isto” em requisitos e ferramentas. Se você gosta da ponte TI–processo, faz mais sentido que um bacharel puro só de código pesado nos primeiros anos.",
-      },
     },
     {
       nome: "Jogos Digitais",
@@ -5972,12 +5939,6 @@ export const faculdades = {
       programacao: "Alto",
       pontoPositivos: ["Foco prático", "Duração curta", "Permite portfólio desde os primeiros semestres"],
       pontosAtencao: ["Mercado BR menor que TI tradicional", "Salário inicial abaixo da média de dev"],
-      depoimento: {
-        nome: "Lucas Pereira",
-        subtitulo: "Egresso · indie em fase de lançamento",
-        texto:
-          "O tecnólogo serviu como acelerador: já no segundo semestre eu estava em um projeto de game jam que virou portfólio. Se você quer botar jogo no ar, é o caminho mais direto.",
-      },
     },
     {
       nome: "Design de Games",
@@ -5991,12 +5952,6 @@ export const faculdades = {
       programacao: "Médio-Alto",
       pontoPositivos: ["Formação multidisciplinar", "Boa pra quem ainda não decidiu papel específico", "Visão completa de pipeline"],
       pontosAtencao: ["4 anos é longo pra área dinâmica", "Pode ser generalista demais sem especialização paralela"],
-      depoimento: {
-        nome: "Bianca Almeida",
-        subtitulo: "Discente · grupo de pesquisa em narrativa interativa",
-        texto:
-          "A grade me obriga a sair da bolha do código e pensar em narrativa, sound design, playtest. Pra quem ainda não sabe se vai ser dev, designer ou produtor, o bacharel cobre mais terreno.",
-      },
     },
   ],
 };
