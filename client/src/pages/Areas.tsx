@@ -105,7 +105,7 @@ export default function Areas() {
         pattern="dots"
         eyebrow="mapa de possibilidades"
         title="Áreas da TI"
-        subtitle="Explore as principais áreas de tecnologia e descubra qual combina com o seu perfil."
+        subtitle="Cada área é um caminho dentro da TI, com funções e habilidades próprias. Descubra qual combina com você."
       />
 
       {/* Filters */}
