@@ -10,7 +10,6 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { faculdades } from "@/lib/data";
-import { CursoVoiceNote } from "@/components/faculdades/CursoVoiceNote";
 import { brazilianStates, collegeSuggestions } from "@/lib/platformData";
 
 const tipos = ["Todos", "Tecnólogo", "Bacharelado"];
@@ -229,11 +228,6 @@ export default function Faculdades() {
                 <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-violet-700">
                   Ver carreira, salários e conteúdos <ArrowRight className="h-4 w-4" />
                 </span>
-
-                <div className="mt-4">
-                  <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Uma voz sobre o curso</p>
-                  <CursoVoiceNote depoimento={curso.depoimento} />
-                </div>
               </div>
             ))}
           </div>
