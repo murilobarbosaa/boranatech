@@ -186,8 +186,8 @@ export default function Areas() {
                   </h3>
                   <p className="text-sm text-slate-600 mb-4 line-clamp-2">{area.descricaoCurta}</p>
                   <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
-                    <p className="text-xs font-black uppercase text-slate-500">Perfil que combina</p>
-                    <p className="mt-1 text-xs text-slate-700 line-clamp-3">{area.perfilIndicado}</p>
+                    <p className="text-xs font-black uppercase text-violet-800">Perfil que combina</p>
+                    <p className="mt-1 text-xs text-slate-800 line-clamp-3">{area.perfilIndicado}</p>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
                     {area.habilidades.slice(0, 3).map((h) => (
@@ -195,7 +195,7 @@ export default function Areas() {
                     ))}
                   </div>
                   <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
-                    <span className="text-xs text-slate-400">{area.cargos[0]}</span>
+                    <span className="text-xs text-slate-600">{area.cargos[0]}</span>
                     <span className="flex items-center gap-1 text-violet-700 text-sm font-medium group-hover:gap-2 transition-all">
                       Explorar <ArrowRight className="w-4 h-4" />
                     </span>
