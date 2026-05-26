@@ -15,7 +15,8 @@ export default function Estudos() {
   const { isPro } = useSubscription();
   const [tech, setTech] = useState("React");
   const [hours, setHours] = useState(2);
-  const estimate = Math.max(3, Math.round(24 / hours));
+  const difficulty = technologies.find((item) => item.name === tech)?.difficultyScore ?? 3;
+  const estimate = Math.max(3, Math.round((difficulty * 8) / hours));
 
   return (
     <Layout>
@@ -56,7 +57,7 @@ export default function Estudos() {
               </label>
             </div>
             <p className={cn("mt-5 rounded-2xl p-5 font-display text-xl font-black", ac.panelSoft, ac.tbodyAccent)}>
-              Você estará pronto para usar {tech} no mercado em aproximadamente {estimate} semanas.
+              Com cerca de {hours}h por dia, uma base inicial em {tech} leva em torno de {estimate} semanas. É uma estimativa pra te dar um norte, não uma régua.
             </p>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
