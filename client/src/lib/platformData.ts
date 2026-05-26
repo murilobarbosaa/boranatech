@@ -1,3 +1,6 @@
+import type { LucideIcon } from "lucide-react";
+import { Boxes, Compass, RefreshCw, Sprout } from "lucide-react";
+
 export const creatorHandle = "@ana.natech";
 
 /** Foto de perfil da curadora Ana Moura (@ana.natech · via Unavatar/LinkedIn, mesmo provider estável usado pelas demais criadoras). */
@@ -706,7 +709,7 @@ export const quizByLevel: Record<QuizLevel, QuizQuestion[]> = {
       category: "Aprendizado",
       question: "Quando você quer aprender algo novo, o que funciona melhor pra você?",
       options: [
-        { label: "Resolver probleminhas de lógica passo a passo até a peça encaixar", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
+        { label: "Resolver desafios de lógica passo a passo até tudo se encaixar", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
         { label: "Mexer em planilhas, gráficos e listas pra enxergar um padrão", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
         { label: "Perguntar pras pessoas e observar onde elas têm dificuldade", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
         { label: "Ver exemplos de como a máquina aprende a partir de muitos casos", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
@@ -729,8 +732,8 @@ export const quizByLevel: Record<QuizLevel, QuizQuestion[]> = {
       question: "Qual desses primeiros projetos te empolga mais?",
       options: [
         { label: "Uma lista caprichada dos erros de um app, com sugestões de conserto", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
-        { label: "Um appzinho de celular pra organizar a sua rotina", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
-        { label: "Um robozinho que faz sozinho uma tarefa repetitiva no computador", area: "DevOps", scores: { "DevOps": 5, "Back-end": 1 } },
+        { label: "Um app de celular simples pra organizar a sua rotina", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Um programa que faz sozinho uma tarefa repetitiva no computador", area: "DevOps", scores: { "DevOps": 5, "Back-end": 1 } },
         { label: "Uma página bonita na internet pra mostrar pra família", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1 } },
       ],
     },
@@ -1201,7 +1204,6 @@ export const roadmapPlans = [
 export interface CollegeSuggestion {
   city: string;
   name: string;
-  mec: string;
   advantages: string[];
   /** Sigla do estado (UF). `null` quando a sugestão vale para qualquer UF (ex.: EAD nacional). */
   uf: string | null;
@@ -1243,30 +1245,330 @@ export const collegeSuggestions: CollegeSuggestion[] = [
   {
     city: "São Paulo",
     name: "FATEC",
-    mec: "4/5",
     advantages: ["Opções públicas", "Foco prático", "Boa presença regional"],
     uf: "SP",
   },
   {
     city: "Rio de Janeiro",
     name: "CEFET/RJ",
-    mec: "4/5",
     advantages: ["Tradição técnica", "Pesquisa aplicada", "Boa base de engenharia"],
     uf: "RJ",
   },
   {
     city: "Belo Horizonte",
     name: "UFMG",
-    mec: "5/5",
     advantages: ["Universidade pública", "Pesquisa forte", "Ecossistema tech local"],
     uf: "MG",
   },
   {
     city: "Remoto",
     name: "Universidade Aberta do Brasil",
-    mec: "Variável",
     advantages: ["Opções EAD", "Polos regionais", "Boa opção para começar pesquisando"],
     uf: null,
     nacional: true,
+  },
+];
+
+/* ===========================================================================
+ * QUIZ — Objetivos, cores por área e quiz de tecnologia
+ * ======================================================================== */
+
+/**
+ * Objetivo do usuário. Vira a tela de entrada do quiz e roteia o fluxo:
+ * - kind "area": usa o motor de áreas (quizByLevel) e cai no resultado de área.
+ * - kind "tech": usa o techQuiz dedicado e cai no resultado de tecnologia.
+ */
+export type QuizObjective =
+  | "descobrir"
+  | "mudar"
+  | "comecar-do-zero"
+  | "escolher-tecnologia";
+
+export interface ObjectiveTrack {
+  id: QuizObjective;
+  kind: "area" | "tech";
+  icon: LucideIcon;
+  emoji: string;
+  label: string;
+  description: string;
+  accent: string;
+  introHeadline: string;
+  introSub: string;
+  /** Nível sugerido (ex: começar-do-zero parte de iniciante). */
+  suggestedLevel?: QuizLevel;
+}
+
+export const objectiveTracks: ObjectiveTrack[] = [
+  {
+    id: "descobrir",
+    kind: "area",
+    icon: Compass,
+    emoji: "🧭",
+    label: "Descobrir minha área",
+    description: "Quero achar a área da tecnologia que mais combina comigo.",
+    accent: "#7c3aed",
+    introHeadline: "Vamos achar a área de tech com a sua cara",
+    introSub:
+      "Você responde perguntas rápidas sobre o que curte e a gente cruza com as áreas da tecnologia pra mostrar onde você se encaixa melhor.",
+  },
+  {
+    id: "comecar-do-zero",
+    kind: "area",
+    icon: Sprout,
+    emoji: "🌱",
+    label: "Começar do zero",
+    description: "Nunca mexi com tecnologia e quero saber por onde começar.",
+    accent: "#15803d",
+    introHeadline: "Todo mundo começa em algum lugar — bora achar o seu",
+    introSub:
+      "Sem termo técnico e sem pressão. A gente parte do zero e te mostra a área e os primeiros passos que mais fazem sentido pra você.",
+    suggestedLevel: "iniciante",
+  },
+  {
+    id: "mudar",
+    kind: "area",
+    icon: RefreshCw,
+    emoji: "🔄",
+    label: "Mudar de área",
+    description: "Já trabalho (em tech ou fora) e quero migrar pra outra área.",
+    accent: "#db2777",
+    introHeadline: "Bora encontrar o seu próximo passo",
+    introSub:
+      "A gente leva em conta o que você já sabe e aponta as áreas pra onde a sua transição rende mais.",
+  },
+  {
+    id: "escolher-tecnologia",
+    kind: "tech",
+    icon: Boxes,
+    emoji: "🧰",
+    label: "Escolher uma tecnologia",
+    description: "Já sei mais ou menos a direção e quero focar numa linguagem ou stack.",
+    accent: "#0e7490",
+    introHeadline: "Vamos escolher a sua próxima tecnologia",
+    introSub:
+      "Responde algumas perguntas sobre o que você quer construir e a gente recomenda uma tecnologia pra focar agora.",
+  },
+];
+
+export function getObjectiveTrack(id: QuizObjective | null): ObjectiveTrack {
+  return objectiveTracks.find((t) => t.id === id) ?? objectiveTracks[0];
+}
+
+/**
+ * Cor de acento por área (espelha as classes tag-* do index.css). Usada para
+ * colorir cards, barras e o hero do resultado conforme a área.
+ */
+export const AREA_ACCENT: Record<string, string> = {
+  "Front-end": "#7c3aed",
+  "Back-end": "#15803d",
+  "Full-stack": "#5b21b6",
+  "Ciência de Dados": "#d97706",
+  "UX/UI Design": "#db2777",
+  "Inteligência Artificial": "#6d28d9",
+  "Produto Digital": "#c026d3",
+  Cibersegurança: "#166534",
+  "Cloud Computing": "#0369a1",
+  "Gestão de Projetos Tech": "#4338ca",
+  "QA / Testes de Software": "#ca8a04",
+  "Desenvolvimento Mobile": "#ea580c",
+  DevOps: "#0e7490",
+};
+
+export function getAreaAccent(nome: string): string {
+  return AREA_ACCENT[nome] ?? "#7c3aed";
+}
+
+/* ----------------------- Quiz de tecnologia (kind: tech) ------------------ */
+
+export interface TechRecommendation {
+  /** Chave usada também como `area` e nos `scores` das opções do techQuiz. */
+  key: string;
+  label: string;
+  emoji: string;
+  accent: string;
+  tagline: string;
+  why: string;
+  startHere: string[];
+  /** slug da área relacionada em areasTI, para o CTA do resultado. */
+  areaSlug: string;
+}
+
+export const techRecommendations: TechRecommendation[] = [
+  {
+    key: "JavaScript e React",
+    label: "JavaScript + React",
+    emoji: "🎨",
+    accent: "#7c3aed",
+    tagline: "A porta de entrada mais rápida pro desenvolvimento web.",
+    why: "Você curte ver o resultado na tela, na hora, e quer entrar logo no mercado web — JavaScript roda em todo navegador e o React é o framework mais pedido em vagas de front-end.",
+    startHere: [
+      "HTML e CSS pra estruturar e estilizar páginas",
+      "JavaScript do zero (lógica, DOM, eventos)",
+      "React pra montar interfaces com componentes",
+    ],
+    areaSlug: "frontend",
+  },
+  {
+    key: "Python",
+    label: "Python",
+    emoji: "🐍",
+    accent: "#15803d",
+    tagline: "A linguagem mais versátil pra quem quer manter portas abertas.",
+    why: "Você quer uma primeira linguagem fácil de ler e que sirva pra muita coisa — Python é ótimo pra back-end, automação, dados e IA, então te dá liberdade pra migrar de foco depois.",
+    startHere: [
+      "Lógica de programação com Python",
+      "Manipular dados e arquivos",
+      "Escolher um caminho: web (Django/FastAPI), dados ou IA",
+    ],
+    areaSlug: "backend",
+  },
+  {
+    key: "SQL e Dados",
+    label: "SQL + Dados",
+    emoji: "📊",
+    accent: "#d97706",
+    tagline: "A base de quem trabalha perto de números e decisões.",
+    why: "Você gosta de achar padrões e gerar insights — SQL é a habilidade número um pra trabalhar com dados, e com ela você já constrói relatórios e dashboards que apoiam decisões.",
+    startHere: [
+      "SQL (SELECT, JOIN, agregações)",
+      "Planilhas e fundamentos de análise",
+      "Uma ferramenta de BI (Power BI ou Looker Studio)",
+    ],
+    areaSlug: "dados",
+  },
+  {
+    key: "Node.js",
+    label: "Node.js",
+    emoji: "⚙️",
+    accent: "#166534",
+    tagline: "Back-end em JavaScript, do mesmo idioma do front.",
+    why: "Você curte construir a lógica e as regras por trás dos sistemas e quer aproveitar o JavaScript dos dois lados — com Node você cria APIs e serviços usando a mesma linguagem do front-end.",
+    startHere: [
+      "JavaScript sólido (assíncrono, módulos)",
+      "Node.js + Express pra criar APIs",
+      "Banco de dados e autenticação",
+    ],
+    areaSlug: "backend",
+  },
+  {
+    key: "Flutter / React Native",
+    label: "Flutter / React Native",
+    emoji: "📱",
+    accent: "#ea580c",
+    tagline: "Pra quem quer focar em apps de celular desde já.",
+    why: "Seu foco é o celular — com Flutter ou React Native você cria apps que rodam em Android e iOS a partir de uma base de código só, indo direto pro que te empolga.",
+    startHere: [
+      "Lógica de programação (Dart pra Flutter ou JS pra RN)",
+      "Layout e navegação de telas",
+      "Publicar um app pequeno nas lojas",
+    ],
+    areaSlug: "mobile",
+  },
+  {
+    key: "Linux, Docker e Cloud",
+    label: "Linux, Docker e Cloud",
+    emoji: "☁️",
+    accent: "#0e7490",
+    tagline: "Pra quem curte automação, infraestrutura e escala.",
+    why: "Você gosta de manter as coisas no ar, automatizar e mexer com servidores — dominar Linux, Docker e uma nuvem abre as portas de Cloud e DevOps.",
+    startHere: [
+      "Linux e linha de comando",
+      "Docker pra empacotar aplicações",
+      "Uma nuvem (AWS, Azure ou GCP) e CI/CD",
+    ],
+    areaSlug: "devops",
+  },
+];
+
+export function getTechRecommendation(key: string): TechRecommendation {
+  return (
+    techRecommendations.find((t) => t.key === key) ?? techRecommendations[0]
+  );
+}
+
+/**
+ * Quiz de tecnologia (objetivo "escolher-tecnologia"). Reaproveita o shape de
+ * QuizOption: `area` guarda a chave da tecnologia e `scores` aponta para as
+ * chaves de techRecommendations. Sem nível — fluxo direto e curto.
+ */
+export const TECH_QUESTION_COUNT = 7;
+
+export const techQuiz: QuizQuestion[] = [
+  {
+    id: "tech-1",
+    category: "Construção",
+    question: "O que você mais quer aprender a construir?",
+    options: [
+      { label: "Sites e telas que as pessoas usam no navegador", area: "JavaScript e React", scores: { "JavaScript e React": 5, "Flutter / React Native": 1 } },
+      { label: "Aplicativos de celular", area: "Flutter / React Native", scores: { "Flutter / React Native": 5, "JavaScript e React": 1 } },
+      { label: "Sistemas, APIs e regras que rodam por trás", area: "Node.js", scores: { "Node.js": 5, Python: 2 } },
+      { label: "Análises, relatórios e gráficos a partir de dados", area: "SQL e Dados", scores: { "SQL e Dados": 5, Python: 2 } },
+    ],
+  },
+  {
+    id: "tech-2",
+    category: "Recompensa",
+    question: "Como você prefere ver o resultado do que faz?",
+    options: [
+      { label: "Na tela, visual, na hora", area: "JavaScript e React", scores: { "JavaScript e React": 5, "Flutter / React Native": 2 } },
+      { label: "Num número ou gráfico que revela algo novo", area: "SQL e Dados", scores: { "SQL e Dados": 5, Python: 2 } },
+      { label: "Num sistema funcionando e respondendo pedidos", area: "Node.js", scores: { "Node.js": 5, Python: 1 } },
+      { label: "Numa infra no ar, estável e automatizada", area: "Linux, Docker e Cloud", scores: { "Linux, Docker e Cloud": 5 } },
+    ],
+  },
+  {
+    id: "tech-3",
+    category: "Estilo",
+    question: "Qual frase mais combina com você agora?",
+    options: [
+      { label: "Quero uma linguagem fácil de ler pra aprender o básico", area: "Python", scores: { Python: 5, "SQL e Dados": 1 } },
+      { label: "Quero algo que sirva pra web inteira, do front ao back", area: "JavaScript e React", scores: { "JavaScript e React": 4, "Node.js": 3 } },
+      { label: "Curto mexer com terminal, automação e servidores", area: "Linux, Docker e Cloud", scores: { "Linux, Docker e Cloud": 5 } },
+      { label: "Quero focar em celular desde já", area: "Flutter / React Native", scores: { "Flutter / React Native": 5 } },
+    ],
+  },
+  {
+    id: "tech-4",
+    category: "Afinidade",
+    question: "Quanto de matemática e estatística te anima?",
+    options: [
+      { label: "Bastante — curto números e padrões", area: "SQL e Dados", scores: { "SQL e Dados": 4, Python: 3 } },
+      { label: "Um pouco, se for aplicado a algo prático", area: "Python", scores: { Python: 4, "Node.js": 1 } },
+      { label: "Prefiro lógica e construção a estatística", area: "Node.js", scores: { "Node.js": 4, "JavaScript e React": 2 } },
+      { label: "Prefiro a parte visual e de experiência", area: "JavaScript e React", scores: { "JavaScript e React": 5, "Flutter / React Native": 2 } },
+    ],
+  },
+  {
+    id: "tech-5",
+    category: "Mercado",
+    question: "Onde você se imagina trabalhando primeiro?",
+    options: [
+      { label: "Produtos web em startups e agências", area: "JavaScript e React", scores: { "JavaScript e React": 4, "Node.js": 2 } },
+      { label: "Times de dados e BI dentro de empresas", area: "SQL e Dados", scores: { "SQL e Dados": 5 } },
+      { label: "Criando apps de celular", area: "Flutter / React Native", scores: { "Flutter / React Native": 5 } },
+      { label: "Infra, nuvem e operações (DevOps)", area: "Linux, Docker e Cloud", scores: { "Linux, Docker e Cloud": 5 } },
+    ],
+  },
+  {
+    id: "tech-6",
+    category: "Projeto",
+    question: "Qual primeiro projeto te empolga mais?",
+    options: [
+      { label: "Uma página ou app web bem interativo", area: "JavaScript e React", scores: { "JavaScript e React": 5 } },
+      { label: "Um dashboard que cruza e mostra dados", area: "SQL e Dados", scores: { "SQL e Dados": 5, Python: 1 } },
+      { label: "Uma API que outros apps consomem", area: "Node.js", scores: { "Node.js": 5, Python: 1 } },
+      { label: "Um app de celular publicado na loja", area: "Flutter / React Native", scores: { "Flutter / React Native": 5 } },
+    ],
+  },
+  {
+    id: "tech-7",
+    category: "Objetivo",
+    question: "Qual é o seu maior objetivo agora?",
+    options: [
+      { label: "Entrar rápido no mercado de desenvolvimento web", area: "JavaScript e React", scores: { "JavaScript e React": 4, "Node.js": 2 } },
+      { label: "Versatilidade pra migrar pra dados ou IA depois", area: "Python", scores: { Python: 5 } },
+      { label: "Trabalhar perto do negócio e das decisões", area: "SQL e Dados", scores: { "SQL e Dados": 4 } },
+      { label: "Mexer com escala, nuvem e automação", area: "Linux, Docker e Cloud", scores: { "Linux, Docker e Cloud": 5 } },
+    ],
   },
 ];
