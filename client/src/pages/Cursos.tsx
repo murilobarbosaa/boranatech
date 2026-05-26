@@ -6,12 +6,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
-import { Search, ExternalLink, Clock, Globe } from "lucide-react";
+import { Search, ExternalLink, Clock, Globe, PlayCircle } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
+import { youtubeEmbedUrl } from "@/lib/utils";
 
 const nivelOptions = ["Todos", "Iniciante", "Intermediário", "Avançado"];
 const idiomaOptions = ["Todos", "Português", "Inglês"];
@@ -219,14 +221,25 @@ export default function Cursos() {
                         <Globe className="w-3 h-3" /> {curso.idioma}
                       </span>
                     </div>
-                    <a
-                      href={curso.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
-                    >
-                      Acessar <ExternalLink className="w-3 h-3" />
-                    </a>
+                    {youtubeEmbedUrl(curso.link) ? (
+                      <VideoEmbedDialog source={curso.link} title={curso.titulo} href={curso.link}>
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                        >
+                          Assistir aqui <PlayCircle className="w-3 h-3" />
+                        </button>
+                      </VideoEmbedDialog>
+                    ) : (
+                      <a
+                        href={curso.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                      >
+                        Acessar <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
