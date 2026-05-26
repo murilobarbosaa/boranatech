@@ -81,14 +81,16 @@ type MapBackgroundProps = {
 
 // Gera um path SVG de curva em S entre dois pontos. Os pontos de
 // controle são deslocados perpendicularmente à reta start→end com sinais
-// opostos — é o que produz a inflexão característica do S. `curvature`
-// controla a amplitude do desvio (unidades do viewBox 0–100). `offset`
+// opostos — é o que produz a inflexão característica do S. Trabalha em
+// coordenadas de pixel reais (viewBox = dimensões da seção), por isso
+// `curvatureRatio` é fração do comprimento do segmento — mantém a curva
+// proporcional e SEM distorção em qualquer proporção de tela. `offsetPx`
 // recua start e end ao longo da reta (gap respiratório dos dots).
 function generateSCurvePath(
   start: NodePoint,
   end: NodePoint,
-  curvature = 12,
-  offset = 1,
+  curvatureRatio = 0.12,
+  offsetPx = 16,
 ): string {
   // Vetor unitário da direção start → end.
   const dx = end.x - start.x;
@@ -97,15 +99,15 @@ function generateSCurvePath(
   const dirX = dx / length;
   const dirY = dy / length;
 
-  // Desloca cada extremidade `offset` unidades ao longo da reta para
+  // Desloca cada extremidade `offsetPx` pixels ao longo da reta para
   // criar um gap visual entre o dot pulsante e a linha tracejada.
   const adjustedStart: NodePoint = {
-    x: start.x + dirX * offset,
-    y: start.y + dirY * offset,
+    x: start.x + dirX * offsetPx,
+    y: start.y + dirY * offsetPx,
   };
   const adjustedEnd: NodePoint = {
-    x: end.x - dirX * offset,
-    y: end.y - dirY * offset,
+    x: end.x - dirX * offsetPx,
+    y: end.y - dirY * offsetPx,
   };
 
   // Recalcula direção e perpendicular já com os pontos ajustados.
@@ -114,6 +116,9 @@ function generateSCurvePath(
   const adjLength = Math.sqrt(adjDx * adjDx + adjDy * adjDy) || 1;
   const perpX = -adjDy / adjLength;
   const perpY = adjDx / adjLength;
+
+  // Amplitude do desvio = fração do comprimento real do segmento.
+  const curvature = adjLength * curvatureRatio;
 
   // Pontos de controle para a curva em S (sinais opostos no desvio).
   const cp1x = adjustedStart.x + adjDx * 0.33 + perpX * curvature;
@@ -163,15 +168,16 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
     S: null,
     O: null,
   });
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
 
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
 
-    // Mede a posição central de cada dot pulsante (via data-dot) e
-    // converte para o sistema de coordenadas do viewBox 0–100, usando
-    // o bounding rect do <section> como referência. Re-executa em
-    // qualquer resize via ResizeObserver.
+    // Mede a posição central de cada dot pulsante (via data-dot) em
+    // pixels relativos ao <section>, e guarda também as dimensões reais
+    // da seção para o viewBox do SVG mapear 1:1 (sem distorção de
+    // aspecto). Re-executa em qualquer resize via ResizeObserver.
     const calc = () => {
       const sectionRect = section.getBoundingClientRect();
       if (sectionRect.width === 0 || sectionRect.height === 0) return;
@@ -186,11 +192,12 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
         const cx = dotRect.left + dotRect.width / 2;
         const cy = dotRect.top + dotRect.height / 2;
         next[key] = {
-          x: ((cx - sectionRect.left) / sectionRect.width) * 100,
-          y: ((cy - sectionRect.top) / sectionRect.height) * 100,
+          x: cx - sectionRect.left,
+          y: cy - sectionRect.top,
         };
       });
       setNodePositions(next);
+      setDims({ w: sectionRect.width, h: sectionRect.height });
     };
 
     calc();
@@ -227,10 +234,10 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
           Coordenadas calculadas dinamicamente a partir da posição real
           dos dots cardinais (via ResizeObserver + getBoundingClientRect).
           Renderiza só quando todas as 4 posições estão medidas. */}
-      {nodePositions.N && nodePositions.L && nodePositions.S && nodePositions.O && (
+      {dims && nodePositions.N && nodePositions.L && nodePositions.S && nodePositions.O && (
         <svg
           className="absolute inset-0 hidden h-full w-full xl:block pointer-events-none"
-          viewBox="0 0 100 100"
+          viewBox={`0 0 ${dims.w} ${dims.h}`}
           preserveAspectRatio="none"
         >
           <defs>
@@ -276,7 +283,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
 
           {/* Linha 1: dot N → dot L */}
           <path
-            d={generateSCurvePath(nodePositions.N, nodePositions.L, 12)}
+            d={generateSCurvePath(nodePositions.N, nodePositions.L)}
             fill="none"
             stroke="url(#journey-gradient-1)"
             strokeWidth="0.7"
@@ -296,7 +303,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
 
           {/* Linha 2: dot L → dot S */}
           <path
-            d={generateSCurvePath(nodePositions.L, nodePositions.S, 12)}
+            d={generateSCurvePath(nodePositions.L, nodePositions.S)}
             fill="none"
             stroke="url(#journey-gradient-2)"
             strokeWidth="0.7"
@@ -316,7 +323,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
 
           {/* Linha 3: dot S → dot O */}
           <path
-            d={generateSCurvePath(nodePositions.S, nodePositions.O, 12)}
+            d={generateSCurvePath(nodePositions.S, nodePositions.O)}
             fill="none"
             stroke="url(#journey-gradient-3)"
             strokeWidth="0.7"
