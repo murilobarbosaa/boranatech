@@ -154,7 +154,13 @@ export const linkedinGuide = [
   "Criadores de conteúdo tech recomendados por área",
 ];
 
-export const studyTechniques = ["Tutorial Hell e como sair", "Pomodoro aplicado ao código", "Prática deliberada vs passiva", "Spaced Repetition para conceitos técnicos", "Como fazer projetos reais desde cedo"];
+export const studyTechniques = [
+  { title: "Tutorial Hell e como sair", description: "Pare de só assistir aula atrás de aula. Veja um trecho curto, pause e recrie sozinho antes de seguir: é a prática que fixa, não o play." },
+  { title: "Pomodoro aplicado ao código", description: "Blocos de 25 minutos focados em uma única tarefa, com pausa de 5. Vence a inércia e mantém o foco em bugs e features longas." },
+  { title: "Prática deliberada vs passiva", description: "Reler e assistir é passivo. Deliberado é resolver problemas no seu limite, com feedback rápido. Priorize exercícios que te desafiam." },
+  { title: "Spaced Repetition para conceitos técnicos", description: "Revise em intervalos crescentes (1, 3 e 7 dias) pra fixar na memória de longo prazo. Ótimo pra sintaxe, comandos e fundamentos." },
+  { title: "Como fazer projetos reais desde cedo", description: "Aprenda construindo: comece um projeto pequeno e real já nas primeiras semanas. Projeto publicado vale mais no portfólio que curso assistido." },
+];
 
 export const networkingGuide = ["Como abordar devs sênior sem ser invasivo", "O que postar no LinkedIn para aparecer", "Como participar de comunidades online", "Como se comportar em eventos tech", "Como manter contato após uma conversa"];
 

@@ -62,9 +62,9 @@ export default function Estudos() {
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {studyTechniques.map((item) => (
-              <article key={item} className="card-brutal rounded-2xl bg-white p-5">
-                <h3 className="font-display text-xl font-black">{item}</h3>
-                <p className="mt-2 text-sm text-slate-600">Use essa técnica para transformar estudo passivo em prática constante com projetos reais.</p>
+              <article key={item.title} className="card-brutal rounded-2xl bg-white p-5">
+                <h3 className="font-display text-xl font-black">{item.title}</h3>
+                <p className="mt-2 text-sm text-slate-600">{item.description}</p>
               </article>
             ))}
           </div>
