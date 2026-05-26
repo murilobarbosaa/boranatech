@@ -75,3 +75,31 @@ export async function getAsaasSubscriptionPayments(subscriptionId: string) {
 export async function cancelAsaasSubscription(subscriptionId: string) {
   return asaasRequest("DELETE", `/subscriptions/${encodeURIComponent(subscriptionId)}`);
 }
+
+type AsaasSubscriptionUpdate = {
+  endDate?: string; // YYYY-MM-DD: ultimo vencimento a gerar; Asaas para de gerar cobrancas apos
+  status?: "ACTIVE" | "INACTIVE";
+  nextDueDate?: string;
+  value?: number;
+  cycle?: "MONTHLY" | "SEMIANNUALLY" | "YEARLY";
+  updatePendingPayments?: boolean;
+};
+
+// PUT /v3/subscriptions/{id}. Envia apenas os campos definidos (omite undefined).
+export async function updateAsaasSubscription(id: string, params: AsaasSubscriptionUpdate) {
+  const body: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) body[key] = value;
+  }
+  return asaasRequest("PUT", `/subscriptions/${encodeURIComponent(id)}`, body);
+}
+
+// DELETE /v3/payments/{id}.
+// Salvaguarda s1: o Asaas pode pre-gerar a cobranca do proximo ciclo como PENDING.
+// Definir endDate (por doc) nao garante remover uma cobranca ja gerada, e
+// updatePendingPayments so edita propriedades (valor/forma), nao apaga. Para
+// neutralizar de fato uma cobranca futura usamos o DELETE da propria cobranca,
+// operacao documentada para "remover uma cobranca que nao deve permanecer no fluxo".
+export async function deleteAsaasPayment(paymentId: string) {
+  return asaasRequest("DELETE", `/payments/${encodeURIComponent(paymentId)}`);
+}
