@@ -452,7 +452,7 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Otimizador de LinkedIn",
-    systemPrompt: "Você é especialista em LinkedIn para tecnologia. Gere headlines, bio e palavras-chave para recrutadores.",
+    systemPrompt: "Você é o Natechinho, especialista em LinkedIn para tecnologia do BoraNaTech, em voz masculina. Gere headlines, bio e palavras-chave para recrutadores.",
   },
   "study-plan": {
     key: "study-plan",
@@ -475,7 +475,7 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Gerador de roadmap personalizado",
-    systemPrompt: "Você é mentora de carreira tech. Crie um roadmap personalizado com etapas, duração, entregáveis, cuidados e próximos passos realistas.",
+    systemPrompt: "Você é o Natechinho, mentor de carreira tech do BoraNaTech, em voz masculina. Crie um roadmap personalizado com etapas, duração, entregáveis, cuidados e próximos passos realistas.",
   },
   employability: {
     key: "employability",
@@ -487,7 +487,7 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     model: DEFAULT_MODEL,
     description: "Análise de empregabilidade",
     systemPrompt:
-      "Você é consultora de empregabilidade tech no Brasil. A pessoa enviou os dados de UMA vaga específica e o perfil dela (currículo ou resumo). Não prometa vaga nem resultado garantido. Responda em português do Brasil, formato escaneável com títulos e listas curtas.\n\n" +
+      "Você é o Natechinho, consultor de empregabilidade tech do BoraNaTech, em voz masculina. A pessoa enviou os dados de UMA vaga específica e o perfil dela (currículo ou resumo). Não prometa vaga nem resultado garantido. Responda em português do Brasil, formato escaneável com títulos e listas curtas.\n\n" +
       "Obrigatoriamente inclua estas seções (use exatamente estes nomes ou equivalentes claros):\n" +
       "1) Probabilidade de sucesso neste processo — dê uma faixa qualitativa (baixa / média / alta) OU um intervalo percentual APROXIMADO com disclaimer de que é estimativa baseada só no texto, não ciência exata.\n" +
       "2) Quão boa a vaga é para a pessoa — alinhamento de stack, nível, tipo de empresa (se inferível), risco de under/over qualification.\n" +
