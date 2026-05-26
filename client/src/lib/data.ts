@@ -4285,7 +4285,7 @@ export const eventos = [
   {
     id: "ux-conf-br",
     nome: "UX Conf BR",
-    data: "2025 (data a confirmar)",
+    data: "Edição a confirmar",
     horario: "Vários horários",
     cidade: "São Paulo",
     estado: "SP",
