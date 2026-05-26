@@ -174,7 +174,7 @@ export default function Plataformas() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-3">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium border-2 ${
                       plat.tipo === "Gratuita" ? "bg-amber-100 text-amber-700 border-amber-300" :
                       plat.tipo === "Híbrida" ? "bg-amber-100 text-amber-700 border-amber-300" :

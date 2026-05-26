@@ -230,7 +230,7 @@ export default function Roadmaps() {
                       {r.duracaoDias}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-3">
                     <FavoriteButton compact item={{ id: r.id, type: "roadmap", title: r.nome, subtitle: labelForAreaSlug(r.areaSlug) }} />
                     {selected === r.id ? (
                       <ChevronUp className="w-4 h-4 shrink-0 mt-1" />

@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+import { cn } from "@/lib/utils";
+
 interface TechnologyLogoProps {
   name: string;
   icon: string;
@@ -19,7 +21,10 @@ export default function TechnologyLogo({
 
   return (
     <div
-      className={`flex items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a] ${className}`}
+      className={cn(
+        "flex items-center justify-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]",
+        className,
+      )}
     >
       {logoUrl && !hasError ? (
         <img

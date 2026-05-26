@@ -902,7 +902,7 @@ function FreeVsProSection() {
       style={{
         backgroundColor: "#f5f3ff",
         backgroundImage:
-          "radial-gradient(rgba(124, 58, 237, 0.16) 1.5px, transparent 1.5px)",
+          "radial-gradient(rgba(124, 58, 237, 0.08) 1.5px, transparent 1.5px)",
         backgroundSize: "22px 22px",
       }}
     >

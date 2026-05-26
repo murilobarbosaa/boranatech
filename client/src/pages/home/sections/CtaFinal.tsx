@@ -19,7 +19,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const HEADLINE_TEXT = "Sua carreira em TI começa aqui.";
 const EYEBROW_TEXT = "BORA NA TECH?";
-const SUBHEAD_TEXT = "Digite ou clique num comando pra começar.";
+const SUBHEAD_TEXT = "Digite ou clique em um comando pra começar.";
 
 type SidebarVariant = "explorer" | "primary" | "muted";
 
@@ -146,7 +146,7 @@ function MatrixBackground() {
   );
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div className="pointer-events-none select-none absolute inset-0 overflow-hidden" aria-hidden="true">
       {chars.map((c) => {
         const style: CSSProperties = {
           left: `${c.left}%`,
