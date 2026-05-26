@@ -570,6 +570,52 @@ export function classifyTriageLevel(levels: QuizLevel[]): QuizLevel {
   );
 }
 
+/**
+ * Conteudo da tela de nivel (mostrada entre a triagem e as 15 perguntas).
+ * Revela o nivel classificado e explica o que a plataforma faz com ele.
+ * Observacao: hoje o nivel so adapta a LINGUAGEM das perguntas; o motor de
+ * scoring e a area recomendada sao os mesmos para todos os niveis.
+ */
+export interface LevelMeta {
+  label: string;
+  emoji: string;
+  tagline: string;
+  doing: string[];
+}
+
+export const LEVEL_META: Record<QuizLevel, LevelMeta> = {
+  iniciante: {
+    label: "Iniciante",
+    emoji: "🌱",
+    tagline: "Você está começando agora — e esse é o melhor lugar pra começar.",
+    doing: [
+      "As próximas 15 perguntas vêm em linguagem simples, sem jargão técnico.",
+      "Cruzamos suas respostas com as áreas de tech pra achar a que mais combina com você.",
+      "No fim, você sai com uma direção clara e trilhas pra dar os primeiros passos.",
+    ],
+  },
+  intermediario: {
+    label: "Intermediário",
+    emoji: "🚀",
+    tagline: "Você já tem uma base e quer escolher um caminho. Bora afinar isso.",
+    doing: [
+      "As 15 perguntas trazem alguns termos técnicos, sempre com contexto.",
+      "Comparamos seu perfil com as áreas pra mostrar onde você se encaixa melhor.",
+      "No fim, um ranking das áreas e trilhas que mais aproveitam o que você já sabe.",
+    ],
+  },
+  avancado: {
+    label: "Avançado",
+    emoji: "⚡",
+    tagline: "Você já está na área e quer validar ou trocar de foco. Vamos ao ponto.",
+    doing: [
+      "As 15 perguntas usam linguagem técnica direta, sem rodeios.",
+      "Mapeamos seu perfil contra as áreas pra apontar onde seu repertório rende mais.",
+      "No fim, as áreas e trilhas que melhor aproveitam sua experiência.",
+    ],
+  },
+};
+
 export interface IntakeOption {
   label: string;
   value: string;
