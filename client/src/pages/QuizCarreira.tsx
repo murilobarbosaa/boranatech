@@ -13,10 +13,18 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModal";
 import { areasTI } from "@/lib/data";
-import { quizQuestions, QUIZ_ESTIMATED_MINUTES } from "@/lib/platformData";
+import {
+  triageQuestions,
+  quizByLevel,
+  classifyTriageLevel,
+  type QuizLevel,
+  TRIAGE_QUESTION_COUNT,
+  LEVEL_QUESTION_COUNT,
+  QUIZ_ESTIMATED_MINUTES,
+} from "@/lib/platformData";
 import { persistQuizResult } from "@/services/careerQuizService";
 
-type QuizPhase = "intro" | "questions" | "completing";
+type QuizPhase = "intro" | "triage" | "questions" | "completing";
 
 const RESULT_SESSION_KEY = "quiz-carreira.last-result";
 
@@ -36,23 +44,22 @@ interface StoredResult {
   completedAt: string;
 }
 
-interface QuizOption {
-  label: string;
-  area: string;
-  scores: Record<string, number>;
-}
-
-interface QuizQuestion {
-  id: string;
+// Tipo minimo aceito pela tela de pergunta. Tanto QuizQuestion quanto
+// TriageQuestion satisfazem este shape, entao o mesmo componente serve as duas fases.
+interface ScreenQuestion {
   category: string;
   question: string;
-  options: QuizOption[];
+  options: { label: string }[];
 }
 
-const STORAGE_KEY = "boranatech.quiz-carreira.progress.v1";
+const STORAGE_KEY = "boranatech.quiz-carreira.progress.v2";
 const STORAGE_TTL_DAYS = 30;
 
 interface StoredProgress {
+  phase: "triage" | "questions";
+  level: QuizLevel | null;
+  triageAnswers: Record<string, number>;
+  triageIndex: number;
   answers: Record<string, number>;
   currentIndex: number;
   savedAt: number;
@@ -74,19 +81,12 @@ function loadProgress(): StoredProgress | null {
   }
 }
 
-function saveProgress(
-  answers: Record<string, number>,
-  currentIndex: number,
-) {
+function saveProgress(data: Omit<StoredProgress, "savedAt">) {
   try {
-    const data: StoredProgress = {
-      answers,
-      currentIndex,
-      savedAt: Date.now(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const payload: StoredProgress = { ...data, savedAt: Date.now() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
-    // localStorage cheio ou indisponível — silencioso
+    // localStorage cheio ou indisponível, silencioso
   }
 }
 
@@ -98,53 +98,109 @@ function clearProgress() {
   }
 }
 
-const questions = quizQuestions as unknown as ReadonlyArray<QuizQuestion>;
-
 export default function QuizCarreira() {
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<QuizPhase>("intro");
+  const [level, setLevel] = useState<QuizLevel | null>(null);
+  const [triageAnswers, setTriageAnswers] = useState<Record<string, number>>({});
+  const [triageIndex, setTriageIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [resumeAvailable, setResumeAvailable] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
 
+  const levelQuestions = level ? quizByLevel[level] : [];
+
   useEffect(() => {
     const saved = loadProgress();
-    if (saved && Object.keys(saved.answers).length > 0) {
+    if (
+      saved &&
+      (Object.keys(saved.triageAnswers).length > 0 ||
+        Object.keys(saved.answers).length > 0)
+    ) {
       setResumeAvailable(true);
     }
   }, []);
 
   useEffect(() => {
-    if (phase === "questions" && Object.keys(answers).length > 0) {
-      saveProgress(answers, currentIndex);
+    if (phase !== "triage" && phase !== "questions") return;
+    const hasProgress =
+      Object.keys(triageAnswers).length > 0 || Object.keys(answers).length > 0;
+    if (hasProgress) {
+      saveProgress({
+        phase,
+        level,
+        triageAnswers,
+        triageIndex,
+        answers,
+        currentIndex,
+      });
     }
-  }, [answers, currentIndex, phase]);
-
-  const answeredCount = Object.keys(answers).length;
+  }, [phase, level, triageAnswers, triageIndex, answers, currentIndex]);
 
   const handleStart = (resume: boolean) => {
     if (resume) {
       const saved = loadProgress();
       if (saved) {
+        setLevel(saved.level);
+        setTriageAnswers(saved.triageAnswers);
+        setTriageIndex(saved.triageIndex);
         setAnswers(saved.answers);
         setCurrentIndex(saved.currentIndex);
+        setPhase(saved.phase);
+        return;
       }
-    } else {
-      setAnswers({});
-      setCurrentIndex(0);
-      clearProgress();
     }
-    setPhase("questions");
+    // Comecar do zero: sempre inicia pela triagem de nivel.
+    setLevel(null);
+    setTriageAnswers({});
+    setTriageIndex(0);
+    setAnswers({});
+    setCurrentIndex(0);
+    clearProgress();
+    setPhase("triage");
+  };
+
+  const handleTriageAnswer = (optionIndex: number) => {
+    const question = triageQuestions[triageIndex];
+    const newTriage = { ...triageAnswers, [question.id]: optionIndex };
+    setTriageAnswers(newTriage);
+
+    window.setTimeout(() => {
+      if (triageIndex < triageQuestions.length - 1) {
+        setTriageIndex(triageIndex + 1);
+        return;
+      }
+      // Triagem completa: classifica o nivel de forma deterministica.
+      const levels = triageQuestions.map(
+        (q) => q.options[newTriage[q.id]].level,
+      );
+      const computed = classifyTriageLevel(levels);
+      // Se o nivel mudou (ex: voltou e refez a triagem), zera o quiz do nivel.
+      if (computed !== level) {
+        setAnswers({});
+        setCurrentIndex(0);
+      }
+      setLevel(computed);
+      setPhase("questions");
+    }, 400);
+  };
+
+  const handleTriageBack = () => {
+    if (triageIndex > 0) {
+      setTriageIndex(triageIndex - 1);
+    } else {
+      setPhase("intro");
+    }
   };
 
   const handleAnswer = (optionIndex: number) => {
-    const question = questions[currentIndex];
+    const question = levelQuestions[currentIndex];
     const newAnswers = { ...answers, [question.id]: optionIndex };
     setAnswers(newAnswers);
 
     window.setTimeout(() => {
-      if (currentIndex < questions.length - 1) {
+      if (currentIndex < levelQuestions.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
         handleComplete(newAnswers);
@@ -155,6 +211,10 @@ export default function QuizCarreira() {
   const handleBack = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+    } else {
+      // Voltar da 1a pergunta do nivel retorna a triagem, permitindo revisar o nivel.
+      setTriageIndex(triageQuestions.length - 1);
+      setPhase("triage");
     }
   };
 
@@ -163,6 +223,9 @@ export default function QuizCarreira() {
   };
 
   const handleResetConfirmed = () => {
+    setLevel(null);
+    setTriageAnswers({});
+    setTriageIndex(0);
     setAnswers({});
     setCurrentIndex(0);
     clearProgress();
@@ -177,7 +240,7 @@ export default function QuizCarreira() {
     const reasonsByArea: Record<string, string[]> = {};
     const principalCounts: Record<string, number> = {};
 
-    questions.forEach((question) => {
+    levelQuestions.forEach((question) => {
       const optionIndex = finalAnswers[question.id];
       if (optionIndex === undefined) return;
       const option = question.options[optionIndex];
@@ -253,10 +316,10 @@ export default function QuizCarreira() {
     try {
       sessionStorage.setItem(RESULT_SESSION_KEY, JSON.stringify(payload));
     } catch {
-      // sessionStorage indisponível — fallback de /history cobre o caso
+      // sessionStorage indisponível, fallback de /history cobre o caso
     }
 
-    const quizAnswers = questions.flatMap((question) => {
+    const quizAnswers = levelQuestions.flatMap((question) => {
       const optionIndex = finalAnswers[question.id];
       const option =
         optionIndex === undefined ? null : question.options[optionIndex];
@@ -276,7 +339,9 @@ export default function QuizCarreira() {
       result_area: finalResultArea,
       result_area_slug: finalResultMeta?.slug,
       confidence: finalConfidence,
+      level: level ?? undefined,
       result_json: {
+        level,
         scores: Object.fromEntries(finalTop),
         topAreas: topAreasWithPct,
         reasons,
@@ -287,6 +352,7 @@ export default function QuizCarreira() {
       result_area: finalResultArea,
       confidence: finalConfidence,
       questions_answered: finalAnswered,
+      level,
     });
 
     clearProgress();
@@ -297,7 +363,7 @@ export default function QuizCarreira() {
   return (
     <Layout>
       <SEO
-        title="Quiz de Carreira em TI — Descubra qual área combina com você"
+        title="Quiz de Carreira em TI. Descubra qual área combina com você"
         description="Responda perguntas rápidas e descubra qual área da tecnologia combina mais com seu perfil. Quiz gratuito feito para iniciantes."
         keywords={[
           "quiz carreira ti",
@@ -310,11 +376,15 @@ export default function QuizCarreira() {
       />
 
       <div className="min-h-screen bg-[#faf8f4]">
-        {phase === "questions" && (
+        {(phase === "triage" || phase === "questions") && (
           <ProgressBar
-            current={currentIndex + 1}
-            total={questions.length}
-            answeredCount={answeredCount}
+            current={(phase === "triage" ? triageIndex : currentIndex) + 1}
+            total={
+              phase === "triage" ? TRIAGE_QUESTION_COUNT : LEVEL_QUESTION_COUNT
+            }
+            answeredCount={
+              Object.keys(phase === "triage" ? triageAnswers : answers).length
+            }
           />
         )}
 
@@ -329,17 +399,32 @@ export default function QuizCarreira() {
             />
           )}
 
-          {phase === "questions" && (
+          {phase === "triage" && (
+            <QuestionScreen
+              key={`t-${triageIndex}`}
+              question={triageQuestions[triageIndex]}
+              currentIndex={triageIndex}
+              totalQuestions={triageQuestions.length}
+              selectedOption={
+                triageAnswers[triageQuestions[triageIndex].id] ?? null
+              }
+              onAnswer={handleTriageAnswer}
+              onBack={handleTriageBack}
+              onReset={handleReset}
+            />
+          )}
+
+          {phase === "questions" && level && (
             <QuestionScreen
               key={`q-${currentIndex}`}
-              question={questions[currentIndex]}
+              question={levelQuestions[currentIndex]}
               currentIndex={currentIndex}
-              totalQuestions={questions.length}
+              totalQuestions={levelQuestions.length}
               selectedOption={
-                answers[questions[currentIndex].id] ?? null
+                answers[levelQuestions[currentIndex].id] ?? null
               }
               onAnswer={handleAnswer}
-              onBack={currentIndex > 0 ? handleBack : undefined}
+              onBack={handleBack}
               onReset={handleReset}
             />
           )}
@@ -387,9 +472,9 @@ function IntroScreen({
       </h1>
 
       <p className="mt-6 max-w-xl text-lg font-semibold text-slate-700 md:text-xl">
-        {questions.length} perguntas rápidas sobre seus interesses, como você
-        gosta de trabalhar e quais problemas você gostaria de resolver. Sem
-        certo ou errado.
+        Primeiro, {TRIAGE_QUESTION_COUNT} perguntas rápidas pra entender o seu
+        momento. Depois, {LEVEL_QUESTION_COUNT} perguntas do seu nível sobre
+        interesses e seu jeito de trabalhar. Sem certo ou errado.
       </p>
 
       <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -407,7 +492,7 @@ function IntroScreen({
             Perguntas
           </p>
           <p className="font-display text-2xl font-black text-slate-950">
-            {questions.length}
+            {TRIAGE_QUESTION_COUNT} + {LEVEL_QUESTION_COUNT}
           </p>
         </div>
 
@@ -460,7 +545,7 @@ function QuestionScreen({
   onBack,
   onReset,
 }: {
-  question: QuizQuestion;
+  question: ScreenQuestion;
   currentIndex: number;
   totalQuestions: number;
   selectedOption: number | null;

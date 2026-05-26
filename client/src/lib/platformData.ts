@@ -466,173 +466,622 @@ export const comparisonMatrix = [
 
 export const QUIZ_ESTIMATED_MINUTES = 5;
 
-export const quizQuestions = [
+/** Numero de perguntas da triagem de nivel (fase 1). */
+export const TRIAGE_QUESTION_COUNT = 3;
+
+/** Numero de perguntas do quiz de cada nivel (fase 2). */
+export const LEVEL_QUESTION_COUNT = 15;
+
+export type QuizLevel = "iniciante" | "intermediario" | "avancado";
+
+export interface QuizOption {
+  label: string;
+  area: string;
+  scores: Record<string, number>;
+}
+
+export interface QuizQuestion {
+  id: string;
+  category: string;
+  question: string;
+  options: QuizOption[];
+}
+
+export interface TriageOption {
+  label: string;
+  level: QuizLevel;
+}
+
+export interface TriageQuestion {
+  id: string;
+  category: string;
+  question: string;
+  options: TriageOption[];
+}
+
+/**
+ * Triagem de nivel (3 perguntas). Cada opcao aponta para um nivel.
+ * A distribuicao e balanceada: cada nivel aparece em 4 das 12 opcoes.
+ */
+export const triageQuestions: TriageQuestion[] = [
   {
-    id: "energy",
-    category: "Interesse",
-    question: "Que tipo de tarefa te dá mais energia por várias horas?",
+    id: "tri-1",
+    category: "Experiência",
+    question: "Como é hoje a sua experiência prática com tecnologia?",
     options: [
-      { label: "Criar telas, interações e ver resultado visual rápido", area: "Front-end", scores: { "Front-end": 5, "Desenvolvimento Mobile": 2, "UX/UI Design": 1 } },
-      { label: "Resolver lógica, regras de negócio e estrutura de sistemas", area: "Back-end", scores: { "Back-end": 5, "DevOps": 1, "Cloud Computing": 1 } },
-      { label: "Investigar dados, padrões e hipóteses antes de decidir", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 3, "Produto Digital": 1 } },
-      { label: "Entender pessoas, mapear jornadas e melhorar experiências", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3, "Gestão de Projetos Tech": 1 } },
+      { label: "Nunca programei nem usei ferramentas técnicas de verdade", level: "iniciante" },
+      { label: "Já fiz tutoriais ou cursos introdutórios, mas nada além disso", level: "iniciante" },
+      { label: "Já montei alguns projetos pequenos ou uso tecnologia perto do meu trabalho", level: "intermediario" },
+      { label: "Já desenvolvo, mantenho sistemas ou trabalho diretamente na área", level: "avancado" },
     ],
   },
   {
-    id: "problem",
-    category: "Problema",
-    question: "Qual problema você teria mais vontade de resolver no dia a dia?",
+    id: "tri-2",
+    category: "Vocabulário",
+    question: "Quando aparecem termos como API, deploy ou framework, você...",
     options: [
-      { label: "Deixar sistemas rápidos, seguros e bem organizados", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 2, DevOps: 2 } },
-      { label: "Transformar dados confusos em decisões claras", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2, "Produto Digital": 2 } },
-      { label: "Proteger pessoas e empresas contra ataques e vazamentos", area: "Cibersegurança", scores: { Cibersegurança: 5, "Cloud Computing": 2, DevOps: 1 } },
-      { label: "Garantir que um produto funcione antes de chegar ao usuário", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
+      { label: "Não sei o que significam", level: "iniciante" },
+      { label: "Já ouvi, mas preciso de uma explicação simples", level: "intermediario" },
+      { label: "Entendo a maioria e uso alguns no dia a dia", level: "intermediario" },
+      { label: "Discuto detalhes, trade-offs e ferramentas com naturalidade", level: "avancado" },
     ],
   },
   {
-    id: "environment",
-    category: "Ambiente",
-    question: "Em qual ambiente você se imagina trabalhando melhor?",
+    id: "tri-3",
+    category: "Momento",
+    question: "O que melhor descreve o seu momento agora?",
     options: [
-      { label: "Construindo interfaces em contato com design e usuário", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 3, "Produto Digital": 1 } },
-      { label: "Cuidando de servidores, nuvem, deploy e automações", area: "Cloud Computing", scores: { "Cloud Computing": 5, DevOps: 4, Cibersegurança: 1 } },
-      { label: "Acompanhando prioridades, pessoas, prazos e entregas", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 4, "UX/UI Design": 1 } },
-      { label: "Criando aplicativos para celular e recursos em movimento", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2, "Back-end": 1 } },
-    ],
-  },
-  {
-    id: "feedback",
-    category: "Motivação",
-    question: "Que tipo de feedback te motiva mais?",
-    options: [
-      { label: "Ver alguém usando uma tela ou app que você criou", area: "Front-end", scores: { "Front-end": 4, "Desenvolvimento Mobile": 3, "UX/UI Design": 2 } },
-      { label: "Ver uma automação reduzindo trabalho manual do time", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 3, "Back-end": 1 } },
-      { label: "Descobrir uma falha antes que ela vire problema real", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, Cibersegurança: 2, "Back-end": 1 } },
-      { label: "Perceber que uma solução ficou simples e clara para o usuário", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3, "Front-end": 1 } },
-    ],
-  },
-  {
-    id: "routine",
-    category: "Rotina",
-    question: "O que você gostaria de fazer no trabalho todos os dias?",
-    options: [
-      { label: "Construir coisas novas e ver elas aparecerem na tela rapidinho", area: "Front-end", scores: { "Front-end": 4, "Desenvolvimento Mobile": 3, "QA / Testes de Software": 1 } },
-      { label: "Cuidar dos sistemas da empresa pra tudo continuar funcionando", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 4, Cibersegurança: 1 } },
-      { label: "Caçar coisas suspeitas e proteger empresas de ataques", area: "Cibersegurança", scores: { Cibersegurança: 5, "Cloud Computing": 2, DevOps: 1 } },
-      { label: "Falar com várias áreas pra decidir o que vai ser feito primeiro", area: "Produto Digital", scores: { "Produto Digital": 5, "Gestão de Projetos Tech": 4, "UX/UI Design": 1 } },
-    ],
-  },
-  {
-    id: "learning",
-    category: "Aprendizado",
-    question: "Como você prefere aprender quando está começando?",
-    options: [
-      { label: "Com projetos visuais curtos e muita tentativa na tela", area: "Front-end", scores: { "Front-end": 5, "Desenvolvimento Mobile": 2, "UX/UI Design": 1 } },
-      { label: "Com exercícios de lógica, APIs e problemas bem definidos", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
-      { label: "Com planilhas, gráficos, datasets e perguntas investigativas", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
-      { label: "Com entrevistas, pesquisa, protótipos e feedback de pessoas", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
-    ],
-  },
-  {
-    id: "collaboration",
-    category: "Colaboração",
-    question: "Com quem você mais gostaria de colaborar?",
-    options: [
-      { label: "Designers, pesquisadores e pessoas de produto", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3, "Front-end": 1 } },
-      { label: "Desenvolvedores, infraestrutura e segurança", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 3, Cibersegurança: 2 } },
-      { label: "Lideranças, clientes, stakeholders e times diferentes", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 4 } },
-      { label: "Analistas, cientistas, operação e áreas de negócio", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 2, "Inteligência Artificial": 1 } },
-    ],
-  },
-  {
-    id: "impact",
-    category: "Impacto",
-    question: "Que impacto você gostaria que seu trabalho tivesse?",
-    options: [
-      { label: "Ajudar usuários a navegar melhor por um produto", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 4, "Front-end": 1 } },
-      { label: "Fazer sistemas ficarem estáveis, disponíveis e escaláveis", area: "Cloud Computing", scores: { "Cloud Computing": 5, DevOps: 4, "Back-end": 1 } },
-      { label: "Evitar fraudes, vazamentos e acessos indevidos", area: "Cibersegurança", scores: { Cibersegurança: 5, "Cloud Computing": 1 } },
-      { label: "Criar experiências rápidas para celular", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2, "UX/UI Design": 1 } },
-    ],
-  },
-  {
-    id: "first-portfolio",
-    category: "Portfólio",
-    question: "Qual desses primeiros projetos te empolga mais?",
-    options: [
-      { label: "Um site interativo bonito de mostrar pra família", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1 } },
-      { label: "Um programa que guarda informações e responde quando alguém pede", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1, DevOps: 1 } },
-      { label: "Uma análise mostrando o que dados de verdade revelam sobre um tema", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 1 } },
-      { label: "Uma lista organizada de problemas encontrados em um app, com sugestões de conserto", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
-    ],
-  },
-  {
-    id: "future",
-    category: "Futuro",
-    question: "Qual caminho te parece mais empolgante para evoluir nos próximos anos?",
-    options: [
-      { label: "Criar produtos digitais usados por muita gente", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2, "Front-end": 1 } },
-      { label: "Automatizar deploys, observabilidade e infraestrutura", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 4 } },
-      { label: "Especializar-se em IA, modelos e automações inteligentes", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 4, "Back-end": 1 } },
-      { label: "Liderar projetos, prazos, riscos e comunicação", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
-    ],
-  },
-  {
-    id: "unknowns",
-    category: "Raciocínio",
-    question: "Quando aparece algo que você não entende, o que você costuma fazer?",
-    options: [
-      { label: "Testo visualmente até entender o comportamento", area: "Front-end", scores: { "Front-end": 4, "Desenvolvimento Mobile": 3, "QA / Testes de Software": 1 } },
-      { label: "Quebro o problema em regras, entradas e saídas menores", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
-      { label: "Procuro evidências nos dados antes de concluir", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
-      { label: "Pergunto para pessoas e observo onde elas travam", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
-    ],
-  },
-  {
-    id: "math-comfort",
-    category: "Base técnica",
-    question: "Como você se sente em relação a matemática, estatística e abstração?",
-    options: [
-      { label: "Quero evitar matemática pesada e começar com algo mais visual", area: "Front-end", scores: { "Front-end": 4, "UX/UI Design": 4, "QA / Testes de Software": 2 } },
-      { label: "Gosto de lógica, mas prefiro matemática aplicada ao sistema", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 2, DevOps: 1 } },
-      { label: "Gosto de estatística, probabilidade e análise de padrões", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 4 } },
-      { label: "Gosto de abstração profunda, modelos e pesquisa", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3, "Back-end": 1 } },
-    ],
-  },
-  {
-    id: "risk-style",
-    category: "Estilo",
-    question: "Qual frase combina mais com seu jeito de trabalhar?",
-    options: [
-      { label: "Prefiro ciclos curtos, feedback rápido e resultado visível", area: "Front-end", scores: { "Front-end": 4, "UX/UI Design": 3, "Produto Digital": 2 } },
-      { label: "Prefiro construir algo robusto, mesmo que demore mais para aparecer", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 2, DevOps: 1 } },
-      { label: "Prefiro investigar com calma antes de afirmar uma resposta", area: "Ciência de Dados", scores: { "Ciência de Dados": 4, Cibersegurança: 3, "QA / Testes de Software": 2 } },
-      { label: "Prefiro alinhar pessoas, riscos e decisões antes de executar", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 4 } },
-    ],
-  },
-  {
-    id: "communication",
-    category: "Comunicação",
-    question: "Quanto você gostaria de comunicar ideias para pessoas não técnicas?",
-    options: [
-      { label: "Pouco; prefiro ficar mais concentrada(o) no código", area: "Back-end", scores: { "Back-end": 4, DevOps: 3, "Cloud Computing": 2 } },
-      { label: "Às vezes; quero explicar decisões técnicas quando necessário", area: "Front-end", scores: { "Front-end": 3, "QA / Testes de Software": 2, "Back-end": 2 } },
-      { label: "Bastante; gosto de traduzir dados e pesquisas em decisão", area: "Ciência de Dados", scores: { "Ciência de Dados": 4, "Produto Digital": 4, "UX/UI Design": 3 } },
-      { label: "Muito; quero facilitar alinhamentos e decisões do time", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 5, "UX/UI Design": 2 } },
-    ],
-  },
-  {
-    id: "debug-style",
-    category: "Investigação",
-    question: "Se um app que você usa começa a falhar, o que dá mais vontade de investigar?",
-    options: [
-      { label: "Reproduzir o que aconteceu na tela e entender o que o usuário viu", area: "Front-end", scores: { "Front-end": 4, "QA / Testes de Software": 3, "UX/UI Design": 1 } },
-      { label: "Olhar onde a informação fica guardada pra achar a regra que quebrou", area: "Back-end", scores: { "Back-end": 5, DevOps: 2 } },
-      { label: "Ver gráficos do sistema pra descobrir quando e por que começou", area: "DevOps", scores: { DevOps: 5, "Cloud Computing": 4 } },
-      { label: "Descobrir se alguém tentou usar o sistema de um jeito errado", area: "Cibersegurança", scores: { Cibersegurança: 5, DevOps: 2, "Cloud Computing": 1 } },
+      { label: "Quero descobrir se a área de tecnologia combina comigo", level: "iniciante" },
+      { label: "Já decidi entrar e quero escolher um caminho pra seguir", level: "intermediario" },
+      { label: "Já estudo ou atuo e quero me especializar ou trocar de foco", level: "avancado" },
+      { label: "Já tenho base técnica e quero validar qual área aproveita melhor meu perfil", level: "avancado" },
     ],
   },
 ];
+
+/**
+ * Classifica o nivel a partir dos niveis escolhidos na triagem.
+ *
+ * Regra deterministica:
+ * - Cada resposta soma 1 ponto ao nivel da opcao escolhida.
+ * - Com as 3 respostas, os pontos somam exatamente 3.
+ * - Vence o nivel com mais pontos.
+ * - O unico empate possivel e 1/1/1 (um voto por nivel). Nesse caso
+ *   resolvemos para o nivel mais baixo (ordem iniciante, intermediario,
+ *   avancado), para nunca superestimar quem ainda esta comecando.
+ *
+ * O reduce so troca o melhor com ">" (estritamente maior), partindo de
+ * "iniciante" e percorrendo a ordem crescente, entao o empate cai
+ * naturalmente no nivel mais baixo. Sem aleatoriedade.
+ */
+export function classifyTriageLevel(levels: QuizLevel[]): QuizLevel {
+  const points: Record<QuizLevel, number> = {
+    iniciante: 0,
+    intermediario: 0,
+    avancado: 0,
+  };
+  levels.forEach((level) => {
+    points[level] += 1;
+  });
+  const order: QuizLevel[] = ["iniciante", "intermediario", "avancado"];
+  return order.reduce(
+    (best, level) => (points[level] > points[best] ? level : best),
+    "iniciante" as QuizLevel,
+  );
+}
+
+/**
+ * Quiz por nivel. Cada nivel tem 15 perguntas com o mesmo conjunto de areas
+ * e a mesma distribuicao de "principais" (cada area e principal 5 vezes),
+ * mudando apenas o tom da linguagem:
+ * - iniciante: linguagem de leigo, sem jargao, exemplos do cotidiano.
+ * - intermediario: alguns termos tecnicos, sempre com contexto.
+ * - avancado: linguagem nativa de TI, muito termo tecnico.
+ * As respostas alimentam o mesmo motor de scoring por area.
+ */
+export const quizByLevel: Record<QuizLevel, QuizQuestion[]> = {
+  iniciante: [
+    {
+      id: "ini-1",
+      category: "Interesse",
+      question: "Pensa num dia de trabalho que passaria voando. O que você estaria fazendo?",
+      options: [
+        { label: "Montando telas bonitas e fáceis de usar e vendo o resultado na hora", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2, "Desenvolvimento Mobile": 1 } },
+        { label: "Fazendo as regras e as contas funcionarem por trás, longe da tela", area: "Back-end", scores: { "Back-end": 5, "Ciência de Dados": 1 } },
+        { label: "Olhando um monte de números e descobrindo o que eles contam", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Conversando com as pessoas pra deixar tudo mais fácil pra elas", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+      ],
+    },
+    {
+      id: "ini-2",
+      category: "Problema",
+      question: "Qual desses problemas você teria mais vontade de resolver?",
+      options: [
+        { label: "Ensinar o computador a reconhecer coisas e responder sozinho", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Descobrir o que as pessoas mais precisam e decidir o que fazer primeiro", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2 } },
+        { label: "Proteger as pessoas de golpes, roubo de senha e invasores", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Cuidar pra que os sites e apps não saiam do ar nem fiquem lentos", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+      ],
+    },
+    {
+      id: "ini-3",
+      category: "Rotina",
+      question: "Como você gostaria que fosse a sua rotina?",
+      options: [
+        { label: "Organizando as tarefas do grupo, os prazos e o ritmo de todo mundo", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Conferindo tudo com calma pra garantir que nada saia errado", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Criando aplicativos de celular que ajudam no dia a dia", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Automatizando tarefas chatas e mantendo tudo funcionando sem travar", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+      ],
+    },
+    {
+      id: "ini-4",
+      category: "Aprendizado",
+      question: "Quando você quer aprender algo novo, o que funciona melhor pra você?",
+      options: [
+        { label: "Resolver probleminhas de lógica passo a passo até a peça encaixar", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
+        { label: "Mexer em planilhas, gráficos e listas pra enxergar um padrão", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Perguntar pras pessoas e observar onde elas têm dificuldade", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+        { label: "Ver exemplos de como a máquina aprende a partir de muitos casos", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+      ],
+    },
+    {
+      id: "ini-5",
+      category: "Impacto",
+      question: "Que diferença você gostaria que o seu trabalho fizesse?",
+      options: [
+        { label: "Deixar um aplicativo tão fácil que qualquer pessoa consegue usar", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 3 } },
+        { label: "Evitar que pessoas caiam em golpes ou tenham dados roubados", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Fazer um serviço aguentar muita gente usando ao mesmo tempo", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Fazer um projeto chegar ao fim no prazo e sem bagunça", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 2 } },
+      ],
+    },
+    {
+      id: "ini-6",
+      category: "Portfólio",
+      question: "Qual desses primeiros projetos te empolga mais?",
+      options: [
+        { label: "Uma lista caprichada dos erros de um app, com sugestões de conserto", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
+        { label: "Um appzinho de celular pra organizar a sua rotina", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Um robozinho que faz sozinho uma tarefa repetitiva no computador", area: "DevOps", scores: { "DevOps": 5, "Back-end": 1 } },
+        { label: "Uma página bonita na internet pra mostrar pra família", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1 } },
+      ],
+    },
+    {
+      id: "ini-7",
+      category: "Afinidade",
+      question: "Com qual desses assuntos você se imagina mexendo o dia todo?",
+      options: [
+        { label: "Números, gráficos e as histórias que os dados escondem", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 2 } },
+        { label: "Pessoas, hábitos e o que deixa a vida delas mais simples", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+        { label: "Computadores que aprendem e respondem quase como gente", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Decidir, junto com o time, o que vale a pena construir", area: "Produto Digital", scores: { "Produto Digital": 5, "Gestão de Projetos Tech": 3 } },
+      ],
+    },
+    {
+      id: "ini-8",
+      category: "Diagnóstico",
+      question: "Um sistema importante começou a dar problema. O que você gostaria de fazer?",
+      options: [
+        { label: "Descobrir se alguém tentou invadir ou usar de um jeito errado", area: "Cibersegurança", scores: { "Cibersegurança": 5, "DevOps": 2 } },
+        { label: "Ver se o servidor aguentou o tanto de gente acessando", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Avisar as pessoas certas e organizar quem resolve o quê", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 2 } },
+        { label: "Repetir os passos com calma pra achar exatamente onde quebrou", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+      ],
+    },
+    {
+      id: "ini-9",
+      category: "Construção",
+      question: "Se pudesse construir qualquer coisa, o que você escolheria?",
+      options: [
+        { label: "Um app de celular que as pessoas usariam todo dia", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Um sistema que se cuida sozinho e avisa quando tem algo errado", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+        { label: "Um site cheio de detalhes bonitos e divertidos de usar", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2 } },
+        { label: "Um programa que guarda informações e responde quando alguém pede", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1 } },
+      ],
+    },
+    {
+      id: "ini-10",
+      category: "Motivação",
+      question: "Que tipo de elogio te deixaria mais orgulhosa(o)?",
+      options: [
+        { label: "Ficou tão fácil de usar que nem precisei de ajuda", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3, "Front-end": 1 } },
+        { label: "Parece que o sistema adivinhou o que eu queria", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 2 } },
+        { label: "Esse produto resolveu mesmo um problema da minha vida", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2 } },
+        { label: "Que bom que os meus dados estão seguros com vocês", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+      ],
+    },
+    {
+      id: "ini-11",
+      category: "Time",
+      question: "Num time, qual tarefa você gostaria que fosse sua?",
+      options: [
+        { label: "Garantir que tudo continue no ar mesmo com muita gente usando", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Cuidar dos prazos, das prioridades e do combinado do grupo", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Testar tudo antes pra o usuário não receber nada com defeito", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Cuidar do aplicativo de celular do começo ao fim", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+      ],
+    },
+    {
+      id: "ini-12",
+      category: "Investigação",
+      question: "Um app que você usa travou. O que dá mais vontade de investigar?",
+      options: [
+        { label: "Ver os avisos do sistema pra descobrir quando começou a falhar", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+        { label: "Repetir na tela o que aconteceu pra ver o que o usuário viu", area: "Front-end", scores: { "Front-end": 5, "QA / Testes de Software": 2 } },
+        { label: "Procurar lá no fundo qual regra ou cálculo deu errado", area: "Back-end", scores: { "Back-end": 5, "Ciência de Dados": 1 } },
+        { label: "Olhar os números pra ver se tem algo estranho nos dados", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+      ],
+    },
+    {
+      id: "ini-13",
+      category: "Futuro",
+      question: "Daqui a alguns anos, em que você gostaria de ser referência?",
+      options: [
+        { label: "Em fazer computadores aprenderem e automatizarem coisas inteligentes", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Em criar produtos digitais que muita gente ama usar", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2 } },
+        { label: "Em proteger empresas e pessoas de ataques na internet", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Em manter sistemas grandes funcionando pra milhões de pessoas", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+      ],
+    },
+    {
+      id: "ini-14",
+      category: "Colaboração",
+      question: "Com qual tipo de trabalho em equipe você se identifica mais?",
+      options: [
+        { label: "Conversar com todo mundo pra alinhar o que vem primeiro", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Ser a pessoa cuidadosa que percebe os detalhes que faltaram", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Cuidar da parte do celular junto com quem desenha as telas", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Deixar as ferramentas do time mais rápidas e automáticas", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 2 } },
+      ],
+    },
+    {
+      id: "ini-15",
+      category: "Estilo",
+      question: "Qual frase combina mais com o seu jeito?",
+      options: [
+        { label: "Gosto de ver resultado rápido e bonito na tela", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2 } },
+        { label: "Gosto de montar algo bem feito por baixo, mesmo que demore", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1 } },
+        { label: "Gosto de investigar com calma antes de dar uma resposta", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Gosto de entender as pessoas antes de sair fazendo", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+      ],
+    },
+  ],
+  intermediario: [
+    {
+      id: "int-1",
+      category: "Interesse",
+      question: "Que tipo de tarefa te daria energia por várias horas?",
+      options: [
+        { label: "Construir interfaces responsivas e ver as mudanças na tela na hora", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2, "Desenvolvimento Mobile": 1 } },
+        { label: "Modelar regras de negócio e estruturar os dados por trás do sistema", area: "Back-end", scores: { "Back-end": 5, "Ciência de Dados": 1 } },
+        { label: "Explorar uma base de dados atrás de padrões e tendências", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Mapear a jornada do usuário e melhorar a experiência dele", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+      ],
+    },
+    {
+      id: "int-2",
+      category: "Problema",
+      question: "Qual problema você gostaria de resolver no dia a dia?",
+      options: [
+        { label: "Treinar um modelo que classifica ou prevê com base em dados", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Entender o usuário e priorizar o que entrega mais valor", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2 } },
+        { label: "Encontrar vulnerabilidades e proteger sistemas de ataques", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Manter aplicações no ar, rápidas e prontas pra escalar", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+      ],
+    },
+    {
+      id: "int-3",
+      category: "Rotina",
+      question: "Como seria a sua rotina ideal de trabalho?",
+      options: [
+        { label: "Coordenar entregas, prazos e o alinhamento entre as pessoas", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Validar funcionalidades e garantir qualidade antes do release", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Desenvolver apps mobile com recursos como câmera e notificações", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Automatizar deploys e monitorar a saúde das aplicações", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+      ],
+    },
+    {
+      id: "int-4",
+      category: "Aprendizado",
+      question: "Como você prefere aprender algo técnico novo?",
+      options: [
+        { label: "Com exercícios de lógica, APIs e problemas bem definidos", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
+        { label: "Com datasets, gráficos e perguntas investigativas", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Com pesquisa, protótipos e feedback de usuários reais", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+        { label: "Estudando como um modelo aprende a partir de exemplos", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+      ],
+    },
+    {
+      id: "int-5",
+      category: "Impacto",
+      question: "Que impacto você gostaria que o seu trabalho tivesse?",
+      options: [
+        { label: "Tornar um produto mais útil e fácil pro usuário final", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 3 } },
+        { label: "Evitar fraudes, vazamentos e acessos indevidos", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Garantir que o sistema fique disponível e escale sob demanda", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Entregar o projeto no prazo, com os riscos sob controle", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 2 } },
+      ],
+    },
+    {
+      id: "int-6",
+      category: "Portfólio",
+      question: "Qual desses projetos de portfólio você toparia fazer?",
+      options: [
+        { label: "Um plano de testes com casos e uma coleção de smoke tests", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
+        { label: "Um app mobile que funciona offline e sincroniza depois", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Um pipeline que builda, testa e publica o projeto sozinho", area: "DevOps", scores: { "DevOps": 5, "Back-end": 1 } },
+        { label: "Uma landing page responsiva com componentes reutilizáveis", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1 } },
+      ],
+    },
+    {
+      id: "int-7",
+      category: "Afinidade",
+      question: "Com qual matéria-prima você curte mais trabalhar?",
+      options: [
+        { label: "Dados, métricas e o que eles revelam sobre o negócio", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 2 } },
+        { label: "Pessoas, fluxos e a usabilidade dos produtos", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+        { label: "Modelos, previsões e automações inteligentes", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Hipóteses, prioridades e decisões de produto", area: "Produto Digital", scores: { "Produto Digital": 5, "Gestão de Projetos Tech": 3 } },
+      ],
+    },
+    {
+      id: "int-8",
+      category: "Diagnóstico",
+      question: "Um sistema em produção apresentou falha. O que você quer fazer?",
+      options: [
+        { label: "Verificar se foi tentativa de invasão ou uso indevido", area: "Cibersegurança", scores: { "Cibersegurança": 5, "DevOps": 2 } },
+        { label: "Checar se a infraestrutura aguentou o pico de acessos", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Comunicar os envolvidos e organizar a resposta do time", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 2 } },
+        { label: "Reproduzir o bug e isolar onde a mudança quebrou", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+      ],
+    },
+    {
+      id: "int-9",
+      category: "Construção",
+      question: "O que você gostaria de construir num projeto mais sério?",
+      options: [
+        { label: "Um app mobile com login, notificações e dados sincronizados", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Uma esteira de deploy com monitoramento e alertas", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+        { label: "Uma interface rica, acessível e com boas microinterações", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2 } },
+        { label: "Uma API que guarda dados num banco e serve outros sistemas", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1 } },
+      ],
+    },
+    {
+      id: "int-10",
+      category: "Motivação",
+      question: "Que resultado te daria mais satisfação?",
+      options: [
+        { label: "Ver a taxa de erro cair porque a tela ficou mais clara", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3, "Front-end": 1 } },
+        { label: "Ver o modelo acertar a previsão em casos novos", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 2 } },
+        { label: "Ver uma métrica de produto subir depois da sua decisão", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2 } },
+        { label: "Ver uma brecha fechada antes de virar incidente", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+      ],
+    },
+    {
+      id: "int-11",
+      category: "Time",
+      question: "Qual responsabilidade você gostaria de assumir no time?",
+      options: [
+        { label: "Cuidar da infraestrutura na nuvem e da escalabilidade", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Gerir backlog, prazos e a comunicação entre áreas", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Definir os testes que garantem que nada regrida", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Ser dono da experiência mobile de ponta a ponta", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+      ],
+    },
+    {
+      id: "int-12",
+      category: "Investigação",
+      question: "Diante de uma falha, o que você prefere investigar primeiro?",
+      options: [
+        { label: "Os logs e métricas do sistema pra achar quando começou", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+        { label: "Reproduzir o erro na interface e ver o que o usuário viu", area: "Front-end", scores: { "Front-end": 5, "QA / Testes de Software": 2 } },
+        { label: "Onde os dados ficam guardados pra achar a regra que quebrou", area: "Back-end", scores: { "Back-end": 5, "Ciência de Dados": 1 } },
+        { label: "Os dados em si, atrás de algo inconsistente ou fora do padrão", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+      ],
+    },
+    {
+      id: "int-13",
+      category: "Futuro",
+      question: "Em que você gostaria de se especializar nos próximos anos?",
+      options: [
+        { label: "IA, modelos e automações inteligentes", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Produtos digitais usados por muita gente", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2 } },
+        { label: "Segurança ofensiva ou defensiva de sistemas", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Arquitetura em nuvem e sistemas escaláveis", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+      ],
+    },
+    {
+      id: "int-14",
+      category: "Colaboração",
+      question: "Com qual tipo de colaboração você se identifica mais?",
+      options: [
+        { label: "Alinhar lideranças, clientes e times diferentes", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Trabalhar junto do dev garantindo a qualidade do que sai", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Fazer dupla com design pra entregar a melhor experiência mobile", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Dar autonomia ao time automatizando a infraestrutura", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 2 } },
+      ],
+    },
+    {
+      id: "int-15",
+      category: "Estilo",
+      question: "Qual frase combina mais com o seu jeito de trabalhar?",
+      options: [
+        { label: "Prefiro ciclos curtos, feedback rápido e resultado visível", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2 } },
+        { label: "Prefiro construir algo robusto, mesmo que leve mais tempo", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1 } },
+        { label: "Prefiro investigar com calma antes de afirmar uma resposta", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Prefiro entender as pessoas antes de propor a solução", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+      ],
+    },
+  ],
+  avancado: [
+    {
+      id: "adv-1",
+      category: "Interesse",
+      question: "Qual tipo de desafio técnico te dá mais energia?",
+      options: [
+        { label: "Otimizar renderização e gerenciar state numa SPA complexa", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 1, "Desenvolvimento Mobile": 1 } },
+        { label: "Modelar domínio, desenhar APIs e lidar com concorrência", area: "Back-end", scores: { "Back-end": 5, "Ciência de Dados": 1 } },
+        { label: "Fazer feature engineering e análise estatística numa base grande", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 3 } },
+        { label: "Rodar testes de usabilidade e evoluir o design system", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+      ],
+    },
+    {
+      id: "adv-2",
+      category: "Problema",
+      question: "Qual problema você atacaria com mais gosto?",
+      options: [
+        { label: "Lidar com overfitting e tunar hiperparâmetros de um modelo", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Definir métricas, hipóteses e rodar discovery de produto", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2 } },
+        { label: "Fazer threat modeling e hardening da superfície de ataque", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Desenhar arquitetura escalável e resiliente na nuvem", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+      ],
+    },
+    {
+      id: "adv-3",
+      category: "Rotina",
+      question: "Como seria a rotina técnica que você prefere?",
+      options: [
+        { label: "Gerir dependências, roadmap e métricas de entrega do time", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Desenhar estratégia de testes e automação no pipeline", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Otimizar performance mobile e o ciclo de release nas lojas", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Manter CI/CD, IaC e observabilidade da plataforma", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+      ],
+    },
+    {
+      id: "adv-4",
+      category: "Aprendizado",
+      question: "Como você prefere aprofundar um tema técnico?",
+      options: [
+        { label: "Lendo specs, RFCs e implementando provas de conceito", area: "Back-end", scores: { "Back-end": 5, "QA / Testes de Software": 1 } },
+        { label: "Explorando datasets, notebooks e validação estatística", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Conduzindo pesquisa, heurísticas e testes com usuários", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+        { label: "Estudando papers, arquiteturas de modelo e fine-tuning", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+      ],
+    },
+    {
+      id: "adv-5",
+      category: "Impacto",
+      question: "Que impacto técnico você quer ter?",
+      options: [
+        { label: "Mover métricas de produto com experimentos bem desenhados", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 3, "Ciência de Dados": 1 } },
+        { label: "Reduzir risco com defesa em profundidade e zero trust", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Garantir alta disponibilidade e otimizar custo (FinOps)", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Destravar entregas gerindo riscos e dependências críticas", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 2 } },
+      ],
+    },
+    {
+      id: "adv-6",
+      category: "Portfólio",
+      question: "Qual desses projetos técnicos você curtiria liderar?",
+      options: [
+        { label: "Suite de testes E2E com Playwright rodando no pipeline", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1, "Front-end": 1 } },
+        { label: "App nativo com build automatizado e feature flags", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Pipeline de CI/CD com IaC, rollback e observabilidade", area: "DevOps", scores: { "DevOps": 5, "Back-end": 1 } },
+        { label: "Design system com componentes acessíveis e tree-shaking", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2 } },
+      ],
+    },
+    {
+      id: "adv-7",
+      category: "Afinidade",
+      question: "Com qual camada você prefere trabalhar?",
+      options: [
+        { label: "Pipelines de dados, modelagem e análise estatística", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Produto Digital": 2 } },
+        { label: "Arquitetura de informação, heurísticas e usabilidade", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+        { label: "Modelos, embeddings e MLOps em produção", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Estratégia de produto, métricas e priorização baseada em dados", area: "Produto Digital", scores: { "Produto Digital": 5, "Gestão de Projetos Tech": 2, "Ciência de Dados": 1 } },
+      ],
+    },
+    {
+      id: "adv-8",
+      category: "Diagnóstico",
+      question: "Incidente em produção. Qual frente você assume?",
+      options: [
+        { label: "Resposta a incidente, análise de logs e contenção da ameaça", area: "Cibersegurança", scores: { "Cibersegurança": 5, "DevOps": 2 } },
+        { label: "Avaliar capacidade, auto scaling e tolerância a falhas", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Coordenar o war room e a comunicação com stakeholders", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 2 } },
+        { label: "Reproduzir, isolar a regressão e cobrir com teste", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+      ],
+    },
+    {
+      id: "adv-9",
+      category: "Construção",
+      question: "O que você gostaria de arquitetar?",
+      options: [
+        { label: "App mobile com offline-first e sincronização de estado", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Plataforma interna com self-service e deploy contínuo", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+        { label: "Front-end com SSR, code splitting e métricas de web vitals", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2 } },
+        { label: "Serviços com mensageria, idempotência e cache distribuído", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1 } },
+      ],
+    },
+    {
+      id: "adv-10",
+      category: "Motivação",
+      question: "Que tipo de resultado técnico te satisfaz mais?",
+      options: [
+        { label: "Subir a usabilidade comprovada por teste com usuários", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3, "Front-end": 1 } },
+        { label: "Boas métricas de precisão e recall em dados de validação", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 2 } },
+        { label: "Um experimento A/B com significância estatística clara", area: "Produto Digital", scores: { "Produto Digital": 5, "Ciência de Dados": 2 } },
+        { label: "Fechar um vetor de ataque antes da exploração", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+      ],
+    },
+    {
+      id: "adv-11",
+      category: "Time",
+      question: "Qual responsabilidade técnica você assumiria?",
+      options: [
+        { label: "Arquitetura multi-região, IaC e estratégia de custos", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+        { label: "Roadmap técnico, gestão de riscos e de dependências", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Estratégia de qualidade, cobertura e quality gates", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Performance, observabilidade e release do app mobile", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+      ],
+    },
+    {
+      id: "adv-12",
+      category: "Investigação",
+      question: "Onde você mergulha primeiro num problema difícil?",
+      options: [
+        { label: "Traces, métricas e logs pra correlacionar a causa raiz", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 3 } },
+        { label: "Reproduzir no client e inspecionar render, rede e state", area: "Front-end", scores: { "Front-end": 5, "QA / Testes de Software": 2 } },
+        { label: "Camada de dados e regras pra achar a invariante quebrada", area: "Back-end", scores: { "Back-end": 5, "Ciência de Dados": 1 } },
+        { label: "Distribuição dos dados, atrás de drift ou anomalia", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+      ],
+    },
+    {
+      id: "adv-13",
+      category: "Futuro",
+      question: "Em qual especialização você quer chegar na ponta?",
+      options: [
+        { label: "Engenharia de IA, MLOps e modelos em produção", area: "Inteligência Artificial", scores: { "Inteligência Artificial": 5, "Ciência de Dados": 3 } },
+        { label: "Liderança de produto orientada a dados", area: "Produto Digital", scores: { "Produto Digital": 5, "UX/UI Design": 2, "Ciência de Dados": 1 } },
+        { label: "Red team, blue team ou arquitetura de segurança", area: "Cibersegurança", scores: { "Cibersegurança": 5, "Cloud Computing": 1 } },
+        { label: "Arquitetura cloud-native e plataformas escaláveis", area: "Cloud Computing", scores: { "Cloud Computing": 5, "DevOps": 3 } },
+      ],
+    },
+    {
+      id: "adv-14",
+      category: "Colaboração",
+      question: "Que papel de articulação técnica combina com você?",
+      options: [
+        { label: "Alinhar stakeholders técnicos e de negócio em torno do roadmap", area: "Gestão de Projetos Tech", scores: { "Gestão de Projetos Tech": 5, "Produto Digital": 3 } },
+        { label: "Definir critérios de qualidade junto de dev e produto", area: "QA / Testes de Software", scores: { "QA / Testes de Software": 5, "Back-end": 1 } },
+        { label: "Fazer a ponte entre design e engenharia mobile", area: "Desenvolvimento Mobile", scores: { "Desenvolvimento Mobile": 5, "Front-end": 2 } },
+        { label: "Promover cultura DevOps e plataformas self-service", area: "DevOps", scores: { "DevOps": 5, "Cloud Computing": 2 } },
+      ],
+    },
+    {
+      id: "adv-15",
+      category: "Estilo",
+      question: "Qual abordagem reflete melhor o seu jeito?",
+      options: [
+        { label: "Iterar rápido com feedback visível e métricas de front", area: "Front-end", scores: { "Front-end": 5, "UX/UI Design": 2 } },
+        { label: "Priorizar robustez, consistência e contratos bem definidos", area: "Back-end", scores: { "Back-end": 5, "Cloud Computing": 1 } },
+        { label: "Decidir com base em evidência e validação estatística", area: "Ciência de Dados", scores: { "Ciência de Dados": 5, "Inteligência Artificial": 2 } },
+        { label: "Partir do problema do usuário antes de qualquer solução", area: "UX/UI Design", scores: { "UX/UI Design": 5, "Produto Digital": 3 } },
+      ],
+    },
+  ],
+};
 
 export const projectHelpVideos: Record<string, { title: string; url: string }> = {
   "landing-page-pessoal": {

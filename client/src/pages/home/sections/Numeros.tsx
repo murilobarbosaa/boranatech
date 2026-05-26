@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
-import { quizQuestions } from "@/lib/platformData";
+import { LEVEL_QUESTION_COUNT } from "@/lib/platformData";
 
 // =========================================
 // DADOS DOS NÚMEROS
@@ -39,10 +39,10 @@ const STATS: Stat[] = [
     color: "white",
   },
   {
-    value: quizQuestions.length,
+    value: LEVEL_QUESTION_COUNT,
     prefix: "",
     label: "perguntas",
-    description: "no quiz de carreira",
+    description: "do seu nível no quiz",
     color: "amber",
   },
 ];
