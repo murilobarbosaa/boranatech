@@ -483,7 +483,7 @@ function IntroScreen({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
-      className="container max-w-2xl py-12 md:py-20"
+      className="container max-w-2xl py-10 md:py-14"
     >
       <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
         <BrainCircuit className="h-4 w-4" />
@@ -491,28 +491,26 @@ function IntroScreen({
       </p>
 
       <h1
-        className="font-display font-black leading-[0.95] text-slate-950"
-        style={{ fontSize: "clamp(2.5rem, 7vw, 5rem)" }}
+        className="font-display font-black leading-[1.05] text-slate-950"
+        style={{ fontSize: "clamp(2rem, 5vw, 3.25rem)" }}
       >
-        Descubra qual área da tecnologia
-        <br />
-        combina com você
+        Descubra qual área da tecnologia combina com você
       </h1>
 
-      <p className="mt-6 max-w-xl text-lg font-semibold text-slate-700 md:text-xl">
+      <p className="mt-4 max-w-xl text-base font-semibold text-slate-700 md:text-lg">
         Tecnologia não é uma coisa só. Tem várias áreas (front-end, back-end,
         dados, design, segurança, e mais), cada uma resolvendo um tipo de
         problema e combinando com um perfil diferente. Este quiz te ajuda a
         achar a que mais tem a ver com você.
       </p>
 
-      <p className="mt-4 max-w-xl font-semibold text-slate-600 md:text-lg">
+      <p className="mt-3 max-w-xl text-sm font-semibold text-slate-600 md:text-base">
         Primeiro, algumas perguntas rápidas pra entender o seu momento e o seu
         objetivo. Depois, {LEVEL_QUESTION_COUNT} perguntas do seu nível. No fim,
         mostramos as áreas que mais combinam com você. Não tem certo nem errado.
       </p>
 
-      <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
+      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a]">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-violet-700">
             Duração
@@ -541,7 +539,7 @@ function IntroScreen({
         </div>
       </div>
 
-      <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         {onResume && (
           <button
             type="button"
@@ -563,7 +561,7 @@ function IntroScreen({
         </button>
       </div>
 
-      <p className="mt-8 font-mono text-xs text-slate-500">
+      <p className="mt-6 font-mono text-xs text-slate-500">
         Seu progresso é salvo automaticamente. Você pode voltar e continuar
         depois.
       </p>
