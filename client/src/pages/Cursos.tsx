@@ -16,6 +16,7 @@ import { getCourses } from "@/services/contentService";
 import { youtubeEmbedUrl } from "@/lib/utils";
 
 const nivelOptions = ["Todos", "Iniciante", "Intermediário", "Avançado"];
+const nivelOrder: Record<string, number> = { Iniciante: 0, "Intermediário": 1, "Avançado": 2 };
 const idiomaOptions = ["Todos", "Português", "Inglês"];
 const tipoOptions = ["Todos", "Gratuito", "Pago"];
 
@@ -54,17 +55,23 @@ export default function Cursos() {
     getCourses().then(setCourses).catch(() => setCourses(cursosGratuitos));
   }, []);
 
-  const filtered = courses.filter((c) => {
-    const slugLabel = labelForAreaSlug(c.areaSlug);
-    const matchSearch = c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchArea = area === AREA_ALL || c.areaSlug === area;
-    const matchNivel = nivel === "Todos" || c.nivel === nivel;
-    const matchIdioma = idioma === "Todos" || c.idioma.includes(idioma);
-    const matchTipo = tipo === "Todos" || (c.tipo || "Gratuito") === tipo;
-    return matchSearch && matchArea && matchNivel && matchIdioma && matchTipo;
-  });
+  const filtered = courses
+    .filter((c) => {
+      const slugLabel = labelForAreaSlug(c.areaSlug);
+      const matchSearch = c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchArea = area === AREA_ALL || c.areaSlug === area;
+      const matchNivel = nivel === "Todos" || c.nivel === nivel;
+      const matchIdioma = idioma === "Todos" || c.idioma.includes(idioma);
+      const matchTipo = tipo === "Todos" || (c.tipo || "Gratuito") === tipo;
+      return matchSearch && matchArea && matchNivel && matchIdioma && matchTipo;
+    })
+    .sort((a, b) => {
+      const areaCompare = labelForAreaSlug(a.areaSlug).localeCompare(labelForAreaSlug(b.areaSlug), "pt-BR");
+      if (areaCompare !== 0) return areaCompare;
+      return (nivelOrder[a.nivel] ?? 99) - (nivelOrder[b.nivel] ?? 99);
+    });
 
   return (
     <Layout>
