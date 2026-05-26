@@ -159,10 +159,10 @@ export default function QuizCarreiraResultado() {
       />
 
       <div className="min-h-screen bg-[#faf8f4]">
-        <div className="container max-w-3xl py-12 md:py-16">
+        <div className="container max-w-3xl py-10 md:py-12">
           <Link
             href="/quiz-carreira"
-            className="mb-8 inline-flex items-center gap-1.5 font-mono text-sm font-bold text-slate-600 hover:text-slate-950"
+            className="mb-6 inline-flex items-center gap-1.5 font-mono text-sm font-bold text-slate-600 hover:text-slate-950"
           >
             <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
             Refazer quiz
@@ -192,12 +192,15 @@ export default function QuizCarreiraResultado() {
 }
 
 function ResultHero({ result }: { result: QuizResult }) {
+  const meta = areasTI.find((a) => a.nome === result.resultArea);
+  const Icon = meta?.icon;
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="relative mb-10 overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-8 shadow-[5px_5px_0_#0f172a] md:p-12"
+      className="relative mb-8 overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[5px_5px_0_#0f172a] md:p-8"
     >
       <div
         className="absolute inset-0 -z-0"
@@ -208,37 +211,52 @@ function ResultHero({ result }: { result: QuizResult }) {
         aria-hidden="true"
       />
 
-      <div className="absolute right-6 top-6 -z-0" aria-hidden="true">
-        <Sparkles
-          className="h-8 w-8 rotate-12 text-violet-300"
-          strokeWidth={2}
-        />
-      </div>
-      <div
-        className="absolute bottom-8 left-12 -z-0 opacity-60"
+      <motion.div
+        className="absolute right-6 top-6 -z-0"
         aria-hidden="true"
+        animate={{ y: [0, -6, 0], rotate: [12, 18, 12] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <Sparkles
-          className="h-5 w-5 -rotate-12 text-fuchsia-300"
-          strokeWidth={2}
-        />
-      </div>
+        <Sparkles className="h-8 w-8 text-violet-300" strokeWidth={2} />
+      </motion.div>
+      <motion.div
+        className="absolute bottom-8 left-12 -z-0 opacity-70"
+        aria-hidden="true"
+        animate={{ y: [0, 6, 0], rotate: [-12, -4, -12] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+      >
+        <Sparkles className="h-5 w-5 text-fuchsia-300" strokeWidth={2} />
+      </motion.div>
 
       <div className="relative z-10">
-        <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-violet-700">
-          Seu match principal
-        </p>
+        <div className="mb-3 flex items-center gap-3">
+          {Icon && (
+            <motion.span
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.15 }}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+            >
+              <Icon className="h-6 w-6 text-slate-950" strokeWidth={2.2} />
+            </motion.span>
+          )}
+          <p className="font-mono text-xs uppercase tracking-[0.22em] text-violet-700">
+            Seu match principal
+          </p>
+        </div>
 
         <h1
-          className="mb-4 break-words font-display font-black leading-[0.95] text-slate-950"
-          style={{ fontSize: "clamp(2.5rem, 8vw, 5.5rem)" }}
+          className="mb-3 break-words font-display font-black leading-[1.0] text-slate-950"
+          style={{ fontSize: "clamp(2rem, 6vw, 3.5rem)" }}
         >
           {result.resultArea}
         </h1>
 
-        <p className="mb-6 max-w-xl text-lg font-bold text-slate-700 md:text-xl">
-          Suas respostas indicam forte alinhamento com essa área.
-        </p>
+        {meta?.descricaoCurta && (
+          <p className="mb-6 max-w-xl text-base font-semibold text-slate-700 md:text-lg">
+            {meta.descricaoCurta}
+          </p>
+        )}
 
         <div className="max-w-md">
           <div className="mb-2 flex items-baseline justify-between">
@@ -251,7 +269,7 @@ function ResultHero({ result }: { result: QuizResult }) {
           </div>
           <div className="h-3 w-full overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-white">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400"
               initial={{ width: 0 }}
               animate={{ width: `${result.confidence}%` }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
@@ -269,9 +287,9 @@ function OtherAreas({ areas }: { areas: AreaScore[] }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.15 }}
-      className="mb-10"
+      className="mb-8"
     >
-      <div className="mb-5">
+      <div className="mb-4">
         <p className="mb-1 font-mono text-xs uppercase tracking-[0.22em] text-slate-500">
           Outras áreas com afinidade
         </p>
@@ -284,7 +302,7 @@ function OtherAreas({ areas }: { areas: AreaScore[] }) {
         {areas.map((area, idx) => (
           <div
             key={area.area}
-            className="rounded-2xl border-2 border-slate-200 bg-white p-4 transition-colors hover:border-slate-500"
+            className="rounded-2xl border-2 border-slate-300 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-900 hover:shadow-[3px_3px_0_#0f172a]"
           >
             <div className="mb-2 flex items-baseline justify-between">
               <h3 className="truncate font-display text-base font-black text-slate-950">
@@ -296,7 +314,7 @@ function OtherAreas({ areas }: { areas: AreaScore[] }) {
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
               <motion.div
-                className="h-full rounded-full bg-violet-400"
+                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
                 initial={{ width: 0 }}
                 animate={{ width: `${area.percentage}%` }}
                 transition={{
@@ -325,9 +343,9 @@ function ReasonsSection({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="mb-10"
+      className="mb-8"
     >
-      <div className="mb-5">
+      <div className="mb-4">
         <p className="mb-1 font-mono text-xs uppercase tracking-[0.22em] text-amber-700">
           Por que esse resultado
         </p>
@@ -370,7 +388,7 @@ function CTAsSection({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.5 }}
-      className="rounded-3xl border-2 border-[#1a1a1a] bg-slate-950 p-8 text-white shadow-[5px_5px_0_#0f172a] md:p-10"
+      className="rounded-3xl border-2 border-[#1a1a1a] bg-slate-950 p-6 text-white shadow-[5px_5px_0_#0f172a] md:p-8"
     >
       <p className="mb-3 font-mono text-xs uppercase tracking-[0.22em] text-violet-300">
         Próximo passo
