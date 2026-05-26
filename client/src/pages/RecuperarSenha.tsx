@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { MailCheck, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { z } from "zod";
@@ -14,6 +15,7 @@ export default function RecuperarSenha() {
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,15 +30,74 @@ export default function RecuperarSenha() {
 
     try {
       await resetPassword(parsed.data.email);
-      toast.success(
-        "Se esse e-mail tem conta no BoraNaTech, vai chegar um link em até 2 minutos. Verifica também a pasta de spam.",
-      );
-      setEmail("");
+      setSentTo(parsed.data.email);
     } catch {
       toast.error("Não foi possível enviar o link agora. Tenta novamente em alguns instantes.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleResend() {
+    if (!sentTo) return;
+    setIsSubmitting(true);
+    try {
+      await resetPassword(sentTo);
+      toast.success("Reenviamos o link. Confira a caixa de entrada e o spam.");
+    } catch {
+      toast.error("Não foi possível reenviar agora. Tenta novamente em alguns instantes.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (sentTo) {
+    return (
+      <Layout>
+        <SEO title="Recuperar senha — Bora na Tech?" url="/recuperar-senha" noindex />
+        <section className="hero-pattern py-16">
+          <div className="container">
+            <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
+              <span
+                aria-hidden
+                className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-emerald-100 text-emerald-700 shadow-[3px_3px_0_#0f172a]"
+              >
+                <MailCheck className="h-5 w-5" strokeWidth={2.5} />
+              </span>
+              <h1 className="font-display text-3xl font-black text-slate-950">Link enviado.</h1>
+              <p className="mt-2 text-sm text-slate-950">
+                Se esse email tiver conta no BoraNaTech, você vai receber um link de recuperação em até 2 minutos. Confira também a pasta de spam.
+              </p>
+              <div className="mt-4 rounded-xl border-2 border-slate-300 bg-[#faf8f4] px-4 py-3">
+                <span className="block text-xs font-black uppercase text-slate-600">Enviado para</span>
+                <span className="mt-0.5 block break-all text-sm font-bold text-slate-950">{sentTo}</span>
+              </div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={isSubmitting}
+                  className="btn-brutal-accent inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSubmitting ? "Reenviando..." : "Reenviar link"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSentTo(null)}
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                >
+                  <ArrowLeft className="h-4 w-4" strokeWidth={2.5} />
+                  Usar outro email
+                </button>
+              </div>
+              <Link href="/login" className="mt-4 inline-block text-sm font-bold text-violet-700 hover:underline">
+                Voltar para o login
+              </Link>
+            </div>
+          </div>
+        </section>
+      </Layout>
+    );
   }
 
   return (
