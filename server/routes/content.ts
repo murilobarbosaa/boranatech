@@ -11,7 +11,7 @@ router.get("/areas", async (req, res, next) => {
     const { tag, search } = req.query;
     let query = supabaseAdmin
       .from("areas")
-      .select("id, slug, name, short_description, tag, tag_class, icon, color, is_pro, sort_order")
+      .select("id, slug, name, short_description, tag, tag_class, icon, color, is_pro, sort_order, profile_indicated, skills, roles")
       .eq("is_published", true)
       .order("sort_order", { ascending: true });
 
