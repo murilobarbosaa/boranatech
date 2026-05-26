@@ -77,7 +77,7 @@ export default function Cursos() {
     <Layout>
       <SEO
         title="Cursos de TI — Curadoria de cursos online gratuitos e pagos"
-        description="Mais de 200 cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
+        description="Cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
         keywords={["cursos de ti gratuitos", "cursos online programação", "cursos tecnologia iniciantes", "melhores cursos ti", "cursos para começar em programação"]}
         url="/cursos"
         schemaType="CollectionPage"
