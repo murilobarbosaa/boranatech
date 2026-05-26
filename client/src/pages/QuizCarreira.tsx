@@ -20,12 +20,13 @@ import {
   quizByLevel,
   classifyTriageLevel,
   type QuizLevel,
+  LEVEL_META,
   LEVEL_QUESTION_COUNT,
   QUIZ_ESTIMATED_MINUTES,
 } from "@/lib/platformData";
 import { persistQuizResult } from "@/services/careerQuizService";
 
-type QuizPhase = "intro" | "triage" | "questions" | "completing";
+type QuizPhase = "intro" | "triage" | "level-reveal" | "questions" | "completing";
 
 const RESULT_SESSION_KEY = "quiz-carreira.last-result";
 
@@ -57,7 +58,7 @@ const STORAGE_KEY = "boranatech.quiz-carreira.progress.v2";
 const STORAGE_TTL_DAYS = 30;
 
 interface StoredProgress {
-  phase: "triage" | "questions";
+  phase: "triage" | "level-reveal" | "questions";
   level: QuizLevel | null;
   triageAnswers: Record<string, number>;
   triageIndex: number;
@@ -140,7 +141,8 @@ export default function QuizCarreira() {
   }, []);
 
   useEffect(() => {
-    if (phase !== "triage" && phase !== "questions") return;
+    if (phase !== "triage" && phase !== "level-reveal" && phase !== "questions")
+      return;
     const hasProgress =
       Object.keys(triageAnswers).length > 0 || Object.keys(answers).length > 0;
     if (hasProgress) {
@@ -200,8 +202,19 @@ export default function QuizCarreira() {
         setCurrentIndex(0);
       }
       setLevel(computed);
-      setPhase("questions");
+      // Antes das 15 perguntas, revela o nivel e explica o que sera feito.
+      setPhase("level-reveal");
     }, 400);
+  };
+
+  const handleLevelRevealContinue = () => {
+    setPhase("questions");
+  };
+
+  const handleLevelRevealBack = () => {
+    // Volta para a ultima pergunta da triagem, permitindo revisar o nivelamento.
+    setTriageIndex(triageSteps.length - 1);
+    setPhase("triage");
   };
 
   const handleTriageBack = () => {
@@ -230,9 +243,8 @@ export default function QuizCarreira() {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
     } else {
-      // Voltar da 1a pergunta do nivel retorna a etapa inicial, permitindo revisar.
-      setTriageIndex(triageSteps.length - 1);
-      setPhase("triage");
+      // Voltar da 1a pergunta do nivel retorna a tela de nivel.
+      setPhase("level-reveal");
     }
   };
 
@@ -413,6 +425,11 @@ export default function QuizCarreira() {
             answeredCount={
               Object.keys(phase === "triage" ? triageAnswers : answers).length
             }
+            phaseLabel={
+              phase === "triage"
+                ? "Etapa 1 · Nivelamento"
+                : `Etapa 2 · Nível ${level ? LEVEL_META[level].label : ""}`
+            }
           />
         )}
 
@@ -439,6 +456,15 @@ export default function QuizCarreira() {
               onAnswer={handleTriageAnswer}
               onBack={handleTriageBack}
               onReset={handleReset}
+            />
+          )}
+
+          {phase === "level-reveal" && level && (
+            <LevelRevealScreen
+              key="level-reveal"
+              level={level}
+              onContinue={handleLevelRevealContinue}
+              onBack={handleLevelRevealBack}
             />
           )}
 
@@ -505,9 +531,10 @@ function IntroScreen({
       </p>
 
       <p className="mt-3 max-w-xl text-sm font-semibold text-slate-600 md:text-base">
-        Primeiro, algumas perguntas rápidas pra entender o seu momento e o seu
-        objetivo. Depois, {LEVEL_QUESTION_COUNT} perguntas do seu nível. No fim,
-        mostramos as áreas que mais combinam com você. Não tem certo nem errado.
+        Primeiro, {triageSteps.length} perguntas rápidas de nivelamento pra
+        entender o seu momento. A gente te mostra o seu nível e o que vamos fazer
+        com ele. Depois, {LEVEL_QUESTION_COUNT} perguntas pra achar as áreas que
+        mais combinam com você. Não tem certo nem errado.
       </p>
 
       <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3">
@@ -565,6 +592,102 @@ function IntroScreen({
         Seu progresso é salvo automaticamente. Você pode voltar e continuar
         depois.
       </p>
+    </motion.div>
+  );
+}
+
+function LevelRevealScreen({
+  level,
+  onContinue,
+  onBack,
+}: {
+  level: QuizLevel;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
+  const meta = LEVEL_META[level];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="container max-w-2xl py-10 md:py-14"
+    >
+      <p className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        <BrainCircuit className="h-4 w-4" />
+        Nivelamento concluído
+      </p>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-7 shadow-[6px_6px_0_#0f172a] md:p-9"
+      >
+        <span
+          className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]"
+          style={{ fontSize: "1.875rem" }}
+          aria-hidden
+        >
+          {meta.emoji}
+        </span>
+
+        <p className="font-mono text-[11px] font-black uppercase tracking-[0.2em] text-violet-700">
+          Seu nível
+        </p>
+        <h1 className="mt-1 font-display text-4xl font-black leading-none text-slate-950 md:text-5xl">
+          {meta.label}
+        </h1>
+        <p className="mt-3 text-base font-semibold text-slate-700 md:text-lg">
+          {meta.tagline}
+        </p>
+      </motion.div>
+
+      <div className="mt-8">
+        <p className="mb-4 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+          O que vamos fazer por você
+        </p>
+        <ul className="space-y-3">
+          {meta.doing.map((item, idx) => (
+            <motion.li
+              key={item}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.25 + idx * 0.1 }}
+              className="flex items-start gap-3 rounded-2xl border-2 border-slate-300 bg-white px-4 py-3"
+            >
+              <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white">
+                <ArrowRight className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+              <span className="text-sm font-bold text-slate-800 md:text-base">
+                {item}
+              </span>
+            </motion.li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-8 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center justify-center gap-1.5 font-mono text-sm font-bold text-slate-600 transition-colors hover:text-slate-950 sm:mr-auto"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
+          Refazer nivelamento
+        </button>
+
+        <button
+          type="button"
+          onClick={onContinue}
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-violet-600 px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+        >
+          Começar as {LEVEL_QUESTION_COUNT} perguntas
+          <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+        </button>
+      </div>
     </motion.div>
   );
 }
@@ -712,10 +835,12 @@ function ProgressBar({
   current,
   total,
   answeredCount,
+  phaseLabel,
 }: {
   current: number;
   total: number;
   answeredCount: number;
+  phaseLabel?: string;
 }) {
   const percentage = (answeredCount / total) * 100;
 
@@ -729,6 +854,11 @@ function ProgressBar({
       className="sticky top-16 z-30 border-b border-slate-200 bg-[#faf8f4]/80 backdrop-blur-sm"
     >
       <div className="container max-w-2xl py-3">
+        {phaseLabel && (
+          <p className="mb-2 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-violet-700">
+            {phaseLabel}
+          </p>
+        )}
         <div className="flex items-center gap-3">
           <span className="shrink-0 font-mono text-xs uppercase tracking-[0.18em] text-slate-600">
             {current} / {total}
