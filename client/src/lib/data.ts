@@ -4725,46 +4725,6 @@ export const eventos = [
     categoria: "Meetup"
   },
   {
-    id: "recife-digital-talks",
-    nome: "Recife Digital Innovation Talks",
-    data: "Trimestral",
-    horario: "15h às 20h",
-    cidade: "Recife",
-    estado: "PE",
-    formato: "Híbrido",
-    area: "Startups / Cloud / UX",
-    valor: "Gratuito",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=linkedin.com&sz=128",
-    calendarStart: "20260808",
-    calendarEnd: "20260809",
-    descricao:
-      "Trilhas sobre inovação, experiência do usuário e ambientes escaláveis conectadas ao Porto Digital e ecossistema de Pernambuco.",
-    organizador: "Associações do ecossistema Recife Tech",
-    certificado: false,
-    categoria: "Networking"
-  },
-  {
-    id: "bsb-devops-hub",
-    nome: "Brasília Cloud & Platform Engineering",
-    data: "Mensal",
-    horario: "18h30",
-    cidade: "Brasília",
-    estado: "DF",
-    formato: "Online",
-    area: "Cloud / Kubernetes / Platforms",
-    valor: "Gratuito",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=kubernetes.io&sz=128",
-    calendarStart: "20260715T223000",
-    calendarEnd: "20260715T233000",
-    descricao:
-      "Série online para quem atua ou quer migrar para plataforma, SRE e arquitetura em nuvem no contexto público-privado.",
-    organizador: "Comunidade BSB Platform",
-    certificado: false,
-    categoria: "Meetup"
-  },
-  {
     id: "salvador-python",
     nome: "Python Nordeste — Trilhas em Salvador",
     data: "Novembro 2026",
@@ -4803,26 +4763,6 @@ export const eventos = [
     organizador: "Comunidades locais · parceiros cloud",
     certificado: false,
     categoria: "Hackathon"
-  },
-  {
-    id: "vix-code-cafe",
-    nome: "Vix.Code Café Vitória",
-    data: "Mensal",
-    horario: "19h30",
-    cidade: "Vitória",
-    estado: "ES",
-    formato: "Presencial",
-    area: "Full Stack · Carreira inicial",
-    valor: "Gratuito",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=linkedin.com&sz=128",
-    calendarStart: "20260624T223000",
-    calendarEnd: "20260624T233000",
-    descricao:
-      "Encontros leves sobre primeiros projetos Git, entrevistas técnicas e mentalidade de aprendizado contínuo no ES.",
-    organizador: "Vix.Code",
-    certificado: false,
-    categoria: "Networking"
   },
   {
     id: "brasilia-blocks",
@@ -4905,46 +4845,6 @@ export const eventos = [
     categoria: "Workshop"
   },
   {
-    id: "cuiaba-data-lab",
-    nome: "Cuiabá Agritech Data Lab",
-    data: "Setembro 2026",
-    horario: "8h30 às 12h30",
-    cidade: "Cuiabá",
-    estado: "MT",
-    formato: "Híbrido",
-    area: "Dados / IoT campo / GIS",
-    valor: "Solidário",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=gov.br&sz=128",
-    calendarStart: "20260909",
-    calendarEnd: "20260909",
-    descricao:
-      "Laboratório de dados geográficos agrícolas com sensores offline-first e dashboards abertos sobre clima Centro-Oeste.",
-    organizador: "Rede Agritech Pantanal Labs",
-    certificado: true,
-    categoria: "Workshop"
-  },
-  {
-    id: "vila-web-campinas",
-    nome: "Campinas Web Makers",
-    data: "Duas vezes ao mês",
-    horario: "20h15",
-    cidade: "Campinas",
-    estado: "SP",
-    formato: "Presencial",
-    area: "Web performance / PWAs",
-    valor: "Gratuito",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=developers.chrome.com&sz=128",
-    calendarStart: "20260630",
-    calendarEnd: "20260630",
-    descricao:
-      "Discussões rápidas sobre Core Web Vitals, edge caching brasileiro e PWAs instaláveis pensadas primeiro para mobile Brasil.",
-    organizador: "Campinas Inner Web Perf",
-    certificado: false,
-    categoria: "Meetup"
-  },
-  {
     id: "pantanal-ai-lab-ms",
     nome: "Mato Grosso do Sul Responsible AI Sandbox",
     data: "Dezembro 2026",
@@ -4965,26 +4865,6 @@ export const eventos = [
     categoria: "Workshop"
   },
   {
-    id: "rondonia-cyber-hub",
-    nome: "Rondônia Cyber Hub Open Day",
-    data: "Novembro 2026",
-    horario: "13h às 19h30",
-    cidade: "Porto Velho",
-    estado: "RO",
-    formato: "Híbrido",
-    area: "Cibersegurança SOC / inclusão municipal",
-    valor: "Ingresso social",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=linkedin.com&sz=128",
-    calendarStart: "20261114",
-    calendarEnd: "20261114",
-    descricao:
-      "Demonstrações SOC24h ligadas às redes escolares municipais + laboratório de phishing em português comunitário.",
-    organizador: "RO Cyber Hub",
-    certificado: false,
-    categoria: "Carreira GovTech"
-  },
-  {
     id: "teresina-ai-fair",
     nome: "Piauí Makers & IA",
     data: "Março 2027",
@@ -5003,26 +4883,6 @@ export const eventos = [
     organizador: "Rede Makers Piauí",
     certificado: false,
     categoria: "Feira de Tecnologia"
-  },
-  {
-    id: "maceio-secops",
-    nome: "Maceió SecOps Breakfast",
-    data: "Semanal · manhãs",
-    horario: "8h às 9h40",
-    cidade: "Maceió",
-    estado: "AL",
-    formato: "Presencial",
-    area: "Segurança / DevSecOps",
-    valor: "Coffee compartilhado",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=linkedin.com&sz=128",
-    calendarStart: "20260602",
-    calendarEnd: "20260603",
-    descricao:
-      "Mesa redonda rápida com profissionais de segurança e operações estudando cenários ransomware em portos públicos brasileiros.",
-    organizador: "AL SecBreakfast",
-    certificado: false,
-    categoria: "Networking"
   },
   {
     id: "aracaju-qa-nights",
@@ -5063,26 +4923,6 @@ export const eventos = [
     organizador: "Edge Norte Lab",
     certificado: true,
     categoria: "Hackathon"
-  },
-  {
-    id: "boa-vista-communities-day",
-    nome: "Roraima Cloud Native Day",
-    data: "Abril 2027",
-    horario: "9h às 18h",
-    cidade: "Boa Vista",
-    estado: "RR",
-    formato: "Híbrido",
-    area: "Cloud Native / OSS",
-    valor: "Ingresso comunidade",
-    link: "https://www.linkedin.com/events/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=cncf.io&sz=128",
-    calendarStart: "20270406",
-    calendarEnd: "20270406",
-    descricao:
-      "Imersões CNCF Brasil focadas em service mesh soberano para apps sociais amazônicos e observabilidade de baixa largura.",
-    organizador: "CNCF Norte · parceiros",
-    certificado: false,
-    categoria: "Conferência"
   },
   {
     id: "rio-branco-green-stack",
