@@ -79,7 +79,7 @@ export default function AiChatPanel({
 
   return (
     <div className="card-brutal w-full overflow-hidden rounded-2xl bg-white">
-      <div className="flex h-[min(88vh,700px)] min-h-[360px] flex-col">
+      <div className="flex h-[min(70vh,560px)] min-h-[320px] flex-col">
         <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-900 bg-violet-700 px-4 py-3 text-white sm:px-5 sm:py-3.5">
           <div
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-600 shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
