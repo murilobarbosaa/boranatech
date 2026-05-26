@@ -25,17 +25,17 @@ export default function Estudos() {
         <div className="container space-y-10">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-base font-semibold leading-relaxed text-slate-700">
-              Monte seu plano de estudos com a mentora de IA. Você conta sua área, nível, tempo disponível e objetivo, e ela devolve um cronograma semanal com marcos e recursos, ajustável quando precisar.
+              Monte seu plano de estudos com o Natechinho, o mentor de estudos do BoraNaTech. Você conta sua área, nível, tempo disponível e objetivo, e ele devolve um cronograma semanal com marcos e recursos, ajustável quando precisar.
             </p>
           </div>
           {!isPro ? (
-            <ProGate description="Converse com a mentora e receba um plano de estudos sob medida: cronograma por semana, marcos e recursos para o seu nível, tempo e objetivo." />
+            <ProGate description="Converse com o Natechinho e receba um plano de estudos sob medida: cronograma por semana, marcos e recursos para o seu nível, tempo e objetivo." />
           ) : (
             <AiChatPanel
               endpoint="study-plan"
-              title="Plano de estudos com a mentora"
+              title="Plano de estudos com o Natechinho"
               description="Me conta sua área, nível, tempo e objetivo, e eu monto seu cronograma semanal."
-              initialAssistantMessage={`Oi! Fico feliz que você veio até aqui.
+              initialAssistantMessage={`Oi! Eu sou o Natechinho, seu mentor de estudos aqui no BoraNaTech. Fico feliz que você veio.
 
               Me conta com calma: qual área da tech está te puxando mais agora (tipo front, back, dados, mobile…) e, em poucas palavras, o que você quer conquistar com esse estudo? Pode mandar do seu jeito, sem pressa.`}
             />
