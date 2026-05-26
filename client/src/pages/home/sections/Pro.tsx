@@ -338,7 +338,7 @@ function Constellation() {
                 fontSize="26"
                 fontWeight="800"
                 fontFamily="Space Grotesk, sans-serif"
-                className={`pointer-events-none transition-opacity duration-200 max-md:!opacity-100 ${
+                className={`pointer-events-none transition-opacity duration-200 ${
                   isHovered ? "opacity-100" : "opacity-0"
                 }`}
               >
