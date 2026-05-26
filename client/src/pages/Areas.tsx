@@ -40,8 +40,8 @@ const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
 ];
 
 const perfilMap: Record<string, string[]> = {
-  criatividade: ["uxui", "frontend", "mobile"],
-  logica: ["backend", "devops", "cloud", "ciberseguranca", "ia"],
+  criatividade: ["uxui", "frontend", "mobile", "gamedev"],
+  logica: ["backend", "devops", "cloud", "ciberseguranca", "ia", "fullstack", "gamedev"],
   pessoas: ["gestao", "produto"],
   organizacao: ["gestao", "qa", "produto"],
   seguranca: ["ciberseguranca", "cloud", "devops"],
