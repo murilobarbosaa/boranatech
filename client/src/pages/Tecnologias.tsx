@@ -37,7 +37,7 @@ export default function Tecnologias() {
         accent="violet"
         eyebrow="stack e mercado"
         title="Tecnologias e Linguagens"
-        subtitle="Entenda cada tecnologia, pra que serve e onde é usada."
+        subtitle="Linguagens, frameworks e ferramentas que os times usam para construir produtos. Veja o que cada uma faz, onde é usada e quão difícil é começar."
       />
 
       <section className={cn("sticky top-16 z-40 border-b-2 py-4 backdrop-blur", ac.stickyBar)}>
