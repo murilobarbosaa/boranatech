@@ -1,4 +1,5 @@
-import { ExternalLink, Keyboard, PlayCircle, Terminal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ExternalLink, Keyboard, PlayCircle, RotateCcw, SlidersHorizontal, Terminal } from "lucide-react";
 import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
@@ -9,6 +10,8 @@ import { cn, youtubeEmbedUrl } from "@/lib/utils";
 import { devTools } from "@/lib/careerToolsData";
 
 const ac = getPageAccentUi("orange");
+
+const CATEGORY_ORDER = ["IA", "Desenvolvimento", "Design", "Produtividade", "Banco de dados", "DevOps"];
 
 type ShortcutItem = {
   label: string;
@@ -121,6 +124,15 @@ function TerminalCommand({ value, accentShadow }: { value: string; accentShadow:
 }
 
 export default function Ferramentas() {
+  const [category, setCategory] = useState("Todas");
+  const categories = useMemo(() => {
+    const present = new Set(devTools.flatMap((tool) => tool.category));
+    return ["Todas", ...CATEGORY_ORDER.filter((c) => present.has(c))];
+  }, []);
+  const filtered = useMemo(
+    () => (category === "Todas" ? devTools : devTools.filter((tool) => tool.category.includes(category))),
+    [category],
+  );
   return (
     <Layout>
       <PageHero
@@ -131,8 +143,37 @@ export default function Ferramentas() {
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
+        <div className="card-brutal rounded-2xl bg-white p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-display text-sm font-black text-slate-900">
+              <SlidersHorizontal className="h-4 w-4 text-orange-700" />
+              Filtrar por categoria
+            </div>
+            <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+              <span>{filtered.length} ferramenta{filtered.length === 1 ? "" : "s"}</span>
+              {category !== "Todas" && (
+                <button type="button" onClick={() => setCategory("Todas")} className="inline-flex items-center gap-1 text-orange-700 hover:underline">
+                  <RotateCcw className="h-3 w-3" />
+                  Limpar filtro
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(c)}
+                className={cn("rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all", category === c ? ac.filterActive : ac.filterInactive)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {devTools.map((tool) => {
+          {filtered.map((tool) => {
             const video = tutorialVideos[tool.name];
             return (
             <article key={tool.name} className="card-brutal rounded-2xl bg-white p-5">
