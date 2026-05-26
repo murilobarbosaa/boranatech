@@ -82,6 +82,14 @@ const AREA_SLUG_ACCENT: Record<string, PageHeroAccent> = {
   mobile: "fuchsia",
   devops: "cyan",
   gamedev: "fuchsia",
+  "analise-dados": "sky",
+  "engenharia-dados": "cyan",
+  "banco-de-dados": "teal",
+  sre: "orange",
+  infraestrutura: "blue",
+  "analise-sistemas": "amber",
+  blockchain: "emerald",
+  iot: "rose",
 };
 
 export function accentForTechnology(technology: Technology): PageHeroAccent {

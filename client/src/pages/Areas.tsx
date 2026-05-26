@@ -41,11 +41,11 @@ const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
 
 const perfilMap: Record<string, string[]> = {
   criatividade: ["uxui", "frontend", "mobile", "gamedev"],
-  logica: ["backend", "devops", "cloud", "ciberseguranca", "ia", "fullstack", "gamedev"],
-  pessoas: ["gestao", "produto"],
-  organizacao: ["gestao", "qa", "produto"],
-  seguranca: ["ciberseguranca", "cloud", "devops"],
-  dados: ["dados", "ia", "backend"],
+  logica: ["backend", "devops", "cloud", "ciberseguranca", "ia", "fullstack", "gamedev", "engenharia-dados", "sre", "infraestrutura", "blockchain", "iot"],
+  pessoas: ["gestao", "produto", "analise-sistemas"],
+  organizacao: ["gestao", "qa", "produto", "analise-dados", "banco-de-dados", "infraestrutura", "analise-sistemas"],
+  seguranca: ["ciberseguranca", "cloud", "devops", "sre"],
+  dados: ["dados", "ia", "backend", "analise-dados", "engenharia-dados", "banco-de-dados"],
 };
 
 function SkeletonAreaCard() {
