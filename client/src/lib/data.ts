@@ -4340,7 +4340,7 @@ export const eventos = [
   {
     id: "campus-party",
     nome: "Campus Party Brasil",
-    data: "Julho 2025",
+    data: "Julho (anual)",
     horario: "Vários horários",
     cidade: "São Paulo",
     estado: "SP",
@@ -4359,7 +4359,7 @@ export const eventos = [
   {
     id: "python-brasil",
     nome: "Python Brasil",
-    data: "Outubro/Novembro 2025",
+    data: "Outubro/novembro (anual)",
     horario: "Vários horários",
     cidade: "Varia por ano",
     estado: EVENTO_UF_NACIONAL,
