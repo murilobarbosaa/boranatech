@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { ArrowRight, Sparkles, Map, Code2, Clock, ListChecks, Target } from "lucide-react";
-import { quizQuestions, QUIZ_ESTIMATED_MINUTES } from "@/lib/platformData";
+import { LEVEL_QUESTION_COUNT, QUIZ_ESTIMATED_MINUTES } from "@/lib/platformData";
 
 // =========================================
 // SEÇÃO PRINCIPAL
@@ -94,7 +94,7 @@ export default function PorOndeComecar() {
                       <span className="text-slate-400">·</span>
                       <span className="inline-flex items-center gap-1.5">
                         <ListChecks size={14} className="text-violet-600" />
-                        {quizQuestions.length} perguntas
+                        {LEVEL_QUESTION_COUNT} perguntas do seu nível
                       </span>
                       <span className="text-slate-400">·</span>
                       <span className="inline-flex items-center gap-1.5">
