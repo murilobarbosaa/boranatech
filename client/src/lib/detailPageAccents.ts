@@ -70,6 +70,7 @@ const TECH_SLUG_ACCENT: Partial<Record<string, PageHeroAccent>> = {
 const AREA_SLUG_ACCENT: Record<string, PageHeroAccent> = {
   frontend: "cyan",
   backend: "orange",
+  fullstack: "violet",
   dados: "blue",
   uxui: "fuchsia",
   ia: "violet",
@@ -80,6 +81,7 @@ const AREA_SLUG_ACCENT: Record<string, PageHeroAccent> = {
   qa: "teal",
   mobile: "fuchsia",
   devops: "cyan",
+  gamedev: "fuchsia",
 };
 
 export function accentForTechnology(technology: Technology): PageHeroAccent {
