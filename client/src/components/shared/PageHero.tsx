@@ -45,7 +45,7 @@ function patternStyle(pattern: PageHeroPattern, color: string): CSSProperties {
 
 interface PageHeroProps {
   title: string;
-  subtitle: string;
+  subtitle: ReactNode;
   eyebrow?: string;
   /** Cor do hero — alinha com páginas como Notícias, Cursos e Roadmaps. */
   accent?: PageHeroAccent;
