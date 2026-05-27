@@ -71,6 +71,25 @@ function AreaHeroDecor({ accent }: { accent: PageHeroAccent }) {
   );
 }
 
+function CompanyLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
+  const [hasError, setHasError] = useState(false);
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
+      {logoUrl && !hasError ? (
+        <img
+          src={logoUrl}
+          alt={`Logo ${name}`}
+          loading="lazy"
+          className="h-5 w-5 object-contain"
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <span className="font-display text-sm font-black text-slate-700">{name.charAt(0)}</span>
+      )}
+    </span>
+  );
+}
+
 function DifficultyDots({ level, fillClass }: { level: number; fillClass: string }) {
   const labels = ["", "Muito fácil", "Fácil", "Médio", "Difícil", "Muito difícil"];
   return (
@@ -215,6 +234,9 @@ export default function AreaDetalhe() {
   const comingSoon = area.roadmapStatus === "coming-soon";
 
   const cursosDaArea = cursosGratuitos.filter((c) => c.areaSlug === area.slug).slice(0, 3);
+  const empresasDaArea = companies
+    .filter((company) => company.areas.includes(area.slug))
+    .slice(0, 4);
   const faculdadesEntries = (area.faculdadesRelacionadas ?? [])
     .map((nome) => faculdades.cursos.find((c) => c.nome === nome))
     .filter((c): c is (typeof faculdades.cursos)[number] => Boolean(c));
@@ -542,33 +564,33 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 4.3 Empresas */}
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
-                  <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
-                    Empresas que contratam para esta área
-                  </h2>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {companies
-                      .filter((company) => company.areas.includes(area.slug))
-                      .slice(0, 4)
-                      .map((company) => (
+                {empresasDaArea.length > 0 ? (
+                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                    <h2 className="font-display mb-1 text-xl font-bold text-slate-900">
+                      Empresas de tecnologia no Brasil
+                    </h2>
+                    <p className="mb-4 text-sm text-slate-600">
+                      Nomes conhecidos do mercado brasileiro pra você conhecer.
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {empresasDaArea.map((company) => (
                         <Link
                           key={company.slug}
                           href={`/empresas/${company.slug}`}
                           className={cn(
-                            "rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-colors",
+                            "flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-colors",
                             ac.cardHover,
                           )}
                         >
-                          <span className="font-display block font-black text-slate-950">
+                          <CompanyLogo name={company.name} logoUrl={company.logoUrl} />
+                          <span className="font-display font-black text-slate-950">
                             {company.name}
-                          </span>
-                          <span className="text-sm font-medium text-slate-600">
-                            {company.segment} • {company.city}
                           </span>
                         </Link>
                       ))}
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
                 {/* 4.4 Termos */}
                 <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
