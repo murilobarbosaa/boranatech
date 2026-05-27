@@ -82,7 +82,9 @@ function Router() {
       <Route path="/areas/:slug" component={AreaDetalhe} />
       <Route path="/tecnologias" component={Tecnologias} />
       <Route path="/tecnologias/comparar" component={TecnologiaComparador} />
-      <Route path="/tecnologias/mapa" component={TecnologiaMapa} />
+      <Route path="/tecnologias/por-area" component={TecnologiaMapa} />
+      {/* TODO: remover redirect após 90 dias em prod */}
+      <Route path="/tecnologias/mapa">{() => <Redirect to="/tecnologias/por-area" />}</Route>
       <Route path="/tecnologias/ranking" component={TecnologiaRanking} />
       <Route path="/tecnologias/:slug" component={TecnologiaDetalhe} />
       <Route path="/empresas" component={Empresas} />

@@ -42,7 +42,7 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
   'roadmaps':             'technical',
   'portfolio':            'technical',
   'evolucao':             'technical',
-  'tecnologias/mapa':     'technical',
+  'tecnologias/por-area': 'technical',
   'networking':           'technical',
   'comparador':           'technical',
   'plataformas':          'technical',

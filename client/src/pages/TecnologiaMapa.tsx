@@ -32,7 +32,7 @@ export default function TecnologiaMapa() {
       <PageHero
         accent="emerald"
         eyebrow="por área de TI"
-        title="Mapa de Tecnologias por Área"
+        title="Tecnologias por Área"
         subtitle="Veja quais tecnologias aparecem em cada caminho de carreira."
       />
       <section className={cn(ac.contentBg, "py-12")}>

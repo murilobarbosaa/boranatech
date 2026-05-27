@@ -59,7 +59,7 @@ export default function Tecnologias() {
         <div className="container">
         <div className="mb-8 flex flex-wrap gap-3">
           <Link href="/tecnologias/comparar" className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black">Comparar tecnologias</Link>
-          <Link href="/tecnologias/mapa" className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black">Mapa por área</Link>
+          <Link href="/tecnologias/por-area" className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black">Tecnologias por área</Link>
           <Link href="/tecnologias/ranking" className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black">Ranking de demanda</Link>
         </div>
 
