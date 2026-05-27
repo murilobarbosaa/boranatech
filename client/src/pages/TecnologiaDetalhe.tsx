@@ -1,4 +1,4 @@
-import { Link, useParams } from "wouter";
+import { Link, useParams, useSearch } from "wouter";
 import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle, ExternalLink, Quote } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -14,6 +14,9 @@ import { getTechnology } from "@/services/contentService";
 
 export default function TecnologiaDetalhe() {
   const params = useParams<{ slug: string }>();
+  const search = useSearch();
+  const fromSlug = new URLSearchParams(search).get("from");
+  const fromArea = fromSlug ? areasTI.find((area) => area.slug === fromSlug) : undefined;
   const [technology, setTechnology] = useState(() => technologies.find((item) => item.slug === params.slug) || null);
 
   useEffect(() => {
@@ -45,10 +48,17 @@ export default function TecnologiaDetalhe() {
         title={technology.name}
         subtitle={technology.description}
         topSlot={
-          <Link href="/tecnologias" className={cn("inline-flex items-center gap-2 text-sm font-bold", ac.link, ac.linkHover)}>
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Todas as tecnologias
-          </Link>
+          fromArea ? (
+            <Link href={`/tecnologias/por-area?area=${fromArea.slug}`} className={cn("inline-flex items-center gap-2 text-sm font-bold", ac.link, ac.linkHover)}>
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Voltar para {fromArea.nome}
+            </Link>
+          ) : (
+            <Link href="/tecnologias" className={cn("inline-flex items-center gap-2 text-sm font-bold", ac.link, ac.linkHover)}>
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Todas as tecnologias
+            </Link>
+          )
         }
         titlePrefix={
           <TechnologyLogo

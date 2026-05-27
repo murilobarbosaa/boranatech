@@ -8,13 +8,15 @@ export type TechCompactTileProps = {
   technology: Technology;
   style?: CSSProperties;
   onNavigate?: () => void;
+  /** Slug da área de origem; preserva o caminho de volta na página da tecnologia. */
+  fromArea?: string;
 };
 
 /** Azulejo compacto: logo pequeno + nome completo (várias linhas se precisar). */
-export default function TechCompactTile({ technology, style, onNavigate }: TechCompactTileProps) {
+export default function TechCompactTile({ technology, style, onNavigate, fromArea }: TechCompactTileProps) {
   return (
     <Link
-      href={`/tecnologias/${technology.slug}`}
+      href={fromArea ? `/tecnologias/${technology.slug}?from=${fromArea}` : `/tecnologias/${technology.slug}`}
       title={`${technology.name} · ${technology.category}, nível ${technology.difficulty}`}
       style={style}
       onClick={() => onNavigate?.()}
