@@ -209,7 +209,7 @@ const difficulties: Record<string, DifficultyLabel> = {
   PyTorch: "Avançado",
 };
 
-function slugify(value: string) {
+export function slugify(value: string) {
   return value
     .toLowerCase()
     .replace("#", "sharp")

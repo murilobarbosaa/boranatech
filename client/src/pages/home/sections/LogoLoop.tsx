@@ -1,42 +1,58 @@
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
+import { slugify } from "@/lib/technologyData";
 
-const LOGOS = [
-  { name: "HTML5", icon: "simple-icons:html5" },
-  { name: "CSS3", icon: "simple-icons:css3" },
-  { name: "JavaScript", icon: "simple-icons:javascript" },
-  { name: "TypeScript", icon: "simple-icons:typescript" },
-  { name: "React", icon: "simple-icons:react" },
-  { name: "Vue", icon: "simple-icons:vuedotjs" },
-  { name: "Python", icon: "simple-icons:python" },
-  { name: "Java", icon: "simple-icons:openjdk" },
-  { name: "C#", icon: "simple-icons:csharp" },
-  { name: "Node.js", icon: "simple-icons:nodedotjs" },
-  { name: "MySQL", icon: "simple-icons:mysql" },
-  { name: "MongoDB", icon: "simple-icons:mongodb" },
-  { name: "Docker", icon: "simple-icons:docker" },
-  { name: "AWS", icon: "simple-icons:amazonwebservices" },
-  { name: "Git", icon: "simple-icons:git" },
-  { name: "GitHub", icon: "simple-icons:github" },
-  { name: "VS Code", icon: "simple-icons:visualstudiocode" },
-  { name: "Figma", icon: "simple-icons:figma" },
-  { name: "Linux", icon: "simple-icons:linux" },
+type LogoItem = {
+  name: string;
+  icon: string;
+  kind: "technology" | "tool";
+  slug?: string;
+};
+
+const LOGOS: LogoItem[] = [
+  { name: "HTML5", icon: "simple-icons:html5", kind: "technology", slug: "html" },
+  { name: "CSS3", icon: "simple-icons:css3", kind: "technology", slug: "css" },
+  { name: "JavaScript", icon: "simple-icons:javascript", kind: "technology" },
+  { name: "TypeScript", icon: "simple-icons:typescript", kind: "technology" },
+  { name: "React", icon: "simple-icons:react", kind: "technology" },
+  { name: "Vue", icon: "simple-icons:vuedotjs", kind: "technology", slug: "vuejs" },
+  { name: "Python", icon: "simple-icons:python", kind: "technology" },
+  { name: "Java", icon: "simple-icons:openjdk", kind: "technology" },
+  { name: "C#", icon: "simple-icons:csharp", kind: "technology" },
+  { name: "Node.js", icon: "simple-icons:nodedotjs", kind: "technology" },
+  { name: "MySQL", icon: "simple-icons:mysql", kind: "technology" },
+  { name: "MongoDB", icon: "simple-icons:mongodb", kind: "technology" },
+  { name: "Docker", icon: "simple-icons:docker", kind: "technology" },
+  { name: "AWS", icon: "simple-icons:amazonwebservices", kind: "technology" },
+  { name: "Git", icon: "simple-icons:git", kind: "technology" },
+  { name: "GitHub", icon: "simple-icons:github", kind: "tool" },
+  { name: "VS Code", icon: "simple-icons:visualstudiocode", kind: "tool" },
+  { name: "Figma", icon: "simple-icons:figma", kind: "technology" },
+  { name: "Linux", icon: "simple-icons:linux", kind: "technology" },
 ];
 
-function LogoItem({ icon, name }: { icon: string; name: string }) {
+function hrefFor(item: LogoItem) {
+  if (item.kind === "tool") return "/ferramentas";
+  return `/tecnologias/${item.slug ?? slugify(item.name)}`;
+}
+
+function LogoLink({ item }: { item: LogoItem }) {
+  const label = item.kind === "tool" ? `Ver ferramenta ${item.name}` : `Ver tecnologia ${item.name}`;
   return (
-    <div
-      className="group flex shrink-0 cursor-pointer items-center justify-center"
-      title={name}
-      aria-label={name}
+    <Link
+      href={hrefFor(item)}
+      title={item.name}
+      aria-label={label}
+      className="group flex shrink-0 cursor-pointer items-center justify-center rounded-xl outline-none focus-visible:ring-4 focus-visible:ring-violet-300"
     >
       <Icon
-        icon={icon}
+        icon={item.icon}
         width={48}
         height={48}
         className="text-slate-950 transition-all duration-300 group-hover:scale-110 group-hover:text-violet-600"
       />
-    </div>
+    </Link>
   );
 }
 
@@ -134,7 +150,7 @@ export default function LogoLoop() {
 
           <div className="flex w-max items-center gap-14 py-2 animate-loop-slow will-change-transform">
             {duplicatedLogos.map((logo, idx) => (
-              <LogoItem key={`${logo.name}-${idx}`} icon={logo.icon} name={logo.name} />
+              <LogoLink key={`${logo.name}-${idx}`} item={logo} />
             ))}
           </div>
         </motion.div>
