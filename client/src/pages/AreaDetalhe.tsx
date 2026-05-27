@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import TechnologyLogo from "@/components/TechnologyLogo";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import PageHero from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
@@ -479,12 +480,19 @@ export default function AreaDetalhe() {
                           key={technology.slug}
                           href={`/tecnologias/${technology.slug}`}
                           className={cn(
-                            "rounded-full border-2 px-3 py-1.5 text-sm font-black",
+                            "inline-flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-black transition-transform hover:-translate-y-0.5",
                             ac.panelBorder,
                             ac.panelSoft,
                             ac.tbodyAccentBold,
                           )}
                         >
+                          <TechnologyLogo
+                            name={technology.name}
+                            icon={technology.icon}
+                            logoUrl={technology.logoUrl}
+                            className="h-6 w-6 shrink-0 rounded-full border-slate-200 bg-white shadow-none"
+                            imageClassName="h-4 w-4"
+                          />
                           {technology.name}
                         </Link>
                       ))}
