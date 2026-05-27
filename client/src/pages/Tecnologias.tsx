@@ -37,7 +37,7 @@ export default function Tecnologias() {
         accent="violet"
         eyebrow="stack e mercado"
         title="Tecnologias e Linguagens"
-        subtitle="Linguagens, frameworks e ferramentas que os times usam para construir produtos. Veja o que cada uma faz, onde é usada e quão difícil é começar."
+        subtitle="Tecnologia é toda ferramenta que ajuda a construir software: linguagens (o idioma em que você escreve o código), frameworks (kits prontos que aceleram o trabalho) e ferramentas de apoio. Aqui você vê o que cada uma faz, onde é usada e quanto custa começar."
       />
 
       <section className={cn("sticky top-16 z-40 border-b-2 py-4 backdrop-blur", ac.stickyBar)}>
