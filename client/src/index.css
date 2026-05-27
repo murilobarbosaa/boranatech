@@ -554,6 +554,27 @@
   animation: techFadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes areaRise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.area-rise {
+  animation: areaRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .area-rise {
+    animation: none;
+  }
+}
+
 /* Fundo tipo conversa — tons alinhados ao site (violeta suave + textura leve) */
 .wa-chat-wallpaper {
   background-color: #f3effa;
