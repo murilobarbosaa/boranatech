@@ -26,7 +26,7 @@ export default function TechCompactTile({ technology, style, onNavigate, fromAre
       style={style}
       onClick={() => onNavigate?.()}
       className={cn(
-        "tech-map-pill flex min-h-0 flex-col items-center justify-start gap-1.5 rounded-lg border bg-slate-50/50 p-2 text-center outline-offset-2 transition-[border-color,background-color,box-shadow] hover:shadow-sm focus-visible:ring-2",
+        "tech-map-pill flex min-h-0 flex-col items-center justify-start gap-1.5 rounded-lg border bg-slate-50/50 p-2 text-center outline-offset-2 transition-[transform,border-color,background-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 active:scale-[0.97] focus-visible:ring-2",
         ac.panelBorder,
         ac.cardHover,
         ac.cardFocusRing,
