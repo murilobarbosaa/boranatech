@@ -40,6 +40,10 @@ export default function TecnologiaDetalhe() {
   const accent = accentForTechnology(technology);
   const ac = getPageAccentUi(accent);
 
+  const combinedTechnologies = technology.combinesWith
+    .map((slug) => technologies.find((candidate) => candidate.slug === slug))
+    .filter((item): item is (typeof technologies)[number] => Boolean(item));
+
   return (
     <Layout>
       <PageHero
@@ -143,19 +147,18 @@ export default function TecnologiaDetalhe() {
                   <p className="mt-1 text-sm font-bold text-slate-800">{technology.salaryRange}</p>
                 </div>
               </div>
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
-                <h3 className="font-display font-black text-slate-950">Tecnologias que combinam</h3>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {technology.combinesWith.map((slug) => {
-                    const item = technologies.find((candidate) => candidate.slug === slug);
-                    return item ? (
-                      <Link key={slug} href={`/tecnologias/${slug}`} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.tag)}>
+              {combinedTechnologies.length > 0 ? (
+                <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
+                  <h3 className="font-display font-black text-slate-950">Tecnologias que combinam</h3>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {combinedTechnologies.map((item) => (
+                      <Link key={item.slug} href={`/tecnologias/${item.slug}`} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.tag)}>
                         {item.name}
                       </Link>
-                    ) : null;
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
               <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
                 <h3 className="font-display font-black text-slate-950">Ferramentas que usam essa tecnologia</h3>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
