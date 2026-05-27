@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import { Link } from "wouter";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import type { Technology } from "@/lib/technologyData";
+import type { PageHeroAccent } from "@/components/shared/PageHero";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 
 export type TechCompactTileProps = {
@@ -10,10 +12,13 @@ export type TechCompactTileProps = {
   onNavigate?: () => void;
   /** Slug da área de origem; preserva o caminho de volta na página da tecnologia. */
   fromArea?: string;
+  /** Cor do azulejo, alinhada à área de origem. */
+  accent?: PageHeroAccent;
 };
 
 /** Azulejo compacto: logo pequeno + nome completo (várias linhas se precisar). */
-export default function TechCompactTile({ technology, style, onNavigate, fromArea }: TechCompactTileProps) {
+export default function TechCompactTile({ technology, style, onNavigate, fromArea, accent = "teal" }: TechCompactTileProps) {
+  const ac = getPageAccentUi(accent);
   return (
     <Link
       href={fromArea ? `/tecnologias/${technology.slug}?from=${fromArea}` : `/tecnologias/${technology.slug}`}
@@ -21,7 +26,10 @@ export default function TechCompactTile({ technology, style, onNavigate, fromAre
       style={style}
       onClick={() => onNavigate?.()}
       className={cn(
-        "tech-map-pill flex min-h-0 flex-col items-center justify-start gap-1.5 rounded-lg border border-slate-200 bg-slate-50/50 p-2 text-center outline-offset-2 transition-[border-color,background-color,box-shadow] hover:border-teal-300 hover:bg-teal-50/50 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-teal-400",
+        "tech-map-pill flex min-h-0 flex-col items-center justify-start gap-1.5 rounded-lg border bg-slate-50/50 p-2 text-center outline-offset-2 transition-[border-color,background-color,box-shadow] hover:shadow-sm focus-visible:ring-2",
+        ac.panelBorder,
+        ac.cardHover,
+        ac.cardFocusRing,
       )}
     >
       <TechnologyLogo
