@@ -1,4 +1,3 @@
-import "./lib/hashSnapshot";
 import "./lib/recoverySnapshot";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
