@@ -4111,7 +4111,7 @@ export const cursosGratuitos = [
   }
 ];
 
-export const plataformas = [
+const plataformasBase = [
   {
     id: "youtube",
     nome: "YouTube",
@@ -5011,6 +5011,48 @@ export const plataformas = [
     link: "https://cssbattle.dev/"
   }
 ];
+
+/**
+ * Slugs do catálogo de tecnologias (technologyData) que cada plataforma ensina.
+ * Slug ausente do catálogo é ignorado na renderização; plataforma sem entrada
+ * fica com tecnologias vazias (mostra só as tags de área, sem faixa de logos).
+ * Marketplaces amplos (Udemy, Coursera, etc.) ficam vazios de propósito.
+ */
+const plataformaTecnologias: Record<string, string[]> = {
+  "flexbox-froggy": ["css"],
+  "grid-garden": ["css"],
+  "css-diner": ["css"],
+  cssbattle: ["css", "html"],
+  "frontend-mentor": ["html", "css", "javascript"],
+  mdn: ["html", "css", "javascript"],
+  "the-odin-project": ["html", "css", "javascript", "nodejs", "react"],
+  scrimba: ["html", "css", "javascript", "react"],
+  "curso-em-video": ["html", "css", "javascript", "php", "git"],
+  rocketseat: ["javascript", "nodejs", "react", "react-native"],
+  origamid: ["css", "javascript", "react"],
+  codecombat: ["python", "javascript"],
+  checkio: ["python", "javascript"],
+  "elevator-saga": ["javascript"],
+  glitch: ["javascript", "nodejs"],
+  "hyperskill-jetbrains": ["kotlin", "python", "java"],
+  stepik: ["python"],
+  datacamp: ["python", "sql", "r"],
+  kaggle: ["python", "sql"],
+  freecodecamp: ["html", "css", "javascript", "python"],
+  codecademy: ["html", "css", "javascript", "python", "sql"],
+  w3schools: ["html", "css", "javascript", "sql", "python"],
+  "aws-skill-builder": ["aws"],
+  "google-cloud-skills-boost": ["google-cloud"],
+  "microsoft-learn": ["azure"],
+  tryhackme: ["linux"],
+  "hack-the-box-academy": ["linux"],
+  "sql-murder-mystery": ["sql"],
+};
+
+export const plataformas = plataformasBase.map((p) => ({
+  ...p,
+  tecnologias: plataformaTecnologias[p.id] ?? [],
+}));
 
 /** Todos os estados + DF (sigla IBGE) — para filtros e cadastro de eventos */
 export const estadosBrasil: { sigla: string; nome: string }[] = [

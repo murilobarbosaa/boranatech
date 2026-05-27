@@ -9,7 +9,11 @@ import { ExternalLink, Check, X, Star, Award, RotateCcw, SlidersHorizontal } fro
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import TechnologyLogo from "@/components/TechnologyLogo";
 import { plataformas } from "@/lib/data";
+import { technologies } from "@/lib/technologyData";
+
+const techBySlug = new Map(technologies.map((t) => [t.slug, t]));
 
 export default function Plataformas() {
   const platformItems = plataformas;
@@ -192,6 +196,29 @@ export default function Plataformas() {
                     ))}
                   </div>
                 </div>
+
+                {/* Tecnologias */}
+                {plat.tecnologias.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Tecnologias</p>
+                    <div className="flex flex-wrap gap-2">
+                      {plat.tecnologias
+                        .map((slug) => techBySlug.get(slug))
+                        .filter((t): t is NonNullable<typeof t> => Boolean(t))
+                        .slice(0, 6)
+                        .map((t) => (
+                          <TechnologyLogo
+                            key={t.slug}
+                            name={t.name}
+                            icon={t.icon}
+                            logoUrl={t.logoUrl}
+                            className="h-8 w-8"
+                            imageClassName="h-5 w-5 p-0.5"
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Pros / Cons */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
