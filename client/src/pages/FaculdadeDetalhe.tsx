@@ -93,6 +93,48 @@ const courseDetails: Record<string, CourseDetail> = {
       "É uma boa opção para quem quer uma formação versátil e gosta de traduzir necessidade de negócio em solução tecnológica.",
     areaSlugs: ["dados", "produto", "backend"],
   },
+  [slugifyCourse("Inteligência Artificial e Machine Learning")]: {
+    summary:
+      "O curso de Inteligência Artificial e Machine Learning forma profissionais para criar sistemas que aprendem com dados: modelos de previsão, classificação, recomendação e processamento de linguagem. Combina Python, estatística, matemática e muita prática com dados reais.",
+    careerOptions: ["Engenheiro(a) de Machine Learning", "Cientista de Dados Júnior", "Analista de IA", "Engenheiro(a) de Dados Júnior", "Pesquisador(a) em IA"],
+    salaryAreas: ["Dados", "Back-end"],
+    coreContents: ["Python para dados", "Estatística e probabilidade", "Álgebra linear", "Machine learning supervisionado e não supervisionado", "Redes neurais e deep learning", "Pré-processamento e visualização de dados"],
+    practicalProjects: ["Modelo de classificação com dados reais", "Sistema de recomendação simples", "Análise exploratória publicada em notebook", "Modelo de previsão com avaliação de métricas"],
+    technologies: ["Python", "SQL", "Pandas", "NumPy", "TensorFlow", "PyTorch", "Git"],
+    firstJobs: ["Estágio em Dados ou IA", "Trainee em Dados", "Analista de Dados Júnior", "Engenheiro(a) de Machine Learning Júnior", "Bolsista de pesquisa em IA"],
+    roadmap: ["Aprender Python e lógica", "Estudar estatística e álgebra linear", "Praticar machine learning no Kaggle Learn", "Construir e publicar projetos de modelos no GitHub", "Aplicar para estágio e vagas júnior em dados e IA"],
+    marketContext:
+      "É uma área aquecida e bem paga, mas exige base sólida de matemática e estatística. Cargos sênior costumam pedir pós ou bastante prática, então um portfólio com projetos reais faz diferença logo no início.",
+    areaSlugs: ["ia", "dados", "machine-learning"],
+  },
+  [slugifyCourse("Computação em Nuvem (Cloud Computing)")]: {
+    summary:
+      "O curso de Computação em Nuvem prepara para projetar, automatizar e operar infraestrutura na nuvem. A pessoa aprende virtualização, contêineres, redes, automação e fundamentos de DevOps em provedores como AWS, Azure e Google Cloud.",
+    careerOptions: ["Analista de Cloud", "Engenheiro(a) DevOps Júnior", "Administrador(a) de Sistemas", "Analista de Infraestrutura", "Engenheiro(a) de Cloud Júnior"],
+    salaryAreas: ["Cloud", "DevOps"],
+    coreContents: ["Fundamentos de cloud (AWS, Azure, GCP)", "Virtualização e contêineres", "Redes e segurança em nuvem", "Automação e infraestrutura como código", "Fundamentos de DevOps", "Monitoramento e custos"],
+    practicalProjects: ["Subir uma aplicação em uma cloud pública", "Containerizar um app com Docker", "Pipeline simples de CI/CD", "Infraestrutura como código com Terraform"],
+    technologies: ["Docker", "Kubernetes", "Terraform", "AWS", "Azure", "Linux", "Git"],
+    firstJobs: ["Estágio em Infraestrutura ou Cloud", "Trainee em DevOps", "Analista de Cloud Júnior", "Analista de Infraestrutura Júnior", "Suporte de Infraestrutura"],
+    roadmap: ["Aprender Linux e linha de comando", "Estudar redes e fundamentos de cloud", "Praticar contêineres com Docker", "Tirar uma certificação de cloud (AWS, Azure ou GCP)", "Montar projetos de infraestrutura no GitHub"],
+    marketContext:
+      "É uma área muito aquecida e bem paga, mas o mercado costuma valorizar certificações (AWS, Azure, GCP) além do diploma. Tem pouco foco em desenvolvimento de software, então combina com quem gosta de infraestrutura e automação.",
+    areaSlugs: ["cloud", "devops", "infraestrutura"],
+  },
+  [slugifyCourse("Internet das Coisas (IoT)")]: {
+    summary:
+      "O curso de Internet das Coisas une hardware e software: sensores, sistemas embarcados, redes e programação para dispositivos conectados que enviam dados para a nuvem. Forma profissionais para automação, indústria e produtos conectados.",
+    careerOptions: ["Desenvolvedor(a) de Sistemas Embarcados", "Analista de IoT", "Desenvolvedor(a) de Firmware", "Analista de Automação", "Engenheiro(a) de IoT Júnior"],
+    salaryAreas: ["Back-end", "DevOps"],
+    coreContents: ["Eletrônica básica e sensores", "Sistemas embarcados e microcontroladores", "Programação para dispositivos", "Redes e protocolos de IoT", "Integração com a nuvem", "Segurança em dispositivos conectados"],
+    practicalProjects: ["Protótipo com sensor enviando dados", "Dashboard que lê dados de um dispositivo", "Automação simples com microcontrolador", "Integração de um dispositivo com a nuvem"],
+    technologies: ["C++", "Python", "Arduino", "Linux", "Git"],
+    firstJobs: ["Estágio em Sistemas Embarcados", "Trainee em Tecnologia", "Desenvolvedor(a) de Firmware Júnior", "Analista de IoT Júnior", "Analista de Automação Júnior"],
+    roadmap: ["Aprender lógica e uma linguagem (Python ou C)", "Estudar eletrônica básica e microcontroladores", "Montar projetos com Arduino ou similar", "Aprender redes e integração com a nuvem", "Publicar projetos com sensores no GitHub"],
+    marketContext:
+      "Une eletrônica, redes e programação, então combina com quem gosta de hardware e software. O mercado júnior é menor que o de TI tradicional, mas cresce na indústria e em produtos conectados.",
+    areaSlugs: ["iot", "backend"],
+  },
 };
 
 export default function FaculdadeDetalhe() {
