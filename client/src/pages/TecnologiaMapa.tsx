@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import { ChevronDown, ChevronUp, Filter } from "lucide-react";
 import Layout from "@/components/Layout";
+import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import PageHero from "@/components/shared/PageHero";
 import TechCompactTile from "@/components/shared/TechCompactTile";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
@@ -17,6 +18,7 @@ const PREVIEW_LOGO_COUNT = 9;
 export default function TecnologiaMapa() {
   const search = useSearch();
   const areaFromUrl = new URLSearchParams(search).get("area");
+  const fromTech = new URLSearchParams(search).get("from") === "tecnologias";
   const [focusedSlug, setFocusedSlug] = useState<string | null>(
     areaFromUrl && areasTI.some((a) => a.slug === areaFromUrl) ? areaFromUrl : null,
   );
@@ -41,6 +43,7 @@ export default function TecnologiaMapa() {
         eyebrow="por área de TI"
         title="Tecnologias por Área"
         subtitle="Veja quais tecnologias aparecem em cada caminho de carreira."
+        topSlot={fromTech ? <BackToTechnologies accent="emerald" /> : undefined}
         backgroundSlot={
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
             <span className="animate-gentle-float absolute -left-8 top-8 h-24 w-24 rounded-full bg-teal-300/40 blur-2xl" />
