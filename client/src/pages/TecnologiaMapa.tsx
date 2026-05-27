@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import { ChevronDown, ChevronUp, Filter } from "lucide-react";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
@@ -12,7 +13,11 @@ const ac = getPageAccentUi("teal");
 const PREVIEW_LOGO_COUNT = 9;
 
 export default function TecnologiaMapa() {
-  const [focusedSlug, setFocusedSlug] = useState<string | null>(null);
+  const search = useSearch();
+  const areaFromUrl = new URLSearchParams(search).get("area");
+  const [focusedSlug, setFocusedSlug] = useState<string | null>(
+    areaFromUrl && areasTI.some((a) => a.slug === areaFromUrl) ? areaFromUrl : null,
+  );
   /** Lista longa dentro do painel por área (Ver mais); chave sempre `area.slug`. */
   const [expandedAreas, setExpandedAreas] = useState<Record<string, boolean>>({});
   /** Apenas um painel de tecnologias fica aberto por vez. */
@@ -160,6 +165,7 @@ export default function TecnologiaMapa() {
                             <TechCompactTile
                               key={technology.slug}
                               technology={technology}
+                              fromArea={slug}
                               style={{ animationDelay: `${Math.min(itemIndex * 22, 400)}ms` }}
                             />
                           ))}
