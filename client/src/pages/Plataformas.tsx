@@ -4,16 +4,15 @@
   - Compare study platforms
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ExternalLink, Check, X, Star, Award, RotateCcw, SlidersHorizontal } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { plataformas } from "@/lib/data";
-import { getPlatforms } from "@/services/contentService";
 
 export default function Plataformas() {
-  const [platformItems, setPlatformItems] = useState(plataformas);
+  const platformItems = plataformas;
   const [tipoFilter, setTipoFilter] = useState("Todos");
   const [areaFilter, setAreaFilter] = useState("Todas");
   const [iniciante, setIniciante] = useState(false);
@@ -26,10 +25,6 @@ export default function Plataformas() {
     [platformItems],
   );
   const hasActiveFilters = tipoFilter !== "Todos" || areaFilter !== "Todas" || iniciante || certificadoFilter !== "Todos";
-
-  useEffect(() => {
-    getPlatforms().then(setPlatformItems).catch(() => setPlatformItems(plataformas));
-  }, []);
 
   const filtered = platformItems.filter((p) => {
     const matchTipo = tipoFilter === "Todos" || p.tipo === tipoFilter;
