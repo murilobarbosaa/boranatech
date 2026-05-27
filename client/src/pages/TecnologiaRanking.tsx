@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { ExternalLink, Trophy } from "lucide-react";
 import Layout from "@/components/Layout";
+import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -20,6 +21,8 @@ function podiumEmoji(position: number) {
 }
 
 export default function TecnologiaRanking() {
+  const search = useSearch();
+  const fromTech = new URLSearchParams(search).get("from") === "tecnologias";
   const [ranking, setRanking] = useState(technologyRanking);
 
   useEffect(() => {
@@ -32,7 +35,8 @@ export default function TecnologiaRanking() {
         accent="amber"
         eyebrow="dados públicos 📊"
         title="🏆 Ranking de Tecnologias"
-        subtitle="Visualize popularidade com contexto: percentuais do Stack Overflow quando existem, e curadoria honesta quando o dado não é comparável — tudo com logos e links."
+        subtitle="Visualize popularidade com contexto: percentuais do Stack Overflow quando existem, e curadoria honesta quando o dado não é comparável, tudo com logos e links."
+        topSlot={fromTech ? <BackToTechnologies accent="amber" /> : undefined}
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
