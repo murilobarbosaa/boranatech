@@ -11,16 +11,19 @@ import {
   ArrowRight,
   CheckCircle,
   Clock,
+  Code2,
   ExternalLink,
   GraduationCap,
   Lightbulb,
+  Route,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import TechnologyLogo from "@/components/TechnologyLogo";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
-import PageHero from "@/components/shared/PageHero";
+import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
@@ -28,6 +31,66 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { technologies } from "@/lib/technologyData";
 import { cn } from "@/lib/utils";
 import { getArea } from "@/services/contentService";
+
+const HERO_BLOB: Record<PageHeroAccent, string> = {
+  violet: "bg-violet-300",
+  sky: "bg-sky-300",
+  amber: "bg-amber-300",
+  emerald: "bg-emerald-300",
+  blue: "bg-blue-300",
+  fuchsia: "bg-fuchsia-300",
+  orange: "bg-orange-300",
+  rose: "bg-rose-300",
+  cyan: "bg-cyan-300",
+  teal: "bg-teal-300",
+};
+
+function AreaHeroDecor({ accent }: { accent: PageHeroAccent }) {
+  const blob = HERO_BLOB[accent];
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      <div
+        className={cn(
+          "absolute -right-12 -top-16 h-48 w-48 rounded-full opacity-40 blur-3xl animate-gentle-float",
+          blob,
+        )}
+      />
+      <div
+        className={cn(
+          "absolute right-1/4 top-1/3 h-28 w-28 rounded-full opacity-30 blur-3xl animate-gentle-float",
+          blob,
+        )}
+        style={{ animationDelay: "1.4s" }}
+      />
+      <div
+        className={cn(
+          "absolute -bottom-16 left-1/4 h-40 w-40 rounded-full opacity-25 blur-3xl animate-gentle-float",
+          blob,
+        )}
+        style={{ animationDelay: "0.7s" }}
+      />
+    </div>
+  );
+}
+
+function CompanyLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
+  const [hasError, setHasError] = useState(false);
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
+      {logoUrl && !hasError ? (
+        <img
+          src={logoUrl}
+          alt={`Logo ${name}`}
+          loading="lazy"
+          className="h-5 w-5 object-contain"
+          onError={() => setHasError(true)}
+        />
+      ) : (
+        <span className="font-display text-sm font-black text-slate-700">{name.charAt(0)}</span>
+      )}
+    </span>
+  );
+}
 
 function DifficultyDots({ level, fillClass }: { level: number; fillClass: string }) {
   const labels = ["", "Muito fácil", "Fácil", "Médio", "Difícil", "Muito difícil"];
@@ -103,6 +166,13 @@ function AreaHeroStats({
   iconMutedClass: string;
 }) {
   const tempoLabel = area.tempoMedioFormacao ?? "Varia por perfil";
+  const salarios = area.salarios;
+  let faixaResumo = area.faixaSalarial;
+  if (salarios && salarios.length > 0) {
+    const inicio = salarios[0].faixa.split(" a ");
+    const fim = salarios[salarios.length - 1].faixa.split(" a ");
+    faixaResumo = `${inicio[0]} a ${fim[fim.length - 1]}`;
+  }
   return (
     <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
       <div className="grid gap-6 md:grid-cols-3">
@@ -116,7 +186,8 @@ function AreaHeroStats({
           <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
             Faixa salarial
           </p>
-          <p className="text-sm font-bold leading-snug text-slate-900">{area.faixaSalarial}</p>
+          <p className="text-sm font-bold leading-snug text-slate-900">{faixaResumo}</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">do estágio ao sênior</p>
         </div>
         <div className="md:border-l-2 md:border-slate-100 md:pl-6">
           <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
@@ -173,6 +244,9 @@ export default function AreaDetalhe() {
   const comingSoon = area.roadmapStatus === "coming-soon";
 
   const cursosDaArea = cursosGratuitos.filter((c) => c.areaSlug === area.slug).slice(0, 3);
+  const empresasDaArea = companies
+    .filter((company) => company.areas.includes(area.slug))
+    .slice(0, 4);
   const faculdadesEntries = (area.faculdadesRelacionadas ?? [])
     .map((nome) => faculdades.cursos.find((c) => c.nome === nome))
     .filter((c): c is (typeof faculdades.cursos)[number] => Boolean(c));
@@ -184,6 +258,7 @@ export default function AreaDetalhe() {
         eyebrow="Área de TI"
         title={area.nome}
         subtitle={area.descricaoCurta}
+        backgroundSlot={<AreaHeroDecor accent={accent} />}
         topSlot={
           <Link
             href="/areas"
@@ -207,7 +282,7 @@ export default function AreaDetalhe() {
             {/* ======================= MAIN ======================= */}
             <div className="space-y-10">
               {/* ============ ZONA 1 — Hero stats + CTAs ============ */}
-              <div className="space-y-4">
+              <div className="area-rise space-y-4">
                 <AreaHeroStats area={area} fillClass={ac.progressFill} iconMutedClass={ac.iconMuted} />
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -243,19 +318,19 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 2 — Entendimento ============ */}
-              <div className="space-y-5">
+              <div className="area-rise space-y-5" style={{ animationDelay: "0.08s" }}>
                 <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
                   Entendimento
                 </p>
 
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-3 text-xl font-bold text-slate-900">
                     O que é {area.nome}?
                   </h2>
                   <p className="leading-relaxed text-slate-700">{area.descricaoCompleta}</p>
                 </div>
 
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-3 text-xl font-bold text-slate-900">
                     O que faz na prática?
                   </h2>
@@ -285,13 +360,13 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 3 — Como começar ============ */}
-              <div className="space-y-5">
+              <div className="area-rise space-y-5" style={{ animationDelay: "0.16s" }}>
                 <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
                   Como começar
                 </p>
 
                 {/* 3.1 Roadmap preview */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Roadmap inicial
                   </h2>
@@ -331,7 +406,7 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 3.2 Cursos preview */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">Cursos grátis</h2>
                   {cursosDaArea.length > 0 ? (
                     <div className="space-y-3">
@@ -375,7 +450,7 @@ export default function AreaDetalhe() {
 
                 {/* 3.3 Faculdades (condicional) */}
                 {faculdadesEntries.length > 0 ? (
-                  <div className="card-brutal rounded-xl bg-white p-6">
+                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                     <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                       Faculdades relacionadas
                     </h2>
@@ -412,7 +487,7 @@ export default function AreaDetalhe() {
                 ) : null}
 
                 {/* 3.4 Projetos */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Projetos pra praticar
                   </h2>
@@ -446,7 +521,7 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 4 — Aprofundamento ============ */}
-              <div className="space-y-5">
+              <div className="area-rise space-y-5" style={{ animationDelay: "0.24s" }}>
                 <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
                   Aprofundamento
                 </p>
@@ -466,7 +541,7 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 4.2 Tecnologias */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Tecnologias desta área
                   </h2>
@@ -479,12 +554,19 @@ export default function AreaDetalhe() {
                           key={technology.slug}
                           href={`/tecnologias/${technology.slug}`}
                           className={cn(
-                            "rounded-full border-2 px-3 py-1.5 text-sm font-black",
+                            "inline-flex items-center gap-2 rounded-full border-2 py-1 pl-1 pr-3 text-sm font-black transition-transform hover:-translate-y-0.5",
                             ac.panelBorder,
                             ac.panelSoft,
                             ac.tbodyAccentBold,
                           )}
                         >
+                          <TechnologyLogo
+                            name={technology.name}
+                            icon={technology.icon}
+                            logoUrl={technology.logoUrl}
+                            className="h-6 w-6 shrink-0 rounded-full border-slate-200 bg-white shadow-none"
+                            imageClassName="h-4 w-4"
+                          />
                           {technology.name}
                         </Link>
                       ))}
@@ -492,36 +574,36 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 4.3 Empresas */}
-                <div className="card-brutal rounded-xl bg-white p-6">
-                  <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
-                    Empresas que contratam para esta área
-                  </h2>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {companies
-                      .filter((company) => company.areas.includes(area.slug))
-                      .slice(0, 4)
-                      .map((company) => (
+                {empresasDaArea.length > 0 ? (
+                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                    <h2 className="font-display mb-1 text-xl font-bold text-slate-900">
+                      Empresas de tecnologia no Brasil
+                    </h2>
+                    <p className="mb-4 text-sm text-slate-600">
+                      Nomes conhecidos do mercado brasileiro pra você conhecer.
+                    </p>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {empresasDaArea.map((company) => (
                         <Link
                           key={company.slug}
                           href={`/empresas/${company.slug}`}
                           className={cn(
-                            "rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-colors",
+                            "flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-colors",
                             ac.cardHover,
                           )}
                         >
-                          <span className="font-display block font-black text-slate-950">
+                          <CompanyLogo name={company.name} logoUrl={company.logoUrl} />
+                          <span className="font-display font-black text-slate-950">
                             {company.name}
-                          </span>
-                          <span className="text-sm font-medium text-slate-600">
-                            {company.segment} • {company.city}
                           </span>
                         </Link>
                       ))}
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
                 {/* 4.4 Termos */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Termos essenciais
                   </h2>
@@ -548,7 +630,7 @@ export default function AreaDetalhe() {
 
                 {/* 4.5 Subáreas (condicional) */}
                 {area.subareas && area.subareas.length > 0 ? (
-                  <div className="card-brutal rounded-xl bg-white p-6">
+                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                     <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                       Subáreas de {area.nome}
                     </h2>
@@ -583,6 +665,51 @@ export default function AreaDetalhe() {
                         Dica para começar
                       </h2>
                       <p className="text-sm text-slate-700">{area.dicasIniciais}</p>
+
+                      <div className="mt-4 grid gap-2 border-t border-slate-200/70 pt-4">
+                        <Link
+                          href={`/cursos?area=${area.slug}`}
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5",
+                            ac.liftShadow,
+                          )}
+                        >
+                          <GraduationCap className={cn("h-4 w-4 shrink-0", ac.iconMuted)} strokeWidth={2.5} aria-hidden />
+                          Escolha um curso grátis pra ver se combina com você
+                          <ArrowRight className="ml-auto h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+                        </Link>
+
+                        {comingSoon ? (
+                          <span className="flex items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-500">
+                            <Clock className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                            Roadmap em breve
+                          </span>
+                        ) : (
+                          <Link
+                            href={`/roadmaps?area=${area.slug}`}
+                            className={cn(
+                              "flex items-center gap-2 rounded-lg border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5",
+                              ac.liftShadow,
+                            )}
+                          >
+                            <Route className={cn("h-4 w-4 shrink-0", ac.iconMuted)} strokeWidth={2.5} aria-hidden />
+                            Siga o roadmap passo a passo
+                            <ArrowRight className="ml-auto h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+                          </Link>
+                        )}
+
+                        <Link
+                          href={`/projetos?area=${area.slug}`}
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5",
+                            ac.liftShadow,
+                          )}
+                        >
+                          <Code2 className={cn("h-4 w-4 shrink-0", ac.iconMuted)} strokeWidth={2.5} aria-hidden />
+                          Pratique com um projeto real
+                          <ArrowRight className="ml-auto h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -610,10 +737,23 @@ export default function AreaDetalhe() {
                     <DifficultyDots level={area.dificuldade} fillClass={ac.progressFill} />
                   </div>
                   <div>
-                    <p className={cn("mb-1 text-xs uppercase tracking-wide", ac.iconMuted)}>
-                      Faixa salarial (estágio/trainee/júnior)
+                    <p className={cn("mb-1.5 text-xs uppercase tracking-wide", ac.iconMuted)}>
+                      Faixa salarial por nível
                     </p>
-                    <p className="text-sm font-medium">{area.faixaSalarial}</p>
+                    {area.salarios && area.salarios.length > 0 ? (
+                      <dl className="space-y-1">
+                        {area.salarios.map((s) => (
+                          <div key={s.nivel} className="flex items-baseline justify-between gap-3">
+                            <dt className="text-xs font-bold text-slate-600">{s.nivel}</dt>
+                            <dd className="text-sm font-semibold tabular-nums text-slate-900">
+                              {s.faixa}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      <p className="text-sm font-medium">{area.faixaSalarial}</p>
+                    )}
                   </div>
                   {area.tempoMedioFormacao ? (
                     <div>
