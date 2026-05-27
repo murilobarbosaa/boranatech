@@ -4,6 +4,8 @@ import { ChevronDown, ChevronUp, Filter } from "lucide-react";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
 import TechCompactTile from "@/components/shared/TechCompactTile";
+import { AreaIconBox } from "@/components/areas/AreaIconBox";
+import { accentForAreaSlug } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { areasTI } from "@/lib/data";
@@ -66,6 +68,8 @@ export default function TecnologiaMapa() {
                 </button>
                 {areasTI.map((area) => {
                   const Icon = area.icon;
+                  const pillAc = getPageAccentUi(accentForAreaSlug(area.slug));
+                  const active = focusedSlug === area.slug;
                   return (
                     <button
                       key={area.slug}
@@ -73,11 +77,11 @@ export default function TecnologiaMapa() {
                       onClick={() => setFocusedSlug(area.slug)}
                       title={area.descricaoCurta}
                       className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0",
-                        focusedSlug === area.slug ? ac.filterActive : ac.filterInactive,
+                        "inline-flex items-center gap-1.5 rounded-full border-2 px-4 py-2 text-xs font-black transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0",
+                        active ? pillAc.filterActive : pillAc.filterInactive,
                       )}
                     >
-                      <Icon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                      <Icon className={cn("h-3.5 w-3.5", active ? "" : pillAc.iconMuted)} strokeWidth={2.5} aria-hidden />
                       {area.nome}
                     </button>
                   );
@@ -98,6 +102,7 @@ export default function TecnologiaMapa() {
           >
             {sections.map(({ area, items, areaIndex }) => {
               const slug = area.slug;
+              const cardAc = getPageAccentUi(accentForAreaSlug(slug));
               const listExpanded = expandedAreas[slug] ?? false;
               const preview = items.slice(0, PREVIEW_LOGO_COUNT);
               const hasMore = items.length > PREVIEW_LOGO_COUNT;
@@ -111,17 +116,20 @@ export default function TecnologiaMapa() {
                   className="tech-map-card card-brutal flex min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
                 >
                   {/* Faixa superior compacta (~2 linhas de descrição); sem flex-1 no texto pra não criar vácuo até a linha */}
-                  <div className="flex min-h-[7.25rem] shrink-0 flex-col border-b-2 border-slate-900 bg-gradient-to-br from-teal-50/90 via-white to-white px-5 pb-3 pt-3.5 sm:min-h-[7.5rem]">
+                  <div className={cn("flex min-h-[7.25rem] shrink-0 flex-col border-b-2 border-slate-900 px-5 pb-3 pt-3.5 sm:min-h-[7.5rem]", cardAc.panelSoft)}>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                        <h2 className="font-display text-lg font-black leading-snug text-slate-950 sm:text-xl">
-                          {area.nome.replace(/-/g, "")}
-                        </h2>
-                        <p className="mt-2 min-h-[2.625rem] text-pretty text-sm leading-relaxed text-slate-600">
-                          {area.descricaoCurta}
-                        </p>
+                      <div className="flex min-w-0 flex-1 items-start gap-3">
+                        <AreaIconBox icon={area.icon} areaSlug={slug} size="sm" />
+                        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                          <h2 className="font-display text-lg font-black leading-snug text-slate-950 sm:text-xl">
+                            {area.nome.replace(/-/g, "")}
+                          </h2>
+                          <p className="mt-2 min-h-[2.625rem] text-pretty text-sm leading-relaxed text-slate-700">
+                            {area.descricaoCurta}
+                          </p>
+                        </div>
                       </div>
-                      <span className="shrink-0 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm">
+                      <span className={cn("shrink-0 self-start rounded-full px-3 py-1.5 text-xs font-bold shadow-sm", cardAc.tag)}>
                         {items.length} tecnologias
                       </span>
                     </div>
@@ -147,7 +155,8 @@ export default function TecnologiaMapa() {
                         })
                       }
                       className={cn(
-                        "flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-[transform,box-shadow] hover:-translate-y-0.5 hover:bg-teal-50/60 active:translate-y-0",
+                        "flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-white px-4 py-2.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0",
+                        cardAc.cardHover,
                       )}
                     >
                       {techPanelOpen ? "Ocultar tecnologias" : "Ver tecnologias"}
