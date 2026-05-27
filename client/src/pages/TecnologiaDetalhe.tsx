@@ -8,7 +8,7 @@ import TechnologyLogo from "@/components/TechnologyLogo";
 import { areasTI } from "@/lib/data";
 import { accentForTechnology } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { technologies } from "@/lib/technologyData";
+import { technologies, resolveTool } from "@/lib/technologyData";
 import { cn } from "@/lib/utils";
 import { getTechnology } from "@/services/contentService";
 
@@ -162,9 +162,21 @@ export default function TecnologiaDetalhe() {
               <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
                 <h3 className="font-display font-black text-slate-950">Ferramentas que usam essa tecnologia</h3>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                  {technology.tools.map((tool) => (
-                    <li key={tool}>{tool}</li>
-                  ))}
+                  {technology.tools.map((tool) => {
+                    const resolved = resolveTool(tool);
+                    return (
+                      <li key={tool} className="flex items-center gap-2">
+                        <TechnologyLogo
+                          name={resolved.name}
+                          icon={resolved.icon}
+                          logoUrl={resolved.logoUrl}
+                          className="h-7 w-7 shrink-0"
+                          imageClassName="h-4 w-4"
+                        />
+                        <span className="font-medium text-slate-800">{resolved.name}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
               <div className="card-brutal rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
