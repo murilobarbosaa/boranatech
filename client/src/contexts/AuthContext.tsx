@@ -1,4 +1,5 @@
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
+import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
 import type { Profile } from "@/services/contracts";
 import { getMyProfile } from "@/services/profileService";
 import type { Gender } from "@shared/gender";
@@ -53,20 +54,6 @@ function normalizeEmail(email: string) {
 function authRedirectTo() {
   const redirectPath = import.meta.env.VITE_AUTH_REDIRECT_PATH || "/perfil";
   return `${window.location.origin}${redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`}`;
-}
-
-// Detecta um callback de OAuth em andamento na URL atual.
-// PKCE usa ?code= na query string; o fluxo implicit usa access_token/refresh_token
-// no hash. Cobrimos os dois.
-function hasOAuthCallbackInUrl() {
-  if (typeof window === "undefined") return false;
-  const hasCode = new URLSearchParams(window.location.search).has("code");
-  const rawHash = window.location.hash.startsWith("#")
-    ? window.location.hash.slice(1)
-    : window.location.hash;
-  const hashParams = new URLSearchParams(rawHash);
-  const hasToken = hashParams.has("access_token") || hashParams.has("refresh_token");
-  return hasCode || hasToken;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

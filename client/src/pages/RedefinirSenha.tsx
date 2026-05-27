@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { firstIssueMessage, passwordSchema } from "@/lib/authSchemas";
 import { supabase } from "@/lib/supabase";
+import { useRecoveryFlow } from "@/pages/redefinir-senha/useRecoveryFlow";
 
 const redefinirSchema = z
   .object({
@@ -24,61 +25,17 @@ const redefinirSchema = z
 export default function RedefinirSenha() {
   const [, setLocation] = useLocation();
   const { updatePassword } = useAuth();
-  const [recoveryReady, setRecoveryReady] = useState(false);
-  const [hydrating, setHydrating] = useState(true);
-  const [linkError, setLinkError] = useState(false);
+  const recoveryState = useRecoveryFlow();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const recoveryEverSeenRef = useRef(false);
 
   useEffect(() => {
-    if (!supabase) {
-      setHydrating(false);
-      return;
+    if (recoveryState === "redirect-change-password") {
+      setLocation("/trocar-senha", { replace: true });
     }
-
-    const initialHash = window.__BNT_INITIAL_HASH ?? window.location.hash ?? "";
-    const hasRecoveryHash = initialHash.includes("type=recovery");
-
-    let cancelled = false;
-
-    if (!hasRecoveryHash) {
-      void supabase.auth.getSession().then(({ data: { session } }) => {
-        if (cancelled) return;
-        if (session) {
-          setLocation("/trocar-senha", { replace: true });
-          return;
-        }
-        setHydrating(false);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (cancelled) return;
-      if (event === "PASSWORD_RECOVERY") {
-        recoveryEverSeenRef.current = true;
-        setRecoveryReady(true);
-        setHydrating(false);
-      }
-    });
-
-    const expiryTimer = window.setTimeout(() => {
-      if (cancelled || recoveryEverSeenRef.current) return;
-      setLinkError(true);
-      setHydrating(false);
-    }, 5000);
-
-    return () => {
-      cancelled = true;
-      data.subscription.unsubscribe();
-      window.clearTimeout(expiryTimer);
-    };
-  }, [setLocation]);
+  }, [recoveryState, setLocation]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,7 +67,7 @@ export default function RedefinirSenha() {
     setLocation("/perfil", { replace: true });
   }
 
-  if (hydrating) {
+  if (recoveryState === "checking" || recoveryState === "redirect-change-password") {
     return (
       <Layout>
         <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
@@ -125,7 +82,7 @@ export default function RedefinirSenha() {
     );
   }
 
-  if (linkError) {
+  if (recoveryState === "expired") {
     return (
       <Layout>
         <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
@@ -165,7 +122,7 @@ export default function RedefinirSenha() {
     );
   }
 
-  if (!recoveryReady) {
+  if (recoveryState === "no-link") {
     return (
       <Layout>
         <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
