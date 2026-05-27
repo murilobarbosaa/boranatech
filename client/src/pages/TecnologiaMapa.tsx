@@ -143,10 +143,10 @@ export default function TecnologiaMapa() {
                           className="bg-white transition-transform duration-200 ease-out group-hover:-translate-y-0.5 group-hover:scale-110"
                         />
                         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                          <h2 className="font-display text-lg font-black leading-snug text-slate-950 sm:text-xl">
+                          <h2 className="line-clamp-2 min-h-[2lh] font-display text-lg font-black leading-snug text-slate-950 sm:text-xl">
                             {area.nome.replace(/-/g, "")}
                           </h2>
-                          <p className="mt-2 min-h-[2.625rem] text-pretty text-sm leading-relaxed text-slate-700">
+                          <p className="mt-2 line-clamp-2 min-h-[2lh] text-pretty text-sm leading-relaxed text-slate-700">
                             {area.descricaoCurta}
                           </p>
                         </div>
