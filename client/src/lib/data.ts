@@ -51,7 +51,6 @@ export interface AreaTI {
   nome: string;
   slug: string;
   icon: LucideIcon;
-  emoji?: string;
   tagClass: string;
   descricaoCurta: string;
   descricaoCompleta: string;
@@ -2705,31 +2704,6 @@ const baseAreasTI: AreaTI[] = [
   }
 ];
 
-const areaEmojis: Record<string, string> = {
-  frontend: "🎨",
-  backend: "⚙️",
-  fullstack: "🧩",
-  dados: "📊",
-  uxui: "🖌️",
-  ia: "🤖",
-  produto: "🚀",
-  ciberseguranca: "🔒",
-  cloud: "☁️",
-  gestao: "📋",
-  qa: "🐞",
-  mobile: "📱",
-  devops: "🔄",
-  gamedev: "🎮",
-  "analise-dados": "📈",
-  "engenharia-dados": "🛢️",
-  "banco-de-dados": "🗄️",
-  sre: "🛡️",
-  infraestrutura: "🖥️",
-  "analise-sistemas": "🔍",
-  blockchain: "⛓️",
-  iot: "📡",
-};
-
 const NIVEIS_SALARIO = ["Estágio", "Júnior", "Pleno", "Sênior"] as const;
 
 // Faixas mensais BR por nível [estágio, júnior, pleno, sênior]. Áreas com
@@ -2767,7 +2741,6 @@ function buildSalarios(faixas?: [string, string, string, string]) {
 
 export const areasTI: AreaTI[] = baseAreasTI.map((area) => ({
   ...area,
-  emoji: area.emoji ?? areaEmojis[area.slug],
   salarios: area.salarios ?? buildSalarios(areaSalarios[area.slug]),
 }));
 
