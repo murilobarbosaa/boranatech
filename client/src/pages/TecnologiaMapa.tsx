@@ -102,7 +102,8 @@ export default function TecnologiaMapa() {
           >
             {sections.map(({ area, items, areaIndex }) => {
               const slug = area.slug;
-              const cardAc = getPageAccentUi(accentForAreaSlug(slug));
+              const cardAccent = accentForAreaSlug(slug);
+              const cardAc = getPageAccentUi(cardAccent);
               const listExpanded = expandedAreas[slug] ?? false;
               const preview = items.slice(0, PREVIEW_LOGO_COUNT);
               const hasMore = items.length > PREVIEW_LOGO_COUNT;
@@ -113,13 +114,16 @@ export default function TecnologiaMapa() {
                 <article
                   key={slug}
                   style={{ animationDelay: `${Math.min(areaIndex * 65, 520)}ms` }}
-                  className="tech-map-card card-brutal flex min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]"
+                  className={cn(
+                    "tech-map-card card-brutal flex min-h-0 flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a]",
+                    cardAc.liftShadow,
+                  )}
                 >
                   {/* Faixa superior compacta (~2 linhas de descrição); sem flex-1 no texto pra não criar vácuo até a linha */}
-                  <div className={cn("flex min-h-[7.25rem] shrink-0 flex-col border-b-2 border-slate-900 px-5 pb-3 pt-3.5 sm:min-h-[7.5rem]", cardAc.panelSoft)}>
+                  <div className={cn("flex min-h-[7.25rem] shrink-0 flex-col border-b-2 border-slate-900 px-5 pb-3 pt-3.5 sm:min-h-[7.5rem]", cardAc.theadLight)}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 flex-1 items-start gap-3">
-                        <AreaIconBox icon={area.icon} areaSlug={slug} size="sm" />
+                        <AreaIconBox icon={area.icon} areaSlug={slug} size="sm" className="bg-white" />
                         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                           <h2 className="font-display text-lg font-black leading-snug text-slate-950 sm:text-xl">
                             {area.nome.replace(/-/g, "")}
@@ -175,6 +179,7 @@ export default function TecnologiaMapa() {
                               key={technology.slug}
                               technology={technology}
                               fromArea={slug}
+                              accent={cardAccent}
                               style={{ animationDelay: `${Math.min(itemIndex * 22, 400)}ms` }}
                             />
                           ))}
