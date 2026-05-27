@@ -95,7 +95,6 @@ async function seedTechnologies() {
         use_cases: technology.useCases,
         learning_path: technology.learningPath,
         related_area_slugs: technology.areas,
-        market_demand: technology.demand,
         difficulty: technology.difficulty,
         beginner_friendly_score: technology.difficultyScore,
         salary_context: { label: technology.salaryRange },

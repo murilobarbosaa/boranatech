@@ -138,7 +138,6 @@ function technologyFromApi(row: any) {
     description: row.description || "",
     difficulty: row.difficulty || "Iniciante",
     difficultyScore: row.beginner_friendly_score || 3,
-    demand: row.market_demand || "Média",
     salaryRange: row.salary_context?.label || "",
     usagePercent: usage.usagePercent,
     usageLabel: usage.usageLabel,
@@ -153,8 +152,6 @@ function technologyFromApi(row: any) {
     tools: row.tools || [],
     courses: (row.resources || []).map((resource: any) => resource.title || resource.name || String(resource)),
     companies: row.companies_using || [],
-    jobs: 0,
-    weeklyChange: 0,
   };
 }
 

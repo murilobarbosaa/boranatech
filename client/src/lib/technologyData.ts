@@ -1,7 +1,6 @@
 import { usageEvidence } from "./surveyData2025";
 
 export type TechnologyCategory = "Linguagens" | "Frameworks" | "Banco de Dados" | "Ferramentas" | "Cloud" | "DevOps";
-export type DemandLevel = "Alta" | "Média" | "Baixa";
 export type DifficultyLabel = "Iniciante" | "Intermediário" | "Avançado";
 
 export interface Technology {
@@ -13,7 +12,6 @@ export interface Technology {
   description: string;
   difficulty: DifficultyLabel;
   difficultyScore: number;
-  demand: DemandLevel;
   salaryRange: string;
   usagePercent?: number;
   usageLabel?: string;
@@ -29,8 +27,6 @@ export interface Technology {
   courses: string[];
   companies: string[];
   games?: string[];
-  jobs: number;
-  weeklyChange: number;
 }
 
 const byCategory: Record<TechnologyCategory, string[]> = {
@@ -611,10 +607,9 @@ export const combinesWithMap: Record<string, string[]> = {
   confluence: ["jira", "trello", "notion"],
 };
 
-export const technologies: Technology[] = names.map((name, index) => {
+export const technologies: Technology[] = names.map((name) => {
   const category = categoryFor(name);
   const difficulty = difficulties[name] || "Intermediário";
-  const jobs = Math.max(140, Math.round(6400 - index * 103));
   const evidence = usageEvidence[slugify(name)];
   return {
     slug: slugify(name),
@@ -625,7 +620,6 @@ export const technologies: Technology[] = names.map((name, index) => {
     description: `${name} é usada para construir produtos digitais, resolver problemas reais e acelerar entregas em times de tecnologia.`,
     difficulty,
     difficultyScore: difficultyScore(difficulty),
-    demand: index < 22 ? "Alta" : index < 44 ? "Média" : "Baixa",
     salaryRange: difficulty === "Avançado" ? "R$ 6.000 a R$ 14.000" : difficulty === "Intermediário" ? "R$ 4.000 a R$ 10.000" : "R$ 2.500 a R$ 6.000",
     usagePercent: evidence?.usagePercent,
     usageLabel: evidence?.usageLabel,
@@ -651,8 +645,6 @@ export const technologies: Technology[] = names.map((name, index) => {
     courses: ["Curso em Vídeo", "freeCodeCamp", "Documentação oficial", "YouTube"],
     companies: notableCompanies[name] || ["GitHub", "Stack Overflow", "Comunidades open source"],
     games: notableGames[name],
-    jobs,
-    weeklyChange: index % 3 === 0 ? 12 : index % 3 === 1 ? 4 : -3,
   };
 });
 
@@ -663,7 +655,7 @@ export const technologyRanking = technologies
   .sort((a, b) => {
     const pct = (b.usagePercent || 0) - (a.usagePercent || 0);
     if (pct !== 0) return pct;
-    return b.jobs - a.jobs;
+    return a.name.localeCompare(b.name);
   })
   .map((technology, index) => ({ position: index + 1, ...technology }));
 
