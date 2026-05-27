@@ -75,6 +75,10 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "dbt",
     "Tableau",
     "Looker",
+    "Jira",
+    "Trello",
+    "Notion",
+    "Confluence",
   ],
   Cloud: ["AWS", "Google Cloud", "Azure"],
   DevOps: [
@@ -167,6 +171,10 @@ const areaMap: Record<string, string[]> = {
   Snowflake: ["dados", "engenharia-dados", "banco-de-dados", "analise-dados"],
   Tableau: ["analise-dados", "dados", "produto"],
   Looker: ["analise-dados", "dados"],
+  Jira: ["gestao", "produto", "qa"],
+  Trello: ["gestao", "produto"],
+  Notion: ["gestao", "produto"],
+  Confluence: ["gestao"],
 };
 
 const difficulties: Record<string, DifficultyLabel> = {
@@ -241,6 +249,10 @@ const difficulties: Record<string, DifficultyLabel> = {
   Snowflake: "Intermediário",
   Tableau: "Iniciante",
   Looker: "Intermediário",
+  Jira: "Iniciante",
+  Trello: "Iniciante",
+  Notion: "Iniciante",
+  Confluence: "Iniciante",
 };
 
 function slugify(value: string) {
@@ -335,6 +347,10 @@ const names = [
   "Snowflake",
   "Tableau",
   "Looker",
+  "Jira",
+  "Trello",
+  "Notion",
+  "Confluence",
 ];
 
 const logoUrls: Record<string, string> = {
@@ -412,6 +428,10 @@ const logoUrls: Record<string, string> = {
   Snowflake: "https://www.google.com/s2/favicons?domain=snowflake.com&sz=128",
   Tableau: "https://www.google.com/s2/favicons?domain=tableau.com&sz=128",
   Looker: "https://www.google.com/s2/favicons?domain=looker.com&sz=128",
+  Jira: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg",
+  Trello: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/trello/trello-original.svg",
+  Notion: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/notion/notion-original.svg",
+  Confluence: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/confluence/confluence-original.svg",
 };
 
 
