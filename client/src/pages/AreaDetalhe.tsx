@@ -21,7 +21,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
-import PageHero from "@/components/shared/PageHero";
+import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
@@ -29,6 +29,47 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { technologies } from "@/lib/technologyData";
 import { cn } from "@/lib/utils";
 import { getArea } from "@/services/contentService";
+
+const HERO_BLOB: Record<PageHeroAccent, string> = {
+  violet: "bg-violet-300",
+  sky: "bg-sky-300",
+  amber: "bg-amber-300",
+  emerald: "bg-emerald-300",
+  blue: "bg-blue-300",
+  fuchsia: "bg-fuchsia-300",
+  orange: "bg-orange-300",
+  rose: "bg-rose-300",
+  cyan: "bg-cyan-300",
+  teal: "bg-teal-300",
+};
+
+function AreaHeroDecor({ accent }: { accent: PageHeroAccent }) {
+  const blob = HERO_BLOB[accent];
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      <div
+        className={cn(
+          "absolute -right-12 -top-16 h-48 w-48 rounded-full opacity-40 blur-3xl animate-gentle-float",
+          blob,
+        )}
+      />
+      <div
+        className={cn(
+          "absolute right-1/4 top-1/3 h-28 w-28 rounded-full opacity-30 blur-3xl animate-gentle-float",
+          blob,
+        )}
+        style={{ animationDelay: "1.4s" }}
+      />
+      <div
+        className={cn(
+          "absolute -bottom-16 left-1/4 h-40 w-40 rounded-full opacity-25 blur-3xl animate-gentle-float",
+          blob,
+        )}
+        style={{ animationDelay: "0.7s" }}
+      />
+    </div>
+  );
+}
 
 function DifficultyDots({ level, fillClass }: { level: number; fillClass: string }) {
   const labels = ["", "Muito fácil", "Fácil", "Médio", "Difícil", "Muito difícil"];
@@ -185,6 +226,7 @@ export default function AreaDetalhe() {
         eyebrow="Área de TI"
         title={area.nome}
         subtitle={area.descricaoCurta}
+        backgroundSlot={<AreaHeroDecor accent={accent} />}
         topSlot={
           <Link
             href="/areas"
@@ -208,7 +250,7 @@ export default function AreaDetalhe() {
             {/* ======================= MAIN ======================= */}
             <div className="space-y-10">
               {/* ============ ZONA 1 — Hero stats + CTAs ============ */}
-              <div className="space-y-4">
+              <div className="area-rise space-y-4">
                 <AreaHeroStats area={area} fillClass={ac.progressFill} iconMutedClass={ac.iconMuted} />
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -244,19 +286,19 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 2 — Entendimento ============ */}
-              <div className="space-y-5">
+              <div className="area-rise space-y-5" style={{ animationDelay: "0.08s" }}>
                 <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
                   Entendimento
                 </p>
 
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-3 text-xl font-bold text-slate-900">
                     O que é {area.nome}?
                   </h2>
                   <p className="leading-relaxed text-slate-700">{area.descricaoCompleta}</p>
                 </div>
 
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-3 text-xl font-bold text-slate-900">
                     O que faz na prática?
                   </h2>
@@ -286,13 +328,13 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 3 — Como começar ============ */}
-              <div className="space-y-5">
+              <div className="area-rise space-y-5" style={{ animationDelay: "0.16s" }}>
                 <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
                   Como começar
                 </p>
 
                 {/* 3.1 Roadmap preview */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Roadmap inicial
                   </h2>
@@ -332,7 +374,7 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 3.2 Cursos preview */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">Cursos grátis</h2>
                   {cursosDaArea.length > 0 ? (
                     <div className="space-y-3">
@@ -376,7 +418,7 @@ export default function AreaDetalhe() {
 
                 {/* 3.3 Faculdades (condicional) */}
                 {faculdadesEntries.length > 0 ? (
-                  <div className="card-brutal rounded-xl bg-white p-6">
+                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                     <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                       Faculdades relacionadas
                     </h2>
@@ -413,7 +455,7 @@ export default function AreaDetalhe() {
                 ) : null}
 
                 {/* 3.4 Projetos */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Projetos pra praticar
                   </h2>
@@ -447,7 +489,7 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 4 — Aprofundamento ============ */}
-              <div className="space-y-5">
+              <div className="area-rise space-y-5" style={{ animationDelay: "0.24s" }}>
                 <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
                   Aprofundamento
                 </p>
@@ -467,7 +509,7 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 4.2 Tecnologias */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Tecnologias desta área
                   </h2>
@@ -500,7 +542,7 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 4.3 Empresas */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Empresas que contratam para esta área
                   </h2>
@@ -529,7 +571,7 @@ export default function AreaDetalhe() {
                 </div>
 
                 {/* 4.4 Termos */}
-                <div className="card-brutal rounded-xl bg-white p-6">
+                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Termos essenciais
                   </h2>
@@ -556,7 +598,7 @@ export default function AreaDetalhe() {
 
                 {/* 4.5 Subáreas (condicional) */}
                 {area.subareas && area.subareas.length > 0 ? (
-                  <div className="card-brutal rounded-xl bg-white p-6">
+                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
                     <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                       Subáreas de {area.nome}
                     </h2>
