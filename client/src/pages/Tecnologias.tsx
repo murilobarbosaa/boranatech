@@ -12,6 +12,24 @@ import { getTechnologies } from "@/services/contentService";
 
 const ac = getPageAccentUi("violet");
 
+const GENERAL_SUBTITLE =
+  "Tecnologia é toda ferramenta que ajuda a construir software: linguagens (o idioma em que você escreve o código), frameworks (kits prontos que aceleram o trabalho) e ferramentas de apoio. Aqui você vê o que cada uma faz, onde é usada e quanto custa começar.";
+
+const CATEGORY_SUBTITLES: Record<string, string> = {
+  Linguagens:
+    "O idioma em que o código é escrito. Cada linguagem tem seu jeito e suas forças: algumas são ótimas pra web, outras pra dados, apps ou jogos.",
+  Frameworks:
+    "Kits prontos que poupam trabalho. Em vez de começar do zero, você usa uma base já estruturada pra construir mais rápido e com menos erro.",
+  "Banco de Dados":
+    "Onde a informação fica guardada e organizada. É o que permite um sistema lembrar cadastros, pedidos, mensagens e tudo que precisa ser salvo.",
+  Ferramentas:
+    "Programas de apoio do dia a dia: versionar código, desenhar telas, criar gráficos, testar e organizar as tarefas do time.",
+  Cloud:
+    "Servidores de empresas como Amazon, Google e Microsoft que você aluga pela internet, sem precisar manter máquinas próprias.",
+  DevOps:
+    "Práticas e ferramentas pra colocar software no ar de forma automática, confiável e monitorada, do código até o usuário final.",
+};
+
 export default function Tecnologias() {
   const [technologyItems, setTechnologyItems] = useState(technologies);
   const [category, setCategory] = useState("Todas");
@@ -37,7 +55,11 @@ export default function Tecnologias() {
         accent="violet"
         eyebrow="stack e mercado"
         title="Tecnologias e Linguagens"
-        subtitle="Tecnologia é toda ferramenta que ajuda a construir software: linguagens (o idioma em que você escreve o código), frameworks (kits prontos que aceleram o trabalho) e ferramentas de apoio. Aqui você vê o que cada uma faz, onde é usada e quanto custa começar."
+        subtitle={
+          <span key={category} className="animate-fade-slide-up inline-block">
+            {CATEGORY_SUBTITLES[category] ?? GENERAL_SUBTITLE}
+          </span>
+        }
       />
 
       <section className={cn("sticky top-16 z-40 border-b-2 py-4 backdrop-blur", ac.stickyBar)}>
