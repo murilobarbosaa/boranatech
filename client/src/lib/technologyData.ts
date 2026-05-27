@@ -34,7 +34,7 @@ export interface Technology {
 }
 
 const byCategory: Record<TechnologyCategory, string[]> = {
-  Linguagens: ["HTML", "CSS", "JavaScript", "TypeScript", "Python", "Java", "PHP", "Go", "Rust", "C#", "SQL", "Swift", "Kotlin", "R"],
+  Linguagens: ["HTML", "CSS", "JavaScript", "TypeScript", "Python", "Java", "PHP", "Go", "Rust", "C#", "SQL", "Swift", "Kotlin", "R", "C++", "C", "Lua", "Solidity"],
   Frameworks: [
     "React",
     "Vue.js",
@@ -56,8 +56,11 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "PyTorch",
     "NumPy",
     "GraphQL",
+    "Unity",
+    "Unreal Engine",
+    "Godot",
   ],
-  "Banco de Dados": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch"],
+  "Banco de Dados": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Snowflake"],
   Ferramentas: [
     "Git",
     "Linux",
@@ -68,6 +71,10 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "Power BI",
     "Webpack",
     "Storybook",
+    "Arduino",
+    "dbt",
+    "Tableau",
+    "Looker",
   ],
   Cloud: ["AWS", "Google Cloud", "Azure"],
   DevOps: [
@@ -81,6 +88,7 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "Grafana",
     "Kafka",
     "RabbitMQ",
+    "Apache Airflow",
   ],
 };
 
@@ -146,6 +154,19 @@ const areaMap: Record<string, string[]> = {
   NumPy: ["dados", "ia", "analise-dados"],
   TensorFlow: ["ia", "dados"],
   PyTorch: ["ia", "dados"],
+  Unity: ["gamedev"],
+  "Unreal Engine": ["gamedev"],
+  Godot: ["gamedev"],
+  "C++": ["backend", "gamedev", "iot"],
+  Lua: ["gamedev", "backend"],
+  Solidity: ["blockchain"],
+  C: ["backend", "iot"],
+  Arduino: ["iot"],
+  "Apache Airflow": ["engenharia-dados", "dados"],
+  dbt: ["engenharia-dados", "dados", "analise-dados"],
+  Snowflake: ["dados", "engenharia-dados", "banco-de-dados", "analise-dados"],
+  Tableau: ["analise-dados", "dados", "produto"],
+  Looker: ["analise-dados", "dados"],
 };
 
 const difficulties: Record<string, DifficultyLabel> = {
@@ -207,12 +228,26 @@ const difficulties: Record<string, DifficultyLabel> = {
   TensorFlow: "Avançado",
   NumPy: "Intermediário",
   PyTorch: "Avançado",
+  Unity: "Intermediário",
+  "Unreal Engine": "Avançado",
+  Godot: "Intermediário",
+  "C++": "Avançado",
+  Lua: "Iniciante",
+  Solidity: "Avançado",
+  C: "Intermediário",
+  Arduino: "Iniciante",
+  "Apache Airflow": "Avançado",
+  dbt: "Intermediário",
+  Snowflake: "Intermediário",
+  Tableau: "Iniciante",
+  Looker: "Intermediário",
 };
 
 function slugify(value: string) {
   return value
     .toLowerCase()
     .replace("#", "sharp")
+    .replace(/\+/g, "plus")
     .replace(/\./g, "")
     .replace(/\s+/g, "-");
 }
@@ -287,6 +322,19 @@ const names = [
   "Power BI",
   "NumPy",
   "PyTorch",
+  "Unity",
+  "Unreal Engine",
+  "Godot",
+  "C++",
+  "Lua",
+  "Solidity",
+  "C",
+  "Arduino",
+  "Apache Airflow",
+  "dbt",
+  "Snowflake",
+  "Tableau",
+  "Looker",
 ];
 
 const logoUrls: Record<string, string> = {
@@ -351,6 +399,19 @@ const logoUrls: Record<string, string> = {
   "Power BI": "https://www.google.com/s2/favicons?domain=powerbi.microsoft.com&sz=128",
   NumPy: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/numpy/numpy-original.svg",
   PyTorch: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg",
+  Unity: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unity/unity-original.svg",
+  "Unreal Engine": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unrealengine/unrealengine-original.svg",
+  Godot: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/godot/godot-original.svg",
+  "C++": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg",
+  Lua: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/lua/lua-original.svg",
+  Solidity: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/solidity/solidity-original.svg",
+  C: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg",
+  Arduino: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/arduino/arduino-original.svg",
+  "Apache Airflow": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apacheairflow/apacheairflow-original.svg",
+  dbt: "https://www.google.com/s2/favicons?domain=getdbt.com&sz=128",
+  Snowflake: "https://www.google.com/s2/favicons?domain=snowflake.com&sz=128",
+  Tableau: "https://www.google.com/s2/favicons?domain=tableau.com&sz=128",
+  Looker: "https://www.google.com/s2/favicons?domain=looker.com&sz=128",
 };
 
 
