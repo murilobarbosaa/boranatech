@@ -554,6 +554,15 @@
   animation: techFadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .tech-map-card,
+  .tech-map-pill,
+  .tech-ranking-row,
+  .tech-ranking-card--mobile {
+    animation: none;
+  }
+}
+
 @keyframes areaRise {
   from {
     opacity: 0;
