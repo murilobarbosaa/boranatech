@@ -2,7 +2,7 @@ import type { ContentSourceStatus } from "./contracts";
 import { Layout as LayoutIcon } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { areasTI, cursosGratuitos, plataformas, projetos, roadmaps, type AreaTI } from "@/lib/data";
-import { technologies, technologyRanking } from "@/lib/technologyData";
+import { technologies, technologyRanking, combinesWithMap } from "@/lib/technologyData";
 import { usageEvidence } from "@/lib/surveyData2025";
 
 const API_BASE = apiUrl("/api/content");
@@ -149,7 +149,7 @@ function technologyFromApi(row: any) {
     useCases: row.use_cases || [],
     learningPath: row.learning_path || [],
     dailyTip: row.long_description || row.description || "",
-    combinesWith: [],
+    combinesWith: combinesWithMap[row.slug] || [],
     tools: row.tools || [],
     courses: (row.resources || []).map((resource: any) => resource.title || resource.name || String(resource)),
     companies: row.companies_using || [],
