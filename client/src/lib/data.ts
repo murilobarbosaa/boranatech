@@ -5049,9 +5049,37 @@ const plataformaTecnologias: Record<string, string[]> = {
   "sql-murder-mystery": ["sql"],
 };
 
+export type PlataformaCategoria = "Cursos" | "Jogo" | "Desafios" | "Playground" | "Documentação" | "Roadmap";
+
+/** Formato da plataforma. Quem não estiver aqui cai em "Cursos" por padrão. */
+const plataformaCategorias: Record<string, PlataformaCategoria> = {
+  "flexbox-froggy": "Jogo",
+  "grid-garden": "Jogo",
+  "css-diner": "Jogo",
+  "blockly-games": "Jogo",
+  scratch: "Jogo",
+  codecombat: "Jogo",
+  "elevator-saga": "Jogo",
+  "vim-adventures": "Jogo",
+  checkio: "Jogo",
+  "sql-murder-mystery": "Jogo",
+  "regex-crossword": "Jogo",
+  codingame: "Desafios",
+  codewars: "Desafios",
+  leetcode: "Desafios",
+  exercism: "Desafios",
+  "frontend-mentor": "Desafios",
+  cssbattle: "Desafios",
+  replit: "Playground",
+  glitch: "Playground",
+  mdn: "Documentação",
+  "roadmap-sh": "Roadmap",
+};
+
 export const plataformas = plataformasBase.map((p) => ({
   ...p,
   tecnologias: plataformaTecnologias[p.id] ?? [],
+  categoria: plataformaCategorias[p.id] ?? "Cursos",
 }));
 
 /** Todos os estados + DF (sigla IBGE) — para filtros e cadastro de eventos */
