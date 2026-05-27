@@ -50,7 +50,7 @@ const menuData: DropdownMenu[] = [
           { label: "Áreas da TI", description: "Conheça os caminhos da TI", path: "/areas" },
           { label: "Quiz de Área", description: "Descubra sua área ideal", path: "/quiz-carreira" },
           { label: "Tecnologias", description: "Linguagens e frameworks", path: "/tecnologias" },
-          { label: "Mapa de Tecnologias", description: "Visualize o ecossistema tech", path: "/tecnologias/mapa" },
+          { label: "Tecnologias por Área", description: "Veja o que cada área usa", path: "/tecnologias/por-area" },
         ],
       },
       {
