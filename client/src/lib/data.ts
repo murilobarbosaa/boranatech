@@ -51,6 +51,7 @@ export interface AreaTI {
   nome: string;
   slug: string;
   icon: LucideIcon;
+  emoji?: string;
   tagClass: string;
   descricaoCurta: string;
   descricaoCompleta: string;
@@ -75,7 +76,7 @@ export interface AreaTI {
   faculdadesRelacionadas?: string[];
 }
 
-export const areasTI: AreaTI[] = [
+const baseAreasTI: AreaTI[] = [
   {
     id: "frontend",
     nome: "Front-end",
@@ -2702,6 +2703,36 @@ export const areasTI: AreaTI[] = [
     faculdadesRelacionadas: ["Engenharia da Computação", "Engenharia Eletrônica", "Ciência da Computação", "Sistemas Embarcados (tecnólogo)"]
   }
 ];
+
+const areaEmojis: Record<string, string> = {
+  frontend: "🎨",
+  backend: "⚙️",
+  fullstack: "🧩",
+  dados: "📊",
+  uxui: "🖌️",
+  ia: "🤖",
+  produto: "🚀",
+  ciberseguranca: "🔒",
+  cloud: "☁️",
+  gestao: "📋",
+  qa: "🐞",
+  mobile: "📱",
+  devops: "🔄",
+  gamedev: "🎮",
+  "analise-dados": "📈",
+  "engenharia-dados": "🛢️",
+  "banco-de-dados": "🗄️",
+  sre: "🛡️",
+  infraestrutura: "🖥️",
+  "analise-sistemas": "🔍",
+  blockchain: "⛓️",
+  iot: "📡",
+};
+
+export const areasTI: AreaTI[] = baseAreasTI.map((area) => ({
+  ...area,
+  emoji: area.emoji ?? areaEmojis[area.slug],
+}));
 
 export const roadmaps = [
   {

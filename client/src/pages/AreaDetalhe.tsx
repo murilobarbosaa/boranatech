@@ -192,7 +192,7 @@ export default function AreaDetalhe() {
             <ArrowLeft className="h-4 w-4" aria-hidden /> Todas as áreas
           </Link>
         }
-        titlePrefix={<AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" />}
+        titlePrefix={<AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" emoji={area.emoji} />}
         actions={
           <FavoriteButton
             compact
