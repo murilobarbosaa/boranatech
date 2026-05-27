@@ -434,6 +434,26 @@ const logoUrls: Record<string, string> = {
   Confluence: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/confluence/confluence-original.svg",
 };
 
+// Logos de ferramentas de apoio que não são tecnologias do catálogo principal.
+const toolLogoUrls: Record<string, string> = {
+  "VS Code": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg",
+  GitHub: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg",
+  npm: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/npm/npm-original-wordmark.svg",
+  Postman: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postman/postman-original.svg",
+  Jupyter: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original.svg",
+};
+
+// Resolve o nome de uma ferramenta para o que o TechnologyLogo precisa. Reaproveita
+// o catálogo de logos das tecnologias e o mapa de ferramentas de apoio; quando não
+// há logo, o TechnologyLogo cai no fallback de iniciais.
+export function resolveTool(name: string): { name: string; icon: string; logoUrl: string } {
+  return {
+    name,
+    icon: name.slice(0, 2).toUpperCase(),
+    logoUrl: logoUrls[name] || toolLogoUrls[name] || "",
+  };
+}
+
 
 const notableCompanies: Record<string, string[]> = {
   HTML: ["Google", "Wikipedia", "Netflix"],
@@ -627,7 +647,7 @@ export const technologies: Technology[] = names.map((name, index) => {
     ],
     dailyTip: `Use ${name} em um projeto simples antes de tentar dominar todos os recursos.`,
     combinesWith: combinesWithMap[slugify(name)] || [],
-    tools: ["VS Code", "GitHub", "Documentação oficial", "Comunidade"],
+    tools: ["VS Code", "Git", "GitHub"],
     courses: ["Curso em Vídeo", "freeCodeCamp", "Documentação oficial", "YouTube"],
     companies: notableCompanies[name] || ["GitHub", "Stack Overflow", "Comunidades open source"],
     games: notableGames[name],
