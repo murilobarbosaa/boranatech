@@ -63,6 +63,7 @@ export interface AreaTI {
   dificuldade: number;
   cargos: string[];
   faixaSalarial: string;
+  salarios?: { nivel: string; faixa: string }[];
   cursosGratuitos: string[];
   roadmapInicial: string[];
   projetos: string[];
@@ -2729,9 +2730,45 @@ const areaEmojis: Record<string, string> = {
   iot: "📡",
 };
 
+const NIVEIS_SALARIO = ["Estágio", "Júnior", "Pleno", "Sênior"] as const;
+
+// Faixas mensais BR por nível [estágio, júnior, pleno, sênior]. Áreas com
+// júnior/pleno/sênior já vetados (Glassdoor/CAGED 2026) mantêm os valores e
+// recebem o estágio; as demais foram reconstruídas com base no mercado.
+const areaSalarios: Record<string, [string, string, string, string]> = {
+  frontend: ["R$ 1.800 a R$ 3.200", "R$ 4.000 a R$ 6.500", "R$ 7.000 a R$ 11.000", "R$ 12.000 a R$ 18.000"],
+  backend: ["R$ 2.000 a R$ 3.500", "R$ 4.500 a R$ 7.500", "R$ 8.000 a R$ 13.000", "R$ 14.000 a R$ 22.000"],
+  fullstack: ["R$ 2.000 a R$ 3.500", "R$ 4.500 a R$ 7.500", "R$ 8.000 a R$ 14.000", "R$ 14.000 a R$ 22.000"],
+  dados: ["R$ 2.000 a R$ 3.500", "R$ 4.500 a R$ 7.500", "R$ 8.000 a R$ 13.000", "R$ 13.000 a R$ 20.000"],
+  uxui: ["R$ 1.800 a R$ 3.000", "R$ 3.800 a R$ 6.000", "R$ 6.500 a R$ 10.000", "R$ 11.000 a R$ 18.000"],
+  ia: ["R$ 2.500 a R$ 4.000", "R$ 5.000 a R$ 8.500", "R$ 10.000 a R$ 16.000", "R$ 18.000 a R$ 30.000"],
+  produto: ["R$ 2.500 a R$ 4.000", "R$ 5.000 a R$ 8.000", "R$ 9.000 a R$ 15.000", "R$ 16.000 a R$ 28.000"],
+  ciberseguranca: ["R$ 2.000 a R$ 3.500", "R$ 4.500 a R$ 7.500", "R$ 8.000 a R$ 14.000", "R$ 15.000 a R$ 28.000"],
+  cloud: ["R$ 2.200 a R$ 3.800", "R$ 5.000 a R$ 8.000", "R$ 9.000 a R$ 16.000", "R$ 16.000 a R$ 28.000"],
+  gestao: ["R$ 2.500 a R$ 4.000", "R$ 5.000 a R$ 8.500", "R$ 9.000 a R$ 16.000", "R$ 16.000 a R$ 30.000"],
+  qa: ["R$ 1.800 a R$ 3.000", "R$ 3.500 a R$ 6.000", "R$ 6.000 a R$ 10.000", "R$ 11.000 a R$ 20.000"],
+  mobile: ["R$ 2.000 a R$ 3.500", "R$ 4.000 a R$ 7.000", "R$ 7.500 a R$ 12.000", "R$ 13.000 a R$ 21.000"],
+  devops: ["R$ 2.500 a R$ 4.000", "R$ 5.500 a R$ 8.500", "R$ 9.000 a R$ 16.000", "R$ 16.000 a R$ 30.000"],
+  gamedev: ["R$ 1.500 a R$ 2.800", "R$ 2.500 a R$ 5.000", "R$ 5.000 a R$ 9.000", "R$ 9.000 a R$ 16.000"],
+  "analise-dados": ["R$ 1.800 a R$ 3.000", "R$ 3.000 a R$ 5.000", "R$ 5.500 a R$ 8.300", "R$ 9.000 a R$ 13.000"],
+  "engenharia-dados": ["R$ 2.500 a R$ 4.000", "R$ 5.000 a R$ 8.500", "R$ 9.000 a R$ 15.000", "R$ 16.000 a R$ 24.000"],
+  "banco-de-dados": ["R$ 2.000 a R$ 3.500", "R$ 4.500 a R$ 7.600", "R$ 8.000 a R$ 11.700", "R$ 12.000 a R$ 18.000"],
+  sre: ["R$ 2.500 a R$ 4.000", "R$ 5.000 a R$ 8.000", "R$ 8.400 a R$ 17.000", "R$ 16.000 a R$ 26.000"],
+  infraestrutura: ["R$ 1.500 a R$ 2.800", "R$ 2.300 a R$ 4.000", "R$ 4.500 a R$ 6.000", "R$ 6.500 a R$ 11.000"],
+  "analise-sistemas": ["R$ 1.800 a R$ 3.200", "R$ 3.200 a R$ 6.000", "R$ 5.600 a R$ 9.600", "R$ 11.000 a R$ 18.000"],
+  blockchain: ["R$ 2.500 a R$ 4.000", "R$ 4.000 a R$ 8.000", "R$ 8.000 a R$ 12.000", "R$ 15.000 a R$ 28.000"],
+  iot: ["R$ 2.000 a R$ 3.500", "R$ 4.000 a R$ 7.000", "R$ 7.000 a R$ 13.000", "R$ 12.000 a R$ 18.000"],
+};
+
+function buildSalarios(faixas?: [string, string, string, string]) {
+  if (!faixas) return undefined;
+  return faixas.map((faixa, i) => ({ nivel: NIVEIS_SALARIO[i], faixa }));
+}
+
 export const areasTI: AreaTI[] = baseAreasTI.map((area) => ({
   ...area,
   emoji: area.emoji ?? areaEmojis[area.slug],
+  salarios: area.salarios ?? buildSalarios(areaSalarios[area.slug]),
 }));
 
 export const roadmaps = [

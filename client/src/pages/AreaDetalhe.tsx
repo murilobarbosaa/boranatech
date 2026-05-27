@@ -166,6 +166,13 @@ function AreaHeroStats({
   iconMutedClass: string;
 }) {
   const tempoLabel = area.tempoMedioFormacao ?? "Varia por perfil";
+  const salarios = area.salarios;
+  let faixaResumo = area.faixaSalarial;
+  if (salarios && salarios.length > 0) {
+    const inicio = salarios[0].faixa.split(" a ");
+    const fim = salarios[salarios.length - 1].faixa.split(" a ");
+    faixaResumo = `${inicio[0]} a ${fim[fim.length - 1]}`;
+  }
   return (
     <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
       <div className="grid gap-6 md:grid-cols-3">
@@ -179,7 +186,8 @@ function AreaHeroStats({
           <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
             Faixa salarial
           </p>
-          <p className="text-sm font-bold leading-snug text-slate-900">{area.faixaSalarial}</p>
+          <p className="text-sm font-bold leading-snug text-slate-900">{faixaResumo}</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">do estágio ao sênior</p>
         </div>
         <div className="md:border-l-2 md:border-slate-100 md:pl-6">
           <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
@@ -729,10 +737,23 @@ export default function AreaDetalhe() {
                     <DifficultyDots level={area.dificuldade} fillClass={ac.progressFill} />
                   </div>
                   <div>
-                    <p className={cn("mb-1 text-xs uppercase tracking-wide", ac.iconMuted)}>
-                      Faixa salarial (estágio/trainee/júnior)
+                    <p className={cn("mb-1.5 text-xs uppercase tracking-wide", ac.iconMuted)}>
+                      Faixa salarial por nível
                     </p>
-                    <p className="text-sm font-medium">{area.faixaSalarial}</p>
+                    {area.salarios && area.salarios.length > 0 ? (
+                      <dl className="space-y-1">
+                        {area.salarios.map((s) => (
+                          <div key={s.nivel} className="flex items-baseline justify-between gap-3">
+                            <dt className="text-xs font-bold text-slate-600">{s.nivel}</dt>
+                            <dd className="text-sm font-semibold tabular-nums text-slate-900">
+                              {s.faixa}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : (
+                      <p className="text-sm font-medium">{area.faixaSalarial}</p>
+                    )}
                   </div>
                   {area.tempoMedioFormacao ? (
                     <div>
