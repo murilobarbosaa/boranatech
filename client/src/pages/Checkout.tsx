@@ -38,7 +38,7 @@ import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
 
 const plans = [
   {
-    id: "monthly",
+    id: "pro_monthly",
     label: "Mensal",
     price: 24.9,
     priceLabel: "R$ 24,90",
@@ -48,7 +48,7 @@ const plans = [
     savings: null,
   },
   {
-    id: "semiannual",
+    id: "pro_semiannual",
     label: "Semestral",
     price: 119.4,
     priceLabel: "R$ 119,40",
@@ -59,7 +59,7 @@ const plans = [
     savings: "20% off",
   },
   {
-    id: "annual",
+    id: "pro_annual",
     label: "Anual",
     price: 179.9,
     priceLabel: "R$ 179,90",
@@ -125,7 +125,7 @@ export default function Checkout() {
   const [, setLocation] = useLocation();
   const { session } = useAuth();
   const { affiliateCode, discountPercent } = useAffiliate();
-  const [selectedPlan, setSelectedPlan] = useState("semiannual");
+  const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
   const [loading, setLoading] = useState(false);
 
   function discountedPrice(price: number) {

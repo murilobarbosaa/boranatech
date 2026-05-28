@@ -12,18 +12,18 @@ import type { Gender } from "../../shared/gender";
 
 const router = Router();
 const PLAN_VALUES: Record<string, number> = {
-  monthly: 24.9,
-  semiannual: 119.4,
-  annual: 179.9,
+  pro_monthly: 24.9,
+  pro_semiannual: 119.4,
+  pro_annual: 179.9,
 };
 
 const PLAN_CYCLES: Record<string, "MONTHLY" | "SEMIANNUALLY" | "YEARLY"> = {
-  monthly: "MONTHLY",
-  semiannual: "SEMIANNUALLY",
-  annual: "YEARLY",
+  pro_monthly: "MONTHLY",
+  pro_semiannual: "SEMIANNUALLY",
+  pro_annual: "YEARLY",
 };
 
-const PLAN_CYCLE_MONTHS: Record<string, number> = { monthly: 1, semiannual: 6, annual: 12 };
+const PLAN_CYCLE_MONTHS: Record<string, number> = { pro_monthly: 1, pro_semiannual: 6, pro_annual: 12 };
 
 function addMonths(date: Date, months: number) {
   const d = new Date(date);
@@ -370,7 +370,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
     const affiliateCode = typeof req.body?.affiliateCode === "string" ? req.body.affiliateCode.trim().toUpperCase() : "";
-    const planId = typeof req.body?.planId === "string" && PLAN_VALUES[req.body.planId] ? req.body.planId : "monthly";
+    const planId = typeof req.body?.planId === "string" && PLAN_VALUES[req.body.planId] ? req.body.planId : "pro_monthly";
 
     const { data: profile } = await supabaseAdmin.from("profiles").select("name, email").eq("user_id", userId).single();
 
@@ -510,7 +510,7 @@ router.post("/webhook", async (req, res, next) => {
       if (!subscriptionId) return res.json({ received: true });
 
       const externalRef = String(subscription?.externalReference || payment?.externalReference || "");
-      const [userId, planCode = "monthly", affiliateCode] = externalRef.split(":");
+      const [userId, planCode = "pro_monthly", affiliateCode] = externalRef.split(":");
       if (!userId) {
         console.warn("[webhook] externalReference não encontrado:", eventId);
         return res.json({ received: true });

@@ -26,7 +26,7 @@ function buildDevMockSubscription() {
     created_at: new Date(now - 30 * day).toISOString(),
     plans: {
       name: "Pro Anual",
-      code: "annual",
+      code: "pro_annual",
       price_cents: 17990,
     },
   };
