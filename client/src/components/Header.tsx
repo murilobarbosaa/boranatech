@@ -499,11 +499,14 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
   const [location] = useLocation();
-  const { loading: authLoading, profile, signOut, user } = useAuth();
+  const { loading: authLoading, profile, profileStatus, signOut, user } = useAuth();
   const { isAdmin } = useAdmin();
   const { isPro, loading: subscriptionLoading } = useSubscription();
   const userName = profile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
-  const avatarLoading = Boolean(user && (authLoading || !profile));
+  // Skeleton só quando user existe mas perfil ainda não chegou E estamos
+  // genuinamente carregando. Em status='error' sem perfil, cai no fallback
+  // (UserAvatar com iniciais + cores padrão) em vez de girar para sempre.
+  const avatarLoading = Boolean(user && !profile && (authLoading || profileStatus === "loading"));
   const avatarBorder = normalizeAvatarBorder(profile?.avatar_border);
   const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(profile?.avatar_bg);

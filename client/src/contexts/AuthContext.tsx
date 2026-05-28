@@ -10,6 +10,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import posthog from "posthog-js";
@@ -28,10 +29,21 @@ interface SignInInput {
 
 type OAuthProvider = "google";
 
+export type ProfileStatus = "idle" | "loading" | "ready" | "error";
+
+// Backoff conservador para Railway cold-start (~8-15s típico).
+// Duas tentativas, sem loop apertado. Esgotadas, espera próximo evento de auth natural.
+const PROFILE_RETRY_DELAYS_MS = [3_000, 12_000];
+const PROFILE_RETRY_JITTER = 0.25;
+// Skeleton só no boot inicial sem perfil. Aos 6s força fallback visual sem matar retries.
+const PROFILE_BOOT_SKELETON_TIMEOUT_MS = 6_000;
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  profileStatus: ProfileStatus;
+  profileError: Error | null;
   loading: boolean;
   signUp: (input: SignUpInput) => Promise<void>;
   signIn: (input: SignInInput) => Promise<void>;
@@ -47,6 +59,18 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Superfície dedicada a teste: NÃO usar em código de produção. Existe apenas
+// para permitir que testes comparem profileRef.current com profile estado a
+// estado, travando a invariante anti-race da Questão 1.
+interface AuthInternalsForTests {
+  profileRef: React.RefObject<Profile | null>;
+}
+const AuthInternalsForTestsContext = createContext<AuthInternalsForTests | undefined>(undefined);
+
+export function __useAuthInternalsForTests() {
+  return useContext(AuthInternalsForTestsContext);
+}
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -56,14 +80,43 @@ function authRedirectTo() {
   return `${window.location.origin}${redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`}`;
 }
 
+function computeRetryDelay(attempt: number): number | null {
+  if (attempt >= PROFILE_RETRY_DELAYS_MS.length) return null;
+  const base = PROFILE_RETRY_DELAYS_MS[attempt];
+  const jitter = base * PROFILE_RETRY_JITTER * (Math.random() * 2 - 1);
+  return Math.max(0, Math.round(base + jitter));
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>("idle");
+  const [profileError, setProfileError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // profileRef é mantido em sincronia SÍNCRONA com setProfile em cada caller
+  // (fetchAndApply success, cancelProfileLifecycle, ambos ramos de refreshProfile).
+  // NÃO usar useEffect espelho: o effect roda após commit, abrindo 1 render
+  // de janela onde profile já mudou mas o ref ainda reflete o valor antigo —
+  // exatamente a race que startProfileLifecycle observa via profileRef.current
+  // para escolher mode='initial' vs 'background'.
+  const profileRef = useRef<Profile | null>(null);
+  // Geração compartilhada entre o fluxo interno (useEffect) e o refreshProfile
+  // exportado. Cada início de busca incrementa; só aplica resultado se o ref
+  // ainda for o mesmo. Fecha a Race B: SIGNED_OUT durante refreshProfile em
+  // voo bumpa a geração via cancelProfileLifecycle, e a resolução tardia do
+  // refreshProfile vê gen antigo e descarta -> não ressuscita perfil deslogado.
+  const generationRef = useRef(0);
 
   useEffect(() => {
     let mounted = true;
     let safetyTimer: number | undefined;
+    let retryTimer: number | undefined;
+    let skeletonTimer: number | undefined;
+    let retryAttempt = 0;
+    // generationRef é compartilhado com refreshProfile (escopo do componente).
+    // Use sempre generationRef.current dentro deste effect para que qualquer
+    // bump externo (refreshProfile) seja observado pelas chamadas em voo aqui.
 
     function clearSafetyTimer() {
       if (safetyTimer !== undefined) {
@@ -72,41 +125,113 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    async function loadProfile(nextSession: Session | null) {
-      if (!nextSession) {
-        setProfile(null);
-        return;
+    function clearRetryTimer() {
+      if (retryTimer !== undefined) {
+        window.clearTimeout(retryTimer);
+        retryTimer = undefined;
       }
+    }
 
+    function clearSkeletonTimer() {
+      if (skeletonTimer !== undefined) {
+        window.clearTimeout(skeletonTimer);
+        skeletonTimer = undefined;
+      }
+    }
+
+    async function fetchAndApply(targetSession: Session, gen: number) {
       try {
         const nextProfile = await getMyProfile();
-        if (mounted) setProfile(nextProfile);
-      } catch (error) {
+        if (!mounted) return;
+        if (gen !== generationRef.current) return; // suplantado por uma chamada mais nova
+        clearRetryTimer();
+        clearSkeletonTimer();
+        retryAttempt = 0;
+        profileRef.current = nextProfile;
+        setProfile(nextProfile);
+        setProfileStatus("ready");
+        setProfileError(null);
+      } catch (err) {
+        if (!mounted) return;
+        if (gen !== generationRef.current) return;
+        const error = err instanceof Error ? err : new Error(String(err));
         console.error("[AuthContext] loadProfile failed", error);
-        if (mounted) setProfile(null);
+        setProfileError(error);
+        // NUNCA regride profile bom: se já há perfil cacheado, mantém.
+        // Status também fica como estava ('ready'), o erro fica só no profileError.
+        const attempt = retryAttempt;
+        const delay = computeRetryDelay(attempt);
+        if (delay === null) {
+          // Retries esgotados. Estado terminal: se não há perfil, status='error'.
+          if (!profileRef.current) {
+            setProfileStatus("error");
+          }
+          return;
+        }
+        retryAttempt = attempt + 1;
+        clearRetryTimer();
+        retryTimer = window.setTimeout(() => {
+          if (!mounted) return;
+          if (gen !== generationRef.current) return;
+          void fetchAndApply(targetSession, gen);
+        }, delay);
       }
+    }
+
+    function startProfileLifecycle(targetSession: Session, mode: "initial" | "background") {
+      generationRef.current += 1;
+      const gen = generationRef.current;
+      retryAttempt = 0;
+      clearRetryTimer();
+      clearSkeletonTimer();
+      if (mode === "initial" && !profileRef.current) {
+        setProfileStatus("loading");
+        // Skeleton timeout muda só o que aparece na tela; NÃO cancela retries.
+        // Se um retry chegar com sucesso depois, status='ready' restaura por cima.
+        skeletonTimer = window.setTimeout(() => {
+          if (!mounted) return;
+          if (gen !== generationRef.current) return;
+          if (profileRef.current) return;
+          setProfileStatus((prev) => (prev === "loading" ? "error" : prev));
+        }, PROFILE_BOOT_SKELETON_TIMEOUT_MS);
+      }
+      void fetchAndApply(targetSession, gen);
+    }
+
+    function cancelProfileLifecycle() {
+      generationRef.current += 1;
+      clearRetryTimer();
+      clearSkeletonTimer();
+      retryAttempt = 0;
+      profileRef.current = null;
+      setProfile(null);
+      setProfileStatus("idle");
+      setProfileError(null);
     }
 
     if (!supabase) {
       setLoading(false);
-      return;
+      return () => {
+        mounted = false;
+      };
     }
 
     supabase.auth
       .getSession()
-      .then(async ({ data }: { data: { session: Session | null } }) => {
+      .then(({ data }: { data: { session: Session | null } }) => {
         if (!mounted) return;
-        const session = data.session;
-        setSession(session);
-        await loadProfile(session);
-        if (!mounted) return;
+        const initialSession = data.session;
+        setSession(initialSession);
+
+        if (initialSession) {
+          startProfileLifecycle(initialSession, "initial");
+        }
 
         // Callback de OAuth em andamento: getSession resolveu null mas a URL ainda
         // tem ?code= (PKCE) / token no hash (implicit). A troca vai concluir e
         // emitir SIGNED_IN — NÃO feche o loading agora, senão abrimos a janela
         // (loading=false, user=null) que faz os guards redirecionarem indevidamente.
-        // Deixe o SIGNED_IN subsequente fechar o loading.
-        if (!session && hasOAuthCallbackInUrl()) {
+        if (!initialSession && hasOAuthCallbackInUrl()) {
           console.info("[auth] holding loading for OAuth callback");
           // Salvaguarda: se o SIGNED_IN nunca chegar (ex.: troca PKCE falha), não
           // travar em spinner eterno — degrada graciosamente para "não autenticado".
@@ -114,7 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!mounted) return;
             console.warn("[auth] safety timeout fired; treating as unauthenticated");
             setSession(null);
-            setProfile(null);
+            cancelProfileLifecycle();
             setLoading(false);
           }, 5000);
           return;
@@ -134,12 +259,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearSafetyTimer();
       setSession(nextSession);
       if (event === "SIGNED_OUT" || !nextSession) {
-        setProfile(null);
+        cancelProfileLifecycle();
       } else {
         if (nextSession.user) {
           posthog.identify(nextSession.user.id);
         }
-        void loadProfile(nextSession);
+        // Modo 'initial' apenas quando ainda não há perfil cacheado.
+        // TOKEN_REFRESHED/USER_UPDATED com perfil presente entram em 'background'
+        // e nunca acendem skeleton.
+        const mode: "initial" | "background" = profileRef.current ? "background" : "initial";
+        startProfileLifecycle(nextSession, mode);
         if (event === "SIGNED_IN" && localStorage.getItem("bnt_social_signup_pending") === "true") {
           localStorage.removeItem("bnt_social_signup_pending");
           localStorage.setItem("bnt_signup_completed", "true");
@@ -158,6 +287,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
       clearSafetyTimer();
+      clearRetryTimer();
+      clearSkeletonTimer();
       subscription.unsubscribe();
     };
   }, []);
@@ -225,21 +356,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // One-shot. Não dispara retry interno; caller decide o que fazer com a falha.
+  // Sucesso aplicado atualiza profile e zera profileError. Falha propaga.
+  //
+  // Participa do generation guard: bumpa antes de buscar, cheka antes de
+  // aplicar. Se foi suplantado (SIGNED_OUT, ou outra busca mais nova chegou
+  // antes), resolve sem aplicar — o estado já reflete dado >= este.
+  // Log info-level para não virar silêncio (lembra do H3).
   const refreshProfile = useCallback(async () => {
     if (!session) {
+      generationRef.current += 1;
+      profileRef.current = null;
       setProfile(null);
+      setProfileStatus("idle");
+      setProfileError(null);
       return;
     }
 
+    generationRef.current += 1;
+    const gen = generationRef.current;
     const nextProfile = await getMyProfile();
+    if (gen !== generationRef.current) {
+      console.info("[AuthContext] refreshProfile suplantado; estado atual já reflete dado >= este");
+      return;
+    }
+    profileRef.current = nextProfile;
     setProfile(nextProfile);
+    setProfileStatus("ready");
+    setProfileError(null);
   }, [session]);
 
   const signOut = useCallback(async () => {
     const client = assertSupabaseConfigured();
     const { error } = await client.auth.signOut();
     if (error) throw error;
-    setProfile(null);
+    // O listener onAuthStateChange recebe SIGNED_OUT e zera o ciclo de perfil
+    // (timers, geração, profileError) via cancelProfileLifecycle.
     posthog.capture("user_signed_out");
     posthog.reset();
   }, []);
@@ -267,6 +419,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user: session?.user ?? null,
       session,
       profile,
+      profileStatus,
+      profileError,
       loading,
       signUp,
       signIn,
@@ -279,6 +433,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [
       loading,
       profile,
+      profileStatus,
+      profileError,
       resetPassword,
       refreshProfile,
       session,
@@ -290,7 +446,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const internalsValue = useMemo<AuthInternalsForTests>(() => ({ profileRef }), []);
+
+  return (
+    <AuthInternalsForTestsContext.Provider value={internalsValue}>
+      <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    </AuthInternalsForTestsContext.Provider>
+  );
 }
 
 export function useAuth() {
