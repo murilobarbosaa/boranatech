@@ -44,7 +44,7 @@ function warnIfMissing(key: string, fallbackKeys: string[] = []) {
 }
 
 warnIfMissing("ASAAS_API_KEY");
-warnIfMissing("ASAAS_WEBHOOK_SECRET");
+warnIfMissing("ASAAS_WEBHOOK_TOKEN");
 warnIfMissing("AI_DAILY_LIMIT_FREE");
 warnIfMissing("AI_DAILY_LIMIT_PRO");
 warnIfMissing("CRON_SECRET");
@@ -61,7 +61,7 @@ export const env = {
   appPublicUrl: requireEnvWithDefault("APP_PUBLIC_URL", "http://localhost:3000"),
   corsOrigin: requireEnvWithDefault("CORS_ORIGIN", "http://localhost:5173"),
   asaasApiKey: requireEnv("ASAAS_API_KEY"),
-  asaasWebhookSecret: requireEnv("ASAAS_WEBHOOK_SECRET"),
+  asaasWebhookToken: requireEnv("ASAAS_WEBHOOK_TOKEN"),
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
