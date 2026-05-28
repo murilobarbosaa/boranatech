@@ -2,7 +2,7 @@ import type { ContentSourceStatus } from "./contracts";
 import { Layout as LayoutIcon } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 import { areasTI, cursosGratuitos, plataformas, projetos, roadmaps, type AreaTI } from "@/lib/data";
-import { technologies, technologyRanking } from "@/lib/technologyData";
+import { technologies, technologyRanking, combinesWithMap } from "@/lib/technologyData";
 import { usageEvidence } from "@/lib/surveyData2025";
 
 const API_BASE = apiUrl("/api/content");
@@ -138,7 +138,6 @@ function technologyFromApi(row: any) {
     description: row.description || "",
     difficulty: row.difficulty || "Iniciante",
     difficultyScore: row.beginner_friendly_score || 3,
-    demand: row.market_demand || "Média",
     salaryRange: row.salary_context?.label || "",
     usagePercent: usage.usagePercent,
     usageLabel: usage.usageLabel,
@@ -149,12 +148,10 @@ function technologyFromApi(row: any) {
     useCases: row.use_cases || [],
     learningPath: row.learning_path || [],
     dailyTip: row.long_description || row.description || "",
-    combinesWith: [],
+    combinesWith: combinesWithMap[row.slug] || [],
     tools: row.tools || [],
     courses: (row.resources || []).map((resource: any) => resource.title || resource.name || String(resource)),
     companies: row.companies_using || [],
-    jobs: 0,
-    weeklyChange: 0,
   };
 }
 

@@ -1,13 +1,17 @@
-import { ExternalLink, Keyboard, PlayCircle, Terminal } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ExternalLink, Keyboard, PlayCircle, RotateCcw, SlidersHorizontal, Terminal } from "lucide-react";
 import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { cn } from "@/lib/utils";
-import { devTools } from "@/lib/careerToolsData";
+import { cn, youtubeEmbedUrl } from "@/lib/utils";
+import { devTools, setupGuides } from "@/lib/careerToolsData";
 
 const ac = getPageAccentUi("orange");
+
+const CATEGORY_ORDER = ["IA", "Desenvolvimento", "Design", "Produtividade", "Banco de dados", "DevOps"];
 
 type ShortcutItem = {
   label: string;
@@ -34,64 +38,64 @@ const shortcuts: ShortcutItem[] = [
 
 const tutorialVideos: Record<string, { title: string; url: string }> = {
   "VS Code": {
-    title: "Tutorial VS Code para iniciantes",
-    url: "https://www.youtube.com/results?search_query=tutorial+vs+code+para+iniciantes+portugu%C3%AAs",
+    title: "Como baixar e configurar o VS Code para iniciantes",
+    url: "https://www.youtube.com/watch?v=aQXVGHLXJew",
   },
   Cursor: {
-    title: "Como usar Cursor com IA",
-    url: "https://www.youtube.com/results?search_query=como+usar+cursor+ia+editor+codigo+portugu%C3%AAs",
+    title: "Cursor: o editor de código com IA que escreve código pra você",
+    url: "https://www.youtube.com/watch?v=hmu3viVmk7A",
   },
   Git: {
-    title: "Git do zero para iniciantes",
-    url: "https://www.youtube.com/results?search_query=git+do+zero+para+iniciantes+portugu%C3%AAs",
+    title: "Git e GitHub: tutorial completo para iniciantes (DevSuperior)",
+    url: "https://www.youtube.com/watch?v=_hZf1teRFNg",
   },
   GitHub: {
-    title: "GitHub para iniciantes",
-    url: "https://www.youtube.com/results?search_query=github+para+iniciantes+portugu%C3%AAs",
+    title: "Tutorial GitHub para iniciantes: como usar o GitHub",
+    url: "https://www.youtube.com/watch?v=BUGZZaChiYw",
   },
   Docker: {
-    title: "Docker para iniciantes",
-    url: "https://www.youtube.com/results?search_query=docker+para+iniciantes+portugu%C3%AAs",
+    title: "Aprenda Docker do zero: tutorial completo (Fernanda Kipper)",
+    url: "https://www.youtube.com/watch?v=DdoncfOdru8",
   },
   Postman: {
-    title: "Postman para testar APIs",
-    url: "https://www.youtube.com/results?search_query=postman+para+testar+api+iniciantes+portugu%C3%AAs",
+    title: "Postman: a melhor forma de gerenciar e testar APIs",
+    url: "https://www.youtube.com/watch?v=H5pKa1A73ak",
   },
   Figma: {
-    title: "Figma para iniciantes",
-    url: "https://www.youtube.com/results?search_query=figma+para+iniciantes+portugu%C3%AAs",
+    title: "Como usar o Figma: tutorial completo para iniciantes",
+    url: "https://www.youtube.com/watch?v=oE_08KTRA9w",
   },
   Jira: {
-    title: "Jira para iniciantes",
-    url: "https://www.youtube.com/results?search_query=jira+para+iniciantes+scrum+portugu%C3%AAs",
+    title: "Como usar o Jira: guia completo para iniciantes",
+    url: "https://www.youtube.com/watch?v=k_zcOLQOII8",
   },
   Slack: {
-    title: "Slack para times e comunidades",
-    url: "https://www.youtube.com/results?search_query=como+usar+slack+para+iniciantes+portugu%C3%AAs",
+    title: "O que é Slack e como usar em 14 minutos",
+    url: "https://www.youtube.com/watch?v=fWfL9E9ChSA",
   },
   Notion: {
-    title: "Notion para organizar estudos",
-    url: "https://www.youtube.com/results?search_query=notion+para+organizar+estudos+portugu%C3%AAs",
+    title: "Como usar o Notion: aula completa para iniciantes",
+    url: "https://www.youtube.com/watch?v=h6OhnMdELDM",
   },
   Terminal: {
-    title: "Terminal para iniciantes",
-    url: "https://www.youtube.com/results?search_query=terminal+linux+comandos+b%C3%A1sicos+iniciantes+portugu%C3%AAs",
+    title: "Comandos básicos do Linux: guia para iniciantes",
+    url: "https://www.youtube.com/watch?v=CnYraL0J_hM",
   },
   npm: {
-    title: "npm para iniciantes",
-    url: "https://www.youtube.com/results?search_query=npm+para+iniciantes+node+javascript+portugu%C3%AAs",
+    title: "npm: o gerenciador de pacotes do Node.js",
+    url: "https://www.youtube.com/watch?v=tFqsmNrWW0M",
   },
   Yarn: {
-    title: "Yarn para projetos JavaScript",
-    url: "https://www.youtube.com/results?search_query=yarn+package+manager+tutorial+portugu%C3%AAs",
+    title: "Yarn: o gerenciador de pacotes JavaScript (Código Fonte TV)",
+    url: "https://www.youtube.com/watch?v=aKzN6sQqDrQ",
   },
   pnpm: {
-    title: "pnpm para projetos JavaScript",
-    url: "https://www.youtube.com/results?search_query=pnpm+tutorial+portugu%C3%AAs",
+    title: "npm, Yarn ou pnpm: qual o gerenciador mais rápido?",
+    url: "https://www.youtube.com/watch?v=K2E5Fu-F_9I",
   },
   "Chrome DevTools": {
-    title: "Chrome DevTools para iniciantes",
-    url: "https://www.youtube.com/results?search_query=chrome+devtools+para+iniciantes+portugu%C3%AAs",
+    title: "Aprenda Chrome DevTools em 10 minutos (Danki Code)",
+    url: "https://www.youtube.com/watch?v=2lBJVEYDwlM",
   },
 };
 
@@ -120,6 +124,15 @@ function TerminalCommand({ value, accentShadow }: { value: string; accentShadow:
 }
 
 export default function Ferramentas() {
+  const [category, setCategory] = useState("Todas");
+  const categories = useMemo(() => {
+    const present = new Set(devTools.flatMap((tool) => tool.category));
+    return ["Todas", ...CATEGORY_ORDER.filter((c) => present.has(c))];
+  }, []);
+  const filtered = useMemo(
+    () => (category === "Todas" ? devTools : devTools.filter((tool) => tool.category.includes(category))),
+    [category],
+  );
   return (
     <Layout>
       <PageHero
@@ -130,8 +143,39 @@ export default function Ferramentas() {
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
+        <div className="card-brutal rounded-2xl bg-white p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-display text-sm font-black text-slate-900">
+              <SlidersHorizontal className="h-4 w-4 text-orange-700" />
+              Filtrar por categoria
+            </div>
+            <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+              <span>{filtered.length} ferramenta{filtered.length === 1 ? "" : "s"}</span>
+              {category !== "Todas" && (
+                <button type="button" onClick={() => setCategory("Todas")} className="inline-flex items-center gap-1 text-orange-700 hover:underline">
+                  <RotateCcw className="h-3 w-3" />
+                  Limpar filtro
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCategory(c)}
+                className={cn("rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all", category === c ? ac.filterActive : ac.filterInactive)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {devTools.map((tool) => (
+          {filtered.map((tool) => {
+            const video = tutorialVideos[tool.name];
+            return (
             <article key={tool.name} className="card-brutal rounded-2xl bg-white p-5">
               <div className="flex items-start gap-3">
                 <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white p-2", ac.brutalShadow)}>
@@ -151,27 +195,56 @@ export default function Ferramentas() {
               <a href={tool.url} target="_blank" rel="noreferrer" className={cn("mt-4 inline-flex items-center gap-1 text-sm font-black hover:underline", ac.link)}>
                 Site oficial <ExternalLink className="h-3 w-3" />
               </a>
-              <a
-                href={tutorialVideos[tool.name].url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
-              >
-                <PlayCircle className="h-5 w-5 shrink-0" />
-                <span>
-                  Ver vídeo
-                  <span className="block text-xs font-bold text-red-500">{tutorialVideos[tool.name].title}</span>
-                </span>
-              </a>
+              {video && (youtubeEmbedUrl(video.url) ? (
+                <VideoEmbedDialog
+                  source={video.url}
+                  title={video.title}
+                  href={video.url}
+                >
+                  <button
+                    type="button"
+                    className="mt-3 flex w-full items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-left text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
+                  >
+                    <PlayCircle className="h-5 w-5 shrink-0" />
+                    <span>
+                      Assistir aqui
+                      <span className="block text-xs font-bold text-red-500">{video.title}</span>
+                    </span>
+                  </button>
+                </VideoEmbedDialog>
+              ) : (
+                <a
+                  href={video.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
+                >
+                  <PlayCircle className="h-5 w-5 shrink-0" />
+                  <span>
+                    Ver vídeo
+                    <span className="block text-xs font-bold text-red-500">{video.title}</span>
+                  </span>
+                </a>
+              ))}
             </article>
-          ))}
+            );
+          })}
         </div>
 
         <div className="card-brutal rounded-2xl bg-white p-6">
           <h2 className="font-display text-2xl font-black">Guia de setup por área</h2>
-          {["Front-end", "Back-end", "Dados", "DevOps", "UX/UI"].map((area) => (
-            <DetailsChevronOnly key={area} className="mt-3 rounded-xl border-2 border-slate-900 p-4" title={<span className="font-black">{area}</span>}>
-              <p className="mt-2 text-sm text-slate-600">Instale navegador, VS Code ou Cursor, Git, ferramenta principal da área, configure conta no GitHub e faça um projeto mínimo.</p>
+          {setupGuides.map((guide) => (
+            <DetailsChevronOnly key={guide.area} className="mt-3 rounded-xl border-2 border-slate-900 p-4" title={<span className="font-black">{guide.area}</span>}>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {guide.stack.map((item) => (
+                  <span key={item} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.panelSoft, ac.tbodyAccent)}>{item}</span>
+                ))}
+              </div>
+              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+                {guide.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
             </DetailsChevronOnly>
           ))}
         </div>

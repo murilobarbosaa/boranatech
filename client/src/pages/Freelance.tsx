@@ -1,75 +1,39 @@
 import { useState } from "react";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
+import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import type { FreelaFirstProject } from "@/lib/careerToolsData";
 import { firstFreelaProjects, freelancePlatforms } from "@/lib/careerToolsData";
-import { cn, youtubeEmbedUrl } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { BookOpen, ExternalLink, PlayCircle } from "lucide-react";
 
 const ac = getPageAccentUi("orange");
 
 function FreelaHelpSection({ project }: { project: FreelaFirstProject }) {
   const { video, articles } = project.help;
-  const embedSrc = video.youtubeId ? youtubeEmbedUrl(video.youtubeId) : null;
 
   return (
     <div className="mt-4 border-t-2 border-slate-900/10 pt-4">
       <p className={cn("text-xs font-black uppercase tracking-wide", ac.tbodyAccent)}>Materiais de apoio</p>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        {embedSrc ? (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className={cn(
-                  "h-9 shrink-0 gap-2 border-2 border-slate-900 font-black shadow-[3px_3px_0_0_rgb(15_23_42)]",
-                  "hover:bg-slate-50"
-                )}
-              >
-                <PlayCircle className="size-4" aria-hidden />
-                Assistir vídeo
-              </Button>
-            </DialogTrigger>
-            <DialogContent
-              showCloseButton
-              className="max-h-[92vh] w-[calc(100%-1.25rem)] max-w-4xl gap-4 overflow-y-auto border-2 border-slate-900 p-4 sm:p-6"
+        {video.youtubeId ? (
+          <VideoEmbedDialog source={video.youtubeId} title={video.title} href={video.href}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className={cn(
+                "h-9 shrink-0 gap-2 border-2 border-slate-900 font-black shadow-[3px_3px_0_0_rgb(15_23_42)]",
+                "hover:bg-slate-50"
+              )}
             >
-              <DialogHeader className="text-left">
-                <DialogTitle className="font-display text-lg font-black sm:text-xl">
-                  {video.title}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="aspect-video overflow-hidden rounded-xl border-2 border-slate-900 bg-black shadow-[4px_4px_0_0_rgb(15_23_42)]">
-                <iframe
-                  title={video.title}
-                  src={`${embedSrc}?rel=0`}
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  className="h-full w-full"
-                />
-              </div>
-              <Button asChild variant="secondary" size="sm" className="w-full gap-2 font-black sm:w-auto">
-                <a href={video.href} target="_blank" rel="noopener noreferrer">
-                  Abrir no YouTube
-                  <ExternalLink className="size-4" aria-hidden />
-                </a>
-              </Button>
-            </DialogContent>
-          </Dialog>
+              <PlayCircle className="size-4" aria-hidden />
+              Assistir vídeo
+            </Button>
+          </VideoEmbedDialog>
         ) : (
           <Button asChild variant="outline" size="sm" className="h-9 gap-2 border-2 border-slate-900 font-black shadow-[3px_3px_0_0_rgb(15_23_42)]">
             <a href={video.href} target="_blank" rel="noopener noreferrer">

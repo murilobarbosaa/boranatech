@@ -6,14 +6,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
-import { Search, ExternalLink, Clock, Globe } from "lucide-react";
+import { Search, ExternalLink, Clock, Globe, PlayCircle, Sparkles } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
+import { youtubeEmbedUrl } from "@/lib/utils";
 
 const nivelOptions = ["Todos", "Iniciante", "Intermediário", "Avançado"];
+const nivelOrder: Record<string, number> = { Iniciante: 0, "Intermediário": 1, "Avançado": 2 };
 const idiomaOptions = ["Todos", "Português", "Inglês"];
 const tipoOptions = ["Todos", "Gratuito", "Pago"];
 
@@ -52,23 +55,29 @@ export default function Cursos() {
     getCourses().then(setCourses).catch(() => setCourses(cursosGratuitos));
   }, []);
 
-  const filtered = courses.filter((c) => {
-    const slugLabel = labelForAreaSlug(c.areaSlug);
-    const matchSearch = c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchArea = area === AREA_ALL || c.areaSlug === area;
-    const matchNivel = nivel === "Todos" || c.nivel === nivel;
-    const matchIdioma = idioma === "Todos" || c.idioma.includes(idioma);
-    const matchTipo = tipo === "Todos" || (c.tipo || "Gratuito") === tipo;
-    return matchSearch && matchArea && matchNivel && matchIdioma && matchTipo;
-  });
+  const filtered = courses
+    .filter((c) => {
+      const slugLabel = labelForAreaSlug(c.areaSlug);
+      const matchSearch = c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchArea = area === AREA_ALL || c.areaSlug === area;
+      const matchNivel = nivel === "Todos" || c.nivel === nivel;
+      const matchIdioma = idioma === "Todos" || c.idioma.includes(idioma);
+      const matchTipo = tipo === "Todos" || (c.tipo || "Gratuito") === tipo;
+      return matchSearch && matchArea && matchNivel && matchIdioma && matchTipo;
+    })
+    .sort((a, b) => {
+      const areaCompare = labelForAreaSlug(a.areaSlug).localeCompare(labelForAreaSlug(b.areaSlug), "pt-BR");
+      if (areaCompare !== 0) return areaCompare;
+      return (nivelOrder[a.nivel] ?? 99) - (nivelOrder[b.nivel] ?? 99);
+    });
 
   return (
     <Layout>
       <SEO
         title="Cursos de TI — Curadoria de cursos online gratuitos e pagos"
-        description="Mais de 200 cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
+        description="Cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
         keywords={["cursos de ti gratuitos", "cursos online programação", "cursos tecnologia iniciantes", "melhores cursos ti", "cursos para começar em programação"]}
         url="/cursos"
         schemaType="CollectionPage"
@@ -83,9 +92,6 @@ export default function Cursos() {
             <p className="text-slate-950 text-lg">
               Cursos gratuitos e pagos selecionados para iniciantes, organizados por área, nível e tipo.
             </p>
-            <div className="mt-4 inline-flex items-center gap-2 bg-white border-2 border-slate-900 rounded-full px-4 py-1.5 text-slate-900 text-sm font-bold shadow-[3px_3px_0_#f59e0b]">
-              ✅ {courses.length} cursos curados
-            </div>
           </div>
         </div>
       </section>
@@ -149,8 +155,6 @@ export default function Cursos() {
       {/* Grid */}
       <section className="bg-[#fff9e7] py-12">
         <div className="container">
-          <p className="text-sm text-slate-500 mb-6">{filtered.length} curso{filtered.length !== 1 ? "s" : ""} encontrado{filtered.length !== 1 ? "s" : ""}</p>
-
           {filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
@@ -163,24 +167,27 @@ export default function Cursos() {
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filtered.map((curso) => (
-                <div key={curso.id} className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#fbbf24]">
+                <div
+                  key={curso.id}
+                  className="card-brutal group flex flex-col rounded-2xl bg-white p-6 shadow-[5px_5px_0_#fbbf24] transition-all duration-200 hover:-translate-y-1 hover:shadow-[8px_8px_0_#fbbf24]"
+                >
                   {/* Tags */}
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}>
+                      <span className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}>
                         {labelForAreaSlug(curso.areaSlug)}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded-full font-bold border-2 ${
-                        (curso.tipo || "Gratuito") === "Pago" ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-emerald-100 text-emerald-700 border-emerald-200"
+                      <span className={`rounded-md border px-2.5 py-1 text-[11px] font-black ${
+                        (curso.tipo || "Gratuito") === "Pago" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
                       }`}>
                         {curso.tipo || "Gratuito"}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                        curso.nivel === "Iniciante" ? "bg-blue-100 text-blue-700" :
-                        curso.nivel === "Intermediário" ? "bg-amber-100 text-amber-700" :
-                        "bg-red-100 text-red-700"
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className={`rounded-md px-2 py-1 text-[11px] font-bold ${
+                        curso.nivel === "Iniciante" ? "bg-blue-50 text-blue-700" :
+                        curso.nivel === "Intermediário" ? "bg-amber-50 text-amber-700" :
+                        "bg-red-50 text-red-700"
                       }`}>
                         {curso.nivel}
                       </span>
@@ -189,44 +196,65 @@ export default function Cursos() {
                   </div>
 
                   {/* Title */}
-                  <h3 className="font-display font-bold text-slate-900 mb-1">{curso.titulo}</h3>
-                  <p className="text-sm text-amber-700 font-medium mb-3">{curso.canal}</p>
-                  {curso.preco && <p className="mb-3 text-xs font-bold text-slate-500">{curso.preco}</p>}
-                  <p className="text-sm text-slate-600 flex-1 mb-4">{curso.descricao}</p>
+                  <h3 className="font-display text-lg font-black leading-snug text-slate-950">{curso.titulo}</h3>
+                  <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-amber-700">
+                    {curso.canal}{curso.preco ? ` · ${curso.preco}` : ""}
+                  </p>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">{curso.descricao}</p>
 
                   {/* Why recommended */}
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                    <p className="text-xs text-amber-800"><strong>Por que indicamos:</strong> {curso.motivoIndicacao}</p>
+                  <div className="mt-4 flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+                    <p className="text-xs leading-relaxed text-amber-900">
+                      <span className="font-black">Por que indicamos:</span> {curso.motivoIndicacao}
+                    </p>
                   </div>
 
                   {/* What you learn */}
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-slate-700 mb-2">O que você aprende:</p>
-                    <div className="flex flex-wrap gap-1">
+                  <div className="mt-4">
+                    <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">O que você aprende</p>
+                    <div className="flex flex-wrap gap-1.5">
                       {curso.oQueAprende.map((item) => (
-                        <span key={item} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{item}</span>
+                        <span
+                          key={item}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition-colors group-hover:border-slate-300"
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden />
+                          {item}
+                        </span>
                       ))}
                     </div>
                   </div>
 
                   {/* Meta */}
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <Clock className="w-3 h-3" /> {curso.duracao}
+                  <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-slate-500">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" /> {curso.duracao}
                       </span>
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
-                        <Globe className="w-3 h-3" /> {curso.idioma}
+                      <span className="inline-flex items-center gap-1">
+                        <Globe className="h-3.5 w-3.5" /> {curso.idioma}
                       </span>
                     </div>
-                    <a
-                      href={curso.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-slate-950 text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
-                    >
-                      Acessar <ExternalLink className="w-3 h-3" />
-                    </a>
+                    {youtubeEmbedUrl(curso.link) ? (
+                      <VideoEmbedDialog source={curso.link} title={curso.titulo} href={curso.link}>
+                        <button
+                          type="button"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
+                        >
+                          Assistir aqui <PlayCircle className="h-3 w-3" />
+                        </button>
+                      </VideoEmbedDialog>
+                    ) : (
+                      <a
+                        href={curso.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
+                      >
+                        Acessar <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}

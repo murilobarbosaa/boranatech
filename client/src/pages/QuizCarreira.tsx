@@ -3,9 +3,11 @@ import { useLocation } from "wouter";
 import {
   ArrowRight,
   BrainCircuit,
+  Check,
   ChevronLeft,
   Loader2,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import posthog from "posthog-js";
@@ -13,12 +15,38 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModal";
 import { areasTI } from "@/lib/data";
-import { quizQuestions, QUIZ_ESTIMATED_MINUTES } from "@/lib/platformData";
+import {
+  triageQuestions,
+  quizByLevel,
+  techQuiz,
+  classifyTriageLevel,
+  getAreaAccent,
+  getObjectiveTrack,
+  getTechRecommendation,
+  objectiveTracks,
+  AREA_ACCENT,
+  type QuizLevel,
+  type QuizObjective,
+  type ObjectiveTrack,
+  LEVEL_META,
+  LEVEL_QUESTION_COUNT,
+  TECH_QUESTION_COUNT,
+  QUIZ_ESTIMATED_MINUTES,
+} from "@/lib/platformData";
 import { persistQuizResult } from "@/services/careerQuizService";
 
-type QuizPhase = "intro" | "questions" | "completing";
+type QuizPhase =
+  | "objective"
+  | "intro"
+  | "triage"
+  | "level-reveal"
+  | "questions"
+  | "completing";
 
 const RESULT_SESSION_KEY = "quiz-carreira.last-result";
+
+// Acentos rotativos para colorir as opções (letra A/B/C/D).
+const OPTION_ACCENTS = ["#7c3aed", "#db2777", "#0e7490", "#d97706"];
 
 interface StoredResultArea {
   area: string;
@@ -28,31 +56,34 @@ interface StoredResultArea {
 }
 
 interface StoredResult {
+  kind: "area" | "tech";
   resultArea: string;
   resultAreaSlug: string;
   confidence: number;
   topAreas: StoredResultArea[];
   reasons: string[];
   completedAt: string;
+  techKey?: string;
+  objective?: QuizObjective;
 }
 
-interface QuizOption {
-  label: string;
-  area: string;
-  scores: Record<string, number>;
-}
-
-interface QuizQuestion {
-  id: string;
+// Tipo minimo aceito pela tela de pergunta. Tanto QuizQuestion quanto
+// TriageQuestion satisfazem este shape, entao o mesmo componente serve as fases.
+interface ScreenQuestion {
   category: string;
   question: string;
-  options: QuizOption[];
+  options: { label: string }[];
 }
 
-const STORAGE_KEY = "boranatech.quiz-carreira.progress.v1";
+const STORAGE_KEY = "boranatech.quiz-carreira.progress.v3";
 const STORAGE_TTL_DAYS = 30;
 
 interface StoredProgress {
+  objective: QuizObjective | null;
+  phase: "triage" | "level-reveal" | "questions";
+  level: QuizLevel | null;
+  triageAnswers: Record<string, number>;
+  triageIndex: number;
   answers: Record<string, number>;
   currentIndex: number;
   savedAt: number;
@@ -74,19 +105,12 @@ function loadProgress(): StoredProgress | null {
   }
 }
 
-function saveProgress(
-  answers: Record<string, number>,
-  currentIndex: number,
-) {
+function saveProgress(data: Omit<StoredProgress, "savedAt">) {
   try {
-    const data: StoredProgress = {
-      answers,
-      currentIndex,
-      savedAt: Date.now(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const payload: StoredProgress = { ...data, savedAt: Date.now() };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch {
-    // localStorage cheio ou indisponível — silencioso
+    // localStorage cheio ou indisponível, silencioso
   }
 }
 
@@ -98,83 +122,180 @@ function clearProgress() {
   }
 }
 
-const questions = quizQuestions as unknown as ReadonlyArray<QuizQuestion>;
+// A triagem agora é só o nivelamento (3 perguntas). Objetivo virou a tela de
+// entrada; motivo deixou de ser uma etapa separada.
+const triageSteps = triageQuestions;
 
 export default function QuizCarreira() {
   const [, setLocation] = useLocation();
-  const [phase, setPhase] = useState<QuizPhase>("intro");
+  const [phase, setPhase] = useState<QuizPhase>("objective");
+  const [objective, setObjective] = useState<QuizObjective | null>(null);
+  const [level, setLevel] = useState<QuizLevel | null>(null);
+  const [triageAnswers, setTriageAnswers] = useState<Record<string, number>>({});
+  const [triageIndex, setTriageIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
   const [resumeAvailable, setResumeAvailable] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
 
+  const track = getObjectiveTrack(objective);
+  const isTech = track.kind === "tech";
+  const activeQuestions = isTech ? techQuiz : level ? quizByLevel[level] : [];
+  const questionCount = isTech ? TECH_QUESTION_COUNT : LEVEL_QUESTION_COUNT;
+
   useEffect(() => {
     const saved = loadProgress();
-    if (saved && Object.keys(saved.answers).length > 0) {
+    if (
+      saved &&
+      (Object.keys(saved.triageAnswers).length > 0 ||
+        Object.keys(saved.answers).length > 0)
+    ) {
       setResumeAvailable(true);
     }
   }, []);
 
   useEffect(() => {
-    if (phase === "questions" && Object.keys(answers).length > 0) {
-      saveProgress(answers, currentIndex);
+    if (phase !== "triage" && phase !== "level-reveal" && phase !== "questions")
+      return;
+    const hasProgress =
+      Object.keys(triageAnswers).length > 0 || Object.keys(answers).length > 0;
+    if (hasProgress) {
+      saveProgress({
+        objective,
+        phase,
+        level,
+        triageAnswers,
+        triageIndex,
+        answers,
+        currentIndex,
+      });
     }
-  }, [answers, currentIndex, phase]);
+  }, [phase, objective, level, triageAnswers, triageIndex, answers, currentIndex]);
 
-  const answeredCount = Object.keys(answers).length;
+  const handleSelectObjective = (id: QuizObjective) => {
+    setObjective(id);
+    setLevel(null);
+    setTriageAnswers({});
+    setTriageIndex(0);
+    setAnswers({});
+    setCurrentIndex(0);
+    setPhase("intro");
+  };
 
-  const handleStart = (resume: boolean) => {
-    if (resume) {
-      const saved = loadProgress();
-      if (saved) {
-        setAnswers(saved.answers);
-        setCurrentIndex(saved.currentIndex);
+  const beginQuestions = (chosen: ObjectiveTrack) => {
+    clearProgress();
+    setTriageAnswers({});
+    setTriageIndex(0);
+    setAnswers({});
+    setCurrentIndex(0);
+
+    if (chosen.kind === "tech") {
+      setLevel(null);
+      setPhase("questions");
+      return;
+    }
+    // Objetivos com nível sugerido (ex: começar do zero) pulam o nivelamento.
+    if (chosen.suggestedLevel) {
+      setLevel(chosen.suggestedLevel);
+      setPhase("questions");
+      return;
+    }
+    setLevel(null);
+    setPhase("triage");
+  };
+
+  const handleResume = () => {
+    const saved = loadProgress();
+    if (!saved) return;
+    setObjective(saved.objective);
+    setLevel(saved.level);
+    setTriageAnswers(saved.triageAnswers);
+    setTriageIndex(saved.triageIndex);
+    setAnswers(saved.answers);
+    setCurrentIndex(saved.currentIndex);
+    setPhase(saved.phase);
+  };
+
+  const handleTriageAnswer = (optionIndex: number) => {
+    const step = triageSteps[triageIndex];
+    const newTriage = { ...triageAnswers, [step.id]: optionIndex };
+    setTriageAnswers(newTriage);
+
+    window.setTimeout(() => {
+      if (triageIndex < triageSteps.length - 1) {
+        setTriageIndex(triageIndex + 1);
+        return;
       }
+      const levels = triageQuestions.map((q) => q.options[newTriage[q.id]].level);
+      const computed = classifyTriageLevel(levels);
+      if (computed !== level) {
+        setAnswers({});
+        setCurrentIndex(0);
+      }
+      setLevel(computed);
+      setPhase("level-reveal");
+    }, 380);
+  };
+
+  const handleLevelRevealContinue = () => setPhase("questions");
+
+  const handleLevelRevealBack = () => {
+    setTriageIndex(triageSteps.length - 1);
+    setPhase("triage");
+  };
+
+  const handleTriageBack = () => {
+    if (triageIndex > 0) {
+      setTriageIndex(triageIndex - 1);
     } else {
-      setAnswers({});
-      setCurrentIndex(0);
-      clearProgress();
+      setPhase("intro");
     }
-    setPhase("questions");
   };
 
   const handleAnswer = (optionIndex: number) => {
-    const question = questions[currentIndex];
+    const question = activeQuestions[currentIndex];
     const newAnswers = { ...answers, [question.id]: optionIndex };
     setAnswers(newAnswers);
 
     window.setTimeout(() => {
-      if (currentIndex < questions.length - 1) {
+      if (currentIndex < activeQuestions.length - 1) {
         setCurrentIndex(currentIndex + 1);
       } else {
         handleComplete(newAnswers);
       }
-    }, 400);
+    }, 380);
   };
 
   const handleBack = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
+    } else if (isTech || track.suggestedLevel) {
+      setPhase("intro");
+    } else {
+      setPhase("level-reveal");
     }
   };
 
-  const handleReset = () => {
-    setResetModalOpen(true);
-  };
+  const handleReset = () => setResetModalOpen(true);
 
   const handleResetConfirmed = () => {
+    setObjective(null);
+    setLevel(null);
+    setTriageAnswers({});
+    setTriageIndex(0);
     setAnswers({});
     setCurrentIndex(0);
     clearProgress();
     setResumeAvailable(false);
-    setPhase("intro");
+    setPhase("objective");
   };
 
-  const handleComplete = (finalAnswers: Record<string, number>) => {
-    setPhase("completing");
-
+  const computeScores = (
+    questions: typeof activeQuestions,
+    finalAnswers: Record<string, number>,
+  ) => {
     const scores: Record<string, number> = {};
-    const reasonsByArea: Record<string, string[]> = {};
+    const reasonsByKey: Record<string, string[]> = {};
     const principalCounts: Record<string, number> = {};
 
     questions.forEach((question) => {
@@ -184,76 +305,122 @@ export default function QuizCarreira() {
       if (!option) return;
 
       principalCounts[option.area] = (principalCounts[option.area] || 0) + 1;
-
-      Object.entries(option.scores).forEach(([area, score]) => {
-        scores[area] = (scores[area] || 0) + score;
+      Object.entries(option.scores).forEach(([key, score]) => {
+        scores[key] = (scores[key] || 0) + score;
         if (score >= 3) {
-          reasonsByArea[area] = [
-            ...(reasonsByArea[area] || []),
-            option.label,
-          ];
+          reasonsByKey[key] = [...(reasonsByKey[key] || []), option.label];
         }
       });
     });
 
-    const finalTop = Object.entries(scores)
+    const top = Object.entries(scores)
       .sort((a, b) => {
         if (b[1] !== a[1]) return b[1] - a[1];
-        const aPrincipal = principalCounts[a[0]] || 0;
-        const bPrincipal = principalCounts[b[0]] || 0;
-        if (bPrincipal !== aPrincipal) return bPrincipal - aPrincipal;
+        const aP = principalCounts[a[0]] || 0;
+        const bP = principalCounts[b[0]] || 0;
+        if (bP !== aP) return bP - aP;
         return a[0].localeCompare(b[0], "pt-BR");
       })
       .slice(0, 5);
-    const finalResultArea = finalTop[0]?.[0];
 
-    if (!finalResultArea) {
+    const answered = Object.keys(finalAnswers).length;
+    const maxPerQuestion = 5;
+    const topScore = top[0]?.[1] || 0;
+    const confidence = answered
+      ? Math.min(100, Math.round((topScore / (answered * maxPerQuestion)) * 100))
+      : 0;
+
+    return { top, reasonsByKey, answered, maxPerQuestion, confidence };
+  };
+
+  const handleComplete = (finalAnswers: Record<string, number>) => {
+    setPhase("completing");
+    if (isTech) {
+      handleCompleteTech(finalAnswers);
+    } else {
+      handleCompleteArea(finalAnswers);
+    }
+  };
+
+  const handleCompleteArea = (finalAnswers: Record<string, number>) => {
+    const questions = level ? quizByLevel[level] : [];
+    const { top, reasonsByKey, answered, maxPerQuestion, confidence } =
+      computeScores(questions, finalAnswers);
+    const resultArea = top[0]?.[0];
+    if (!resultArea) {
       setPhase("intro");
       return;
     }
 
-    const finalAnswered = Object.keys(finalAnswers).length;
-    const finalTopScore = finalTop[0]?.[1] || 0;
-    const maxPerQuestion = 5;
-    const finalConfidence = finalAnswered
-      ? Math.min(
-          100,
-          Math.round((finalTopScore / (finalAnswered * maxPerQuestion)) * 100),
-        )
-      : 0;
-
-    const finalResultMeta = areasTI.find((a) => a.nome === finalResultArea);
-
-    const topAreasWithPct: StoredResultArea[] = finalTop.map(
-      ([area, score]) => {
-        const meta = areasTI.find((a) => a.nome === area);
-        return {
-          area,
-          score,
-          percentage: Math.min(
-            100,
-            Math.round((score / (finalAnswered * maxPerQuestion)) * 100),
-          ),
-          slug: meta?.slug,
-        };
-      },
-    );
-
-    const reasons = (reasonsByArea[finalResultArea] || []).slice(0, 3);
+    const resultMeta = areasTI.find((a) => a.nome === resultArea);
+    const topAreas: StoredResultArea[] = top.map(([area, score]) => ({
+      area,
+      score,
+      percentage: Math.min(
+        100,
+        Math.round((score / (answered * maxPerQuestion)) * 100),
+      ),
+      slug: areasTI.find((a) => a.nome === area)?.slug,
+    }));
+    const reasons = (reasonsByKey[resultArea] || []).slice(0, 3);
 
     const payload: StoredResult = {
-      resultArea: finalResultArea,
-      resultAreaSlug: finalResultMeta?.slug || "",
-      confidence: finalConfidence,
-      topAreas: topAreasWithPct,
+      kind: "area",
+      resultArea,
+      resultAreaSlug: resultMeta?.slug || "",
+      confidence,
+      topAreas,
       reasons,
       completedAt: new Date().toISOString(),
+      objective: objective ?? undefined,
     };
+    persistResult(payload, questions, finalAnswers, top);
+  };
 
+  const handleCompleteTech = (finalAnswers: Record<string, number>) => {
+    const { top, reasonsByKey, answered, maxPerQuestion, confidence } =
+      computeScores(techQuiz, finalAnswers);
+    const resultKey = top[0]?.[0];
+    if (!resultKey) {
+      setPhase("intro");
+      return;
+    }
+
+    const rec = getTechRecommendation(resultKey);
+    const topAreas: StoredResultArea[] = top.map(([key, score]) => ({
+      area: getTechRecommendation(key).label,
+      score,
+      percentage: Math.min(
+        100,
+        Math.round((score / (answered * maxPerQuestion)) * 100),
+      ),
+    }));
+    const reasons = (reasonsByKey[resultKey] || []).slice(0, 3);
+
+    const payload: StoredResult = {
+      kind: "tech",
+      resultArea: rec.label,
+      resultAreaSlug: rec.areaSlug,
+      confidence,
+      topAreas,
+      reasons,
+      completedAt: new Date().toISOString(),
+      techKey: resultKey,
+      objective: objective ?? undefined,
+    };
+    persistResult(payload, techQuiz, finalAnswers, top);
+  };
+
+  const persistResult = (
+    payload: StoredResult,
+    questions: typeof activeQuestions,
+    finalAnswers: Record<string, number>,
+    top: [string, number][],
+  ) => {
     try {
       sessionStorage.setItem(RESULT_SESSION_KEY, JSON.stringify(payload));
     } catch {
-      // sessionStorage indisponível — fallback de /history cobre o caso
+      // sessionStorage indisponível, fallback de /history cobre o caso
     }
 
     const quizAnswers = questions.flatMap((question) => {
@@ -273,20 +440,28 @@ export default function QuizCarreira() {
 
     void persistQuizResult({
       answers: quizAnswers,
-      result_area: finalResultArea,
-      result_area_slug: finalResultMeta?.slug,
-      confidence: finalConfidence,
+      result_area: payload.resultArea,
+      result_area_slug: payload.resultAreaSlug || undefined,
+      confidence: payload.confidence,
+      level: payload.kind === "area" ? level ?? undefined : undefined,
       result_json: {
-        scores: Object.fromEntries(finalTop),
-        topAreas: topAreasWithPct,
-        reasons,
+        kind: payload.kind,
+        level: payload.kind === "area" ? level : null,
+        objetivo: objective,
+        techKey: payload.techKey,
+        scores: Object.fromEntries(top),
+        topAreas: payload.topAreas,
+        reasons: payload.reasons,
       },
     });
 
     posthog.capture("quiz_completed", {
-      result_area: finalResultArea,
-      confidence: finalConfidence,
-      questions_answered: finalAnswered,
+      kind: payload.kind,
+      result_area: payload.resultArea,
+      confidence: payload.confidence,
+      questions_answered: Object.keys(finalAnswers).length,
+      level: payload.kind === "area" ? level : null,
+      objetivo: objective,
     });
 
     clearProgress();
@@ -294,10 +469,12 @@ export default function QuizCarreira() {
     setLocation("/quiz-carreira/resultado");
   };
 
+  const inQuestionPhase = phase === "triage" || phase === "questions";
+
   return (
     <Layout>
       <SEO
-        title="Quiz de Carreira em TI — Descubra qual área combina com você"
+        title="Quiz de Carreira em TI. Descubra qual área combina com você"
         description="Responda perguntas rápidas e descubra qual área da tecnologia combina mais com seu perfil. Quiz gratuito feito para iniciantes."
         keywords={[
           "quiz carreira ti",
@@ -310,41 +487,83 @@ export default function QuizCarreira() {
       />
 
       <div className="min-h-screen bg-[#faf8f4]">
-        {phase === "questions" && (
+        {inQuestionPhase && (
           <ProgressBar
-            current={currentIndex + 1}
-            total={questions.length}
-            answeredCount={answeredCount}
+            current={(phase === "triage" ? triageIndex : currentIndex) + 1}
+            total={phase === "triage" ? triageSteps.length : questionCount}
+            answeredCount={
+              Object.keys(phase === "triage" ? triageAnswers : answers).length
+            }
+            accent={track.accent}
+            phaseLabel={
+              phase === "triage"
+                ? "Etapa 1 · Nivelamento"
+                : isTech
+                  ? "Escolha de tecnologia"
+                  : `Etapa 2 · Nível ${level ? LEVEL_META[level].label : ""}`
+            }
           />
         )}
 
         <AnimatePresence mode="wait">
-          {phase === "intro" && (
-            <IntroScreen
-              key="intro"
-              onStart={() => handleStart(false)}
-              onResume={
-                resumeAvailable ? () => handleStart(true) : undefined
-              }
+          {phase === "objective" && (
+            <ObjectiveScreen
+              key="objective"
+              onSelect={handleSelectObjective}
+              onResume={resumeAvailable ? handleResume : undefined}
             />
           )}
 
-          {phase === "questions" && (
+          {phase === "intro" && (
+            <IntroScreen
+              key="intro"
+              track={track}
+              onStart={() => beginQuestions(track)}
+              onBack={() => setPhase("objective")}
+            />
+          )}
+
+          {phase === "triage" && (
             <QuestionScreen
-              key={`q-${currentIndex}`}
-              question={questions[currentIndex]}
-              currentIndex={currentIndex}
-              totalQuestions={questions.length}
-              selectedOption={
-                answers[questions[currentIndex].id] ?? null
-              }
-              onAnswer={handleAnswer}
-              onBack={currentIndex > 0 ? handleBack : undefined}
+              key={`t-${triageIndex}`}
+              question={triageSteps[triageIndex]}
+              currentIndex={triageIndex}
+              totalQuestions={triageSteps.length}
+              selectedOption={triageAnswers[triageSteps[triageIndex].id] ?? null}
+              accent={track.accent}
+              onAnswer={handleTriageAnswer}
+              onBack={handleTriageBack}
               onReset={handleReset}
             />
           )}
 
-          {phase === "completing" && <CompletingScreen key="completing" />}
+          {phase === "level-reveal" && level && (
+            <LevelRevealScreen
+              key="level-reveal"
+              level={level}
+              accent={track.accent}
+              onContinue={handleLevelRevealContinue}
+              onBack={handleLevelRevealBack}
+            />
+          )}
+
+          {phase === "questions" && activeQuestions.length > 0 && (
+            <QuestionScreen
+              key={`q-${currentIndex}`}
+              question={activeQuestions[currentIndex]}
+              currentIndex={currentIndex}
+              totalQuestions={activeQuestions.length}
+              selectedOption={answers[activeQuestions[currentIndex].id] ?? null}
+              accent={track.accent}
+              onAnswer={handleAnswer}
+              onBack={handleBack}
+              onReset={handleReset}
+            />
+          )}
+
+          {phase === "completing" && (
+            <CompletingScreen key="completing" accent={track.accent} />
+          )}
         </AnimatePresence>
       </div>
 
@@ -357,11 +576,11 @@ export default function QuizCarreira() {
   );
 }
 
-function IntroScreen({
-  onStart,
+function ObjectiveScreen({
+  onSelect,
   onResume,
 }: {
-  onStart: () => void;
+  onSelect: (id: QuizObjective) => void;
   onResume?: () => void;
 }) {
   return (
@@ -370,83 +589,333 @@ function IntroScreen({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
-      className="container max-w-2xl py-12 md:py-20"
+      className="container max-w-3xl py-10 md:py-14"
     >
-      <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+      <p className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
         <BrainCircuit className="h-4 w-4" />
-        Quiz de Carreira
+        Quiz de Carreira em Tech
       </p>
 
       <h1
-        className="font-display font-black leading-[0.95] text-slate-950"
-        style={{ fontSize: "clamp(2.5rem, 7vw, 5rem)" }}
+        className="font-display font-black leading-[1.02] tracking-tight text-slate-950"
+        style={{ fontSize: "clamp(2.25rem, 6vw, 3.5rem)" }}
       >
-        Descubra qual área tech
-        <br />
-        combina com você
+        Vamos achar o <span className="text-violet-600">seu lugar</span> na tech
       </h1>
 
-      <p className="mt-6 max-w-xl text-lg font-semibold text-slate-700 md:text-xl">
-        {questions.length} perguntas rápidas sobre seus interesses, como você
-        gosta de trabalhar e quais problemas você gostaria de resolver. Sem
-        certo ou errado.
+      <p className="mt-4 max-w-xl text-base font-semibold text-slate-600 md:text-lg">
+        Começa escolhendo o seu objetivo — a gente monta o quiz certo pra ele.
+        É rápido, gratuito e não tem resposta certa nem errada.
       </p>
 
-      <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3">
+      <p className="mb-3 mt-8 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+        Escolha um pra começar
+      </p>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {objectiveTracks.map((t, idx) => {
+          const Icon = t.icon;
+          return (
+            <motion.button
+              key={t.id}
+              type="button"
+              onClick={() => onSelect(t.id)}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.05 + idx * 0.07 }}
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.99 }}
+              className="group flex flex-col items-start rounded-3xl border-2 border-[#1a1a1a] bg-white p-5 text-left shadow-[4px_4px_0_#0f172a] transition-shadow duration-200 hover:shadow-[7px_7px_0_var(--accent)]"
+              style={{ ["--accent" as string]: t.accent }}
+            >
+              <span
+                className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+                style={{ backgroundColor: t.accent }}
+              >
+                <Icon className="h-6 w-6" strokeWidth={2.4} />
+              </span>
+              <h2 className="font-display text-xl font-black text-slate-950">
+                {t.label}
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-slate-600">
+                {t.description}
+              </p>
+              <span
+                className="mt-4 inline-flex items-center gap-1.5 font-mono text-xs font-black uppercase tracking-wider"
+                style={{ color: t.accent }}
+              >
+                Começar
+                <ArrowRight
+                  className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1"
+                  strokeWidth={3}
+                />
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {onResume && (
+        <button
+          type="button"
+          onClick={onResume}
+          className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-amber-300 px-5 py-2.5 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+        >
+          <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
+          Continuar de onde parei
+        </button>
+      )}
+    </motion.div>
+  );
+}
+
+function AreaPreview() {
+  const names = Object.keys(AREA_ACCENT);
+  return (
+    <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+      <p className="mb-1 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-violet-700">
+        O que são áreas de TI?
+      </p>
+      <p className="mb-4 text-sm font-semibold text-slate-600">
+        Tecnologia não é uma coisa só. São várias áreas, cada uma resolvendo um
+        tipo de problema e combinando com um perfil. Algumas delas:
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {names.map((nome, idx) => {
+          const meta = areasTI.find((a) => a.nome === nome);
+          const Icon = meta?.icon;
+          const accent = getAreaAccent(nome);
+          return (
+            <motion.span
+              key={nome}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.25, delay: 0.2 + idx * 0.03 }}
+              className="inline-flex items-center gap-1.5 rounded-full border-2 px-2.5 py-1 text-xs font-bold text-slate-950"
+              style={{ borderColor: accent, backgroundColor: `${accent}14` }}
+            >
+              {Icon && (
+                <Icon className="h-3.5 w-3.5" style={{ color: accent }} strokeWidth={2.5} />
+              )}
+              {nome}
+            </motion.span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function IntroScreen({
+  track,
+  onStart,
+  onBack,
+}: {
+  track: ObjectiveTrack;
+  onStart: () => void;
+  onBack: () => void;
+}) {
+  const Icon = track.icon;
+  const questionCount =
+    track.kind === "tech"
+      ? TECH_QUESTION_COUNT
+      : track.suggestedLevel
+        ? LEVEL_QUESTION_COUNT
+        : `${triageSteps.length} + ${LEVEL_QUESTION_COUNT}`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="container max-w-2xl py-10 md:py-14"
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-5 flex w-fit items-center gap-1.5 font-mono text-sm font-bold text-slate-600 transition-colors hover:text-slate-950"
+      >
+        <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
+        Trocar objetivo
+      </button>
+
+      <p
+        className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase text-white shadow-[3px_3px_0_#0f172a]"
+        style={{ backgroundColor: track.accent }}
+      >
+        <Icon className="h-4 w-4" strokeWidth={2.5} />
+        {track.label}
+      </p>
+
+      <h1
+        className="font-display font-black leading-[1.05] text-slate-950"
+        style={{ fontSize: "clamp(2rem, 5vw, 3.25rem)" }}
+      >
+        {track.introHeadline}
+      </h1>
+
+      <p className="mt-4 max-w-xl text-base font-semibold text-slate-700 md:text-lg">
+        {track.introSub}
+      </p>
+
+      {track.kind === "area" && <AreaPreview />}
+
+      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a]">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-violet-700">
             Duração
           </p>
           <p className="font-display text-2xl font-black text-slate-950">
-            ~{QUIZ_ESTIMATED_MINUTES} min
+            ~{track.kind === "tech" ? 3 : QUIZ_ESTIMATED_MINUTES} min
           </p>
         </div>
-
         <div className="rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a]">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
             Perguntas
           </p>
           <p className="font-display text-2xl font-black text-slate-950">
-            {questions.length}
+            {questionCount}
           </p>
         </div>
-
         <div className="col-span-2 rounded-2xl border-2 border-[#1a1a1a] bg-white p-4 shadow-[3px_3px_0_#0f172a] md:col-span-1">
           <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-emerald-700">
             Resultado
           </p>
           <p className="font-display text-2xl font-black text-slate-950">
-            Áreas afins
+            {track.kind === "tech" ? "Tecnologia" : "Áreas afins"}
           </p>
         </div>
       </div>
 
-      <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-        {onResume && (
-          <button
-            type="button"
-            onClick={onResume}
-            className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-amber-300 px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
-          >
-            <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
-            Continuar de onde parei
-          </button>
-        )}
-
+      <div className="mt-8">
         <button
           type="button"
           onClick={onStart}
-          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-violet-600 px-6 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+          style={{ backgroundColor: track.accent }}
         >
-          {onResume ? "Começar do zero" : "Começar agora"}
+          Começar agora
           <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
 
-      <p className="mt-8 font-mono text-xs text-slate-500">
+      <p className="mt-6 font-mono text-xs text-slate-500">
         Seu progresso é salvo automaticamente. Você pode voltar e continuar
         depois.
       </p>
+    </motion.div>
+  );
+}
+
+function LevelRevealScreen({
+  level,
+  accent,
+  onContinue,
+  onBack,
+}: {
+  level: QuizLevel;
+  accent: string;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
+  const meta = LEVEL_META[level];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="container max-w-2xl py-10 md:py-14"
+    >
+      <p className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        <Check className="h-4 w-4" strokeWidth={3} />
+        Nivelamento concluído
+      </p>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        className="relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-7 shadow-[6px_6px_0_#0f172a] md:p-9"
+      >
+        <div
+          className="absolute inset-0 -z-0 opacity-[0.07]"
+          style={{ backgroundColor: accent }}
+          aria-hidden
+        />
+        <div className="relative">
+          <span
+            className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]"
+            style={{ fontSize: "1.875rem" }}
+            aria-hidden
+          >
+            {meta.emoji}
+          </span>
+
+          <p
+            className="font-mono text-[11px] font-black uppercase tracking-[0.2em]"
+            style={{ color: accent }}
+          >
+            Seu nível
+          </p>
+          <h1 className="mt-1 font-display text-4xl font-black leading-none text-slate-950 md:text-5xl">
+            {meta.label}
+          </h1>
+          <p className="mt-3 text-base font-semibold text-slate-700 md:text-lg">
+            {meta.tagline}
+          </p>
+        </div>
+      </motion.div>
+
+      <div className="mt-8">
+        <p className="mb-4 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+          O que vamos fazer por você
+        </p>
+        <ul className="space-y-3">
+          {meta.doing.map((item, idx) => (
+            <motion.li
+              key={item}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.25 + idx * 0.1 }}
+              className="flex items-start gap-3 rounded-2xl border-2 border-slate-300 bg-white px-4 py-3"
+            >
+              <span
+                className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-white"
+                style={{ backgroundColor: accent }}
+              >
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+              <span className="text-sm font-bold text-slate-800 md:text-base">
+                {item}
+              </span>
+            </motion.li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-8 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center justify-center gap-1.5 font-mono text-sm font-bold text-slate-600 transition-colors hover:text-slate-950 sm:mr-auto"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
+          Refazer nivelamento
+        </button>
+
+        <button
+          type="button"
+          onClick={onContinue}
+          className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-[#1a1a1a] px-7 py-3 font-display text-sm font-black uppercase tracking-wider text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+          style={{ backgroundColor: accent }}
+        >
+          Começar as {LEVEL_QUESTION_COUNT} perguntas
+          <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+        </button>
+      </div>
     </motion.div>
   );
 }
@@ -456,14 +925,16 @@ function QuestionScreen({
   currentIndex,
   totalQuestions,
   selectedOption,
+  accent,
   onAnswer,
   onBack,
   onReset,
 }: {
-  question: QuizQuestion;
+  question: ScreenQuestion;
   currentIndex: number;
   totalQuestions: number;
   selectedOption: number | null;
+  accent: string;
   onAnswer: (optionIndex: number) => void;
   onBack?: () => void;
   onReset?: () => void;
@@ -488,10 +959,13 @@ function QuestionScreen({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className="container max-w-2xl py-12 md:py-16"
+      className="container max-w-2xl py-10 md:py-14"
     >
-      <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3">
-        <span className="font-mono text-xs uppercase tracking-[0.22em] text-violet-700">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <span
+          className="inline-flex items-center rounded-full border-2 border-slate-900 px-3 py-1 font-mono text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-[2px_2px_0_#0f172a]"
+          style={{ backgroundColor: accent }}
+        >
           {question.category}
         </span>
         <span className="font-mono text-sm text-slate-500">
@@ -500,8 +974,8 @@ function QuestionScreen({
       </div>
 
       <h2
-        className="mb-8 font-display font-black leading-tight text-slate-950"
-        style={{ fontSize: "clamp(1.75rem, 4vw, 2.75rem)" }}
+        className="mb-7 font-display font-black leading-tight text-slate-950"
+        style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.4rem)" }}
       >
         {question.question}
       </h2>
@@ -510,35 +984,54 @@ function QuestionScreen({
         {question.options.map((option, idx) => {
           const isSelected = effectiveSelection === idx;
           const letter = String.fromCharCode(65 + idx);
+          const optionAccent = OPTION_ACCENTS[idx % OPTION_ACCENTS.length];
           const dimmed =
             transitioning && effectiveSelection !== null && !isSelected;
 
           return (
-            <button
+            <motion.button
               key={option.label}
               type="button"
               onClick={() => handleClick(idx)}
               disabled={transitioning}
-              className={`group flex w-full items-start gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200 ${
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: dimmed ? 0.4 : 1, y: 0 }}
+              transition={{
+                y: {
+                  duration: 0.3,
+                  delay: 0.06 + idx * 0.07,
+                  ease: [0.22, 1, 0.36, 1],
+                },
+                opacity: { duration: 0.2 },
+              }}
+              whileHover={transitioning ? undefined : { y: -2 }}
+              whileTap={transitioning ? undefined : { scale: 0.985 }}
+              className={`group flex w-full items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-[box-shadow,background-color,border-color] duration-200 ${
                 isSelected
-                  ? "border-[#1a1a1a] bg-amber-300 shadow-[3px_3px_0_#0f172a]"
-                  : "border-slate-300 bg-white hover:-translate-y-0.5 hover:border-slate-900 hover:shadow-[3px_3px_0_#0f172a]"
-              } ${dimmed ? "opacity-40" : ""} disabled:cursor-not-allowed`}
+                  ? "bg-amber-300"
+                  : "border-slate-300 bg-white hover:bg-slate-50"
+              } disabled:cursor-not-allowed`}
+              style={{
+                borderColor: isSelected ? "#1a1a1a" : undefined,
+                boxShadow: isSelected
+                  ? "4px 4px 0 #0f172a"
+                  : undefined,
+              }}
             >
               <span
-                className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-display text-base font-black transition-colors ${
-                  isSelected
-                    ? "bg-slate-950 text-amber-300"
-                    : "bg-slate-100 text-slate-600 group-hover:bg-slate-950 group-hover:text-white"
-                }`}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-base font-black text-white transition-transform duration-200 group-hover:scale-105"
+                style={{
+                  backgroundColor: isSelected ? "#0f172a" : optionAccent,
+                  color: isSelected ? "#fde047" : "#ffffff",
+                }}
               >
-                {letter}
+                {isSelected ? <Check className="h-5 w-5" strokeWidth={3} /> : letter}
               </span>
 
-              <span className="pt-1 text-base font-bold text-slate-950">
+              <span className="text-base font-bold text-slate-950">
                 {option.label}
               </span>
-            </button>
+            </motion.button>
           );
         })}
       </div>
@@ -582,10 +1075,14 @@ function ProgressBar({
   current,
   total,
   answeredCount,
+  accent,
+  phaseLabel,
 }: {
   current: number;
   total: number;
   answeredCount: number;
+  accent: string;
+  phaseLabel?: string;
 }) {
   const percentage = (answeredCount / total) * 100;
 
@@ -599,14 +1096,25 @@ function ProgressBar({
       className="sticky top-16 z-30 border-b border-slate-200 bg-[#faf8f4]/80 backdrop-blur-sm"
     >
       <div className="container max-w-2xl py-3">
+        {phaseLabel && (
+          <p
+            className="mb-2 font-mono text-[11px] font-black uppercase tracking-[0.18em]"
+            style={{ color: accent }}
+          >
+            {phaseLabel}
+          </p>
+        )}
         <div className="flex items-center gap-3">
           <span className="shrink-0 font-mono text-xs uppercase tracking-[0.18em] text-slate-600">
             {current} / {total}
           </span>
 
-          <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-3.5 flex-1 overflow-hidden rounded-full border-2 border-slate-900 bg-white">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+              className="h-full rounded-full"
+              style={{
+                background: `linear-gradient(90deg, ${accent}, #FFB800)`,
+              }}
               initial={{ width: 0 }}
               animate={{ width: `${percentage}%` }}
               transition={{ duration: 0.5, ease: "easeOut" }}
@@ -622,7 +1130,7 @@ function ProgressBar({
   );
 }
 
-function CompletingScreen() {
+function CompletingScreen({ accent }: { accent: string }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -631,19 +1139,30 @@ function CompletingScreen() {
       transition={{ duration: 0.4 }}
       className="container max-w-2xl py-20 text-center"
     >
-      <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full bg-violet-100">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-700" />
-      </div>
+      <motion.div
+        className="mx-auto mb-6 inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]"
+        style={{ backgroundColor: `${accent}1f` }}
+        animate={{ scale: [1, 1.06, 1] }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: accent }} />
+      </motion.div>
 
       <h2 className="mb-3 font-display text-3xl font-black text-slate-950">
         Analisando suas respostas...
       </h2>
 
       <p className="text-base font-semibold text-slate-600">
-        Estamos cruzando seus dados pra encontrar as áreas mais alinhadas com
-        você.
+        Estamos cruzando seus dados pra encontrar o que mais combina com você.
       </p>
+
+      <motion.div
+        className="mx-auto mt-6"
+        animate={{ rotate: [0, 12, 0] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Sparkles className="mx-auto h-6 w-6" style={{ color: accent }} />
+      </motion.div>
     </motion.div>
   );
 }
-

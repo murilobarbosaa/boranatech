@@ -36,6 +36,7 @@ export async function persistQuizResult(payload: {
   result_area: string;
   result_area_slug?: string;
   confidence: number;
+  level?: string;
   result_json?: unknown;
 }): Promise<{ id: string; completed_at: string } | null> {
   if (!supabase) return null;

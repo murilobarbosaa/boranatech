@@ -1,7 +1,6 @@
 import { usageEvidence } from "./surveyData2025";
 
 export type TechnologyCategory = "Linguagens" | "Frameworks" | "Banco de Dados" | "Ferramentas" | "Cloud" | "DevOps";
-export type DemandLevel = "Alta" | "Média" | "Baixa";
 export type DifficultyLabel = "Iniciante" | "Intermediário" | "Avançado";
 
 export interface Technology {
@@ -13,7 +12,6 @@ export interface Technology {
   description: string;
   difficulty: DifficultyLabel;
   difficultyScore: number;
-  demand: DemandLevel;
   salaryRange: string;
   usagePercent?: number;
   usageLabel?: string;
@@ -29,12 +27,10 @@ export interface Technology {
   courses: string[];
   companies: string[];
   games?: string[];
-  jobs: number;
-  weeklyChange: number;
 }
 
 const byCategory: Record<TechnologyCategory, string[]> = {
-  Linguagens: ["HTML", "CSS", "JavaScript", "TypeScript", "Python", "Java", "PHP", "Go", "Rust", "C#", "SQL", "Swift", "Kotlin", "R"],
+  Linguagens: ["HTML", "CSS", "JavaScript", "TypeScript", "Python", "Java", "PHP", "Go", "Rust", "C#", "SQL", "Swift", "Kotlin", "R", "C++", "C", "Lua", "Solidity"],
   Frameworks: [
     "React",
     "Vue.js",
@@ -56,8 +52,11 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "PyTorch",
     "NumPy",
     "GraphQL",
+    "Unity",
+    "Unreal Engine",
+    "Godot",
   ],
-  "Banco de Dados": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch"],
+  "Banco de Dados": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Snowflake"],
   Ferramentas: [
     "Git",
     "Linux",
@@ -68,6 +67,14 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "Power BI",
     "Webpack",
     "Storybook",
+    "Arduino",
+    "dbt",
+    "Tableau",
+    "Looker",
+    "Jira",
+    "Trello",
+    "Notion",
+    "Confluence",
   ],
   Cloud: ["AWS", "Google Cloud", "Azure"],
   DevOps: [
@@ -81,71 +88,89 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "Grafana",
     "Kafka",
     "RabbitMQ",
+    "Apache Airflow",
   ],
 };
 
 const areaMap: Record<string, string[]> = {
   HTML: ["frontend"],
   CSS: ["frontend", "uxui"],
-  JavaScript: ["frontend", "backend", "mobile"],
-  TypeScript: ["frontend", "backend", "mobile"],
-  React: ["frontend"],
+  JavaScript: ["frontend", "backend", "mobile", "fullstack", "blockchain"],
+  TypeScript: ["frontend", "backend", "mobile", "fullstack", "blockchain"],
+  React: ["frontend", "fullstack"],
   "Vue.js": ["frontend"],
   Angular: ["frontend"],
-  "Next.js": ["frontend", "backend"],
-  "Tailwind CSS": ["frontend", "uxui"],
+  "Next.js": ["frontend", "backend", "fullstack"],
+  "Tailwind CSS": ["frontend", "uxui", "fullstack"],
   Sass: ["frontend", "uxui"],
   Vite: ["frontend", "devops"],
   Redux: ["frontend"],
   Webpack: ["frontend", "devops"],
   Storybook: ["frontend", "qa", "uxui"],
-  Python: ["backend", "dados", "ia", "qa"],
-  "Node.js": ["backend", "frontend"],
-  "Express.js": ["backend"],
+  Python: ["backend", "dados", "ia", "qa", "engenharia-dados", "analise-dados", "iot"],
+  "Node.js": ["backend", "frontend", "fullstack"],
+  "Express.js": ["backend", "fullstack"],
   Java: ["backend", "mobile"],
   PHP: ["backend"],
   FastAPI: ["backend", "dados", "ia"],
   Django: ["backend", "dados"],
   "Spring Boot": ["backend", "mobile"],
-  Go: ["backend", "devops"],
-  Rust: ["backend", "ciberseguranca"],
-  "C#": ["backend"],
-  SQL: ["backend", "dados"],
-  GraphQL: ["backend", "frontend", "mobile"],
-  PostgreSQL: ["backend", "dados"],
-  MySQL: ["backend", "dados"],
-  MongoDB: ["backend", "dados"],
-  Redis: ["backend", "devops"],
-  Elasticsearch: ["backend", "dados", "devops"],
-  Docker: ["devops", "backend", "cloud"],
-  Kubernetes: ["devops", "cloud"],
-  Terraform: ["devops", "cloud"],
-  Ansible: ["devops", "cloud"],
+  Go: ["backend", "devops", "blockchain"],
+  Rust: ["backend", "ciberseguranca", "blockchain"],
+  "C#": ["backend", "gamedev"],
+  SQL: ["backend", "dados", "banco-de-dados", "engenharia-dados", "analise-dados", "analise-sistemas"],
+  GraphQL: ["backend", "frontend", "mobile", "fullstack"],
+  PostgreSQL: ["backend", "dados", "fullstack", "banco-de-dados", "engenharia-dados"],
+  MySQL: ["backend", "dados", "banco-de-dados", "engenharia-dados"],
+  MongoDB: ["backend", "dados", "fullstack", "banco-de-dados", "engenharia-dados"],
+  Redis: ["backend", "devops", "banco-de-dados"],
+  Elasticsearch: ["backend", "dados", "devops", "banco-de-dados", "engenharia-dados"],
+  Docker: ["devops", "backend", "cloud", "fullstack", "sre", "infraestrutura"],
+  Kubernetes: ["devops", "cloud", "sre"],
+  Terraform: ["devops", "cloud", "sre", "infraestrutura"],
+  Ansible: ["devops", "cloud", "sre", "infraestrutura"],
   "GitHub Actions": ["devops", "cloud"],
   Jenkins: ["devops", "qa"],
-  Prometheus: ["devops", "cloud"],
-  Grafana: ["devops", "cloud"],
-  Kafka: ["backend", "devops", "dados"],
+  Prometheus: ["devops", "cloud", "sre"],
+  Grafana: ["devops", "cloud", "sre"],
+  Kafka: ["backend", "devops", "dados", "engenharia-dados"],
   RabbitMQ: ["backend", "devops"],
   Cypress: ["qa", "frontend"],
   Playwright: ["qa", "frontend", "backend"],
-  AWS: ["cloud", "devops"],
-  "Google Cloud": ["cloud", "dados", "ia"],
-  Azure: ["cloud", "devops"],
-  Git: ["frontend", "backend", "dados", "mobile", "devops", "qa"],
-  Linux: ["devops", "cloud", "ciberseguranca", "backend"],
+  AWS: ["cloud", "devops", "sre", "infraestrutura"],
+  "Google Cloud": ["cloud", "dados", "ia", "infraestrutura"],
+  Azure: ["cloud", "devops", "infraestrutura"],
+  Git: ["frontend", "backend", "dados", "mobile", "devops", "qa", "fullstack"],
+  Linux: ["devops", "cloud", "ciberseguranca", "backend", "sre", "infraestrutura", "iot"],
   Figma: ["uxui", "frontend", "produto"],
-  "Power BI": ["dados", "produto"],
+  "Power BI": ["dados", "produto", "analise-dados"],
   Flutter: ["mobile"],
   "React Native": ["mobile", "frontend"],
   Swift: ["mobile"],
   Kotlin: ["mobile"],
-  R: ["dados"],
-  Spark: ["dados"],
-  Pandas: ["dados", "ia"],
-  NumPy: ["dados", "ia"],
+  R: ["dados", "analise-dados"],
+  Spark: ["dados", "engenharia-dados"],
+  Pandas: ["dados", "ia", "analise-dados"],
+  NumPy: ["dados", "ia", "analise-dados"],
   TensorFlow: ["ia", "dados"],
   PyTorch: ["ia", "dados"],
+  Unity: ["gamedev"],
+  "Unreal Engine": ["gamedev"],
+  Godot: ["gamedev"],
+  "C++": ["backend", "gamedev", "iot"],
+  Lua: ["gamedev", "backend"],
+  Solidity: ["blockchain"],
+  C: ["backend", "iot"],
+  Arduino: ["iot"],
+  "Apache Airflow": ["engenharia-dados", "dados"],
+  dbt: ["engenharia-dados", "dados", "analise-dados"],
+  Snowflake: ["dados", "engenharia-dados", "banco-de-dados", "analise-dados"],
+  Tableau: ["analise-dados", "dados", "produto"],
+  Looker: ["analise-dados", "dados"],
+  Jira: ["gestao", "produto", "qa"],
+  Trello: ["gestao", "produto"],
+  Notion: ["gestao", "produto"],
+  Confluence: ["gestao"],
 };
 
 const difficulties: Record<string, DifficultyLabel> = {
@@ -207,12 +232,30 @@ const difficulties: Record<string, DifficultyLabel> = {
   TensorFlow: "Avançado",
   NumPy: "Intermediário",
   PyTorch: "Avançado",
+  Unity: "Intermediário",
+  "Unreal Engine": "Avançado",
+  Godot: "Intermediário",
+  "C++": "Avançado",
+  Lua: "Iniciante",
+  Solidity: "Avançado",
+  C: "Intermediário",
+  Arduino: "Iniciante",
+  "Apache Airflow": "Avançado",
+  dbt: "Intermediário",
+  Snowflake: "Intermediário",
+  Tableau: "Iniciante",
+  Looker: "Intermediário",
+  Jira: "Iniciante",
+  Trello: "Iniciante",
+  Notion: "Iniciante",
+  Confluence: "Iniciante",
 };
 
 export function slugify(value: string) {
   return value
     .toLowerCase()
     .replace("#", "sharp")
+    .replace(/\+/g, "plus")
     .replace(/\./g, "")
     .replace(/\s+/g, "-");
 }
@@ -287,6 +330,23 @@ const names = [
   "Power BI",
   "NumPy",
   "PyTorch",
+  "Unity",
+  "Unreal Engine",
+  "Godot",
+  "C++",
+  "Lua",
+  "Solidity",
+  "C",
+  "Arduino",
+  "Apache Airflow",
+  "dbt",
+  "Snowflake",
+  "Tableau",
+  "Looker",
+  "Jira",
+  "Trello",
+  "Notion",
+  "Confluence",
 ];
 
 const logoUrls: Record<string, string> = {
@@ -351,7 +411,44 @@ const logoUrls: Record<string, string> = {
   "Power BI": "https://www.google.com/s2/favicons?domain=powerbi.microsoft.com&sz=128",
   NumPy: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/numpy/numpy-original.svg",
   PyTorch: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg",
+  Unity: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unity/unity-original.svg",
+  "Unreal Engine": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unrealengine/unrealengine-original.svg",
+  Godot: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/godot/godot-original.svg",
+  "C++": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg",
+  Lua: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/lua/lua-original.svg",
+  Solidity: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/solidity/solidity-original.svg",
+  C: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg",
+  Arduino: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/arduino/arduino-original.svg",
+  "Apache Airflow": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apacheairflow/apacheairflow-original.svg",
+  dbt: "https://www.google.com/s2/favicons?domain=getdbt.com&sz=128",
+  Snowflake: "https://www.google.com/s2/favicons?domain=snowflake.com&sz=128",
+  Tableau: "https://www.google.com/s2/favicons?domain=tableau.com&sz=128",
+  Looker: "https://www.google.com/s2/favicons?domain=looker.com&sz=128",
+  Jira: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg",
+  Trello: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/trello/trello-original.svg",
+  Notion: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/notion/notion-original.svg",
+  Confluence: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/confluence/confluence-original.svg",
 };
+
+// Logos de ferramentas de apoio que não são tecnologias do catálogo principal.
+const toolLogoUrls: Record<string, string> = {
+  "VS Code": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg",
+  GitHub: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg",
+  npm: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/npm/npm-original-wordmark.svg",
+  Postman: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postman/postman-original.svg",
+  Jupyter: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original.svg",
+};
+
+// Resolve o nome de uma ferramenta para o que o TechnologyLogo precisa. Reaproveita
+// o catálogo de logos das tecnologias e o mapa de ferramentas de apoio; quando não
+// há logo, o TechnologyLogo cai no fallback de iniciais.
+export function resolveTool(name: string): { name: string; icon: string; logoUrl: string } {
+  return {
+    name,
+    icon: name.slice(0, 2).toUpperCase(),
+    logoUrl: logoUrls[name] || toolLogoUrls[name] || "",
+  };
+}
 
 
 const notableCompanies: Record<string, string[]> = {
@@ -425,10 +522,94 @@ const notableGames: Record<string, string[]> = {
   Lua: ["Roblox"],
 };
 
-export const technologies: Technology[] = names.map((name, index) => {
+// Combinações reais por slug: tecnologias que costumam aparecer juntas na mesma
+// stack/ecossistema. Curadoria manual com pares amplamente conhecidos (não há
+// número/fato inventado aqui, apenas relações de uso comuns). Slugs precisam
+// existir em `names`.
+export const combinesWithMap: Record<string, string[]> = {
+  html: ["css", "javascript", "react", "tailwind-css"],
+  css: ["html", "javascript", "sass", "tailwind-css"],
+  javascript: ["html", "css", "typescript", "react", "nodejs"],
+  typescript: ["javascript", "react", "nextjs", "nodejs"],
+  react: ["typescript", "nextjs", "redux", "tailwind-css"],
+  vuejs: ["javascript", "typescript", "vite", "tailwind-css"],
+  angular: ["typescript", "nodejs", "sass"],
+  nextjs: ["react", "typescript", "tailwind-css", "nodejs"],
+  python: ["sql", "django", "fastapi", "pandas"],
+  nodejs: ["javascript", "typescript", "expressjs", "mongodb"],
+  java: ["spring-boot", "kotlin", "postgresql", "docker"],
+  php: ["mysql", "html", "javascript"],
+  go: ["docker", "kubernetes", "postgresql"],
+  rust: ["cplusplus", "c", "linux"],
+  csharp: ["unity", "azure", "sql"],
+  sql: ["postgresql", "mysql", "python", "dbt"],
+  postgresql: ["sql", "docker", "django", "nodejs"],
+  mysql: ["sql", "php", "docker"],
+  mongodb: ["nodejs", "expressjs", "javascript"],
+  redis: ["nodejs", "docker", "postgresql"],
+  docker: ["kubernetes", "github-actions", "terraform", "linux"],
+  kubernetes: ["docker", "terraform", "prometheus", "grafana"],
+  aws: ["docker", "kubernetes", "terraform", "linux"],
+  "google-cloud": ["kubernetes", "docker", "terraform"],
+  azure: ["csharp", "docker", "kubernetes"],
+  git: ["github-actions", "linux", "docker"],
+  linux: ["docker", "git", "kubernetes", "python"],
+  figma: ["react", "storybook", "tailwind-css"],
+  flutter: ["kotlin", "swift", "figma"],
+  swift: ["kotlin", "figma"],
+  kotlin: ["java", "spring-boot", "swift"],
+  r: ["python", "pandas", "tableau"],
+  spark: ["python", "kafka", "snowflake", "apache-airflow"],
+  pandas: ["python", "numpy", "tensorflow"],
+  tensorflow: ["python", "numpy", "pandas", "pytorch"],
+  "tailwind-css": ["react", "nextjs", "vite", "html"],
+  sass: ["css", "html", "vuejs"],
+  vite: ["react", "vuejs", "typescript"],
+  expressjs: ["nodejs", "javascript", "mongodb"],
+  fastapi: ["python", "postgresql", "docker"],
+  django: ["python", "postgresql", "redis"],
+  "spring-boot": ["java", "kotlin", "postgresql", "docker"],
+  "react-native": ["react", "typescript", "javascript"],
+  graphql: ["nodejs", "react", "typescript"],
+  redux: ["react", "typescript", "javascript"],
+  webpack: ["javascript", "react", "typescript"],
+  storybook: ["react", "figma", "vuejs"],
+  cypress: ["javascript", "react", "typescript"],
+  playwright: ["typescript", "javascript", "react"],
+  terraform: ["aws", "kubernetes", "docker", "ansible"],
+  ansible: ["linux", "docker", "terraform"],
+  "github-actions": ["git", "docker", "nodejs"],
+  jenkins: ["docker", "java", "git"],
+  prometheus: ["kubernetes", "grafana", "docker"],
+  grafana: ["prometheus", "kubernetes", "elasticsearch"],
+  kafka: ["spark", "java", "docker"],
+  rabbitmq: ["nodejs", "python", "docker"],
+  elasticsearch: ["grafana", "docker", "kafka"],
+  "power-bi": ["sql", "python", "tableau"],
+  numpy: ["python", "pandas", "tensorflow"],
+  pytorch: ["python", "numpy", "tensorflow"],
+  unity: ["csharp", "cplusplus"],
+  "unreal-engine": ["cplusplus", "c"],
+  godot: ["csharp", "cplusplus"],
+  cplusplus: ["c", "unreal-engine", "unity"],
+  lua: ["c", "redis", "cplusplus"],
+  solidity: ["javascript", "typescript"],
+  c: ["cplusplus", "rust", "linux", "arduino"],
+  arduino: ["cplusplus", "c", "python"],
+  "apache-airflow": ["python", "spark", "dbt", "snowflake"],
+  dbt: ["sql", "snowflake", "postgresql", "python"],
+  snowflake: ["sql", "dbt", "spark", "python"],
+  tableau: ["sql", "python", "r"],
+  looker: ["sql", "dbt", "snowflake"],
+  jira: ["confluence", "trello", "git"],
+  trello: ["jira", "notion", "confluence"],
+  notion: ["trello", "jira", "confluence"],
+  confluence: ["jira", "trello", "notion"],
+};
+
+export const technologies: Technology[] = names.map((name) => {
   const category = categoryFor(name);
   const difficulty = difficulties[name] || "Intermediário";
-  const jobs = Math.max(140, Math.round(6400 - index * 103));
   const evidence = usageEvidence[slugify(name)];
   return {
     slug: slugify(name),
@@ -439,7 +620,6 @@ export const technologies: Technology[] = names.map((name, index) => {
     description: `${name} é usada para construir produtos digitais, resolver problemas reais e acelerar entregas em times de tecnologia.`,
     difficulty,
     difficultyScore: difficultyScore(difficulty),
-    demand: index < 22 ? "Alta" : index < 44 ? "Média" : "Baixa",
     salaryRange: difficulty === "Avançado" ? "R$ 6.000 a R$ 14.000" : difficulty === "Intermediário" ? "R$ 4.000 a R$ 10.000" : "R$ 2.500 a R$ 6.000",
     usagePercent: evidence?.usagePercent,
     usageLabel: evidence?.usageLabel,
@@ -460,13 +640,11 @@ export const technologies: Technology[] = names.map((name, index) => {
       "Combine com tecnologias complementares",
     ],
     dailyTip: `Use ${name} em um projeto simples antes de tentar dominar todos os recursos.`,
-    combinesWith: names.filter((item) => item !== name).slice(index % 10, (index % 10) + 4).map(slugify),
-    tools: ["VS Code", "GitHub", "Documentação oficial", "Comunidade"],
+    combinesWith: combinesWithMap[slugify(name)] || [],
+    tools: ["VS Code", "Git", "GitHub"],
     courses: ["Curso em Vídeo", "freeCodeCamp", "Documentação oficial", "YouTube"],
     companies: notableCompanies[name] || ["GitHub", "Stack Overflow", "Comunidades open source"],
     games: notableGames[name],
-    jobs,
-    weeklyChange: index % 3 === 0 ? 12 : index % 3 === 1 ? 4 : -3,
   };
 });
 
@@ -477,7 +655,7 @@ export const technologyRanking = technologies
   .sort((a, b) => {
     const pct = (b.usagePercent || 0) - (a.usagePercent || 0);
     if (pct !== 0) return pct;
-    return b.jobs - a.jobs;
+    return a.name.localeCompare(b.name);
   })
   .map((technology, index) => ({ position: index + 1, ...technology }));
 

@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
+import { useSearch } from "wouter";
 import Layout from "@/components/Layout";
+import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
 import { technologies } from "@/lib/technologyData";
 import { getTechnologies } from "@/services/contentService";
 
 export default function TecnologiaComparador() {
+  const search = useSearch();
+  const fromTech = new URLSearchParams(search).get("from") === "tecnologias";
   const [technologyItems, setTechnologyItems] = useState(technologies);
   const [leftSlug, setLeftSlug] = useState(technologies[0]?.slug || "");
   const [rightSlug, setRightSlug] = useState(technologies[4]?.slug || "");
@@ -25,7 +29,6 @@ export default function TecnologiaComparador() {
 
   const rows = [
     ["Dificuldade", left?.difficulty, right?.difficulty],
-    ["Mercado", left?.demand, right?.demand],
     ["Salário", left?.salaryRange, right?.salaryRange],
     ["Casos de uso", left?.useCases[0], right?.useCases[0]],
     ["Curva de aprendizado", `${left?.difficultyScore}/5`, `${right?.difficultyScore}/5`],
@@ -33,7 +36,12 @@ export default function TecnologiaComparador() {
 
   return (
     <Layout>
-      <PageHero title="Comparador de Tecnologias" subtitle="Compare dificuldade, mercado, salário e casos de uso antes de escolher onde focar." accent="emerald" />
+      <PageHero
+        title="Comparador de Tecnologias"
+        subtitle="Compare dificuldade, salário e casos de uso antes de escolher onde focar."
+        accent="emerald"
+        topSlot={fromTech ? <BackToTechnologies accent="emerald" /> : undefined}
+      />
       <section className="container py-12">
         <div className="card-brutal rounded-2xl bg-white p-6">
           <div className="grid gap-4 md:grid-cols-2">

@@ -40,12 +40,12 @@ const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
 ];
 
 const perfilMap: Record<string, string[]> = {
-  criatividade: ["uxui", "frontend", "mobile"],
-  logica: ["backend", "devops", "cloud", "ciberseguranca", "ia"],
-  pessoas: ["gestao", "produto"],
-  organizacao: ["gestao", "qa", "produto"],
-  seguranca: ["ciberseguranca", "cloud", "devops"],
-  dados: ["dados", "ia", "backend"],
+  criatividade: ["uxui", "frontend", "mobile", "gamedev"],
+  logica: ["backend", "devops", "cloud", "ciberseguranca", "ia", "fullstack", "gamedev", "engenharia-dados", "sre", "infraestrutura", "blockchain", "iot"],
+  pessoas: ["gestao", "produto", "analise-sistemas"],
+  organizacao: ["gestao", "qa", "produto", "analise-dados", "banco-de-dados", "infraestrutura", "analise-sistemas"],
+  seguranca: ["ciberseguranca", "cloud", "devops", "sre"],
+  dados: ["dados", "ia", "backend", "analise-dados", "engenharia-dados", "banco-de-dados"],
 };
 
 function SkeletonAreaCard() {
@@ -105,7 +105,7 @@ export default function Areas() {
         pattern="dots"
         eyebrow="mapa de possibilidades"
         title="Áreas da TI"
-        subtitle="Explore as principais áreas de tecnologia e descubra qual combina com o seu perfil."
+        subtitle="Cada área é um caminho dentro da TI, com funções e habilidades próprias. Descubra qual combina com você."
       />
 
       {/* Filters */}
@@ -186,8 +186,8 @@ export default function Areas() {
                   </h3>
                   <p className="text-sm text-slate-600 mb-4 line-clamp-2">{area.descricaoCurta}</p>
                   <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
-                    <p className="text-xs font-black uppercase text-slate-500">Personalidade da área</p>
-                    <p className="mt-1 text-xs text-slate-700 line-clamp-3">{area.perfilIndicado}</p>
+                    <p className="text-xs font-black uppercase text-violet-800">Perfil que combina</p>
+                    <p className="mt-1 text-xs text-slate-800 line-clamp-3">{area.perfilIndicado}</p>
                   </div>
                   <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
                     {area.habilidades.slice(0, 3).map((h) => (
@@ -195,7 +195,7 @@ export default function Areas() {
                     ))}
                   </div>
                   <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
-                    <span className="text-xs text-slate-400">{area.cargos[0]}</span>
+                    <span className="text-xs text-slate-600">{area.cargos[0]}</span>
                     <span className="flex items-center gap-1 text-violet-700 text-sm font-medium group-hover:gap-2 transition-all">
                       Explorar <ArrowRight className="w-4 h-4" />
                     </span>

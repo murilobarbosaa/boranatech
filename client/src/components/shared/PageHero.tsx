@@ -45,7 +45,7 @@ function patternStyle(pattern: PageHeroPattern, color: string): CSSProperties {
 
 interface PageHeroProps {
   title: string;
-  subtitle: string;
+  subtitle: ReactNode;
   eyebrow?: string;
   /** Cor do hero — alinha com páginas como Notícias, Cursos e Roadmaps. */
   accent?: PageHeroAccent;
@@ -57,6 +57,8 @@ interface PageHeroProps {
   actions?: ReactNode;
   /** Ex.: logo da tecnologia alinhado ao título. */
   titlePrefix?: ReactNode;
+  /** Camada decorativa atrás do conteúdo do hero (ex.: blobs animados por área). */
+  backgroundSlot?: ReactNode;
 }
 
 export default function PageHero({
@@ -68,6 +70,7 @@ export default function PageHero({
   topSlot,
   actions,
   titlePrefix,
+  backgroundSlot,
 }: PageHeroProps) {
   const a = ACCENT[accent];
 
@@ -81,6 +84,7 @@ export default function PageHero({
           style={patternStyle(pattern, a.color)}
         />
       )}
+      {backgroundSlot}
       <div className="container relative">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="max-w-2xl min-w-0 flex-1">
