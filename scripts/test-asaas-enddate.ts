@@ -3,9 +3,11 @@
 // Roda SOMENTE contra o sandbox do Asaas. NAO usar em producao.
 // Executar (Node 22):
 //   node --env-file=.env --import tsx scripts/test-asaas-enddate.ts
+//
+// PENDENCIA: getOrCreateAsaasCustomer aceita cpfCnpj? mas nunca envia ao Asaas;
+// e profiles nao coleta cpf_cnpj. Tratar quando oferecer PIX/Boleto.
 
 import {
-  getOrCreateAsaasCustomer,
   getAsaasSubscriptionPayments,
   updateAsaasSubscription,
   deleteAsaasPayment,
@@ -17,6 +19,29 @@ const BASE = env.asaasEnv === "production" ? "https://api.asaas.com" : "https://
 
 function ymd(date: Date) {
   return date.toISOString().split("T")[0];
+}
+
+// Cria o customer direto via fetch, incluindo cpfCnpj. NAO reusamos
+// getOrCreateAsaasCustomer de proposito: hoje aquela funcao aceita cpfCnpj? na
+// assinatura mas NUNCA envia o campo ao Asaas (comportamento documentado como
+// PENDENCIA no topo). Como BOLETO exige CPF/CNPJ ja na criacao da cobranca, o
+// teste precisa de um customer com CPF. Religar o parametro seria mexer no fluxo
+// de producao em codigo compartilhado — decisao de produto, fora do escopo
+// deste teste de endDate.
+async function createTestCustomer(stamp: number, cpfCnpj: string) {
+  const res = await fetch(`${BASE}/api/v3/customers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", access_token: env.asaasApiKey },
+    body: JSON.stringify({
+      name: "Teste endDate",
+      email: `enddate-test+${stamp}@boranatech.com.br`,
+      externalReference: `test-${stamp}`,
+      cpfCnpj,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(`create customer falhou ${res.status}: ${JSON.stringify(data)}`);
+  return data as { id: string };
 }
 
 // Cria sub de teste com BOLETO (cobranca PENDING garantida, sem cartao).
@@ -52,11 +77,7 @@ async function main() {
   const stamp = Date.now();
   console.log("== Validacao endDate + s1 no sandbox Asaas ==");
 
-  const customer = await getOrCreateAsaasCustomer({
-    userId: `test-${stamp}`,
-    name: "Teste endDate",
-    email: `enddate-test+${stamp}@boranatech.com.br`,
-  });
+  const customer = await createTestCustomer(stamp, "24971563792"); // CPF de teste valido (sandbox)
   console.log(`customer.id=${customer.id}`);
 
   const dueIn5 = ymd(new Date(Date.now() + 5 * 864e5));
