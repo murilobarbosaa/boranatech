@@ -1,13 +1,8 @@
 import { Router } from "express";
 import crypto from "crypto";
 
-import {
-  createAsaasCheckout,
-  deleteAsaasPayment,
-  getAsaasSubscriptionPayments,
-  getOrCreateAsaasCustomer,
-  updateAsaasSubscription,
-} from "../lib/asaas";
+import { createAsaasCheckout, getAsaasSubscriptionPayments, getOrCreateAsaasCustomer } from "../lib/asaas";
+import { cancelSubscriptionAtAsaas } from "../lib/billing-asaas";
 import { env } from "../lib/env";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -148,34 +143,7 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
     // Logo, se o passo (f) falhar, basta repetir POST /cancel — sem efeito colateral.
     if (subscription.provider_subscription_id && endDate) {
       try {
-        // d. impede o Asaas de gerar novas cobrancas a partir de endDate.
-        await updateAsaasSubscription(subscription.provider_subscription_id, { endDate });
-
-        // e. salvaguarda s1: endDate NAO remove cobranca ja pre-gerada com vencimento
-        // posterior (comprovado no sandbox); o DELETE remove. So mexemos em pendentes
-        // futuras (dueDate > endDate); pagamentos confirmados (CONFIRMED/RECEIVED) nunca.
-        const payments = await getAsaasSubscriptionPayments(subscription.provider_subscription_id);
-        const list = Array.isArray(payments?.data) ? payments.data : [];
-        const toDelete = list.filter(
-          (p: { id?: string; status?: string; dueDate?: string }) =>
-            typeof p?.dueDate === "string" &&
-            p.dueDate > endDate &&
-            ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"].includes(p?.status ?? ""),
-        );
-        for (const p of toDelete) {
-          try {
-            await deleteAsaasPayment(p.id as string);
-          } catch (delErr) {
-            // 404 = cobranca ja sumiu => sucesso. Outros erros: nao fatais; o cron
-            // reconciliador pode reprocessar. Nao abortamos o cancelamento por isso.
-            if (!(delErr instanceof Error && /error 404/i.test(delErr.message))) {
-              console.error(
-                `[billing/cancel] DELETE pendente ${p.id} falhou (sub ${subscription.provider_subscription_id}):`,
-                delErr,
-              );
-            }
-          }
-        }
+        await cancelSubscriptionAtAsaas(subscription.provider_subscription_id, endDate);
       } catch (asaasErr) {
         // Falha em (d) ou na listagem: banco intacto, estado consistente. Pode repetir.
         console.error(
