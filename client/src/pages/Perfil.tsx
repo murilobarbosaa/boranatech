@@ -540,6 +540,7 @@ export default function Perfil() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
+  const [reactivating, setReactivating] = useState(false);
   const [signOutModalOpen, setSignOutModalOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -667,6 +668,48 @@ export default function Perfil() {
       toast.error("Erro ao cancelar. Tente novamente ou contate o suporte.");
     } finally {
       setCancelingSubscription(false);
+    }
+  }
+
+  async function handleReactivate() {
+    setReactivating(true);
+    try {
+      const headers = await getAuthHeader();
+      const res = await fetch(apiUrl("/api/billing/reactivate"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+      });
+
+      // 409 already_active: estado dessincronizado, refresca e segue.
+      if (res.status === 409) {
+        toast.info("Sua assinatura já está ativa.");
+        await refreshSubscription().catch(() => undefined);
+        return;
+      }
+
+      // 502/500/qualquer outro nao-ok: o endpoint e retry-safe.
+      if (!res.ok) {
+        toast.error("Erro ao reativar. Tente novamente ou contate o suporte.");
+        return;
+      }
+
+      const json = await res.json();
+
+      // Caso B: o endpoint sinaliza que precisa de novo checkout.
+      if (json?.data?.redirect_to_checkout) {
+        const target = typeof json.data.checkout_path === "string" ? json.data.checkout_path : "/planos";
+        toast.info(json.data.message || "Vamos para um novo plano.");
+        setLocation(target);
+        return;
+      }
+
+      // Caso A: reativada com sucesso.
+      toast.success(json?.data?.message || "Sua assinatura foi reativada.");
+      await refreshSubscription().catch(() => undefined);
+    } catch {
+      toast.error("Erro ao reativar. Tente novamente ou contate o suporte.");
+    } finally {
+      setReactivating(false);
     }
   }
 
@@ -1195,6 +1238,14 @@ export default function Perfil() {
                           ⚠️ Cancelamento agendado. Acesso Pro até{" "}
                           {formatPeriodEnd(subscriptionData.current_period_end)}.
                         </p>
+                        <button
+                          type="button"
+                          onClick={handleReactivate}
+                          disabled={reactivating}
+                          className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {reactivating ? "Reativando..." : "Reativar meu plano"}
+                        </button>
                       </div>
                     ) : null}
 
