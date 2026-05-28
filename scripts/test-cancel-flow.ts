@@ -69,10 +69,15 @@ async function getAsaasSubscription(id: string) {
 // POST /v3/payments/{id}/receiveInCash: marca cobranca como RECEIVED (best-effort
 // no sandbox) para validar o ponto 3.
 async function receiveInCash(paymentId: string, value: number) {
+  // ymd() usa toISOString() (UTC). Em SP (UTC-3), `new Date()` apos ~21h vira o
+  // dia seguinte em UTC e o Asaas recusa paymentDate no futuro. Recuamos 12h para
+  // garantir que o YYYY-MM-DD resultante seja sempre <= hoje no fuso de SP
+  // (eventualmente ontem em chamadas pela manha — tolerado: paymentDate passado e ok).
+  const paymentDate = ymd(new Date(Date.now() - 12 * 3600 * 1000));
   const res = await fetch(`${BASE}/api/v3/payments/${encodeURIComponent(paymentId)}/receiveInCash`, {
     method: "POST",
     headers: { "Content-Type": "application/json", access_token: env.asaasApiKey },
-    body: JSON.stringify({ paymentDate: ymd(new Date()), value }),
+    body: JSON.stringify({ paymentDate, value }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(`receiveInCash falhou ${res.status}: ${JSON.stringify(data)}`);
