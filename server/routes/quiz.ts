@@ -13,6 +13,7 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
       result_area,
       result_area_slug,
       confidence,
+      level,
       result_json,
     } = req.body as {
       answers?: Array<{
@@ -24,8 +25,15 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
       result_area?: unknown;
       result_area_slug?: unknown;
       confidence?: unknown;
+      level?: unknown;
       result_json?: unknown;
     };
+
+    const allowedLevels = ["iniciante", "intermediario", "avancado"];
+    const normalizedLevel =
+      typeof level === "string" && allowedLevels.includes(level)
+        ? level
+        : null;
 
     if (!Array.isArray(answers) || answers.length === 0) {
       return next(
@@ -59,6 +67,7 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
         result_area_slug:
           typeof result_area_slug === "string" ? result_area_slug : null,
         confidence,
+        level: normalizedLevel,
         result_json: result_json ?? {},
       })
       .select("id, completed_at")
@@ -186,7 +195,7 @@ router.get("/history", requireAuth, async (req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("career_quiz_attempts")
-      .select("id, started_at, completed_at, result_area, result_area_slug, confidence, result_json")
+      .select("id, started_at, completed_at, result_area, result_area_slug, confidence, level, result_json")
       .eq("user_id", req.user!.id)
       .not("completed_at", "is", null)
       .order("completed_at", { ascending: false })

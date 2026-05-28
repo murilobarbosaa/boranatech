@@ -5,7 +5,9 @@ import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
+import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { interviewQuestions, interviewStudySites, interviewVideoResources } from "@/lib/careerToolsData";
+import { youtubeEmbedUrl } from "@/lib/utils";
 
 export default function EntrevistaPerguntas() {
   const [type, setType] = useState("Todas");
@@ -93,18 +95,30 @@ export default function EntrevistaPerguntas() {
               </div>
             </div>
             <div className="space-y-3">
-              {interviewVideoResources.map((video) => (
-                <a
-                  key={video.title}
-                  href={video.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-3 rounded-2xl border-2 border-white bg-white p-3 text-sm font-black text-violet-800 transition-all hover:bg-amber-300 hover:text-slate-950"
-                >
-                  <PlayCircle className="h-5 w-5 shrink-0" />
-                  {video.title}
-                </a>
-              ))}
+              {interviewVideoResources.map((video) =>
+                youtubeEmbedUrl(video.url) ? (
+                  <VideoEmbedDialog key={video.title} source={video.url} title={video.title} href={video.url}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-2xl border-2 border-white bg-white p-3 text-left text-sm font-black text-violet-800 transition-all hover:bg-amber-300 hover:text-slate-950"
+                    >
+                      <PlayCircle className="h-5 w-5 shrink-0" />
+                      {video.title}
+                    </button>
+                  </VideoEmbedDialog>
+                ) : (
+                  <a
+                    key={video.title}
+                    href={video.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-3 rounded-2xl border-2 border-white bg-white p-3 text-sm font-black text-violet-800 transition-all hover:bg-amber-300 hover:text-slate-950"
+                  >
+                    <PlayCircle className="h-5 w-5 shrink-0" />
+                    {video.title}
+                  </a>
+                )
+              )}
             </div>
           </div>
         </div>

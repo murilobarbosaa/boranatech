@@ -4,48 +4,64 @@
   - Compare study platforms
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ExternalLink, Check, X, Star, Award, RotateCcw, SlidersHorizontal } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import TechnologyLogo from "@/components/TechnologyLogo";
 import { plataformas } from "@/lib/data";
-import { getPlatforms } from "@/services/contentService";
+import { technologies } from "@/lib/technologyData";
+
+const techBySlug = new Map(technologies.map((t) => [t.slug, t]));
 
 export default function Plataformas() {
-  const [platformItems, setPlatformItems] = useState(plataformas);
+  const platformItems = plataformas;
+  const [categoriaFilter, setCategoriaFilter] = useState("Todas");
   const [tipoFilter, setTipoFilter] = useState("Todos");
   const [areaFilter, setAreaFilter] = useState("Todas");
+  const [idiomaFilter, setIdiomaFilter] = useState("Todos");
   const [iniciante, setIniciante] = useState(false);
   const [certificadoFilter, setCertificadoFilter] = useState("Todos");
 
+  const categorias = ["Todas", "Cursos", "Jogo", "Desafios", "Playground", "Documentação", "Roadmap"];
   const tipos = ["Todos", "Gratuita", "Híbrida", "Paga"];
+  const idiomas = ["Todos", "Português", "Inglês"];
   const certificadoOptions = ["Todos", "Com certificado", "Sem certificado"];
   const areas = useMemo(
     () => ["Todas", ...Array.from(new Set(platformItems.flatMap((p) => p.areasFortes).filter((area) => area !== "Todas as áreas de TI")))],
     [platformItems],
   );
-  const hasActiveFilters = tipoFilter !== "Todos" || areaFilter !== "Todas" || iniciante || certificadoFilter !== "Todos";
-
-  useEffect(() => {
-    getPlatforms().then(setPlatformItems).catch(() => setPlatformItems(plataformas));
-  }, []);
+  const hasActiveFilters =
+    categoriaFilter !== "Todas" ||
+    tipoFilter !== "Todos" ||
+    areaFilter !== "Todas" ||
+    idiomaFilter !== "Todos" ||
+    iniciante ||
+    certificadoFilter !== "Todos";
 
   const filtered = platformItems.filter((p) => {
+    const matchCategoria = categoriaFilter === "Todas" || p.categoria === categoriaFilter;
     const matchTipo = tipoFilter === "Todos" || p.tipo === tipoFilter;
     const matchArea = areaFilter === "Todas" || p.areasFortes.includes(areaFilter) || p.areasFortes.includes("Todas as áreas de TI");
+    const matchIdioma =
+      idiomaFilter === "Todos" ||
+      (idiomaFilter === "Português" && /portug/i.test(p.idioma)) ||
+      (idiomaFilter === "Inglês" && /ingl/i.test(p.idioma));
     const matchIniciante = !iniciante || p.boaParaIniciantes;
     const matchCert =
       certificadoFilter === "Todos" ||
       (certificadoFilter === "Com certificado" && p.certificado) ||
       (certificadoFilter === "Sem certificado" && !p.certificado);
 
-    return matchTipo && matchArea && matchIniciante && matchCert;
+    return matchCategoria && matchTipo && matchArea && matchIdioma && matchIniciante && matchCert;
   });
 
   function clearFilters() {
+    setCategoriaFilter("Todas");
     setTipoFilter("Todos");
     setAreaFilter("Todas");
+    setIdiomaFilter("Todos");
     setIniciante(false);
     setCertificadoFilter("Todos");
   }
@@ -93,6 +109,23 @@ export default function Plataformas() {
               </div>
             </div>
 
+            <div className="mb-3 flex flex-wrap gap-2">
+              {categorias.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategoriaFilter(c)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${
+                    categoriaFilter === c
+                      ? "bg-emerald-800 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
+                  }`}
+                >
+                  {c === "Todas" ? "Todos os formatos" : c}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex flex-wrap gap-2">
               {tipos.map((t) => (
@@ -120,6 +153,19 @@ export default function Plataformas() {
                 {areas.map((area) => (
                   <option key={area} value={area}>
                     {area === "Todas" ? "Todas as áreas" : area}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={idiomaFilter}
+                onChange={(event) => setIdiomaFilter(event.target.value)}
+                className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
+                aria-label="Filtrar por idioma"
+              >
+                {idiomas.map((idioma) => (
+                  <option key={idioma} value={idioma}>
+                    {idioma === "Todos" ? "Todos os idiomas" : idioma}
                   </option>
                 ))}
               </select>
@@ -197,6 +243,29 @@ export default function Plataformas() {
                     ))}
                   </div>
                 </div>
+
+                {/* Tecnologias */}
+                {plat.tecnologias.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Tecnologias</p>
+                    <div className="flex flex-wrap gap-2">
+                      {plat.tecnologias
+                        .map((slug) => techBySlug.get(slug))
+                        .filter((t): t is NonNullable<typeof t> => Boolean(t))
+                        .slice(0, 6)
+                        .map((t) => (
+                          <TechnologyLogo
+                            key={t.slug}
+                            name={t.name}
+                            icon={t.icon}
+                            logoUrl={t.logoUrl}
+                            className="h-8 w-8"
+                            imageClassName="h-5 w-5 p-0.5"
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Pros / Cons */}
                 <div className="grid grid-cols-2 gap-3 mb-4">

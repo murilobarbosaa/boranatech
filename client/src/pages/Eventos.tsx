@@ -11,6 +11,7 @@ import SEO from "@/components/SEO";
 import {
   ESTADO_UF_OPTS,
   LABEL_FILTROS,
+  isEventoPassado,
   rotuloEstadoEvento,
 } from "@/lib/eventFilters";
 import type { EstadoUfSigla } from "@/lib/eventFilters";
@@ -74,6 +75,8 @@ export default function Eventos() {
   const filtered = useMemo(
     () =>
       eventos.filter((e) => {
+        if (isEventoPassado(e)) return false;
+
         const matchCat = !categoria || e.categoria === categoria;
 
         const matchFmt = !formato || e.formato === formato;

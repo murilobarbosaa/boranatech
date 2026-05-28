@@ -325,6 +325,7 @@ const TerminalCard = forwardRef<TerminalCardHandle>(function TerminalCard(_props
   const scrollRef = useRef<HTMLDivElement>(null);
   const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const reduce = useReducedMotion();
 
   const isInitialMode = history.length === 0;
@@ -353,7 +354,7 @@ const TerminalCard = forwardRef<TerminalCardHandle>(function TerminalCard(_props
             content: (
               <div className="space-y-1">
                 <div><span className="text-amber-400">help</span>     mostra esta ajuda</div>
-                <div><span className="text-amber-400">start</span>    inicia sua jornada (cadastro)</div>
+                <div><span className="text-amber-400">start</span>    {user ? "abre seu perfil" : "inicia sua jornada (cadastro)"}</div>
                 <div><span className="text-amber-400">pro</span>      ver planos Pro</div>
                 <div><span className="text-amber-400">skills</span>   áreas de TI disponíveis</div>
                 <div><span className="text-amber-400">roadmap</span>  exemplo de roadmap</div>
@@ -373,7 +374,7 @@ const TerminalCard = forwardRef<TerminalCardHandle>(function TerminalCard(_props
           };
           setHistory((h) => [...h, inputLine, sysLine]);
           setIsLoadingNav(true);
-          navTimeoutRef.current = setTimeout(() => setLocation("/cadastro"), 800);
+          navTimeoutRef.current = setTimeout(() => setLocation(user ? "/perfil" : "/cadastro"), 800);
           break;
         }
 
@@ -443,7 +444,7 @@ const TerminalCard = forwardRef<TerminalCardHandle>(function TerminalCard(_props
 
       inputRef.current?.focus({ preventScroll: true });
     },
-    [isLoadingNav, setLocation],
+    [isLoadingNav, setLocation, user],
   );
 
   useImperativeHandle(

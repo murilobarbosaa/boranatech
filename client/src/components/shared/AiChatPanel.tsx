@@ -31,6 +31,17 @@ function TypingDots() {
   );
 }
 
+function AssistantAvatar() {
+  return (
+    <div
+      className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-full border-2 border-slate-900 bg-violet-600 shadow-[1px_1px_0_#0f172a] sm:h-8 sm:w-8"
+      aria-hidden
+    >
+      <Sparkles className="h-3.5 w-3.5 text-amber-200 sm:h-4 sm:w-4" />
+    </div>
+  );
+}
+
 export default function AiChatPanel({
   endpoint,
   title,
@@ -79,7 +90,7 @@ export default function AiChatPanel({
 
   return (
     <div className="card-brutal w-full overflow-hidden rounded-2xl bg-white">
-      <div className="flex h-[min(88vh,700px)] min-h-[360px] flex-col">
+      <div className="flex h-[min(70vh,560px)] min-h-[320px] flex-col">
         <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-900 bg-violet-700 px-4 py-3 text-white sm:px-5 sm:py-3.5">
           <div
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-600 shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
@@ -99,14 +110,15 @@ export default function AiChatPanel({
           aria-live="polite"
           aria-relevant="additions"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-4 sm:py-4">
-            <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-5 sm:py-5">
+            <div className="flex w-full flex-col gap-3">
               {messages.map((m, i) =>
                 m.role === "assistant" ? (
-                  <div key={i} className="flex justify-start">
+                  <div key={i} className="flex items-end justify-start gap-2">
+                    <AssistantAvatar />
                     <div
                       className={cn(
-                        "max-w-[min(100%,85%)] rounded-[12px] rounded-tl-sm border border-slate-200/90 bg-white px-3 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.1)] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3",
+                        "max-w-[82%] rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:max-w-[68%] sm:px-4 sm:py-3",
                         "text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
@@ -117,7 +129,7 @@ export default function AiChatPanel({
                   <div key={i} className="flex justify-end">
                     <div
                       className={cn(
-                        "max-w-[min(100%,85%)] rounded-[12px] rounded-tr-sm border border-amber-300/80 bg-amber-200 px-3 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.1)] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3",
+                        "max-w-[82%] rounded-2xl rounded-br-md border border-amber-300/80 bg-amber-200 px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:max-w-[68%] sm:px-4 sm:py-3",
                         "text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
@@ -128,8 +140,9 @@ export default function AiChatPanel({
               )}
 
               {loading ? (
-                <div className="flex justify-start">
-                  <div className="flex max-w-[min(100%,85%)] items-center rounded-[12px] rounded-tl-sm border border-slate-200/90 bg-white px-3 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.1)] sm:px-4">
+                <div className="flex items-end justify-start gap-2">
+                  <AssistantAvatar />
+                  <div className="flex max-w-[82%] items-center rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:px-4">
                     <span className="sr-only">Digitando</span>
                     <TypingDots />
                   </div>
@@ -148,7 +161,7 @@ export default function AiChatPanel({
         ) : null}
 
         <div className="shrink-0 bg-violet-50 px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
-          <div className="mx-auto flex w-full max-w-3xl items-end gap-2 sm:gap-3">
+          <div className="flex w-full items-end gap-2 sm:gap-3">
             <label className="sr-only" htmlFor="ai-chat-input">
               Mensagem
             </label>
@@ -174,7 +187,7 @@ export default function AiChatPanel({
               {loading ? <Spinner className="h-5 w-5 sm:h-6 sm:w-6" /> : <Send className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />}
             </button>
           </div>
-          <p className="mx-auto mt-2 max-w-3xl text-center text-xs font-bold text-slate-600 sm:text-sm">
+          <p className="mt-2 text-center text-xs font-bold text-slate-600 sm:text-sm">
             Enter envia · Shift+Enter nova linha
           </p>
         </div>

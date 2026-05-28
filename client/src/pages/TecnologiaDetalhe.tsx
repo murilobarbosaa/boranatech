@@ -1,4 +1,4 @@
-import { Link, useParams } from "wouter";
+import { Link, useParams, useSearch } from "wouter";
 import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle, ExternalLink, Quote } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -8,12 +8,15 @@ import TechnologyLogo from "@/components/TechnologyLogo";
 import { areasTI } from "@/lib/data";
 import { accentForTechnology } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { technologies } from "@/lib/technologyData";
+import { technologies, resolveTool } from "@/lib/technologyData";
 import { cn } from "@/lib/utils";
 import { getTechnology } from "@/services/contentService";
 
 export default function TecnologiaDetalhe() {
   const params = useParams<{ slug: string }>();
+  const search = useSearch();
+  const fromSlug = new URLSearchParams(search).get("from");
+  const fromArea = fromSlug ? areasTI.find((area) => area.slug === fromSlug) : undefined;
   const [technology, setTechnology] = useState(() => technologies.find((item) => item.slug === params.slug) || null);
 
   useEffect(() => {
@@ -37,6 +40,10 @@ export default function TecnologiaDetalhe() {
   const accent = accentForTechnology(technology);
   const ac = getPageAccentUi(accent);
 
+  const combinedTechnologies = technology.combinesWith
+    .map((slug) => technologies.find((candidate) => candidate.slug === slug))
+    .filter((item): item is (typeof technologies)[number] => Boolean(item));
+
   return (
     <Layout>
       <PageHero
@@ -45,10 +52,17 @@ export default function TecnologiaDetalhe() {
         title={technology.name}
         subtitle={technology.description}
         topSlot={
-          <Link href="/tecnologias" className={cn("inline-flex items-center gap-2 text-sm font-bold", ac.link, ac.linkHover)}>
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Todas as tecnologias
-          </Link>
+          fromArea ? (
+            <Link href={`/tecnologias/por-area?area=${fromArea.slug}`} className={cn("inline-flex items-center gap-2 text-sm font-bold", ac.link, ac.linkHover)}>
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Voltar para {fromArea.nome}
+            </Link>
+          ) : (
+            <Link href="/tecnologias" className={cn("inline-flex items-center gap-2 text-sm font-bold", ac.link, ac.linkHover)}>
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Todas as tecnologias
+            </Link>
+          )
         }
         titlePrefix={
           <TechnologyLogo
@@ -133,25 +147,36 @@ export default function TecnologiaDetalhe() {
                   <p className="mt-1 text-sm font-bold text-slate-800">{technology.salaryRange}</p>
                 </div>
               </div>
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
-                <h3 className="font-display font-black text-slate-950">Tecnologias que combinam</h3>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {technology.combinesWith.map((slug) => {
-                    const item = technologies.find((candidate) => candidate.slug === slug);
-                    return item ? (
-                      <Link key={slug} href={`/tecnologias/${slug}`} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.tag)}>
+              {combinedTechnologies.length > 0 ? (
+                <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
+                  <h3 className="font-display font-black text-slate-950">Tecnologias que combinam</h3>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {combinedTechnologies.map((item) => (
+                      <Link key={item.slug} href={`/tecnologias/${item.slug}`} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.tag)}>
                         {item.name}
                       </Link>
-                    ) : null;
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
               <div className={cn("card-brutal rounded-xl border-2 bg-white p-5", ac.panelBorder)}>
                 <h3 className="font-display font-black text-slate-950">Ferramentas que usam essa tecnologia</h3>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                  {technology.tools.map((tool) => (
-                    <li key={tool}>{tool}</li>
-                  ))}
+                  {technology.tools.map((tool) => {
+                    const resolved = resolveTool(tool);
+                    return (
+                      <li key={tool} className="flex items-center gap-2">
+                        <TechnologyLogo
+                          name={resolved.name}
+                          icon={resolved.icon}
+                          logoUrl={resolved.logoUrl}
+                          className="h-7 w-7 shrink-0"
+                          imageClassName="h-4 w-4"
+                        />
+                        <span className="font-medium text-slate-800">{resolved.name}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
               <div className="card-brutal rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
