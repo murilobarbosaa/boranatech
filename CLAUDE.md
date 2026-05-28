@@ -1,12 +1,12 @@
-# CLAUDE.md — Bora na Tech
+# CLAUDE.md (Bora na Tech)
 
 ## Stack
 
 - **Frontend**: React 19 SPA, Vite 7, TypeScript 5.6 (`strict: true`)
-- **Roteamento**: wouter 3 — `<Switch>/<Route>` centralizado em `client/src/App.tsx`
+- **Roteamento**: wouter 3 (`<Switch>/<Route>` centralizado em `client/src/App.tsx`)
 - **UI**: Tailwind CSS v4 (`@tailwindcss/vite`) + Radix UI primitivos + shadcn (`components.json`)
 - **Icons**: lucide-react
-- **State**: React Context puro — `AuthContext`, `SubscriptionContext`, `ThemeContext`
+- **State**: React Context puro (`AuthContext`, `SubscriptionContext`, `ThemeContext`)
 - **Forms**: react-hook-form + zod v4
 - **Backend**: Express 4 (porta 3100 em dev) + Supabase (supabase-js v2) + BullMQ/ioredis
 - **Package manager**: pnpm 10
@@ -28,12 +28,12 @@ pnpm check          # tsc --noEmit
 pnpm format         # prettier --write .
 ```
 
-> Sem script `test` no package.json — vitest instalado mas não exposto.
+> Sem script `test` no package.json. Vitest instalado mas não exposto.
 
 ## Estrutura
 client/src/
 components/
-ui/         # shadcn primitivos gerados — não editar manualmente
+ui/         # shadcn primitivos gerados, não editar manualmente
 shared/     # componentes reutilizáveis entre páginas
 pro/        # badges Pro, paywalls
 admin/
@@ -52,9 +52,9 @@ supabase/migrations/
 ## Convenções de Componentes
 
 - **Estrutura de arquivo**: imports → constantes/data → sub-componentes → `export default` principal
-- **Tipagem**: props sempre tipadas inline ou com `interface` local — sem PropTypes
+- **Tipagem**: props sempre tipadas inline ou com `interface` local, sem PropTypes
 - **Estilo**: 100% Tailwind; classes arbitrárias `shadow-[5px_5px_0_#cor]` são padrão do projeto
-- **Classes custom globais**: `bnt-pressable` (efeito press), `animate-marquee-left`, `animate-gentle-float` — definidas em `index.css`
+- **Classes custom globais**: `bnt-pressable` (efeito press), `animate-marquee-left`, `animate-gentle-float` (definidas em `index.css`)
 - **Nomes**: arquivos e componentes em PascalCase; páginas nomeadas em português (ex: `TecnologiaMapa`)
 - Sem CSS modules, styled-components ou comentários explicativos no JSX
 
@@ -62,19 +62,23 @@ supabase/migrations/
 
 - Cada arquivo de rota cria `const router = Router()` e exporta `router`
 - Guarda de auth: `router.use(requireAuth)` e/ou `router.use(checkProStatus)` no topo
-- Erros: `return next(createError(statusCode, "code_slug", "Mensagem."))` — nunca throw direto
-- Queries via `supabaseAdmin` (service role) — nunca o client Supabase do frontend no server
+- Erros: `return next(createError(statusCode, "code_slug", "Mensagem."))`, nunca throw direto
+- Queries via `supabaseAdmin` (service role), nunca o client Supabase do frontend no server
 
 ## Convenções de Git / Commits
 
-**REGRA CRÍTICA — sempre seguir:**
+**REGRA CRÍTICA, sempre seguir:**
+
+- **LÍNGUA**: mensagens de commit DEVEM ser escritas em **INGLÊS**, sempre. Os exemplos abaixo refletem isso. Não usar português, nem mistura PT/EN.
+- **Formato Conventional Commits**: `tipo(escopo): descrição curta no imperativo`. Verbo no imperativo presente (`add`, `fix`, `remove`, `wire`), nunca em "-s"/"-ing"/"-ed". Ex: `feat(billing): add reactivate endpoint`.
+- **Sem travessão (`—`) nem meia-risca (`–`) em nenhum texto, código ou copy do projeto.** Hífen comum (`-`) só em palavras compostas legítimas. Substituir por pontos finais, vírgulas ou parênteses.
 
 Commits são **uma única linha** no formato `tipo(escopo): descrição curta`.
 
 - **NUNCA** escrever mensagens multi-linha
 - **NUNCA** adicionar parágrafos de contexto, bullet points, ou descrição estendida
 - **NUNCA** adicionar `Co-Authored-By:` ou qualquer trailer
-- O subject é a única coisa que vai no commit — sem body, sem footer
+- O subject é a única coisa que vai no commit, sem body, sem footer
 
 **Tipos permitidos**: `feat`, `fix`, `refactor`, `style`, `docs`, `chore`, `test`, `perf`
 
@@ -90,7 +94,7 @@ The previous 800ms grace timer redirected legitimate recovery visits to...
 [parágrafos explicando o que mudou]
 Co-Authored-By: Claude Opus 4.7 noreply@anthropic.com
 
-Se o contexto da mudança precisar de explicação detalhada, isso vai em PR description ou em documentação separada — nunca no commit message.
+Se o contexto da mudança precisar de explicação detalhada, isso vai em PR description ou em documentação separada, nunca no commit message.
 
 **Como fazer commit no terminal sem cair na armadilha:**
 ```bash
@@ -116,13 +120,13 @@ Tipografia de seção: `font-display font-black` para headings; labels de seçã
 
 | Alvo | Config |
 |------|--------|
-| Vercel | Só frontend — catch-all rewrite `/(.*) → /index.html` |
-| Railway | Fullstack — nixpacks, `npm run build`, start: `node dist/index.js` |
+| Vercel | Só frontend, catch-all rewrite `/(.*) → /index.html` |
+| Railway | Fullstack, nixpacks, `npm run build`, start: `node dist/index.js` |
 
 ## Arquivos Importantes
 
-- `client/src/pages/HomeLanding.tsx` — home pública (10 seções + footer)
-- `client/src/App.tsx` — todas as rotas declaradas aqui
-- `client/src/lib/data.ts` — dados estáticos das áreas, eventos, notícias
-- `server/lib/env.ts` — validação de variáveis de ambiente
-- `server/middleware/auth.ts` — injeta `req.user` e `req.isPro`
+- `client/src/pages/HomeLanding.tsx`, home pública (10 seções + footer)
+- `client/src/App.tsx`, todas as rotas declaradas aqui
+- `client/src/lib/data.ts`, dados estáticos das áreas, eventos, notícias
+- `server/lib/env.ts`, validação de variáveis de ambiente
+- `server/middleware/auth.ts`, injeta `req.user` e `req.isPro`
