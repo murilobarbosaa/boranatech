@@ -29,8 +29,13 @@ export async function getProfileSnapshot(): Promise<ProfileSnapshot> {
 export async function getMyProfile(): Promise<Profile> {
   const headers = await getAuthHeader();
   const res = await fetch(`${API_BASE}/me`, { headers });
-  if (!res.ok) throw new Error("Erro ao buscar perfil");
-  const json = (await res.json()) as { data: Profile };
+  if (!res.ok) {
+    throw new Error(`Erro ao buscar perfil (HTTP ${res.status}).`);
+  }
+  const json = (await res.json().catch(() => null)) as { data?: Profile | null } | null;
+  if (!json?.data?.id) {
+    throw new Error("Erro ao buscar perfil (resposta vazia ou inválida).");
+  }
   return json.data;
 }
 
