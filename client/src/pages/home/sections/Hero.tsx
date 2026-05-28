@@ -388,9 +388,32 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
 // HERO
 // =========================================
 
+const USERS_COUNT_LS_KEY = "bnt_users_count";
+
+function readCachedUsersCount(): number | null {
+  try {
+    const raw = window.localStorage.getItem(USERS_COUNT_LS_KEY);
+    if (!raw) return null;
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUsersCount(n: number): void {
+  try {
+    window.localStorage.setItem(USERS_COUNT_LS_KEY, String(n));
+  } catch {
+    // localStorage indisponível (modo privado, quota cheia). Próximo load usará placeholder.
+  }
+}
+
 export default function Hero() {
   const [currentHighlight, setCurrentHighlight] = useState(0);
-  const [usersCount, setUsersCount] = useState(4800);
+  // null = sem número confiável (primeira visita sem cache OU backend sem lkg).
+  // Nunca usamos um default hardcoded; o placeholder do badge cobre o estado vazio.
+  const [usersCount, setUsersCount] = useState<number | null>(() => readCachedUsersCount());
   const sectionRef = useRef<HTMLElement>(null);
 
   // Alterna o highlight do headline a cada 3s.
@@ -406,9 +429,9 @@ export default function Hero() {
     fetch(apiUrl("/api/stats/users-count"))
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!cancelled && data && typeof data.count === "number") {
-          setUsersCount(data.count);
-        }
+        if (cancelled || !data || typeof data.count !== "number") return;
+        setUsersCount(data.count);
+        writeCachedUsersCount(data.count);
       })
       .catch(() => {});
     return () => {
@@ -434,8 +457,13 @@ export default function Hero() {
         >
           <Compass size={18} className="text-violet-600" aria-hidden="true" />
           <span className="text-sm font-bold text-slate-950">
-            +
-            <AnimatedCounter value={usersCount} /> pessoas já encontraram seu caminho
+            {usersCount !== null ? (
+              <>
+                +<AnimatedCounter value={usersCount} /> pessoas já encontraram seu caminho
+              </>
+            ) : (
+              "Já estão encontrando o caminho em tech"
+            )}
           </span>
           <div
             className="absolute -bottom-2 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-slate-950 bg-white"
