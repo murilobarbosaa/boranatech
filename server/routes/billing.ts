@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 
 import { createAsaasCheckout, getAsaasSubscriptionPayments, getOrCreateAsaasCustomer } from "../lib/asaas";
-import { cancelSubscriptionAtAsaas } from "../lib/billing-asaas";
+import { cancelSubscriptionAtAsaas, reactivateSubscriptionAtAsaas } from "../lib/billing-asaas";
 import { env } from "../lib/env";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -233,6 +233,132 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
         cancel_at_period_end: true,
         effective_at: effectiveAt,
         message: `Sua assinatura foi cancelada. Você mantém acesso Pro até ${formattedDate}.`,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/reactivate", requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+
+    // Busca a sub mais recente do usuario, SEM filtrar por status (precisamos ver
+    // canceladas para distinguir Caso A vs Caso B).
+    const { data: subscription, error: subError } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id, provider_subscription_id, current_period_end, status, cancel_at_period_end")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (subError) {
+      return next(createError(500, "db_error", "Erro ao buscar assinatura."));
+    }
+
+    const nowIso = new Date().toISOString();
+    const outOfWindow =
+      !subscription ||
+      subscription.status === "canceled" ||
+      !subscription.current_period_end ||
+      subscription.current_period_end <= nowIso;
+
+    // Caso B (fora da janela): nada a desfazer no Asaas; sinaliza ao front para
+    // mandar ao /planos (novo checkout). 200, nao 4xx, e um branch esperado.
+    if (outOfWindow) {
+      return res.json({
+        data: {
+          redirect_to_checkout: true,
+          checkout_path: "/planos",
+          message: "Sua janela de reativação venceu. Vamos para um novo plano.",
+        },
+      });
+    }
+
+    // Idempotencia: ja esta ativa, nada a desfazer. 409 simetrico ao /cancel
+    // ("already_scheduled" la, "already_active" aqui).
+    if (!subscription.cancel_at_period_end) {
+      return next(createError(409, "already_active", "Assinatura já está ativa."));
+    }
+
+    // Boundary ampliado (decisao da etapa 5b): aceita status in
+    // ('active', 'trialing', 'past_due'), simetrico ao /cancel que aceita os 3
+    // para agendar cancelamento. Status fora dessa lista (canceled ja capturado
+    // em outOfWindow; outros raros) cai em Caso B.
+    if (!["active", "trialing", "past_due"].includes(subscription.status)) {
+      return res.json({
+        data: {
+          redirect_to_checkout: true,
+          checkout_path: "/planos",
+          message: "Reativação não disponível para este plano. Vamos para um novo plano.",
+        },
+      });
+    }
+
+    // Caso A. Asaas PRIMEIRO, banco depois. Mesmas propriedades de retry-safe
+    // do /cancel: reactivateSubscriptionAtAsaas e idempotente (PUT endDate=null
+    // reenviado tem o mesmo efeito, validado empiricamente na etapa 5a), entao
+    // se o passo do banco falhar, repetir POST /reactivate e seguro.
+    if (subscription.provider_subscription_id) {
+      try {
+        await reactivateSubscriptionAtAsaas(subscription.provider_subscription_id);
+      } catch (asaasErr) {
+        console.error(
+          `[billing/reactivate] Asaas falhou para sub ${subscription.provider_subscription_id}; banco nao alterado:`,
+          asaasErr,
+        );
+        return next(
+          createError(502, "asaas_error", "Não foi possível reativar a assinatura no provedor. Tente novamente."),
+        );
+      }
+    } else {
+      console.warn(
+        `[billing/reactivate] sub ${subscription.id} sem provider_subscription_id; pulando Asaas (apenas flag no banco).`,
+      );
+    }
+
+    // Banco: desfaz o flag.
+    const { error: updateError } = await supabaseAdmin
+      .from("subscriptions")
+      .update({ cancel_at_period_end: false })
+      .eq("id", subscription.id);
+
+    if (updateError) {
+      // INCONSISTENCIA CONHECIDA (simetrica ao /cancel): Asaas ja recebeu
+      // endDate=null, mas o banco nao limpou o flag. NAO revertemos no Asaas
+      // (re-setar endDate exigiria recalcular o current_period_end e contraria
+      // a intencao do usuario). Como o fluxo Asaas e idempotente, o retry de
+      // POST /reactivate corrige sem efeito colateral.
+      console.error(
+        `[billing/reactivate] INCONSISTENCIA: Asaas ok mas update DB falhou (sub ${subscription.id}, provider ${subscription.provider_subscription_id}). Retry seguro: POST /reactivate.`,
+        updateError,
+      );
+      return next(
+        createError(500, "db_error", "Reativação confirmada no provedor, mas houve erro ao registrar. Tente novamente."),
+      );
+    }
+
+    // Auditoria: marca registros 'scheduled' como 'reverted'. Constraint ja
+    // aceita esse valor (migration 20260517231011:747). Nao-fatal, se falhar so loga.
+    const { error: revertError } = await supabaseAdmin
+      .from("subscription_cancellations")
+      .update({ status: "reverted" })
+      .eq("user_id", userId)
+      .eq("status", "scheduled");
+
+    if (revertError) {
+      console.error("[billing/reactivate] Erro ao marcar cancelamento como reverted:", revertError);
+    }
+
+    // PENDENCIA: nao ha email "reactivation confirmed" em server/lib/email.ts.
+    // Criar quando voltarmos pra comunicacao transacional do billing.
+
+    res.json({
+      data: {
+        cancel_at_period_end: false,
+        message: "Sua assinatura foi reativada. A renovação volta ao normal.",
       },
     });
   } catch (err) {
