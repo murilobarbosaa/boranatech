@@ -1,7 +1,13 @@
 import { Router } from "express";
 import crypto from "crypto";
 
-import { createAsaasCheckout, getAsaasSubscriptionPayments, getOrCreateAsaasCustomer } from "../lib/asaas";
+import {
+  createAsaasCheckout,
+  deleteAsaasPayment,
+  getAsaasSubscriptionPayments,
+  getOrCreateAsaasCustomer,
+  updateAsaasSubscription,
+} from "../lib/asaas";
 import { env } from "../lib/env";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -131,6 +137,62 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
       return next(createError(409, "already_scheduled", "Cancelamento já está agendado."));
     }
 
+    // c. endDate = current_period_end em YYYY-MM-DD (mesma conversao validada no sandbox).
+    const endDate = subscription.current_period_end
+      ? new Date(subscription.current_period_end).toISOString().split("T")[0]
+      : null;
+
+    // d + e. Asaas PRIMEIRO; banco depois. Se o Asaas falhar, o banco NAO reflete o
+    // cancelamento (estado consistente). Esta etapa e idempotente e segura para retry:
+    // endDate pode ser reenviado e o DELETE trata 404 (cobranca ja removida) como sucesso.
+    // Logo, se o passo (f) falhar, basta repetir POST /cancel — sem efeito colateral.
+    if (subscription.provider_subscription_id && endDate) {
+      try {
+        // d. impede o Asaas de gerar novas cobrancas a partir de endDate.
+        await updateAsaasSubscription(subscription.provider_subscription_id, { endDate });
+
+        // e. salvaguarda s1: endDate NAO remove cobranca ja pre-gerada com vencimento
+        // posterior (comprovado no sandbox); o DELETE remove. So mexemos em pendentes
+        // futuras (dueDate > endDate); pagamentos confirmados (CONFIRMED/RECEIVED) nunca.
+        const payments = await getAsaasSubscriptionPayments(subscription.provider_subscription_id);
+        const list = Array.isArray(payments?.data) ? payments.data : [];
+        const toDelete = list.filter(
+          (p: { id?: string; status?: string; dueDate?: string }) =>
+            typeof p?.dueDate === "string" &&
+            p.dueDate > endDate &&
+            ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"].includes(p?.status ?? ""),
+        );
+        for (const p of toDelete) {
+          try {
+            await deleteAsaasPayment(p.id as string);
+          } catch (delErr) {
+            // 404 = cobranca ja sumiu => sucesso. Outros erros: nao fatais; o cron
+            // reconciliador pode reprocessar. Nao abortamos o cancelamento por isso.
+            if (!(delErr instanceof Error && /error 404/i.test(delErr.message))) {
+              console.error(
+                `[billing/cancel] DELETE pendente ${p.id} falhou (sub ${subscription.provider_subscription_id}):`,
+                delErr,
+              );
+            }
+          }
+        }
+      } catch (asaasErr) {
+        // Falha em (d) ou na listagem: banco intacto, estado consistente. Pode repetir.
+        console.error(
+          `[billing/cancel] Asaas falhou para sub ${subscription.provider_subscription_id}; banco nao alterado:`,
+          asaasErr,
+        );
+        return next(
+          createError(502, "asaas_error", "Não foi possível agendar o cancelamento no provedor. Tente novamente."),
+        );
+      }
+    } else {
+      console.warn(
+        `[billing/cancel] sub ${subscription.id} sem provider_subscription_id/current_period_end; pulando Asaas (apenas flag no banco).`,
+      );
+    }
+
+    // f. SO ENTAO o banco.
     const { error: updateError } = await supabaseAdmin
       .from("subscriptions")
       .update({
@@ -139,8 +201,19 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
       .eq("id", subscription.id);
 
     if (updateError) {
-      console.error("[billing/cancel] Erro ao atualizar subscription:", updateError);
-      return next(createError(500, "db_error", "Erro ao registrar cancelamento."));
+      // INCONSISTENCIA CONHECIDA: Asaas ja recebeu endDate + DELETE das pendentes, mas o
+      // banco nao registrou cancel_at_period_end. NAO revertemos no Asaas: re-habilitar o
+      // billing contraria a intencao do usuario e nao da pra "des-deletar" uma cobranca.
+      // Como o fluxo Asaas e idempotente e o 404 do DELETE conta como sucesso, a correcao
+      // segura e o usuario/operador repetir POST /cancel. Logamos para o operador; nao ha
+      // rollback magico aqui.
+      console.error(
+        `[billing/cancel] INCONSISTENCIA: Asaas ok mas update DB falhou (sub ${subscription.id}, provider ${subscription.provider_subscription_id}, endDate ${endDate}). Retry seguro: POST /cancel.`,
+        updateError,
+      );
+      return next(
+        createError(500, "db_error", "Cancelamento agendado no provedor, mas houve erro ao registrar. Tente novamente."),
+      );
     }
 
     const { error: logError } = await supabaseAdmin.from("subscription_cancellations").insert({
