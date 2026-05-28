@@ -1,28 +1,11 @@
-import { useEffect, type ReactNode } from "react";
-import { useLocation } from "wouter";
-import { toast } from "sonner";
+import { type ReactNode } from "react";
 import { CheckCircle, ExternalLink, Flower2, Heart, HeartHandshake, PlayCircle, ShieldCheck, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/contexts/AuthContext";
 import { womenArea } from "@/lib/platformData";
 
 export default function Mulheres() {
-  const [, setLocation] = useLocation();
-  const { loading, profile } = useAuth();
-  const allowed = profile != null && profile.gender !== "masculino";
-
-  useEffect(() => {
-    if (loading) return;
-    if (!allowed) {
-      toast.info("Esta seção é exclusiva para perfis femininos e diversidade.");
-      setLocation("/", { replace: true });
-    }
-  }, [loading, allowed, setLocation]);
-
-  if (loading || !allowed) return null;
-
   return (
     <Layout>
       <SEO
