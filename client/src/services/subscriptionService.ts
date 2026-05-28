@@ -21,7 +21,7 @@ export async function getMySubscription() {
   return json.data;
 }
 
-export async function createCheckout(planId = "monthly") {
+export async function createCheckout(planId = "pro_monthly") {
   const headers = await getAuthHeader();
   let affiliateCode: string | undefined;
   try {
@@ -43,5 +43,5 @@ export async function createCheckout(planId = "monthly") {
 }
 
 export async function startCheckout() {
-  return createCheckout("monthly");
+  return createCheckout("pro_monthly");
 }
