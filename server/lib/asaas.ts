@@ -77,7 +77,7 @@ export async function cancelAsaasSubscription(subscriptionId: string) {
 }
 
 type AsaasSubscriptionUpdate = {
-  endDate?: string; // YYYY-MM-DD: ultimo vencimento a gerar; Asaas para de gerar cobrancas apos
+  endDate?: string | null; // YYYY-MM-DD: ultimo vencimento a gerar; Asaas para de gerar cobrancas apos. null e tentativa de LIMPAR — leitura do schema (example: null); validar empiricamente antes de prod (ver billing-asaas.ts/reactivateSubscriptionAtAsaas).
   status?: "ACTIVE" | "INACTIVE";
   nextDueDate?: string;
   value?: number;
