@@ -442,23 +442,27 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
 
 router.post("/webhook", async (req, res, next) => {
   try {
-    const signature = req.headers["asaas-signature"] as string;
-    if (env.asaasWebhookSecret) {
-      if (!signature) {
-        return next(createError(401, "unauthorized", "Assinatura do webhook ausente."));
-      }
+    // Autenticacao do webhook do Asaas: token literal pre-compartilhado no header
+    // "asaas-access-token". NAO e HMAC nem assinatura derivada; o Asaas envia o
+    // token tal qual foi configurado no painel. Comparacao via hash SHA-256 +
+    // timingSafeEqual (buffer de tamanho fixo, constant-time).
+    //
+    // Fail-closed: se a env nao estiver configurada (so possivel em dev/staging,
+    // pois requireEnv mata o boot em prod), rejeita 401 em vez de aceitar.
+    if (!env.asaasWebhookToken) {
+      console.error("[webhook] ASAAS_WEBHOOK_TOKEN nao configurado, rejeitando (fail-closed).");
+      return next(createError(401, "unauthorized", "Webhook desabilitado."));
+    }
 
-      const rawBody = (req as typeof req & { rawBody?: Buffer }).rawBody;
-      const expectedSignature = crypto
-        .createHmac("sha256", env.asaasWebhookSecret)
-        .update(rawBody || JSON.stringify(req.body))
-        .digest("hex");
+    const received = req.headers["asaas-access-token"];
+    if (typeof received !== "string" || !received) {
+      return next(createError(401, "unauthorized", "Header asaas-access-token ausente."));
+    }
 
-      const sigBuffer = Buffer.from(signature);
-      const expectedBuffer = Buffer.from(expectedSignature);
-      if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
-        return next(createError(401, "unauthorized", "Assinatura do webhook inválida."));
-      }
+    const receivedHash = crypto.createHash("sha256").update(received).digest();
+    const expectedHash = crypto.createHash("sha256").update(env.asaasWebhookToken).digest();
+    if (!crypto.timingSafeEqual(receivedHash, expectedHash)) {
+      return next(createError(401, "unauthorized", "Token do webhook inválido."));
     }
 
     const event = req.body as Record<string, unknown>;
