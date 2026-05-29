@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { Icon } from "@iconify/react";
 import { Bot, Compass, Filter, HeartHandshake, Map, Newspaper, Sparkles, Target } from "lucide-react";
 
 import Layout from "@/components/Layout";
@@ -150,8 +151,18 @@ export default function Sobre() {
             <h2 className="font-display text-4xl font-black leading-tight sm:text-5xl">Feito com propósito.</h2>
             <div className="mt-10 grid gap-5 md:grid-cols-2">
               {[
-                { initials: "MC", name: "Murilo Cardoso", role: "Co-fundador • Engenheiro de Software e IA" },
-                { initials: "AJ", name: "Ana Julia Moura", role: "Co-fundadora" },
+                {
+                  initials: "AJ",
+                  name: "Ana Julia Moura",
+                  role: "Co-fundadora e CEO",
+                  linkedin: "https://www.linkedin.com/in/anajulia-moura/",
+                },
+                {
+                  initials: "MC",
+                  name: "Murilo Cardoso",
+                  role: "Co-fundador e CTO",
+                  linkedin: "https://www.linkedin.com/in/murilocardoso-dev/",
+                },
               ].map((person) => (
                 <div
                   key={person.name}
@@ -163,6 +174,15 @@ export default function Sobre() {
                   <div>
                     <h3 className="font-display text-2xl font-black">{person.name}</h3>
                     <p className="mt-1 font-bold text-slate-600">{person.role}</p>
+                    <a
+                      href={person.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`LinkedIn da ${person.name}`}
+                      className="mt-3 inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                    >
+                      <Icon icon="ph:linkedin-logo-bold" style={{ fontSize: "20px" }} aria-hidden="true" />
+                    </a>
                   </div>
                 </div>
               ))}
