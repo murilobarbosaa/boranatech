@@ -63,25 +63,54 @@ export default function CheckoutSucesso() {
   const showProcessing = processed && !isPro;
 
   // Confetti: dispara uma unica vez quando a tela de sucesso aparece.
-  // Espelha o padrao de Checkout.tsx (confettiFiredRef + guarda de reduced-motion).
+  // Sequencia de bursts ao longo de ~2s (estilo festao). Mantem as guardas:
+  // so dispara 1x, respeita reduced-motion, e limpa o interval no cleanup.
   useEffect(() => {
     if (isLoadingScreen || !showSuccess || reduce || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
 
     const rect = cardRef.current?.getBoundingClientRect();
-    const origin = rect
-      ? { x: (rect.left + rect.width / 2) / window.innerWidth, y: (rect.top + 96) / window.innerHeight }
-      : { x: 0.5, y: 0.3 };
+    const centerX = rect ? (rect.left + rect.width / 2) / window.innerWidth : 0.5;
+    const baseY = rect ? (rect.top + 96) / window.innerHeight : 0.3;
+    const colors = ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"];
 
+    // Burst inicial mais forte, no centro-cima do card.
     confetti({
       particleCount: 90,
-      spread: 75,
-      origin,
-      colors: ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"],
-      scalar: 0.85,
-      ticks: 120,
+      spread: 100,
+      origin: { x: centerX, y: baseY },
+      colors,
+      scalar: 0.9,
+      ticks: 140,
       gravity: 0.85,
     });
+
+    // Bursts menores repetidos por ~2s, alternando a origem (esquerda/centro/direita).
+    const offsets = [-0.2, 0, 0.2];
+    const end = Date.now() + 2000;
+    let tick = 0;
+
+    const interval = window.setInterval(() => {
+      if (Date.now() >= end) {
+        window.clearInterval(interval);
+        return;
+      }
+      const x = Math.min(0.9, Math.max(0.1, centerX + offsets[tick % offsets.length]));
+      tick += 1;
+      confetti({
+        particleCount: 50,
+        spread: 90,
+        origin: { x, y: baseY },
+        colors,
+        scalar: 0.9,
+        ticks: 120,
+        gravity: 0.9,
+      });
+    }, 250);
+
+    return () => {
+      window.clearInterval(interval);
+    };
   }, [isLoadingScreen, showSuccess, reduce]);
 
   const fadeSlideUp = {
