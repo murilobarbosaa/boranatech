@@ -673,7 +673,7 @@ const TerminalCard = forwardRef<TerminalCardHandle, TerminalCardProps>(function 
   const welcomeCtx: CommandContext = { user, profile, subscription, isPro };
 
   return (
-    <div className="overflow-hidden rounded-2xl border-2 border-slate-950 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-950 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]">
       <div className="relative flex items-center border-b-2 border-slate-950 bg-slate-800 px-4 py-2.5">
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full border border-red-700 bg-red-500" aria-hidden="true" />
@@ -688,7 +688,7 @@ const TerminalCard = forwardRef<TerminalCardHandle, TerminalCardProps>(function 
       <div
         ref={scrollRef}
         onClick={handleBodyClick}
-        className="max-h-[600px] min-h-[320px] overflow-y-auto bg-slate-950 p-4 md:min-h-[500px] md:p-8"
+        className="max-h-[600px] min-h-[320px] flex-1 overflow-y-auto bg-slate-950 p-4 md:min-h-[500px] md:p-8"
       >
         {isInitialMode && renderWelcome(welcomeCtx, !!reduce)}
 
