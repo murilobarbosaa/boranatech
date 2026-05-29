@@ -63,8 +63,10 @@ export default function CheckoutSucesso() {
   const showProcessing = processed && !isPro;
 
   // Confetti: dispara uma unica vez quando a tela de sucesso aparece.
-  // Sequencia de bursts ao longo de ~2s (estilo festao). Mantem as guardas:
-  // so dispara 1x, respeita reduced-motion, e limpa o interval no cleanup.
+  // Sequencia de bursts ao longo de ~2s (estilo festao): burst inicial no card,
+  // depois alterna bursts aleatorios espalhados pela tela (x/y/angle randomicos)
+  // com canhoes dos cantos inferiores. Mantem as guardas: so dispara 1x, respeita
+  // reduced-motion, e limpa o interval no cleanup.
   useEffect(() => {
     if (isLoadingScreen || !showSuccess || reduce || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
@@ -85,8 +87,44 @@ export default function CheckoutSucesso() {
       gravity: 0.85,
     });
 
-    // Bursts menores repetidos por ~2s, alternando a origem (esquerda/centro/direita).
-    const offsets = [-0.2, 0, 0.2];
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    // Burst aleatorio espalhado: origem x/y e angulo randomicos cobrindo a tela.
+    const fireScatter = () => {
+      confetti({
+        particleCount: 45,
+        spread: randomInRange(70, 90),
+        angle: randomInRange(60, 120),
+        origin: { x: randomInRange(0.1, 0.9), y: randomInRange(0.1, 0.6) },
+        colors,
+        scalar: 0.9,
+        ticks: 120,
+        gravity: 0.9,
+      });
+    };
+
+    // Canhao de um canto inferior disparando pra dentro/cima.
+    const fireCannon = (side: "left" | "right") => {
+      confetti({
+        particleCount: 55,
+        spread: 55,
+        angle: side === "left" ? 60 : 120,
+        startVelocity: 45,
+        origin: { x: side === "left" ? 0 : 1, y: 1 },
+        colors,
+        scalar: 0.9,
+        ticks: 140,
+        gravity: 0.9,
+      });
+    };
+
+    // Ciclo: aleatorio, canhao-esquerdo, aleatorio, canhao-direito, ...
+    const sequence = [
+      () => fireScatter(),
+      () => fireCannon("left"),
+      () => fireScatter(),
+      () => fireCannon("right"),
+    ];
     const end = Date.now() + 2000;
     let tick = 0;
 
@@ -95,18 +133,9 @@ export default function CheckoutSucesso() {
         window.clearInterval(interval);
         return;
       }
-      const x = Math.min(0.9, Math.max(0.1, centerX + offsets[tick % offsets.length]));
+      sequence[tick % sequence.length]();
       tick += 1;
-      confetti({
-        particleCount: 50,
-        spread: 90,
-        origin: { x, y: baseY },
-        colors,
-        scalar: 0.9,
-        ticks: 120,
-        gravity: 0.9,
-      });
-    }, 250);
+    }, 240);
 
     return () => {
       window.clearInterval(interval);
