@@ -156,32 +156,47 @@ export default function Sobre() {
                   name: "Ana Julia Moura",
                   role: "Co-fundadora e CEO",
                   linkedin: "https://www.linkedin.com/in/anajulia-moura/",
+                  instagram: "https://www.instagram.com/ana.natech/",
                 },
                 {
                   initials: "MC",
                   name: "Murilo Cardoso",
                   role: "Co-fundador e CTO",
                   linkedin: "https://www.linkedin.com/in/murilocardoso-dev/",
+                  instagram: "https://www.instagram.com/omurilo.tech/",
                 },
               ].map((person) => (
                 <div
                   key={person.name}
-                  className="flex items-center gap-5 rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]"
+                  className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]"
                 >
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] font-display text-2xl font-black">
-                    {person.initials}
+                  <div className="flex items-center gap-5">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] font-display text-2xl font-black">
+                      {person.initials}
+                    </div>
+                    <div>
+                      <h3 className="font-display text-2xl font-black">{person.name}</h3>
+                      <p className="mt-1 font-bold text-slate-600">{person.role}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-display text-2xl font-black">{person.name}</h3>
-                    <p className="mt-1 font-bold text-slate-600">{person.role}</p>
+                  <div className="flex items-center gap-2">
                     <a
                       href={person.linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={`LinkedIn da ${person.name}`}
-                      className="mt-3 inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#0A66C2] hover:text-white"
                     >
                       <Icon icon="ph:linkedin-logo-bold" style={{ fontSize: "20px" }} aria-hidden="true" />
+                    </a>
+                    <a
+                      href={person.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Instagram da ${person.name}`}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:bg-[image:linear-gradient(45deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5)] hover:text-white"
+                    >
+                      <Icon icon="ph:instagram-logo-bold" style={{ fontSize: "20px" }} aria-hidden="true" />
                     </a>
                   </div>
                 </div>
