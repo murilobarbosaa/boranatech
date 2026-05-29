@@ -206,7 +206,7 @@ export default function Sobre() {
         </section>
 
         <section className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl rounded-3xl border-2 border-[#1a1a1a] bg-[#1a1a1a] p-8 text-white shadow-[4px_4px_0_#FFB800] sm:p-10">
+          <div className="mx-auto max-w-6xl rounded-3xl border-2 border-[#1a1a1a] bg-[#6b1fc9] p-8 text-white shadow-[4px_4px_0_#FFB800] sm:p-10">
             <Filter className="mb-5 h-10 w-10 text-[#FFB800]" strokeWidth={2.5} />
             <h2 className="font-display text-4xl font-black leading-tight sm:text-5xl">
               {user ? "Pronto para continuar?" : "Pronto para começar?"}
