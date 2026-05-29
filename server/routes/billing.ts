@@ -3,6 +3,7 @@ import crypto from "crypto";
 
 import { createAsaasCheckout, getAsaasSubscriptionPayments, getOrCreateAsaasCustomer } from "../lib/asaas";
 import { cancelSubscriptionAtAsaas, reactivateSubscriptionAtAsaas } from "../lib/billing-asaas";
+import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { env } from "../lib/env";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -22,14 +23,6 @@ const PLAN_CYCLES: Record<string, "MONTHLY" | "SEMIANNUALLY" | "YEARLY"> = {
   pro_semiannual: "SEMIANNUALLY",
   pro_annual: "YEARLY",
 };
-
-const PLAN_CYCLE_MONTHS: Record<string, number> = { pro_monthly: 1, pro_semiannual: 6, pro_annual: 12 };
-
-function addMonths(date: Date, months: number) {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
-  return d;
-}
 
 const CANCELING_EVENTS = new Set([
   "SUBSCRIPTION_DELETED",
