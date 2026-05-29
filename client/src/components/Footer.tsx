@@ -42,10 +42,10 @@ function SocialIcon({ icon, href, label }: SocialIconProps) {
 }
 
 const SOCIAL_ITEMS = [
-  { key: "instagram", icon: "ph:instagram-logo-bold", href: SOCIAL_LINKS.instagram, label: "Instagram" },
-  { key: "linkedin", icon: "ph:linkedin-logo-bold", href: SOCIAL_LINKS.linkedin, label: "LinkedIn" },
-  { key: "tiktok", icon: "ph:tiktok-logo-bold", href: SOCIAL_LINKS.tiktok, label: "TikTok" },
-  { key: "twitter", icon: "ph:x-logo-bold", href: SOCIAL_LINKS.twitter, label: "X (Twitter)" },
+  { key: "instagram", icon: "ph:instagram-logo-bold", href: SOCIAL_LINKS.instagram, label: "Instagram da BoraNaTech" },
+  { key: "linkedin", icon: "ph:linkedin-logo-bold", href: SOCIAL_LINKS.linkedin, label: "LinkedIn da BoraNaTech" },
+  { key: "tiktok", icon: "ph:tiktok-logo-bold", href: SOCIAL_LINKS.tiktok, label: "TikTok da BoraNaTech" },
+  { key: "twitter", icon: "ph:x-logo-bold", href: SOCIAL_LINKS.twitter, label: "X da BoraNaTech" },
 ] as const;
 
 export default function Footer() {

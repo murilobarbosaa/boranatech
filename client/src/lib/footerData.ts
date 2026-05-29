@@ -2,10 +2,10 @@
 // Quando uma URL social estiver vazia, o ícone vira placeholder não-clicável ("em breve").
 
 export const SOCIAL_LINKS = {
-  instagram: "",
-  linkedin: "",
-  tiktok: "",
-  twitter: "",
+  instagram: "https://www.instagram.com/boranatech/",
+  linkedin: "https://www.linkedin.com/in/bora-na-tech-b17107412",
+  tiktok: "https://www.tiktok.com/@boranatech_",
+  twitter: "https://x.com/BoraNaTech",
 } as const;
 
 type FooterLink = { label: string; href: string };
