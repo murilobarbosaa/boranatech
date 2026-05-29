@@ -81,10 +81,10 @@ export default function Sobre() {
             </div>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
-                href="/"
+                href={user ? "/perfil" : "/cadastro"}
                 className="rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
               >
-                Começar agora
+                {user ? "Ir para o painel" : "Começar agora"}
               </Link>
               <Link
                 href="/planos"
