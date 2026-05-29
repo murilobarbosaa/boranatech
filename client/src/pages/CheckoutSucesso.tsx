@@ -122,8 +122,41 @@ export default function CheckoutSucesso() {
   return (
     <Layout>
       <SEO title="Pagamento confirmado — Bora na Tech? Pro" url="/planos/sucesso" noindex />
-      <section className="bg-[#faf8f4] py-16">
-        <div className="container">
+      <section className="relative overflow-hidden bg-[radial-gradient(125%_125%_at_50%_10%,#fdfbf7_0%,#faf8f4_55%,#f6f2ea_100%)] py-16">
+        {/* Camada decorativa: glow + blobs atras do card. Nao captura cliques,
+            fica atras do conteudo (z-0), e flutua reusando .animate-gentle-float
+            (que ja respeita prefers-reduced-motion no index.css). */}
+        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+          {/* Glow amarelo central, atras do card. Intensidade sutilmente maior no sucesso. */}
+          <div
+            className="absolute left-1/2 top-1/2"
+            style={{
+              transform: `translate(-50%, -50%) scale(${showSuccess ? 1.15 : 1})`,
+              transition: "transform 600ms ease",
+            }}
+          >
+            <div
+              className="animate-gentle-float h-[28rem] w-[28rem] rounded-full bg-[#FFB800] blur-[120px]"
+              style={{ opacity: showSuccess ? 0.26 : 0.18, transition: "opacity 600ms ease" }}
+            />
+          </div>
+
+          {/* Blobs de profundidade, saindo das bordas, bem desfocados e discretos. */}
+          <div
+            className="animate-gentle-float absolute -left-16 top-12 h-64 w-64 rounded-full bg-[#10b981] opacity-[0.12] blur-[90px]"
+            style={{ animationDelay: "-1.5s", animationDuration: "5s" }}
+          />
+          <div
+            className="animate-gentle-float absolute -right-20 bottom-0 h-72 w-72 rounded-full bg-[#FFB800] opacity-[0.12] blur-[100px]"
+            style={{ animationDelay: "-3s", animationDuration: "6s" }}
+          />
+          <div
+            className="animate-gentle-float absolute right-1/4 -top-10 h-40 w-40 rounded-full bg-[#0f172a] opacity-[0.06] blur-[80px]"
+            style={{ animationDelay: "-0.8s", animationDuration: "5.5s" }}
+          />
+        </div>
+
+        <div className="container relative z-10">
           <motion.div
             ref={cardRef}
             initial={reduce ? false : { opacity: 0, y: 16 }}
