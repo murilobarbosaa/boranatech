@@ -582,7 +582,10 @@ router.post("/webhook", async (req, res, next) => {
         const result = existing
           ? await supabaseAdmin.from("subscriptions").update(patch).eq("provider_subscription_id", subscriptionId)
           : await supabaseAdmin.from("subscriptions").insert({ ...baseRequired, ...patch });
-        if (result.error) throw createError(500, "db_error", "Erro ao ativar assinatura.");
+        if (result.error) {
+          console.error("[webhook] subscriptions write failed:", result.error);
+          throw createError(500, "db_error", "Erro ao ativar assinatura.");
+        }
         transitionedTo = "active";
       } else if (action === "past_due") {
         if (existing) {
@@ -590,7 +593,10 @@ router.post("/webhook", async (req, res, next) => {
             .from("subscriptions")
             .update({ status: "past_due", last_event_at: lastEventIso, raw_provider_payload: event }) // (10) nao mexe no periodo
             .eq("provider_subscription_id", subscriptionId);
-          if (error) throw createError(500, "db_error", "Erro ao marcar past_due.");
+          if (error) {
+            console.error("[webhook] subscriptions write failed:", error);
+            throw createError(500, "db_error", "Erro ao marcar past_due.");
+          }
           transitionedTo = "past_due";
         }
       } else if (action === "cancel") {
@@ -604,7 +610,10 @@ router.post("/webhook", async (req, res, next) => {
               raw_provider_payload: event,
             })
             .eq("provider_subscription_id", subscriptionId);
-          if (error) throw createError(500, "db_error", "Erro ao cancelar assinatura.");
+          if (error) {
+            console.error("[webhook] subscriptions write failed:", error);
+            throw createError(500, "db_error", "Erro ao cancelar assinatura.");
+          }
           transitionedTo = "canceled";
         }
       } else if (action === "create_incomplete") {
@@ -617,7 +626,10 @@ router.post("/webhook", async (req, res, next) => {
         const result = existing
           ? await supabaseAdmin.from("subscriptions").update(patch).eq("provider_subscription_id", subscriptionId)
           : await supabaseAdmin.from("subscriptions").insert({ ...baseRequired, ...patch });
-        if (result.error) throw createError(500, "db_error", "Erro ao registrar assinatura.");
+        if (result.error) {
+          console.error("[webhook] subscriptions write failed:", result.error);
+          throw createError(500, "db_error", "Erro ao registrar assinatura.");
+        }
         transitionedTo = "incomplete";
       }
       // action === "skip": estado da subscription inalterado.
