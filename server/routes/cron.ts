@@ -3,7 +3,12 @@ import { NextFunction, Request, Response, Router } from "express";
 import { enrichBacklog } from "../jobs/enrichBacklog";
 import { syncJobs } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
-import { cancelAsaasSubscription } from "../lib/asaas";
+import {
+  cancelAsaasSubscription,
+  getAsaasSubscription,
+  getAsaasSubscriptionPayments,
+} from "../lib/asaas";
+import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { recordCronRun } from "../lib/cron-logs";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -193,6 +198,214 @@ router.post("/process-cancellations", async (_req, res, next) => {
   } catch (err) {
     await recordCronRun({
       jobName: "process-cancellations",
+      status: "error",
+      startedAt,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    next(err);
+  }
+});
+
+const PAID_PAYMENT_STATUSES = new Set(["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"]);
+
+type SubRow = {
+  id: string;
+  provider_subscription_id: string | null;
+  current_period_end?: string | null;
+  plans?: { code?: string } | { code?: string }[] | null;
+};
+
+type AsaasPayment = { status?: string; dueDate?: string };
+
+function planCodeOf(sub: SubRow): string {
+  const plans = sub.plans;
+  const code = Array.isArray(plans) ? plans[0]?.code : plans?.code;
+  return code || "pro_monthly";
+}
+
+function latestPaidPayment(payments: AsaasPayment[], after?: Date | null): AsaasPayment | null {
+  return (payments || [])
+    .filter((p) => p?.dueDate && PAID_PAYMENT_STATUSES.has(String(p.status)))
+    .filter((p) => !after || new Date(p.dueDate as string) > after)
+    .reduce<AsaasPayment | null>(
+      (latest, p) =>
+        !latest || new Date(p.dueDate as string) > new Date(latest.dueDate as string) ? p : latest,
+      null,
+    );
+}
+
+// FASE 1: subscriptions presas em 'incomplete' ha >15min. Confirma pagamento
+// real no Asaas antes de promover. Sem pagamento pago: deixa como esta.
+// NOTA: o filtro .or(...) com and(...) aninhado equivale a
+// coalesce(last_event_at, created_at) <= cutoff. Sintaxe PostgREST sensivel;
+// validar empiricamente ao testar o endpoint (supabaseAdmin e destipado).
+async function reconcileIncompleteSubscriptions() {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, provider_subscription_id, plans(code)")
+    .eq("status", "incomplete")
+    .or(`last_event_at.lte.${cutoff},and(last_event_at.is.null,created_at.lte.${cutoff})`)
+    .limit(25);
+
+  if (error) throw error;
+
+  const subs = (data || []) as SubRow[];
+  let promoted = 0;
+  let failed = 0;
+  const failures: Array<{ subscription_id: string; reason: string }> = [];
+
+  for (const sub of subs) {
+    try {
+      if (!sub.provider_subscription_id) continue;
+
+      const payments = await getAsaasSubscriptionPayments(sub.provider_subscription_id);
+      const paid = latestPaidPayment((payments?.data as AsaasPayment[]) || []);
+      if (!paid?.dueDate) continue; // sem pagamento pago: continua incomplete
+
+      const planCode = planCodeOf(sub);
+      const periodStart = new Date(paid.dueDate);
+      const periodEnd = addMonths(periodStart, PLAN_CYCLE_MONTHS[planCode] ?? 1);
+
+      const { error: updateError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({
+          status: "active",
+          current_period_start: periodStart.toISOString(),
+          current_period_end: periodEnd.toISOString(),
+          canceled_at: null,
+          last_event_at: new Date().toISOString(),
+          raw_provider_payload: paid,
+        })
+        .eq("id", sub.id);
+      if (updateError) throw updateError;
+
+      promoted += 1;
+    } catch (err) {
+      failed += 1;
+      const reason = err instanceof Error ? err.message : String(err);
+      failures.push({ subscription_id: sub.id, reason });
+      console.error(`[cron/reconcile-subscriptions] incomplete ${sub.id} falhou:`, err);
+    }
+  }
+
+  return { processed: subs.length, promoted, failed, failures };
+}
+
+// FASE 2: subscriptions 'active' com periodo vencido ha >3 dias (grace) e que
+// NAO estao marcadas para cancelar. Se o Asaas mostra um pagamento pago para um
+// ciclo posterior -> renovou (webhook perdeu); senao -> past_due (conservador).
+async function reconcileExpiredSubscriptions() {
+  const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, provider_subscription_id, current_period_end, plans(code)")
+    .eq("status", "active")
+    .or("cancel_at_period_end.is.null,cancel_at_period_end.eq.false")
+    .lte("current_period_end", cutoff)
+    .limit(25);
+
+  if (error) throw error;
+
+  const subs = (data || []) as SubRow[];
+  let renewed = 0;
+  let downgraded = 0;
+  let failed = 0;
+  const failures: Array<{ subscription_id: string; reason: string }> = [];
+
+  for (const sub of subs) {
+    try {
+      if (!sub.provider_subscription_id) continue;
+
+      const payments = await getAsaasSubscriptionPayments(sub.provider_subscription_id);
+      const periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : null;
+      const renewal = latestPaidPayment((payments?.data as AsaasPayment[]) || [], periodEnd);
+
+      if (renewal?.dueDate) {
+        const planCode = planCodeOf(sub);
+        const newEnd = addMonths(new Date(renewal.dueDate), PLAN_CYCLE_MONTHS[planCode] ?? 1);
+
+        const { error: updateError } = await supabaseAdmin
+          .from("subscriptions")
+          .update({
+            current_period_end: newEnd.toISOString(),
+            last_event_at: new Date().toISOString(),
+            raw_provider_payload: renewal,
+          })
+          .eq("id", sub.id);
+        if (updateError) throw updateError;
+
+        renewed += 1;
+      } else {
+        // Observabilidade: registra o status real no Asaas (nao decide nada).
+        let asaasStatus = "unknown";
+        try {
+          const remote = await getAsaasSubscription(sub.provider_subscription_id);
+          asaasStatus = String(remote?.status || "unknown");
+        } catch (err) {
+          console.warn(
+            `[cron/reconcile-subscriptions] expired ${sub.id} getAsaasSubscription falhou:`,
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+
+        const { error: updateError } = await supabaseAdmin
+          .from("subscriptions")
+          .update({ status: "past_due", last_event_at: new Date().toISOString() })
+          .eq("id", sub.id);
+        if (updateError) throw updateError;
+
+        console.warn(
+          `[cron/reconcile-subscriptions] downgrade ${sub.id} -> past_due (asaas status: ${asaasStatus})`,
+        );
+        downgraded += 1;
+      }
+    } catch (err) {
+      failed += 1;
+      const reason = err instanceof Error ? err.message : String(err);
+      failures.push({ subscription_id: sub.id, reason });
+      console.error(`[cron/reconcile-subscriptions] expired ${sub.id} falhou:`, err);
+    }
+  }
+
+  return { processed: subs.length, renewed, downgraded, failed, failures };
+}
+
+router.post("/reconcile-subscriptions", async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    const incomplete = await reconcileIncompleteSubscriptions();
+    const expired = await reconcileExpiredSubscriptions();
+
+    const totalFailed = incomplete.failed + expired.failed;
+    const payload = {
+      incomplete: {
+        processed: incomplete.processed,
+        promoted: incomplete.promoted,
+        failed: incomplete.failed,
+      },
+      expired: {
+        processed: expired.processed,
+        renewed: expired.renewed,
+        downgraded: expired.downgraded,
+        failed: expired.failed,
+      },
+    };
+
+    await recordCronRun({
+      jobName: "reconcile-subscriptions",
+      status: totalFailed > 0 ? "partial" : "success",
+      startedAt,
+      payload,
+    });
+
+    res.json({ data: payload });
+  } catch (err) {
+    await recordCronRun({
+      jobName: "reconcile-subscriptions",
       status: "error",
       startedAt,
       errorMessage: err instanceof Error ? err.message : String(err),
