@@ -527,6 +527,25 @@
   }
 }
 
+@keyframes progressIndeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(420%);
+  }
+}
+
+.animate-progress-indeterminate {
+  animation: progressIndeterminate 1.3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-progress-indeterminate {
+    animation: none;
+  }
+}
+
 @keyframes techFadeInUp {
   from {
     opacity: 0;
