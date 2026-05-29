@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Icon } from "@iconify/react";
-import { Bot, Compass, Filter, HeartHandshake, Map, Newspaper, Sparkles, Target } from "lucide-react";
+import { Bot, Compass, HeartHandshake, Map, Newspaper, Sparkles, Target } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -221,22 +221,32 @@ export default function Sobre() {
         </section>
 
         <section className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-6xl rounded-3xl border-2 border-[#1a1a1a] bg-[#6b1fc9] p-8 text-white shadow-[4px_4px_0_#FFB800] sm:p-10">
-            <Filter className="mb-5 h-10 w-10 text-[#FFB800]" strokeWidth={2.5} />
-            <h2 className="font-display text-4xl font-black leading-tight sm:text-5xl">
-              {user ? "Pronto para continuar?" : "Pronto para começar?"}
-            </h2>
-            <p className="mt-4 max-w-2xl text-lg font-bold leading-relaxed text-slate-200">
-              {user
-                ? "Explore as áreas e siga de onde você parou."
-                : "Crie sua conta gratuitamente e descubra por onde começar."}
-            </p>
-            <Link
-              href={user ? "/areas" : "/cadastro"}
-              className="mt-8 inline-flex rounded-full border-2 border-[#FFB800] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#ffffff] transition-transform hover:-translate-y-0.5"
-            >
-              {user ? "Explorar áreas" : "Criar conta grátis"}
-            </Link>
+          <div className="relative mx-auto max-w-3xl rounded-3xl border-2 border-[#1a1a1a] bg-[image:linear-gradient(160deg,#6b1fc9,#3f1185)] p-8 text-center text-white shadow-[6px_6px_0_#FFB800] sm:p-12">
+            <span
+              className="pointer-events-none absolute -left-4 -top-4 hidden h-12 w-12 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] shadow-[3px_3px_0_#1a1a1a] sm:block"
+              aria-hidden="true"
+            />
+            <span
+              className="pointer-events-none absolute -bottom-4 -right-4 hidden h-12 w-12 rotate-12 rounded-lg border-2 border-[#1a1a1a] bg-[#FFB800] shadow-[3px_3px_0_#1a1a1a] sm:block"
+              aria-hidden="true"
+            />
+            <div className="mx-auto flex max-w-2xl flex-col items-center">
+              <Icon icon="ph:rocket-launch-bold" className="mb-5 text-[#FFB800]" style={{ fontSize: "56px" }} aria-hidden="true" />
+              <h2 className="font-display text-4xl font-black leading-tight sm:text-5xl">
+                {user ? "Pronto para continuar?" : "Pronto para começar?"}
+              </h2>
+              <p className="mt-4 text-lg font-bold leading-relaxed text-slate-200">
+                {user
+                  ? "Explore as áreas e siga de onde você parou."
+                  : "Crie sua conta gratuitamente e descubra por onde começar."}
+              </p>
+              <Link
+                href={user ? "/areas" : "/cadastro"}
+                className="mt-8 inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#1a1a1a] transition-transform hover:-translate-y-0.5"
+              >
+                {user ? "Explorar áreas" : "Criar conta grátis"}
+              </Link>
+            </div>
           </div>
         </section>
       </main>
