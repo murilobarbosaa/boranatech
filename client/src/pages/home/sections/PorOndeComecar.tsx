@@ -49,7 +49,7 @@ export default function PorOndeComecar() {
           </motion.p>
         </div>
 
-        {/* CARD GIGANTE DE DESTAQUE — Quiz */}
+        {/* CARD GIGANTE DE DESTAQUE: Quiz */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}

@@ -75,7 +75,7 @@ export default function LogoLoop() {
         aria-hidden="true"
       />
 
-      {/* Camada 2: dot grid pattern — textura constante de pontinhos violet */}
+      {/* Camada 2: dot grid pattern, textura constante de pontinhos violet */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -87,7 +87,7 @@ export default function LogoLoop() {
         aria-hidden="true"
       />
 
-      {/* Camada 3: ondas SVG tracejadas no topo e base — continua a
+      {/* Camada 3: ondas SVG tracejadas no topo e base, continua a
           estética das linhas da jornada da Hero. preserveAspectRatio="none"
           estica horizontalmente; vectorEffect="non-scaling-stroke" mantém
           a espessura visual constante independente do scaling. */}
@@ -127,12 +127,12 @@ export default function LogoLoop() {
           transition={{ duration: 0.8 }}
           className="relative overflow-hidden"
         >
-          {/* Fade nas bordas — esconde os logos "nascendo" */}
+          {/* Fade nas bordas: esconde os logos "nascendo" */}
           <div
             className="pointer-events-none absolute inset-y-0 left-0 z-10 w-32"
             style={{
               // Fade esquerdo violet pastel (combina com o background
-              // violet da seção — antes era cream e criava manchas
+              // violet da seção, antes era cream e criava manchas
               // visíveis nas laterais).
               background: "linear-gradient(to right, #f5f3ff 10%, transparent)",
             }}
@@ -142,7 +142,7 @@ export default function LogoLoop() {
             className="pointer-events-none absolute inset-y-0 right-0 z-10 w-32"
             style={{
               // Fade direito também violet pastel (mesma cor do
-              // esquerdo — bordas invisíveis contra o fundo violet).
+              // esquerdo, bordas invisíveis contra o fundo violet).
               background: "linear-gradient(to left, #f5f3ff 10%, transparent)",
             }}
             aria-hidden="true"

@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Comunidades Page
+  BORA NA TECH? (Comunidades Page)
   Style: Neo-Brutalism Suavizado
 */
 
@@ -34,7 +34,7 @@ export default function Comunidades() {
   return (
     <Layout>
       <SEO
-        title="Comunidades Tech — Grupos e redes para networking em TI"
+        title="Comunidades Tech · Grupos e redes para networking em TI"
         description="Conheça comunidades de tecnologia, grupos de programação e redes para aprender, trocar experiências e fazer networking em TI."
         keywords={["comunidades tecnologia", "discord programação", "networking ti", "grupos tech brasil"]}
         url="/comunidades"

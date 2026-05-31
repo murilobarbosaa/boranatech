@@ -20,7 +20,7 @@ export default function Dicionario() {
   return (
     <Layout>
       <SEO
-        title="Dicionário Tech — Termos e conceitos de tecnologia explicados"
+        title="Dicionário Tech · Termos e conceitos de tecnologia explicados"
         description="Glossário de tecnologia com termos de programação, carreira em TI e conceitos técnicos explicados em linguagem simples."
         keywords={["dicionário tecnologia", "termos de programação", "glossário ti", "conceitos de tech"]}
         url="/dicionario"

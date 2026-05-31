@@ -607,7 +607,7 @@ function AdminSection({
 function AdminAccessGate({ reason }: { reason: "loading" | "login" | "forbidden" }) {
   return (
     <AdminShell>
-      <SEO title="Admin — Bora na Tech?" url="/admin" noindex />
+      <SEO title="Admin · Bora na Tech?" url="/admin" noindex />
       <section className="hero-pattern min-h-[calc(100vh-4rem)] border-b-2 border-slate-900 py-12">
         <div className="container grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
@@ -1564,7 +1564,7 @@ export default function Admin() {
       setActiveSection={setActiveSection}
       onLogout={handleLogout}
     >
-      <SEO title="Admin — Bora na Tech?" url="/admin" noindex />
+      <SEO title="Admin · Bora na Tech?" url="/admin" noindex />
       <section className="hero-pattern border-b-2 border-slate-900 py-10">
         <div className="container">
           <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">

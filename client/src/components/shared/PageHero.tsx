@@ -47,7 +47,7 @@ interface PageHeroProps {
   title: string;
   subtitle: ReactNode;
   eyebrow?: string;
-  /** Cor do hero — alinha com páginas como Notícias, Cursos e Roadmaps. */
+  /** Cor do hero, alinha com páginas como Notícias, Cursos e Roadmaps. */
   accent?: PageHeroAccent;
   /** Padrão decorativo de fundo. Default 'dots' preserva comportamento atual. */
   pattern?: PageHeroPattern;

@@ -9,7 +9,7 @@ export default function Mulheres() {
   return (
     <Layout>
       <SEO
-        title="Mulheres na Tecnologia — Comunidades, oportunidades e carreira"
+        title="Mulheres na Tecnologia · Comunidades, oportunidades e carreira"
         description="Recursos, comunidades, oportunidades e caminhos para mulheres que querem começar ou evoluir na área de tecnologia."
         keywords={["mulheres na tecnologia", "mulheres na ti", "diversidade tech", "programadoras brasil"]}
         url="/mulheres"

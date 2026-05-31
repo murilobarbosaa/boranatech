@@ -590,7 +590,7 @@ export const LEVEL_META: Record<QuizLevel, LevelMeta> = {
   iniciante: {
     label: "Iniciante",
     emoji: "🌱",
-    tagline: "Você está começando agora — e esse é o melhor lugar pra começar.",
+    tagline: "Você está começando agora, e esse é o melhor lugar pra começar.",
     doing: [
       "As próximas 15 perguntas vêm em linguagem simples, sem jargão técnico.",
       "Cruzamos suas respostas com as áreas de tech pra achar a que mais combina com você.",
@@ -1270,7 +1270,7 @@ export const collegeSuggestions: CollegeSuggestion[] = [
 ];
 
 /* ===========================================================================
- * QUIZ — Objetivos, cores por área e quiz de tecnologia
+ * QUIZ: Objetivos, cores por área e quiz de tecnologia
  * ======================================================================== */
 
 /**
@@ -1319,7 +1319,7 @@ export const objectiveTracks: ObjectiveTrack[] = [
     label: "Começar do zero",
     description: "Nunca mexi com tecnologia e quero saber por onde começar.",
     accent: "#15803d",
-    introHeadline: "Todo mundo começa em algum lugar — bora achar o seu",
+    introHeadline: "Todo mundo começa em algum lugar. Bora achar o seu",
     introSub:
       "Sem termo técnico e sem pressão. A gente parte do zero e te mostra a área e os primeiros passos que mais fazem sentido pra você.",
     suggestedLevel: "iniciante",
@@ -1400,7 +1400,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "🎨",
     accent: "#7c3aed",
     tagline: "A porta de entrada mais rápida pro desenvolvimento web.",
-    why: "Você curte ver o resultado na tela, na hora, e quer entrar logo no mercado web — JavaScript roda em todo navegador e o React é o framework mais pedido em vagas de front-end.",
+    why: "Você curte ver o resultado na tela, na hora, e quer entrar logo no mercado web. JavaScript roda em todo navegador e o React é o framework mais pedido em vagas de front-end.",
     startHere: [
       "HTML e CSS pra estruturar e estilizar páginas",
       "JavaScript do zero (lógica, DOM, eventos)",
@@ -1414,7 +1414,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "🐍",
     accent: "#15803d",
     tagline: "A linguagem mais versátil pra quem quer manter portas abertas.",
-    why: "Você quer uma primeira linguagem fácil de ler e que sirva pra muita coisa — Python é ótimo pra back-end, automação, dados e IA, então te dá liberdade pra migrar de foco depois.",
+    why: "Você quer uma primeira linguagem fácil de ler e que sirva pra muita coisa. Python é ótimo pra back-end, automação, dados e IA, então te dá liberdade pra migrar de foco depois.",
     startHere: [
       "Lógica de programação com Python",
       "Manipular dados e arquivos",
@@ -1428,7 +1428,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "📊",
     accent: "#d97706",
     tagline: "A base de quem trabalha perto de números e decisões.",
-    why: "Você gosta de achar padrões e gerar insights — SQL é a habilidade número um pra trabalhar com dados, e com ela você já constrói relatórios e dashboards que apoiam decisões.",
+    why: "Você gosta de achar padrões e gerar insights. SQL é a habilidade número um pra trabalhar com dados, e com ela você já constrói relatórios e dashboards que apoiam decisões.",
     startHere: [
       "SQL (SELECT, JOIN, agregações)",
       "Planilhas e fundamentos de análise",
@@ -1442,7 +1442,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "⚙️",
     accent: "#166534",
     tagline: "Back-end em JavaScript, do mesmo idioma do front.",
-    why: "Você curte construir a lógica e as regras por trás dos sistemas e quer aproveitar o JavaScript dos dois lados — com Node você cria APIs e serviços usando a mesma linguagem do front-end.",
+    why: "Você curte construir a lógica e as regras por trás dos sistemas e quer aproveitar o JavaScript dos dois lados. Com Node você cria APIs e serviços usando a mesma linguagem do front-end.",
     startHere: [
       "JavaScript sólido (assíncrono, módulos)",
       "Node.js + Express pra criar APIs",
@@ -1456,7 +1456,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "📱",
     accent: "#ea580c",
     tagline: "Pra quem quer focar em apps de celular desde já.",
-    why: "Seu foco é o celular — com Flutter ou React Native você cria apps que rodam em Android e iOS a partir de uma base de código só, indo direto pro que te empolga.",
+    why: "Seu foco é o celular. Com Flutter ou React Native você cria apps que rodam em Android e iOS a partir de uma base de código só, indo direto pro que te empolga.",
     startHere: [
       "Lógica de programação (Dart pra Flutter ou JS pra RN)",
       "Layout e navegação de telas",
@@ -1470,7 +1470,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "☁️",
     accent: "#0e7490",
     tagline: "Pra quem curte automação, infraestrutura e escala.",
-    why: "Você gosta de manter as coisas no ar, automatizar e mexer com servidores — dominar Linux, Docker e uma nuvem abre as portas de Cloud e DevOps.",
+    why: "Você gosta de manter as coisas no ar, automatizar e mexer com servidores. Dominar Linux, Docker e uma nuvem abre as portas de Cloud e DevOps.",
     startHere: [
       "Linux e linha de comando",
       "Docker pra empacotar aplicações",
@@ -1489,7 +1489,7 @@ export function getTechRecommendation(key: string): TechRecommendation {
 /**
  * Quiz de tecnologia (objetivo "escolher-tecnologia"). Reaproveita o shape de
  * QuizOption: `area` guarda a chave da tecnologia e `scores` aponta para as
- * chaves de techRecommendations. Sem nível — fluxo direto e curto.
+ * chaves de techRecommendations. Sem nível, fluxo direto e curto.
  */
 export const TECH_QUESTION_COUNT = 7;
 
@@ -1532,7 +1532,7 @@ export const techQuiz: QuizQuestion[] = [
     category: "Afinidade",
     question: "Quanto de matemática e estatística te anima?",
     options: [
-      { label: "Bastante — curto números e padrões", area: "SQL e Dados", scores: { "SQL e Dados": 4, Python: 3 } },
+      { label: "Bastante, curto números e padrões", area: "SQL e Dados", scores: { "SQL e Dados": 4, Python: 3 } },
       { label: "Um pouco, se for aplicado a algo prático", area: "Python", scores: { Python: 4, "Node.js": 1 } },
       { label: "Prefiro lógica e construção a estatística", area: "Node.js", scores: { "Node.js": 4, "JavaScript e React": 2 } },
       { label: "Prefiro a parte visual e de experiência", area: "JavaScript e React", scores: { "JavaScript e React": 5, "Flutter / React Native": 2 } },

@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Áreas da TI Page
+  BORA NA TECH? (Áreas da TI Page)
   Style: Neo-Brutalism Suavizado
   - Grid of area cards with filters
   - Search by name
@@ -94,7 +94,7 @@ export default function Areas() {
   return (
     <Layout>
       <SEO
-        title="Áreas da TI — Conheça todas as especializações em tecnologia"
+        title="Áreas da TI · Conheça todas as especializações em tecnologia"
         description="Explore as principais áreas da tecnologia: desenvolvimento, dados, segurança, design, infraestrutura, IA e mais. Descubra qual área combina com você."
         keywords={["áreas da ti", "especializações tecnologia", "tipos de programador", "carreiras em tecnologia", "qual área da ti escolher"]}
         url="/areas"

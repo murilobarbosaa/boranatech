@@ -69,7 +69,7 @@ export default function Sobre() {
                   A TI é enorme. A gente organiza para você.
                 </h1>
                 <p className="mt-6 max-w-3xl text-lg font-bold leading-relaxed text-slate-700 sm:text-xl">
-                  O Bora na Tech? nasceu para ser a bússola de quem está começando na tecnologia — sem jargão,
+                  O Bora na Tech? nasceu para ser a bússola de quem está começando na tecnologia, sem jargão,
                   sem enrolação, com direção.
                 </p>
               </div>
@@ -112,7 +112,7 @@ export default function Sobre() {
               </h2>
               <p className="mt-5 text-lg font-bold leading-relaxed text-slate-700">
                 A dificuldade de entender por onde começar na tecnologia é real. São dezenas de áreas, centenas de
-                cursos, mil opiniões diferentes — e nenhuma bússola. O Bora na Tech? é a plataforma que gostaríamos de
+                cursos, mil opiniões diferentes, e nenhuma bússola. O Bora na Tech? é a plataforma que gostaríamos de
                 ter encontrado quando começamos.
               </p>
             </div>

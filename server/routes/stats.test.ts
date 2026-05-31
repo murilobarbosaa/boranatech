@@ -47,7 +47,7 @@ async function callEndpoint(): Promise<{ status: number; body: Body }> {
   return { status, body };
 }
 
-describe("GET /api/stats/users-count — last-known-good em memória, sem 0 inventado", () => {
+describe("GET /api/stats/users-count: last-known-good em memória, sem 0 inventado", () => {
   beforeEach(() => {
     __resetForTests();
     supaSpy.from.mockClear();

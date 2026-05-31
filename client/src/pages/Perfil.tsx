@@ -613,7 +613,7 @@ export default function Perfil() {
   const planName = subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
   const planPrice = subscriptionData?.plans?.price_cents
     ? formatCurrencyFromCents(subscriptionData.plans.price_cents)
-    : "—";
+    : "-";
   const subscriptionStatus = subscriptionData?.status ?? (isPro ? "active" : "free");
   const statusInfo = getStatusLabel(subscriptionStatus);
   const proSince = formatProSince(subscriptionData?.created_at);
@@ -744,7 +744,7 @@ export default function Perfil() {
   if (authLoading || !user) {
     return (
       <Layout>
-        <SEO title="Perfil — Bora na Tech?" url="/perfil" noindex />
+        <SEO title="Perfil · Bora na Tech?" url="/perfil" noindex />
         <section className="bg-[#faf8f4] py-16">
           <div className="container">
             <div className="mx-auto max-w-lg rounded-3xl border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[4px_4px_0_#0f172a]">
@@ -765,7 +765,7 @@ export default function Perfil() {
       <div className="relative isolate min-h-screen">
         <ProfileBackground />
         <div className="container relative space-y-6 py-8 md:space-y-8 md:py-12">
-          {/* Bloco 1 — Hero pessoal */}
+          {/* Bloco 1: Hero pessoal */}
           <section
             style={sectionStyle(0)}
             className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
@@ -949,7 +949,7 @@ export default function Perfil() {
             ) : null}
           </section>
 
-          {/* Bloco 2 — Progresso */}
+          {/* Bloco 2: Progresso */}
           <section
             style={sectionStyle(100)}
             className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
@@ -1002,7 +1002,7 @@ export default function Perfil() {
             </div>
           </section>
 
-          {/* Bloco 2.5 — Conquistas (preview real) */}
+          {/* Bloco 2.5: Conquistas (preview real) */}
           <section
             style={sectionStyle(150)}
             className="animate-fade-slide-up overflow-hidden rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
@@ -1010,7 +1010,7 @@ export default function Perfil() {
             <ConquistasPreview />
           </section>
 
-          {/* Bloco 3 — Ferramentas Pro */}
+          {/* Bloco 3: Ferramentas Pro */}
           {isPro ? (
             <section
               style={sectionStyle(200)}
@@ -1048,7 +1048,7 @@ export default function Perfil() {
             </section>
           ) : null}
 
-          {/* Bloco 4 — Continue de onde parou */}
+          {/* Bloco 4: Continue de onde parou */}
           <section
             style={sectionStyle(300)}
             className="animate-fade-slide-up grid grid-cols-1 gap-6 lg:grid-cols-2"
@@ -1138,9 +1138,9 @@ export default function Perfil() {
             </div>
           </section>
 
-          {/* Blocos 5 + 6 — Pôsteres editoriais lado a lado em desktop */}
+          {/* Blocos 5 + 6: Pôsteres editoriais lado a lado em desktop */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[3fr_2fr]">
-            {/* Bloco 5 — Assinatura (pôster amber) */}
+            {/* Bloco 5: Assinatura (pôster amber) */}
             <section
               style={sectionStyle(400)}
               className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
@@ -1288,7 +1288,7 @@ export default function Perfil() {
               </div>
             </section>
 
-            {/* Bloco 6 — Conta (pôster violet) */}
+            {/* Bloco 6: Conta (pôster violet) */}
             <section
               style={sectionStyle(500)}
               className="animate-fade-slide-up relative overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-6 shadow-[4px_4px_0_#0f172a] md:p-8"

@@ -122,9 +122,9 @@ router.post("/sync-jobs", async (_req, res, next) => {
   }
 });
 
-// NOTA (redesenho billing — abordagem C): desde que POST /billing/cancel passou a
+// NOTA (redesenho billing, abordagem C): desde que POST /billing/cancel passou a
 // avisar o Asaas na hora (endDate + DELETE das pendentes futuras), o cancelAsaasSubscription
-// abaixo deixou de ser o mecanismo PRIMARIO de parar o billing no caminho feliz — o Asaas
+// abaixo deixou de ser o mecanismo PRIMARIO de parar o billing no caminho feliz, o Asaas
 // ja para sozinho via endDate. Este cron agora vale como RECONCILIADOR / rede de seguranca:
 // finaliza o status no banco (active -> canceled) no vencimento e cobre casos em que o /cancel
 // falhou no meio ou subs legadas sem endDate. Desligar/ajustar e o passo 7 do plano, nao agora.

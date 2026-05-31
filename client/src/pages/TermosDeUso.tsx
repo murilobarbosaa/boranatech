@@ -8,7 +8,7 @@ export default function TermosDeUso() {
   return (
     <>
       <SEO
-        title="Termos de Uso — Bora na Tech?"
+        title="Termos de Uso · Bora na Tech?"
         description="Termos de uso da plataforma Bora na Tech?, incluindo regras de conta, conteúdo, plano Pro, ferramentas de IA e responsabilidades."
         keywords={["termos de uso bora na tech", "regras da plataforma", "plano pro bora na tech", "termos tecnologia"]}
         url="/termos-de-uso"

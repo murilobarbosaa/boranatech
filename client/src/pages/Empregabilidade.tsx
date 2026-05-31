@@ -55,7 +55,7 @@ export default function Empregabilidade() {
                   {
                     name: "yearsExperience",
                     label: "Tempo na área (anos ou estágio iniciante)",
-                    placeholder: 'Ex.: "0 — em transição", "6 meses estágio", "2 anos"',
+                    placeholder: 'Ex.: "0, em transição", "6 meses estágio", "2 anos"',
                   },
                   {
                     name: "interviewPrep",
@@ -79,7 +79,7 @@ export default function Empregabilidade() {
                   {
                     name: "salaryExpectation",
                     label: "Pretensão ou faixa que a vaga mostra",
-                    placeholder: 'Ex.: "R$ 4–5k", só CLT ou "salário não divulgado na vaga"',
+                    placeholder: 'Ex.: "R$ 4 a 5k", só CLT ou "salário não divulgado na vaga"',
                   },
                 ]}
               />
@@ -118,7 +118,7 @@ export default function Empregabilidade() {
                     label: "Contexto opcional para comparar (sua cidade, área habitual)",
                     type: "textarea",
                     placeholder:
-                      "Opcional: ex. \"Sou front júnior no Nordeste\" ou números de referência que você conheça — a IA usará só como referência.",
+                      "Opcional: ex. \"Sou front júnior no Nordeste\" ou números de referência que você conheça. A IA usará só como referência.",
                   },
                   {
                     name: "whatYouPrioritize",

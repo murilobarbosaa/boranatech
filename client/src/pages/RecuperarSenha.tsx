@@ -54,7 +54,7 @@ export default function RecuperarSenha() {
   if (sentTo) {
     return (
       <Layout>
-        <SEO title="Recuperar senha — Bora na Tech?" url="/recuperar-senha" noindex />
+        <SEO title="Recuperar senha · Bora na Tech?" url="/recuperar-senha" noindex />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
@@ -102,7 +102,7 @@ export default function RecuperarSenha() {
 
   return (
     <Layout>
-      <SEO title="Recuperar senha — Bora na Tech?" url="/recuperar-senha" noindex />
+      <SEO title="Recuperar senha · Bora na Tech?" url="/recuperar-senha" noindex />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">

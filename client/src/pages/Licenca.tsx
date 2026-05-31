@@ -8,7 +8,7 @@ export default function Licenca() {
   return (
     <>
       <SEO
-        title="Licença de Conteúdo — Bora na Tech?"
+        title="Licença de Conteúdo · Bora na Tech?"
         description="Conheça a licença Creative Commons aplicada aos conteúdos originais do Bora na Tech? e as regras para reutilização."
         keywords={["licença creative commons", "bora na tech licença", "cc by nc sa", "conteúdo educacional tecnologia"]}
         url="/licenca"

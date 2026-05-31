@@ -159,7 +159,7 @@ export default function Checkout() {
   return (
     <Layout>
       <SEO
-        title="Plano Pro — Bora na Tech?"
+        title="Plano Pro · Bora na Tech?"
         description="Desbloqueie 8 ferramentas com IA pra entrar em TI: roadmaps, plano de estudos, análise de currículo, LinkedIn, portfólio, entrevista, empregabilidade e networking. A partir de R$ 14,99/mês no plano anual."
         keywords={["plano pro bora na tech", "ia carreira ti", "analisador currículo ia", "otimizador linkedin"]}
         url="/planos"
@@ -188,7 +188,7 @@ export default function Checkout() {
         <div className="border-b-2 border-slate-950 bg-[#FFB800]">
           <div className="container py-3 text-center">
             <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
-              Cupom {affiliateCode} aplicado — {discountPercent}% de desconto em qualquer plano
+              Cupom {affiliateCode} aplicado, {discountPercent}% de desconto em qualquer plano
             </p>
           </div>
         </div>
@@ -935,7 +935,7 @@ function FreeVsProSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mt-4 text-base md:text-lg font-medium text-slate-700"
           >
-            O Pro acelera. Mas a base é sólida — e gratuita.
+            O Pro acelera. Mas a base é sólida, e gratuita.
           </motion.p>
         </div>
 

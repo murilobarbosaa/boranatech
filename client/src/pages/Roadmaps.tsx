@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Roadmaps Page
+  BORA NA TECH? (Roadmaps Page)
   Style: Neo-Brutalism Suavizado
   - List of roadmaps with detail view
 */
@@ -60,7 +60,7 @@ export default function Roadmaps() {
   return (
     <Layout>
       <SEO
-        title="Roadmaps de TI — Trilhas completas para sua carreira tech"
+        title="Roadmaps de TI · Trilhas completas para sua carreira tech"
         description="Roadmaps passo a passo para frontend, backend, dados, mobile, DevOps e mais. Aprenda na ordem certa, sem perder tempo."
         keywords={["roadmap programação", "trilha de estudos ti", "como aprender programação", "roadmap frontend", "roadmap backend", "roadmap dados"]}
         url="/roadmaps"

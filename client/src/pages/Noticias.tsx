@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Notícias Tech Page
+  BORA NA TECH? (Notícias Tech Page)
   Style: Neo-Brutalism Suavizado
 */
 
@@ -255,7 +255,7 @@ export default function Noticias() {
   return (
     <Layout>
       <SEO
-        title="Notícias Tech — Últimas novidades do mundo da tecnologia"
+        title="Notícias Tech · Últimas novidades do mundo da tecnologia"
         description="Acompanhe notícias de tecnologia, inteligência artificial, mercado de TI e tendências importantes para quem está começando."
         keywords={["notícias tecnologia", "novidades tech", "ia notícias", "mercado de ti", "tendências tecnologia"]}
         url="/noticias"
@@ -270,7 +270,7 @@ export default function Noticias() {
             </p>
             <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Notícias Tech</h1>
             <p className="text-slate-950 text-lg">
-              Fique por dentro do que está acontecendo na tecnologia — com foco no que importa para quem está começando.
+              Fique por dentro do que está acontecendo na tecnologia, com foco no que importa para quem está começando.
             </p>
           </div>
         </div>

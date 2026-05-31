@@ -247,7 +247,7 @@ const PRO_COMMAND_SET: CommandSet = {
 };
 
 // =========================================
-// CtaFinal — escolhe o set por estado
+// CtaFinal: escolhe o set por estado
 // =========================================
 
 export default function CtaFinal() {
@@ -301,7 +301,7 @@ function CtaFinalInteractive({ commandSet }: { commandSet: CommandSet }) {
 }
 
 // =========================================
-// Matrix background — chuva densa adaptativa de 0/1
+// Matrix background: chuva densa adaptativa de 0/1
 // =========================================
 
 function useIsMobile() {
@@ -372,7 +372,7 @@ function MatrixBackground() {
 }
 
 // =========================================
-// CommandSidebar — lista agrupada de comandos
+// CommandSidebar: lista agrupada de comandos
 // =========================================
 
 const ITEM_STYLES: Record<SidebarVariant, string> = {
@@ -455,7 +455,7 @@ function CommandItem({
 }
 
 // =========================================
-// CommandChipsMobile — variante condensada (chips horizontais)
+// CommandChipsMobile: variante condensada (chips horizontais)
 // =========================================
 
 const CHIP_STYLES: Record<SidebarVariant, string> = {
@@ -512,7 +512,7 @@ function CommandChipsMobile({
 }
 
 // =========================================
-// Terminal interativo — input controlado + histórico
+// Terminal interativo: input controlado + histórico
 // =========================================
 
 type TerminalLine = {

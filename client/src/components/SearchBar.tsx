@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — SearchBar Component
+  BORA NA TECH? (SearchBar Component)
   Style: Neo-Brutalism Suavizado
   - Global search across all content types
   - Results dropdown with categories

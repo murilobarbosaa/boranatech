@@ -137,7 +137,7 @@ function StatBlock({
 
       <p className="mt-2 text-sm md:text-base font-medium text-slate-400">{stat.description}</p>
 
-      {/* Divisor vertical desktop only — gradient amber transparente nas pontas */}
+      {/* Divisor vertical desktop only: gradient amber transparente nas pontas */}
       {!isLast && (
         <div
           className="hidden md:block absolute top-1/2 right-0 -translate-y-1/2 h-24 w-px"

@@ -604,7 +604,7 @@ function ObjectiveScreen({
       </h1>
 
       <p className="mt-4 max-w-xl text-base font-semibold text-slate-600 md:text-lg">
-        Começa escolhendo o seu objetivo — a gente monta o quiz certo pra ele.
+        Começa escolhendo o seu objetivo. A gente monta o quiz certo pra ele.
         É rápido, gratuito e não tem resposta certa nem errada.
       </p>
 

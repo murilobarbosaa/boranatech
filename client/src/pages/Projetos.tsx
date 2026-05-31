@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Projetos Page
+  BORA NA TECH? (Projetos Page)
   Style: Neo-Brutalism Suavizado
 */
 
@@ -72,7 +72,7 @@ export default function Projetos() {
   return (
     <Layout>
       <SEO
-        title="Projetos para Portfólio — Ideias práticas para iniciantes em TI"
+        title="Projetos para Portfólio · Ideias práticas para iniciantes em TI"
         description="Ideias de projetos por nível e área para montar portfólio, praticar tecnologia e mostrar evolução em processos seletivos."
         keywords={["projetos para portfólio", "projetos programação iniciante", "ideias de projetos ti", "portfolio dev iniciante"]}
         url="/projetos"

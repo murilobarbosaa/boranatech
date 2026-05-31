@@ -119,7 +119,7 @@ export default function PerfilFavoritos() {
   if (authLoading || !user) {
     return (
       <Layout>
-        <SEO title="Favoritos — Bora na Tech?" url="/perfil/favoritos" noindex />
+        <SEO title="Favoritos · Bora na Tech?" url="/perfil/favoritos" noindex />
         <section className="bg-[#faf8f4] py-12">
           <div className="container">
             <p className="text-sm text-slate-500">Carregando…</p>
@@ -131,7 +131,7 @@ export default function PerfilFavoritos() {
 
   return (
     <Layout>
-      <SEO title="Favoritos — Bora na Tech?" url="/perfil/favoritos" noindex />
+      <SEO title="Favoritos · Bora na Tech?" url="/perfil/favoritos" noindex />
 
       <section className="border-b-2 border-slate-900 bg-[#faf8f4] py-10">
         <div className="container">
