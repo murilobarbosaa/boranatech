@@ -10,7 +10,12 @@ interface FilterPillsProps {
   accent?: PageHeroAccent;
 }
 
-export default function FilterPills({ options, value, onChange, accent }: FilterPillsProps) {
+export default function FilterPills({
+  options,
+  value,
+  onChange,
+  accent,
+}: FilterPillsProps) {
   const ui = accent ? pageAccentUi[accent] : null;
 
   return (
@@ -23,8 +28,10 @@ export default function FilterPills({ options, value, onChange, accent }: Filter
           className={cn(
             "rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all",
             value === option
-              ? ui?.filterActive ?? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
-              : ui?.filterInactive ?? "border-slate-300 bg-white text-slate-700 hover:border-slate-500",
+              ? (ui?.filterActive ??
+                  "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]")
+              : (ui?.filterInactive ??
+                  "border-slate-300 bg-white text-slate-700 hover:border-slate-500"),
           )}
         >
           {option}

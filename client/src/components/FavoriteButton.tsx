@@ -13,14 +13,14 @@ type FavoriteButtonProps = {
   compact?: boolean;
 };
 
-export default function FavoriteButton({ item, className, compact = false }: FavoriteButtonProps) {
+export default function FavoriteButton({
+  item,
+  className,
+  compact = false,
+}: FavoriteButtonProps) {
   const { user } = useAuth();
-  const {
-    isFavorite,
-    toggleFavorite,
-    pendingAuthFavorite,
-    clearPendingAuth,
-  } = useFavorites();
+  const { isFavorite, toggleFavorite, pendingAuthFavorite, clearPendingAuth } =
+    useFavorites();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const authJustSucceededRef = useRef(false);
@@ -96,7 +96,11 @@ export default function FavoriteButton({ item, className, compact = false }: Fav
       <button
         type="button"
         aria-pressed={active}
-        aria-label={active ? `Remover ${item.title} dos favoritos` : `Favoritar ${item.title}`}
+        aria-label={
+          active
+            ? `Remover ${item.title} dos favoritos`
+            : `Favoritar ${item.title}`
+        }
         onClick={handleClick}
         className={cn(
           "inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]",

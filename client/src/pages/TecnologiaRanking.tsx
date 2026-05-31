@@ -26,7 +26,9 @@ export default function TecnologiaRanking() {
   const [ranking, setRanking] = useState(technologyRanking);
 
   useEffect(() => {
-    getTechnologyRanking().then(setRanking).catch(() => setRanking(technologyRanking));
+    getTechnologyRanking()
+      .then(setRanking)
+      .catch(() => setRanking(technologyRanking));
   }, []);
 
   return (
@@ -40,21 +42,40 @@ export default function TecnologiaRanking() {
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
-          <div className={cn("mb-8 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a]", ac.panelSoft)}>
-            <h2 className="font-display text-lg font-black text-slate-950">Fonte das informações</h2>
+          <div
+            className={cn(
+              "mb-8 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a]",
+              ac.panelSoft,
+            )}
+          >
+            <h2 className="font-display text-lg font-black text-slate-950">
+              Fonte das informações
+            </h2>
             <p className="mt-2 text-sm font-medium text-slate-700">
-              O ranking ordena primeiro por uso declarado quando há percentuais do{" "}
-              <a href={STACK_OVERFLOW_SURVEY.sourceUrl} target="_blank" rel="noreferrer" className={cn("font-black underline", ac.link)}>
+              O ranking ordena primeiro por uso declarado quando há percentuais
+              do{" "}
+              <a
+                href={STACK_OVERFLOW_SURVEY.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={cn("font-black underline", ac.link)}
+              >
                 {STACK_OVERFLOW_SURVEY.sourceName}
               </a>
               , combinando quando útil com o{" "}
-              <a href={GITHUB_OCTOVERSE.sourceUrl} target="_blank" rel="noreferrer" className={cn("font-black underline", ac.link)}>
+              <a
+                href={GITHUB_OCTOVERSE.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={cn("font-black underline", ac.link)}
+              >
                 {GITHUB_OCTOVERSE.sourceName}
               </a>
               .
             </p>
             <p className="mt-3 text-sm font-medium text-slate-700">
-              Importante: indicadores públicos não medem vagas no Brasil — são contexto para explorar tecnologias.
+              Importante: indicadores públicos não medem vagas no Brasil — são
+              contexto para explorar tecnologias.
             </p>
           </div>
 
@@ -74,7 +95,9 @@ export default function TecnologiaRanking() {
                   return (
                     <tr
                       key={technology.slug}
-                      style={{ animationDelay: `${Math.min(index * 22, 640)}ms` }}
+                      style={{
+                        animationDelay: `${Math.min(index * 22, 640)}ms`,
+                      }}
                       className={cn(
                         "tech-ranking-row group border-t-2 border-slate-100 transition-colors hover:bg-amber-50/60",
                       )}
@@ -88,7 +111,10 @@ export default function TecnologiaRanking() {
                             #{technology.position}
                           </span>
                           {technology.position <= 3 ? (
-                            <Trophy className="hidden h-4 w-4 text-amber-800 opacity-70 group-hover:opacity-100 lg:inline" aria-hidden />
+                            <Trophy
+                              className="hidden h-4 w-4 text-amber-800 opacity-70 group-hover:opacity-100 lg:inline"
+                              aria-hidden
+                            />
                           ) : null}
                         </div>
                       </td>
@@ -117,8 +143,14 @@ export default function TecnologiaRanking() {
                         </div>
                       </td>
                       <td className="p-4">
-                        <span className="font-black text-slate-950">{technology.usageLabel || "Sem percentual comparável"}</span>
-                        {technology.sourceNote ? <span className="mt-1 block text-xs text-slate-500">{technology.sourceNote}</span> : null}
+                        <span className="font-black text-slate-950">
+                          {technology.usageLabel || "Sem percentual comparável"}
+                        </span>
+                        {technology.sourceNote ? (
+                          <span className="mt-1 block text-xs text-slate-500">
+                            {technology.sourceNote}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="p-4 align-top">
                         {technology.sourceUrl ? (
@@ -126,13 +158,21 @@ export default function TecnologiaRanking() {
                             href={technology.sourceUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className={cn("inline-flex items-center gap-1 font-black underline decoration-2 underline-offset-2", ac.link)}
+                            className={cn(
+                              "inline-flex items-center gap-1 font-black underline decoration-2 underline-offset-2",
+                              ac.link,
+                            )}
                           >
                             {technology.sourceName}
-                            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            <ExternalLink
+                              className="h-3.5 w-3.5 shrink-0"
+                              aria-hidden
+                            />
                           </a>
                         ) : (
-                          <span className="font-medium">{technology.sourceName || "Fonte não informada"}</span>
+                          <span className="font-medium">
+                            {technology.sourceName || "Fonte não informada"}
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -160,31 +200,51 @@ export default function TecnologiaRanking() {
                         className="h-12 w-12"
                         imageClassName="h-8 w-8"
                       />
-                      <span className="text-xl" aria-hidden>{podium ?? "🏅"}</span>
-                      <span className="font-display font-black tabular-nums text-sm">#{technology.position}</span>
+                      <span className="text-xl" aria-hidden>
+                        {podium ?? "🏅"}
+                      </span>
+                      <span className="font-display font-black tabular-nums text-sm">
+                        #{technology.position}
+                      </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <Link href={`/tecnologias/${technology.slug}`} className="font-display text-base font-black text-violet-900 underline-offset-4 hover:underline">
+                      <Link
+                        href={`/tecnologias/${technology.slug}`}
+                        className="font-display text-base font-black text-violet-900 underline-offset-4 hover:underline"
+                      >
                         {technology.name}
                       </Link>
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide">
-                        <span className="rounded-full bg-slate-100 px-2 py-1 ring-1 ring-slate-300">{technology.category}</span>
+                        <span className="rounded-full bg-slate-100 px-2 py-1 ring-1 ring-slate-300">
+                          {technology.category}
+                        </span>
                       </div>
-                      <p className="mt-3 text-sm font-bold text-slate-900">{technology.usageLabel || "Sem percentual comparável"}</p>
-                      {technology.sourceNote ? <p className="mt-1 text-xs text-slate-500">{technology.sourceNote}</p> : null}
+                      <p className="mt-3 text-sm font-bold text-slate-900">
+                        {technology.usageLabel || "Sem percentual comparável"}
+                      </p>
+                      {technology.sourceNote ? (
+                        <p className="mt-1 text-xs text-slate-500">
+                          {technology.sourceNote}
+                        </p>
+                      ) : null}
                       <div className="mt-3">
                         {technology.sourceUrl ? (
                           <a
                             href={technology.sourceUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className={cn("inline-flex items-center gap-1 text-sm font-black underline", ac.link)}
+                            className={cn(
+                              "inline-flex items-center gap-1 text-sm font-black underline",
+                              ac.link,
+                            )}
                           >
                             {technology.sourceName}
                             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                           </a>
                         ) : (
-                          <span className="text-sm font-medium text-slate-700">{technology.sourceName || "Fonte não informada"}</span>
+                          <span className="text-sm font-medium text-slate-700">
+                            {technology.sourceName || "Fonte não informada"}
+                          </span>
                         )}
                       </div>
                     </div>

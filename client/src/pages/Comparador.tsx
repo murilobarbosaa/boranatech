@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle, Filter, Lightbulb, RotateCcw } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Filter,
+  Lightbulb,
+  RotateCcw,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 
@@ -66,15 +72,21 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2 a 3 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem quer diploma mais rápido e caminho direto para desenvolvimento.",
+    bestFor:
+      "Quem quer diploma mais rápido e caminho direto para desenvolvimento.",
     notIdealFor: "Quem quer pesquisa, matemática pesada ou carreira acadêmica.",
     marketUse: "Muito reconhecido para estágio, trainee e júnior.",
     certificate: "Diploma superior",
     practice: "Média a alta, depende da instituição.",
     mathLevel: "Média",
     beginnerScore: 5,
-    decisionTip: "Boa escolha se você quer entrar no mercado com diploma sem fazer um bacharelado longo.",
-    pros: ["Duração menor", "Conteúdo direto", "Ajuda em vagas que pedem superior"],
+    decisionTip:
+      "Boa escolha se você quer entrar no mercado com diploma sem fazer um bacharelado longo.",
+    pros: [
+      "Duração menor",
+      "Conteúdo direto",
+      "Ajuda em vagas que pedem superior",
+    ],
     cautions: ["Qualidade varia muito", "Precisa complementar com portfólio"],
     objectives: ["diploma", "emprego", "rapido"],
   },
@@ -95,8 +107,13 @@ const comparisonItems: ComparisonItem[] = [
     practice: "Média, exige projetos por fora.",
     mathLevel: "Alta",
     beginnerScore: 3,
-    decisionTip: "Escolha se você gosta de fundamentos e aceita um caminho mais longo.",
-    pros: ["Base técnica forte", "Boa reputação", "Abre portas para IA e pesquisa"],
+    decisionTip:
+      "Escolha se você gosta de fundamentos e aceita um caminho mais longo.",
+    pros: [
+      "Base técnica forte",
+      "Boa reputação",
+      "Abre portas para IA e pesquisa",
+    ],
     cautions: ["Mais matemática", "Mais longo", "Pode ser teórico demais"],
     objectives: ["diploma", "base", "ia", "dados"],
   },
@@ -112,12 +129,14 @@ const comparisonItems: ComparisonItem[] = [
     modality: "Presencial, EAD ou híbrido",
     bestFor: "Quem quer misturar tecnologia, processos e negócio.",
     notIdealFor: "Quem quer só programação pesada desde o início.",
-    marketUse: "Bom para análise de sistemas, produto, dados e desenvolvimento.",
+    marketUse:
+      "Bom para análise de sistemas, produto, dados e desenvolvimento.",
     certificate: "Diploma superior",
     practice: "Média",
     mathLevel: "Média",
     beginnerScore: 4,
-    decisionTip: "Boa opção para quem gosta de entender problemas de negócio e tecnologia juntos.",
+    decisionTip:
+      "Boa opção para quem gosta de entender problemas de negócio e tecnologia juntos.",
     pros: ["Versátil", "Boa ponte com negócios", "Serve para várias trilhas"],
     cautions: ["Pode ser amplo demais", "Exige foco por fora"],
     objectives: ["diploma", "negocio", "emprego"],
@@ -132,16 +151,25 @@ const comparisonItems: ComparisonItem[] = [
     duration: "4 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem quer construir software com qualidade, testes, arquitetura e processos.",
+    bestFor:
+      "Quem quer construir software com qualidade, testes, arquitetura e processos.",
     notIdealFor: "Quem quer uma formação muito curta.",
     marketUse: "Muito alinhado com vagas de desenvolvimento e qualidade.",
     certificate: "Diploma superior",
     practice: "Alta quando o curso tem bons projetos.",
     mathLevel: "Média-Alta",
     beginnerScore: 4,
-    decisionTip: "Escolha se você quer programar, mas também entender como software profissional é planejado e mantido.",
-    pros: ["Foco claro em software", "Boa conexão com mercado", "Inclui qualidade e processo"],
-    cautions: ["Pode variar bastante entre instituições", "Ainda precisa de portfólio"],
+    decisionTip:
+      "Escolha se você quer programar, mas também entender como software profissional é planejado e mantido.",
+    pros: [
+      "Foco claro em software",
+      "Boa conexão com mercado",
+      "Inclui qualidade e processo",
+    ],
+    cautions: [
+      "Pode variar bastante entre instituições",
+      "Ainda precisa de portfólio",
+    ],
     objectives: ["diploma", "emprego", "base"],
   },
   {
@@ -161,8 +189,13 @@ const comparisonItems: ComparisonItem[] = [
     practice: "Média",
     mathLevel: "Média",
     beginnerScore: 4,
-    decisionTip: "Faz sentido se você já sente atração por dados e bancos relacionais.",
-    pros: ["Foco em SQL", "Boa base para dados", "Duração menor que bacharelado"],
+    decisionTip:
+      "Faz sentido se você já sente atração por dados e bancos relacionais.",
+    pros: [
+      "Foco em SQL",
+      "Boa base para dados",
+      "Duração menor que bacharelado",
+    ],
     cautions: ["Mais específico", "Pode limitar se você ainda não sabe a área"],
     objectives: ["diploma", "dados", "emprego"],
   },
@@ -176,16 +209,27 @@ const comparisonItems: ComparisonItem[] = [
     duration: "5 anos",
     durationLevel: "longo",
     modality: "Presencial ou híbrido",
-    bestFor: "Quem quer unir software, hardware, eletrônica, sistemas embarcados e engenharia.",
-    notIdealFor: "Quem quer entrar rápido no mercado apenas com desenvolvimento web.",
-    marketUse: "Forte para embarcados, IoT, robótica, telecom, software de baixo nível e engenharia.",
+    bestFor:
+      "Quem quer unir software, hardware, eletrônica, sistemas embarcados e engenharia.",
+    notIdealFor:
+      "Quem quer entrar rápido no mercado apenas com desenvolvimento web.",
+    marketUse:
+      "Forte para embarcados, IoT, robótica, telecom, software de baixo nível e engenharia.",
     certificate: "Diploma superior",
     practice: "Média a alta, com laboratórios e projetos de engenharia.",
     mathLevel: "Muito alta",
     beginnerScore: 2,
-    decisionTip: "Escolha se você gosta de matemática, física, hardware e quer uma formação bem ampla e técnica.",
-    pros: ["Formação muito robusta", "Abre portas em hardware e software", "Boa para IoT e sistemas embarcados"],
-    cautions: ["Curso longo e exigente", "Pode ter menos foco em web/app no início"],
+    decisionTip:
+      "Escolha se você gosta de matemática, física, hardware e quer uma formação bem ampla e técnica.",
+    pros: [
+      "Formação muito robusta",
+      "Abre portas em hardware e software",
+      "Boa para IoT e sistemas embarcados",
+    ],
+    cautions: [
+      "Curso longo e exigente",
+      "Pode ter menos foco em web/app no início",
+    ],
     objectives: ["diploma", "base", "emprego"],
   },
   {
@@ -198,16 +242,27 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2,5 a 4 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem quer estudar machine learning, dados, modelos, automação e aplicações de IA.",
-    notIdealFor: "Quem ainda não gosta de matemática, estatística ou programação.",
-    marketUse: "Boa base para dados, IA aplicada, automação, análise e pesquisa aplicada.",
+    bestFor:
+      "Quem quer estudar machine learning, dados, modelos, automação e aplicações de IA.",
+    notIdealFor:
+      "Quem ainda não gosta de matemática, estatística ou programação.",
+    marketUse:
+      "Boa base para dados, IA aplicada, automação, análise e pesquisa aplicada.",
     certificate: "Diploma superior",
     practice: "Média, melhora muito com projetos próprios e datasets reais.",
     mathLevel: "Alta",
     beginnerScore: 3,
-    decisionTip: "Faz sentido se você já sabe que quer dados/IA e topa estudar Python, estatística e fundamentos.",
-    pros: ["Área em crescimento", "Conecta dados e software", "Boa para projetos modernos"],
-    cautions: ["Nome do curso varia muito", "Sem base de dados e programação fica difícil"],
+    decisionTip:
+      "Faz sentido se você já sabe que quer dados/IA e topa estudar Python, estatística e fundamentos.",
+    pros: [
+      "Área em crescimento",
+      "Conecta dados e software",
+      "Boa para projetos modernos",
+    ],
+    cautions: [
+      "Nome do curso varia muito",
+      "Sem base de dados e programação fica difícil",
+    ],
     objectives: ["diploma", "ia", "dados", "emprego"],
   },
   {
@@ -220,16 +275,27 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2,5 a 4 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem gosta de Python, SQL, estatística, dashboards, modelos e tomada de decisão.",
-    notIdealFor: "Quem quer fugir de números, métricas e interpretação de dados.",
-    marketUse: "Bom para análise de dados, BI, engenharia de dados e ciência de dados júnior.",
+    bestFor:
+      "Quem gosta de Python, SQL, estatística, dashboards, modelos e tomada de decisão.",
+    notIdealFor:
+      "Quem quer fugir de números, métricas e interpretação de dados.",
+    marketUse:
+      "Bom para análise de dados, BI, engenharia de dados e ciência de dados júnior.",
     certificate: "Diploma superior",
     practice: "Alta quando há projetos com datasets e dashboards.",
     mathLevel: "Alta",
     beginnerScore: 3,
-    decisionTip: "Escolha se você quer dados como caminho principal, não só uma matéria dentro de outro curso.",
-    pros: ["Foco claro em dados", "Projetos demonstráveis", "Boa conexão com negócio"],
-    cautions: ["Exige estatística", "Precisa montar portfólio com insights, não só gráficos"],
+    decisionTip:
+      "Escolha se você quer dados como caminho principal, não só uma matéria dentro de outro curso.",
+    pros: [
+      "Foco claro em dados",
+      "Projetos demonstráveis",
+      "Boa conexão com negócio",
+    ],
+    cautions: [
+      "Exige estatística",
+      "Precisa montar portfólio com insights, não só gráficos",
+    ],
     objectives: ["diploma", "dados", "ia", "emprego"],
   },
   {
@@ -242,15 +308,23 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2,5 a 4 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem gosta de redes, sistemas, investigação, risco, defesa e segurança digital.",
-    notIdealFor: "Quem quer começar sem estudar fundamentos de redes, Linux e sistemas.",
-    marketUse: "Bom para SOC, segurança defensiva, governança, pentest júnior e suporte especializado.",
+    bestFor:
+      "Quem gosta de redes, sistemas, investigação, risco, defesa e segurança digital.",
+    notIdealFor:
+      "Quem quer começar sem estudar fundamentos de redes, Linux e sistemas.",
+    marketUse:
+      "Bom para SOC, segurança defensiva, governança, pentest júnior e suporte especializado.",
     certificate: "Diploma superior",
     practice: "Alta se combinado com labs, CTFs e ambientes controlados.",
     mathLevel: "Média",
     beginnerScore: 3,
-    decisionTip: "Escolha se você tem curiosidade por segurança e paciência para construir base técnica antes dos labs avançados.",
-    pros: ["Área relevante", "Boa conexão com cloud e redes", "Projetos práticos em labs"],
+    decisionTip:
+      "Escolha se você tem curiosidade por segurança e paciência para construir base técnica antes dos labs avançados.",
+    pros: [
+      "Área relevante",
+      "Boa conexão com cloud e redes",
+      "Projetos práticos em labs",
+    ],
     cautions: ["Não é só hacking", "Exige ética, documentação e muita base"],
     objectives: ["diploma", "emprego", "base"],
   },
@@ -264,15 +338,23 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2 a 3 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem quer infraestrutura, redes, cloud, suporte, segurança ou operações.",
-    notIdealFor: "Quem quer programar interfaces e produtos digitais desde o começo.",
-    marketUse: "Bom para suporte técnico, infraestrutura, cloud inicial, NOC, segurança e redes.",
+    bestFor:
+      "Quem quer infraestrutura, redes, cloud, suporte, segurança ou operações.",
+    notIdealFor:
+      "Quem quer programar interfaces e produtos digitais desde o começo.",
+    marketUse:
+      "Bom para suporte técnico, infraestrutura, cloud inicial, NOC, segurança e redes.",
     certificate: "Diploma superior",
     practice: "Média a alta com laboratórios e simuladores.",
     mathLevel: "Média",
     beginnerScore: 4,
-    decisionTip: "Boa escolha se você gosta de entender como sistemas se conectam e quer uma porta para cloud/segurança.",
-    pros: ["Base forte para infraestrutura", "Combina com certificações", "Boa entrada em suporte e cloud"],
+    decisionTip:
+      "Boa escolha se você gosta de entender como sistemas se conectam e quer uma porta para cloud/segurança.",
+    pros: [
+      "Base forte para infraestrutura",
+      "Combina com certificações",
+      "Boa entrada em suporte e cloud",
+    ],
     cautions: ["Pode ter menos programação", "Precisa praticar com labs"],
     objectives: ["diploma", "cloud", "emprego"],
   },
@@ -286,16 +368,22 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2 a 3 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem quer web, front-end, back-end, e-commerce e aplicações online.",
+    bestFor:
+      "Quem quer web, front-end, back-end, e-commerce e aplicações online.",
     notIdealFor: "Quem quer hardware, pesquisa ou matemática profunda.",
-    marketUse: "Bom para desenvolvimento web, full stack júnior e projetos digitais.",
+    marketUse:
+      "Bom para desenvolvimento web, full stack júnior e projetos digitais.",
     certificate: "Diploma superior",
     practice: "Alta quando o curso exige projetos web.",
     mathLevel: "Baixa a média",
     beginnerScore: 5,
-    decisionTip: "Uma alternativa bem prática para quem quer web e diploma em menos tempo.",
+    decisionTip:
+      "Uma alternativa bem prática para quem quer web e diploma em menos tempo.",
     pros: ["Foco em web", "Duração menor", "Projetos fáceis de publicar"],
-    cautions: ["Menos amplo que Ciência da Computação", "Precisa caprichar no portfólio"],
+    cautions: [
+      "Menos amplo que Ciência da Computação",
+      "Precisa caprichar no portfólio",
+    ],
     objectives: ["diploma", "portfolio", "emprego", "rapido"],
   },
   {
@@ -308,16 +396,23 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2,5 a 4 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem quer criar jogos, experiências interativas, arte técnica, lógica e engines.",
-    notIdealFor: "Quem busca a rota mais direta para vagas corporativas tradicionais.",
-    marketUse: "Bom para games, front-end interativo, realidade virtual, educação e simulações.",
+    bestFor:
+      "Quem quer criar jogos, experiências interativas, arte técnica, lógica e engines.",
+    notIdealFor:
+      "Quem busca a rota mais direta para vagas corporativas tradicionais.",
+    marketUse:
+      "Bom para games, front-end interativo, realidade virtual, educação e simulações.",
     certificate: "Diploma superior",
     practice: "Alta, baseada em protótipos e portfólio.",
     mathLevel: "Média-Alta",
     beginnerScore: 3,
-    decisionTip: "Escolha se você realmente quer games e aceita um mercado mais específico e competitivo.",
+    decisionTip:
+      "Escolha se você realmente quer games e aceita um mercado mais específico e competitivo.",
     pros: ["Muito prático", "Portfólio visual", "Mistura arte e programação"],
-    cautions: ["Mercado mais nichado", "Pode exigir matemática, física e engines"],
+    cautions: [
+      "Mercado mais nichado",
+      "Pode exigir matemática, física e engines",
+    ],
     objectives: ["diploma", "portfolio", "emprego"],
   },
   {
@@ -330,16 +425,26 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2 a 3 anos",
     durationLevel: "longo",
     modality: "Presencial, EAD ou híbrido",
-    bestFor: "Quem quer gestão, processos, suporte, projetos, governança e ponte com negócio.",
+    bestFor:
+      "Quem quer gestão, processos, suporte, projetos, governança e ponte com negócio.",
     notIdealFor: "Quem quer virar dev focando pesado em código.",
-    marketUse: "Bom para suporte, analista de TI, processos, projetos e coordenação inicial.",
+    marketUse:
+      "Bom para suporte, analista de TI, processos, projetos e coordenação inicial.",
     certificate: "Diploma superior",
     practice: "Média",
     mathLevel: "Baixa a média",
     beginnerScore: 4,
-    decisionTip: "Boa escolha para perfis organizados que querem tecnologia com gestão e negócio.",
-    pros: ["Versátil", "Menos matemática", "Boa ponte com áreas administrativas"],
-    cautions: ["Menos programação", "Pode exigir cursos técnicos extras para dev"],
+    decisionTip:
+      "Boa escolha para perfis organizados que querem tecnologia com gestão e negócio.",
+    pros: [
+      "Versátil",
+      "Menos matemática",
+      "Boa ponte com áreas administrativas",
+    ],
+    cautions: [
+      "Menos programação",
+      "Pode exigir cursos técnicos extras para dev",
+    ],
     objectives: ["diploma", "negocio", "emprego"],
   },
   {
@@ -353,13 +458,15 @@ const comparisonItems: ComparisonItem[] = [
     durationLevel: "medio",
     modality: "Online",
     bestFor: "Primeiros passos em lógica, Python, HTML, CSS e JavaScript.",
-    notIdealFor: "Quem precisa de trilha avançada ou acompanhamento individual.",
+    notIdealFor:
+      "Quem precisa de trilha avançada ou acompanhamento individual.",
     marketUse: "Ótimo para base inicial, mas precisa virar projeto.",
     certificate: "Certificado opcional em alguns cursos",
     practice: "Média",
     mathLevel: "Baixa",
     beginnerScore: 5,
-    decisionTip: "Comece aqui se o orçamento é zero e você ainda está entendendo a área.",
+    decisionTip:
+      "Comece aqui se o orçamento é zero e você ainda está entendendo a área.",
     pros: ["Didática acessível", "Gratuito", "Muito bom para base"],
     cautions: ["Não substitui portfólio", "Algumas trilhas são introdutórias"],
     objectives: ["gratis", "base", "rapido"],
@@ -374,16 +481,21 @@ const comparisonItems: ComparisonItem[] = [
     duration: "1 a 6 meses",
     durationLevel: "medio",
     modality: "Online",
-    bestFor: "Quem quer praticar front-end, JavaScript, dados e projetos guiados.",
+    bestFor:
+      "Quem quer praticar front-end, JavaScript, dados e projetos guiados.",
     notIdealFor: "Quem não se adapta bem a conteúdo em inglês.",
     marketUse: "Bom para montar base e primeiros projetos.",
     certificate: "Certificação gratuita",
     practice: "Alta",
     mathLevel: "Baixa a média",
     beginnerScore: 5,
-    decisionTip: "Excelente se você aprende fazendo e aceita praticar em inglês.",
+    decisionTip:
+      "Excelente se você aprende fazendo e aceita praticar em inglês.",
     pros: ["Muita prática", "Certificado gratuito", "Projetos no caminho"],
-    cautions: ["Pode exigir inglês", "Precisa complementar com projetos próprios"],
+    cautions: [
+      "Pode exigir inglês",
+      "Precisa complementar com projetos próprios",
+    ],
     objectives: ["gratis", "portfolio", "rapido"],
   },
   {
@@ -396,14 +508,16 @@ const comparisonItems: ComparisonItem[] = [
     duration: "2 semanas a 3 meses",
     durationLevel: "medio",
     modality: "Online",
-    bestFor: "Quem quer bootcamps, certificados e contato com empresas parceiras.",
+    bestFor:
+      "Quem quer bootcamps, certificados e contato com empresas parceiras.",
     notIdealFor: "Quem precisa de profundidade técnica em tudo.",
     marketUse: "Boa para certificados, prática inicial e desafios.",
     certificate: "Certificados de cursos e bootcamps",
     practice: "Média",
     mathLevel: "Baixa",
     beginnerScore: 4,
-    decisionTip: "Use para ganhar ritmo e certificados, mas escolha bem os bootcamps.",
+    decisionTip:
+      "Use para ganhar ritmo e certificados, mas escolha bem os bootcamps.",
     pros: ["Muitos bootcamps", "Certificados", "Conteúdo em português"],
     cautions: ["Qualidade varia", "Pode ser superficial em temas avançados"],
     objectives: ["certificado", "emprego", "rapido"],
@@ -418,16 +532,21 @@ const comparisonItems: ComparisonItem[] = [
     duration: "Uso contínuo",
     durationLevel: "medio",
     modality: "Online",
-    bestFor: "Quem quer trilhas em português e variedade em programação, dados, design e produto.",
+    bestFor:
+      "Quem quer trilhas em português e variedade em programação, dados, design e produto.",
     notIdealFor: "Quem quer estudar sem pagar assinatura.",
     marketUse: "Boa para organizar estudo e explorar áreas.",
     certificate: "Certificados por curso",
     practice: "Média",
     mathLevel: "Varia por trilha",
     beginnerScore: 4,
-    decisionTip: "Vale se você quer curadoria em português e vai usar com frequência.",
+    decisionTip:
+      "Vale se você quer curadoria em português e vai usar com frequência.",
     pros: ["Trilhas organizadas", "Conteúdo em português", "Muitas áreas"],
-    cautions: ["Assinatura exige constância", "Ainda precisa criar projetos autorais"],
+    cautions: [
+      "Assinatura exige constância",
+      "Ainda precisa criar projetos autorais",
+    ],
     objectives: ["certificado", "base", "emprego"],
   },
   {
@@ -440,14 +559,16 @@ const comparisonItems: ComparisonItem[] = [
     duration: "1 a 6 meses",
     durationLevel: "medio",
     modality: "Online",
-    bestFor: "Quem quer desenvolvimento web/mobile moderno com projetos práticos.",
+    bestFor:
+      "Quem quer desenvolvimento web/mobile moderno com projetos práticos.",
     notIdealFor: "Quem ainda não sabe se gosta de programação.",
     marketUse: "Boa para portfólio front-end, back-end e full stack.",
     certificate: "Certificados em cursos pagos e eventos",
     practice: "Alta",
     mathLevel: "Baixa",
     beginnerScore: 4,
-    decisionTip: "Boa escolha se você quer construir projetos modernos e gosta de comunidade.",
+    decisionTip:
+      "Boa escolha se você quer construir projetos modernos e gosta de comunidade.",
     pros: ["Projetos práticos", "Comunidade forte", "Stack moderna"],
     cautions: ["Pode avançar rápido", "Foco maior em desenvolvimento"],
     objectives: ["portfolio", "emprego", "rapido"],
@@ -462,15 +583,22 @@ const comparisonItems: ComparisonItem[] = [
     duration: "1 a 6 meses",
     durationLevel: "medio",
     modality: "Online",
-    bestFor: "Quem quer cursos de empresas e universidades, especialmente dados, IA e cloud.",
+    bestFor:
+      "Quem quer cursos de empresas e universidades, especialmente dados, IA e cloud.",
     notIdealFor: "Quem quer conteúdo sempre em português.",
-    marketUse: "Bom para fundamentos, especializações e certificados reconhecidos.",
+    marketUse:
+      "Bom para fundamentos, especializações e certificados reconhecidos.",
     certificate: "Certificado pago",
     practice: "Média",
     mathLevel: "Média a alta",
     beginnerScore: 3,
-    decisionTip: "Vale se você quer currículo com nomes fortes e consegue estudar em inglês.",
-    pros: ["Instituições reconhecidas", "Boa base teórica", "Trilhas de dados e IA"],
+    decisionTip:
+      "Vale se você quer currículo com nomes fortes e consegue estudar em inglês.",
+    pros: [
+      "Instituições reconhecidas",
+      "Boa base teórica",
+      "Trilhas de dados e IA",
+    ],
     cautions: ["Certificado pago", "Nem sempre é prático"],
     objectives: ["certificado", "dados", "ia", "base"],
   },
@@ -491,9 +619,13 @@ const comparisonItems: ComparisonItem[] = [
     practice: "Média",
     mathLevel: "Baixa a média",
     beginnerScore: 4,
-    decisionTip: "Use se você quer cloud ou ferramentas Microsoft sem custo inicial.",
+    decisionTip:
+      "Use se você quer cloud ou ferramentas Microsoft sem custo inicial.",
     pros: ["Oficial", "Gratuito", "Módulos curtos"],
-    cautions: ["Mais focado no ecossistema Microsoft", "Certificação oficial é paga"],
+    cautions: [
+      "Mais focado no ecossistema Microsoft",
+      "Certificação oficial é paga",
+    ],
     objectives: ["gratis", "cloud", "certificado"],
   },
   {
@@ -506,14 +638,16 @@ const comparisonItems: ComparisonItem[] = [
     duration: "3 a 10 horas por curso",
     durationLevel: "curto",
     modality: "Online",
-    bestFor: "Quem quer Python, pandas, machine learning e SQL com prática rápida.",
+    bestFor:
+      "Quem quer Python, pandas, machine learning e SQL com prática rápida.",
     notIdealFor: "Quem ainda não sabe nada de lógica ou inglês.",
     marketUse: "Muito bom para começar portfólio de dados.",
     certificate: "Certificado simples na plataforma",
     practice: "Alta",
     mathLevel: "Média",
     beginnerScore: 4,
-    decisionTip: "Escolha se quer testar dados sem gastar e com exercícios curtos.",
+    decisionTip:
+      "Escolha se quer testar dados sem gastar e com exercícios curtos.",
     pros: ["Prático", "Gratuito", "Direto ao ponto"],
     cautions: ["Em inglês", "Precisa transformar exercícios em projetos"],
     objectives: ["gratis", "dados", "portfolio", "rapido"],
@@ -528,15 +662,21 @@ const comparisonItems: ComparisonItem[] = [
     duration: "3 a 9 meses para base inicial",
     durationLevel: "medio",
     modality: "Projetos, cursos e prática",
-    bestFor: "Quem gosta de visual, interface, acessibilidade e ver resultado rápido.",
+    bestFor:
+      "Quem gosta de visual, interface, acessibilidade e ver resultado rápido.",
     notIdealFor: "Quem não gosta de detalhes visuais e mudanças frequentes.",
     marketUse: "Boa porta de entrada com portfólio publicado.",
     certificate: "Não obrigatório",
     practice: "Muito alta",
     mathLevel: "Baixa",
     beginnerScore: 5,
-    decisionTip: "Escolha se você gosta de construir telas e publicar projetos visíveis.",
-    pros: ["Feedback visual rápido", "Muitos materiais grátis", "Portfólio fácil de mostrar"],
+    decisionTip:
+      "Escolha se você gosta de construir telas e publicar projetos visíveis.",
+    pros: [
+      "Feedback visual rápido",
+      "Muitos materiais grátis",
+      "Portfólio fácil de mostrar",
+    ],
     cautions: ["Mercado competitivo", "Precisa caprichar em projetos"],
     objectives: ["gratis", "portfolio", "emprego", "rapido"],
   },
@@ -557,8 +697,13 @@ const comparisonItems: ComparisonItem[] = [
     practice: "Alta",
     mathLevel: "Média",
     beginnerScore: 4,
-    decisionTip: "Escolha se você gosta de resolver lógica e entender como sistemas funcionam por trás.",
-    pros: ["Base muito reaproveitável", "Boa demanda", "Conecta com cloud e dados"],
+    decisionTip:
+      "Escolha se você gosta de resolver lógica e entender como sistemas funcionam por trás.",
+    pros: [
+      "Base muito reaproveitável",
+      "Boa demanda",
+      "Conecta com cloud e dados",
+    ],
     cautions: ["Mais abstrato no início", "Debug pode ser menos visual"],
     objectives: ["gratis", "emprego", "base"],
   },
@@ -579,9 +724,17 @@ const comparisonItems: ComparisonItem[] = [
     practice: "Alta",
     mathLevel: "Média-Alta",
     beginnerScore: 4,
-    decisionTip: "Escolha se você gosta de perguntas, dados e conclusões bem explicadas.",
-    pros: ["Muitos datasets públicos", "Boa conexão com negócio", "Projetos demonstráveis"],
-    cautions: ["Precisa comunicar insights", "Estatística aparece com frequência"],
+    decisionTip:
+      "Escolha se você gosta de perguntas, dados e conclusões bem explicadas.",
+    pros: [
+      "Muitos datasets públicos",
+      "Boa conexão com negócio",
+      "Projetos demonstráveis",
+    ],
+    cautions: [
+      "Precisa comunicar insights",
+      "Estatística aparece com frequência",
+    ],
     objectives: ["dados", "portfolio", "emprego"],
   },
   {
@@ -594,15 +747,21 @@ const comparisonItems: ComparisonItem[] = [
     duration: "3 a 9 meses para base inicial",
     durationLevel: "medio",
     modality: "Cases, Figma, pesquisa e protótipos",
-    bestFor: "Quem gosta de entender pessoas, criar fluxos e melhorar experiências.",
+    bestFor:
+      "Quem gosta de entender pessoas, criar fluxos e melhorar experiências.",
     notIdealFor: "Quem quer só fazer telas bonitas sem pesquisa.",
     marketUse: "Bom para produto, design, pesquisa e interfaces.",
     certificate: "Menos importante que cases",
     practice: "Alta",
     mathLevel: "Baixa",
     beginnerScore: 5,
-    decisionTip: "Escolha se você gosta de pessoas, problemas e comunicação visual.",
-    pros: ["Portfólio por cases", "Boa para perfis comunicativos", "Não exige programação no início"],
+    decisionTip:
+      "Escolha se você gosta de pessoas, problemas e comunicação visual.",
+    pros: [
+      "Portfólio por cases",
+      "Boa para perfis comunicativos",
+      "Não exige programação no início",
+    ],
     cautions: ["Case precisa mostrar processo", "Mercado cobra repertório"],
     objectives: ["portfolio", "rapido", "emprego"],
   },
@@ -636,9 +795,13 @@ const durations = [
   { id: "longo", label: "Longo prazo (anos)" },
 ];
 
-function canShowByBudget(priceLevel: ComparisonItem["priceLevel"], budget: string) {
+function canShowByBudget(
+  priceLevel: ComparisonItem["priceLevel"],
+  budget: string,
+) {
   if (budget === "todos" || budget === "alto") return true;
-  if (budget === "medio") return ["gratis", "baixo", "medio"].includes(priceLevel);
+  if (budget === "medio")
+    return ["gratis", "baixo", "medio"].includes(priceLevel);
   if (budget === "baixo") return ["gratis", "baixo"].includes(priceLevel);
   return priceLevel === "gratis";
 }
@@ -650,7 +813,10 @@ function scoreLabel(score: number) {
   return "Mais difícil";
 }
 
-const comparisonRows: Array<{ label: string; getValue: (item: ComparisonItem) => string }> = [
+const comparisonRows: Array<{
+  label: string;
+  getValue: (item: ComparisonItem) => string;
+}> = [
   { label: "Tipo", getValue: (item) => item.type },
   { label: "Preço médio", getValue: (item) => item.avgPrice },
   { label: "Duração", getValue: (item) => item.duration },
@@ -661,11 +827,15 @@ const comparisonRows: Array<{ label: string; getValue: (item: ComparisonItem) =>
   { label: "Certificado/diploma", getValue: (item) => item.certificate },
   { label: "Prática", getValue: (item) => item.practice },
   { label: "Matemática", getValue: (item) => item.mathLevel },
-  { label: "Para iniciantes", getValue: (item) => scoreLabel(item.beginnerScore) },
+  {
+    label: "Para iniciantes",
+    getValue: (item) => scoreLabel(item.beginnerScore),
+  },
 ];
 
 export default function Comparador() {
-  const [comparisonKind, setComparisonKind] = useState<ComparisonCategory>("faculdades");
+  const [comparisonKind, setComparisonKind] =
+    useState<ComparisonCategory>("faculdades");
   const [objective, setObjective] = useState("todos");
   const [budget, setBudget] = useState("todos");
   const [duration, setDuration] = useState("todos");
@@ -678,9 +848,11 @@ export default function Comparador() {
   const filteredItems = useMemo(
     () =>
       itemsInKind.filter((item) => {
-        const matchObjective = objective === "todos" || item.objectives.includes(objective);
+        const matchObjective =
+          objective === "todos" || item.objectives.includes(objective);
         const matchBudget = canShowByBudget(item.priceLevel, budget);
-        const matchDuration = duration === "todos" || item.durationLevel === duration;
+        const matchDuration =
+          duration === "todos" || item.durationLevel === duration;
 
         return matchObjective && matchBudget && matchDuration;
       }),
@@ -699,8 +871,11 @@ export default function Comparador() {
     if (options.length < 2) return;
 
     const nextL = options.some((o) => o.id === leftId) ? leftId : options[0].id;
-    let nextR = options.some((o) => o.id === rightId) ? rightId : options.find((o) => o.id !== nextL)?.id ?? options[1].id;
-    if (nextR === nextL) nextR = options.find((o) => o.id !== nextL)?.id ?? options[1].id;
+    let nextR = options.some((o) => o.id === rightId)
+      ? rightId
+      : (options.find((o) => o.id !== nextL)?.id ?? options[1].id);
+    if (nextR === nextL)
+      nextR = options.find((o) => o.id !== nextL)?.id ?? options[1].id;
 
     if (nextL !== leftId) setLeftId(nextL);
     if (nextR !== rightId) setRightId(nextR);
@@ -708,14 +883,15 @@ export default function Comparador() {
 
   const left = options.find((item) => item.id === leftId) ?? options[0];
   const right =
-    options.find((item) => item.id === rightId && item.id !== left?.id)
-    ?? options.find((item) => item.id !== left?.id)
-    ?? options[0];
-  const recommendation = left.beginnerScore === right.beginnerScore
-    ? "As duas opções podem funcionar. Decida pelo seu contexto: orçamento, tempo disponível e tipo de rotina que você aguenta manter."
-    : left.beginnerScore > right.beginnerScore
-      ? `${left.name} tende a ser mais amigável para começar, mas compare com seu objetivo antes de decidir.`
-      : `${right.name} tende a ser mais amigável para começar, mas compare com seu objetivo antes de decidir.`;
+    options.find((item) => item.id === rightId && item.id !== left?.id) ??
+    options.find((item) => item.id !== left?.id) ??
+    options[0];
+  const recommendation =
+    left.beginnerScore === right.beginnerScore
+      ? "As duas opções podem funcionar. Decida pelo seu contexto: orçamento, tempo disponível e tipo de rotina que você aguenta manter."
+      : left.beginnerScore > right.beginnerScore
+        ? `${left.name} tende a ser mais amigável para começar, mas compare com seu objetivo antes de decidir.`
+        : `${right.name} tende a ser mais amigável para começar, mas compare com seu objetivo antes de decidir.`;
 
   function resetFilters() {
     setComparisonKind("faculdades");
@@ -731,16 +907,28 @@ export default function Comparador() {
       <SEO
         title="Comparador Tech — Compare faculdades, cursos, áreas e plataformas"
         description="Compare opções de estudo e carreira em tecnologia lado a lado, considerando custo, tempo, perfil, objetivo e riscos para iniciantes."
-        keywords={["comparador tecnologia", "comparar cursos ti", "comparar faculdades tecnologia", "comparar áreas da ti"]}
+        keywords={[
+          "comparador tecnologia",
+          "comparar cursos ti",
+          "comparar faculdades tecnologia",
+          "comparar áreas da ti",
+        ]}
         url="/comparador"
         schemaType="WebPage"
       />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-emerald-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#059669_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">comparador</p>
-          <h1 className="font-display text-4xl font-black text-slate-950">Compare antes de escolher.</h1>
-          <p className="mt-3 max-w-2xl text-slate-950">Coloque duas opções lado a lado e entenda custo, tempo, melhor uso e riscos para iniciantes.</p>
+          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            comparador
+          </p>
+          <h1 className="font-display text-4xl font-black text-slate-950">
+            Compare antes de escolher.
+          </h1>
+          <p className="mt-3 max-w-2xl text-slate-950">
+            Coloque duas opções lado a lado e entenda custo, tempo, melhor uso e
+            riscos para iniciantes.
+          </p>
         </div>
       </section>
 
@@ -749,12 +937,23 @@ export default function Comparador() {
           <div className="card-brutal rounded-2xl bg-white p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="font-display text-2xl font-black text-slate-950">Refine a comparação</h2>
+                <h2 className="font-display text-2xl font-black text-slate-950">
+                  Refine a comparação
+                </h2>
                 <p className="mt-1 text-sm font-semibold text-slate-600">
-                  Primeiro escolha <strong className="text-slate-800">o mesmo tipo de caminho</strong> nas duas colunas — não dá para comparar, por exemplo, uma graduação com um curso curto online; são decisões diferentes.
+                  Primeiro escolha{" "}
+                  <strong className="text-slate-800">
+                    o mesmo tipo de caminho
+                  </strong>{" "}
+                  nas duas colunas — não dá para comparar, por exemplo, uma
+                  graduação com um curso curto online; são decisões diferentes.
                 </p>
               </div>
-              <button type="button" onClick={resetFilters} className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-emerald-50">
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-emerald-50"
+              >
                 <RotateCcw className="h-4 w-4" />
                 Limpar filtros
               </button>
@@ -765,33 +964,63 @@ export default function Comparador() {
                 Tipo de caminho (as duas opções serão só deste grupo)
                 <select
                   value={comparisonKind}
-                  onChange={(event) => setComparisonKind(event.target.value as ComparisonCategory)}
+                  onChange={(event) =>
+                    setComparisonKind(event.target.value as ComparisonCategory)
+                  }
                   className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-indigo-50 p-3 text-sm font-black text-slate-900"
                 >
                   {comparisonGroups.map((item) => (
-                    <option key={item.id} value={item.id}>{item.label}</option>
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
                   ))}
                 </select>
                 {kindMeta ? (
-                  <p className="mt-2 text-[11px] font-semibold normal-case leading-snug text-slate-500">{kindMeta.hint}</p>
+                  <p className="mt-2 text-[11px] font-semibold normal-case leading-snug text-slate-500">
+                    {kindMeta.hint}
+                  </p>
                 ) : null}
               </label>
               <label className="text-xs font-black uppercase text-slate-600">
                 Prioridade
-                <select value={objective} onChange={(event) => setObjective(event.target.value)} className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900">
-                  {objectives.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                <select
+                  value={objective}
+                  onChange={(event) => setObjective(event.target.value)}
+                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
+                >
+                  {objectives.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="text-xs font-black uppercase text-slate-600">
                 Pagamento
-                <select value={budget} onChange={(event) => setBudget(event.target.value)} className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900">
-                  {budgets.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                <select
+                  value={budget}
+                  onChange={(event) => setBudget(event.target.value)}
+                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
+                >
+                  {budgets.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="text-xs font-black uppercase text-slate-600">
                 Ritmo / duração
-                <select value={duration} onChange={(event) => setDuration(event.target.value)} className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900">
-                  {durations.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                <select
+                  value={duration}
+                  onChange={(event) => setDuration(event.target.value)}
+                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
+                >
+                  {durations.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -807,14 +1036,18 @@ export default function Comparador() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="w-full text-xs font-black uppercase text-slate-600">Atalho: tipo de caminho</span>
+            <span className="w-full text-xs font-black uppercase text-slate-600">
+              Atalho: tipo de caminho
+            </span>
             {comparisonGroups.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setComparisonKind(item.id)}
                 className={`rounded-full border-2 px-4 py-2 text-left text-sm font-black transition-colors ${
-                  comparisonKind === item.id ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]" : "border-slate-300 bg-white hover:bg-slate-50"
+                  comparisonKind === item.id
+                    ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                    : "border-slate-300 bg-white hover:bg-slate-50"
                 }`}
               >
                 {item.label}
@@ -825,7 +1058,9 @@ export default function Comparador() {
           <div className="grid gap-4 md:grid-cols-2">
             <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
               <span className="text-slate-950">Opção A</span>
-              <span className="mt-0.5 block text-xs font-semibold text-slate-500">Mesmo grupo que a opção B</span>
+              <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                Mesmo grupo que a opção B
+              </span>
               <select
                 value={left.id}
                 onChange={(event) => {
@@ -838,34 +1073,70 @@ export default function Comparador() {
                 }}
                 className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
               >
-                {options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+                {options.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
               <span className="text-slate-950">Opção B</span>
-              <span className="mt-0.5 block text-xs font-semibold text-slate-500">Só entradas do tipo "{kindMeta?.label ?? comparisonKind}"</span>
+              <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                Só entradas do tipo "{kindMeta?.label ?? comparisonKind}"
+              </span>
               <select
                 value={right.id}
                 onChange={(event) => setRightId(event.target.value)}
                 className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
               >
-                {options.filter((option) => option.id !== left.id).map((option) => (
-                  <option key={option.id} value={option.id}>{option.name}</option>
-                ))}
+                {options
+                  .filter((option) => option.id !== left.id)
+                  .map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
               </select>
             </label>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2">
             {[left, right].map((item) => (
-              <article key={item.id} className="card-brutal rounded-2xl bg-white p-6">
-                <p className="mb-2 inline-flex rounded-full bg-violet-100 px-2 py-1 text-xs font-black uppercase text-violet-700">{item.type}</p>
-                <h2 className="font-display text-3xl font-black text-slate-950">{item.name}</h2>
-                <p className="mt-2 text-sm font-semibold text-slate-600">{item.decisionTip}</p>
+              <article
+                key={item.id}
+                className="card-brutal rounded-2xl bg-white p-6"
+              >
+                <p className="mb-2 inline-flex rounded-full bg-violet-100 px-2 py-1 text-xs font-black uppercase text-violet-700">
+                  {item.type}
+                </p>
+                <h2 className="font-display text-3xl font-black text-slate-950">
+                  {item.name}
+                </h2>
+                <p className="mt-2 text-sm font-semibold text-slate-600">
+                  {item.decisionTip}
+                </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs font-black uppercase text-emerald-700">Preço</p><p className="text-sm font-black">{item.avgPrice}</p></div>
-                  <div className="rounded-xl bg-amber-50 p-3"><p className="text-xs font-black uppercase text-amber-700">Tempo</p><p className="text-sm font-black">{item.duration}</p></div>
-                  <div className="rounded-xl bg-blue-50 p-3"><p className="text-xs font-black uppercase text-blue-700">Iniciante</p><p className="text-sm font-black">{scoreLabel(item.beginnerScore)}</p></div>
+                  <div className="rounded-xl bg-emerald-50 p-3">
+                    <p className="text-xs font-black uppercase text-emerald-700">
+                      Preço
+                    </p>
+                    <p className="text-sm font-black">{item.avgPrice}</p>
+                  </div>
+                  <div className="rounded-xl bg-amber-50 p-3">
+                    <p className="text-xs font-black uppercase text-amber-700">
+                      Tempo
+                    </p>
+                    <p className="text-sm font-black">{item.duration}</p>
+                  </div>
+                  <div className="rounded-xl bg-blue-50 p-3">
+                    <p className="text-xs font-black uppercase text-blue-700">
+                      Iniciante
+                    </p>
+                    <p className="text-sm font-black">
+                      {scoreLabel(item.beginnerScore)}
+                    </p>
+                  </div>
                 </div>
               </article>
             ))}
@@ -878,10 +1149,19 @@ export default function Comparador() {
               <div className="p-4 text-sm font-black">{right.name}</div>
             </div>
             {comparisonRows.map((row) => (
-              <div key={row.label} className="grid grid-cols-3 border-b border-slate-200 last:border-0">
-                <div className="p-4 text-sm font-black text-slate-950">{row.label}</div>
-                <div className="p-4 text-sm text-slate-600">{row.getValue(left)}</div>
-                <div className="p-4 text-sm text-slate-600">{row.getValue(right)}</div>
+              <div
+                key={row.label}
+                className="grid grid-cols-3 border-b border-slate-200 last:border-0"
+              >
+                <div className="p-4 text-sm font-black text-slate-950">
+                  {row.label}
+                </div>
+                <div className="p-4 text-sm text-slate-600">
+                  {row.getValue(left)}
+                </div>
+                <div className="p-4 text-sm text-slate-600">
+                  {row.getValue(right)}
+                </div>
               </div>
             ))}
           </div>
@@ -892,17 +1172,31 @@ export default function Comparador() {
                 <Lightbulb className="h-6 w-6 text-emerald-700" />
                 Recomendação prática
               </h2>
-              <p className="mt-3 text-sm font-semibold text-slate-700">{recommendation}</p>
-              <p className="mt-3 text-sm text-slate-600">Regra simples: se você precisa de diploma, escolha faculdade. Se precisa testar uma área rápido, comece com curso gratuito e projeto. Se quer decidir entre áreas, compare pelo tipo de tarefa que você aguenta fazer toda semana.</p>
+              <p className="mt-3 text-sm font-semibold text-slate-700">
+                {recommendation}
+              </p>
+              <p className="mt-3 text-sm text-slate-600">
+                Regra simples: se você precisa de diploma, escolha faculdade. Se
+                precisa testar uma área rápido, comece com curso gratuito e
+                projeto. Se quer decidir entre áreas, compare pelo tipo de
+                tarefa que você aguenta fazer toda semana.
+              </p>
             </div>
             <div className="card-brutal rounded-2xl bg-white p-5">
-              <h3 className="font-display text-xl font-black text-slate-950">Pontos de atenção</h3>
+              <h3 className="font-display text-xl font-black text-slate-950">
+                Pontos de atenção
+              </h3>
               <div className="mt-3 space-y-3">
                 {[left, right].map((item) => (
                   <div key={item.id}>
-                    <p className="mb-1 flex items-center gap-2 text-sm font-black text-slate-800"><AlertTriangle className="h-4 w-4 text-amber-600" /> {item.name}</p>
+                    <p className="mb-1 flex items-center gap-2 text-sm font-black text-slate-800">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />{" "}
+                      {item.name}
+                    </p>
                     <ul className="space-y-1 text-xs text-slate-600">
-                      {item.cautions.slice(0, 2).map((caution) => <li key={caution}>• {caution}</li>)}
+                      {item.cautions.slice(0, 2).map((caution) => (
+                        <li key={caution}>• {caution}</li>
+                      ))}
                     </ul>
                   </div>
                 ))}
@@ -912,13 +1206,18 @@ export default function Comparador() {
 
           <div className="grid gap-5 md:grid-cols-2">
             {[left, right].map((item) => (
-              <div key={item.id} className="card-brutal rounded-2xl bg-white p-5">
+              <div
+                key={item.id}
+                className="card-brutal rounded-2xl bg-white p-5"
+              >
                 <h3 className="mb-3 flex items-center gap-2 font-display text-xl font-black text-slate-950">
                   <CheckCircle className="h-5 w-5 text-emerald-600" />
                   Vantagens de {item.name}
                 </h3>
                 <ul className="space-y-2 text-sm text-slate-700">
-                  {item.pros.map((pro) => <li key={pro}>• {pro}</li>)}
+                  {item.pros.map((pro) => (
+                    <li key={pro}>• {pro}</li>
+                  ))}
                 </ul>
               </div>
             ))}

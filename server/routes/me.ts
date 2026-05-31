@@ -28,29 +28,72 @@ const EDITABLE_FIELDS = [
 ];
 
 const AVATAR_VALUES = {
-  avatar_border: new Set(["classic", "purple", "gold", "pink", "green", "blue", "orange", "red", "cyan"]),
-  avatar_icon: new Set(["initials", "code", "sparkles", "rocket", "brain", "laptop", "star", "target", "crown"]),
-  avatar_bg: new Set(["slate", "yellow", "purple", "pink", "green", "blue", "orange", "cream", "white"]),
+  avatar_border: new Set([
+    "classic",
+    "purple",
+    "gold",
+    "pink",
+    "green",
+    "blue",
+    "orange",
+    "red",
+    "cyan",
+  ]),
+  avatar_icon: new Set([
+    "initials",
+    "code",
+    "sparkles",
+    "rocket",
+    "brain",
+    "laptop",
+    "star",
+    "target",
+    "crown",
+  ]),
+  avatar_bg: new Set([
+    "slate",
+    "yellow",
+    "purple",
+    "pink",
+    "green",
+    "blue",
+    "orange",
+    "cream",
+    "white",
+  ]),
 } as const;
 
 router.use(requireAuth);
 
 function profileNameFromAuth(req: Request) {
   const metadata = req.user?.userMetadata || {};
-  const metadataName = metadata.name || metadata.full_name || metadata.user_name;
-  if (typeof metadataName === "string" && metadataName.trim()) return metadataName.trim();
+  const metadataName =
+    metadata.name || metadata.full_name || metadata.user_name;
+  if (typeof metadataName === "string" && metadataName.trim())
+    return metadataName.trim();
   return req.user!.email.split("@")[0];
 }
 
-function validateAvatarPreference(field: keyof typeof AVATAR_VALUES, value: unknown) {
+function validateAvatarPreference(
+  field: keyof typeof AVATAR_VALUES,
+  value: unknown,
+) {
   if (typeof value !== "string" || !AVATAR_VALUES[field].has(value)) {
-    return createError(400, "invalid_avatar_preference", `Valor inválido para ${field}.`);
+    return createError(
+      400,
+      "invalid_avatar_preference",
+      `Valor inválido para ${field}.`,
+    );
   }
 
   return null;
 }
 
-async function enqueueWelcomeEmailIfNeeded(profile: Record<string, unknown>, userId: string, email: string) {
+async function enqueueWelcomeEmailIfNeeded(
+  profile: Record<string, unknown>,
+  userId: string,
+  email: string,
+) {
   if (profile.welcome_email_sent === true) return;
 
   try {
@@ -78,7 +121,11 @@ router.get("/", async (req, res, next) => {
   try {
     const userId = req.user!.id;
 
-    const { data: profile, error } = await supabaseAdmin.from("profiles").select("*").eq("user_id", userId).single();
+    const { data: profile, error } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
 
     if (error?.code === "PGRST116" || !profile) {
       const { data: newProfile, error: insertError } = await supabaseAdmin
@@ -124,7 +171,9 @@ router.patch("/", async (req, res, next) => {
       }
     }
 
-    for (const field of Object.keys(AVATAR_VALUES) as Array<keyof typeof AVATAR_VALUES>) {
+    for (const field of Object.keys(AVATAR_VALUES) as Array<
+      keyof typeof AVATAR_VALUES
+    >) {
       if (field in updates) {
         const validationError = validateAvatarPreference(field, updates[field]);
         if (validationError) return next(validationError);
@@ -133,13 +182,24 @@ router.patch("/", async (req, res, next) => {
 
     if ("gender" in updates) {
       const value = updates.gender;
-      if (value !== null && (typeof value !== "string" || !GENDER_SET.has(value))) {
-        return next(createError(400, "invalid_gender", "Valor inválido para gender."));
+      if (
+        value !== null &&
+        (typeof value !== "string" || !GENDER_SET.has(value))
+      ) {
+        return next(
+          createError(400, "invalid_gender", "Valor inválido para gender."),
+        );
       }
     }
 
     if (Object.keys(updates).length === 0) {
-      return next(createError(400, "invalid_request", "Nenhum campo válido para atualizar."));
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "Nenhum campo válido para atualizar.",
+        ),
+      );
     }
 
     const { data: profile, error } = await supabaseAdmin
@@ -169,7 +229,9 @@ router.get("/roadmaps", async (req, res, next) => {
       .eq("user_id", userId);
 
     if (progressError) {
-      return next(createError(500, "db_error", "Erro ao buscar progresso de roadmaps."));
+      return next(
+        createError(500, "db_error", "Erro ao buscar progresso de roadmaps."),
+      );
     }
 
     if (!progress || progress.length === 0) {
@@ -183,7 +245,9 @@ router.get("/roadmaps", async (req, res, next) => {
       completedByRoadmap.set(id, (completedByRoadmap.get(id) || 0) + 1);
     }
 
-    const roadmapIds = Array.from(new Set(progress.map((row) => String(row.roadmap_id))));
+    const roadmapIds = Array.from(
+      new Set(progress.map((row) => String(row.roadmap_id))),
+    );
 
     const { data: roadmaps, error: roadmapsError } = await supabaseAdmin
       .from("roadmaps")
@@ -197,13 +261,16 @@ router.get("/roadmaps", async (req, res, next) => {
     const result = (roadmaps || [])
       .map((roadmap) => {
         const totalSteps = Number(
-          Array.isArray(roadmap.roadmap_steps) && roadmap.roadmap_steps.length > 0
+          Array.isArray(roadmap.roadmap_steps) &&
+            roadmap.roadmap_steps.length > 0
             ? roadmap.roadmap_steps[0].count || 0
             : 0,
         );
         const completed = completedByRoadmap.get(String(roadmap.id)) || 0;
         const progressPercent =
-          totalSteps > 0 ? Math.min(Math.round((completed / totalSteps) * 100), 100) : 0;
+          totalSteps > 0
+            ? Math.min(Math.round((completed / totalSteps) * 100), 100)
+            : 0;
 
         return {
           id: roadmap.id,
@@ -230,7 +297,9 @@ router.delete("/", async (req, res, next) => {
 
     if (error) {
       console.error("[me] Erro ao excluir conta:", error);
-      return next(createError(500, "delete_account_failed", "Erro ao excluir conta."));
+      return next(
+        createError(500, "delete_account_failed", "Erro ao excluir conta."),
+      );
     }
 
     console.log("[me] Conta excluída:", userId);

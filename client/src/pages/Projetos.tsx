@@ -5,7 +5,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
-import { ChevronDown, ChevronUp, Lightbulb, ExternalLink, PlayCircle } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Lightbulb,
+  ExternalLink,
+  PlayCircle,
+} from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -15,18 +21,39 @@ import { getProjects } from "@/services/contentService";
 
 const niveis = ["Todos", "Iniciante", "Básico", "Intermediário", "Avançado"];
 const nivelGuides = [
-  { label: "Iniciante", desc: "Para quem não sabe absolutamente nada e precisa de entregas sem pressão.", className: "bg-emerald-100 text-emerald-800 shadow-[4px_4px_0_#34d399]" },
-  { label: "Básico", desc: "Para quem já entende fundamentos e quer praticar com pequenas interações.", className: "bg-amber-100 text-amber-800 shadow-[4px_4px_0_#fbbf24]" },
-  { label: "Intermediário", desc: "Para quem já estudou um pouco e quer integrar dados, APIs ou documentação.", className: "bg-blue-100 text-blue-800 shadow-[4px_4px_0_#60a5fa]" },
-  { label: "Avançado", desc: "Para quem já está a fundo em TI e quer projetos completos, deploy, testes ou IA.", className: "bg-violet-100 text-violet-800 shadow-[4px_4px_0_#a78bfa]" },
+  {
+    label: "Iniciante",
+    desc: "Para quem não sabe absolutamente nada e precisa de entregas sem pressão.",
+    className: "bg-emerald-100 text-emerald-800 shadow-[4px_4px_0_#34d399]",
+  },
+  {
+    label: "Básico",
+    desc: "Para quem já entende fundamentos e quer praticar com pequenas interações.",
+    className: "bg-amber-100 text-amber-800 shadow-[4px_4px_0_#fbbf24]",
+  },
+  {
+    label: "Intermediário",
+    desc: "Para quem já estudou um pouco e quer integrar dados, APIs ou documentação.",
+    className: "bg-blue-100 text-blue-800 shadow-[4px_4px_0_#60a5fa]",
+  },
+  {
+    label: "Avançado",
+    desc: "Para quem já está a fundo em TI e quer projetos completos, deploy, testes ou IA.",
+    className: "bg-violet-100 text-violet-800 shadow-[4px_4px_0_#a78bfa]",
+  },
 ];
 
 const AREA_ALL = "Todas";
-const SPECIAL_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+const SPECIAL_LABELS: Record<string, string> = {
+  carreira: "Carreira",
+  fullstack: "Full Stack",
+};
 
 function labelForAreaSlug(slug: string | null | undefined): string {
   if (!slug) return "Geral";
-  return areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug;
+  return (
+    areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug
+  );
 }
 
 const areaColors: Record<string, string> = {
@@ -41,10 +68,10 @@ const areaColors: Record<string, string> = {
 };
 
 const nivelColors: Record<string, string> = {
-  "Iniciante": "bg-emerald-100 text-emerald-700",
-  "Básico": "bg-amber-100 text-amber-700",
-  "Intermediário": "bg-blue-100 text-blue-700",
-  "Avançado": "bg-violet-100 text-violet-700",
+  Iniciante: "bg-emerald-100 text-emerald-700",
+  Básico: "bg-amber-100 text-amber-700",
+  Intermediário: "bg-blue-100 text-blue-700",
+  Avançado: "bg-violet-100 text-violet-700",
 };
 
 export default function Projetos() {
@@ -55,12 +82,17 @@ export default function Projetos() {
   const [nivel, setNivel] = useState("Todos");
   const [expanded, setExpanded] = useState<string | null>(null);
   const areaSlugOptions = useMemo<(string | null)[]>(
-    () => [AREA_ALL, ...Array.from(new Set(projectItems.map((p) => p.areaSlug)))],
+    () => [
+      AREA_ALL,
+      ...Array.from(new Set(projectItems.map((p) => p.areaSlug))),
+    ],
     [projectItems],
   );
 
   useEffect(() => {
-    getProjects().then(setProjectItems).catch(() => setProjectItems(projetos));
+    getProjects()
+      .then(setProjectItems)
+      .catch(() => setProjectItems(projetos));
   }, []);
 
   const filtered = projectItems.filter((p) => {
@@ -74,7 +106,12 @@ export default function Projetos() {
       <SEO
         title="Projetos para Portfólio — Ideias práticas para iniciantes em TI"
         description="Ideias de projetos por nível e área para montar portfólio, praticar tecnologia e mostrar evolução em processos seletivos."
-        keywords={["projetos para portfólio", "projetos programação iniciante", "ideias de projetos ti", "portfolio dev iniciante"]}
+        keywords={[
+          "projetos para portfólio",
+          "projetos programação iniciante",
+          "ideias de projetos ti",
+          "portfolio dev iniciante",
+        ]}
         url="/projetos"
         schemaType="CollectionPage"
       />
@@ -85,9 +122,12 @@ export default function Projetos() {
             <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-orange-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
               portfólio por nível
             </p>
-            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Projetos para cada fase da sua jornada.</h1>
+            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
+              Projetos para cada fase da sua jornada.
+            </h1>
             <p className="text-slate-950 text-lg">
-              Ideias práticas para quem está do zero absoluto até quem já quer projetos completos e profundos em TI.
+              Ideias práticas para quem está do zero absoluto até quem já quer
+              projetos completos e profundos em TI.
             </p>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-4">
@@ -98,8 +138,12 @@ export default function Projetos() {
                 className={`rounded-2xl border-2 border-slate-900 p-4 text-left transition hover:-translate-y-1 ${guide.className}`}
                 type="button"
               >
-                <h2 className="font-display text-xl font-black">{guide.label}</h2>
-                <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-700">{guide.desc}</p>
+                <h2 className="font-display text-xl font-black">
+                  {guide.label}
+                </h2>
+                <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-700">
+                  {guide.desc}
+                </p>
               </button>
             ))}
           </div>
@@ -109,16 +153,31 @@ export default function Projetos() {
       <section className="bg-orange-50 border-b-2 border-orange-200 py-4 sticky top-16 z-40">
         <div className="container">
           <div className="flex flex-wrap gap-3">
-            <select value={area} onChange={(e) => setArea(e.target.value)} className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white">
+            <select
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+            >
               {areaSlugOptions.map((slug) => {
-                const value = slug === AREA_ALL ? AREA_ALL : slug ?? "";
+                const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
                 const key = slug ?? "__null__";
-                const label = slug === AREA_ALL ? AREA_ALL : labelForAreaSlug(slug);
-                return <option key={key} value={value}>{label}</option>;
+                const label =
+                  slug === AREA_ALL ? AREA_ALL : labelForAreaSlug(slug);
+                return (
+                  <option key={key} value={value}>
+                    {label}
+                  </option>
+                );
               })}
             </select>
-            <select value={nivel} onChange={(e) => setNivel(e.target.value)} className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white">
-              {niveis.map((n) => <option key={n}>{n}</option>)}
+            <select
+              value={nivel}
+              onChange={(e) => setNivel(e.target.value)}
+              className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+            >
+              {niveis.map((n) => (
+                <option key={n}>{n}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -128,23 +187,46 @@ export default function Projetos() {
         <div className="container">
           <div className="space-y-4">
             {filtered.map((projeto) => (
-              <div key={projeto.id} className="card-brutal bg-white rounded-xl overflow-hidden shadow-[5px_5px_0_#fdba74]">
+              <div
+                key={projeto.id}
+                className="card-brutal bg-white rounded-xl overflow-hidden shadow-[5px_5px_0_#fdba74]"
+              >
                 <div
-                  onClick={() => setExpanded(expanded === projeto.id ? null : projeto.id)}
+                  onClick={() =>
+                    setExpanded(expanded === projeto.id ? null : projeto.id)
+                  }
                   className="w-full flex items-start justify-between p-6 text-left"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${(projeto.areaSlug && areaColors[projeto.areaSlug]) || "bg-slate-100 text-slate-600"}`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${(projeto.areaSlug && areaColors[projeto.areaSlug]) || "bg-slate-100 text-slate-600"}`}
+                      >
                         {labelForAreaSlug(projeto.areaSlug)}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}>{projeto.nivel}</span>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}
+                      >
+                        {projeto.nivel}
+                      </span>
                     </div>
-                    <h3 className="font-display font-bold text-xl text-slate-900">{projeto.nome}</h3>
-                    <p className="text-sm text-slate-600 mt-1">{projeto.objetivo}</p>
+                    <h3 className="font-display font-bold text-xl text-slate-900">
+                      {projeto.nome}
+                    </h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      {projeto.objetivo}
+                    </p>
                   </div>
                   <div className="ml-4 flex shrink-0 items-center gap-3">
-                    <FavoriteButton compact item={{ id: projeto.id, type: "projeto", title: projeto.nome, subtitle: labelForAreaSlug(projeto.areaSlug) }} />
+                    <FavoriteButton
+                      compact
+                      item={{
+                        id: projeto.id,
+                        type: "projeto",
+                        title: projeto.nome,
+                        subtitle: labelForAreaSlug(projeto.areaSlug),
+                      }}
+                    />
                     {expanded === projeto.id ? (
                       <ChevronUp className="w-5 h-5 text-slate-400" />
                     ) : (
@@ -159,21 +241,35 @@ export default function Projetos() {
                       <div>
                         {/* Ferramentas */}
                         <div className="mb-4">
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Ferramentas</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                            Ferramentas
+                          </p>
                           <div className="flex flex-wrap gap-1">
                             {projeto.ferramentas.map((f) => (
-                              <span key={f} className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono">{f}</span>
+                              <span
+                                key={f}
+                                className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono"
+                              >
+                                {f}
+                              </span>
                             ))}
                           </div>
                         </div>
 
                         {/* Passo a passo */}
                         <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Passo a passo</p>
+                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                            Passo a passo
+                          </p>
                           <ol className="space-y-2">
                             {projeto.passosSimplificados.map((passo, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
-                                <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                              <li
+                                key={i}
+                                className="flex items-start gap-2 text-sm text-slate-700"
+                              >
+                                <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                  {i + 1}
+                                </span>
                                 {passo}
                               </li>
                             ))}
@@ -183,41 +279,66 @@ export default function Projetos() {
 
                       <div>
                         <a
-                          href={(projectHelpVideos[projeto.id] || projectHelpVideos.default).url}
+                          href={
+                            (
+                              projectHelpVideos[projeto.id] ||
+                              projectHelpVideos.default
+                            ).url
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="card-brutal mb-4 flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
                         >
                           <PlayCircle className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
                           <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Vídeo de ajuda</p>
+                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                              Vídeo de ajuda
+                            </p>
                             <p className="text-sm font-bold text-slate-900">
-                              {(projectHelpVideos[projeto.id] || projectHelpVideos.default).title}
+                              {
+                                (
+                                  projectHelpVideos[projeto.id] ||
+                                  projectHelpVideos.default
+                                ).title
+                              }
                             </p>
                             <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
-                              Assistir referência <ExternalLink className="h-3 w-3" />
+                              Assistir referência{" "}
+                              <ExternalLink className="h-3 w-3" />
                             </span>
                           </div>
                         </a>
                         {/* Entregável */}
                         <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
-                          <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">Entregável final</p>
-                          <p className="text-sm text-slate-700">{projeto.entregavel}</p>
-                          <p className="text-xs text-slate-500 mt-1">📤 Publicar em: {projeto.comoPublicar}</p>
+                          <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">
+                            Entregável final
+                          </p>
+                          <p className="text-sm text-slate-700">
+                            {projeto.entregavel}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            📤 Publicar em: {projeto.comoPublicar}
+                          </p>
                         </div>
 
                         {/* LinkedIn */}
                         <div className="card-brutal bg-orange-50 rounded-lg p-4 border-orange-200">
                           <div className="flex items-center gap-2 mb-2">
                             <Lightbulb className="w-4 h-4 text-orange-700" />
-                            <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">Sugestão de post no LinkedIn</p>
+                            <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">
+                              Sugestão de post no LinkedIn
+                            </p>
                           </div>
-                          <p className="text-xs text-slate-700 italic">"{projeto.sugestaoLinkedIn}"</p>
+                          <p className="text-xs text-slate-700 italic">
+                            "{projeto.sugestaoLinkedIn}"
+                          </p>
                         </div>
 
                         {/* Sugestão editorial pra praticar depois (não-clicável) */}
                         <div className="mt-4 text-sm text-slate-700">
-                          <span className="font-medium">Sugestão pra praticar depois:</span>{" "}
+                          <span className="font-medium">
+                            Sugestão pra praticar depois:
+                          </span>{" "}
                           <span>{projeto.proximoProjeto}</span>
                         </div>
                       </div>
@@ -231,8 +352,18 @@ export default function Projetos() {
           {filtered.length === 0 && (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">🛠️</p>
-              <p className="text-slate-600 font-medium">Nenhum projeto encontrado.</p>
-              <button onClick={() => { setArea("Todas"); setNivel("Todos"); }} className="mt-4 text-orange-700 text-sm font-medium hover:underline">Limpar filtros</button>
+              <p className="text-slate-600 font-medium">
+                Nenhum projeto encontrado.
+              </p>
+              <button
+                onClick={() => {
+                  setArea("Todas");
+                  setNivel("Todos");
+                }}
+                className="mt-4 text-orange-700 text-sm font-medium hover:underline"
+              >
+                Limpar filtros
+              </button>
             </div>
           )}
         </div>

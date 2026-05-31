@@ -131,7 +131,9 @@ export default function QuizCarreira() {
   const [phase, setPhase] = useState<QuizPhase>("objective");
   const [objective, setObjective] = useState<QuizObjective | null>(null);
   const [level, setLevel] = useState<QuizLevel | null>(null);
-  const [triageAnswers, setTriageAnswers] = useState<Record<string, number>>({});
+  const [triageAnswers, setTriageAnswers] = useState<Record<string, number>>(
+    {},
+  );
   const [triageIndex, setTriageIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -170,7 +172,15 @@ export default function QuizCarreira() {
         currentIndex,
       });
     }
-  }, [phase, objective, level, triageAnswers, triageIndex, answers, currentIndex]);
+  }, [
+    phase,
+    objective,
+    level,
+    triageAnswers,
+    triageIndex,
+    answers,
+    currentIndex,
+  ]);
 
   const handleSelectObjective = (id: QuizObjective) => {
     setObjective(id);
@@ -226,7 +236,9 @@ export default function QuizCarreira() {
         setTriageIndex(triageIndex + 1);
         return;
       }
-      const levels = triageQuestions.map((q) => q.options[newTriage[q.id]].level);
+      const levels = triageQuestions.map(
+        (q) => q.options[newTriage[q.id]].level,
+      );
       const computed = classifyTriageLevel(levels);
       if (computed !== level) {
         setAnswers({});
@@ -327,7 +339,10 @@ export default function QuizCarreira() {
     const maxPerQuestion = 5;
     const topScore = top[0]?.[1] || 0;
     const confidence = answered
-      ? Math.min(100, Math.round((topScore / (answered * maxPerQuestion)) * 100))
+      ? Math.min(
+          100,
+          Math.round((topScore / (answered * maxPerQuestion)) * 100),
+        )
       : 0;
 
     return { top, reasonsByKey, answered, maxPerQuestion, confidence };
@@ -443,7 +458,7 @@ export default function QuizCarreira() {
       result_area: payload.resultArea,
       result_area_slug: payload.resultAreaSlug || undefined,
       confidence: payload.confidence,
-      level: payload.kind === "area" ? level ?? undefined : undefined,
+      level: payload.kind === "area" ? (level ?? undefined) : undefined,
       result_json: {
         kind: payload.kind,
         level: payload.kind === "area" ? level : null,
@@ -529,7 +544,9 @@ export default function QuizCarreira() {
               question={triageSteps[triageIndex]}
               currentIndex={triageIndex}
               totalQuestions={triageSteps.length}
-              selectedOption={triageAnswers[triageSteps[triageIndex].id] ?? null}
+              selectedOption={
+                triageAnswers[triageSteps[triageIndex].id] ?? null
+              }
               accent={track.accent}
               onAnswer={handleTriageAnswer}
               onBack={handleTriageBack}
@@ -604,8 +621,8 @@ function ObjectiveScreen({
       </h1>
 
       <p className="mt-4 max-w-xl text-base font-semibold text-slate-600 md:text-lg">
-        Começa escolhendo o seu objetivo — a gente monta o quiz certo pra ele.
-        É rápido, gratuito e não tem resposta certa nem errada.
+        Começa escolhendo o seu objetivo — a gente monta o quiz certo pra ele. É
+        rápido, gratuito e não tem resposta certa nem errada.
       </p>
 
       <p className="mb-3 mt-8 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
@@ -695,7 +712,11 @@ function AreaPreview() {
               style={{ borderColor: accent, backgroundColor: `${accent}14` }}
             >
               {Icon && (
-                <Icon className="h-3.5 w-3.5" style={{ color: accent }} strokeWidth={2.5} />
+                <Icon
+                  className="h-3.5 w-3.5"
+                  style={{ color: accent }}
+                  strokeWidth={2.5}
+                />
               )}
               {nome}
             </motion.span>
@@ -1013,9 +1034,7 @@ function QuestionScreen({
               } disabled:cursor-not-allowed`}
               style={{
                 borderColor: isSelected ? "#1a1a1a" : undefined,
-                boxShadow: isSelected
-                  ? "4px 4px 0 #0f172a"
-                  : undefined,
+                boxShadow: isSelected ? "4px 4px 0 #0f172a" : undefined,
               }}
             >
               <span
@@ -1025,7 +1044,11 @@ function QuestionScreen({
                   color: isSelected ? "#fde047" : "#ffffff",
                 }}
               >
-                {isSelected ? <Check className="h-5 w-5" strokeWidth={3} /> : letter}
+                {isSelected ? (
+                  <Check className="h-5 w-5" strokeWidth={3} />
+                ) : (
+                  letter
+                )}
               </span>
 
               <span className="text-base font-bold text-slate-950">

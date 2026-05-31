@@ -18,7 +18,9 @@
     "paths": {
       "@/*": ["./client/src/*"],
       "@shared/*": ["./shared/*"],
-      "@supabase/supabase-js": ["./node_modules/@supabase/supabase-js/dist/index.d.cts"]
+      "@supabase/supabase-js": [
+        "./node_modules/@supabase/supabase-js/dist/index.d.cts"
+      ]
     }
   }
 }

@@ -39,7 +39,12 @@ const staticEntries: SitemapEntry[] = [
 ];
 
 function escapeXml(value: string) {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 function absoluteLoc(pathname: string) {
@@ -56,7 +61,9 @@ function toXml(entries: SitemapEntry[]) {
       return true;
     })
     .map((entry) => {
-      const lastmod = entry.lastmod ? `<lastmod>${escapeXml(new Date(entry.lastmod).toISOString())}</lastmod>` : "";
+      const lastmod = entry.lastmod
+        ? `<lastmod>${escapeXml(new Date(entry.lastmod).toISOString())}</lastmod>`
+        : "";
       return `<url><loc>${escapeXml(absoluteLoc(entry.loc))}</loc>${lastmod}<changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`;
     })
     .join("");
@@ -67,40 +74,107 @@ function toXml(entries: SitemapEntry[]) {
 async function fetchDynamicEntries() {
   const entries: SitemapEntry[] = [];
 
-  const [areas, roadmaps, courses, news, jobs] = await Promise.allSettled([supabaseAdmin.from("areas").select("slug, updated_at").eq("is_published", true), supabaseAdmin.from("roadmaps").select("slug, updated_at").eq("is_published", true), supabaseAdmin.from("courses").select("slug, updated_at").eq("is_published", true), supabaseAdmin.from("news").select("slug, published_at").eq("is_published", true), supabaseAdmin.from("external_jobs").select("id, published_at").eq("is_published", true)]);
+  const [areas, roadmaps, courses, news, jobs] = await Promise.allSettled([
+    supabaseAdmin
+      .from("areas")
+      .select("slug, updated_at")
+      .eq("is_published", true),
+    supabaseAdmin
+      .from("roadmaps")
+      .select("slug, updated_at")
+      .eq("is_published", true),
+    supabaseAdmin
+      .from("courses")
+      .select("slug, updated_at")
+      .eq("is_published", true),
+    supabaseAdmin
+      .from("news")
+      .select("slug, published_at")
+      .eq("is_published", true),
+    supabaseAdmin
+      .from("external_jobs")
+      .select("id, published_at")
+      .eq("is_published", true),
+  ]);
 
   if (areas.status === "fulfilled" && !areas.value.error) {
-    entries.push(...(areas.value.data || []).map((row) => ({ loc: `/areas/${row.slug}`, changefreq: "monthly" as const, priority: "0.7", lastmod: row.updated_at })));
+    entries.push(
+      ...(areas.value.data || []).map((row) => ({
+        loc: `/areas/${row.slug}`,
+        changefreq: "monthly" as const,
+        priority: "0.7",
+        lastmod: row.updated_at,
+      })),
+    );
   }
   if (roadmaps.status === "fulfilled" && !roadmaps.value.error) {
-    const lastmod = latestDate((roadmaps.value.data || []).map((row) => row.updated_at));
-    if (lastmod) entries.push({ loc: "/roadmaps", changefreq: "weekly", priority: "0.9", lastmod });
+    const lastmod = latestDate(
+      (roadmaps.value.data || []).map((row) => row.updated_at),
+    );
+    if (lastmod)
+      entries.push({
+        loc: "/roadmaps",
+        changefreq: "weekly",
+        priority: "0.9",
+        lastmod,
+      });
   }
   if (courses.status === "fulfilled" && !courses.value.error) {
-    const lastmod = latestDate((courses.value.data || []).map((row) => row.updated_at));
-    if (lastmod) entries.push({ loc: "/cursos", changefreq: "weekly", priority: "0.9", lastmod });
+    const lastmod = latestDate(
+      (courses.value.data || []).map((row) => row.updated_at),
+    );
+    if (lastmod)
+      entries.push({
+        loc: "/cursos",
+        changefreq: "weekly",
+        priority: "0.9",
+        lastmod,
+      });
   }
   if (news.status === "fulfilled" && !news.value.error) {
-    const lastmod = latestDate((news.value.data || []).map((row) => row.published_at));
-    if (lastmod) entries.push({ loc: "/noticias", changefreq: "daily", priority: "0.8", lastmod });
+    const lastmod = latestDate(
+      (news.value.data || []).map((row) => row.published_at),
+    );
+    if (lastmod)
+      entries.push({
+        loc: "/noticias",
+        changefreq: "daily",
+        priority: "0.8",
+        lastmod,
+      });
   }
   if (jobs.status === "fulfilled" && !jobs.value.error) {
-    const lastmod = latestDate((jobs.value.data || []).map((row) => row.published_at));
-    if (lastmod) entries.push({ loc: "/estagio", changefreq: "daily", priority: "0.8", lastmod });
+    const lastmod = latestDate(
+      (jobs.value.data || []).map((row) => row.published_at),
+    );
+    if (lastmod)
+      entries.push({
+        loc: "/estagio",
+        changefreq: "daily",
+        priority: "0.8",
+        lastmod,
+      });
   }
 
   return entries;
 }
 
 function latestDate(values: Array<string | null | undefined>) {
-  return values.filter((value): value is string => Boolean(value)).sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0];
+  return values
+    .filter((value): value is string => Boolean(value))
+    .sort(
+      (left, right) => new Date(right).getTime() - new Date(left).getTime(),
+    )[0];
 }
 
 router.get("/sitemap.xml", async (_req, res, next) => {
   try {
     const dynamicEntries = await fetchDynamicEntries();
     res.setHeader("Content-Type", "application/xml; charset=utf-8");
-    res.setHeader("Cache-Control", `public, max-age=${CACHE_SECONDS}, s-maxage=${CACHE_SECONDS}`);
+    res.setHeader(
+      "Cache-Control",
+      `public, max-age=${CACHE_SECONDS}, s-maxage=${CACHE_SECONDS}`,
+    );
     res.send(toXml([...dynamicEntries, ...staticEntries]));
   } catch (err) {
     next(err);

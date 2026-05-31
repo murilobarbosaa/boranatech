@@ -41,7 +41,10 @@ export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
             className="relative inline-flex h-20 w-20 items-center justify-center rounded-3xl"
             style={
               badge.isUnlocked
-                ? { backgroundColor: categoryStyle.hexBg, color: categoryStyle.hexFg }
+                ? {
+                    backgroundColor: categoryStyle.hexBg,
+                    color: categoryStyle.hexFg,
+                  }
                 : { backgroundColor: "#e2e8f0", color: "#94a3b8" }
             }
           >
@@ -90,11 +93,15 @@ export function BadgeDetailModal({ badge, onClose }: BadgeDetailModalProps) {
               <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-slate-500">
                 Como desbloquear
               </p>
-              <p className="mb-3 text-sm font-bold text-slate-950">{badge.unlockCriteria}</p>
+              <p className="mb-3 text-sm font-bold text-slate-950">
+                {badge.unlockCriteria}
+              </p>
               {badge.progress ? (
                 <div>
                   <div className="mb-1 flex items-baseline justify-between">
-                    <span className="font-mono text-[11px] text-slate-500">Seu progresso</span>
+                    <span className="font-mono text-[11px] text-slate-500">
+                      Seu progresso
+                    </span>
                     <span className="font-mono text-[11px] font-bold text-slate-700">
                       {Math.round(progressPct)}%
                     </span>

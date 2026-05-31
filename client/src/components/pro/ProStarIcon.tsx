@@ -11,7 +11,13 @@ export function ProStarIcon({ className = "" }: { className?: string }) {
   );
 }
 
-export function ProInlineBadge({ label, className = "" }: { label: string; className?: string }) {
+export function ProInlineBadge({
+  label,
+  className = "",
+}: {
+  label: string;
+  className?: string;
+}) {
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
       <span>{label}</span>

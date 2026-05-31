@@ -43,7 +43,10 @@ export default function CurriculoGerar() {
   // useAuth().loading só vira false depois que loadProfile resolveu (ver
   // AuthContext linhas 86-93). Esperar aqui evita renderizar a saudação com
   // nome vazio e ter que recalcular depois.
-  const greeting = useMemo(() => buildGreeting(firstName(profile?.name)), [profile?.name]);
+  const greeting = useMemo(
+    () => buildGreeting(firstName(profile?.name)),
+    [profile?.name],
+  );
 
   function handleReset() {
     setGenerated(null);
@@ -96,10 +99,18 @@ function PreparingChat() {
   return (
     <div className="card-brutal mx-auto max-w-md rounded-2xl border-slate-950 bg-white p-8 text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-100 shadow-[3px_3px_0_#0f172a]">
-        <Loader2 className="h-5 w-5 animate-spin text-slate-950" strokeWidth={2.5} aria-hidden />
+        <Loader2
+          className="h-5 w-5 animate-spin text-slate-950"
+          strokeWidth={2.5}
+          aria-hidden
+        />
       </div>
-      <p className="mt-4 font-display text-lg font-black text-slate-950">Preparando teu chat...</p>
-      <p className="mt-1 text-sm font-medium text-slate-600">Carregando teu perfil pra começar.</p>
+      <p className="mt-4 font-display text-lg font-black text-slate-950">
+        Preparando teu chat...
+      </p>
+      <p className="mt-1 text-sm font-medium text-slate-600">
+        Carregando teu perfil pra começar.
+      </p>
     </div>
   );
 }
@@ -109,24 +120,40 @@ function PendingStatus() {
     <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-100 shadow-[2px_2px_0_#0f172a]">
-          <CheckCircle2 className="h-5 w-5 text-slate-950" strokeWidth={2.25} aria-hidden />
+          <CheckCircle2
+            className="h-5 w-5 text-slate-950"
+            strokeWidth={2.25}
+            aria-hidden
+          />
         </div>
-        <h3 className="font-display text-lg font-black text-slate-950">Resultado vai aparecer aqui</h3>
+        <h3 className="font-display text-lg font-black text-slate-950">
+          Resultado vai aparecer aqui
+        </h3>
       </div>
       <p className="mt-4 text-sm font-medium leading-relaxed text-slate-700">
-        Quando tu confirmar pro Natechinho que pode gerar, o currículo aparece nesta tela em formato bonito, pronto pra imprimir.
+        Quando tu confirmar pro Natechinho que pode gerar, o currículo aparece
+        nesta tela em formato bonito, pronto pra imprimir.
       </p>
       <ul className="mt-5 space-y-2 text-sm font-bold text-slate-800">
         <li className="flex items-start gap-2">
-          <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]" aria-hidden />
+          <span
+            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]"
+            aria-hidden
+          />
           Conversa de uns 10 minutos
         </li>
         <li className="flex items-start gap-2">
-          <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]" aria-hidden />
+          <span
+            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]"
+            aria-hidden
+          />
           3 formatos (Híbrido, Cronológico, Harvard)
         </li>
         <li className="flex items-start gap-2">
-          <span className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]" aria-hidden />
+          <span
+            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]"
+            aria-hidden
+          />
           Adapta o conteúdo conforme tua persona
         </li>
       </ul>
@@ -203,12 +230,15 @@ function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
     <div>
       <div className="print-hide mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-800">Currículo pronto</p>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-800">
+            Currículo pronto
+          </p>
           <h2 className="mt-1 font-display text-2xl font-black text-slate-950 sm:text-3xl">
             {curriculo.dadosPessoais.nome}
           </h2>
           <p className="mt-0.5 text-sm font-bold text-slate-700">
-            Formato {formatoLabel} · Persona {personaLabel} · {curriculo.idioma === "en" ? "English" : "Português"}
+            Formato {formatoLabel} · Persona {personaLabel} ·{" "}
+            {curriculo.idioma === "en" ? "English" : "Português"}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -231,7 +261,8 @@ function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
         </div>
       </div>
       <p className="print-hide -mt-3 mb-6 text-xs font-medium text-slate-600">
-        Abre o diálogo de impressão do navegador. Escolhe "Salvar como PDF" pra baixar.
+        Abre o diálogo de impressão do navegador. Escolhe "Salvar como PDF" pra
+        baixar.
       </p>
 
       <div className="curriculo-preview-stage rounded-2xl bg-slate-100 p-4 sm:p-8">
@@ -248,7 +279,8 @@ function GeneratedView({ curriculo, onReset }: GeneratedViewProps) {
           </pre>
         </details>
         <p className="mt-3 text-xs font-medium text-slate-600">
-          Quer a versão editável depois? Esse JSON é o que vira o PDF, pode salvar pra reaproveitar.
+          Quer a versão editável depois? Esse JSON é o que vira o PDF, pode
+          salvar pra reaproveitar.
         </p>
       </div>
     </div>

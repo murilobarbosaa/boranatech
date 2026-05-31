@@ -8,7 +8,11 @@ interface SecaoFormacaoProps {
   compact?: boolean;
 }
 
-export default function SecaoFormacao({ title, items, compact = false }: SecaoFormacaoProps) {
+export default function SecaoFormacao({
+  title,
+  items,
+  compact = false,
+}: SecaoFormacaoProps) {
   if (!items || items.length === 0) return null;
   const gap = compact ? "space-y-1.5" : "space-y-2";
   return (
@@ -21,15 +25,22 @@ export default function SecaoFormacao({ title, items, compact = false }: SecaoFo
               <h3 className="text-[12px] font-bold text-slate-900">
                 {item.curso}
                 {item.instituicao ? (
-                  <span className="font-medium text-slate-700"> · {item.instituicao}</span>
+                  <span className="font-medium text-slate-700">
+                    {" "}
+                    · {item.instituicao}
+                  </span>
                 ) : null}
               </h3>
               {item.periodo ? (
-                <span className="text-[10.5px] font-medium text-slate-500">{item.periodo}</span>
+                <span className="text-[10.5px] font-medium text-slate-500">
+                  {item.periodo}
+                </span>
               ) : null}
             </div>
             {item.status ? (
-              <p className="mt-0.5 text-[10.5px] italic text-slate-600">{item.status}</p>
+              <p className="mt-0.5 text-[10.5px] italic text-slate-600">
+                {item.status}
+              </p>
             ) : null}
           </div>
         ))}

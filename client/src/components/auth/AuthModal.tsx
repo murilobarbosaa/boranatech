@@ -20,10 +20,7 @@ import {
   loginSchema,
   signupSchema,
 } from "@/lib/authSchemas";
-import {
-  savePendingIntent,
-  type PendingIntent,
-} from "@/lib/pendingIntent";
+import { savePendingIntent, type PendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
 import { getMyProfile } from "@/services/profileService";
 import type { Gender } from "@shared/gender";
@@ -87,7 +84,12 @@ export default function AuthModal({
 
     try {
       if (isSignup) {
-        const parsed = signupSchema.safeParse({ name, email, password, gender });
+        const parsed = signupSchema.safeParse({
+          name,
+          email,
+          password,
+          gender,
+        });
         if (!parsed.success) {
           toast.error(firstIssueMessage(parsed.error));
           return;
@@ -96,9 +98,14 @@ export default function AuthModal({
         await signUp(parsed.data);
         localStorage.setItem("bnt_signup_completed", "true");
         getMyProfile().catch((triggerErr) => {
-          console.warn("[AuthModal] failed to trigger welcome email:", triggerErr);
+          console.warn(
+            "[AuthModal] failed to trigger welcome email:",
+            triggerErr,
+          );
         });
-        toast.success(`Cadastro criado com segurança. ${greet(parsed.data.gender)} à plataforma!`);
+        toast.success(
+          `Cadastro criado com segurança. ${greet(parsed.data.gender)} à plataforma!`,
+        );
       } else {
         const parsed = loginSchema.safeParse({ email, password });
         if (!parsed.success) {
@@ -124,8 +131,12 @@ export default function AuthModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] gap-2 overflow-y-auto rounded-xl border-2 border-slate-950 bg-white p-4 shadow-[6px_6px_0_#0f172a] sm:max-w-md sm:gap-4 sm:p-6">
         <DialogHeader className="mt-2 mb-3 gap-3">
-          <DialogTitle className="px-8 text-center font-display text-lg font-black leading-tight text-slate-950 sm:text-2xl">{title}</DialogTitle>
-          <DialogDescription className="text-center text-sm text-slate-600">{description}</DialogDescription>
+          <DialogTitle className="px-8 text-center font-display text-lg font-black leading-tight text-slate-950 sm:text-2xl">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="text-center text-sm text-slate-600">
+            {description}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex justify-center">
@@ -163,7 +174,11 @@ export default function AuthModal({
           mode={isSignup ? "cadastro" : "login"}
           onBeforeOAuth={persistIntentForOAuth}
           showDivider={false}
-          redirectTo={typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}${window.location.search}` : undefined}
+          redirectTo={
+            typeof window !== "undefined"
+              ? `${window.location.origin}${window.location.pathname}${window.location.search}`
+              : undefined
+          }
         />
 
         {error && (
@@ -175,7 +190,9 @@ export default function AuthModal({
               <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
               <div className="flex-1">
                 <p className="font-black text-red-900">{error.message}</p>
-                {error.hint && <p className="mt-1 font-bold text-red-700">{error.hint}</p>}
+                {error.hint && (
+                  <p className="mt-1 font-bold text-red-700">{error.hint}</p>
+                )}
               </div>
               <button
                 type="button"
@@ -192,7 +209,9 @@ export default function AuthModal({
         <form className="space-y-2 sm:space-y-3" onSubmit={handleSubmit}>
           {isSignup && (
             <label className="block">
-              <span className="mb-2 block text-xs font-black uppercase text-slate-600">Nome</span>
+              <span className="mb-2 block text-xs font-black uppercase text-slate-600">
+                Nome
+              </span>
               <input
                 autoComplete="name"
                 className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -205,7 +224,10 @@ export default function AuthModal({
           )}
           {isSignup && (
             <div className="block">
-              <label htmlFor="auth-modal-gender" className="mb-2 block text-xs font-black uppercase text-slate-600">
+              <label
+                htmlFor="auth-modal-gender"
+                className="mb-2 block text-xs font-black uppercase text-slate-600"
+              >
                 Como você se identifica?
               </label>
               <GenderSelect
@@ -216,7 +238,9 @@ export default function AuthModal({
             </div>
           )}
           <label className="block">
-            <span className="mb-2 block text-xs font-black uppercase text-slate-600">E-mail</span>
+            <span className="mb-2 block text-xs font-black uppercase text-slate-600">
+              E-mail
+            </span>
             <input
               autoComplete="email"
               className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -229,7 +253,9 @@ export default function AuthModal({
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-xs font-black uppercase text-slate-600">Senha</span>
+            <span className="mb-2 block text-xs font-black uppercase text-slate-600">
+              Senha
+            </span>
             <PasswordInput
               autoComplete={isSignup ? "new-password" : "current-password"}
               className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -240,13 +266,22 @@ export default function AuthModal({
               value={password}
             />
           </label>
-          {isSignup && <PasswordRequirements value={password} isFocused={passwordFocused} />}
+          {isSignup && (
+            <PasswordRequirements
+              value={password}
+              isFocused={passwordFocused}
+            />
+          )}
           <button
             className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? "Processando..." : isSignup ? "Criar conta" : "Entrar"}
+            {isSubmitting
+              ? "Processando..."
+              : isSignup
+                ? "Criar conta"
+                : "Entrar"}
           </button>
         </form>
         {!isSignup && (

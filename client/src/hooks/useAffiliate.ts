@@ -30,7 +30,9 @@ function readStoredAffiliate(): StoredAffiliate | null {
 }
 
 export function useAffiliate() {
-  const [affiliate, setAffiliate] = useState<StoredAffiliate | null>(() => readStoredAffiliate());
+  const [affiliate, setAffiliate] = useState<StoredAffiliate | null>(() =>
+    readStoredAffiliate(),
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -54,9 +56,15 @@ export function useAffiliate() {
           discount_percent: Number(json.discount_percent || 0),
           expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
         };
-        window.localStorage.setItem(AFFILIATE_STORAGE_KEY, JSON.stringify(nextAffiliate));
+        window.localStorage.setItem(
+          AFFILIATE_STORAGE_KEY,
+          JSON.stringify(nextAffiliate),
+        );
         setAffiliate(nextAffiliate);
-        return fetch(apiUrl(`/api/affiliates/${encodeURIComponent(json.code)}/click`), { method: "POST" });
+        return fetch(
+          apiUrl(`/api/affiliates/${encodeURIComponent(json.code)}/click`),
+          { method: "POST" },
+        );
       })
       .catch(() => {
         setAffiliate(readStoredAffiliate());

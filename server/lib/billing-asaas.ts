@@ -1,4 +1,8 @@
-import { deleteAsaasPayment, getAsaasSubscriptionPayments, updateAsaasSubscription } from "./asaas";
+import {
+  deleteAsaasPayment,
+  getAsaasSubscriptionPayments,
+  updateAsaasSubscription,
+} from "./asaas";
 
 const REMOVABLE_STATUSES = ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"];
 
@@ -8,7 +12,10 @@ const REMOVABLE_STATUSES = ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"];
 // sucesso. Pagamentos confirmados (CONFIRMED/RECEIVED) nunca sao tocados — o filtro
 // e uma allow-list dos status removiveis. NAO toca no banco: quem chama controla a
 // ordem (Asaas antes, banco depois).
-export async function cancelSubscriptionAtAsaas(providerSubscriptionId: string, endDate: string) {
+export async function cancelSubscriptionAtAsaas(
+  providerSubscriptionId: string,
+  endDate: string,
+) {
   // d. impede o Asaas de gerar novas cobrancas a partir de endDate.
   await updateAsaasSubscription(providerSubscriptionId, { endDate });
 
@@ -19,7 +26,9 @@ export async function cancelSubscriptionAtAsaas(providerSubscriptionId: string, 
   const list = Array.isArray(payments?.data) ? payments.data : [];
   const toDelete = list.filter(
     (p: { id?: string; status?: string; dueDate?: string }) =>
-      typeof p?.dueDate === "string" && p.dueDate > endDate && REMOVABLE_STATUSES.includes(p?.status ?? ""),
+      typeof p?.dueDate === "string" &&
+      p.dueDate > endDate &&
+      REMOVABLE_STATUSES.includes(p?.status ?? ""),
   );
   for (const p of toDelete) {
     try {
@@ -28,7 +37,10 @@ export async function cancelSubscriptionAtAsaas(providerSubscriptionId: string, 
       // 404 = cobranca ja sumiu => sucesso. Outros erros: nao fatais; o cron
       // reconciliador pode reprocessar. Nao abortamos o cancelamento por isso.
       if (!(delErr instanceof Error && /error 404/i.test(delErr.message))) {
-        console.error(`[billing/cancel] DELETE pendente ${p.id} falhou (sub ${providerSubscriptionId}):`, delErr);
+        console.error(
+          `[billing/cancel] DELETE pendente ${p.id} falhou (sub ${providerSubscriptionId}):`,
+          delErr,
+        );
       }
     }
   }
@@ -48,6 +60,8 @@ export async function cancelSubscriptionAtAsaas(providerSubscriptionId: string, 
 // Idempotente: chamar com endDate ja nulo nao tem efeito colateral.
 // Simetrico a cancelSubscriptionAtAsaas: so PUT, sem mexer em payments
 // (recorrencia retomada gera nova cobranca naturalmente). NAO toca no banco.
-export async function reactivateSubscriptionAtAsaas(providerSubscriptionId: string) {
+export async function reactivateSubscriptionAtAsaas(
+  providerSubscriptionId: string,
+) {
   await updateAsaasSubscription(providerSubscriptionId, { endDate: null });
 }

@@ -50,7 +50,9 @@ export default function RedefinirSenha() {
     try {
       await updatePassword(parsed.data.password);
     } catch {
-      toast.error("Não foi possível redefinir a senha. Abra o link mais recente e tente novamente.");
+      toast.error(
+        "Não foi possível redefinir a senha. Abra o link mais recente e tente novamente.",
+      );
       setIsSubmitting(false);
       return;
     }
@@ -67,14 +69,23 @@ export default function RedefinirSenha() {
     setLocation("/perfil", { replace: true });
   }
 
-  if (recoveryState === "checking" || recoveryState === "redirect-change-password") {
+  if (
+    recoveryState === "checking" ||
+    recoveryState === "redirect-change-password"
+  ) {
     return (
       <Layout>
-        <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+        <SEO
+          title="Redefinir senha — Bora na Tech?"
+          url="/redefinir-senha"
+          noindex
+        />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8 text-center">
-              <p className="text-sm font-bold text-slate-600">Verificando link de recuperação…</p>
+              <p className="text-sm font-bold text-slate-600">
+                Verificando link de recuperação…
+              </p>
             </div>
           </div>
         </section>
@@ -85,7 +96,11 @@ export default function RedefinirSenha() {
   if (recoveryState === "expired") {
     return (
       <Layout>
-        <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+        <SEO
+          title="Redefinir senha — Bora na Tech?"
+          url="/redefinir-senha"
+          noindex
+        />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
@@ -99,7 +114,8 @@ export default function RedefinirSenha() {
                 Link expirado ou inválido
               </h1>
               <p className="mt-2 text-sm text-slate-600">
-                O link de recuperação não funcionou. Pode ter expirado ou já ter sido usado.
+                O link de recuperação não funcionou. Pode ter expirado ou já ter
+                sido usado.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -125,7 +141,11 @@ export default function RedefinirSenha() {
   if (recoveryState === "no-link") {
     return (
       <Layout>
-        <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+        <SEO
+          title="Redefinir senha — Bora na Tech?"
+          url="/redefinir-senha"
+          noindex
+        />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
@@ -136,7 +156,8 @@ export default function RedefinirSenha() {
                 Acesse pelo link enviado por e-mail.
               </h1>
               <p className="mt-2 text-sm text-slate-600">
-                Esta página só funciona quando aberta direto do link de recuperação. Solicite um novo link se o anterior expirou.
+                Esta página só funciona quando aberta direto do link de
+                recuperação. Solicite um novo link se o anterior expirou.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -161,19 +182,30 @@ export default function RedefinirSenha() {
 
   return (
     <Layout>
-      <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+      <SEO
+        title="Redefinir senha — Bora na Tech?"
+        url="/redefinir-senha"
+        noindex
+      />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
-            <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">redefinir senha</p>
-            <h1 className="font-display text-3xl font-black text-slate-950">Defina uma nova senha segura.</h1>
+            <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">
+              redefinir senha
+            </p>
+            <h1 className="font-display text-3xl font-black text-slate-950">
+              Defina uma nova senha segura.
+            </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Acesso autorizado pelo link de recuperação. Outras sessões serão encerradas após a troca.
+              Acesso autorizado pelo link de recuperação. Outras sessões serão
+              encerradas após a troca.
             </p>
 
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">Nova senha</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  Nova senha
+                </span>
                 <PasswordInput
                   autoComplete="new-password"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -185,7 +217,9 @@ export default function RedefinirSenha() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">Confirmar nova senha</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  Confirmar nova senha
+                </span>
                 <PasswordInput
                   autoComplete="new-password"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -194,7 +228,10 @@ export default function RedefinirSenha() {
                   value={confirmPassword}
                 />
               </label>
-              <PasswordRequirements value={password} isFocused={passwordFocused} />
+              <PasswordRequirements
+                value={password}
+                isFocused={passwordFocused}
+              />
               <button
                 className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSubmitting}
@@ -204,7 +241,10 @@ export default function RedefinirSenha() {
               </button>
             </form>
 
-            <Link href="/login" className="mt-4 block text-center text-sm font-bold text-violet-700">
+            <Link
+              href="/login"
+              className="mt-4 block text-center text-sm font-bold text-violet-700"
+            >
               Voltar para o login
             </Link>
           </div>

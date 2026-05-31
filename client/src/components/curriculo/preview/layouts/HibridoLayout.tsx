@@ -18,18 +18,37 @@ import SecaoProjetos from "../sections/SecaoProjetos";
 export default function HibridoLayout({ curriculo }: { curriculo: Curriculo }) {
   const labels = getLabels(curriculo.idioma);
   const tituloExperiencia =
-    curriculo.persona === "estudante" ? labels.projetosAtividades : labels.experiencia;
+    curriculo.persona === "estudante"
+      ? labels.projetosAtividades
+      : labels.experiencia;
 
   return (
     <>
-      <Cabecalho dadosPessoais={curriculo.dadosPessoais} objetivo={curriculo.objetivo} variant="tagline" />
-      <ResumoProfissional resumo={curriculo.resumoProfissional} title={labels.resumo} />
-      <SecaoHabilidades title={labels.habilidades} items={curriculo.habilidades} variant="wrap" />
-      <SecaoExperiencia title={tituloExperiencia} items={curriculo.experiencias} />
+      <Cabecalho
+        dadosPessoais={curriculo.dadosPessoais}
+        objetivo={curriculo.objetivo}
+        variant="tagline"
+      />
+      <ResumoProfissional
+        resumo={curriculo.resumoProfissional}
+        title={labels.resumo}
+      />
+      <SecaoHabilidades
+        title={labels.habilidades}
+        items={curriculo.habilidades}
+        variant="wrap"
+      />
+      <SecaoExperiencia
+        title={tituloExperiencia}
+        items={curriculo.experiencias}
+      />
       <SecaoProjetos title={labels.projetos} items={curriculo.projetos} />
       <SecaoFormacao title={labels.formacao} items={curriculo.formacao} />
       <SecaoIdiomas title={labels.idiomas} items={curriculo.idiomas} />
-      <SecaoCertificacoes title={labels.certificacoes} items={curriculo.certificacoes} />
+      <SecaoCertificacoes
+        title={labels.certificacoes}
+        items={curriculo.certificacoes}
+      />
     </>
   );
 }

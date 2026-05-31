@@ -45,14 +45,31 @@ router.get("/", async (req, res, next) => {
 
 router.post("/", async (req, res, next) => {
   try {
-    const { resource_type, resource_id, title_snapshot, subtitle_snapshot, url_snapshot } = req.body as Record<string, unknown>;
+    const {
+      resource_type,
+      resource_id,
+      title_snapshot,
+      subtitle_snapshot,
+      url_snapshot,
+    } = req.body as Record<string, unknown>;
 
     if (!resource_type || !resource_id) {
-      return next(createError(400, "invalid_request", "resource_type e resource_id são obrigatórios."));
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "resource_type e resource_id são obrigatórios.",
+        ),
+      );
     }
 
-    if (typeof resource_type !== "string" || !VALID_RESOURCE_TYPES.includes(resource_type)) {
-      return next(createError(400, "invalid_request", `Tipo inválido: ${resource_type}`));
+    if (
+      typeof resource_type !== "string" ||
+      !VALID_RESOURCE_TYPES.includes(resource_type)
+    ) {
+      return next(
+        createError(400, "invalid_request", `Tipo inválido: ${resource_type}`),
+      );
     }
 
     const { data, error } = await supabaseAdmin
@@ -61,8 +78,10 @@ router.post("/", async (req, res, next) => {
         user_id: req.user!.id,
         resource_type,
         resource_id: String(resource_id),
-        title_snapshot: typeof title_snapshot === "string" ? title_snapshot : null,
-        subtitle_snapshot: typeof subtitle_snapshot === "string" ? subtitle_snapshot : null,
+        title_snapshot:
+          typeof title_snapshot === "string" ? title_snapshot : null,
+        subtitle_snapshot:
+          typeof subtitle_snapshot === "string" ? subtitle_snapshot : null,
         url_snapshot: typeof url_snapshot === "string" ? url_snapshot : null,
       })
       .select()
@@ -113,7 +132,9 @@ router.delete("/:resourceType/:resourceId", async (req, res, next) => {
 
 router.post("/migrate", async (req, res, next) => {
   try {
-    const { bookmarks } = req.body as { bookmarks?: Array<Record<string, unknown>> };
+    const { bookmarks } = req.body as {
+      bookmarks?: Array<Record<string, unknown>>;
+    };
 
     if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
       return res.json({ data: { migrated: 0 } });
@@ -121,14 +142,28 @@ router.post("/migrate", async (req, res, next) => {
 
     const rows = bookmarks
       .slice(0, 500)
-      .filter((bookmark) => bookmark.resource_type && bookmark.resource_id && VALID_RESOURCE_TYPES.includes(String(bookmark.resource_type)))
+      .filter(
+        (bookmark) =>
+          bookmark.resource_type &&
+          bookmark.resource_id &&
+          VALID_RESOURCE_TYPES.includes(String(bookmark.resource_type)),
+      )
       .map((bookmark) => ({
         user_id: req.user!.id,
         resource_type: String(bookmark.resource_type),
         resource_id: String(bookmark.resource_id),
-        title_snapshot: typeof bookmark.title_snapshot === "string" ? bookmark.title_snapshot : null,
-        subtitle_snapshot: typeof bookmark.subtitle_snapshot === "string" ? bookmark.subtitle_snapshot : null,
-        url_snapshot: typeof bookmark.url_snapshot === "string" ? bookmark.url_snapshot : null,
+        title_snapshot:
+          typeof bookmark.title_snapshot === "string"
+            ? bookmark.title_snapshot
+            : null,
+        subtitle_snapshot:
+          typeof bookmark.subtitle_snapshot === "string"
+            ? bookmark.subtitle_snapshot
+            : null,
+        url_snapshot:
+          typeof bookmark.url_snapshot === "string"
+            ? bookmark.url_snapshot
+            : null,
       }));
 
     if (rows.length === 0) {

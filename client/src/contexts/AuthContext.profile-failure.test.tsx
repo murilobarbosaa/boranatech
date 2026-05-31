@@ -104,7 +104,9 @@ function makeProbe(records: Snapshot[]) {
 
 // Replica EXATA da fórmula em client/src/components/Header.tsx após a correção.
 function avatarLoadingFrom(s: Snapshot): boolean {
-  return Boolean(s.hasUser && !s.profile && (s.loading || s.profileStatus === "loading"));
+  return Boolean(
+    s.hasUser && !s.profile && (s.loading || s.profileStatus === "loading"),
+  );
 }
 
 async function flushMicrotasks() {
@@ -297,9 +299,9 @@ describe("AuthContext — resiliência do carregamento de perfil (sem skeleton e
   });
 
   it("[H3] backend devolve {data:null}: profileService rejeita explicitamente (sem caminho silencioso de sucesso com null)", async () => {
-    const actual = await vi.importActual<typeof import("@/services/profileService")>(
-      "@/services/profileService",
-    );
+    const actual = await vi.importActual<
+      typeof import("@/services/profileService")
+    >("@/services/profileService");
 
     // 1) {data: null} -> reject
     global.fetch = vi.fn().mockResolvedValueOnce(
@@ -308,7 +310,9 @@ describe("AuthContext — resiliência do carregamento de perfil (sem skeleton e
         headers: { "content-type": "application/json" },
       }),
     );
-    await expect(actual.getMyProfile()).rejects.toThrow(/resposta vazia|inválida/i);
+    await expect(actual.getMyProfile()).rejects.toThrow(
+      /resposta vazia|inválida/i,
+    );
 
     // 2) Corpo sem data -> reject
     global.fetch = vi.fn().mockResolvedValueOnce(
@@ -317,7 +321,9 @@ describe("AuthContext — resiliência do carregamento de perfil (sem skeleton e
         headers: { "content-type": "application/json" },
       }),
     );
-    await expect(actual.getMyProfile()).rejects.toThrow(/resposta vazia|inválida/i);
+    await expect(actual.getMyProfile()).rejects.toThrow(
+      /resposta vazia|inválida/i,
+    );
 
     // 3) JSON malformado (HTML do SPA, p.ex. apiUrl errado) -> reject sem SyntaxError vazado
     global.fetch = vi.fn().mockResolvedValueOnce(
@@ -329,9 +335,9 @@ describe("AuthContext — resiliência do carregamento de perfil (sem skeleton e
     await expect(actual.getMyProfile()).rejects.toThrow();
 
     // 4) HTTP !ok -> reject com status no erro
-    global.fetch = vi.fn().mockResolvedValueOnce(
-      new Response("", { status: 503 }),
-    );
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("", { status: 503 }));
     await expect(actual.getMyProfile()).rejects.toThrow(/HTTP 503/);
 
     // 5) Sucesso real ainda funciona (sanity).

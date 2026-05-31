@@ -13,7 +13,8 @@ export interface BacklogResult {
   duration_ms: number;
 }
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export async function enrichBacklog(): Promise<BacklogResult> {
   const startedAt = Date.now();
@@ -72,7 +73,11 @@ export async function enrichBacklog(): Promise<BacklogResult> {
         .eq("id", row.id);
 
       if (updateError) {
-        console.error("[enrich-backlog] update failed for", row.id, updateError.message);
+        console.error(
+          "[enrich-backlog] update failed for",
+          row.id,
+          updateError.message,
+        );
         failed += 1;
       } else {
         enriched += 1;

@@ -30,7 +30,10 @@ type CurrentsArticle = {
   category?: unknown;
 };
 
-async function fetchKeyword(keyword: string, apiKey: string): Promise<CurrentsArticle[]> {
+async function fetchKeyword(
+  keyword: string,
+  apiKey: string,
+): Promise<CurrentsArticle[]> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -44,7 +47,9 @@ async function fetchKeyword(keyword: string, apiKey: string): Promise<CurrentsAr
     const res = await fetch(url, { signal: controller.signal });
 
     if (!res.ok) {
-      console.error(`[sync-news] Currents ${res.status} for keyword "${keyword}"`);
+      console.error(
+        `[sync-news] Currents ${res.status} for keyword "${keyword}"`,
+      );
       return [];
     }
 
@@ -55,7 +60,8 @@ async function fetchKeyword(keyword: string, apiKey: string): Promise<CurrentsAr
   }
 }
 
-const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export async function syncNews(): Promise<SyncNewsResult> {
   const result = { found: 0, created: 0, updated: 0, failed: 0, enriched: 0 };
@@ -78,12 +84,17 @@ export async function syncNews(): Promise<SyncNewsResult> {
           added += 1;
         }
       }
-      console.log(`[sync-news] keyword "${keyword}": ${news.length} fetched, ${added} new`);
+      console.log(
+        `[sync-news] keyword "${keyword}": ${news.length} fetched, ${added} new`,
+      );
     } catch (err) {
       result.failed += 1;
       const message = err instanceof Error ? err.message : String(err);
       const isAbort = err instanceof Error && err.name === "AbortError";
-      console.error(`[sync-news] keyword "${keyword}" failed${isAbort ? " (timeout)" : ""}:`, message);
+      console.error(
+        `[sync-news] keyword "${keyword}" failed${isAbort ? " (timeout)" : ""}:`,
+        message,
+      );
     }
   }
 
@@ -98,7 +109,8 @@ export async function syncNews(): Promise<SyncNewsResult> {
     const title = typeof article.title === "string" ? article.title : "";
     if (!urlValue || !title) continue;
 
-    const summary = typeof article.description === "string" ? article.description : "";
+    const summary =
+      typeof article.description === "string" ? article.description : "";
 
     const enrichment = await enrichArticle(title, summary);
     if (enrichment) {
@@ -120,8 +132,14 @@ export async function syncNews(): Promise<SyncNewsResult> {
         summary: summary || null,
         url: urlValue,
         image_url: typeof article.image === "string" ? article.image : null,
-        source: typeof article.author === "string" && article.author.trim() ? article.author : "Currents API",
-        published_at: typeof article.published === "string" ? article.published : new Date().toISOString(),
+        source:
+          typeof article.author === "string" && article.author.trim()
+            ? article.author
+            : "Currents API",
+        published_at:
+          typeof article.published === "string"
+            ? article.published
+            : new Date().toISOString(),
         tags: typeof article.category === "string" ? [article.category] : [],
         is_external: true,
         is_published: true,

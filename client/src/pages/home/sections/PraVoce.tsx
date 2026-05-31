@@ -1,13 +1,27 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowRight, Calendar, GraduationCap, MapPin, Clock, Tag } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  GraduationCap,
+  MapPin,
+  Clock,
+  Tag,
+} from "lucide-react";
 import { areasTI, noticias, eventos, cursosGratuitos } from "@/lib/data";
 
-const CURSO_AREA_SPECIAL_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+const CURSO_AREA_SPECIAL_LABELS: Record<string, string> = {
+  carreira: "Carreira",
+  fullstack: "Full Stack",
+};
 
 function labelForCursoArea(slug: string | null | undefined): string {
   if (!slug) return "Geral";
-  return areasTI.find((a) => a.slug === slug)?.nome ?? CURSO_AREA_SPECIAL_LABELS[slug] ?? slug;
+  return (
+    areasTI.find((a) => a.slug === slug)?.nome ??
+    CURSO_AREA_SPECIAL_LABELS[slug] ??
+    slug
+  );
 }
 
 // =========================================
@@ -25,13 +39,66 @@ const EVENTO_EVERGREEN: Record<string, string> = {
 // 7 nuvens espalhadas pelo background. Mix de tamanhos, opacidades, durações e
 // delays pra desincronizar a animação e criar profundidade.
 const NUVENS = [
-  { top: "3%",  left: "5%",   width: 120, opacity: 0.78, duration: "7s",   delay: "0s"   },
-  { top: "7%",  left: "84%",  width: 92,  opacity: 0.62, duration: "9s",   delay: "1.5s", hideOnMobile: true },
-  { top: "18%", left: "44%",  width: 80,  opacity: 0.55, duration: "8.5s", delay: "3.2s" },
-  { top: "38%", left: "-2%",  width: 110, opacity: 0.72, duration: "8s",   delay: "2s",   hideOnMobile: true },
-  { top: "52%", left: "92%",  width: 100, opacity: 0.6,  duration: "10s",  delay: "0.5s", hideOnMobile: true },
-  { top: "78%", left: "3%",   width: 132, opacity: 0.82, duration: "7.5s", delay: "2.7s" },
-  { top: "84%", left: "80%",  width: 96,  opacity: 0.7,  duration: "8.5s", delay: "1s",   hideOnMobile: true },
+  {
+    top: "3%",
+    left: "5%",
+    width: 120,
+    opacity: 0.78,
+    duration: "7s",
+    delay: "0s",
+  },
+  {
+    top: "7%",
+    left: "84%",
+    width: 92,
+    opacity: 0.62,
+    duration: "9s",
+    delay: "1.5s",
+    hideOnMobile: true,
+  },
+  {
+    top: "18%",
+    left: "44%",
+    width: 80,
+    opacity: 0.55,
+    duration: "8.5s",
+    delay: "3.2s",
+  },
+  {
+    top: "38%",
+    left: "-2%",
+    width: 110,
+    opacity: 0.72,
+    duration: "8s",
+    delay: "2s",
+    hideOnMobile: true,
+  },
+  {
+    top: "52%",
+    left: "92%",
+    width: 100,
+    opacity: 0.6,
+    duration: "10s",
+    delay: "0.5s",
+    hideOnMobile: true,
+  },
+  {
+    top: "78%",
+    left: "3%",
+    width: 132,
+    opacity: 0.82,
+    duration: "7.5s",
+    delay: "2.7s",
+  },
+  {
+    top: "84%",
+    left: "80%",
+    width: 96,
+    opacity: 0.7,
+    duration: "8.5s",
+    delay: "1s",
+    hideOnMobile: true,
+  },
 ];
 
 // =========================================
@@ -120,7 +187,7 @@ export default function PraVoce() {
 // COMPONENTE NoticiaDestaque (card grande)
 // =========================================
 
-function NoticiaDestaque({ noticia }: { noticia: typeof noticias[0] }) {
+function NoticiaDestaque({ noticia }: { noticia: (typeof noticias)[0] }) {
   // Tempo de leitura simulado — data.ts só tem resumo curto, então hardcoded.
   // TODO: calcular dinamicamente quando notícias tiverem corpo completo.
   const tempoLeitura = "3 min de leitura";
@@ -175,7 +242,10 @@ function NoticiaDestaque({ noticia }: { noticia: typeof noticias[0] }) {
               <span className="underline-offset-4 group-hover:underline">
                 Ler mais
               </span>
-              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+              <ArrowRight
+                size={18}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </div>
           </div>
         </div>
@@ -188,7 +258,13 @@ function NoticiaDestaque({ noticia }: { noticia: typeof noticias[0] }) {
 // COMPONENTE EventoCard (card lateral menor)
 // =========================================
 
-function EventoCard({ evento, delay }: { evento: typeof eventos[0]; delay: number }) {
+function EventoCard({
+  evento,
+  delay,
+}: {
+  evento: (typeof eventos)[0];
+  delay: number;
+}) {
   // Info evergreen substitui a data (alguns eventos podem ter passado).
   const evergreen = EVENTO_EVERGREEN[evento.id] ?? evento.formato;
 
@@ -213,7 +289,11 @@ function EventoCard({ evento, delay }: { evento: typeof eventos[0]; delay: numbe
           {/* Local + Info evergreen (substitui o formato cru) */}
           <div className="mt-3 space-y-1.5">
             <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-              <MapPin size={14} className="text-fuchsia-700 shrink-0" strokeWidth={2.5} />
+              <MapPin
+                size={14}
+                className="text-fuchsia-700 shrink-0"
+                strokeWidth={2.5}
+              />
               <span className="truncate">
                 {evento.formato === "Online"
                   ? "Online"
@@ -221,7 +301,11 @@ function EventoCard({ evento, delay }: { evento: typeof eventos[0]; delay: numbe
               </span>
             </p>
             <p className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
-              <Calendar size={14} className="text-fuchsia-700 shrink-0" strokeWidth={2.5} />
+              <Calendar
+                size={14}
+                className="text-fuchsia-700 shrink-0"
+                strokeWidth={2.5}
+              />
               <span className="truncate">{evergreen}</span>
             </p>
           </div>
@@ -231,7 +315,10 @@ function EventoCard({ evento, delay }: { evento: typeof eventos[0]; delay: numbe
             <span className="underline-offset-4 group-hover:underline">
               Ver evento
             </span>
-            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+            <ArrowRight
+              size={14}
+              className="transition-transform group-hover:translate-x-1"
+            />
           </div>
         </div>
       </Link>
@@ -278,7 +365,13 @@ function EventoLogo({ logoUrl, nome }: { logoUrl?: string; nome: string }) {
 // COMPONENTE CursoCard
 // =========================================
 
-function CursoCard({ curso, delay }: { curso: typeof cursosGratuitos[0]; delay: number }) {
+function CursoCard({
+  curso,
+  delay,
+}: {
+  curso: (typeof cursosGratuitos)[0];
+  delay: number;
+}) {
   const areaColors: Record<string, { bg: string; text: string }> = {
     frontend: { bg: "bg-violet-100", text: "text-violet-700" },
     backend: { bg: "bg-emerald-100", text: "text-emerald-700" },
@@ -289,7 +382,10 @@ function CursoCard({ curso, delay }: { curso: typeof cursosGratuitos[0]; delay: 
     devops: { bg: "bg-amber-100", text: "text-amber-700" },
     ciberseguranca: { bg: "bg-rose-100", text: "text-rose-700" },
   };
-  const colors = (curso.areaSlug && areaColors[curso.areaSlug]) || { bg: "bg-slate-100", text: "text-slate-700" };
+  const colors = (curso.areaSlug && areaColors[curso.areaSlug]) || {
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+  };
 
   return (
     <motion.article
@@ -302,13 +398,21 @@ function CursoCard({ curso, delay }: { curso: typeof cursosGratuitos[0]; delay: 
         <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a] flex flex-col">
           {/* Ícone capelo (label "Curso recomendado" removida) */}
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-emerald-100 shadow-[2px_2px_0_#0f172a]">
-            <GraduationCap size={20} className="text-emerald-700" strokeWidth={2.5} />
+            <GraduationCap
+              size={20}
+              className="text-emerald-700"
+              strokeWidth={2.5}
+            />
           </div>
 
           {/* Badge da área */}
-          <div className={`mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 ${colors.bg} px-3 py-1 shadow-[2px_2px_0_#0f172a]`}>
+          <div
+            className={`mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 ${colors.bg} px-3 py-1 shadow-[2px_2px_0_#0f172a]`}
+          >
             <Tag size={12} className={`${colors.text}`} strokeWidth={2.5} />
-            <span className={`font-display text-xs font-black uppercase tracking-wider ${colors.text}`}>
+            <span
+              className={`font-display text-xs font-black uppercase tracking-wider ${colors.text}`}
+            >
               {labelForCursoArea(curso.areaSlug)}
             </span>
           </div>
@@ -335,7 +439,10 @@ function CursoCard({ curso, delay }: { curso: typeof cursosGratuitos[0]; delay: 
               <span className="underline-offset-4 group-hover:underline">
                 Ver curso
               </span>
-              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+              <ArrowRight
+                size={14}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </div>
           </div>
         </div>
@@ -358,7 +465,15 @@ type NuvemProps = {
   hideOnMobile?: boolean;
 };
 
-function NuvemSvg({ top, left, width, opacity, duration, delay, hideOnMobile }: NuvemProps) {
+function NuvemSvg({
+  top,
+  left,
+  width,
+  opacity,
+  duration,
+  delay,
+  hideOnMobile,
+}: NuvemProps) {
   // CSS custom properties tipadas pra duração e delay (lidas no keyframe via var()).
   const style = {
     top,
@@ -400,7 +515,8 @@ function BackgroundDecoration() {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: "radial-gradient(circle, #7dd3fc 1.2px, transparent 1.2px)",
+          backgroundImage:
+            "radial-gradient(circle, #7dd3fc 1.2px, transparent 1.2px)",
           backgroundSize: "32px 32px",
           opacity: 0.3,
         }}
@@ -420,7 +536,8 @@ function BackgroundDecoration() {
           right: "-5%",
           width: "400px",
           height: "400px",
-          background: "radial-gradient(circle, rgba(125, 211, 252, 0.25) 0%, transparent 60%)",
+          background:
+            "radial-gradient(circle, rgba(125, 211, 252, 0.25) 0%, transparent 60%)",
           filter: "blur(50px)",
         }}
         animate={{
@@ -444,7 +561,8 @@ function BackgroundDecoration() {
           left: "-5%",
           width: "350px",
           height: "350px",
-          background: "radial-gradient(circle, rgba(252, 211, 77, 0.2) 0%, transparent 60%)",
+          background:
+            "radial-gradient(circle, rgba(252, 211, 77, 0.2) 0%, transparent 60%)",
           filter: "blur(50px)",
         }}
         animate={{
