@@ -1,4 +1,4 @@
-// BORA NA TECH? — Central Data Store
+// BORA NA TECH? Central Data Store
 // All static content for the platform
 
 import type { LucideIcon } from "lucide-react";
@@ -84,7 +84,7 @@ const baseAreasTI: AreaTI[] = [
     icon: Layout,
     tagClass: "tag-frontend",
     descricaoCurta: "Cria tudo que você vê e interage em sites e aplicativos.",
-    descricaoCompleta: "O desenvolvedor front-end é responsável por construir a interface visual dos produtos digitais — tudo que o usuário vê, clica, lê e interage. Trabalha com HTML, CSS e JavaScript para transformar designs em páginas funcionais e bonitas.",
+    descricaoCompleta: "O desenvolvedor front-end é responsável por construir a interface visual dos produtos digitais, tudo que o usuário vê, clica, lê e interage. Trabalha com HTML, CSS e JavaScript para transformar designs em páginas funcionais e bonitas.",
     oQueFaz: "Transforma designs em código, cria botões, menus, formulários, animações e garante que o site funcione bem em celular, tablet e computador.",
     tarefasDiarias: ["Criar páginas HTML e estilizar com CSS", "Programar interações com JavaScript", "Adaptar o layout para diferentes telas (responsividade)", "Trabalhar com frameworks como React ou Vue", "Colaborar com designers e back-end"],
     perfilIndicado: "Gosta de criatividade e de ver resultados visuais rápidos. Tem paciência para detalhes e curte estética.",
@@ -93,7 +93,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 3,
     cargos: ["Desenvolvedor Front-end Júnior", "Desenvolvedor React", "Engenheiro de Interface", "UI Developer"],
     faixaSalarial: "R$ 2.500 a R$ 5.000 (estágio/trainee/júnior)",
-    cursosGratuitos: ["Curso em Vídeo — HTML, CSS e JavaScript", "freeCodeCamp — Responsive Web Design", "Rocketseat — Discover"],
+    cursosGratuitos: ["Curso em Vídeo: HTML, CSS e JavaScript", "freeCodeCamp: Responsive Web Design", "Rocketseat: Discover"],
     roadmapInicial: ["Aprender HTML básico", "Aprender CSS (flexbox, grid)", "Aprender JavaScript básico", "Criar projeto simples (landing page)", "Aprender React", "Publicar no GitHub"],
     projetos: ["Landing page pessoal", "Clone de site famoso", "To-do list com JavaScript"],
     termosEssenciais: ["HTML", "CSS", "JavaScript", "Framework", "Responsividade", "DOM"],
@@ -124,7 +124,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 4,
     cargos: ["Desenvolvedor Back-end Júnior", "Engenheiro de Software", "Desenvolvedor Node.js", "Desenvolvedor Python"],
     faixaSalarial: "R$ 3.000 a R$ 6.000 (estágio/trainee/júnior)",
-    cursosGratuitos: ["Curso em Vídeo — Python", "Rocketseat — Node.js", "DIO — Java Básico"],
+    cursosGratuitos: ["Curso em Vídeo: Python", "Rocketseat: Node.js", "DIO: Java Básico"],
     roadmapInicial: ["Aprender lógica de programação", "Escolher uma linguagem (Python ou Node.js)", "Aprender banco de dados SQL", "Criar uma API simples", "Aprender Git e GitHub"],
     projetos: ["API de lista de tarefas", "Sistema de cadastro simples", "API de consulta de CEP"],
     termosEssenciais: ["API", "REST", "Banco de dados", "Servidor", "Autenticação", "JSON"],
@@ -145,7 +145,7 @@ const baseAreasTI: AreaTI[] = [
     slug: "fullstack",
     icon: Workflow,
     tagClass: "tag-fullstack",
-    descricaoCurta: "Desenvolvedor versátil que atua no front-end E back-end. Constrói aplicações de ponta a ponta — interface, servidor, banco de dados.",
+    descricaoCurta: "Desenvolvedor versátil que atua no front-end E back-end. Constrói aplicações de ponta a ponta: interface, servidor, banco de dados.",
     descricaoCompleta: "Full-stack é o desenvolvedor que domina tanto o front-end (interface visível ao usuário) quanto o back-end (servidor, lógica, banco de dados). Em vez de focar em uma única camada, atua em todas. É o cargo mais buscado em equipes pequenas e startups, onde uma pessoa precisa entregar features completas: do design da tela até o deploy. Em empresas maiores, o full-stack é valorizado pela visão sistêmica e flexibilidade entre times.",
     oQueFaz: "O dev full-stack constrói aplicações completas. Hoje ele pode estar criando uma tela em React, amanhã ajustando uma API em Node.js, e depois otimizando uma query no PostgreSQL. Trabalha em features de ponta a ponta, garantindo que toda a stack funcione bem junta.",
     tarefasDiarias: [
@@ -168,18 +168,18 @@ const baseAreasTI: AreaTI[] = [
     ferramentas: ["React", "Node.js", "TypeScript", "PostgreSQL", "Git/GitHub", "Docker", "AWS", "VS Code"],
     dificuldade: 4,
     cargos: ["Desenvolvedor Full-stack Júnior", "Desenvolvedor Full-stack Pleno", "Desenvolvedor Full-stack Sênior", "Tech Lead"],
-    faixaSalarial: "R$ 3.250 (júnior) a R$ 15.900 (pleno) — fonte Robert Half/Glassdoor 2026",
+    faixaSalarial: "R$ 3.250 (júnior) a R$ 15.900 (pleno), fonte Robert Half/Glassdoor 2026",
     cursosGratuitos: [
-      "Curso em Vídeo — Web Moderno (Gustavo Guanabara)",
+      "Curso em Vídeo: Web Moderno (Gustavo Guanabara)",
       "The Odin Project (em inglês, gratuito, completo)",
-      "freeCodeCamp — Responsive Web Design + APIs and Microservices",
+      "freeCodeCamp: Responsive Web Design + APIs and Microservices",
       "Rocketseat Ignite (versão grátis das trilhas)"
     ],
     roadmapInicial: [
       "Aprender HTML, CSS e JavaScript básico",
       "Estudar um framework front-end (React é o mais procurado)",
       "Aprender Node.js + Express ou outra linguagem back-end",
-      "Estudar bancos de dados (SQL — começar com PostgreSQL)",
+      "Estudar bancos de dados (SQL, começar com PostgreSQL)",
       "Aprender Git e GitHub na prática",
       "Construir 3 projetos full-stack pessoais (com deploy)"
     ],
@@ -218,7 +218,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 4,
     cargos: ["Analista de Dados Júnior", "Cientista de Dados", "Engenheiro de Dados", "Analista de BI"],
     faixaSalarial: "R$ 3.000 a R$ 6.500 (estágio/trainee/júnior)",
-    cursosGratuitos: ["Kaggle — Python for Data Science", "DIO — Análise de Dados com Python", "Google — Data Analytics Certificate (parcial gratuito)"],
+    cursosGratuitos: ["Kaggle: Python for Data Science", "DIO: Análise de Dados com Python", "Google: Data Analytics Certificate (parcial gratuito)"],
     roadmapInicial: ["Aprender Python básico", "Aprender SQL", "Estudar estatística básica", "Praticar com Pandas", "Criar análise de dataset público"],
     projetos: ["Análise de dados do IBGE", "Dashboard de vendas fictícias", "Análise exploratória de dataset do Kaggle"],
     termosEssenciais: ["Dataset", "Machine Learning", "SQL", "Pandas", "Visualização", "Modelo preditivo"],
@@ -236,9 +236,9 @@ const baseAreasTI: AreaTI[] = [
         slug: "analista-dados",
         nome: "Analista de Dados",
         descricaoCurta: "Coleta, limpa e analisa dados pra gerar relatórios e dashboards de suporte a decisão. Porta de entrada da área.",
-        descricaoCompleta: "Analista de Dados é a porta de entrada mais comum na carreira de dados no Brasil. Transforma dados brutos em relatórios, dashboards e insights que apoiam decisões de negócio. Não precisa de matemática avançada nem machine learning — domina SQL, Excel e ferramentas de visualização como Power BI ou Tableau. Mercado super aquecido em 2026: Glassdoor mostra média de R$ 5.800-6.192, com sêniores chegando a R$ 16-18k. É a melhor escolha pra quem quer entrar em dados rápido — bootcamps formam analistas em 6-9 meses, e empresas de todos os portes (varejo, finanças, saúde, marketing) contratam.",
+        descricaoCompleta: "Analista de Dados é a porta de entrada mais comum na carreira de dados no Brasil. Transforma dados brutos em relatórios, dashboards e insights que apoiam decisões de negócio. Não precisa de matemática avançada nem machine learning. Domina SQL, Excel e ferramentas de visualização como Power BI ou Tableau. Mercado super aquecido em 2026: Glassdoor mostra média de R$ 5.800-6.192, com sêniores chegando a R$ 16-18k. É a melhor escolha pra quem quer entrar em dados rápido. Bootcamps formam analistas em 6-9 meses, e empresas de todos os portes (varejo, finanças, saúde, marketing) contratam.",
         oQueFaz: "No dia a dia: extrai dados de bancos via SQL, limpa e organiza informações de múltiplas fontes (Excel, CSV, APIs), constrói dashboards no Power BI ou Tableau pra acompanhar KPIs do negócio, faz análises ad-hoc respondendo perguntas específicas das áreas (vendas, marketing, financeiro), apresenta insights pra stakeholders não-técnicos. Trabalha como ponte entre os dados crus e decisões executivas.",
-        diferencasDaAreaMae: "Dentro de Ciência de Dados, o Analista de Dados é o cargo mais acessível — não precisa dominar estatística avançada nem programação Python pesada. Diferente do Cientista de Dados (que cria modelos preditivos), o analista trabalha com o que já aconteceu — relatórios descritivos e diagnósticos. Diferente do Analista de BI (que foca em dashboards executivos), o analista de dados cobre análises mais variadas, incluindo exploratórias. É a porta de entrada ideal pra migração de carreira de áreas como marketing, finanças ou administração.",
+        diferencasDaAreaMae: "Dentro de Ciência de Dados, o Analista de Dados é o cargo mais acessível. Não precisa dominar estatística avançada nem programação Python pesada. Diferente do Cientista de Dados (que cria modelos preditivos), o analista trabalha com o que já aconteceu, relatórios descritivos e diagnósticos. Diferente do Analista de BI (que foca em dashboards executivos), o analista de dados cobre análises mais variadas, incluindo exploratórias. É a porta de entrada ideal pra migração de carreira de áreas como marketing, finanças ou administração.",
         habilidadesEspecificas: [
           "SQL avançado (consultas, joins, window functions)",
           "Excel avançado (tabelas dinâmicas, fórmulas, Power Query)",
@@ -250,7 +250,7 @@ const baseAreasTI: AreaTI[] = [
           "SQL (PostgreSQL, MySQL, BigQuery)",
           "Power BI ou Tableau",
           "Excel avançado",
-          "Python básico (Pandas) — diferencial",
+          "Python básico (Pandas): diferencial",
           "Google Analytics 4 ou similares",
           "Notebooks (Jupyter ou Google Colab)"
         ],
@@ -260,11 +260,11 @@ const baseAreasTI: AreaTI[] = [
           "Analista de Dados Sênior (5+ anos)",
           "Lead Data Analyst / Coordenador de Analytics"
         ],
-        faixaSalarial: "R$ 3.000 (júnior) a R$ 16.000+ (sênior). Média BR R$ 5.800-6.192 — CAGED/Glassdoor 2026. Em fintechs e grandes empresas, pleno passa R$ 10k. Remoto pra fora paga em dólar.",
+        faixaSalarial: "R$ 3.000 (júnior) a R$ 16.000+ (sênior). Média BR R$ 5.800-6.192, CAGED/Glassdoor 2026. Em fintechs e grandes empresas, pleno passa R$ 10k. Remoto pra fora paga em dólar.",
         dificuldade: 3,
         cursosGratuitos: [
-          "Curso em Vídeo — SQL Completo (Gustavo Guanabara)",
-          "Microsoft Learn — Power BI fundamentals (gratuito oficial)",
+          "Curso em Vídeo: SQL Completo (Gustavo Guanabara)",
+          "Microsoft Learn: Power BI fundamentals (gratuito oficial)",
           "Google Analytics Academy + Google Data Analytics Certificate (Coursera, audit gratuito)"
         ],
         projetosSugeridos: [
@@ -279,21 +279,21 @@ const baseAreasTI: AreaTI[] = [
           "Aprender Python básico com Pandas (diferencial salarial)",
           "Construir portfólio público com 3-4 análises completas no GitHub/LinkedIn"
         ],
-        dicasIniciais: "Analista de Dados é a melhor porta de entrada em dados — exige menos matemática que cientista e menos engenharia que engenheiro de dados. Foque em SQL primeiro: é universal e cobrado em 100% das vagas. Power BI vira diferencial real no BR (mais comum que Tableau aqui). Publique análises no LinkedIn — recrutadores acham analistas por lá. Não precisa de diploma — bootcamp + portfólio resolvem."
+        dicasIniciais: "Analista de Dados é a melhor porta de entrada em dados. Exige menos matemática que cientista e menos engenharia que engenheiro de dados. Foque em SQL primeiro: é universal e cobrado em 100% das vagas. Power BI vira diferencial real no BR (mais comum que Tableau aqui). Publique análises no LinkedIn. Recrutadores acham analistas por lá. Não precisa de diploma. Bootcamp + portfólio resolvem."
       },
       {
         slug: "cientista-dados",
         nome: "Cientista de Dados",
         descricaoCurta: "Constrói modelos preditivos, aplica estatística avançada e machine learning pra resolver problemas de negócio.",
-        descricaoCompleta: "Cientista de Dados é o profissional que vai além de relatórios: aplica estatística avançada e machine learning pra construir modelos que preveem o futuro. Detecta fraudes antes que aconteçam, prevê quais clientes vão cancelar serviço, recomenda produtos baseado em padrões invisíveis a olho nu. É um dos cargos mais técnicos e mais bem pagos do mercado de dados, com salário médio de R$ 10.825 e topo em R$ 24.000+ (Nubank, fintechs grandes). Combina três pilares — matemática/estatística, programação (Python/R) e visão de negócio — que poucos profissionais dominam ao mesmo tempo.",
+        descricaoCompleta: "Cientista de Dados é o profissional que vai além de relatórios: aplica estatística avançada e machine learning pra construir modelos que preveem o futuro. Detecta fraudes antes que aconteçam, prevê quais clientes vão cancelar serviço, recomenda produtos baseado em padrões invisíveis a olho nu. É um dos cargos mais técnicos e mais bem pagos do mercado de dados, com salário médio de R$ 10.825 e topo em R$ 24.000+ (Nubank, fintechs grandes). Combina três pilares (matemática/estatística, programação em Python/R e visão de negócio) que poucos profissionais dominam ao mesmo tempo.",
         oQueFaz: "No dia a dia: coleta dados de múltiplas fontes, explora padrões com análise estatística (Python + Pandas + Matplotlib), formula hipóteses de negócio (ex: 'quais clientes têm maior risco de churn?'), treina modelos de machine learning pra responder essas perguntas, e apresenta resultados pra stakeholders não-técnicos em formato visual e narrativo. Em fintechs e bancos, trabalha em modelos de risco de crédito, prevenção de fraude e segmentação de clientes.",
-        diferencasDaAreaMae: "Enquanto o Analista de Dados foca em relatórios e dashboards sobre o que já aconteceu, o Cientista de Dados constrói modelos preditivos sobre o que vai acontecer. Onde o analista usa Excel e Power BI, o cientista usa Python, scikit-learn e TensorFlow. A barreira de entrada é maior — exige base sólida de estatística inferencial e álgebra linear — mas o salário compensa: cientista júnior pode começar acima do pleno analista.",
+        diferencasDaAreaMae: "Enquanto o Analista de Dados foca em relatórios e dashboards sobre o que já aconteceu, o Cientista de Dados constrói modelos preditivos sobre o que vai acontecer. Onde o analista usa Excel e Power BI, o cientista usa Python, scikit-learn e TensorFlow. A barreira de entrada é maior (exige base sólida de estatística inferencial e álgebra linear), mas o salário compensa: cientista júnior pode começar acima do pleno analista.",
         habilidadesEspecificas: [
           "Estatística inferencial e álgebra linear (base matemática forte)",
           "Python avançado com Pandas, NumPy e Matplotlib",
           "Machine Learning supervisionado e não-supervisionado (regressão, classificação, clustering)",
           "Deep Learning (redes neurais com TensorFlow ou PyTorch)",
-          "Storytelling de dados — traduzir modelos complexos em insights pra liderança"
+          "Storytelling de dados: traduzir modelos complexos em insights pra liderança"
         ],
         ferramentasEspecificas: [
           "Python (Pandas, NumPy, scikit-learn)",
@@ -309,12 +309,12 @@ const baseAreasTI: AreaTI[] = [
           "Cientista de Dados Sênior (5+ anos)",
           "Staff/Principal Data Scientist (lidera projetos, mentora time)"
         ],
-        faixaSalarial: "R$ 6.000 (júnior) a R$ 24.000 (sênior em grandes empresas). Média BR R$ 10.825 — CAGED/Glassdoor 2026. Remoto pra EUA passa R$ 50.000.",
+        faixaSalarial: "R$ 6.000 (júnior) a R$ 24.000 (sênior em grandes empresas). Média BR R$ 10.825, CAGED/Glassdoor 2026. Remoto pra EUA passa R$ 50.000.",
         dificuldade: 5,
         cursosGratuitos: [
-          "Sigmoidal — Conteúdo gratuito de Data Science (artigos, tutoriais e cursos introdutórios)",
-          "Kaggle Learn — Trilhas oficiais Kaggle (Python, ML, Deep Learning) — todas gratuitas",
-          "StatQuest with Josh Starmer (YouTube) — estatística e ML em vídeo"
+          "Sigmoidal: Conteúdo gratuito de Data Science (artigos, tutoriais e cursos introdutórios)",
+          "Kaggle Learn: Trilhas oficiais Kaggle (Python, ML, Deep Learning), todas gratuitas",
+          "StatQuest with Josh Starmer (YouTube): estatística e ML em vídeo"
         ],
         projetosSugeridos: [
           "Modelo preditivo de churn (cancelamento) com dados públicos de telecom",
@@ -322,21 +322,21 @@ const baseAreasTI: AreaTI[] = [
           "Análise exploratória + dashboard de dados de e-commerce/varejo com insights de negócio"
         ],
         roadmapEspecifico: [
-          "Estudar estatística inferencial (livro: 'An Introduction to Statistical Learning' — gratuito)",
+          "Estudar estatística inferencial (livro: 'An Introduction to Statistical Learning', gratuito)",
           "Aprender Python + Pandas + Matplotlib até dominar análise exploratória",
-          "Estudar Machine Learning — começar pelo Kaggle Learn (regressão → classificação → clustering)",
-          "Aprofundar em Deep Learning (TensorFlow ou PyTorch) — área de maior crescimento salarial",
+          "Estudar Machine Learning: começar pelo Kaggle Learn (regressão → classificação → clustering)",
+          "Aprofundar em Deep Learning (TensorFlow ou PyTorch): área de maior crescimento salarial",
           "Construir portfólio público: 3 projetos no GitHub + 1 competição Kaggle com posição decente"
         ],
-        dicasIniciais: "Não pula a estatística — é a base que separa cientista bom de cientista que só copia código. Use Kaggle como academia de treino: cada competição é uma oportunidade real de portfólio. Foque em comunicar resultados quanto em construir modelos — quem traduz números pra negócio sobe rápido. Inglês é obrigatório aqui: papers, comunidade, doc, tudo em inglês."
+        dicasIniciais: "Não pula a estatística. É a base que separa cientista bom de cientista que só copia código. Use Kaggle como academia de treino: cada competição é uma oportunidade real de portfólio. Foque em comunicar resultados quanto em construir modelos. Quem traduz números pra negócio sobe rápido. Inglês é obrigatório aqui: papers, comunidade, doc, tudo em inglês."
       },
       {
         slug: "analista-bi",
         nome: "Analista de BI",
         descricaoCurta: "Especialista em ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra dashboards executivos.",
-        descricaoCompleta: "Analista de BI (Business Intelligence) é o profissional especializado em transformar dados em dashboards executivos que apoiam decisões estratégicas. Domina ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra construir relatórios que monitoram KPIs do negócio em tempo real. Cargo super comum em empresas tradicionais e médias no BR — varejo, financeiro, indústria, saúde. Salário típico: R$ 3-5.5k júnior, R$ 6-10k pleno, R$ 10-18k sênior. Diferente do Analista de Dados generalista, o de BI é especialista em construir dashboards corporativos consumidos por executivos.",
+        descricaoCompleta: "Analista de BI (Business Intelligence) é o profissional especializado em transformar dados em dashboards executivos que apoiam decisões estratégicas. Domina ferramentas de visualização (Power BI, Tableau, Looker) e SQL pra construir relatórios que monitoram KPIs do negócio em tempo real. Cargo super comum em empresas tradicionais e médias no BR: varejo, financeiro, indústria, saúde. Salário típico: R$ 3-5.5k júnior, R$ 6-10k pleno, R$ 10-18k sênior. Diferente do Analista de Dados generalista, o de BI é especialista em construir dashboards corporativos consumidos por executivos.",
         oQueFaz: "No dia a dia: extrai dados via SQL de sistemas corporativos (ERP, CRM), modela os dados pra consumo em ferramentas de BI, constrói dashboards interativos no Power BI ou Tableau com KPIs do negócio (vendas, financeiro, operacional), apresenta relatórios pra lideranças, automatiza atualizações periódicas, e treina usuários de negócio a navegar pelos dashboards. Faz BI operacional (acompanhamento diário) e BI estratégico (decisões de médio-longo prazo).",
-        diferencasDaAreaMae: "Dentro de Ciência de Dados, o Analista de BI é o mais especializado em visualização e dashboards executivos — diferente do Analista de Dados (que faz análises mais variadas) e do Analytics Engineer (que constrói modelos no warehouse). Cargo super comum em empresas tradicionais brasileiras que ainda estão maturando seu uso de dados. Porta de entrada relativamente acessível — pode-se começar dominando Power BI + SQL sem precisar de Python ou estatística.",
+        diferencasDaAreaMae: "Dentro de Ciência de Dados, o Analista de BI é o mais especializado em visualização e dashboards executivos, diferente do Analista de Dados (que faz análises mais variadas) e do Analytics Engineer (que constrói modelos no warehouse). Cargo super comum em empresas tradicionais brasileiras que ainda estão maturando seu uso de dados. Porta de entrada relativamente acessível: pode-se começar dominando Power BI + SQL sem precisar de Python ou estatística.",
         habilidadesEspecificas: [
           "Power BI ou Tableau (essencial, escolher um e dominar)",
           "SQL intermediário-avançado (joins, agregações, CTEs)",
@@ -358,12 +358,12 @@ const baseAreasTI: AreaTI[] = [
           "Analista de BI Sênior (5+ anos)",
           "Coordenador BI / Lead Analytics"
         ],
-        faixaSalarial: "R$ 3.000 (júnior) a R$ 18.000 (sênior). Média BR R$ 4.614-6.192 — Glassdoor/Indeed 2026. Pleno gira em R$ 6-10k. Em fintechs e empresas grandes, sênior chega a R$ 12-18k.",
+        faixaSalarial: "R$ 3.000 (júnior) a R$ 18.000 (sênior). Média BR R$ 4.614-6.192, Glassdoor/Indeed 2026. Pleno gira em R$ 6-10k. Em fintechs e empresas grandes, sênior chega a R$ 12-18k.",
         dificuldade: 3,
         cursosGratuitos: [
-          "Microsoft Learn — Power BI fundamentals (oficial gratuito)",
-          "Curso em Vídeo — SQL Completo (Gustavo Guanabara)",
-          "Tableau Public — recursos gratuitos + galeria de exemplos"
+          "Microsoft Learn: Power BI fundamentals (oficial gratuito)",
+          "Curso em Vídeo: SQL Completo (Gustavo Guanabara)",
+          "Tableau Public: recursos gratuitos + galeria de exemplos"
         ],
         projetosSugeridos: [
           "Dashboard executivo de vendas com 4-5 visualizações conectadas (Power BI ou Tableau)",
@@ -374,21 +374,21 @@ const baseAreasTI: AreaTI[] = [
           "Aprender SQL profundamente (joins, agregações, window functions)",
           "Escolher Power BI ou Tableau e dominar profundamente",
           "Estudar modelagem básica pra BI (star schema simplificado)",
-          "Aprender DAX (Power BI) ou LookML (Looker) — diferencial salarial real",
+          "Aprender DAX (Power BI) ou LookML (Looker): diferencial salarial real",
           "Construir portfólio com 3-4 dashboards publicados (Tableau Public é gratuito)"
         ],
-        dicasIniciais: "Power BI é o mais procurado no BR — comece por ele. Tableau vale pra quem mira empresas internacionais ou agências. Portfólio público no Tableau Public é grátis e impressiona recrutadores. Domine DAX se for Power BI — separa juniores de plenos. Certificação Microsoft PL-300 (Power BI) custa US$ 165 e vale o investimento."
+        dicasIniciais: "Power BI é o mais procurado no BR. Comece por ele. Tableau vale pra quem mira empresas internacionais ou agências. Portfólio público no Tableau Public é grátis e impressiona recrutadores. Domine DAX se for Power BI. Separa juniores de plenos. Certificação Microsoft PL-300 (Power BI) custa US$ 165 e vale o investimento."
       },
       {
         slug: "analytics-engineer",
         nome: "Analytics Engineer",
         descricaoCurta: "Atua entre engenharia e análise. Cria modelos de dados confiáveis com SQL + dbt pra times de analistas.",
-        descricaoCompleta: "Analytics Engineer é o cargo híbrido mais quente da área de dados em 2026: profissional que vive entre o Engenheiro de Dados e o Analista. Surgiu com o movimento Modern Data Stack (dbt + Snowflake + BigQuery) e virou padrão em empresas data-driven. Constrói modelos de dados confiáveis e reutilizáveis em SQL — não pipelines de ingestão (engenheiro), nem dashboards finais (analista), mas a camada intermediária que alimenta tudo. Salário típico fica entre Analista e Engenheiro: R$ 8-18k pleno, sêniores R$ 18-25k. Mercado BR ainda em formação — quem domina dbt + SQL avançado pega salários acima da média de Analista.",
+        descricaoCompleta: "Analytics Engineer é o cargo híbrido mais quente da área de dados em 2026: profissional que vive entre o Engenheiro de Dados e o Analista. Surgiu com o movimento Modern Data Stack (dbt + Snowflake + BigQuery) e virou padrão em empresas data-driven. Constrói modelos de dados confiáveis e reutilizáveis em SQL, não pipelines de ingestão (engenheiro), nem dashboards finais (analista), mas a camada intermediária que alimenta tudo. Salário típico fica entre Analista e Engenheiro: R$ 8-18k pleno, sêniores R$ 18-25k. Mercado BR ainda em formação. Quem domina dbt + SQL avançado pega salários acima da média de Analista.",
         oQueFaz: "No dia a dia: modela dados brutos do warehouse em camadas confiáveis (staging → marts), escreve transformações SQL versionadas em dbt, documenta lineage e testes de qualidade, colabora com Engenheiros de Dados (consome pipelines) e Analistas (entrega modelos prontos), implementa testes automatizados de qualidade de dados, e gerencia o data warehouse pra que múltiplos times consumam dados consistentes. Conecta o mundo de eng. de dados com o mundo de análise.",
         diferencasDaAreaMae: "Dentro de Ciência de Dados, o Analytics Engineer separa-se claramente: enquanto o Analista usa dados prontos pra fazer relatórios, e o Engenheiro de Dados move dados de origem pro warehouse, o Analytics Engineer transforma dados brutos em modelos confiáveis dentro do warehouse. Diferente do Cientista (matemática + ML), o foco aqui é SQL e modelagem dimensional. É a evolução natural de Analistas que querem mais profundidade técnica sem virar engenheiro de dados puro.",
         habilidadesEspecificas: [
           "SQL avançado (window functions, CTEs, otimização)",
-          "dbt (data build tool) — referência absoluta da área",
+          "dbt (data build tool): referência absoluta da área",
           "Modelagem dimensional (Kimball, star schema)",
           "Versionamento e Git (modelos como código)",
           "Testes de qualidade de dados (dbt tests, data contracts)"
@@ -411,7 +411,7 @@ const baseAreasTI: AreaTI[] = [
         dificuldade: 4,
         cursosGratuitos: [
           "dbt Learn (cursos oficiais grátis em inglês)",
-          "DataTalksClub — Analytics Engineering Zoomcamp (gratuito, completo)",
+          "DataTalksClub: Analytics Engineering Zoomcamp (gratuito, completo)",
           "GitLab Data Team handbook (referência pública sobre data modeling)"
         ],
         projetosSugeridos: [
@@ -426,7 +426,7 @@ const baseAreasTI: AreaTI[] = [
           "Praticar com data warehouse moderno (BigQuery é gratuito até certo volume)",
           "Construir 1-2 projetos públicos no GitHub com dbt + docs + tests"
         ],
-        dicasIniciais: "Analytics Engineer é o caminho mais inteligente pra Analistas que querem subir salário sem virar Engenheiro de Dados puro. dbt é A ferramenta da carreira — invista 1-2 meses dominando. SQL é 80% do trabalho — se não está fluente, foque aí antes. Inglês é importante (toda a community dbt está em inglês). Cargo ainda em formação no BR — quem entra agora pega salários acima do normal."
+        dicasIniciais: "Analytics Engineer é o caminho mais inteligente pra Analistas que querem subir salário sem virar Engenheiro de Dados puro. dbt é A ferramenta da carreira. Invista 1-2 meses dominando. SQL é 80% do trabalho. Se não está fluente, foque aí antes. Inglês é importante (toda a community dbt está em inglês). Cargo ainda em formação no BR. Quem entra agora pega salários acima do normal."
       }
     ]
   },
@@ -446,7 +446,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 3,
     cargos: ["Designer UX/UI Júnior", "Product Designer", "UI Designer", "UX Researcher"],
     faixaSalarial: "R$ 2.500 a R$ 5.500 (estágio/trainee/júnior)",
-    cursosGratuitos: ["Figma — Curso oficial gratuito", "Origamid — UX Design (parcial)", "YouTube — Canais de UX em português"],
+    cursosGratuitos: ["Figma: Curso oficial gratuito", "Origamid: UX Design (parcial)", "YouTube: Canais de UX em português"],
     roadmapInicial: ["Aprender conceitos de UX", "Aprender Figma", "Criar wireframes simples", "Estudar heurísticas de Nielsen", "Criar protótipo de app", "Publicar no Behance"],
     projetos: ["Redesign de app existente", "Protótipo de app de delivery", "Pesquisa de usabilidade simples"],
     termosEssenciais: ["Wireframe", "Protótipo", "Usabilidade", "Heurísticas", "Design System", "Persona"],
@@ -460,7 +460,7 @@ const baseAreasTI: AreaTI[] = [
         slug: "ux-design",
         nome: "UX Design",
         descricaoCurta: "Pesquisa com usuários, fluxos, wireframes e testes de usabilidade. Foco em como o produto funciona.",
-        descricaoCompleta: "UX Design é o coração da experiência do usuário: o profissional que investiga, planeja e estrutura como pessoas interagem com produtos digitais antes de uma linha de código ser escrita. Trabalha com pesquisa, entrevistas, fluxos de navegação, wireframes e testes de usabilidade. O foco está em como o produto funciona, não em como ele parece (essa é a praia do UI Designer). É a porta de entrada mais comum em UX/UI no Brasil — salários partem de R$ 4k pra júnior e chegam a R$ 12k+ pra sênior, com mercado aquecido em startups e produtos digitais.",
+        descricaoCompleta: "UX Design é o coração da experiência do usuário: o profissional que investiga, planeja e estrutura como pessoas interagem com produtos digitais antes de uma linha de código ser escrita. Trabalha com pesquisa, entrevistas, fluxos de navegação, wireframes e testes de usabilidade. O foco está em como o produto funciona, não em como ele parece (essa é a praia do UI Designer). É a porta de entrada mais comum em UX/UI no Brasil. Salários partem de R$ 4k pra júnior e chegam a R$ 12k+ pra sênior, com mercado aquecido em startups e produtos digitais.",
         oQueFaz: "No dia a dia: conduz entrevistas com usuários reais, mapeia jornadas (do primeiro contato até a conversão), monta wireframes de baixa fidelidade, prototipia fluxos no Figma, organiza testes de usabilidade pra validar hipóteses, e apresenta resultados de pesquisa pro time de produto. Trabalha lado a lado com PM, dev e UI Designer pra garantir que a solução resolva o problema real do usuário, não só uma intuição do time.",
         diferencasDaAreaMae: "Dentro de UX/UI, o UX Design separa-se do UI Design pelo foco: enquanto UI cuida da parte visual (cores, tipografia, componentes), UX cuida da estrutura e do comportamento (fluxos, decisões, hierarquia). Diferente do Product Designer (que mistura UX + UI + estratégia), o UX puro investe mais profundamente em pesquisa e validação. É a melhor porta de entrada pra quem gosta mais de raciocinar sobre problemas que de desenhar telas bonitas.",
         habilidadesEspecificas: [
@@ -489,7 +489,7 @@ const baseAreasTI: AreaTI[] = [
         cursosGratuitos: [
           "Google UX Design Professional Certificate (Coursera, audit gratuito)",
           "UX Collective (publicação Medium + tutoriais em PT-BR e EN)",
-          "Interaction Design Foundation (IDF) — artigos gratuitos sobre fundamentos"
+          "Interaction Design Foundation (IDF): artigos gratuitos sobre fundamentos"
         ],
         projetosSugeridos: [
           "Redesign de um app que você usa (com pesquisa + protótipo + justificativa)",
@@ -503,13 +503,13 @@ const baseAreasTI: AreaTI[] = [
           "Fazer 2-3 estudos de caso reais ou hipotéticos pro portfólio",
           "Construir portfólio público (Behance ou site próprio) com processo, não só telas finais"
         ],
-        dicasIniciais: "Portfólio vale mais que diploma — recrutadores olham processo, não título. Mostre como você pensou, não só o que entregou. Faça pelo menos 1 estudo de caso completo (problema → pesquisa → protótipo → teste → solução). Domine Figma cedo: é o padrão da indústria e quase obrigatório em qualquer vaga. Inglês ajuda mas não é deal-breaker como em Cientista de Dados."
+        dicasIniciais: "Portfólio vale mais que diploma. Recrutadores olham processo, não título. Mostre como você pensou, não só o que entregou. Faça pelo menos 1 estudo de caso completo (problema → pesquisa → protótipo → teste → solução). Domine Figma cedo: é o padrão da indústria e quase obrigatório em qualquer vaga. Inglês ajuda mas não é deal-breaker como em Cientista de Dados."
       },
       {
         slug: "ui-design",
         nome: "UI Design",
         descricaoCurta: "Interface visual, paletas, tipografia, componentes. Foco em como o produto se parece.",
-        descricaoCompleta: "UI Designer (User Interface) é o profissional especialista na camada visual da experiência: cores, tipografia, espaçamento, componentes, iconografia. Trabalha próximo ao UX Designer e ao desenvolvedor, traduzindo conceitos e fluxos em interfaces visualmente atraentes e funcionais. Diferente do UX (que pensa estrutura) e do Product Designer (que faz UX + UI + estratégia), o UI puro é cargo mais raro hoje — empresas preferem Product Designers que cobrem ambos. Mas em design systems, agências e jogos digitais, UI puro segue valorizado. Salários: R$ 2.4-7k típico — abaixo do mercado de UX e Product Design.",
+        descricaoCompleta: "UI Designer (User Interface) é o profissional especialista na camada visual da experiência: cores, tipografia, espaçamento, componentes, iconografia. Trabalha próximo ao UX Designer e ao desenvolvedor, traduzindo conceitos e fluxos em interfaces visualmente atraentes e funcionais. Diferente do UX (que pensa estrutura) e do Product Designer (que faz UX + UI + estratégia), o UI puro é cargo mais raro hoje. Empresas preferem Product Designers que cobrem ambos. Mas em design systems, agências e jogos digitais, UI puro segue valorizado. Salários: R$ 2.4-7k típico, abaixo do mercado de UX e Product Design.",
         oQueFaz: "No dia a dia: cria interfaces visuais detalhadas a partir de wireframes do UX, define paletas de cores, sistemas tipográficos, componentes reutilizáveis, micro-interações e estados visuais (hover, disabled, error). Trabalha próximo a desenvolvedores pra garantir aderência fiel ao design (handoff via Figma). Em produtos com design system maduro, contribui pra evolução do sistema. Em agências ou produtos novos, cria do zero o visual da marca.",
         diferencasDaAreaMae: "Dentro de UX/UI, o UI Designer separa-se do UX pela camada: UX cuida da estrutura e comportamento, UI cuida da estética e visual. Diferente do Product Designer (que faz tudo), o UI puro é mais especializado. Cargo menos procurado em startups (que preferem Product Designers híbridos), mas valorizado em agências, design systems e produtos com grande maturidade visual. Quem ama composição visual e tipografia mas não tem paciência pra pesquisa profunda se encaixa bem aqui.",
         habilidadesEspecificas: [
@@ -533,7 +533,7 @@ const baseAreasTI: AreaTI[] = [
           "UI Designer Sênior (5+ anos)",
           "Lead UI / Design System Designer"
         ],
-        faixaSalarial: "R$ 2.401 (piso CAGED) a R$ 7.018 (teto CAGED 2026). Média BR R$ 3.725. Em fintechs e empresas grandes, sênior chega a R$ 10-12k. Mercado em queda relativa (-8% contratações) — UI puro está sendo absorvido por Product Design.",
+        faixaSalarial: "R$ 2.401 (piso CAGED) a R$ 7.018 (teto CAGED 2026). Média BR R$ 3.725. Em fintechs e empresas grandes, sênior chega a R$ 10-12k. Mercado em queda relativa (-8% contratações). UI puro está sendo absorvido por Product Design.",
         dificuldade: 3,
         cursosGratuitos: [
           "Figma Academy (cursos oficiais gratuitos)",
@@ -552,15 +552,15 @@ const baseAreasTI: AreaTI[] = [
           "Construir portfólio com 3-4 projetos visuais detalhados",
           "Considerar transição pra Product Designer (UI puro tem mercado mais limitado)"
         ],
-        dicasIniciais: "UI puro tem mercado mais limitado em 2026 — considere ampliar pra Product Designer (UX + UI + estratégia). Se ficar em UI puro, mire agências, design systems ou produtos visualmente complexos (games, finanças premium). Domine Figma profundamente — variants e auto-layout são essenciais. Portfólio visual forte vale mais que diploma. Estude tipografia — separa UI bom de UI medíocre."
+        dicasIniciais: "UI puro tem mercado mais limitado em 2026. Considere ampliar pra Product Designer (UX + UI + estratégia). Se ficar em UI puro, mire agências, design systems ou produtos visualmente complexos (games, finanças premium). Domine Figma profundamente. Variants e auto-layout são essenciais. Portfólio visual forte vale mais que diploma. Estude tipografia. Separa UI bom de UI medíocre."
       },
       {
         slug: "ux-research",
         nome: "UX Research",
         descricaoCurta: "Especialização em pesquisa qualitativa e quantitativa de usuários. Entrevistas, testes, análise comportamental.",
-        descricaoCompleta: "UX Researcher é o especialista em descobrir verdades sobre usuários através de pesquisa rigorosa — entrevistas, observação, testes, análise comportamental. Diferente do UX Designer que faz pesquisa como parte do trabalho, o Researcher vive de pesquisa: planeja estudos, recruta participantes, conduz entrevistas, analisa transcrições, sintetiza insights e influencia decisões de produto e estratégia. Cargo mais sênior em UX, valorizado em empresas grandes (Nubank, iFood, big techs internacionais) onde a complexidade exige profundidade investigativa. Salários: R$ 6-22k, com sêniores em fintechs/big techs chegando a R$ 18-25k.",
+        descricaoCompleta: "UX Researcher é o especialista em descobrir verdades sobre usuários através de pesquisa rigorosa: entrevistas, observação, testes, análise comportamental. Diferente do UX Designer que faz pesquisa como parte do trabalho, o Researcher vive de pesquisa: planeja estudos, recruta participantes, conduz entrevistas, analisa transcrições, sintetiza insights e influencia decisões de produto e estratégia. Cargo mais sênior em UX, valorizado em empresas grandes (Nubank, iFood, big techs internacionais) onde a complexidade exige profundidade investigativa. Salários: R$ 6-22k, com sêniores em fintechs/big techs chegando a R$ 18-25k.",
         oQueFaz: "No dia a dia: planeja estudos de pesquisa (definir objetivos, métodos, métricas), recruta participantes (com perfis específicos), conduz entrevistas em profundidade (1 a 2 horas), facilita testes de usabilidade moderados e não-moderados, analisa transcrições e identifica padrões (análise temática, affinity mapping), sintetiza insights em narrativas pra times de produto, e treina outras pessoas a fazer research básico (democratização). Trabalha com PMs, designers e desenvolvedores.",
-        diferencasDaAreaMae: "Dentro de UX/UI, o Researcher é o cargo mais especializado e mais sênior — diferente do UX Designer (que faz pesquisa como parte do trabalho), o Researcher vive de research. Diferente do Product Designer (que é generalista UX+UI+estratégia), o Researcher é hyper-especializado. Cargo raro em startups (não cabe no orçamento), comum em empresas grandes com 100+ designers. Carreira longa: pode-se ser Researcher Sênior por 10+ anos sem virar gestor.",
+        diferencasDaAreaMae: "Dentro de UX/UI, o Researcher é o cargo mais especializado e mais sênior, diferente do UX Designer (que faz pesquisa como parte do trabalho), o Researcher vive de research. Diferente do Product Designer (que é generalista UX+UI+estratégia), o Researcher é hyper-especializado. Cargo raro em startups (não cabe no orçamento), comum em empresas grandes com 100+ designers. Carreira longa: pode-se ser Researcher Sênior por 10+ anos sem virar gestor.",
         habilidadesEspecificas: [
           "Métodos qualitativos (entrevistas em profundidade, observação contextual)",
           "Métodos quantitativos (surveys, análise estatística básica, A/B testing)",
@@ -585,9 +585,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 6.000 (pleno típico no BR) a R$ 25.000 (sênior em big techs). Médias BR R$ 8-15k. Vagas internacionais remotas pagam US$ 5-10k/mês. Cargo mais sênior em UX no geral.",
         dificuldade: 4,
         cursosGratuitos: [
-          "NN/g (Nielsen Norman Group) — artigos gratuitos sobre research (referência mundial)",
-          "Interaction Design Foundation — artigos gratuitos sobre research methods",
-          "Dovetail Academy — recursos gratuitos sobre research repositórios"
+          "NN/g (Nielsen Norman Group): artigos gratuitos sobre research (referência mundial)",
+          "Interaction Design Foundation: artigos gratuitos sobre research methods",
+          "Dovetail Academy: recursos gratuitos sobre research repositórios"
         ],
         projetosSugeridos: [
           "Estudo qualitativo completo: 5-8 entrevistas + análise temática + insights pra um produto",
@@ -601,15 +601,15 @@ const baseAreasTI: AreaTI[] = [
           "Construir repositório público de estudos no Medium ou portfólio próprio",
           "Conseguir vaga como UX Researcher Júnior em empresa grande (raro mas existe)"
         ],
-        dicasIniciais: "Researcher é cargo mais sênior em UX — raramente entry-level. Caminho comum: começa como UX Designer ou Product Designer, descobre paixão por research, especializa. Domine entrevistas em profundidade — é a habilidade-chave. Inglês é altamente diferencial (boa parte da literatura está em inglês). Background em psicologia, sociologia ou antropologia ajuda (mas não é obrigatório). Cargo perfeito pra perfis curiosos e investigativos."
+        dicasIniciais: "Researcher é cargo mais sênior em UX, raramente entry-level. Caminho comum: começa como UX Designer ou Product Designer, descobre paixão por research, especializa. Domine entrevistas em profundidade. É a habilidade-chave. Inglês é altamente diferencial (boa parte da literatura está em inglês). Background em psicologia, sociologia ou antropologia ajuda (mas não é obrigatório). Cargo perfeito pra perfis curiosos e investigativos."
       },
       {
         slug: "design-systems",
         nome: "Design Systems",
         descricaoCurta: "Construção e manutenção de bibliotecas de componentes e tokens de design pra produtos grandes.",
-        descricaoCompleta: "Design System Designer é o profissional sênior que constrói e mantém o sistema de design de uma empresa — biblioteca de componentes reutilizáveis, tokens de design (cores, espaçamento, tipografia), padrões de interação e documentação. Diferente do Product Designer (que usa o design system pra criar telas) ou UI puro (que faz interfaces visuais), o DS Designer constrói a fundação que todos os outros designers usam. Cargo super sênior — raramente entry-level. Salários: pleno gira R$ 8-15k, sêniores em empresas com produtos complexos (Nubank, iFood, Magalu) chegam a R$ 18-25k. Mercado em crescimento — toda empresa madura precisa.",
+        descricaoCompleta: "Design System Designer é o profissional sênior que constrói e mantém o sistema de design de uma empresa: biblioteca de componentes reutilizáveis, tokens de design (cores, espaçamento, tipografia), padrões de interação e documentação. Diferente do Product Designer (que usa o design system pra criar telas) ou UI puro (que faz interfaces visuais), o DS Designer constrói a fundação que todos os outros designers usam. Cargo super sênior, raramente entry-level. Salários: pleno gira R$ 8-15k, sêniores em empresas com produtos complexos (Nubank, iFood, Magalu) chegam a R$ 18-25k. Mercado em crescimento. Toda empresa madura precisa.",
         oQueFaz: "No dia a dia: define tokens de design (cores, tipografia, espaçamento, elevações) e versiona como código, constrói componentes reutilizáveis no Figma com variants e propriedades, documenta padrões de uso e boas práticas, trabalha próximo aos devs front-end pra garantir aderência (Storybook, Tailwind, MUI), faz workshops e treina outros designers a usar o sistema, e itera baseado em feedback de uso. Em times maduros, gerencia versão do design system como produto interno.",
-        diferencasDaAreaMae: "Dentro de UX/UI, o Design System é a especialização mais técnica — diferente do Product Designer (que usa o sistema) e do UI Designer (que cria interfaces), o DS Designer constrói a base. Aproxima-se de Front-end Engineer: precisa entender tokens, componentes, lógica de propriedades. Diferente do UX Designer (foco em pesquisa), o DS Designer foca em sistematização visual. Cargo SÊNIOR — não tente entrar sem 3+ anos de design de produto. Caminho típico: Product/UI Designer experiente → DS Designer.",
+        diferencasDaAreaMae: "Dentro de UX/UI, o Design System é a especialização mais técnica, diferente do Product Designer (que usa o sistema) e do UI Designer (que cria interfaces), o DS Designer constrói a base. Aproxima-se de Front-end Engineer: precisa entender tokens, componentes, lógica de propriedades. Diferente do UX Designer (foco em pesquisa), o DS Designer foca em sistematização visual. Cargo SÊNIOR. Não tente entrar sem 3+ anos de design de produto. Caminho típico: Product/UI Designer experiente → DS Designer.",
         habilidadesEspecificas: [
           "Figma avançado (variants, properties, variables, modes)",
           "Tokens de design (Tokens Studio, Style Dictionary)",
@@ -634,9 +634,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 6.000 (entrada) a R$ 25.000+ (sênior em big techs). Pleno gira em R$ 8-15k. Sêniores em Nubank, iFood, Magalu, Stone chegam a R$ 18-25k. Remoto pra fora paga US$ 5-10k/mês.",
         dificuldade: 4,
         cursosGratuitos: [
-          "Brad Frost — Atomic Design (livro online gratuito, referência mundial)",
-          "Design Systems Repo (designsystemsrepo.com) — coleção de sistemas reais",
-          "Figma Academy — Design Systems track (cursos oficiais gratuitos)"
+          "Brad Frost: Atomic Design (livro online gratuito, referência mundial)",
+          "Design Systems Repo (designsystemsrepo.com): coleção de sistemas reais",
+          "Figma Academy: Design Systems track (cursos oficiais gratuitos)"
         ],
         projetosSugeridos: [
           "Construir design system completo (cores, tipografia, 20+ componentes) com docs",
@@ -650,15 +650,15 @@ const baseAreasTI: AreaTI[] = [
           "Aprender fundamentos de front-end (HTML, CSS, React básico)",
           "Construir DS público no Figma + GitHub como portfólio"
         ],
-        dicasIniciais: "DS é cargo SÊNIOR — não tente entrar como júnior. Brad Frost (Atomic Design) é leitura obrigatória. Conhecimento básico de front-end é o diferencial real — separa DS Designer de UI puro. Domine Figma absurdamente (variants, properties, modes). Acompanhe sistemas grandes: Material Design (Google), Polaris (Shopify), Lightning (Salesforce) — todos públicos. Cargo perfeito pra perfis sistemáticos e organizados."
+        dicasIniciais: "DS é cargo SÊNIOR. Não tente entrar como júnior. Brad Frost (Atomic Design) é leitura obrigatória. Conhecimento básico de front-end é o diferencial real. Separa DS Designer de UI puro. Domine Figma absurdamente (variants, properties, modes). Acompanhe sistemas grandes: Material Design (Google), Polaris (Shopify), Lightning (Salesforce), todos públicos. Cargo perfeito pra perfis sistemáticos e organizados."
       },
       {
         slug: "product-design",
         nome: "Product Designer",
         descricaoCurta: "Generalista que cobre UX + UI + estratégia de produto. Cargo mais comum em startups.",
-        descricaoCompleta: "Product Designer é o cargo mais procurado em design de produtos digitais hoje — combina pesquisa (UX), interface visual (UI) e estratégia de produto em uma única função. Surgiu como evolução do designer especializado: em vez de ter UX Designer + UI Designer + estrategista separados, startups querem alguém que faça tudo. É o cargo mais comum em startups e scale-ups no Brasil, com salários partindo de R$ 4-6k pra júnior e chegando a R$ 15-20k+ pra sênior em fintechs e big techs. Diferente de UX puro ou UI puro, o Product Designer precisa entender métricas de negócio e colaborar diretamente com PMs e devs.",
-        oQueFaz: "No dia a dia: conduz pesquisa com usuários (entrevistas, testes), desenha fluxos e wireframes, constrói interfaces visuais detalhadas no Figma, valida hipóteses com protótipos, contribui pra estratégia do produto junto com PM e tech lead. Trabalha em ciclos curtos (sprints) entregando features completas — do problema definido até o design final pronto pra dev. Mede impacto das próprias decisões com métricas e itera baseado em dados.",
-        diferencasDaAreaMae: "Dentro de UX/UI Design, o Product Designer é o generalista — cobre UX + UI + um pouco de estratégia. Diferente do UX Designer (focado em pesquisa e estrutura) e do UI Designer (focado em visual), o Product Designer precisa fazer os dois bem e ainda pensar em métricas de produto. É o cargo mais procurado em startups e scale-ups, porque uma pessoa entrega o que normalmente exigiria duas ou três. Em empresas maiores, o cargo se divide em especialistas (UX puro, UI puro, Research separado).",
+        descricaoCompleta: "Product Designer é o cargo mais procurado em design de produtos digitais hoje. Combina pesquisa (UX), interface visual (UI) e estratégia de produto em uma única função. Surgiu como evolução do designer especializado: em vez de ter UX Designer + UI Designer + estrategista separados, startups querem alguém que faça tudo. É o cargo mais comum em startups e scale-ups no Brasil, com salários partindo de R$ 4-6k pra júnior e chegando a R$ 15-20k+ pra sênior em fintechs e big techs. Diferente de UX puro ou UI puro, o Product Designer precisa entender métricas de negócio e colaborar diretamente com PMs e devs.",
+        oQueFaz: "No dia a dia: conduz pesquisa com usuários (entrevistas, testes), desenha fluxos e wireframes, constrói interfaces visuais detalhadas no Figma, valida hipóteses com protótipos, contribui pra estratégia do produto junto com PM e tech lead. Trabalha em ciclos curtos (sprints) entregando features completas, do problema definido até o design final pronto pra dev. Mede impacto das próprias decisões com métricas e itera baseado em dados.",
+        diferencasDaAreaMae: "Dentro de UX/UI Design, o Product Designer é o generalista. Cobre UX + UI + um pouco de estratégia. Diferente do UX Designer (focado em pesquisa e estrutura) e do UI Designer (focado em visual), o Product Designer precisa fazer os dois bem e ainda pensar em métricas de produto. É o cargo mais procurado em startups e scale-ups, porque uma pessoa entrega o que normalmente exigiria duas ou três. Em empresas maiores, o cargo se divide em especialistas (UX puro, UI puro, Research separado).",
         habilidadesEspecificas: [
           "UX completo (pesquisa, fluxos, wireframes, testes)",
           "UI design e prototipagem detalhada (Figma, design systems)",
@@ -699,7 +699,7 @@ const baseAreasTI: AreaTI[] = [
           "Estudar métricas básicas de produto e analytics (Mixpanel, GA4)",
           "Construir portfólio com 3 estudos de caso COMPLETOS (não só telas finais)"
         ],
-        dicasIniciais: "Product Designer é o cargo com maior demanda hoje em design — vale mais que se especializar em UX ou UI puros. Portfólio com PROCESSO vale muito mais que portfólio com telas bonitas — recrutadores querem ver pesquisa, hipóteses, decisões e impacto. Domine Figma absurdamente (não basta saber usar — precisa fazer dele uma extensão da mão). Inglês é diferencial real. Conecte com PMs no LinkedIn — eles abrem portas."
+        dicasIniciais: "Product Designer é o cargo com maior demanda hoje em design. Vale mais que se especializar em UX ou UI puros. Portfólio com PROCESSO vale muito mais que portfólio com telas bonitas. Recrutadores querem ver pesquisa, hipóteses, decisões e impacto. Domine Figma absurdamente (não basta saber usar, precisa fazer dele uma extensão da mão). Inglês é diferencial real. Conecte com PMs no LinkedIn. Eles abrem portas."
       }
     ]
   },
@@ -719,7 +719,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 5,
     cargos: ["Engenheiro de ML Júnior", "Pesquisador de IA", "Desenvolvedor de IA", "Engenheiro de Dados"],
     faixaSalarial: "R$ 4.000 a R$ 8.000 (trainee/júnior)",
-    cursosGratuitos: ["fast.ai — Practical Deep Learning", "Coursera — Machine Learning (Andrew Ng, parcial gratuito)", "Google — Machine Learning Crash Course"],
+    cursosGratuitos: ["fast.ai: Practical Deep Learning", "Coursera: Machine Learning (Andrew Ng, parcial gratuito)", "Google: Machine Learning Crash Course"],
     roadmapInicial: ["Aprender Python", "Aprender estatística básica", "Estudar Machine Learning com Scikit-learn", "Praticar no Kaggle", "Aprender Deep Learning básico"],
     projetos: ["Classificador de imagens simples", "Análise de sentimentos em textos", "Modelo de recomendação básico"],
     termosEssenciais: ["Machine Learning", "Rede Neural", "Dataset", "Treinamento", "Modelo", "Overfitting"],
@@ -736,9 +736,9 @@ const baseAreasTI: AreaTI[] = [
         slug: "machine-learning",
         nome: "Machine Learning Engineer",
         descricaoCurta: "Constrói e implanta modelos de ML em produção. Foca na infraestrutura, MLOps e escala dos modelos.",
-        descricaoCompleta: "Machine Learning Engineer é o profissional que transforma modelos de pesquisa em produtos reais. Enquanto o Cientista de Dados experimenta e treina modelos em notebooks, o ML Engineer pega esses modelos e os coloca em produção: cria APIs, monta pipelines de treino contínuo, monitora performance em tempo real, escala pra milhões de requisições. É a interseção entre engenharia de software e IA — junta backend, cloud, MLOps e domínio de modelos. Cargo super aquecido em 2026 (BeBee registra 1.28M+ vagas relacionadas no Brasil) e um dos mais bem pagos da área de IA.",
+        descricaoCompleta: "Machine Learning Engineer é o profissional que transforma modelos de pesquisa em produtos reais. Enquanto o Cientista de Dados experimenta e treina modelos em notebooks, o ML Engineer pega esses modelos e os coloca em produção: cria APIs, monta pipelines de treino contínuo, monitora performance em tempo real, escala pra milhões de requisições. É a interseção entre engenharia de software e IA. Junta backend, cloud, MLOps e domínio de modelos. Cargo super aquecido em 2026 (BeBee registra 1.28M+ vagas relacionadas no Brasil) e um dos mais bem pagos da área de IA.",
         oQueFaz: "No dia a dia: pega modelos treinados pelos cientistas de dados e empacota pra produção (Docker, APIs REST), constrói pipelines automatizados de treino e re-treino, configura observabilidade pra modelos em produção (model drift, performance metrics), otimiza inferência pra reduzir latência e custo de cloud, e implementa testes automatizados pra garantir que mudanças não degradem qualidade. Trabalha com Cientistas de Dados (entrega input) e Engenheiros de Dados (consome dados via pipelines).",
-        diferencasDaAreaMae: "Dentro de IA, o ML Engineer separa-se do Cientista de Dados pelo foco: cientista descobre soluções com matemática e estatística; ML Engineer entrega essas soluções em produção. Diferente do MLOps Engineer (que cuida só de infra de modelos), o ML Engineer ainda toca código de modelagem e tunning. É a porta de entrada ideal pra quem vem de backend ou DevOps e quer migrar pra IA — mais código, menos matemática pesada que o cientista puro.",
+        diferencasDaAreaMae: "Dentro de IA, o ML Engineer separa-se do Cientista de Dados pelo foco: cientista descobre soluções com matemática e estatística; ML Engineer entrega essas soluções em produção. Diferente do MLOps Engineer (que cuida só de infra de modelos), o ML Engineer ainda toca código de modelagem e tunning. É a porta de entrada ideal pra quem vem de backend ou DevOps e quer migrar pra IA, mais código, menos matemática pesada que o cientista puro.",
         habilidadesEspecificas: [
           "Python avançado e engenharia de software (testes, design patterns, APIs)",
           "Frameworks de ML em produção (scikit-learn, TensorFlow ou PyTorch)",
@@ -763,9 +763,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 5.445 (júnior) a R$ 18.667 (sênior). Pleno gira em R$ 11.000-13.000. Especialistas em MLOps chegam a R$ 32.000+. Mercado super aquecido (BeBee: 1.28M+ vagas relacionadas).",
         dificuldade: 5,
         cursosGratuitos: [
-          "Made With ML (madewithml.com) — curso completo grátis de MLOps em inglês",
-          "Google ML Crash Course — fundamentos práticos gratuitos",
-          "Full Stack Deep Learning — bootcamp gratuito sobre como colocar ML em produção"
+          "Made With ML (madewithml.com): curso completo grátis de MLOps em inglês",
+          "Google ML Crash Course: fundamentos práticos gratuitos",
+          "Full Stack Deep Learning: bootcamp gratuito sobre como colocar ML em produção"
         ],
         projetosSugeridos: [
           "API REST que serve modelo de ML (FastAPI + Docker + deploy em cloud)",
@@ -779,15 +779,15 @@ const baseAreasTI: AreaTI[] = [
           "Aprender uma cloud focada em ML (AWS SageMaker é o mais procurado)",
           "Construir portfólio: 2 projetos públicos com modelo em produção real"
         ],
-        dicasIniciais: "Não tente entrar como ML Engineer sem experiência prévia em código de produção — esse cargo cobra engenharia tanto quanto IA. Se você vem de backend, é o caminho mais rápido de entrar em IA (sua experiência de produção já vale). Se vem de ciência de dados, foque em DevOps e cloud (essa é sua lacuna). MLOps é o diferencial salarial: especialistas chegam a R$ 32k+."
+        dicasIniciais: "Não tente entrar como ML Engineer sem experiência prévia em código de produção. Esse cargo cobra engenharia tanto quanto IA. Se você vem de backend, é o caminho mais rápido de entrar em IA (sua experiência de produção já vale). Se vem de ciência de dados, foque em DevOps e cloud (essa é sua lacuna). MLOps é o diferencial salarial: especialistas chegam a R$ 32k+."
       },
       {
         slug: "nlp",
         nome: "NLP / LLMs",
         descricaoCurta: "Processamento de linguagem natural. Cria chatbots, sistemas de busca semântica, análise de sentimentos, integrações com LLMs.",
-        descricaoCompleta: "Engenheiro de NLP (Natural Language Processing) é o especialista em fazer máquinas entenderem linguagem humana — texto, fala, comandos. Em 2026, a área se mistura cada vez mais com LLMs (Large Language Models como GPT, Claude, Gemini): NLP moderno é largamente sobre integrar e adaptar esses modelos pra problemas específicos. Aplicações: chatbots inteligentes, análise de sentimento em redes sociais, sistemas de busca semântica, classificação automática de documentos, tradução, geração de conteúdo. Salários sêniores chegam a R$ 25-35k em fintechs e big techs (cargo entre os melhor pagos em IA).",
+        descricaoCompleta: "Engenheiro de NLP (Natural Language Processing) é o especialista em fazer máquinas entenderem linguagem humana: texto, fala, comandos. Em 2026, a área se mistura cada vez mais com LLMs (Large Language Models como GPT, Claude, Gemini): NLP moderno é largamente sobre integrar e adaptar esses modelos pra problemas específicos. Aplicações: chatbots inteligentes, análise de sentimento em redes sociais, sistemas de busca semântica, classificação automática de documentos, tradução, geração de conteúdo. Salários sêniores chegam a R$ 25-35k em fintechs e big techs (cargo entre os melhor pagos em IA).",
         oQueFaz: "No dia a dia: constrói pipelines pra processar grandes volumes de texto (tokenização, limpeza, embeddings), treina ou fine-tuna modelos pra tarefas específicas (classificação de tickets, extração de entidades, análise de sentimento), integra LLMs em produtos via APIs (OpenAI, Anthropic, Google), implementa sistemas de busca semântica com vector databases (Pinecone, Weaviate), avalia qualidade de modelos (acurácia, latência, custo de tokens) e produtiza modelos com MLOps.",
-        diferencasDaAreaMae: "Dentro de IA, o NLP separa-se do Machine Learning Engineer geral pela especialização: trabalha exclusivamente com dados de texto e fala, não imagens ou números. Diferente do Cientista de Dados (que pode usar NLP como uma ferramenta), o engenheiro de NLP vive disso. Em 2026, fronteira entre NLP clássico e Engenharia de Prompt está borrada — quem é forte tecnicamente faz os dois. Cargo super valorizado em chatbots, search e qualquer produto que processe linguagem.",
+        diferencasDaAreaMae: "Dentro de IA, o NLP separa-se do Machine Learning Engineer geral pela especialização: trabalha exclusivamente com dados de texto e fala, não imagens ou números. Diferente do Cientista de Dados (que pode usar NLP como uma ferramenta), o engenheiro de NLP vive disso. Em 2026, fronteira entre NLP clássico e Engenharia de Prompt está borrada. Quem é forte tecnicamente faz os dois. Cargo super valorizado em chatbots, search e qualquer produto que processe linguagem.",
         habilidadesEspecificas: [
           "Python avançado + bibliotecas (Hugging Face Transformers, spaCy, NLTK)",
           "Fine-tuning de LLMs (PEFT, LoRA, RLHF básico)",
@@ -812,9 +812,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 8.000 (júnior) a R$ 35.000+ (sênior). Pleno gira em R$ 13-20k. Sêniores em big techs e fintechs chegam a R$ 25-35k. Remoto pra fora paga US$ 8-15k/mês.",
         dificuldade: 5,
         cursosGratuitos: [
-          "Hugging Face — NLP Course (curso oficial gratuito, completo, em inglês)",
-          "Stanford CS224N (NLP with Deep Learning) — playlists no YouTube gratuitas",
-          "DeepLearning.AI — NLP Specialization (Coursera audit gratuito)"
+          "Hugging Face: NLP Course (curso oficial gratuito, completo, em inglês)",
+          "Stanford CS224N (NLP with Deep Learning): playlists no YouTube gratuitas",
+          "DeepLearning.AI: NLP Specialization (Coursera audit gratuito)"
         ],
         projetosSugeridos: [
           "Classificador de sentimento fine-tuned (BERT ou similar) com dataset público",
@@ -828,15 +828,15 @@ const baseAreasTI: AreaTI[] = [
           "Estudar RAG e vector search (essencial em 2026)",
           "Construir portfólio público: 2-3 projetos com modelos em produção"
         ],
-        dicasIniciais: "NLP em 2026 é largamente sobre LLMs — não fica preso só em NLP clássico (spaCy, NLTK). Domine Hugging Face: é a porta de entrada da área. Inglês é absolutamente obrigatório (toda doc, papers e community estão em inglês). Acompanhe papers de NLP no arxiv (busca por 'arxiv-sanity'). Subárea com salários top da IA — vale o investimento técnico pesado."
+        dicasIniciais: "NLP em 2026 é largamente sobre LLMs. Não fica preso só em NLP clássico (spaCy, NLTK). Domine Hugging Face: é a porta de entrada da área. Inglês é absolutamente obrigatório (toda doc, papers e community estão em inglês). Acompanhe papers de NLP no arxiv (busca por 'arxiv-sanity'). Subárea com salários top da IA. Vale o investimento técnico pesado."
       },
       {
         slug: "visao-computacional",
         nome: "Visão Computacional",
         descricaoCurta: "Modelos pra entender imagens e vídeos. Detecção de objetos, reconhecimento facial, OCR, segmentação.",
-        descricaoCompleta: "Engenheiro de Visão Computacional é o especialista em fazer máquinas interpretarem imagens e vídeos. Em 2026, é uma das áreas mais transversais e inovadoras de IA — carros autônomos (Tesla), drones agrícolas, robôs cirúrgicos, reconhecimento facial em segurança, detecção de defeitos em linhas de produção, leitura automática de documentos (OCR). Cargo super especializado e bem pago: nos EUA Computer Vision Engineer ganha US$ 162k/ano (Glassdoor 2026), 74% mais que Analista de Dados. No Brasil, mercado em crescimento — Sigmoidal aponta crescimento de 150% ao ano. Salários: pleno R$ 10-18k, sêniores em empresas industriais e fintechs chegam a R$ 20-30k+.",
+        descricaoCompleta: "Engenheiro de Visão Computacional é o especialista em fazer máquinas interpretarem imagens e vídeos. Em 2026, é uma das áreas mais transversais e inovadoras de IA: carros autônomos (Tesla), drones agrícolas, robôs cirúrgicos, reconhecimento facial em segurança, detecção de defeitos em linhas de produção, leitura automática de documentos (OCR). Cargo super especializado e bem pago: nos EUA Computer Vision Engineer ganha US$ 162k/ano (Glassdoor 2026), 74% mais que Analista de Dados. No Brasil, mercado em crescimento. Sigmoidal aponta crescimento de 150% ao ano. Salários: pleno R$ 10-18k, sêniores em empresas industriais e fintechs chegam a R$ 20-30k+.",
         oQueFaz: "No dia a dia: treina modelos de detecção de objetos (YOLO, Faster R-CNN) pra aplicações reais, trabalha com OpenCV pra processamento clássico de imagens, faz fine-tuning de modelos pré-treinados (CNNs, Vision Transformers), prepara datasets anotados (CVAT, Roboflow) com data augmentation, otimiza inferência embarcada (NVIDIA Jetson, TensorRT) pra rodar em dispositivos edge, e produtiza modelos com MLOps (versionamento, monitoring). Em indústria, trabalha com calibração de câmeras e integração físico-digital.",
-        diferencasDaAreaMae: "Dentro de IA, Visão Computacional separa-se de NLP pela modalidade — uma trabalha com imagens/vídeos, outra com texto/fala. Diferente do Machine Learning Engineer genérico, especialização profunda em CNNs, Vision Transformers e processamento de imagens. Mais técnica que NLP em alguns aspectos — exige álgebra linear, geometria 3D, calibração óptica. Cargo perfeito pra quem gosta de IA aplicada a problemas físicos (robótica, indústria 4.0, agronegócio, saúde).",
+        diferencasDaAreaMae: "Dentro de IA, Visão Computacional separa-se de NLP pela modalidade. Uma trabalha com imagens/vídeos, outra com texto/fala. Diferente do Machine Learning Engineer genérico, especialização profunda em CNNs, Vision Transformers e processamento de imagens. Mais técnica que NLP em alguns aspectos. Exige álgebra linear, geometria 3D, calibração óptica. Cargo perfeito pra quem gosta de IA aplicada a problemas físicos (robótica, indústria 4.0, agronegócio, saúde).",
         habilidadesEspecificas: [
           "Python avançado + PyTorch ou TensorFlow",
           "OpenCV profundo (processamento clássico + integração com deep learning)",
@@ -861,9 +861,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 5.621 (júnior raro) a R$ 30.000+ (sênior em indústria/big tech). Pleno gira em R$ 10-18k. Especialistas em empresas industriais (agro, manufatura) e remoto pra fora chegam a R$ 25-35k. Nos EUA, US$ 162k médio.",
         dificuldade: 5,
         cursosGratuitos: [
-          "Sigmoidal (sigmoidal.ai) — tutoriais gratuitos em PT-BR sobre Visão Computacional",
-          "PyImageSearch (Adrian Rosebrock) — tutoriais práticos OpenCV + Deep Learning",
-          "Stanford CS231n — Convolutional Neural Networks for Visual Recognition (YouTube grátis)"
+          "Sigmoidal (sigmoidal.ai): tutoriais gratuitos em PT-BR sobre Visão Computacional",
+          "PyImageSearch (Adrian Rosebrock): tutoriais práticos OpenCV + Deep Learning",
+          "Stanford CS231n: Convolutional Neural Networks for Visual Recognition (YouTube grátis)"
         ],
         projetosSugeridos: [
           "Sistema de detecção de objetos em tempo real (YOLO + webcam) com classificação customizada",
@@ -877,15 +877,15 @@ const baseAreasTI: AreaTI[] = [
           "Aprofundar em modelos modernos: YOLO, Vision Transformers, Segment Anything",
           "Construir portfólio público com 2-3 projetos completos (GitHub + Kaggle)"
         ],
-        dicasIniciais: "Subárea mais técnica de IA — não tente entrar sem base sólida em ML. Sigmoidal é a referência BR — siga blog e cursos. Para projetos: comece com YOLO (mais acessível) antes de modelos mais complexos. Inglês é obrigatório (papers em arxiv, doc em inglês). Especialização em agronegócio ou indústria 4.0 paga muito bem no BR. Cargo perfeito pra quem ama o lado físico/visual da IA."
+        dicasIniciais: "Subárea mais técnica de IA. Não tente entrar sem base sólida em ML. Sigmoidal é a referência BR. Siga blog e cursos. Para projetos: comece com YOLO (mais acessível) antes de modelos mais complexos. Inglês é obrigatório (papers em arxiv, doc em inglês). Especialização em agronegócio ou indústria 4.0 paga muito bem no BR. Cargo perfeito pra quem ama o lado físico/visual da IA."
       },
       {
         slug: "prompt-engineering",
         nome: "Engenharia de Prompt",
         descricaoCurta: "Especialização em projetar prompts eficazes pra LLMs. Subárea emergente, crescimento explosivo.",
-        descricaoCompleta: "Engenharia de Prompt (ou Prompt Engineering) é a subárea de IA mais emergente do mercado em 2026: profissional que projeta, testa e otimiza instruções pra modelos de linguagem como ChatGPT, Claude e Gemini. Não é só 'fazer perguntas' — é arquitetar interações que extraem resultados consistentes, escaláveis e alinhados a objetivos de negócio. Subárea em expansão rápida desde 2024, uma das áreas de crescimento mais acelerado dentro do mercado de IA. Salários no Brasil já variam de R$ 4-15k+ pra CLT, com pleno em R$ 12-18k e sênior ultrapassando R$ 20k. Freelancers internacionais cobram US$ 50-200/hora. Não exige diploma — exige portfólio sólido.",
+        descricaoCompleta: "Engenharia de Prompt (ou Prompt Engineering) é a subárea de IA mais emergente do mercado em 2026: profissional que projeta, testa e otimiza instruções pra modelos de linguagem como ChatGPT, Claude e Gemini. Não é só 'fazer perguntas'. É arquitetar interações que extraem resultados consistentes, escaláveis e alinhados a objetivos de negócio. Subárea em expansão rápida desde 2024, uma das áreas de crescimento mais acelerado dentro do mercado de IA. Salários no Brasil já variam de R$ 4-15k+ pra CLT, com pleno em R$ 12-18k e sênior ultrapassando R$ 20k. Freelancers internacionais cobram US$ 50-200/hora. Não exige diploma. Exige portfólio sólido.",
         oQueFaz: "No dia a dia: projeta prompts pra casos de uso específicos (atendimento ao cliente, geração de conteúdo, análise de documentos), testa variações e mede qualidade (acurácia, custo, latência), integra LLMs em sistemas via APIs (OpenAI, Anthropic, Google), otimiza custo de tokens em pipelines automatizados, treina equipes a usar IA generativa com eficiência, e desenvolve bibliotecas de prompts pra setores específicos (jurídico, saúde, marketing).",
-        diferencasDaAreaMae: "Dentro de IA, o Prompt Engineer separa-se do Machine Learning Engineer pela abordagem: ML Engineer constrói modelos do zero; Prompt Engineer usa modelos prontos e otimiza interações com eles. Diferente do Cientista de Dados (matemática + modelagem), o Prompt Engineer trabalha com linguagem natural e raciocínio sobre como LLMs interpretam instruções. É a porta de entrada mais acessível pra IA em 2026 — não exige cálculo nem programação avançada, só pensamento estruturado e curiosidade pelos modelos.",
+        diferencasDaAreaMae: "Dentro de IA, o Prompt Engineer separa-se do Machine Learning Engineer pela abordagem: ML Engineer constrói modelos do zero; Prompt Engineer usa modelos prontos e otimiza interações com eles. Diferente do Cientista de Dados (matemática + modelagem), o Prompt Engineer trabalha com linguagem natural e raciocínio sobre como LLMs interpretam instruções. É a porta de entrada mais acessível pra IA em 2026. Não exige cálculo nem programação avançada, só pensamento estruturado e curiosidade pelos modelos.",
         habilidadesEspecificas: [
           "Domínio prático de LLMs principais (ChatGPT, Claude, Gemini)",
           "Técnicas avançadas (few-shot learning, chain-of-thought, role prompting)",
@@ -894,9 +894,9 @@ const baseAreasTI: AreaTI[] = [
           "Python básico pra automação via APIs (diferencial)"
         ],
         ferramentasEspecificas: [
-          "ChatGPT (Plus com GPT-4) — generalista",
-          "Claude (Opus/Sonnet) — contexto longo e raciocínio complexo",
-          "Gemini — busca atualizada e multimodal",
+          "ChatGPT (Plus com GPT-4): generalista",
+          "Claude (Opus/Sonnet): contexto longo e raciocínio complexo",
+          "Gemini: busca atualizada e multimodal",
           "OpenAI Playground (testar parâmetros)",
           "Anthropic Workbench (testar Claude)",
           "Python + APIs (automatizar prompts em escala)"
@@ -907,11 +907,11 @@ const baseAreasTI: AreaTI[] = [
           "Senior Prompt Engineer / AI Strategist (3+ anos)",
           "Head of AI Implementation (líder técnico de IA generativa)"
         ],
-        faixaSalarial: "R$ 4.000 (júnior) a R$ 20.000+ (sênior). Pleno gira em R$ 12-18k. Freelance internacional: US$ 50-200/hora. Sêniores nos EUA passam US$ 126k/ano. Mercado em fase inicial — quem entra agora pega salários acima do normal pelo gap de profissionais.",
+        faixaSalarial: "R$ 4.000 (júnior) a R$ 20.000+ (sênior). Pleno gira em R$ 12-18k. Freelance internacional: US$ 50-200/hora. Sêniores nos EUA passam US$ 126k/ano. Mercado em fase inicial. Quem entra agora pega salários acima do normal pelo gap de profissionais.",
         dificuldade: 2,
         cursosGratuitos: [
-          "Anthropic — Prompt Engineering Course (oficial gratuito)",
-          "DeepLearning.AI — Prompt Engineering for Developers (curso grátis)",
+          "Anthropic: Prompt Engineering Course (oficial gratuito)",
+          "DeepLearning.AI: Prompt Engineering for Developers (curso grátis)",
           "OpenAI Cookbook + documentação oficial (gratuita)"
         ],
         projetosSugeridos: [
@@ -926,15 +926,15 @@ const baseAreasTI: AreaTI[] = [
           "Construir biblioteca pessoal de prompts pra setores que te interessam",
           "Publicar portfólio online: casos antes/depois + bibliotecas + redução de custos demonstrada"
         ],
-        dicasIniciais: "Subárea perfeita pra entrar em IA sem base técnica forte — não exige diploma, exige portfólio. Documente TUDO: cada prompt otimizado vira evidência no portfólio. Use o framework 'antes vs depois' nas suas demonstrações — mostre ganho real (qualidade, redução de tokens, tempo). Inglês é obrigatório (toda doc oficial está em inglês). Aprenda Python básico — sem ele, você fica no nível 'usuário avançado'; com ele, você é Prompt Engineer de verdade. Mercado em fase explosiva — quem entrar agora vai estar na primeira onda de seniores em 2-3 anos."
+        dicasIniciais: "Subárea perfeita pra entrar em IA sem base técnica forte. Não exige diploma, exige portfólio. Documente TUDO: cada prompt otimizado vira evidência no portfólio. Use o framework 'antes vs depois' nas suas demonstrações. Mostre ganho real (qualidade, redução de tokens, tempo). Inglês é obrigatório (toda doc oficial está em inglês). Aprenda Python básico. Sem ele, você fica no nível 'usuário avançado'; com ele, você é Prompt Engineer de verdade. Mercado em fase explosiva. Quem entrar agora vai estar na primeira onda de seniores em 2-3 anos."
       },
       {
         slug: "mlops",
         nome: "MLOps",
         descricaoCurta: "Engenharia de operações pra ML. Pipelines de treinamento, deploy contínuo de modelos, monitoramento.",
-        descricaoCompleta: "MLOps Engineer é o profissional que aplica princípios de DevOps especificamente pra Machine Learning: automatiza pipelines de treino, faz deploy contínuo de modelos em produção, monitora drift e performance, e garante reprodutibilidade. Não é o mesmo que ML Engineer — MLOps é mais focado em infraestrutura e operação, menos em código de modelagem. Cargo crítico em empresas que rodam dezenas de modelos em produção (Nubank, iFood, Stone). Salário super competitivo: média BR R$ 18.667 (Glassdoor), sêniores em fintechs ultrapassam R$ 32k. Mercado em expansão acelerada — 379k+ vagas relacionadas no BeBee.",
+        descricaoCompleta: "MLOps Engineer é o profissional que aplica princípios de DevOps especificamente pra Machine Learning: automatiza pipelines de treino, faz deploy contínuo de modelos em produção, monitora drift e performance, e garante reprodutibilidade. Não é o mesmo que ML Engineer. MLOps é mais focado em infraestrutura e operação, menos em código de modelagem. Cargo crítico em empresas que rodam dezenas de modelos em produção (Nubank, iFood, Stone). Salário super competitivo: média BR R$ 18.667 (Glassdoor), sêniores em fintechs ultrapassam R$ 32k. Mercado em expansão acelerada, 379k+ vagas relacionadas no BeBee.",
         oQueFaz: "No dia a dia: constrói pipelines automatizados de treino de modelos (data → train → eval → deploy), implementa CI/CD específico pra ML (model testing, A/B testing em produção), monitora modelos em produção (drift detection, performance metrics, custo de cloud), versiona modelos e datasets (MLflow, DVC), gerencia feature stores, e otimiza infraestrutura (GPU usage, latência de inferência, custo). Trabalha próximo a Cientistas de Dados (entrega input) e ML Engineers (compartilha responsabilidades).",
-        diferencasDaAreaMae: "Dentro de IA, o MLOps separa-se do ML Engineer pela ênfase: ML Engineer toca código de modelagem + produção; MLOps Engineer foca quase exclusivamente em operação, infraestrutura e governança de modelos. Diferente do DevOps tradicional, MLOps lida com complexidades específicas de ML (drift de dados, retreino contínuo, versionamento de datasets, custo de GPU). Cargo super especializado — entrada exige base de DevOps ou ML Engineer.",
+        diferencasDaAreaMae: "Dentro de IA, o MLOps separa-se do ML Engineer pela ênfase: ML Engineer toca código de modelagem + produção; MLOps Engineer foca quase exclusivamente em operação, infraestrutura e governança de modelos. Diferente do DevOps tradicional, MLOps lida com complexidades específicas de ML (drift de dados, retreino contínuo, versionamento de datasets, custo de GPU). Cargo super especializado. Entrada exige base de DevOps ou ML Engineer.",
         habilidadesEspecificas: [
           "Kubernetes e Docker pra deploy de modelos",
           "Pipelines de ML (Kubeflow, Airflow, MLflow Pipelines)",
@@ -956,12 +956,12 @@ const baseAreasTI: AreaTI[] = [
           "Staff MLOps / Lead ML Platform",
           "Principal MLOps / Head of ML Engineering"
         ],
-        faixaSalarial: "R$ 7.917 (júnior raro) a R$ 32.667 (sênior). Média BR R$ 18.667 — Glassdoor 2026. Pleno gira em R$ 15-22k. Sêniores em fintechs e big techs chegam a R$ 30k+. Cargo mais bem pago da área de IA.",
+        faixaSalarial: "R$ 7.917 (júnior raro) a R$ 32.667 (sênior). Média BR R$ 18.667, Glassdoor 2026. Pleno gira em R$ 15-22k. Sêniores em fintechs e big techs chegam a R$ 30k+. Cargo mais bem pago da área de IA.",
         dificuldade: 5,
         cursosGratuitos: [
-          "Made With ML (madewithml.com) — curso completo grátis de MLOps em inglês",
-          "Full Stack Deep Learning — bootcamp gratuito sobre ML em produção",
-          "Google Cloud — MLOps Engineer Learning Path (parte gratuita)"
+          "Made With ML (madewithml.com): curso completo grátis de MLOps em inglês",
+          "Full Stack Deep Learning: bootcamp gratuito sobre ML em produção",
+          "Google Cloud: MLOps Engineer Learning Path (parte gratuita)"
         ],
         projetosSugeridos: [
           "Pipeline MLOps completo: GitHub Actions + MLflow + deploy em K8s + monitoring",
@@ -969,13 +969,13 @@ const baseAreasTI: AreaTI[] = [
           "Feature store funcional + serving online + offline com Feast ou Tecton"
         ],
         roadmapEspecifico: [
-          "Ter base sólida em DevOps (Docker, K8s, CI/CD, cloud) — 2+ anos",
+          "Ter base sólida em DevOps (Docker, K8s, CI/CD, cloud), 2+ anos",
           "Aprender fundamentos de ML (não precisa ser cientista, mas entender pipeline)",
           "Estudar MLflow profundamente (referência absoluta da área)",
           "Dominar uma cloud focada em ML (SageMaker é o mais procurado)",
           "Construir portfólio: 1-2 sistemas MLOps completos em produção (open source)"
         ],
-        dicasIniciais: "MLOps é o cargo mais bem pago de IA em 2026 — vale o investimento pesado. Não tente entrar sem base de DevOps OU ML Engineering — esse cargo cobra os dois mundos. Vindo de DevOps, foque em ML (pipelines, model serving, monitoring). Vindo de ML, foque em DevOps (K8s, CI/CD, observabilidade). Inglês é obrigatório. Acompanhe MLOps Community (Slack ativo) e neptune.ai blog."
+        dicasIniciais: "MLOps é o cargo mais bem pago de IA em 2026. Vale o investimento pesado. Não tente entrar sem base de DevOps OU ML Engineering. Esse cargo cobra os dois mundos. Vindo de DevOps, foque em ML (pipelines, model serving, monitoring). Vindo de ML, foque em DevOps (K8s, CI/CD, observabilidade). Inglês é obrigatório. Acompanhe MLOps Community (Slack ativo) e neptune.ai blog."
       }
     ]
   },
@@ -995,7 +995,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 3,
     cargos: ["Assistente de Produto", "Analista de Produto", "Product Manager Júnior", "Product Owner"],
     faixaSalarial: "R$ 3.000 a R$ 6.000 (trainee/júnior/assistente)",
-    cursosGratuitos: ["Product School — Cursos gratuitos", "DIO — Product Management", "YouTube — Canais de PM em português"],
+    cursosGratuitos: ["Product School: Cursos gratuitos", "DIO: Product Management", "YouTube: Canais de PM em português"],
     roadmapInicial: ["Entender o que é produto digital", "Aprender metodologias ágeis (Scrum, Kanban)", "Estudar métricas de produto", "Fazer curso de Product Management", "Criar documento de produto fictício"],
     projetos: ["Documento de requisitos de app fictício", "Análise de produto existente", "Roadmap de produto para startup imaginária"],
     termosEssenciais: ["Roadmap", "Backlog", "Sprint", "KPI", "Discovery", "Stakeholder"],
@@ -1009,9 +1009,9 @@ const baseAreasTI: AreaTI[] = [
         slug: "product-manager",
         nome: "Product Manager",
         descricaoCurta: "Define visão, estratégia e roadmap do produto. Conecta negócio, tecnologia e usuários.",
-        descricaoCompleta: "Product Manager (ou PM) é o profissional que decide o que construir e por quê — não é quem implementa o código nem desenha as telas, mas é quem orquestra tudo. Conecta visão de negócio com necessidade do usuário e capacidade técnica do time. É um dos cargos mais estratégicos em produtos digitais: define roadmap, prioriza features, mede sucesso, lidera (sem ter autoridade direta) times de dev, design e marketing. Mercado super aquecido no Brasil — Glassdoor registra 6.646 salários, com média de R$ 14.667. Em fintechs e big techs (Nubank, Shopee, iFood, XP), sêniores podem ultrapassar R$ 28k.",
-        oQueFaz: "No dia a dia: conversa com usuários e stakeholders pra entender problemas reais, define hipóteses e métricas de sucesso (OKRs), prioriza backlog com frameworks (RICE, MoSCoW), escreve PRDs (Product Requirements Documents), faz discovery contínuo com pesquisa qualitativa e análise de dados, alinha visão com lideranças e comunica decisões pra todos os times. Toma centenas de pequenas decisões por semana — quem o produto deve servir, quais features adiar, quando lançar, como medir impacto.",
-        diferencasDaAreaMae: "Dentro de Produto Digital, o PM separa-se do Product Owner pelo escopo: PO foca em execução tática (backlog, refinamento com devs); PM cobre estratégia e visão completa do produto. Diferente do Product Marketing Manager (que cuida do posicionamento e go-to-market), o PM trabalha mais cedo no ciclo — antes do produto existir. É o cargo mais procurado e mais bem pago de Produto, mas também o mais ambíguo: o que se espera de um PM varia muito entre startup early stage e big tech.",
+        descricaoCompleta: "Product Manager (ou PM) é o profissional que decide o que construir e por quê. Não é quem implementa o código nem desenha as telas, mas é quem orquestra tudo. Conecta visão de negócio com necessidade do usuário e capacidade técnica do time. É um dos cargos mais estratégicos em produtos digitais: define roadmap, prioriza features, mede sucesso, lidera (sem ter autoridade direta) times de dev, design e marketing. Mercado super aquecido no Brasil. Glassdoor registra 6.646 salários, com média de R$ 14.667. Em fintechs e big techs (Nubank, Shopee, iFood, XP), sêniores podem ultrapassar R$ 28k.",
+        oQueFaz: "No dia a dia: conversa com usuários e stakeholders pra entender problemas reais, define hipóteses e métricas de sucesso (OKRs), prioriza backlog com frameworks (RICE, MoSCoW), escreve PRDs (Product Requirements Documents), faz discovery contínuo com pesquisa qualitativa e análise de dados, alinha visão com lideranças e comunica decisões pra todos os times. Toma centenas de pequenas decisões por semana: quem o produto deve servir, quais features adiar, quando lançar, como medir impacto.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o PM separa-se do Product Owner pelo escopo: PO foca em execução tática (backlog, refinamento com devs); PM cobre estratégia e visão completa do produto. Diferente do Product Marketing Manager (que cuida do posicionamento e go-to-market), o PM trabalha mais cedo no ciclo, antes do produto existir. É o cargo mais procurado e mais bem pago de Produto, mas também o mais ambíguo: o que se espera de um PM varia muito entre startup early stage e big tech.",
         habilidadesEspecificas: [
           "Product discovery (entrevistas com usuário, pesquisa qualitativa)",
           "Análise de dados e métricas de produto (SQL básico, GA4, Mixpanel)",
@@ -1028,7 +1028,7 @@ const baseAreasTI: AreaTI[] = [
           "Hotjar ou Microsoft Clarity (análise comportamental)"
         ],
         cargos: [
-          "Product Manager Júnior / APM — Associate Product Manager (0-2 anos)",
+          "Product Manager Júnior / APM: Associate Product Manager (0-2 anos)",
           "Product Manager Pleno (2-5 anos)",
           "Product Manager Sênior (5+ anos)",
           "Group/Lead PM ou Head of Product (liderança de múltiplos times)"
@@ -1036,9 +1036,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 7.000 (júnior) a R$ 28.000 (sênior em fintechs/big techs). Média BR R$ 12-15k, segundo pesquisa da PM3 e Glassdoor (6.646 salários). Especialistas em produto técnico ou growth chegam a R$ 32k+.",
         dificuldade: 4,
         cursosGratuitos: [
-          "PM3 — Blog e webinars gratuitos (referência BR em produto)",
-          "Reforge (reforge.com) — newsletter e conteúdos gratuitos sobre produto e growth",
-          "Lenny's Newsletter — newsletter gratuita do Lenny Rachitsky (referência global em PM)"
+          "PM3: Blog e webinars gratuitos (referência BR em produto)",
+          "Reforge (reforge.com): newsletter e conteúdos gratuitos sobre produto e growth",
+          "Lenny's Newsletter: newsletter gratuita do Lenny Rachitsky (referência global em PM)"
         ],
         projetosSugeridos: [
           "Análise crítica de um produto existente: o que mudaria, por quê, qual métrica esperaria mover",
@@ -1048,19 +1048,19 @@ const baseAreasTI: AreaTI[] = [
         roadmapEspecifico: [
           "Estudar fundamentos de produto (PM3 Blog, Lenny's Newsletter, livro 'Inspired' do Marty Cagan)",
           "Aprender frameworks de priorização e discovery (RICE, Jobs to be Done, Continuous Discovery)",
-          "Construir base de dados — SQL básico + ferramentas de analytics (Mixpanel, GA4)",
+          "Construir base de dados: SQL básico + ferramentas de analytics (Mixpanel, GA4)",
           "Fazer um case real: escrever PRD detalhado de um produto que você usa",
           "Conectar com PMs no LinkedIn, fazer mentoria, e candidatar-se a APM em startups"
         ],
-        dicasIniciais: "Não precisa de graduação específica — PMs vêm de engenharia, design, marketing, negócios. O que importa é portfólio + comunicação. Escreva análises públicas de produtos que você usa (Medium, LinkedIn) — isso é currículo. Foque em entender discovery profundo: a maioria dos PMs juniores erra ao pular pesquisa pra ir direto pra solução. SQL básico é cada vez mais cobrado — invista 2 semanas pra dominar consultas básicas."
+        dicasIniciais: "Não precisa de graduação específica. PMs vêm de engenharia, design, marketing, negócios. O que importa é portfólio + comunicação. Escreva análises públicas de produtos que você usa (Medium, LinkedIn). Isso é currículo. Foque em entender discovery profundo: a maioria dos PMs juniores erra ao pular pesquisa pra ir direto pra solução. SQL básico é cada vez mais cobrado. Invista 2 semanas pra dominar consultas básicas."
       },
       {
         slug: "product-owner",
         nome: "Product Owner",
         descricaoCurta: "Foco em execução: backlog, priorização, refinamento com o time de devs. Mais tático que estratégico.",
-        descricaoCompleta: "Product Owner (PO) é o profissional ágil responsável por priorizar e executar o backlog de produto junto ao time de desenvolvimento. Diferente do Product Manager (que pensa estratégia e visão), o PO atua mais próximo do dia a dia do time Scrum: refina histórias de usuário, conduz cerimônias, valida entregas, mantém o backlog priorizado. É um cargo essencial em times ágeis e o caminho mais comum de entrada pra área de produto no Brasil — salários partem de R$ 4-6k pra júnior e chegam a R$ 12-15k pra sênior. Certificações Scrum (PSPO, CSPO) são valorizadas. Confusão constante com PM — mas papéis distintos no Scrum oficial.",
+        descricaoCompleta: "Product Owner (PO) é o profissional ágil responsável por priorizar e executar o backlog de produto junto ao time de desenvolvimento. Diferente do Product Manager (que pensa estratégia e visão), o PO atua mais próximo do dia a dia do time Scrum: refina histórias de usuário, conduz cerimônias, valida entregas, mantém o backlog priorizado. É um cargo essencial em times ágeis e o caminho mais comum de entrada pra área de produto no Brasil. Salários partem de R$ 4-6k pra júnior e chegam a R$ 12-15k pra sênior. Certificações Scrum (PSPO, CSPO) são valorizadas. Confusão constante com PM, mas papéis distintos no Scrum oficial.",
         oQueFaz: "No dia a dia: refina histórias de usuário com critérios de aceite claros pro time de dev, prioriza backlog conforme valor de negócio e capacidade do time, conduz cerimônias ágeis (planning, review, retrospectiva, refinement), atua como ponte entre stakeholders e time técnico, valida entregas garantindo aderência aos requisitos, e ajusta prioridades conforme feedback de usuário e métricas. Trabalha próximo do tech lead, do Scrum Master e dos stakeholders de negócio.",
-        diferencasDaAreaMae: "Dentro de Produto Digital, o PO separa-se do Product Manager pelo foco: PM cuida de estratégia e visão (o quê e por quê construir); PO cuida de execução tática (como e quando entregar). Em startups pequenas, papéis se confundem — uma pessoa faz tudo. Em empresas grandes, separam-se: PM define rumo, PO executa com o time. Diferente do Scrum Master (que facilita o processo ágil), o PO é dono do produto e responsável final pelo valor entregue. Cargo mais acessível pra iniciantes que PM — exige menos visão estratégica e mais habilidade tática.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o PO separa-se do Product Manager pelo foco: PM cuida de estratégia e visão (o quê e por quê construir); PO cuida de execução tática (como e quando entregar). Em startups pequenas, papéis se confundem. Uma pessoa faz tudo. Em empresas grandes, separam-se: PM define rumo, PO executa com o time. Diferente do Scrum Master (que facilita o processo ágil), o PO é dono do produto e responsável final pelo valor entregue. Cargo mais acessível pra iniciantes que PM. Exige menos visão estratégica e mais habilidade tática.",
         habilidadesEspecificas: [
           "Domínio do framework Scrum (cerimônias, papéis, artefatos)",
           "Escrita de histórias de usuário e critérios de aceite (formato Given-When-Then)",
@@ -1082,12 +1082,12 @@ const baseAreasTI: AreaTI[] = [
           "Product Owner Sênior (5+ anos)",
           "Lead PO ou transição pra Product Manager"
         ],
-        faixaSalarial: "R$ 4.000 (júnior) a R$ 15.000 (sênior). Média BR R$ 8.000-10.250 — Glassdoor/Indeed 2026. PO em fintechs e empresas grandes chegam a R$ 12-15k. Certificações PSPO/CSPO aumentam empregabilidade.",
+        faixaSalarial: "R$ 4.000 (júnior) a R$ 15.000 (sênior). Média BR R$ 8.000-10.250, Glassdoor/Indeed 2026. PO em fintechs e empresas grandes chegam a R$ 12-15k. Certificações PSPO/CSPO aumentam empregabilidade.",
         dificuldade: 3,
         cursosGratuitos: [
-          "Scrum.org — Scrum Guide oficial (gratuito, leitura essencial)",
-          "Atlassian — Agile Coach (cursos gratuitos sobre Scrum e Jira)",
-          "PM3 — Blog e webinars gratuitos sobre POs e gestão ágil"
+          "Scrum.org: Scrum Guide oficial (gratuito, leitura essencial)",
+          "Atlassian: Agile Coach (cursos gratuitos sobre Scrum e Jira)",
+          "PM3: Blog e webinars gratuitos sobre POs e gestão ágil"
         ],
         projetosSugeridos: [
           "Backlog completo de um produto fictício com 20+ histórias priorizadas (publicar GitHub)",
@@ -1101,7 +1101,7 @@ const baseAreasTI: AreaTI[] = [
           "Tirar certificação PSPO I (mais respeitada) ou CSPO",
           "Conseguir vaga como APO/PO Júnior em startup pra aprender na prática"
         ],
-        dicasIniciais: "PO é mais acessível que PM pra quem está começando — exige menos visão estratégica e mais domínio tático. Certificação PSPO I vale o investimento (custa US$ 200, dura pra sempre). Pratique escrever histórias de usuário (formato 'Como [usuário], quero [funcionalidade] pra [benefício]'). Não confunda PO com Scrum Master — papéis diferentes, complementares. Carreira natural: PO → Sênior → Product Manager (transição comum)."
+        dicasIniciais: "PO é mais acessível que PM pra quem está começando. Exige menos visão estratégica e mais domínio tático. Certificação PSPO I vale o investimento (custa US$ 200, dura pra sempre). Pratique escrever histórias de usuário (formato 'Como [usuário], quero [funcionalidade] pra [benefício]'). Não confunda PO com Scrum Master, papéis diferentes, complementares. Carreira natural: PO → Sênior → Product Manager (transição comum)."
       },
       {
         slug: "product-marketing",
@@ -1109,7 +1109,7 @@ const baseAreasTI: AreaTI[] = [
         descricaoCurta: "Posicionamento, go-to-market, mensagem do produto. Ponte entre produto e marketing.",
         descricaoCompleta: "Product Marketing Manager (PMM) é a ponte entre produto e marketing: traduz capacidades técnicas em valor pro usuário, define posicionamento (como o produto é percebido), constrói narrativa de lançamento, e influencia decisões de produto baseado em pesquisa de mercado e concorrência. Cargo essencial em produtos SaaS, fintechs e empresas que vendem soluções complexas. Diferente do PM (que pensa o quê construir), o PMM pensa como comunicar e vender. Salários: pleno em fintechs gira R$ 12-18k, sêniores ultrapassam R$ 25k. Mercado BR em crescimento acelerado em 2026.",
         oQueFaz: "No dia a dia: define posicionamento e mensagem do produto (quem é o usuário, qual problema resolve, por que escolher), constrói materiais de go-to-market (landing pages, sales decks, FAQs), faz pesquisa de concorrência e benchmarking constante, treina times de vendas e suporte sobre o produto, lança features com narrativa coordenada (email + landing + redes), e mede impacto (ativação, conversão, retenção). Trabalha com PMs, marketing, vendas e customer success.",
-        diferencasDaAreaMae: "Dentro de Produto Digital, o PMM separa-se claramente do Product Manager pelo foco: PM pensa o quê construir; PMM pensa como vender. Diferente do Marketing tradicional (focado em campanhas e brand), o PMM é mais técnico — entende o produto profundamente. Cargo super comum em SaaS B2B (Hubspot, Salesforce, RD Station) onde a complexidade do produto exige tradução constante. Em B2C, é menos comum. Caminho natural pra quem vem de marketing e quer se especializar em produto.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o PMM separa-se claramente do Product Manager pelo foco: PM pensa o quê construir; PMM pensa como vender. Diferente do Marketing tradicional (focado em campanhas e brand), o PMM é mais técnico. Entende o produto profundamente. Cargo super comum em SaaS B2B (Hubspot, Salesforce, RD Station) onde a complexidade do produto exige tradução constante. Em B2C, é menos comum. Caminho natural pra quem vem de marketing e quer se especializar em produto.",
         habilidadesEspecificas: [
           "Posicionamento e mensagem (frameworks como April Dunford)",
           "Pesquisa de mercado e análise competitiva",
@@ -1134,9 +1134,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 6.000 (júnior) a R$ 25.000+ (sênior em fintechs/big techs). Pleno gira em R$ 12-18k. Em SaaS B2B grandes (RD Station, Resultados Digitais, Tomtocom), sêniores chegam a R$ 20-30k.",
         dificuldade: 4,
         cursosGratuitos: [
-          "April Dunford — Obviously Awesome (livro pago, mas resumos gratuitos disponíveis)",
-          "Reforge — Product Marketing artigos gratuitos",
-          "PMM Alliance — recursos gratuitos da maior comunidade global de PMMs"
+          "April Dunford: Obviously Awesome (livro pago, mas resumos gratuitos disponíveis)",
+          "Reforge: Product Marketing artigos gratuitos",
+          "PMM Alliance: recursos gratuitos da maior comunidade global de PMMs"
         ],
         projetosSugeridos: [
           "Análise de posicionamento de produto existente + proposta de reposicionamento",
@@ -1148,17 +1148,17 @@ const baseAreasTI: AreaTI[] = [
           "Aprender frameworks de go-to-market e competitive analysis",
           "Dominar copywriting técnico (landing pages, narrativas de venda)",
           "Construir portfólio: 2-3 análises públicas de posicionamento de produtos conhecidos",
-          "Network com PMMs em LinkedIn — comunidade BR ainda pequena, fácil de entrar"
+          "Network com PMMs em LinkedIn, comunidade BR ainda pequena, fácil de entrar"
         ],
-        dicasIniciais: "Caminho ideal pra quem vem de marketing e quer entrar em produto. April Dunford é leitura obrigatória — 'Obviously Awesome' é a bíblia da área. Cargo super valorizado em SaaS B2B — busque vagas nessas empresas. Inglês é importante (boa parte da literatura está em inglês). Comunidade BR ainda pequena — é fácil ser visto se você produz conteúdo público sobre posicionamento."
+        dicasIniciais: "Caminho ideal pra quem vem de marketing e quer entrar em produto. April Dunford é leitura obrigatória. 'Obviously Awesome' é a bíblia da área. Cargo super valorizado em SaaS B2B. Busque vagas nessas empresas. Inglês é importante (boa parte da literatura está em inglês). Comunidade BR ainda pequena. É fácil ser visto se você produz conteúdo público sobre posicionamento."
       },
       {
         slug: "growth-product",
         nome: "Growth Product Manager",
         descricaoCurta: "Especialista em métricas de aquisição, ativação, retenção. Foco em experimentação e funil.",
-        descricaoCompleta: "Growth Product Manager (Growth PM) é uma especialização de PM focada exclusivamente em crescimento — não no produto inteiro, mas em mover métricas específicas: aquisição, ativação, retenção, monetização (modelo AARRR). Trabalha com experimentação contínua (A/B tests semanais), análise profunda de funil, e otimização de conversão em pontos críticos. Cargo super valorizado em empresas em escala rápida (fintechs, e-commerces, SaaS). Salário top da família PM: média BR R$ 16.661 (Glassdoor), pleno R$ 15-22k, sênior em fintechs/big techs chega a R$ 28-35k+.",
+        descricaoCompleta: "Growth Product Manager (Growth PM) é uma especialização de PM focada exclusivamente em crescimento, não no produto inteiro, mas em mover métricas específicas: aquisição, ativação, retenção, monetização (modelo AARRR). Trabalha com experimentação contínua (A/B tests semanais), análise profunda de funil, e otimização de conversão em pontos críticos. Cargo super valorizado em empresas em escala rápida (fintechs, e-commerces, SaaS). Salário top da família PM: média BR R$ 16.661 (Glassdoor), pleno R$ 15-22k, sênior em fintechs/big techs chega a R$ 28-35k+.",
         oQueFaz: "No dia a dia: identifica gargalos no funil de produto (onde usuários caem), formula hipóteses pra reduzir esses gargalos, projeta experimentos (A/B tests, holdouts), analisa resultados estatisticamente, escala o que funciona e mata o que não funciona, e itera continuamente. Trabalha próximo a engenheiros (implementar experimentos), data analysts (medir resultados) e marketing (alinhar canais de aquisição). Pensamento orientado a métricas é a base do trabalho.",
-        diferencasDaAreaMae: "Dentro de Produto Digital, o Growth PM separa-se do Product Manager pelo foco: PM pensa visão de longo prazo (roadmap, problemas grandes); Growth PM pensa otimização de curto prazo (métricas movendo agora). Diferente do Product Marketing Manager (que cuida de posicionamento e go-to-market), Growth PM é mais técnico e analítico — vive de A/B testing. Cargo perfeito pra quem vem de marketing performance ou data analytics e quer entrar em produto com viés quantitativo.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o Growth PM separa-se do Product Manager pelo foco: PM pensa visão de longo prazo (roadmap, problemas grandes); Growth PM pensa otimização de curto prazo (métricas movendo agora). Diferente do Product Marketing Manager (que cuida de posicionamento e go-to-market), Growth PM é mais técnico e analítico. Vive de A/B testing. Cargo perfeito pra quem vem de marketing performance ou data analytics e quer entrar em produto com viés quantitativo.",
         habilidadesEspecificas: [
           "Análise estatística básica (significância, intervalos de confiança, sample size)",
           "Domínio profundo de funil AARRR (Aquisição, Ativação, Retenção, Receita, Recomendação)",
@@ -1180,11 +1180,11 @@ const baseAreasTI: AreaTI[] = [
           "Senior Growth PM (5+ anos)",
           "Head of Growth / VP Growth"
         ],
-        faixaSalarial: "R$ 8.000 (júnior) a R$ 35.000+ (sênior). Média BR R$ 16.661 — Glassdoor 2026. Pleno gira em R$ 15-22k. Sêniores em fintechs e big techs (Nubank, iFood, Stone) ultrapassam R$ 28-35k.",
+        faixaSalarial: "R$ 8.000 (júnior) a R$ 35.000+ (sênior). Média BR R$ 16.661, Glassdoor 2026. Pleno gira em R$ 15-22k. Sêniores em fintechs e big techs (Nubank, iFood, Stone) ultrapassam R$ 28-35k.",
         dificuldade: 4,
         cursosGratuitos: [
-          "Reforge — artigos gratuitos sobre growth (referência mundial)",
-          "Lenny's Newsletter — gratuita, com 1-2 posts/mês sobre growth",
+          "Reforge: artigos gratuitos sobre growth (referência mundial)",
+          "Lenny's Newsletter: gratuita, com 1-2 posts/mês sobre growth",
           "GrowthHackers Community + casos públicos de A/B tests (gratuito)"
         ],
         projetosSugeridos: [
@@ -1199,15 +1199,15 @@ const baseAreasTI: AreaTI[] = [
           "Dominar SQL pra análises sem depender de analista",
           "Conseguir transição interna: PM tradicional → Growth PM no mesmo time"
         ],
-        dicasIniciais: "Growth PM é cargo mais técnico que PM tradicional — invista em SQL e estatística. Mira fintechs e produtos em escala (eles precisam de growth). Inglês é importante (Reforge, Lenny's, melhores recursos em inglês). Comunidade brasileira de growth ainda pequena — produzir conteúdo público sobre experimentos abre portas. Cargo perfeito pra perfis analíticos."
+        dicasIniciais: "Growth PM é cargo mais técnico que PM tradicional. Invista em SQL e estatística. Mira fintechs e produtos em escala (eles precisam de growth). Inglês é importante (Reforge, Lenny's, melhores recursos em inglês). Comunidade brasileira de growth ainda pequena. Produzir conteúdo público sobre experimentos abre portas. Cargo perfeito pra perfis analíticos."
       },
       {
         slug: "product-ops",
         nome: "Product Ops",
         descricaoCurta: "Padroniza processos de produto, ferramentas e métricas em times maiores. Cargo emergente.",
-        descricaoCompleta: "Product Operations (Product Ops) é a especialização emergente que cuida da infraestrutura, processos e dados que permitem times de produto escalarem com qualidade. Diferente do PM (foco em estratégia) e PO (foco em execução), o Product Ops cuida do 'como' do trabalho de produto: documentação centralizada, métricas unificadas, ferramentas, onboarding de novos PMs. Cargo nasceu em big techs (Atlassian, HubSpot) e está chegando ao BR via fintechs e scale-ups. Salários: pleno gira R$ 10-18k, sêniores em fintechs e empresas com 30+ PMs chegam a R$ 20-28k. Mercado em formação — quem entrar agora pega salários acima do normal.",
+        descricaoCompleta: "Product Operations (Product Ops) é a especialização emergente que cuida da infraestrutura, processos e dados que permitem times de produto escalarem com qualidade. Diferente do PM (foco em estratégia) e PO (foco em execução), o Product Ops cuida do 'como' do trabalho de produto: documentação centralizada, métricas unificadas, ferramentas, onboarding de novos PMs. Cargo nasceu em big techs (Atlassian, HubSpot) e está chegando ao BR via fintechs e scale-ups. Salários: pleno gira R$ 10-18k, sêniores em fintechs e empresas com 30+ PMs chegam a R$ 20-28k. Mercado em formação. Quem entrar agora pega salários acima do normal.",
         oQueFaz: "No dia a dia: centraliza documentação de produto (PRDs, decisões, contextos) em ferramentas como Notion, define padrões e templates pra PRDs e roadmaps, gerencia ferramentas do time (Jira, Linear, Mixpanel, Productboard), constrói dashboards unificados de métricas de produto, faz onboarding de novos PMs, organiza rituais transversais (product review, sprint planning de produto), e atua como ponte entre Produto, Engenharia, Design e Negócio. Em times grandes, virou função essencial.",
-        diferencasDaAreaMae: "Dentro de Produto Digital, o Product Ops é a evolução em escala — diferente do PM (que toma decisões sobre produto) e PO (que executa), o Product Ops cuida da 'engrenagem' que permite múltiplos PMs trabalharem bem. Não toma decisões sobre o produto em si — toma decisões sobre como o time trabalha. Cargo super valorizado em empresas com 10+ PMs (escalabilidade), inútil em startups pequenas. Caminho típico: PM ou PO sênior que ama processos → Product Ops.",
+        diferencasDaAreaMae: "Dentro de Produto Digital, o Product Ops é a evolução em escala, diferente do PM (que toma decisões sobre produto) e PO (que executa), o Product Ops cuida da 'engrenagem' que permite múltiplos PMs trabalharem bem. Não toma decisões sobre o produto em si. Toma decisões sobre como o time trabalha. Cargo super valorizado em empresas com 10+ PMs (escalabilidade), inútil em startups pequenas. Caminho típico: PM ou PO sênior que ama processos → Product Ops.",
         habilidadesEspecificas: [
           "Visão sistêmica de processos de produto (do discovery ao launch)",
           "Domínio profundo de ferramentas de produto (Jira, Linear, Productboard, Notion)",
@@ -1229,12 +1229,12 @@ const baseAreasTI: AreaTI[] = [
           "Lead Product Ops / Head of Product Operations",
           "VP Product Operations (empresas com 50+ PMs)"
         ],
-        faixaSalarial: "R$ 8.000 (entrada) a R$ 28.000+ (sênior em fintechs). Pleno gira em R$ 10-18k. Sêniores em empresas com times grandes de produto chegam a R$ 20-28k. Cargo emergente no BR — salários acima do esperado por gap de profissionais.",
+        faixaSalarial: "R$ 8.000 (entrada) a R$ 28.000+ (sênior em fintechs). Pleno gira em R$ 10-18k. Sêniores em empresas com times grandes de produto chegam a R$ 20-28k. Cargo emergente no BR, salários acima do esperado por gap de profissionais.",
         dificuldade: 4,
         cursosGratuitos: [
-          "Product Operations Council — recursos gratuitos sobre a disciplina",
-          "Lenny's Newsletter — artigos gratuitos sobre Product Ops (Marin Smiljanic é referência)",
-          "PM3 — Blog com artigos sobre escalabilidade de produto"
+          "Product Operations Council: recursos gratuitos sobre a disciplina",
+          "Lenny's Newsletter: artigos gratuitos sobre Product Ops (Marin Smiljanic é referência)",
+          "PM3: Blog com artigos sobre escalabilidade de produto"
         ],
         projetosSugeridos: [
           "Auditoria de processos de produto de empresa fictícia: mapear gaps + propor melhorias",
@@ -1248,7 +1248,7 @@ const baseAreasTI: AreaTI[] = [
           "Aprender SQL básico pra construir dashboards próprios",
           "Identificar gaps no seu time atual e propor melhorias como transição interna"
         ],
-        dicasIniciais: "Cargo SÊNIOR e nicho — não tente entrar sem experiência prévia em produto. Caminho ideal: PM sênior que ama processos → propor função internamente → migrar. Em startups pequenas (<10 PMs) não existe — mire scale-ups e empresas estabelecidas. Comunidade BR ainda pequena — produzir conteúdo público abre portas. Inglês é importante (a maior parte da literatura está em inglês). Mercado em formação — quem entra agora vai estar na primeira onda."
+        dicasIniciais: "Cargo SÊNIOR e nicho. Não tente entrar sem experiência prévia em produto. Caminho ideal: PM sênior que ama processos → propor função internamente → migrar. Em startups pequenas (<10 PMs) não existe. Mire scale-ups e empresas estabelecidas. Comunidade BR ainda pequena. Produzir conteúdo público abre portas. Inglês é importante (a maior parte da literatura está em inglês). Mercado em formação. Quem entra agora vai estar na primeira onda."
       }
     ]
   },
@@ -1268,7 +1268,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 5,
     cargos: ["Analista de Segurança Júnior", "Analista SOC", "Pentester", "Engenheiro de Segurança"],
     faixaSalarial: "R$ 3.500 a R$ 7.000 (trainee/júnior)",
-    cursosGratuitos: ["TryHackMe — Gratuito para iniciantes", "Cybrary — Cursos gratuitos", "DIO — Segurança da Informação"],
+    cursosGratuitos: ["TryHackMe: Gratuito para iniciantes", "Cybrary: Cursos gratuitos", "DIO: Segurança da Informação"],
     roadmapInicial: ["Aprender redes de computadores", "Aprender Linux básico", "Estudar conceitos de segurança", "Praticar no TryHackMe", "Obter certificação CompTIA Security+"],
     projetos: ["Lab de segurança em máquina virtual", "CTF (Capture The Flag) para iniciantes", "Análise de vulnerabilidades em ambiente controlado"],
     termosEssenciais: ["Pentest", "Firewall", "Criptografia", "Phishing", "Vulnerabilidade", "SOC"],
@@ -1287,9 +1287,9 @@ const baseAreasTI: AreaTI[] = [
         slug: "red-team",
         nome: "Red Team / Pentest",
         descricaoCurta: "Especialistas em simular ataques. Realizam pentests, exploram vulnerabilidades e testam defesas das empresas.",
-        descricaoCompleta: "Red Team / Pentester é o hacker ético: profissional pago pra atacar sistemas e descobrir falhas antes dos criminosos. Simula ataques reais — phishing, exploração de vulnerabilidades web, escalação de privilégios, evasão de defesas — pra testar a resiliência da empresa. Diferente do hacker malicioso, atua com escopo definido, ética rigorosa e relatórios detalhados. Mercado super aquecido em 2026: cargo de Pentester paga de R$ 4.500 (júnior) a R$ 25.000 (sênior). Robert Half estima faixa pleno-sênior entre R$ 13.350 e R$ 18.300. Empresas multinacionais e fintechs pagam acima da média.",
+        descricaoCompleta: "Red Team / Pentester é o hacker ético: profissional pago pra atacar sistemas e descobrir falhas antes dos criminosos. Simula ataques reais (phishing, exploração de vulnerabilidades web, escalação de privilégios, evasão de defesas) pra testar a resiliência da empresa. Diferente do hacker malicioso, atua com escopo definido, ética rigorosa e relatórios detalhados. Mercado super aquecido em 2026: cargo de Pentester paga de R$ 4.500 (júnior) a R$ 25.000 (sênior). Robert Half estima faixa pleno-sênior entre R$ 13.350 e R$ 18.300. Empresas multinacionais e fintechs pagam acima da média.",
         oQueFaz: "No dia a dia: planeja e executa testes de intrusão em escopos definidos (aplicações web, mobile, APIs, infraestrutura, cloud), explora vulnerabilidades (OWASP Top 10, falhas de autenticação, injeção), escreve scripts customizados em Python/Bash/PowerShell pra automatizar testes, simula campanhas de phishing pra avaliar conscientização, faz movimentação lateral em ambientes Windows/AD, e produz relatórios técnicos e executivos com achados, criticidade e recomendações. Em Red Team avançado, emula adversários reais (Kill Chain baseada em TTPs do MITRE ATT&CK).",
-        diferencasDaAreaMae: "Dentro de Cibersegurança, o Red Team é o lado ofensivo — ataca pra defender. Diferente do Blue Team (SOC, defesa em tempo real, monitora e responde a incidentes), o Red Team é proativo: encontra falhas antes que sejam exploradas. Diferente do AppSec (que integra segurança no ciclo de dev), o Red Team valida defesas existentes simulando atacantes reais. É o caminho mais visado por iniciantes — gosto pelo 'lado hacker' — mas exige base sólida de redes, sistemas e programação.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o Red Team é o lado ofensivo. Ataca pra defender. Diferente do Blue Team (SOC, defesa em tempo real, monitora e responde a incidentes), o Red Team é proativo: encontra falhas antes que sejam exploradas. Diferente do AppSec (que integra segurança no ciclo de dev), o Red Team valida defesas existentes simulando atacantes reais. É o caminho mais visado por iniciantes (gosto pelo 'lado hacker'), mas exige base sólida de redes, sistemas e programação.",
         habilidadesEspecificas: [
           "Linux profundo (Kali, Parrot OS) + Windows / Active Directory Internals",
           "Programação e scripting (Python, Bash, PowerShell, JavaScript)",
@@ -1314,9 +1314,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 4.500 (júnior) a R$ 25.000 (sênior). Pleno gira em R$ 8-14k. Consultores e freelas: R$ 150-400/hora. Certificações como OSCP, CRTO e CRTP aumentam significativamente a remuneração.",
         dificuldade: 5,
         cursosGratuitos: [
-          "TryHackMe (paths gratuitos pra iniciantes — pré-OSCP)",
+          "TryHackMe (paths gratuitos pra iniciantes, pré-OSCP)",
           "HackTheBox (CTFs práticos, free tier disponível)",
-          "PortSwigger Web Security Academy — curso completo gratuito sobre vulnerabilidades web"
+          "PortSwigger Web Security Academy: curso completo gratuito sobre vulnerabilidades web"
         ],
         projetosSugeridos: [
           "Home Lab: VM Kali + máquinas vulneráveis (Metasploitable, DVWA) pra prática diária",
@@ -1330,15 +1330,15 @@ const baseAreasTI: AreaTI[] = [
           "Tirar certificação inicial (eJPT é boa porta de entrada) e mirar OSCP a médio prazo",
           "Construir portfólio: writeups de máquinas resolvidas + reports em programas de bug bounty"
         ],
-        dicasIniciais: "OSCP é a certificação que abre portas — mire ela como meta de 12-18 meses. Antes, TryHackMe e HackTheBox são as melhores plataformas de treino. Documente tudo: cada máquina resolvida vira writeup, cada CVE encontrada vira post — recrutadores adoram. Mantenha sempre escopo e ética rigorosos: a diferença entre Red Team e hacker malicioso é a autorização. Inglês obrigatório."
+        dicasIniciais: "OSCP é a certificação que abre portas. Mire ela como meta de 12-18 meses. Antes, TryHackMe e HackTheBox são as melhores plataformas de treino. Documente tudo: cada máquina resolvida vira writeup, cada CVE encontrada vira post. Recrutadores adoram. Mantenha sempre escopo e ética rigorosos: a diferença entre Red Team e hacker malicioso é a autorização. Inglês obrigatório."
       },
       {
         slug: "blue-team",
         nome: "Blue Team / SOC",
         descricaoCurta: "Defesa em tempo real. Monitoram sistemas, analisam incidentes e atuam em Security Operations Centers.",
-        descricaoCompleta: "Blue Team / Analista SOC é o profissional da defesa em tempo real: monitora sistemas continuamente, detecta ameaças, responde a incidentes. Diferente do Red Team (que ataca pra testar), o Blue Team protege e reage. Trabalha em Security Operations Centers (SOC) — centros de monitoramento 24/7 de empresas com ativos digitais críticos (bancos, fintechs, e-commerce). Cargo super demandado em 2026: BeBee mostra centenas de vagas, com plenos em R$ 6-11k e sêniores em fintechs/bancos chegando a R$ 15-25k. Porta de entrada mais acessível em Cibersegurança — empresas oferecem programas de formação pra estagiários e juniores.",
-        oQueFaz: "No dia a dia: monitora alertas em SIEM (Security Information and Event Management) — QRadar, Splunk, Wazuh — identificando comportamentos anômalos, faz análise inicial de incidentes (triage) e escalonamento, conduz investigações de eventos suspeitos (logs, endpoints, redes), responde a incidentes seguindo playbooks (containment, eradication, recovery), atualiza regras de correlação no SIEM, mapeia ameaças usando MITRE ATT&CK, e produz relatórios técnicos e executivos pós-incidente. Trabalha em escalas (N1/N2/N3) — N1 é triagem, N2 análise, N3 resposta avançada.",
-        diferencasDaAreaMae: "Dentro de Cibersegurança, o Blue Team é o lado defensivo — reage e detecta ameaças. Diferente do Red Team (que simula ataques), o Blue Team protege continuamente. Diferente do AppSec (foco em código), Blue Team foca em infra e detecção. Diferente do GRC (estratégia e compliance), Blue Team é operacional e técnico. Porta de entrada MAIS acessível em Cibersegurança — empresas oferecem estágio e júnior, diferente de Red Team que exige base prévia mais sólida.",
+        descricaoCompleta: "Blue Team / Analista SOC é o profissional da defesa em tempo real: monitora sistemas continuamente, detecta ameaças, responde a incidentes. Diferente do Red Team (que ataca pra testar), o Blue Team protege e reage. Trabalha em Security Operations Centers (SOC), centros de monitoramento 24/7 de empresas com ativos digitais críticos (bancos, fintechs, e-commerce). Cargo super demandado em 2026: BeBee mostra centenas de vagas, com plenos em R$ 6-11k e sêniores em fintechs/bancos chegando a R$ 15-25k. Porta de entrada mais acessível em Cibersegurança. Empresas oferecem programas de formação pra estagiários e juniores.",
+        oQueFaz: "No dia a dia: monitora alertas em SIEM (Security Information and Event Management) (QRadar, Splunk, Wazuh) identificando comportamentos anômalos, faz análise inicial de incidentes (triage) e escalonamento, conduz investigações de eventos suspeitos (logs, endpoints, redes), responde a incidentes seguindo playbooks (containment, eradication, recovery), atualiza regras de correlação no SIEM, mapeia ameaças usando MITRE ATT&CK, e produz relatórios técnicos e executivos pós-incidente. Trabalha em escalas (N1/N2/N3): N1 é triagem, N2 análise, N3 resposta avançada.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o Blue Team é o lado defensivo. Reage e detecta ameaças. Diferente do Red Team (que simula ataques), o Blue Team protege continuamente. Diferente do AppSec (foco em código), Blue Team foca em infra e detecção. Diferente do GRC (estratégia e compliance), Blue Team é operacional e técnico. Porta de entrada MAIS acessível em Cibersegurança. Empresas oferecem estágio e júnior, diferente de Red Team que exige base prévia mais sólida.",
         habilidadesEspecificas: [
           "Operação de SIEM (QRadar, Splunk, Wazuh, Sentinel)",
           "Análise de logs (sistemas, rede, aplicação) e correlação",
@@ -1350,7 +1350,7 @@ const baseAreasTI: AreaTI[] = [
           "IBM QRadar ou Splunk (SIEMs corporativos mais comuns)",
           "Wazuh (SIEM open-source mais popular)",
           "EDR/XDR (CrowdStrike, SentinelOne, Microsoft Defender)",
-          "SOAR (Palo Alto XSOAR, Splunk SOAR) — automação de resposta",
+          "SOAR (Palo Alto XSOAR, Splunk SOAR): automação de resposta",
           "Wireshark (análise de tráfego)",
           "MITRE ATT&CK Navigator"
         ],
@@ -1363,8 +1363,8 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 3.000 (estagiário) a R$ 25.000+ (sênior em bancos/fintechs). Pleno gira em R$ 6-11k. Sêniores em PagSeguro, Stone, Itaú, fintechs chegam a R$ 15-20k. Especialistas em CSIRT financeiro ultrapassam R$ 25k.",
         dificuldade: 4,
         cursosGratuitos: [
-          "TryHackMe — Blue Team Path (gratuito, prático)",
-          "Letsdefend.io — labs gratuitos de análise de incidentes",
+          "TryHackMe: Blue Team Path (gratuito, prático)",
+          "Letsdefend.io: labs gratuitos de análise de incidentes",
           "SANS Cyber Aces (cursos gratuitos sobre fundamentos)"
         ],
         projetosSugeridos: [
@@ -1379,15 +1379,15 @@ const baseAreasTI: AreaTI[] = [
           "Tirar certificação inicial (Security+ ou CySA+ da CompTIA)",
           "Buscar vaga como Analista SOC N1 (estágio ou júnior) pra ganhar experiência prática"
         ],
-        dicasIniciais: "Blue Team é a porta de entrada mais acessível em Cibersegurança — empresas oferecem estágios e juniores com formação interna. SIEM é A skill da área — comece com Wazuh (gratuito). Certificação Security+ da CompTIA vale o investimento (US$ 370, dura 3 anos). MITRE ATT&CK é leitura obrigatória — domine. Inglês é obrigatório (toda doc, framework e community em inglês). Mercado super aquecido — fácil de conseguir estágio."
+        dicasIniciais: "Blue Team é a porta de entrada mais acessível em Cibersegurança. Empresas oferecem estágios e juniores com formação interna. SIEM é A skill da área. Comece com Wazuh (gratuito). Certificação Security+ da CompTIA vale o investimento (US$ 370, dura 3 anos). MITRE ATT&CK é leitura obrigatória. Domine. Inglês é obrigatório (toda doc, framework e community em inglês). Mercado super aquecido, fácil de conseguir estágio."
       },
       {
         slug: "appsec",
         nome: "Application Security",
         descricaoCurta: "Segurança aplicada ao desenvolvimento. Code review seguro, SAST/DAST, DevSecOps, hardening de APIs.",
-        descricaoCompleta: "AppSec (Application Security) Engineer é o profissional especializado em segurança de aplicações — código, APIs, microsserviços, mobile, web. Diferente do Red Team (que ataca pra testar) e Blue Team (que defende em tempo real), o AppSec foca em prevenção: integra segurança no ciclo de desenvolvimento (SDLC), faz threat modeling, secure code review, e treina devs em práticas seguras. Cargo super valorizado em fintechs, bancos e empresas que vivem de software. Salário top de Cibersegurança: Glassdoor mostra média R$ 21.838 (Application Security Specialist), com sêniores chegando a R$ 25-35k. Mercado super aquecido — 4.470+ vagas no BeBee.",
+        descricaoCompleta: "AppSec (Application Security) Engineer é o profissional especializado em segurança de aplicações: código, APIs, microsserviços, mobile, web. Diferente do Red Team (que ataca pra testar) e Blue Team (que defende em tempo real), o AppSec foca em prevenção: integra segurança no ciclo de desenvolvimento (SDLC), faz threat modeling, secure code review, e treina devs em práticas seguras. Cargo super valorizado em fintechs, bancos e empresas que vivem de software. Salário top de Cibersegurança: Glassdoor mostra média R$ 21.838 (Application Security Specialist), com sêniores chegando a R$ 25-35k. Mercado super aquecido, 4.470+ vagas no BeBee.",
         oQueFaz: "No dia a dia: integra ferramentas de SAST (Semgrep, SonarQube), DAST (OWASP ZAP, Burp Suite) e SCA (Snyk, Dependabot) em pipelines CI/CD, faz threat modeling (STRIDE, PASTA) em arquiteturas novas, conduz secure code reviews em PRs críticos, treina devs em OWASP Top 10 e boas práticas, responde a vulnerabilidades reportadas (bug bounty, disclosures), e atua próximo ao DevSecOps na esteira de segurança. Em times maduros, foca em shift-left security.",
-        diferencasDaAreaMae: "Dentro de Cibersegurança, o AppSec é o lado de prevenção em código — diferente do Red Team (ofensivo), Blue Team (defensivo reativo) ou GRC (compliance). Foco profundo em código e aplicações. Diferente do DevSecOps (que cuida do pipeline inteiro), o AppSec é mais especializado em código de aplicação e revisão de segurança. Cargo perfeito pra quem vem de desenvolvimento e quer migrar pra segurança — sua experiência em código se traduz diretamente. Carreira de transição clássica.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o AppSec é o lado de prevenção em código, diferente do Red Team (ofensivo), Blue Team (defensivo reativo) ou GRC (compliance). Foco profundo em código e aplicações. Diferente do DevSecOps (que cuida do pipeline inteiro), o AppSec é mais especializado em código de aplicação e revisão de segurança. Cargo perfeito pra quem vem de desenvolvimento e quer migrar pra segurança. Sua experiência em código se traduz diretamente. Carreira de transição clássica.",
         habilidadesEspecificas: [
           "OWASP Top 10 + padrões secure coding (Web/API/Mobile)",
           "SAST, DAST, SCA (Semgrep, SonarQube, Burp, Snyk)",
@@ -1409,12 +1409,12 @@ const baseAreasTI: AreaTI[] = [
           "Staff AppSec Engineer / Security Champion",
           "Head of Application Security"
         ],
-        faixaSalarial: "R$ 8.000 (entrada) a R$ 35.000+ (sênior em fintechs/bancos). Média BR R$ 21.838 — Glassdoor 2026 (Application Security Specialist). Pleno gira em R$ 12-20k. Sêniores em PagSeguro, Stone, Nubank, bancos chegam a R$ 25-32k.",
+        faixaSalarial: "R$ 8.000 (entrada) a R$ 35.000+ (sênior em fintechs/bancos). Média BR R$ 21.838, Glassdoor 2026 (Application Security Specialist). Pleno gira em R$ 12-20k. Sêniores em PagSeguro, Stone, Nubank, bancos chegam a R$ 25-32k.",
         dificuldade: 5,
         cursosGratuitos: [
           "OWASP Cheat Sheet Series (referência mundial gratuita)",
           "PortSwigger Web Security Academy (curso completo gratuito em inglês)",
-          "Alura — Trilha AppSec (parte gratuita, com referências BR)"
+          "Alura: Trilha AppSec (parte gratuita, com referências BR)"
         ],
         projetosSugeridos: [
           "Pipeline CI/CD completo com SAST + DAST + SCA em projeto público no GitHub",
@@ -1428,15 +1428,15 @@ const baseAreasTI: AreaTI[] = [
           "Praticar threat modeling em arquiteturas reais",
           "Tirar certificação CSSLP (ISC2) ou OSWE (Offensive Security)"
         ],
-        dicasIniciais: "Caminho ideal: dev sênior que quer migrar pra segurança — sua experiência em código vale ouro. PortSwigger Academy é OBRIGATÓRIO — curso gratuito mais completo da área. Comece com OWASP Top 10 + linguagem que você já domina. Inglês é absolutamente obrigatório. Bug bounty é portfólio real — vulnerabilidades reportadas no HackerOne valem muito. Cargo super valorizado em fintechs e bancos."
+        dicasIniciais: "Caminho ideal: dev sênior que quer migrar pra segurança. Sua experiência em código vale ouro. PortSwigger Academy é OBRIGATÓRIO, curso gratuito mais completo da área. Comece com OWASP Top 10 + linguagem que você já domina. Inglês é absolutamente obrigatório. Bug bounty é portfólio real. Vulnerabilidades reportadas no HackerOne valem muito. Cargo super valorizado em fintechs e bancos."
       },
       {
         slug: "grc",
         nome: "GRC (Governança, Risco e Compliance)",
         descricaoCurta: "Camada estratégica. Trabalha com LGPD, ISO 27001, NIST e auditoria. Equilibra tecnologia e regulamentação.",
-        descricaoCompleta: "GRC (Governance, Risk and Compliance) é o pilar estratégico de Cibersegurança — profissional que define políticas, garante conformidade regulatória (LGPD, ISO 27001, SOC 2, PCI-DSS) e gerencia riscos da organização. Diferente das áreas técnicas (Red Team, Blue Team, AppSec), GRC é mais estratégico e jurídico — atua próximo a executivos e jurídico. Cargo essencial em fintechs, bancos, healthtechs e empresas reguladas. Cresce muito com LGPD em vigor no BR (2020+) e exigências internacionais (SOC 2 pra clientes US). Salários: pleno gira R$ 8-15k, sêniores em bancos e fintechs chegam a R$ 18-30k+.",
+        descricaoCompleta: "GRC (Governance, Risk and Compliance) é o pilar estratégico de Cibersegurança, profissional que define políticas, garante conformidade regulatória (LGPD, ISO 27001, SOC 2, PCI-DSS) e gerencia riscos da organização. Diferente das áreas técnicas (Red Team, Blue Team, AppSec), GRC é mais estratégico e jurídico. Atua próximo a executivos e jurídico. Cargo essencial em fintechs, bancos, healthtechs e empresas reguladas. Cresce muito com LGPD em vigor no BR (2020+) e exigências internacionais (SOC 2 pra clientes US). Salários: pleno gira R$ 8-15k, sêniores em bancos e fintechs chegam a R$ 18-30k+.",
         oQueFaz: "No dia a dia: define políticas e procedimentos de segurança da informação, gerencia processo de adequação a frameworks (ISO 27001, SOC 2, NIST, PCI-DSS), conduz análises de risco (matriz probabilidade x impacto), audita controles internos e responde a auditorias externas, treina colaboradores em segurança e LGPD, gerencia relacionamento com encarregado de dados (DPO), e produz relatórios pra alta gestão e órgãos reguladores. Em empresas grandes, lidera comitê de segurança.",
-        diferencasDaAreaMae: "Dentro de Cibersegurança, o GRC é o lado estratégico — diferente das áreas técnicas (Red Team, Blue Team, AppSec, Forense), GRC trabalha com políticas, conformidade e gestão de riscos. Aproxima-se de auditoria interna e jurídico. Cargo perfeito pra perfis mais organizacionais e menos técnicos — alguns GRCs vêm de auditoria, direito, administração. Não precisa programar — precisa entender frameworks regulatórios profundamente.",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, o GRC é o lado estratégico, diferente das áreas técnicas (Red Team, Blue Team, AppSec, Forense), GRC trabalha com políticas, conformidade e gestão de riscos. Aproxima-se de auditoria interna e jurídico. Cargo perfeito pra perfis mais organizacionais e menos técnicos. Alguns GRCs vêm de auditoria, direito, administração. Não precisa programar. Precisa entender frameworks regulatórios profundamente.",
         habilidadesEspecificas: [
           "Frameworks de segurança (ISO 27001, NIST, CIS Controls, COBIT)",
           "Regulações brasileiras (LGPD) e internacionais (GDPR, HIPAA)",
@@ -1461,9 +1461,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 5.000 (júnior) a R$ 30.000+ (sênior em bancos). Pleno gira em R$ 8-15k. Sêniores em fintechs (Stone, Nubank, PagBank), bancos e healthtechs chegam a R$ 18-28k. CISO ultrapassa R$ 40k em empresas grandes.",
         dificuldade: 3,
         cursosGratuitos: [
-          "ANPD — Material gratuito sobre LGPD (autoridade nacional, referência oficial)",
-          "ISACA — recursos gratuitos sobre governança (referência mundial)",
-          "ISO 27001 Foundation — cursos introdutórios gratuitos no Coursera"
+          "ANPD: Material gratuito sobre LGPD (autoridade nacional, referência oficial)",
+          "ISACA: recursos gratuitos sobre governança (referência mundial)",
+          "ISO 27001 Foundation: cursos introdutórios gratuitos no Coursera"
         ],
         projetosSugeridos: [
           "Política de Segurança da Informação completa pra empresa fictícia",
@@ -1477,15 +1477,15 @@ const baseAreasTI: AreaTI[] = [
           "Tirar certificação inicial (ISFS da EXIN ou Security+ da CompTIA)",
           "Avançar para CISA (auditoria) ou CISSP (gestão) após 3-5 anos"
         ],
-        dicasIniciais: "Porta de entrada acessível em Cibersegurança pra quem NÃO quer ser técnico — não precisa programar. Vindo de auditoria, direito ou administração? Caminho natural. LGPD é a porta de entrada essencial no BR — domine. ISO 27001 é o framework mais respeitado mundialmente. CISA e CISSP são certificações de ouro pra carreira de longo prazo. Cargo perfeito pra perfis organizacionais e detalhistas."
+        dicasIniciais: "Porta de entrada acessível em Cibersegurança pra quem NÃO quer ser técnico. Não precisa programar. Vindo de auditoria, direito ou administração? Caminho natural. LGPD é a porta de entrada essencial no BR. Domine. ISO 27001 é o framework mais respeitado mundialmente. CISA e CISSP são certificações de ouro pra carreira de longo prazo. Cargo perfeito pra perfis organizacionais e detalhistas."
       },
       {
         slug: "forense-digital",
         nome: "Forense Digital e Resposta a Incidentes",
         descricaoCurta: "Investigação pós-ataque. Análise de evidências digitais, contenção de incidentes e recuperação de sistemas.",
-        descricaoCompleta: "Forense Digital (ou Digital Forensics) é o especialista em investigar incidentes de segurança após o fato — analisa evidências digitais (logs, dispositivos, redes) pra responder 'o que aconteceu, como, e quem fez'. Atua em CSIRT corporativo (response a incidentes) ou como perito (criminal ou civil). Cargo super específico e técnico — exige conhecimento profundo de sistemas, redes, e direito digital. Salários variam muito: Glassdoor mostra média R$ 9.033 (Analista Forense Digital) com sêniores em R$ 10.800; peritos federais ganham R$ 14.000+; em CSIRTs de bancos chega a R$ 18-25k. Mercado pequeno mas valorizado.",
+        descricaoCompleta: "Forense Digital (ou Digital Forensics) é o especialista em investigar incidentes de segurança após o fato. Analisa evidências digitais (logs, dispositivos, redes) pra responder 'o que aconteceu, como, e quem fez'. Atua em CSIRT corporativo (response a incidentes) ou como perito (criminal ou civil). Cargo super específico e técnico. Exige conhecimento profundo de sistemas, redes, e direito digital. Salários variam muito: Glassdoor mostra média R$ 9.033 (Analista Forense Digital) com sêniores em R$ 10.800; peritos federais ganham R$ 14.000+; em CSIRTs de bancos chega a R$ 18-25k. Mercado pequeno mas valorizado.",
         oQueFaz: "No dia a dia: coleta e preserva evidências digitais (HD, RAM, logs) seguindo cadeia de custódia, analisa malwares (engenharia reversa básica), investiga incidentes (timeline, root cause analysis), recupera dados deletados, analisa tráfego de rede capturado, produz laudos técnicos detalhados (em formato pericial), e apoia juridicamente em processos. Em CSIRT corporativo, atua próximo ao Blue Team na resposta a incidentes complexos.",
-        diferencasDaAreaMae: "Dentro de Cibersegurança, Forense Digital é o lado investigativo PÓS-incidente — diferente do Red Team (ataque), Blue Team (defesa em tempo real) e AppSec (prevenção), o Forense trabalha depois que o ataque ocorreu. Aproxima-se de investigação criminal e perícia judicial. Cargo super nicho — empresas grandes têm 1-2 especialistas, mercado é pequeno mas estável. Caminho público (perito policial/federal via concurso) ou privado (CSIRT/consultoria).",
+        diferencasDaAreaMae: "Dentro de Cibersegurança, Forense Digital é o lado investigativo PÓS-incidente, diferente do Red Team (ataque), Blue Team (defesa em tempo real) e AppSec (prevenção), o Forense trabalha depois que o ataque ocorreu. Aproxima-se de investigação criminal e perícia judicial. Cargo super nicho. Empresas grandes têm 1-2 especialistas, mercado é pequeno mas estável. Caminho público (perito policial/federal via concurso) ou privado (CSIRT/consultoria).",
         habilidadesEspecificas: [
           "Análise forense de sistemas operacionais (Windows, Linux, macOS)",
           "Análise de memória (RAM dumps) com Volatility ou similares",
@@ -1507,12 +1507,12 @@ const baseAreasTI: AreaTI[] = [
           "Perito Forense / Especialista CSIRT Sênior (5+ anos)",
           "Perito Federal / Lead Forensics"
         ],
-        faixaSalarial: "R$ 3.367 (júnior) a R$ 25.000+ (sênior em bancos/CSIRT). Média BR R$ 9.033 — Glassdoor 2026. Pleno gira em R$ 7-12k. Peritos federais (concursados) ganham R$ 14k+. Sêniores em fintechs grandes chegam a R$ 18-22k.",
+        faixaSalarial: "R$ 3.367 (júnior) a R$ 25.000+ (sênior em bancos/CSIRT). Média BR R$ 9.033, Glassdoor 2026. Pleno gira em R$ 7-12k. Peritos federais (concursados) ganham R$ 14k+. Sêniores em fintechs grandes chegam a R$ 18-22k.",
         dificuldade: 5,
         cursosGratuitos: [
-          "SANS DFIR — recursos gratuitos (cheat sheets, posters, blog)",
-          "Cyber5w — labs gratuitos de forense digital",
-          "DFIR.training — comunidade gratuita com recursos massivos"
+          "SANS DFIR: recursos gratuitos (cheat sheets, posters, blog)",
+          "Cyber5w: labs gratuitos de forense digital",
+          "DFIR.training: comunidade gratuita com recursos massivos"
         ],
         projetosSugeridos: [
           "Análise forense de máquina virtual comprometida intencionalmente (CTF de forense)",
@@ -1526,7 +1526,7 @@ const baseAreasTI: AreaTI[] = [
           "Tirar certificação inicial: GCFA (SANS) ou EnCase Certified Examiner",
           "Decidir caminho: público (concurso PF/PCs) ou privado (CSIRT/consultoria)"
         ],
-        dicasIniciais: "Cargo nicho e SÊNIOR — não tente entrar sem base sólida de redes/sistemas. Decida cedo: caminho público (concurso de Perito Federal/Estadual, salários previsíveis) ou privado (CSIRT corporativo, salários mais altos mas voláteis). SANS DFIR é referência mundial — siga. Cargo perfeito pra mentes investigativas e detalhistas. Inglês é obrigatório (toda doc em inglês). Mercado BR pequeno mas estável."
+        dicasIniciais: "Cargo nicho e SÊNIOR. Não tente entrar sem base sólida de redes/sistemas. Decida cedo: caminho público (concurso de Perito Federal/Estadual, salários previsíveis) ou privado (CSIRT corporativo, salários mais altos mas voláteis). SANS DFIR é referência mundial. Siga. Cargo perfeito pra mentes investigativas e detalhistas. Inglês é obrigatório (toda doc em inglês). Mercado BR pequeno mas estável."
       }
     ]
   },
@@ -1546,7 +1546,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 4,
     cargos: ["Analista de Cloud Júnior", "Cloud Engineer", "DevOps Engineer", "SRE"],
     faixaSalarial: "R$ 3.500 a R$ 7.000 (trainee/júnior)",
-    cursosGratuitos: ["AWS Skill Builder — Gratuito", "Microsoft Learn — Azure gratuito", "Google Cloud Skills Boost — trilhas gratuitas"],
+    cursosGratuitos: ["AWS Skill Builder: Gratuito", "Microsoft Learn: Azure gratuito", "Google Cloud Skills Boost: trilhas gratuitas"],
     roadmapInicial: ["Aprender Linux básico", "Entender redes de computadores", "Criar conta gratuita na AWS", "Completar trilha AWS Cloud Practitioner", "Obter certificação Cloud Practitioner"],
     projetos: ["Hospedar site estático na AWS S3", "Criar servidor virtual na nuvem", "Configurar pipeline CI/CD básico"],
     termosEssenciais: ["AWS", "Azure", "GCP", "Container", "Kubernetes", "Serverless"],
@@ -1565,11 +1565,11 @@ const baseAreasTI: AreaTI[] = [
         slug: "arquiteto-cloud",
         nome: "Arquiteto Cloud",
         descricaoCurta: "Projeta soluções em AWS, Azure ou GCP. Define topologias, integrações e padrões pra grandes ambientes corporativos.",
-        descricaoCompleta: "Arquiteto Cloud é o profissional sênior que projeta a infraestrutura de nuvem pra grandes empresas — define quais serviços usar (compute, storage, networking, banco), como integrar com sistemas legados, como garantir alta disponibilidade, segurança e custo controlado. Não é cargo de entrada: chega-se como Arquiteto Cloud depois de 5+ anos como engenheiro de cloud, DevOps ou desenvolvedor. Cargo super valorizado em 2026 — médias de R$ 6 mil a R$ 16 mil, com sêniores em ambientes financeiros ou multinacionais chegando a R$ 18-25k+. Certificações como AWS Solutions Architect Professional ou Azure Architect Expert são quase obrigatórias.",
+        descricaoCompleta: "Arquiteto Cloud é o profissional sênior que projeta a infraestrutura de nuvem pra grandes empresas. Define quais serviços usar (compute, storage, networking, banco), como integrar com sistemas legados, como garantir alta disponibilidade, segurança e custo controlado. Não é cargo de entrada: chega-se como Arquiteto Cloud depois de 5+ anos como engenheiro de cloud, DevOps ou desenvolvedor. Cargo super valorizado em 2026, médias de R$ 6 mil a R$ 16 mil, com sêniores em ambientes financeiros ou multinacionais chegando a R$ 18-25k+. Certificações como AWS Solutions Architect Professional ou Azure Architect Expert são quase obrigatórias.",
         oQueFaz: "No dia a dia: levanta requisitos técnicos e de negócio com clientes ou times internos, desenha arquiteturas escaláveis e resilientes (multi-AZ, multi-região quando necessário), avalia trade-offs de custo vs performance vs disponibilidade, define padrões de segurança (IAM, criptografia, compliance), apresenta soluções pra stakeholders técnicos e executivos, orienta times de implementação, e revisa arquiteturas existentes pra modernização. Trabalha lado a lado com DevOps, SREs, engenheiros de dados e times de produto.",
-        diferencasDaAreaMae: "Dentro de Cloud, o Arquiteto separa-se do Engenheiro Cloud pelo escopo: engenheiro implementa; arquiteto projeta. Diferente do Cloud Security (foco específico em segurança) ou FinOps (foco em custo), o Arquiteto Cloud tem visão completa do ambiente — segurança, custo, performance, resiliência. É cargo de evolução, não de entrada — você chega aqui depois de anos como engenheiro de cloud, desenvolvedor ou DevOps com vivência em projetos grandes.",
+        diferencasDaAreaMae: "Dentro de Cloud, o Arquiteto separa-se do Engenheiro Cloud pelo escopo: engenheiro implementa; arquiteto projeta. Diferente do Cloud Security (foco específico em segurança) ou FinOps (foco em custo), o Arquiteto Cloud tem visão completa do ambiente: segurança, custo, performance, resiliência. É cargo de evolução, não de entrada. Você chega aqui depois de anos como engenheiro de cloud, desenvolvedor ou DevOps com vivência em projetos grandes.",
         habilidadesEspecificas: [
-          "Domínio profundo de pelo menos uma cloud (AWS, Azure ou GCP) — preferencialmente 2",
+          "Domínio profundo de pelo menos uma cloud (AWS, Azure ou GCP), preferencialmente 2",
           "Arquitetura de sistemas distribuídos, alta disponibilidade e tolerância a falhas",
           "Infrastructure as Code (Terraform, CloudFormation)",
           "Segurança em cloud (IAM, criptografia, compliance, LGPD)",
@@ -1584,7 +1584,7 @@ const baseAreasTI: AreaTI[] = [
           "Datadog ou CloudWatch (observabilidade)"
         ],
         cargos: [
-          "Arquiteto Cloud Júnior raro — geralmente vem de Cloud Engineer (3+ anos)",
+          "Arquiteto Cloud Júnior raro, geralmente vem de Cloud Engineer (3+ anos)",
           "Arquiteto Cloud Pleno (5+ anos de cloud)",
           "Arquiteto Cloud Sênior (7+ anos de cloud)",
           "Principal Cloud Architect / Chief Architect (líder técnico da empresa)"
@@ -1592,9 +1592,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 7.600 (entrada) a R$ 18.000 (sênior). Em grandes empresas, fintechs ou setor financeiro, sêniores chegam a R$ 25.000+. Vagas remotas pra fora pagam em dólar (US$ 100-150k/ano).",
         dificuldade: 5,
         cursosGratuitos: [
-          "AWS Skill Builder — Cloud Practitioner + Solutions Architect Associate (planos gratuitos)",
-          "Google Cloud Skills Boost — fundamentos gratuitos e labs práticos",
-          "Microsoft Learn — trilhas Azure Fundamentals e Azure Architect (gratuitas)"
+          "AWS Skill Builder: Cloud Practitioner + Solutions Architect Associate (planos gratuitos)",
+          "Google Cloud Skills Boost: fundamentos gratuitos e labs práticos",
+          "Microsoft Learn: trilhas Azure Fundamentals e Azure Architect (gratuitas)"
         ],
         projetosSugeridos: [
           "Arquitetar e implementar aplicação 3-tier completa na AWS (VPC + EC2 + RDS + ELB + S3)",
@@ -1602,21 +1602,21 @@ const baseAreasTI: AreaTI[] = [
           "Multi-cloud setup: aplicação rodando em AWS + Azure com failover automático"
         ],
         roadmapEspecifico: [
-          "Dominar uma cloud profundamente (AWS é o mais procurado no BR — comece por ela)",
+          "Dominar uma cloud profundamente (AWS é o mais procurado no BR, comece por ela)",
           "Tirar certificação foundational (AWS Cloud Practitioner) e depois Associate (Solutions Architect)",
           "Aprender Terraform e arquitetura de sistemas distribuídos",
           "Conseguir vaga como Cloud Engineer ou DevOps pra ganhar experiência prática",
           "Após 3-5 anos, mirar certificação Professional (AWS SAP-C02 ou equivalente Azure/GCP)"
         ],
-        dicasIniciais: "Não tente entrar direto como Arquiteto — passe primeiro por Cloud Engineer ou DevOps. Certificação AWS Associate é o primeiro grande objetivo: estude 3-6 meses + tire o exame (custa US$ 150, mas vale cada centavo no currículo). Foque em entender padrões de arquitetura (microservices, serverless, event-driven) — não basta saber nomes de serviços. Inglês obrigatório."
+        dicasIniciais: "Não tente entrar direto como Arquiteto. Passe primeiro por Cloud Engineer ou DevOps. Certificação AWS Associate é o primeiro grande objetivo: estude 3-6 meses + tire o exame (custa US$ 150, mas vale cada centavo no currículo). Foque em entender padrões de arquitetura (microservices, serverless, event-driven). Não basta saber nomes de serviços. Inglês obrigatório."
       },
       {
         slug: "cloud-security",
         nome: "Cloud Security",
         descricaoCurta: "Especialista em segurança em ambiente cloud. IAM, hardening de workloads, CSPM, conformidade.",
-        descricaoCompleta: "Cloud Security Engineer é o especialista em segurança específica de ambientes em nuvem — diferente da segurança tradicional, cloud tem desafios únicos: IAM complexo, shared responsibility model, escala dinâmica, multi-tenancy. Cargo crítico em qualquer empresa que rode em AWS, Azure ou GCP — todas correm risco massivo de misconfiguração que vaza dados. Cresce explosivamente: empresas brasileiras migrando pra cloud precisam desse perfil urgentemente. Salários: pleno R$ 12-20k, sêniores em fintechs e empresas com workload massivo em cloud chegam a R$ 25-35k. Combina expertise em cloud + segurança — pool de profissionais pequeno = salários altos.",
+        descricaoCompleta: "Cloud Security Engineer é o especialista em segurança específica de ambientes em nuvem. Diferente da segurança tradicional, cloud tem desafios únicos: IAM complexo, shared responsibility model, escala dinâmica, multi-tenancy. Cargo crítico em qualquer empresa que rode em AWS, Azure ou GCP. Todas correm risco massivo de misconfiguração que vaza dados. Cresce explosivamente: empresas brasileiras migrando pra cloud precisam desse perfil urgentemente. Salários: pleno R$ 12-20k, sêniores em fintechs e empresas com workload massivo em cloud chegam a R$ 25-35k. Combina expertise em cloud + segurança, pool de profissionais pequeno = salários altos.",
         oQueFaz: "No dia a dia: configura e audita IAM em AWS/Azure/GCP (least privilege, MFA, role assumption), define network security (VPC, security groups, NACLs, WAF), implementa criptografia em repouso e trânsito, faz hardening de configurações cloud (CIS Benchmarks), monitora com ferramentas cloud-native (GuardDuty, Security Hub, Defender), responde a incidentes em cloud, e garante compliance (PCI-DSS, LGPD em ambiente cloud). Em empresas maduras, automatiza políticas como código (CSPM, Cloud Custodian).",
-        diferencasDaAreaMae: "Dentro de Cloud, o Cloud Security é a especialização defensiva — diferente do Arquiteto Cloud (que projeta sistemas), FinOps (que cuida de custos) ou Cloud Engineer (que opera), o Security foca em proteger esse ambiente. Diferente do AppSec (foco em código) ou Blue Team (foco em SOC tradicional), o Cloud Security é hiper-especializado em infraestrutura cloud. Caminho típico: vem de DevOps ou Cloud Engineer e se especializa em segurança, ou vem de segurança tradicional e migra pra cloud.",
+        diferencasDaAreaMae: "Dentro de Cloud, o Cloud Security é a especialização defensiva, diferente do Arquiteto Cloud (que projeta sistemas), FinOps (que cuida de custos) ou Cloud Engineer (que opera), o Security foca em proteger esse ambiente. Diferente do AppSec (foco em código) ou Blue Team (foco em SOC tradicional), o Cloud Security é hiper-especializado em infraestrutura cloud. Caminho típico: vem de DevOps ou Cloud Engineer e se especializa em segurança, ou vem de segurança tradicional e migra pra cloud.",
         habilidadesEspecificas: [
           "Domínio profundo de IAM em pelo menos uma cloud (AWS é o mais procurado no BR)",
           "Network security em cloud (VPC, security groups, WAF, DDoS protection)",
@@ -1641,9 +1641,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 8.000 (entrada) a R$ 35.000+ (sênior em fintechs/big techs). Pleno gira em R$ 12-20k. Sêniores em Stone, Nubank, iFood, bancos chegam a R$ 22-30k. Remoto pra fora paga US$ 8-15k/mês.",
         dificuldade: 5,
         cursosGratuitos: [
-          "AWS Skill Builder — Security Learning Path (parte gratuita)",
+          "AWS Skill Builder: Security Learning Path (parte gratuita)",
           "CIS Benchmarks (gratuitos via CIS Center for Internet Security)",
-          "AWS re:Inforce — talks gratuitos sobre segurança em cloud (YouTube)"
+          "AWS re:Inforce: talks gratuitos sobre segurança em cloud (YouTube)"
         ],
         projetosSugeridos: [
           "AWS Landing Zone segura completa (Organizations + SCP + GuardDuty habilitado)",
@@ -1657,15 +1657,15 @@ const baseAreasTI: AreaTI[] = [
           "Aprender CIS Benchmarks e ferramentas CSPM",
           "Construir portfólio: 2 projetos públicos com Landing Zone segura documentada"
         ],
-        dicasIniciais: "Cargo SÊNIOR — não tente entrar sem base de cloud OU segurança. AWS Security Specialty (US$ 300) é a certificação mais respeitada. Combine com CIS Benchmarks (gratuitos) — referência absoluta. Inglês é obrigatório. Mercado pequeno mas em explosão — quem entra agora pega salários acima do normal. Em fintechs e bancos, cargo paga muito acima da média. Caminho ideal: vem de DevOps → migra pra Cloud Security."
+        dicasIniciais: "Cargo SÊNIOR. Não tente entrar sem base de cloud OU segurança. AWS Security Specialty (US$ 300) é a certificação mais respeitada. Combine com CIS Benchmarks (gratuitos), referência absoluta. Inglês é obrigatório. Mercado pequeno mas em explosão. Quem entra agora pega salários acima do normal. Em fintechs e bancos, cargo paga muito acima da média. Caminho ideal: vem de DevOps → migra pra Cloud Security."
       },
       {
         slug: "finops",
         nome: "FinOps",
         descricaoCurta: "Otimização financeira de cloud. Reduz custos, monitora gastos, aplica práticas de billing e governança.",
-        descricaoCompleta: "FinOps (Financial Operations) é a disciplina emergente que une finanças, tecnologia e operações pra gerenciar custos de cloud com responsabilidade. Em 2026, empresas brasileiras gastam milhões em AWS/Azure/GCP sem visibilidade clara — FinOps muda isso: aloca custos por time, identifica desperdícios, propõe Reserved Instances/Savings Plans, e cria cultura de accountability. Cargo nasceu em big techs e está chegando ao BR em fintechs, varejistas e empresas com workload massivo. Salários: pleno gira R$ 12-18k (Glassdoor R$ 17.006), sêniores em empresas com gasto de cloud massivo (Mercado Livre, iFood, Stone) chegam a R$ 20-30k.",
+        descricaoCompleta: "FinOps (Financial Operations) é a disciplina emergente que une finanças, tecnologia e operações pra gerenciar custos de cloud com responsabilidade. Em 2026, empresas brasileiras gastam milhões em AWS/Azure/GCP sem visibilidade clara. FinOps muda isso: aloca custos por time, identifica desperdícios, propõe Reserved Instances/Savings Plans, e cria cultura de accountability. Cargo nasceu em big techs e está chegando ao BR em fintechs, varejistas e empresas com workload massivo. Salários: pleno gira R$ 12-18k (Glassdoor R$ 17.006), sêniores em empresas com gasto de cloud massivo (Mercado Livre, iFood, Stone) chegam a R$ 20-30k.",
         oQueFaz: "No dia a dia: monitora custos de cloud em tempo real com ferramentas nativas (AWS Cost Explorer, Azure Cost Management), aloca gastos por time/produto via tagging, identifica oportunidades (compute idle, storage desnecessário, queries caras), propõe compras de Reserved Instances e Savings Plans baseado em uso histórico, treina engenheiros em cost-awareness, constrói dashboards de custo pra liderança, e participa de decisões arquiteturais avaliando trade-off performance vs custo.",
-        diferencasDaAreaMae: "Dentro de Cloud, o FinOps é a especialização financeira — diferente do Arquiteto Cloud (que projeta), Cloud Security (que protege) ou Cloud Engineer (que opera), o FinOps cuida do dinheiro. Cargo híbrido entre tecnologia e finanças — alguns FinOps vêm de finanças/controladoria e migram pra cloud; outros vêm de DevOps e aprendem finanças. Cargo emergente no BR — empresas que gastam mais de R$ 1M/mês em cloud precisam.",
+        diferencasDaAreaMae: "Dentro de Cloud, o FinOps é a especialização financeira, diferente do Arquiteto Cloud (que projeta), Cloud Security (que protege) ou Cloud Engineer (que opera), o FinOps cuida do dinheiro. Cargo híbrido entre tecnologia e finanças. Alguns FinOps vêm de finanças/controladoria e migram pra cloud; outros vêm de DevOps e aprendem finanças. Cargo emergente no BR. Empresas que gastam mais de R$ 1M/mês em cloud precisam.",
         habilidadesEspecificas: [
           "Conhecimento profundo de modelo de cobrança da cloud (AWS Pricing, Azure pricing)",
           "SQL avançado pra análise de billing data (CUR no AWS, Azure billing export)",
@@ -1687,12 +1687,12 @@ const baseAreasTI: AreaTI[] = [
           "Senior FinOps Specialist (5+ anos)",
           "Head of FinOps / Cloud Economics"
         ],
-        faixaSalarial: "R$ 6.000 (júnior) a R$ 30.000+ (sênior). Média BR R$ 17.006 — Glassdoor 2026 (FinOps Specialist). Pleno gira em R$ 12-18k. Sêniores em empresas com gasto massivo em cloud chegam a R$ 22-30k. FinOps Certified Practitioner (FOCP) é diferencial real.",
+        faixaSalarial: "R$ 6.000 (júnior) a R$ 30.000+ (sênior). Média BR R$ 17.006, Glassdoor 2026 (FinOps Specialist). Pleno gira em R$ 12-18k. Sêniores em empresas com gasto massivo em cloud chegam a R$ 22-30k. FinOps Certified Practitioner (FOCP) é diferencial real.",
         dificuldade: 3,
         cursosGratuitos: [
-          "FinOps Foundation — recursos gratuitos (referência mundial oficial)",
+          "FinOps Foundation: recursos gratuitos (referência mundial oficial)",
           "AWS Cost Optimization (parte gratuita do AWS Skill Builder)",
-          "FinOps Open Cost & Usage Spec (OpenCost) — referência open source"
+          "FinOps Open Cost & Usage Spec (OpenCost): referência open source"
         ],
         projetosSugeridos: [
           "Análise de gastos de uma conta AWS pública/teste: identificar 10 otimizações com impacto estimado",
@@ -1703,10 +1703,10 @@ const baseAreasTI: AreaTI[] = [
           "Estudar modelo de cobrança da cloud principal (AWS é o mais procurado)",
           "Aprender SQL pra analisar billing data (CUR no AWS é complexo)",
           "Dominar uma ferramenta de visualização (Power BI ou Tableau)",
-          "Tirar certificação FinOps Certified Practitioner (FOCP) — US$ 250",
+          "Tirar certificação FinOps Certified Practitioner (FOCP), US$ 250",
           "Construir portfólio: análise pública de gastos cloud + propostas de otimização"
         ],
-        dicasIniciais: "Cargo emergente — quem entrar agora pega salários acima do normal por 3-5 anos. FOCP (FinOps Certified Practitioner) é A certificação da área — vale o investimento. Caminho ideal: vem de DevOps/Cloud → aprende finanças OU vem de finanças → aprende cloud. SQL é cobrado pra análise de billing data (CUR no AWS tem terabytes). Inglês é importante. Cargo perfeito pra perfis analíticos que gostam de números."
+        dicasIniciais: "Cargo emergente. Quem entrar agora pega salários acima do normal por 3-5 anos. FOCP (FinOps Certified Practitioner) é A certificação da área. Vale o investimento. Caminho ideal: vem de DevOps/Cloud → aprende finanças OU vem de finanças → aprende cloud. SQL é cobrado pra análise de billing data (CUR no AWS tem terabytes). Inglês é importante. Cargo perfeito pra perfis analíticos que gostam de números."
       }
     ]
   },
@@ -1726,7 +1726,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 3,
     cargos: ["Scrum Master Júnior", "Analista de PMO", "Coordenador de Projetos", "Agile Coach"],
     faixaSalarial: "R$ 3.000 a R$ 6.000 (trainee/júnior)",
-    cursosGratuitos: ["Scrum.org — Materiais gratuitos", "PMI — Recursos gratuitos", "DIO — Metodologias Ágeis"],
+    cursosGratuitos: ["Scrum.org: Materiais gratuitos", "PMI: Recursos gratuitos", "DIO: Metodologias Ágeis"],
     roadmapInicial: ["Aprender Scrum e Kanban", "Obter certificação PSM I ou PSPO I", "Aprender ferramentas como Jira e Trello", "Praticar facilitação de reuniões", "Buscar estágio em PMO"],
     projetos: ["Plano de projeto fictício", "Documentação de sprint", "Roadmap de produto"],
     termosEssenciais: ["Scrum", "Kanban", "Sprint", "Backlog", "Stakeholder", "PMO"],
@@ -1746,9 +1746,9 @@ const baseAreasTI: AreaTI[] = [
         slug: "scrum-master",
         nome: "Scrum Master",
         descricaoCurta: "Facilitador de times ágeis. Garante que o time siga Scrum, remove impedimentos e dissemina cultura ágil.",
-        descricaoCompleta: "Scrum Master é o facilitador do framework Scrum: profissional que ajuda o time a aplicar Scrum corretamente, remove impedimentos e protege contra interferências externas. Não é gestor (não tem autoridade direta sobre o time) nem dono do produto (isso é PO) — é um servant leader que serve o time pra que ele entregue valor. Cargo super comum em empresas que adotam ágil no Brasil (bancos, fintechs, indústrias). Mercado maduro mas saturado em níveis júnior — diferencial está em sêniores e Agile Coaches. Salário médio: R$ 9.750 (Glassdoor 2.574 respostas), Robert Half estima R$ 10.900-17.600 pra pleno-sênior. Sêniores em fintechs chegam a R$ 20-25k.",
-        oQueFaz: "No dia a dia: conduz cerimônias Scrum (daily, planning, review, retrospectiva), remove impedimentos identificados pelo time, protege o time de interrupções externas, ensina e treina o time em práticas ágeis, facilita conflitos e melhoria contínua, e atua como ponte entre o time e a organização. Em empresas grandes, trabalha próximo a outros Scrum Masters e Agile Coaches em um modelo de Comunidade de Prática. Não atribui tarefas nem cobra entregas — facilita o auto-gerenciamento do time.",
-        diferencasDaAreaMae: "Dentro de Gestão, o Scrum Master separa-se do Product Owner pelo papel: PO é dono do produto e prioriza o quê construir; Scrum Master é facilitador do processo e cuida de como o time trabalha. Diferente do Project Manager tradicional (que cobra prazo e escopo), Scrum Master não comanda — facilita auto-organização. Diferente do Agile Coach (que atua em nível organizacional, transformação cultural), o Scrum Master é tático e foca em 1-2 times específicos. Porta de entrada da carreira ágil — sêniores migram pra Agile Coach.",
+        descricaoCompleta: "Scrum Master é o facilitador do framework Scrum: profissional que ajuda o time a aplicar Scrum corretamente, remove impedimentos e protege contra interferências externas. Não é gestor (não tem autoridade direta sobre o time) nem dono do produto (isso é PO). É um servant leader que serve o time pra que ele entregue valor. Cargo super comum em empresas que adotam ágil no Brasil (bancos, fintechs, indústrias). Mercado maduro mas saturado em níveis júnior. Diferencial está em sêniores e Agile Coaches. Salário médio: R$ 9.750 (Glassdoor 2.574 respostas), Robert Half estima R$ 10.900-17.600 pra pleno-sênior. Sêniores em fintechs chegam a R$ 20-25k.",
+        oQueFaz: "No dia a dia: conduz cerimônias Scrum (daily, planning, review, retrospectiva), remove impedimentos identificados pelo time, protege o time de interrupções externas, ensina e treina o time em práticas ágeis, facilita conflitos e melhoria contínua, e atua como ponte entre o time e a organização. Em empresas grandes, trabalha próximo a outros Scrum Masters e Agile Coaches em um modelo de Comunidade de Prática. Não atribui tarefas nem cobra entregas. Facilita o auto-gerenciamento do time.",
+        diferencasDaAreaMae: "Dentro de Gestão, o Scrum Master separa-se do Product Owner pelo papel: PO é dono do produto e prioriza o quê construir; Scrum Master é facilitador do processo e cuida de como o time trabalha. Diferente do Project Manager tradicional (que cobra prazo e escopo), Scrum Master não comanda. Facilita auto-organização. Diferente do Agile Coach (que atua em nível organizacional, transformação cultural), o Scrum Master é tático e foca em 1-2 times específicos. Porta de entrada da carreira ágil. Sêniores migram pra Agile Coach.",
         habilidadesEspecificas: [
           "Domínio profundo do framework Scrum (papéis, eventos, artefatos)",
           "Facilitação de cerimônias e workshops",
@@ -1770,12 +1770,12 @@ const baseAreasTI: AreaTI[] = [
           "Scrum Master Sênior (5+ anos)",
           "Agile Coach / Lead Scrum Master (carreira evolutiva)"
         ],
-        faixaSalarial: "R$ 5.200 (júnior) a R$ 25.000 (sênior em fintechs/big techs). Média BR R$ 9.750 — Glassdoor 2026 (2.574 respondentes). Robert Half estima R$ 10.900-17.600 pra pleno-sênior. Certificação PSM I é essencial.",
+        faixaSalarial: "R$ 5.200 (júnior) a R$ 25.000 (sênior em fintechs/big techs). Média BR R$ 9.750, Glassdoor 2026 (2.574 respondentes). Robert Half estima R$ 10.900-17.600 pra pleno-sênior. Certificação PSM I é essencial.",
         dificuldade: 3,
         cursosGratuitos: [
-          "Scrum.org — Scrum Guide oficial (gratuito, leitura essencial antes de qualquer curso)",
-          "Atlassian Agile Coach — cursos gratuitos sobre Scrum, Kanban e ferramentas",
-          "Mountain Goat Software (Mike Cohn) — artigos gratuitos, referência mundial em Scrum"
+          "Scrum.org: Scrum Guide oficial (gratuito, leitura essencial antes de qualquer curso)",
+          "Atlassian Agile Coach: cursos gratuitos sobre Scrum, Kanban e ferramentas",
+          "Mountain Goat Software (Mike Cohn): artigos gratuitos, referência mundial em Scrum"
         ],
         projetosSugeridos: [
           "Aplicar Scrum em projeto pessoal ou voluntário com 2-3 amigos (real, não teórico)",
@@ -1789,15 +1789,15 @@ const baseAreasTI: AreaTI[] = [
           "Tirar certificação PSM I da Scrum.org (custa US$ 200, vale pra sempre)",
           "Conseguir vaga como Scrum Master Júnior ou facilitar time interno (transição)"
         ],
-        dicasIniciais: "PSM I da Scrum.org é a certificação mais respeitada — vale o investimento. Cuidado com a saturação em níveis júnior: muita gente migra pra Scrum Master sem base sólida e o mercado percebe. Pratique facilitação de verdade — leitura não substitui experiência. Sêniores que viram Agile Coach saltam pra R$ 20-25k+. Inglês é diferencial em multinacionais. Não é cargo de comando — quem busca poder se frustra."
+        dicasIniciais: "PSM I da Scrum.org é a certificação mais respeitada. Vale o investimento. Cuidado com a saturação em níveis júnior: muita gente migra pra Scrum Master sem base sólida e o mercado percebe. Pratique facilitação de verdade. Leitura não substitui experiência. Sêniores que viram Agile Coach saltam pra R$ 20-25k+. Inglês é diferencial em multinacionais. Não é cargo de comando. Quem busca poder se frustra."
       },
       {
         slug: "agile-coach",
         nome: "Agile Coach",
         descricaoCurta: "Transformação ágil em larga escala. Atua com múltiplos times, treina lideranças e implanta cultura ágil na organização.",
-        descricaoCompleta: "Agile Coach é o profissional sênior que atua em transformações ágeis organizacionais — não apenas com 1 time, mas com múltiplos times, lideranças e a cultura da empresa inteira. Diferente do Scrum Master (foco tático em um time), o Agile Coach trabalha em nível estratégico: ajuda empresas a adotar agilidade em escala, treina lideranças, redesenha estruturas organizacionais, e aplica frameworks como SAFe, LeSS ou Spotify Model. Cargo super sênior — exige 5+ anos como Scrum Master + experiência em transformações reais. Salário top da carreira ágil: média BR R$ 25.006 (Glassdoor), sêniores em consultorias e bancos ultrapassam R$ 35k. Mercado aquecido em transformações digitais corporativas.",
+        descricaoCompleta: "Agile Coach é o profissional sênior que atua em transformações ágeis organizacionais, não apenas com 1 time, mas com múltiplos times, lideranças e a cultura da empresa inteira. Diferente do Scrum Master (foco tático em um time), o Agile Coach trabalha em nível estratégico: ajuda empresas a adotar agilidade em escala, treina lideranças, redesenha estruturas organizacionais, e aplica frameworks como SAFe, LeSS ou Spotify Model. Cargo super sênior. Exige 5+ anos como Scrum Master + experiência em transformações reais. Salário top da carreira ágil: média BR R$ 25.006 (Glassdoor), sêniores em consultorias e bancos ultrapassam R$ 35k. Mercado aquecido em transformações digitais corporativas.",
         oQueFaz: "No dia a dia: trabalha com lideranças (C-level e gerentes) pra desenhar transformações ágeis, treina e mentora múltiplos Scrum Masters e POs, facilita workshops de melhoria contínua em níveis organizacionais, ajuda na implementação de frameworks em escala (SAFe, LeSS, Spotify Model), mede maturidade ágil e propõe roadmaps de evolução, e atua como consultor interno ou externo. Em consultorias (ThoughtWorks, Cesar, Aoop), trabalha em projetos de 6-18 meses com clientes corporativos.",
-        diferencasDaAreaMae: "Dentro de Gestão, o Agile Coach é a evolução natural do Scrum Master sênior — mais estratégico, mais transversal. Diferente do Scrum Master (foco tático em 1-2 times), o Agile Coach atua em nível organizacional. Diferente do Consultor de Gestão tradicional (que prescreve soluções), o Agile Coach usa coaching e perguntas poderosas pra que a organização descubra suas próprias respostas. Cargo mais sênior da carreira ágil — não existe Agile Coach Júnior. Caminho típico: 5-8 anos como Scrum Master → Agile Coach.",
+        diferencasDaAreaMae: "Dentro de Gestão, o Agile Coach é a evolução natural do Scrum Master sênior, mais estratégico, mais transversal. Diferente do Scrum Master (foco tático em 1-2 times), o Agile Coach atua em nível organizacional. Diferente do Consultor de Gestão tradicional (que prescreve soluções), o Agile Coach usa coaching e perguntas poderosas pra que a organização descubra suas próprias respostas. Cargo mais sênior da carreira ágil. Não existe Agile Coach Júnior. Caminho típico: 5-8 anos como Scrum Master → Agile Coach.",
         habilidadesEspecificas: [
           "Coaching profissional (técnicas ICF, perguntas poderosas)",
           "Frameworks de escala (SAFe, LeSS, Spotify Model, Nexus)",
@@ -1819,12 +1819,12 @@ const baseAreasTI: AreaTI[] = [
           "Enterprise Agile Coach (especialista em grandes transformações)",
           "Head of Agility / VP Transformation"
         ],
-        faixaSalarial: "R$ 15.000 (entrada) a R$ 40.000+ (sênior). Média BR R$ 25.006 — Glassdoor 2026. Em consultorias top (ThoughtWorks, Bertha, Aoop) sêniores ultrapassam R$ 35k. Internacional remoto paga US$ 8-15k/mês.",
+        faixaSalarial: "R$ 15.000 (entrada) a R$ 40.000+ (sênior). Média BR R$ 25.006, Glassdoor 2026. Em consultorias top (ThoughtWorks, Bertha, Aoop) sêniores ultrapassam R$ 35k. Internacional remoto paga US$ 8-15k/mês.",
         dificuldade: 4,
         cursosGratuitos: [
-          "Scrum.org — Scaled Professional Scrum (artigos gratuitos)",
-          "SAFe Framework — Big Picture e fundamentos (consulta gratuita)",
-          "ICAgile — recursos gratuitos sobre Agile Coaching e Lean-Agile"
+          "Scrum.org: Scaled Professional Scrum (artigos gratuitos)",
+          "SAFe Framework: Big Picture e fundamentos (consulta gratuita)",
+          "ICAgile: recursos gratuitos sobre Agile Coaching e Lean-Agile"
         ],
         projetosSugeridos: [
           "Estudo de caso completo: transformação ágil de empresa fictícia com baseline + ações + métricas",
@@ -1838,15 +1838,15 @@ const baseAreasTI: AreaTI[] = [
           "Aprender coaching profissional (cursos ICF ou formação específica)",
           "Conseguir transição interna: Scrum Master Sênior → Agile Coach (caminho mais comum)"
         ],
-        dicasIniciais: "Cargo SÊNIOR — não tente entrar como júnior, vai dar errado. Acumule experiência real como Scrum Master primeiro (5+ anos). ICP-ACC é a certificação mais respeitada da área (custa US$ 1.500-2.500). SAFe SPC é diferencial em multinacionais. Coaching é A skill — invista em formação real (não só leitura). Cargo perfeito pra quem ama transformações e gosta de trabalhar com lideranças. Inglês é altamente diferencial."
+        dicasIniciais: "Cargo SÊNIOR. Não tente entrar como júnior, vai dar errado. Acumule experiência real como Scrum Master primeiro (5+ anos). ICP-ACC é a certificação mais respeitada da área (custa US$ 1.500-2.500). SAFe SPC é diferencial em multinacionais. Coaching é A skill. Invista em formação real (não só leitura). Cargo perfeito pra quem ama transformações e gosta de trabalhar com lideranças. Inglês é altamente diferencial."
       },
       {
         slug: "pmo",
-        nome: "PMO — Project Management Office",
+        nome: "PMO: Project Management Office",
         descricaoCurta: "Estrutura escritórios de projetos. Padroniza processos, controla portfólio, reporta a alta gestão. Forte em empresas tradicionais.",
-        descricaoCompleta: "PMO (Project Management Office) é a estrutura organizacional que cuida da governança de projetos em uma empresa — não é cargo único, é uma função que abrange Gerente de Projetos, Analista de PMO e Coordenador de PMO. Em empresas tradicionais (bancos, indústrias, varejo grandes), PMO é o coração da entrega: cuida de prazos, orçamentos, riscos, status reports e governança de portfólio inteiro. Diferente do mundo ágil (Scrum Master, Agile Coach), PMO geralmente segue PMBOK e abordagem mais tradicional/híbrida. Salários: R$ 4-8k júnior, R$ 8-15k pleno, R$ 15-25k sênior. Cargo super estabelecido — mercado maduro em empresas tradicionais.",
+        descricaoCompleta: "PMO (Project Management Office) é a estrutura organizacional que cuida da governança de projetos em uma empresa. Não é cargo único, é uma função que abrange Gerente de Projetos, Analista de PMO e Coordenador de PMO. Em empresas tradicionais (bancos, indústrias, varejo grandes), PMO é o coração da entrega: cuida de prazos, orçamentos, riscos, status reports e governança de portfólio inteiro. Diferente do mundo ágil (Scrum Master, Agile Coach), PMO geralmente segue PMBOK e abordagem mais tradicional/híbrida. Salários: R$ 4-8k júnior, R$ 8-15k pleno, R$ 15-25k sênior. Cargo super estabelecido, mercado maduro em empresas tradicionais.",
         oQueFaz: "No dia a dia: monitora projetos do portfólio (prazos, orçamento, riscos), produz status reports semanais pra lideranças, garante aderência a metodologias e padrões internos, facilita comunicação entre projetos e patrocinadores, gerencia riscos e issues escalados, mantém histórico de projetos pra lições aprendidas, e treina gerentes de projeto da empresa em melhores práticas. Em empresas grandes, atua em PMO Estratégico (define padrões), PMO Tático (monitora portfólio) ou PMO Operacional (executa projetos).",
-        diferencasDaAreaMae: "Dentro de Gestão, o PMO separa-se das funções ágeis pela abordagem: PMO é tradicional/híbrido (PMBOK, prazos fixos, escopo controlado); Scrum Master e Agile Coach são ágeis (iterativo, adaptável). Em muitas empresas brasileiras tradicionais (bancos, indústrias), PMO ainda é o padrão dominante — agilidade complementa, não substitui. Caminho de carreira distinto: PMO costuma virar Gerente de Projetos → Gerente Sênior → Diretor de Projetos. Certificação PMP é a mais valorizada.",
+        diferencasDaAreaMae: "Dentro de Gestão, o PMO separa-se das funções ágeis pela abordagem: PMO é tradicional/híbrido (PMBOK, prazos fixos, escopo controlado); Scrum Master e Agile Coach são ágeis (iterativo, adaptável). Em muitas empresas brasileiras tradicionais (bancos, indústrias), PMO ainda é o padrão dominante. Agilidade complementa, não substitui. Caminho de carreira distinto: PMO costuma virar Gerente de Projetos → Gerente Sênior → Diretor de Projetos. Certificação PMP é a mais valorizada.",
         habilidadesEspecificas: [
           "PMBOK e ciclo de vida de projetos tradicionais (iniciação, planejamento, execução, controle, encerramento)",
           "Gestão de cronograma (MS Project, Smartsheet)",
@@ -1871,8 +1871,8 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 4.000 (analista júnior) a R$ 25.000+ (sênior em bancos/multinacionais). Pleno gira em R$ 8-15k. Em bancos grandes (Itaú, Bradesco, Santander), Gerente de Projetos Sênior chega a R$ 18-25k. PMP aumenta significativamente.",
         dificuldade: 3,
         cursosGratuitos: [
-          "PMI Brasil — artigos e webinars gratuitos (referência nacional)",
-          "Project Management Institute — Project Management Basics (curso gratuito)",
+          "PMI Brasil: artigos e webinars gratuitos (referência nacional)",
+          "Project Management Institute: Project Management Basics (curso gratuito)",
           "Google Project Management Certificate (Coursera audit gratuito)"
         ],
         projetosSugeridos: [
@@ -1887,7 +1887,7 @@ const baseAreasTI: AreaTI[] = [
           "Tirar certificação CAPM (entrada) ou PMP (após 4.500h de experiência)",
           "Construir portfólio de projetos gerenciados (CV detalhado com métricas de sucesso)"
         ],
-        dicasIniciais: "PMP é A certificação da área — custa US$ 405 (membro PMI) e exige experiência prévia, mas vale o investimento. Em empresas tradicionais, PMO ainda domina sobre ágil — boa carreira se você prefere ambiente estruturado. Combine com conhecimento ágil: profissional híbrido (PMP + PSM I) é o mais procurado em 2026. Inglês é diferencial em multinacionais. Cargo perfeito pra perfis organizados e que gostam de governança."
+        dicasIniciais: "PMP é A certificação da área. Custa US$ 405 (membro PMI) e exige experiência prévia, mas vale o investimento. Em empresas tradicionais, PMO ainda domina sobre ágil, boa carreira se você prefere ambiente estruturado. Combine com conhecimento ágil: profissional híbrido (PMP + PSM I) é o mais procurado em 2026. Inglês é diferencial em multinacionais. Cargo perfeito pra perfis organizados e que gostam de governança."
       }
     ]
   },
@@ -1907,7 +1907,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 3,
     cargos: ["Analista de QA Júnior", "Testador de Software", "QA Engineer", "Analista de Testes"],
     faixaSalarial: "R$ 2.500 a R$ 5.000 (estágio/trainee/júnior)",
-    cursosGratuitos: ["DIO — Fundamentos de QA", "Udemy — QA gratuito (buscar cupons)", "YouTube — Canais de QA em português"],
+    cursosGratuitos: ["DIO: Fundamentos de QA", "Udemy: QA gratuito (buscar cupons)", "YouTube: Canais de QA em português"],
     roadmapInicial: ["Entender o que é QA", "Aprender testes manuais", "Aprender a escrever casos de teste", "Aprender Postman para APIs", "Aprender automação básica com Cypress"],
     projetos: ["Plano de testes para app existente", "Automação de testes de login", "Relatório de bugs documentado"],
     termosEssenciais: ["Caso de teste", "Bug", "Automação", "Regressão", "Smoke test", "Cobertura de testes"],
@@ -1926,9 +1926,9 @@ const baseAreasTI: AreaTI[] = [
         slug: "qa-automacao",
         nome: "QA Automação",
         descricaoCurta: "Especialista em automação de testes. Cria suites com Cypress, Selenium, Playwright e integra em pipelines CI/CD.",
-        descricaoCompleta: "QA Automação (ou SDET — Software Development Engineer in Test) é o profissional que constrói e mantém suítes de testes automatizados pra garantir qualidade contínua. Em 2026, é a especialização mais procurada de QA — empresas modernas exigem CI/CD com testes automatizados, e quem só faz teste manual fica pra trás. Domina ferramentas como Cypress, Playwright, Selenium ou Appium (mobile), integra testes em pipelines, e cobre tipos diversos (E2E, integração, API, contrato). Salário em alta: pleno gira R$ 6-12k, sêniores em fintechs e produtos digitais chegam a R$ 14-20k+. Mercado em transformação por IA (TestBooster, Mabl) — quem domina ferramentas modernas pega vaga rápido.",
+        descricaoCompleta: "QA Automação (ou SDET, Software Development Engineer in Test) é o profissional que constrói e mantém suítes de testes automatizados pra garantir qualidade contínua. Em 2026, é a especialização mais procurada de QA. Empresas modernas exigem CI/CD com testes automatizados, e quem só faz teste manual fica pra trás. Domina ferramentas como Cypress, Playwright, Selenium ou Appium (mobile), integra testes em pipelines, e cobre tipos diversos (E2E, integração, API, contrato). Salário em alta: pleno gira R$ 6-12k, sêniores em fintechs e produtos digitais chegam a R$ 14-20k+. Mercado em transformação por IA (TestBooster, Mabl). Quem domina ferramentas modernas pega vaga rápido.",
         oQueFaz: "No dia a dia: escreve testes E2E em Cypress, Playwright ou Selenium pra cobrir jornadas críticas do usuário, automatiza testes de API (Postman, REST Assured, Karate), integra suítes em pipelines CI/CD (Jenkins, GitHub Actions, GitLab CI), trabalha em paralelo com devs pra TDD e BDD, mantém suítes existentes (reduz flaky tests, melhora performance), e participa de cerimônias ágeis garantindo definição de testes. Em times maduros, ajuda na arquitetura de qualidade do produto.",
-        diferencasDaAreaMae: "Dentro de QA, a Automação separa-se claramente do QA Manual: enquanto o Manual executa testes humanamente (clica, valida, reporta), o Automação escreve código que faz isso por ele continuamente. Diferente do QA Performance (que mede carga e latência), o Automação foca em funcionalidade e regressão. Cargo mais técnico de QA — exige programação real (JavaScript/TypeScript ou Java). Em 2026 é o caminho mais lucrativo dentro de QA — empresas pagam mais por automação que por manual.",
+        diferencasDaAreaMae: "Dentro de QA, a Automação separa-se claramente do QA Manual: enquanto o Manual executa testes humanamente (clica, valida, reporta), o Automação escreve código que faz isso por ele continuamente. Diferente do QA Performance (que mede carga e latência), o Automação foca em funcionalidade e regressão. Cargo mais técnico de QA. Exige programação real (JavaScript/TypeScript ou Java). Em 2026 é o caminho mais lucrativo dentro de QA. Empresas pagam mais por automação que por manual.",
         habilidadesEspecificas: [
           "JavaScript/TypeScript (mais comum em 2026 com Cypress/Playwright)",
           "Frameworks de automação (Cypress, Playwright, Selenium)",
@@ -1955,7 +1955,7 @@ const baseAreasTI: AreaTI[] = [
         cursosGratuitos: [
           "Cypress Real World App (tutorial oficial gratuito, completo)",
           "Playwright Documentação Oficial (excelente, com exemplos práticos)",
-          "Test Automation University (Applitools) — cursos gratuitos sobre todas as ferramentas"
+          "Test Automation University (Applitools): cursos gratuitos sobre todas as ferramentas"
         ],
         projetosSugeridos: [
           "Suíte de testes E2E completa pra site público (e-commerce, blog) usando Cypress",
@@ -1963,21 +1963,21 @@ const baseAreasTI: AreaTI[] = [
           "Pipeline CI/CD funcional no GitHub Actions executando testes a cada PR"
         ],
         roadmapEspecifico: [
-          "Aprender JavaScript/TypeScript profundamente (não basta usar — entender)",
+          "Aprender JavaScript/TypeScript profundamente (não basta usar, entender)",
           "Escolher ferramenta principal: Cypress (mais fácil) ou Playwright (mais moderno)",
           "Estudar padrões de teste (Page Object Model, fixtures, custom commands)",
           "Aprender CI/CD básico (GitHub Actions é o mais acessível)",
           "Construir portfólio público no GitHub com 2-3 projetos de automação"
         ],
-        dicasIniciais: "Cypress é a porta de entrada mais fácil — comece por ele. Playwright é mais moderno e pago melhor — vale migrar depois. Não tente entrar em automação sem JavaScript/TypeScript decente — vaga vai pedir código. Inglês é importante (toda doc em inglês). Mercado mudando rápido com IA — acompanhe TestBooster, Mabl, mas domine as ferramentas open-source primeiro. Cargo super valorizado em 2026."
+        dicasIniciais: "Cypress é a porta de entrada mais fácil. Comece por ele. Playwright é mais moderno e pago melhor. Vale migrar depois. Não tente entrar em automação sem JavaScript/TypeScript decente. Vaga vai pedir código. Inglês é importante (toda doc em inglês). Mercado mudando rápido com IA. Acompanhe TestBooster, Mabl, mas domine as ferramentas open-source primeiro. Cargo super valorizado em 2026."
       },
       {
         slug: "qa-manual",
         nome: "QA Manual",
         descricaoCurta: "Foco em testes exploratórios, planos de teste e validação funcional. Porta de entrada mais comum em QA.",
-        descricaoCompleta: "QA Manual é o profissional que executa testes humanamente — clica em botões, preenche formulários, valida fluxos, descobre bugs sutis que automação não pega. É a porta de entrada mais acessível em QA no Brasil, mas também a mais saturada — em 2026, mercado prefere quem combina manual com noções de automação. Bom QA Manual é especialista em exploração: encontra bugs em edge cases, valida UX rigorosamente, e produz relatórios claros pra devs. Salário menor que automação: R$ 2.5-5k júnior, R$ 5-9k pleno, R$ 9-14k sênior. Pra escalar carreira: migrar pra automação após 1-2 anos.",
+        descricaoCompleta: "QA Manual é o profissional que executa testes humanamente. Clica em botões, preenche formulários, valida fluxos, descobre bugs sutis que automação não pega. É a porta de entrada mais acessível em QA no Brasil, mas também a mais saturada. Em 2026, mercado prefere quem combina manual com noções de automação. Bom QA Manual é especialista em exploração: encontra bugs em edge cases, valida UX rigorosamente, e produz relatórios claros pra devs. Salário menor que automação: R$ 2.5-5k júnior, R$ 5-9k pleno, R$ 9-14k sênior. Pra escalar carreira: migrar pra automação após 1-2 anos.",
         oQueFaz: "No dia a dia: executa casos de teste planejados (manual scripted), faz testes exploratórios (descobre bugs sem roteiro), valida UX em diferentes dispositivos/navegadores, reporta bugs com clareza (steps to reproduce, evidências, severidade), participa de cerimônias ágeis (refinamento, sprint review), valida correções de bugs, e contribui pra base de conhecimento de qualidade do produto. Em times maduros, faz validação de acessibilidade e usabilidade.",
-        diferencasDaAreaMae: "Dentro de QA, o Manual é o caminho mais acessível — não precisa programar pra começar. Diferente do QA Automação (que escreve código), o Manual usa raciocínio analítico e atenção a detalhes. Diferente do QA Performance (que mede carga), o Manual valida funcionalidade humanamente. Mercado em transformação: empresas modernas exigem QA Manual com pelo menos noções de automação. Caminho ideal: começa como Manual, aprende automação em 1-2 anos, migra. Quem fica só manual longo prazo encontra teto salarial.",
+        diferencasDaAreaMae: "Dentro de QA, o Manual é o caminho mais acessível. Não precisa programar pra começar. Diferente do QA Automação (que escreve código), o Manual usa raciocínio analítico e atenção a detalhes. Diferente do QA Performance (que mede carga), o Manual valida funcionalidade humanamente. Mercado em transformação: empresas modernas exigem QA Manual com pelo menos noções de automação. Caminho ideal: começa como Manual, aprende automação em 1-2 anos, migra. Quem fica só manual longo prazo encontra teto salarial.",
         habilidadesEspecificas: [
           "Atenção a detalhes e raciocínio analítico (essencial)",
           "Técnicas de teste exploratório (heurísticas, charters)",
@@ -2002,9 +2002,9 @@ const baseAreasTI: AreaTI[] = [
         faixaSalarial: "R$ 2.500 (júnior) a R$ 14.000 (sênior). Pleno gira em R$ 5-9k. Sêniores especialistas em domínios complexos (finanças, saúde) chegam a R$ 12k+. Cuidado com teto: QA Manual puro raramente passa de R$ 14k.",
         dificuldade: 2,
         cursosGratuitos: [
-          "Curso em Vídeo / Júlio de Lima — Trilha de QA gratuita no YouTube (referência BR)",
-          "Test Automation University — cursos manuais e exploratórios gratuitos",
-          "Ministry of Testing — comunidade global com recursos gratuitos"
+          "Curso em Vídeo / Júlio de Lima: Trilha de QA gratuita no YouTube (referência BR)",
+          "Test Automation University: cursos manuais e exploratórios gratuitos",
+          "Ministry of Testing: comunidade global com recursos gratuitos"
         ],
         projetosSugeridos: [
           "Documentar 50+ casos de teste detalhados pra produto público (Magazine Luiza, iFood)",
@@ -2018,15 +2018,15 @@ const baseAreasTI: AreaTI[] = [
           "Conseguir vaga como QA Júnior (porta de entrada mais fácil em tech)",
           "Após 1-2 anos: aprender automação (Cypress/Playwright) pra escalar carreira"
         ],
-        dicasIniciais: "QA Manual é a porta de entrada mais acessível em tech — não precisa programar pra começar. MAS: cuidado com o teto salarial — quem fica só manual longo prazo trava em R$ 10-14k. Use o cargo como trampolim: aprenda automação no 2º ano e migre. Júlio de Lima no YouTube é referência BR — assista tudo. Inglês ajuda mas não é deal-breaker como em automação. Mercado saturado em júnior — diferencial é exploração e comunicação clara."
+        dicasIniciais: "QA Manual é a porta de entrada mais acessível em tech. Não precisa programar pra começar. MAS: cuidado com o teto salarial. Quem fica só manual longo prazo trava em R$ 10-14k. Use o cargo como trampolim: aprenda automação no 2º ano e migre. Júlio de Lima no YouTube é referência BR. Assista tudo. Inglês ajuda mas não é deal-breaker como em automação. Mercado saturado em júnior. Diferencial é exploração e comunicação clara."
       },
       {
         slug: "qa-performance",
         nome: "QA Performance",
         descricaoCurta: "Testes de carga e estresse. Usa JMeter, k6, Gatling pra validar comportamento de sistemas sob alta demanda.",
-        descricaoCompleta: "QA Performance é o especialista em testes de carga, stress e capacidade — garante que o sistema aguenta picos de uso reais (Black Friday, eventos, lançamentos virais) sem cair. Diferente do QA funcional (que valida 'funciona certo?'), o Performance valida 'aguenta a carga?'. Cargo nicho mas super valorizado em e-commerces, fintechs, gateways de pagamento e qualquer produto com alta concorrência. Salário acima da média de QA: pleno R$ 8-15k, sêniores em fintechs e e-commerces grandes chegam a R$ 18-25k. Pouca gente no mercado — quem domina JMeter, k6, Gatling pega vagas raramente competitivas.",
+        descricaoCompleta: "QA Performance é o especialista em testes de carga, stress e capacidade. Garante que o sistema aguenta picos de uso reais (Black Friday, eventos, lançamentos virais) sem cair. Diferente do QA funcional (que valida 'funciona certo?'), o Performance valida 'aguenta a carga?'. Cargo nicho mas super valorizado em e-commerces, fintechs, gateways de pagamento e qualquer produto com alta concorrência. Salário acima da média de QA: pleno R$ 8-15k, sêniores em fintechs e e-commerces grandes chegam a R$ 18-25k. Pouca gente no mercado. Quem domina JMeter, k6, Gatling pega vagas raramente competitivas.",
         oQueFaz: "No dia a dia: planeja testes de carga simulando cenários reais (picos de venda, eventos), constrói scripts em JMeter, k6 ou Gatling, executa testes em ambientes de homologação (ou produção controlada), analisa métricas (latência p95/p99, throughput, taxa de erro), identifica gargalos de performance (DB, código, infra), trabalha com devs e DevOps pra otimizar, e produz relatórios técnicos detalhados. Em e-commerces, prepara o sistema pra Black Friday meses antes.",
-        diferencasDaAreaMae: "Dentro de QA, o Performance é o cargo mais técnico e especializado — diferente do QA Manual (foco em UX e funcionalidade) e Automação (foco em regressão), o Performance lida com capacidade e escala. Mais próximo de SRE/DevOps que de QA tradicional — precisa entender infraestrutura, banco de dados, profiling. Cargo nicho — empresas pequenas terceirizam; empresas grandes têm 1-2 especialistas. Caminho de carreira: pode virar SRE ou Performance Engineer (cargo internacional bem pago).",
+        diferencasDaAreaMae: "Dentro de QA, o Performance é o cargo mais técnico e especializado, diferente do QA Manual (foco em UX e funcionalidade) e Automação (foco em regressão), o Performance lida com capacidade e escala. Mais próximo de SRE/DevOps que de QA tradicional. Precisa entender infraestrutura, banco de dados, profiling. Cargo nicho. Empresas pequenas terceirizam; empresas grandes têm 1-2 especialistas. Caminho de carreira: pode virar SRE ou Performance Engineer (cargo internacional bem pago).",
         habilidadesEspecificas: [
           "Ferramentas de teste de carga (JMeter, k6, Gatling, Locust)",
           "Análise de métricas (latência, throughput, percentis, taxa de erro)",
@@ -2052,8 +2052,8 @@ const baseAreasTI: AreaTI[] = [
         dificuldade: 4,
         cursosGratuitos: [
           "k6 Documentation Oficial (excelente, com exemplos práticos completos)",
-          "JMeter Tutorial — Apache (oficial, ainda referência)",
-          "Test Automation University — Performance Testing tracks gratuitas"
+          "JMeter Tutorial: Apache (oficial, ainda referência)",
+          "Test Automation University: Performance Testing tracks gratuitas"
         ],
         projetosSugeridos: [
           "Teste de carga em API pública: 100 → 1.000 → 10.000 usuários simultâneos",
@@ -2061,13 +2061,13 @@ const baseAreasTI: AreaTI[] = [
           "Dashboard Grafana mostrando métricas de teste em tempo real"
         ],
         roadmapEspecifico: [
-          "Ter base de QA (manual ou automação) — 2+ anos",
+          "Ter base de QA (manual ou automação), 2+ anos",
           "Aprender fundamentos de redes, banco de dados e cloud",
           "Dominar uma ferramenta principal (k6 é o mais moderno e versátil)",
           "Estudar análise de métricas (latência, percentis, throughput)",
           "Construir portfólio: 2-3 testes públicos com análise técnica detalhada"
         ],
-        dicasIniciais: "Nicho mais técnico de QA — não tente entrar sem base sólida. k6 é o caminho mais inteligente em 2026 (JavaScript, moderno, fácil de aprender). JMeter ainda é importante pra corporações tradicionais. Vale muito a pena se você vem de DevOps ou Backend — sua experiência se traduz bem. Inglês é obrigatório. Cargo raro = pouca competição = salário acima da média de QA."
+        dicasIniciais: "Nicho mais técnico de QA. Não tente entrar sem base sólida. k6 é o caminho mais inteligente em 2026 (JavaScript, moderno, fácil de aprender). JMeter ainda é importante pra corporações tradicionais. Vale muito a pena se você vem de DevOps ou Backend. Sua experiência se traduz bem. Inglês é obrigatório. Cargo raro = pouca competição = salário acima da média de QA."
       }
     ]
   },
@@ -2087,7 +2087,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 4,
     cargos: ["Desenvolvedor Mobile Júnior", "Desenvolvedor React Native", "Desenvolvedor Flutter", "Engenheiro Mobile"],
     faixaSalarial: "R$ 3.000 a R$ 6.000 (trainee/júnior)",
-    cursosGratuitos: ["Rocketseat — React Native", "Flutter.dev — Documentação oficial gratuita", "DIO — Desenvolvimento Mobile"],
+    cursosGratuitos: ["Rocketseat: React Native", "Flutter.dev: Documentação oficial gratuita", "DIO: Desenvolvimento Mobile"],
     roadmapInicial: ["Aprender JavaScript (para React Native) ou Dart (para Flutter)", "Escolher entre React Native ou Flutter", "Criar app simples (lista de tarefas)", "Aprender integração com APIs", "Publicar app na Play Store"],
     projetos: ["App de lista de tarefas", "App de clima simples", "Clone de tela de app famoso"],
     termosEssenciais: ["React Native", "Flutter", "APK", "Play Store", "App Store", "Expo"],
@@ -2106,9 +2106,9 @@ const baseAreasTI: AreaTI[] = [
         slug: "ios-nativo",
         nome: "iOS Nativo",
         descricaoCurta: "Desenvolvimento exclusivo pra Apple com Swift e Xcode. Foco em apps que aproveitam ao máximo recursos do iOS.",
-        descricaoCompleta: "Desenvolvedor iOS Nativo é o profissional que constrói apps especificamente pra ecossistema Apple (iPhone, iPad, Apple Watch, Vision Pro) usando Swift e SwiftUI. Diferente do React Native (cross-platform), iOS Nativo entrega performance máxima e acesso completo às APIs Apple (Face ID, ARKit, HealthKit, etc). Cargo mais raro que React Native no Brasil mas super valorizado — Glassdoor mostra média de R$ 6.042, mas faixa real é R$ 4-8k júnior, R$ 7-12k pleno, R$ 11-20k sênior (Melhores Empregos confirma R$ 11-20k pra sênior). Mercado BR menor que React Native (apps brasileiros priorizam cross-platform), mas internacional remoto super aquecido.",
+        descricaoCompleta: "Desenvolvedor iOS Nativo é o profissional que constrói apps especificamente pra ecossistema Apple (iPhone, iPad, Apple Watch, Vision Pro) usando Swift e SwiftUI. Diferente do React Native (cross-platform), iOS Nativo entrega performance máxima e acesso completo às APIs Apple (Face ID, ARKit, HealthKit, etc). Cargo mais raro que React Native no Brasil mas super valorizado. Glassdoor mostra média de R$ 6.042, mas faixa real é R$ 4-8k júnior, R$ 7-12k pleno, R$ 11-20k sênior (Melhores Empregos confirma R$ 11-20k pra sênior). Mercado BR menor que React Native (apps brasileiros priorizam cross-platform), mas internacional remoto super aquecido.",
         oQueFaz: "No dia a dia: desenvolve apps em Swift com UIKit (antigo) ou SwiftUI (moderno), integra com APIs REST/GraphQL, implementa recursos exclusivos iOS (Face ID, push notifications, deep links, widgets, Live Activities), otimiza performance (memory, battery, CPU), publica na App Store seguindo guidelines rigorosos da Apple, e atualiza apps conforme novas versões do iOS. Trabalha com Xcode (IDE da Apple, exige Mac obrigatoriamente).",
-        diferencasDaAreaMae: "Dentro de Mobile, o iOS Nativo separa-se do React Native pelo modelo: nativo entrega performance máxima e acesso 100% às APIs Apple; React Native sacrifica algumas em troca de cross-platform. Diferente do Android Nativo (Kotlin/Java), iOS usa Swift + ecossistema Apple — Mac obrigatório, App Store rigorosa, padrões visuais específicos (Human Interface Guidelines). Mercado BR menor que React Native, mas internacional é forte. Cargo perfeito pra quem ama produtos premium e tem Mac (obrigatório).",
+        diferencasDaAreaMae: "Dentro de Mobile, o iOS Nativo separa-se do React Native pelo modelo: nativo entrega performance máxima e acesso 100% às APIs Apple; React Native sacrifica algumas em troca de cross-platform. Diferente do Android Nativo (Kotlin/Java), iOS usa Swift + ecossistema Apple: Mac obrigatório, App Store rigorosa, padrões visuais específicos (Human Interface Guidelines). Mercado BR menor que React Native, mas internacional é forte. Cargo perfeito pra quem ama produtos premium e tem Mac (obrigatório).",
         habilidadesEspecificas: [
           "Swift profundo (linguagem oficial Apple)",
           "SwiftUI (moderno) + UIKit (legado, ainda comum)",
@@ -2130,16 +2130,16 @@ const baseAreasTI: AreaTI[] = [
           "Desenvolvedor iOS Sênior (5+ anos)",
           "Tech Lead iOS / Staff Engineer Mobile"
         ],
-        faixaSalarial: "R$ 4.000 (júnior) a R$ 20.000+ (sênior). Média BR R$ 6.042-6.877 — Glassdoor/Indeed 2026. Pleno gira em R$ 7-12k. Sênior em fintechs e remoto pra fora chega a R$ 15-20k+. Internacional remoto paga US$ 5-10k/mês.",
+        faixaSalarial: "R$ 4.000 (júnior) a R$ 20.000+ (sênior). Média BR R$ 6.042-6.877, Glassdoor/Indeed 2026. Pleno gira em R$ 7-12k. Sênior em fintechs e remoto pra fora chega a R$ 15-20k+. Internacional remoto paga US$ 5-10k/mês.",
         dificuldade: 3,
         cursosGratuitos: [
-          "Apple Developer — Swift e SwiftUI Tutorials (oficial gratuito, excelente)",
-          "Hacking with Swift (Paul Hudson) — referência mundial, conteúdo gratuito massivo",
-          "Stanford CS193p — Developing Apps for iOS (curso completo no YouTube)"
+          "Apple Developer: Swift e SwiftUI Tutorials (oficial gratuito, excelente)",
+          "Hacking with Swift (Paul Hudson): referência mundial, conteúdo gratuito massivo",
+          "Stanford CS193p: Developing Apps for iOS (curso completo no YouTube)"
         ],
         projetosSugeridos: [
           "Clone funcional de app conhecido (Calculator, Weather, Notes) com SwiftUI",
-          "App próprio resolvendo problema seu — publicar na App Store (US$ 99/ano)",
+          "App próprio resolvendo problema seu: publicar na App Store (US$ 99/ano)",
           "Contribuir pra biblioteca open-source iOS no GitHub (peso enorme no CV)"
         ],
         roadmapEspecifico: [
@@ -2149,15 +2149,15 @@ const baseAreasTI: AreaTI[] = [
           "Construir 2-3 apps próprios completos com publicação na App Store",
           "Contribuir pra projetos open-source iOS (Alamofire, Kingfisher, etc)"
         ],
-        dicasIniciais: "Mac é OBRIGATÓRIO — sem ele, esquece iOS. Apple Developer Program custa US$ 99/ano pra publicar. Comece com SwiftUI (futuro) mas saiba UIKit (ainda em projetos legados). Inglês é altamente diferencial — comunidade quase 100% em inglês. Mercado BR menor que Android e React Native, MAS remoto internacional paga muito bem. Considere combinar com Kotlin Multiplatform (KMP) — empresas pagam mais por quem cobre os dois."
+        dicasIniciais: "Mac é OBRIGATÓRIO. Sem ele, esquece iOS. Apple Developer Program custa US$ 99/ano pra publicar. Comece com SwiftUI (futuro) mas saiba UIKit (ainda em projetos legados). Inglês é altamente diferencial, comunidade quase 100% em inglês. Mercado BR menor que Android e React Native, MAS remoto internacional paga muito bem. Considere combinar com Kotlin Multiplatform (KMP). Empresas pagam mais por quem cobre os dois."
       },
       {
         slug: "android-nativo",
         nome: "Android Nativo",
         descricaoCurta: "Desenvolvimento exclusivo pra Android com Kotlin e Android Studio. Performance e integração profunda com o sistema.",
-        descricaoCompleta: "Desenvolvedor Android Nativo é o profissional que constrói apps especificamente pra ecossistema Android usando Kotlin (linguagem oficial Google desde 2017) e Jetpack Compose (UI moderna). Diferente do React Native (cross-platform), o Android Nativo entrega performance máxima e acesso completo às APIs Android. Mercado BR muito maior que iOS — BeBee registra 1.04M+ vagas relacionadas a Android, vs ~250k de iOS. Salários: média de Desenvolvedor Mobile R$ 5.626 (Trybe/Glassdoor), com sêniores chegando a R$ 10.963. Em fintechs (Nubank, PicPay, Stone), sêniores ultrapassam R$ 15-20k. Brasil é mercado-chave: 80%+ dos smartphones rodam Android.",
-        oQueFaz: "No dia a dia: desenvolve apps em Kotlin com Jetpack Compose (moderno) ou XML/Views (legado), integra com APIs REST/GraphQL, implementa recursos Android (notifications, deep links, widgets, work manager), otimiza performance pra dispositivos variados (Android é fragmentado — de devices baratos a flagships), publica na Google Play seguindo guidelines, e atualiza apps conforme novas versões do Android. Trabalha com Android Studio (IDE do Google, gratuita, roda em qualquer OS).",
-        diferencasDaAreaMae: "Dentro de Mobile, o Android Nativo separa-se do React Native pelo modelo: nativo entrega performance máxima e acesso 100% às APIs Android; React Native sacrifica em troca de cross-platform. Diferente do iOS Nativo (Swift, Mac obrigatório), Android usa Kotlin/Java e roda em Windows/Linux/Mac — barreira de entrada menor. Mercado BR MUITO maior que iOS (1M+ vagas Android vs 250k iOS) — brasileiro usa Android massivamente. Cargo perfeito pra quem quer profundidade em uma plataforma com mercado grande.",
+        descricaoCompleta: "Desenvolvedor Android Nativo é o profissional que constrói apps especificamente pra ecossistema Android usando Kotlin (linguagem oficial Google desde 2017) e Jetpack Compose (UI moderna). Diferente do React Native (cross-platform), o Android Nativo entrega performance máxima e acesso completo às APIs Android. Mercado BR muito maior que iOS. BeBee registra 1.04M+ vagas relacionadas a Android, vs ~250k de iOS. Salários: média de Desenvolvedor Mobile R$ 5.626 (Trybe/Glassdoor), com sêniores chegando a R$ 10.963. Em fintechs (Nubank, PicPay, Stone), sêniores ultrapassam R$ 15-20k. Brasil é mercado-chave: 80%+ dos smartphones rodam Android.",
+        oQueFaz: "No dia a dia: desenvolve apps em Kotlin com Jetpack Compose (moderno) ou XML/Views (legado), integra com APIs REST/GraphQL, implementa recursos Android (notifications, deep links, widgets, work manager), otimiza performance pra dispositivos variados (Android é fragmentado, de devices baratos a flagships), publica na Google Play seguindo guidelines, e atualiza apps conforme novas versões do Android. Trabalha com Android Studio (IDE do Google, gratuita, roda em qualquer OS).",
+        diferencasDaAreaMae: "Dentro de Mobile, o Android Nativo separa-se do React Native pelo modelo: nativo entrega performance máxima e acesso 100% às APIs Android; React Native sacrifica em troca de cross-platform. Diferente do iOS Nativo (Swift, Mac obrigatório), Android usa Kotlin/Java e roda em Windows/Linux/Mac, barreira de entrada menor. Mercado BR MUITO maior que iOS (1M+ vagas Android vs 250k iOS). Brasileiro usa Android massivamente. Cargo perfeito pra quem quer profundidade em uma plataforma com mercado grande.",
         habilidadesEspecificas: [
           "Kotlin profundo (linguagem oficial Android desde 2017)",
           "Jetpack Compose (UI moderna) + XML/Views (legado, ainda comum)",
@@ -2179,16 +2179,16 @@ const baseAreasTI: AreaTI[] = [
           "Desenvolvedor Android Sênior (5+ anos)",
           "Tech Lead Android / Staff Engineer Mobile"
         ],
-        faixaSalarial: "R$ 3.215 (júnior) a R$ 20.000+ (sênior). Média BR R$ 5.626 — Trybe/Glassdoor 2026. Pleno gira em R$ 6-11k. Sênior em fintechs (Nubank, PicPay, Inter, Stone) chega a R$ 15-22k. Remoto pra fora paga US$ 5-10k/mês.",
+        faixaSalarial: "R$ 3.215 (júnior) a R$ 20.000+ (sênior). Média BR R$ 5.626, Trybe/Glassdoor 2026. Pleno gira em R$ 6-11k. Sênior em fintechs (Nubank, PicPay, Inter, Stone) chega a R$ 15-22k. Remoto pra fora paga US$ 5-10k/mês.",
         dificuldade: 3,
         cursosGratuitos: [
-          "Android Developers — cursos oficiais do Google (gratuitos, completos)",
+          "Android Developers: cursos oficiais do Google (gratuitos, completos)",
           "Kotlin Documentation Oficial + Kotlin Koans (gratuito, interativo)",
-          "Philipp Lackner (YouTube) — referência mundial em Android com Kotlin"
+          "Philipp Lackner (YouTube): referência mundial em Android com Kotlin"
         ],
         projetosSugeridos: [
           "Clone funcional de app conhecido (Notes, Weather, Calculator) com Jetpack Compose",
-          "App próprio resolvendo problema seu — publicar na Google Play (US$ 25 uma vez)",
+          "App próprio resolvendo problema seu: publicar na Google Play (US$ 25 uma vez)",
           "Contribuir pra biblioteca open-source Android no GitHub"
         ],
         roadmapEspecifico: [
@@ -2198,15 +2198,15 @@ const baseAreasTI: AreaTI[] = [
           "Construir 2-3 apps próprios completos com publicação na Google Play",
           "Especializar em área específica (security, performance, ML on-device)"
         ],
-        dicasIniciais: "Não precisa de Mac (vantagem sobre iOS) — Android Studio roda em qualquer OS. Google Play custa US$ 25 uma vez (vs US$ 99/ano da Apple). Comece com Jetpack Compose (futuro) mas saiba Views/XML (legado). Brasil é gigante em Android — vagas abundam. Inglês é diferencial. Considere combinar com Kotlin Multiplatform (KMP) pra também cobrir iOS — empresas pagam mais por quem cobre os dois."
+        dicasIniciais: "Não precisa de Mac (vantagem sobre iOS). Android Studio roda em qualquer OS. Google Play custa US$ 25 uma vez (vs US$ 99/ano da Apple). Comece com Jetpack Compose (futuro) mas saiba Views/XML (legado). Brasil é gigante em Android. Vagas abundam. Inglês é diferencial. Considere combinar com Kotlin Multiplatform (KMP) pra também cobrir iOS. Empresas pagam mais por quem cobre os dois."
       },
       {
         slug: "react-native",
         nome: "React Native",
         descricaoCurta: "Framework do Meta pra apps cross-platform com JavaScript. Mercado BR muito aquecido (40k+ vagas).",
-        descricaoCompleta: "Desenvolvedor React Native é o profissional que constrói apps mobile pra iOS e Android usando uma única base de código JavaScript/TypeScript com React. Diferente do desenvolvimento nativo (Swift/Kotlin), entrega 80-90% da experiência nativa com metade do esforço — por isso é o framework mais procurado no mercado BR em 2026: BeBee registra 48k+ vagas relacionadas, com salários partindo de R$ 3-4k pra júnior e chegando a R$ 11-20k pra sênior. Empresas brasileiras (Magazine Luiza, Vivo, fintechs, startups) preferem React Native pela velocidade de entrega e pelo pool gigante de devs React que podem migrar pra mobile.",
+        descricaoCompleta: "Desenvolvedor React Native é o profissional que constrói apps mobile pra iOS e Android usando uma única base de código JavaScript/TypeScript com React. Diferente do desenvolvimento nativo (Swift/Kotlin), entrega 80-90% da experiência nativa com metade do esforço. Por isso é o framework mais procurado no mercado BR em 2026: BeBee registra 48k+ vagas relacionadas, com salários partindo de R$ 3-4k pra júnior e chegando a R$ 11-20k pra sênior. Empresas brasileiras (Magazine Luiza, Vivo, fintechs, startups) preferem React Native pela velocidade de entrega e pelo pool gigante de devs React que podem migrar pra mobile.",
         oQueFaz: "No dia a dia: desenvolve telas e componentes em JavaScript/TypeScript com React, integra com APIs REST/GraphQL do backend, implementa navegação (React Navigation), gerencia estado (Redux, Zustand, Context API), trabalha com bibliotecas nativas (câmera, push notifications, deep links), otimiza performance pra rodar bem em dispositivos variados, e faz deploy pra App Store e Google Play (Expo ou bare workflow). Colabora com designers em handoff de Figma e com backend pra integração de dados.",
-        diferencasDaAreaMae: "Dentro de Mobile, o React Native separa-se do iOS Nativo e Android Nativo pelo modelo: cross-platform vs nativo. Diferente do Flutter (framework do Google com Dart), React Native usa JavaScript — linguagem que dev web já conhece, facilitando migração de carreira. Não é só 'web pra mobile': renderiza componentes nativos reais, não webview. Cargo é o mais procurado em Mobile no BR (40k+ vagas vs ~10k iOS nativo), porque uma pessoa entrega pra duas plataformas. Ideal pra quem vem de Frontend React e quer expandir pra mobile.",
+        diferencasDaAreaMae: "Dentro de Mobile, o React Native separa-se do iOS Nativo e Android Nativo pelo modelo: cross-platform vs nativo. Diferente do Flutter (framework do Google com Dart), React Native usa JavaScript, linguagem que dev web já conhece, facilitando migração de carreira. Não é só 'web pra mobile': renderiza componentes nativos reais, não webview. Cargo é o mais procurado em Mobile no BR (40k+ vagas vs ~10k iOS nativo), porque uma pessoa entrega pra duas plataformas. Ideal pra quem vem de Frontend React e quer expandir pra mobile.",
         habilidadesEspecificas: [
           "JavaScript/TypeScript profundo (com React)",
           "React Native API e ecossistema (Expo, React Navigation, Reanimated)",
@@ -2228,16 +2228,16 @@ const baseAreasTI: AreaTI[] = [
           "Desenvolvedor React Native Sênior (5+ anos)",
           "Tech Lead Mobile / Staff Engineer"
         ],
-        faixaSalarial: "R$ 3.100 (júnior) a R$ 20.000 (sênior em grandes empresas). Média BR R$ 7.458 — Glassdoor 2026. Pleno gira em R$ 7-12k. Vagas internacionais remotas pagam US$ 4.000-7.000/mês (R$ 20k+).",
+        faixaSalarial: "R$ 3.100 (júnior) a R$ 20.000 (sênior em grandes empresas). Média BR R$ 7.458, Glassdoor 2026. Pleno gira em R$ 7-12k. Vagas internacionais remotas pagam US$ 4.000-7.000/mês (R$ 20k+).",
         dificuldade: 3,
         cursosGratuitos: [
-          "React Native Express (reactnative.express) — curso completo gratuito em inglês",
-          "Rocketseat — Trilha React Native (parte gratuita das playlists do YouTube)",
+          "React Native Express (reactnative.express): curso completo gratuito em inglês",
+          "Rocketseat: Trilha React Native (parte gratuita das playlists do YouTube)",
           "Documentação oficial React Native + Expo (referência principal, gratuita)"
         ],
         projetosSugeridos: [
           "Clone de app conhecido (Instagram feed, Spotify mini, Trello) com publicação na loja",
-          "App próprio resolvendo problema real seu — lista de tarefas, controle financeiro, hábitos",
+          "App próprio resolvendo problema real seu: lista de tarefas, controle financeiro, hábitos",
           "Componente reutilizável publicado no npm (biblioteca pequena com docs)"
         ],
         roadmapEspecifico: [
@@ -2247,15 +2247,15 @@ const baseAreasTI: AreaTI[] = [
           "Construir 2-3 apps completos com publicação na Google Play (TestFlight no iOS exige mac)",
           "Contribuir pra biblioteca open-source React Native (peso enorme no currículo)"
         ],
-        dicasIniciais: "Se você já sabe React (web), React Native é o caminho mais rápido pra mobile — 2-3 meses de transição. Comece com Expo (não bare): você publica apps sem precisar de mac no início. Mac vira necessário só pra build iOS final. TypeScript é obrigatório em 2026 — vagas que pedem JS puro são raras. Publique pelo menos 1 app na Google Play (de graça) — recrutadores adoram ver app real funcionando."
+        dicasIniciais: "Se você já sabe React (web), React Native é o caminho mais rápido pra mobile, 2-3 meses de transição. Comece com Expo (não bare): você publica apps sem precisar de mac no início. Mac vira necessário só pra build iOS final. TypeScript é obrigatório em 2026. Vagas que pedem JS puro são raras. Publique pelo menos 1 app na Google Play (de graça). Recrutadores adoram ver app real funcionando."
       },
       {
         slug: "flutter",
         nome: "Flutter",
         descricaoCurta: "Framework do Google pra apps cross-platform com Dart. Ganhou força nos últimos anos, principalmente em startups.",
-        descricaoCompleta: "Desenvolvedor Flutter é o profissional que constrói apps mobile cross-platform usando Flutter (framework do Google) e Dart (linguagem do Google). Diferente do React Native (JavaScript, framework do Meta), Flutter renderiza tudo via Skia/Impeller — entrega performance superior próxima ao nativo. Mercado BR menor que React Native (Glassdoor mostra 158 salários vs 1.000+ de RN), mas em crescimento. Salários: júnior gira R$ 4.271, sêniores chegam a R$ 21k+ (90º percentil R$ 31k Glassdoor 2026). Empresas que escolhem Flutter geralmente valorizam performance e produtos premium. Comunidade BR ativa e crescente.",
+        descricaoCompleta: "Desenvolvedor Flutter é o profissional que constrói apps mobile cross-platform usando Flutter (framework do Google) e Dart (linguagem do Google). Diferente do React Native (JavaScript, framework do Meta), Flutter renderiza tudo via Skia/Impeller. Entrega performance superior próxima ao nativo. Mercado BR menor que React Native (Glassdoor mostra 158 salários vs 1.000+ de RN), mas em crescimento. Salários: júnior gira R$ 4.271, sêniores chegam a R$ 21k+ (90º percentil R$ 31k Glassdoor 2026). Empresas que escolhem Flutter geralmente valorizam performance e produtos premium. Comunidade BR ativa e crescente.",
         oQueFaz: "No dia a dia: desenvolve apps em Dart usando widgets Flutter (Stateless/Stateful), gerencia estado com Provider, Riverpod ou BLoC, integra com APIs REST/GraphQL, navega entre telas (GoRouter, AutoRoute), implementa recursos nativos via plugins (câmera, push, deep links), publica apps em App Store e Google Play (single codebase), e otimiza performance pra dispositivos variados. Trabalha com Android Studio ou VS Code.",
-        diferencasDaAreaMae: "Dentro de Mobile, o Flutter compete diretamente com React Native — ambos cross-platform, decisão entre eles é tecnológica. Flutter usa Dart (linguagem própria, curva de aprendizado maior) e renderiza widgets via Skia (performance superior, look idêntico em iOS/Android). React Native usa JavaScript (pool gigante de devs web) e componentes nativos (visual nativo por plataforma). Diferente de iOS/Android Nativos, Flutter sacrifica acesso completo a APIs em troca de cross-platform. No BR, mercado menor que RN mas crescente — empresas Google-friendly preferem Flutter.",
+        diferencasDaAreaMae: "Dentro de Mobile, o Flutter compete diretamente com React Native. Ambos cross-platform, decisão entre eles é tecnológica. Flutter usa Dart (linguagem própria, curva de aprendizado maior) e renderiza widgets via Skia (performance superior, look idêntico em iOS/Android). React Native usa JavaScript (pool gigante de devs web) e componentes nativos (visual nativo por plataforma). Diferente de iOS/Android Nativos, Flutter sacrifica acesso completo a APIs em troca de cross-platform. No BR, mercado menor que RN mas crescente. Empresas Google-friendly preferem Flutter.",
         habilidadesEspecificas: [
           "Dart profundo (linguagem do Google, similar a Java/Kotlin)",
           "Flutter framework (widgets, ciclo de vida, animações)",
@@ -2277,16 +2277,16 @@ const baseAreasTI: AreaTI[] = [
           "Desenvolvedor Flutter Sênior (5+ anos)",
           "Tech Lead Mobile (Flutter)"
         ],
-        faixaSalarial: "R$ 3.677 (júnior) a R$ 31.300 (90º percentil sênior). Média BR R$ 5.688 — Glassdoor 2026 (158 respondentes). Pleno gira em R$ 6-12k. Sêniores em empresas que apostam no Flutter (Boticário, Drogaria Araujo, Turbi) chegam a R$ 15-21k. Remoto pra fora paga em dólar.",
+        faixaSalarial: "R$ 3.677 (júnior) a R$ 31.300 (90º percentil sênior). Média BR R$ 5.688, Glassdoor 2026 (158 respondentes). Pleno gira em R$ 6-12k. Sêniores em empresas que apostam no Flutter (Boticário, Drogaria Araujo, Turbi) chegam a R$ 15-21k. Remoto pra fora paga em dólar.",
         dificuldade: 3,
         cursosGratuitos: [
-          "Flutter.dev — Documentação oficial e codelabs (Google, gratuitos, excelentes)",
-          "Cod3r / Cleyton (YouTube) — Flutter completo em PT-BR gratuito",
-          "Flutter Brasil (comunidade Discord + Telegram) — referência BR ativa"
+          "Flutter.dev: Documentação oficial e codelabs (Google, gratuitos, excelentes)",
+          "Cod3r / Cleyton (YouTube): Flutter completo em PT-BR gratuito",
+          "Flutter Brasil (comunidade Discord + Telegram): referência BR ativa"
         ],
         projetosSugeridos: [
           "Clone funcional de app conhecido (Spotify, Instagram feed) com Flutter + Firebase",
-          "App próprio resolvendo problema seu — publicar nas DUAS lojas (Google Play + App Store)",
+          "App próprio resolvendo problema seu: publicar nas DUAS lojas (Google Play + App Store)",
           "Contribuir pra pacote pub.dev (gerenciador de pacotes Flutter) com biblioteca útil"
         ],
         roadmapEspecifico: [
@@ -2296,7 +2296,7 @@ const baseAreasTI: AreaTI[] = [
           "Construir 2-3 apps próprios completos com publicação nas lojas",
           "Especializar em área (animations, performance, multiplataforma desktop/web)"
         ],
-        dicasIniciais: "Mercado BR menor que React Native — pense bem antes de escolher. Vantagem do Flutter: performance superior, código único entre iOS/Android, apps visualmente idênticos. Desvantagem: comunidade BR menor, vagas mais restritas. Dart é linguagem nova mas fácil pra quem já programa em Java/Kotlin/Swift. Cod3r e Flutter Brasil são as melhores fontes em PT-BR. Inglês é importante (doc oficial em inglês). Cargo perfeito pra quem ama Google ecosystem."
+        dicasIniciais: "Mercado BR menor que React Native. Pense bem antes de escolher. Vantagem do Flutter: performance superior, código único entre iOS/Android, apps visualmente idênticos. Desvantagem: comunidade BR menor, vagas mais restritas. Dart é linguagem nova mas fácil pra quem já programa em Java/Kotlin/Swift. Cod3r e Flutter Brasil são as melhores fontes em PT-BR. Inglês é importante (doc oficial em inglês). Cargo perfeito pra quem ama Google ecosystem."
       }
     ]
   },
@@ -2316,7 +2316,7 @@ const baseAreasTI: AreaTI[] = [
     dificuldade: 5,
     cargos: ["Engenheiro DevOps Júnior", "SRE", "Engenheiro de Plataforma", "Cloud Engineer"],
     faixaSalarial: "R$ 4.000 a R$ 8.000 (trainee/júnior)",
-    cursosGratuitos: ["Linux Foundation — Cursos gratuitos", "Docker — Documentação oficial", "GitHub Actions — Documentação gratuita"],
+    cursosGratuitos: ["Linux Foundation: Cursos gratuitos", "Docker: Documentação oficial", "GitHub Actions: Documentação gratuita"],
     roadmapInicial: ["Aprender Linux", "Aprender Git e GitHub", "Aprender Docker", "Estudar CI/CD com GitHub Actions", "Aprender Kubernetes básico"],
     projetos: ["Pipeline CI/CD para projeto pessoal", "Containerizar aplicação com Docker", "Configurar monitoramento básico"],
     termosEssenciais: ["CI/CD", "Container", "Docker", "Kubernetes", "Pipeline", "IaC"],
@@ -2336,13 +2336,13 @@ const baseAreasTI: AreaTI[] = [
         slug: "platform-engineer",
         nome: "Platform Engineer",
         descricaoCurta: "Constrói plataformas internas que outros times de dev consomem. Foco em developer experience e self-service.",
-        descricaoCompleta: "Platform Engineer é a evolução do DevOps em 2026: profissional que constrói Internal Developer Platforms (IDPs) — plataformas internas de self-service que abstraem complexidade de Kubernetes, Terraform e cloud, deixando devs focarem em produto. Diferente do DevOps tradicional (que opera infra), o Platform Engineer trata desenvolvedores internos como clientes e a plataforma como produto. Gartner prevê que 80% das empresas terão times de plataforma até 2027. No BR, Mercado Livre, iFood, Nubank já operam com times maduros. Salário top do DevOps: média SP R$ 15.583, pleno R$ 11k-22k, sêniores chegam a R$ 44.500 (90º percentil — Glassdoor 2026). Mercado super aquecido pelo gap de profissionais.",
-        oQueFaz: "No dia a dia: constrói plataformas internas usando Backstage (Spotify, padrão global), Crossplane (provisionamento) e ArgoCD (GitOps), define 'Golden Paths' — caminhos padronizados pra criar serviços novos, automatiza provisionamento de recursos (databases, caches, queues), reduz cognitive load dos devs, mede adoção da plataforma (devs como clientes), e itera baseado em feedback. Trabalha como product manager de uma plataforma técnica — produto-thinking aplicado a infra.",
-        diferencasDaAreaMae: "Dentro de DevOps, o Platform Engineer é a evolução natural — diferente do DevOps tradicional (que opera infra reativamente, com tickets), o Platform Engineer constrói self-service proativo. Diferente do SRE (que foca em confiabilidade), o Platform Engineer foca em developer experience (DX). Diferente do DevSecOps (que adiciona segurança), o Platform Engineer adiciona produto-thinking. É o cargo mais sênior e bem pago de DevOps em 2026 — exige experiência sólida em DevOps + visão de produto.",
+        descricaoCompleta: "Platform Engineer é a evolução do DevOps em 2026: profissional que constrói Internal Developer Platforms (IDPs), plataformas internas de self-service que abstraem complexidade de Kubernetes, Terraform e cloud, deixando devs focarem em produto. Diferente do DevOps tradicional (que opera infra), o Platform Engineer trata desenvolvedores internos como clientes e a plataforma como produto. Gartner prevê que 80% das empresas terão times de plataforma até 2027. No BR, Mercado Livre, iFood, Nubank já operam com times maduros. Salário top do DevOps: média SP R$ 15.583, pleno R$ 11k-22k, sêniores chegam a R$ 44.500 (90º percentil, Glassdoor 2026). Mercado super aquecido pelo gap de profissionais.",
+        oQueFaz: "No dia a dia: constrói plataformas internas usando Backstage (Spotify, padrão global), Crossplane (provisionamento) e ArgoCD (GitOps), define 'Golden Paths', caminhos padronizados pra criar serviços novos, automatiza provisionamento de recursos (databases, caches, queues), reduz cognitive load dos devs, mede adoção da plataforma (devs como clientes), e itera baseado em feedback. Trabalha como product manager de uma plataforma técnica, produto-thinking aplicado a infra.",
+        diferencasDaAreaMae: "Dentro de DevOps, o Platform Engineer é a evolução natural, diferente do DevOps tradicional (que opera infra reativamente, com tickets), o Platform Engineer constrói self-service proativo. Diferente do SRE (que foca em confiabilidade), o Platform Engineer foca em developer experience (DX). Diferente do DevSecOps (que adiciona segurança), o Platform Engineer adiciona produto-thinking. É o cargo mais sênior e bem pago de DevOps em 2026. Exige experiência sólida em DevOps + visão de produto.",
         habilidadesEspecificas: [
           "Kubernetes profundo (CKA é cobrada em ~40% das vagas)",
           "Infrastructure as Code (Terraform, Crossplane, Pulumi)",
-          "Backstage (Spotify) — padrão global pra developer portals",
+          "Backstage (Spotify): padrão global pra developer portals",
           "GitOps (ArgoCD, Flux) e CI/CD avançado",
           "Product-thinking aplicado a plataforma (devs como clientes)"
         ],
@@ -2360,11 +2360,11 @@ const baseAreasTI: AreaTI[] = [
           "Staff Platform Engineer (arquitetura de plataforma)",
           "Principal Platform Engineer / Head of Platform"
         ],
-        faixaSalarial: "R$ 11.063 (pleno baixo) a R$ 44.500 (sênior top 10%). Média SP R$ 15.583 — Glassdoor 2026. Sêniores em Mercado Livre, iFood, Nubank passam R$ 25-35k. Remoto pra fora paga US$ 8-15k/mês. Cargo mais bem pago de DevOps.",
+        faixaSalarial: "R$ 11.063 (pleno baixo) a R$ 44.500 (sênior top 10%). Média SP R$ 15.583, Glassdoor 2026. Sêniores em Mercado Livre, iFood, Nubank passam R$ 25-35k. Remoto pra fora paga US$ 8-15k/mês. Cargo mais bem pago de DevOps.",
         dificuldade: 5,
         cursosGratuitos: [
           "Backstage Documentação Oficial (excelente, com tutoriais completos)",
-          "CNCF Platforms Working Group — recursos gratuitos sobre Platform Engineering",
+          "CNCF Platforms Working Group: recursos gratuitos sobre Platform Engineering",
           "PlatformCon (conferência gratuita anual, todas talks no YouTube)"
         ],
         projetosSugeridos: [
@@ -2373,21 +2373,21 @@ const baseAreasTI: AreaTI[] = [
           "GitOps end-to-end: dev faz commit → ArgoCD detecta → deploy automático em produção"
         ],
         roadmapEspecifico: [
-          "Ter base sólida de DevOps (Docker, K8s, CI/CD, cloud, Terraform) — 3+ anos",
+          "Ter base sólida de DevOps (Docker, K8s, CI/CD, cloud, Terraform), 3+ anos",
           "Estudar Platform Engineering como disciplina (Team Topologies, Platform as Product)",
           "Aprender Backstage profundamente (padrão da área)",
           "Aprender Crossplane + ArgoCD (Kubernetes-native)",
           "Construir IDP completo em ambiente próprio + documentar como produto"
         ],
-        dicasIniciais: "Cargo mais sênior do DevOps — não tente entrar sem 3+ anos de DevOps tradicional. Backstage é A ferramenta — invista 2-3 meses dominando. Mindset de produto é o diferencial: tratar devs como clientes muda tudo. CKA é cobrada em quase metade das vagas — vale tirar. Inglês é obrigatório (toda doc, talks e community em inglês). Brasil está atrasado nessa onda (~2 anos) — quem entrar agora pega salários acima do normal por 3-5 anos."
+        dicasIniciais: "Cargo mais sênior do DevOps. Não tente entrar sem 3+ anos de DevOps tradicional. Backstage é A ferramenta. Invista 2-3 meses dominando. Mindset de produto é o diferencial: tratar devs como clientes muda tudo. CKA é cobrada em quase metade das vagas. Vale tirar. Inglês é obrigatório (toda doc, talks e community em inglês). Brasil está atrasado nessa onda (~2 anos). Quem entrar agora pega salários acima do normal por 3-5 anos."
       },
       {
         slug: "devsecops",
         nome: "DevSecOps",
         descricaoCurta: "Integra segurança no ciclo CI/CD. SAST/DAST, secrets management, hardening de pipelines. Subárea em forte crescimento (3.4k+ vagas BR).",
-        descricaoCompleta: "DevSecOps é a evolução do DevOps com integração obrigatória de segurança em cada etapa do ciclo de desenvolvimento — desde o primeiro commit até o deploy em produção. Não é cargo opcional: virou requisito em fintechs, bancos e empresas que lidam com dados sensíveis (LGPD, PCI-DSS). Profissional integra ferramentas de scan de código (SAST, DAST, SCA), gerencia secrets, faz hardening de pipelines e containers. Mercado super aquecido em 2026: Glassdoor mostra 311+ vagas ativas, BeBee 3.4k+, com média salarial de R$ 9.030 e sêniores chegando a R$ 19.200. Em fintechs e bancos, ultrapassa R$ 25k facilmente.",
+        descricaoCompleta: "DevSecOps é a evolução do DevOps com integração obrigatória de segurança em cada etapa do ciclo de desenvolvimento, desde o primeiro commit até o deploy em produção. Não é cargo opcional: virou requisito em fintechs, bancos e empresas que lidam com dados sensíveis (LGPD, PCI-DSS). Profissional integra ferramentas de scan de código (SAST, DAST, SCA), gerencia secrets, faz hardening de pipelines e containers. Mercado super aquecido em 2026: Glassdoor mostra 311+ vagas ativas, BeBee 3.4k+, com média salarial de R$ 9.030 e sêniores chegando a R$ 19.200. Em fintechs e bancos, ultrapassa R$ 25k facilmente.",
         oQueFaz: "No dia a dia: integra ferramentas de segurança em pipelines CI/CD (Semgrep, SonarQube, Snyk, Burp), automatiza varredura de vulnerabilidades em código e dependências, configura gestão de secrets (Vault, AWS Secrets Manager), faz hardening de containers e clusters Kubernetes, responde a incidentes de segurança em produção, audita ambientes cloud (IAM, redes, configurações), e trabalha com times de dev pra educar sobre práticas seguras (shift-left security). Garante compliance (LGPD, PCI-DSS, ISO 27001).",
-        diferencasDaAreaMae: "Dentro de DevOps, o DevSecOps adiciona uma camada crítica: segurança em cada etapa do pipeline, não como auditoria pós-deploy. Diferente do AppSec (subárea de Cibersegurança focada em código de aplicação), o DevSecOps cobre todo o ciclo — código, build, deploy, runtime, infraestrutura. Diferente do Platform Engineer (que constrói plataformas internas), o DevSecOps protege essas plataformas. É a porta de entrada ideal pra quem vem de DevOps tradicional e quer subir salário — segurança é o diferencial que mais paga em DevOps moderno.",
+        diferencasDaAreaMae: "Dentro de DevOps, o DevSecOps adiciona uma camada crítica: segurança em cada etapa do pipeline, não como auditoria pós-deploy. Diferente do AppSec (subárea de Cibersegurança focada em código de aplicação), o DevSecOps cobre todo o ciclo: código, build, deploy, runtime, infraestrutura. Diferente do Platform Engineer (que constrói plataformas internas), o DevSecOps protege essas plataformas. É a porta de entrada ideal pra quem vem de DevOps tradicional e quer subir salário. Segurança é o diferencial que mais paga em DevOps moderno.",
         habilidadesEspecificas: [
           "CI/CD avançado (Jenkins, GitLab CI, GitHub Actions)",
           "SAST, DAST e SCA (Semgrep, SonarQube, Snyk, OWASP ZAP)",
@@ -2409,12 +2409,12 @@ const baseAreasTI: AreaTI[] = [
           "Staff DevSecOps / Tech Lead Security Engineering",
           "Principal DevSecOps / Head of Platform Security"
         ],
-        faixaSalarial: "R$ 5.692 (júnior raro) a R$ 25.000+ (sênior em fintechs). Média BR R$ 9.030 — Glassdoor 2026. Pleno gira em R$ 11.850. Especialistas em fintechs e bancos chegam a R$ 20-30k. Remoto pra fora paga em dólar (US$ 5-10k/mês).",
+        faixaSalarial: "R$ 5.692 (júnior raro) a R$ 25.000+ (sênior em fintechs). Média BR R$ 9.030, Glassdoor 2026. Pleno gira em R$ 11.850. Especialistas em fintechs e bancos chegam a R$ 20-30k. Remoto pra fora paga em dólar (US$ 5-10k/mês).",
         dificuldade: 5,
         cursosGratuitos: [
           "OWASP Cheat Sheet Series (referência gratuita oficial de segurança em desenvolvimento)",
           "GitHub Security Lab (cursos gratuitos sobre SAST e segurança em pipelines)",
-          "AWS Skill Builder — Security Learning Path (parte gratuita)"
+          "AWS Skill Builder: Security Learning Path (parte gratuita)"
         ],
         projetosSugeridos: [
           "Pipeline CI/CD completo com SAST + DAST + SCA integrados (GitHub Actions público)",
@@ -2422,13 +2422,13 @@ const baseAreasTI: AreaTI[] = [
           "Sistema de secrets management end-to-end (Vault + integração com K8s + rotação automática)"
         ],
         roadmapEspecifico: [
-          "Ter base sólida em DevOps (CI/CD, Docker, Kubernetes, cloud) — 2+ anos",
+          "Ter base sólida em DevOps (CI/CD, Docker, Kubernetes, cloud), 2+ anos",
           "Estudar OWASP Top 10 + fundamentos de segurança de aplicações",
           "Aprender ferramentas SAST/DAST/SCA e como integrá-las em pipelines",
           "Estudar compliance (LGPD obrigatório no BR, PCI-DSS pra fintechs)",
           "Construir portfolio: pipeline público com segurança integrada + writeup técnico"
         ],
-        dicasIniciais: "Não tente entrar como DevSecOps sem base de DevOps — esse cargo cobra os dois mundos. Vindo de DevOps, foque em OWASP + ferramentas de scan + compliance. Vindo de segurança, foque em CI/CD + containers + cloud. Cargo paga muito bem em fintechs e bancos — invista em entender PCI-DSS e LGPD. Inglês é obrigatório (toda a doc e community estão em inglês). Subárea em crescimento explosivo — quem entra agora pega salários acima do normal."
+        dicasIniciais: "Não tente entrar como DevSecOps sem base de DevOps. Esse cargo cobra os dois mundos. Vindo de DevOps, foque em OWASP + ferramentas de scan + compliance. Vindo de segurança, foque em CI/CD + containers + cloud. Cargo paga muito bem em fintechs e bancos. Invista em entender PCI-DSS e LGPD. Inglês é obrigatório (toda a doc e community estão em inglês). Subárea em crescimento explosivo. Quem entra agora pega salários acima do normal."
       }
     ]
   },
@@ -2439,8 +2439,8 @@ const baseAreasTI: AreaTI[] = [
     icon: Gamepad2,
     tagClass: "tag-gamedev",
     descricaoCurta: "Programação de jogos digitais. Mecânicas, IA, física, gráficos. Mercado BR pequeno mas crescente, principalmente em mobile e estúdios médios.",
-    descricaoCompleta: "Game Dev é a programação por trás dos jogos digitais — desde mobile casual até console AAA. O desenvolvedor de jogos cria mecânicas, sistemas de IA pra inimigos, física, multiplayer, otimização de performance gráfica e integração com motores como Unity ou Unreal Engine. É uma área de mercado pequeno mas com paixão grande no Brasil — estúdios como Wildlife, Aquiris, Tapps Games e Hoplon empregam centenas, principalmente em jogos mobile. Salário fica abaixo da média geral de TI no início, mas seniores em estúdios internacionais ou remoto pra fora ganham bem. Recomendado pra quem tem paixão real por games, não só pelo salário.",
-    oQueFaz: "O dev de jogos programa tudo que faz um jogo funcionar — controles, IA, sistemas de combate, física, multiplayer, salvamento de progresso, otimização. Trabalha em motores como Unity (C#) ou Unreal Engine (C++). Colabora intensamente com designers de jogo, artistas 3D, animadores e sound designers. Faz muitos testes, ajustes finos de dificuldade e otimizações pra rodar bem em hardware variado.",
+    descricaoCompleta: "Game Dev é a programação por trás dos jogos digitais, desde mobile casual até console AAA. O desenvolvedor de jogos cria mecânicas, sistemas de IA pra inimigos, física, multiplayer, otimização de performance gráfica e integração com motores como Unity ou Unreal Engine. É uma área de mercado pequeno mas com paixão grande no Brasil. Estúdios como Wildlife, Aquiris, Tapps Games e Hoplon empregam centenas, principalmente em jogos mobile. Salário fica abaixo da média geral de TI no início, mas seniores em estúdios internacionais ou remoto pra fora ganham bem. Recomendado pra quem tem paixão real por games, não só pelo salário.",
+    oQueFaz: "O dev de jogos programa tudo que faz um jogo funcionar: controles, IA, sistemas de combate, física, multiplayer, salvamento de progresso, otimização. Trabalha em motores como Unity (C#) ou Unreal Engine (C++). Colabora intensamente com designers de jogo, artistas 3D, animadores e sound designers. Faz muitos testes, ajustes finos de dificuldade e otimizações pra rodar bem em hardware variado.",
     tarefasDiarias: [
       "Programar mecânicas de jogo (movimentação, combate, sistemas de pontos)",
       "Implementar IA de inimigos, NPCs e comportamentos do mundo",
@@ -2449,7 +2449,7 @@ const baseAreasTI: AreaTI[] = [
       "Otimizar performance pra rodar bem em diferentes plataformas",
       "Testar, debugar e ajustar dificuldade com base em feedback"
     ],
-    perfilIndicado: "Pessoa apaixonada por jogos com paciência pra testes infinitos. Combina lógica de programação com sensibilidade pra experiência do jogador. Tolerante a ferramentas complexas, gosta de matemática (vetores, álgebra linear) e tem perfil colaborativo — game dev é trabalho em equipe multidisciplinar. Importante: o salário inicial é menor que outras áreas de dev, então paixão pela área conta muito.",
+    perfilIndicado: "Pessoa apaixonada por jogos com paciência pra testes infinitos. Combina lógica de programação com sensibilidade pra experiência do jogador. Tolerante a ferramentas complexas, gosta de matemática (vetores, álgebra linear) e tem perfil colaborativo. Game dev é trabalho em equipe multidisciplinar. Importante: o salário inicial é menor que outras áreas de dev, então paixão pela área conta muito.",
     habilidades: [
       "Programação em C# (Unity) ou C++ (Unreal Engine)",
       "Lógica de programação e estrutura de dados",
@@ -2461,11 +2461,11 @@ const baseAreasTI: AreaTI[] = [
     ferramentas: ["Unity", "Unreal Engine", "Godot", "Visual Studio", "Git (com Git LFS pra assets grandes)", "Blender (visualização básica de assets)", "Steam / Itch.io (publicação)", "Trello ou Jira"],
     dificuldade: 4,
     cargos: ["Programador de Jogos Júnior", "Programador de Jogos Pleno", "Programador de Jogos Sênior", "Gameplay Programmer / Engine Programmer"],
-    faixaSalarial: "R$ 2.550 (júnior) a R$ 16.000 (sênior). Média BR R$ 8.200 — Jobted/Glassdoor 2026",
+    faixaSalarial: "R$ 2.550 (júnior) a R$ 16.000 (sênior). Média BR R$ 8.200, Jobted/Glassdoor 2026",
     cursosGratuitos: [
       "Unity Learn (cursos oficiais grátis em inglês e PT-BR)",
-      "Brackeys (canal YouTube, referência mundial Unity em inglês — biblioteca enorme)",
-      "Curso em Vídeo — Lógica de Programação (Gustavo Guanabara, base sólida)",
+      "Brackeys (canal YouTube, referência mundial Unity em inglês, biblioteca enorme)",
+      "Curso em Vídeo: Lógica de Programação (Gustavo Guanabara, base sólida)",
       "Godot Engine Documentation + Tutoriais oficiais (gratuitos)"
     ],
     roadmapInicial: [
@@ -2483,7 +2483,7 @@ const baseAreasTI: AreaTI[] = [
       "Jogo mobile casual publicado na Google Play"
     ],
     termosEssenciais: ["Game Loop", "Engine", "Asset", "Prefab", "Sprite", "Game Jam"],
-    dicasIniciais: "Comece com Unity ou Godot (mais leves). Faça 3-5 jogos pequenos completos, não 1 grande pela metade. Participe de game jams (Global Game Jam, Ludum Dare) — é a forma mais rápida de aprender e fazer networking. Inglês é mais importante aqui que em outras áreas — quase toda doc e comunidade é em inglês.",
+    dicasIniciais: "Comece com Unity ou Godot (mais leves). Faça 3-5 jogos pequenos completos, não 1 grande pela metade. Participe de game jams (Global Game Jam, Ludum Dare). É a forma mais rápida de aprender e fazer networking. Inglês é mais importante aqui que em outras áreas. Quase toda doc e comunidade é em inglês.",
     requiresGraduation: "opcional",
     tempoMedioFormacao: "12-24 meses até primeira vaga",
     crescimentoMercado: "medio",
@@ -2759,7 +2759,7 @@ export const roadmaps = [
       { numero: 2, titulo: "Escolha uma área para explorar", descricao: "Com base no seu perfil, escolha uma área para começar: Front-end, UX/UI, Dados ou QA são ótimas opções para iniciantes.", tempo: "1 semana" },
       { numero: 3, titulo: "Aprenda lógica de programação", descricao: "Independente da área, entender lógica de programação ajuda muito. Curso em Vídeo tem um ótimo curso gratuito.", tempo: "2-4 semanas" },
       { numero: 4, titulo: "Faça um curso introdutório gratuito", descricao: "Escolha um curso gratuito da sua área no YouTube, DIO ou freeCodeCamp e complete do início ao fim.", tempo: "4-8 semanas" },
-      { numero: 5, titulo: "Crie seu primeiro projeto", descricao: "Aplique o que aprendeu em um projeto pequeno. Não precisa ser perfeito — o importante é criar!", tempo: "1-2 semanas" },
+      { numero: 5, titulo: "Crie seu primeiro projeto", descricao: "Aplique o que aprendeu em um projeto pequeno. Não precisa ser perfeito. O importante é criar!", tempo: "1-2 semanas" },
       { numero: 6, titulo: "Crie seu GitHub ou Behance", descricao: "Publique seu projeto. GitHub para código, Behance para design. Este é o início do seu portfólio.", tempo: "1 semana" },
       { numero: 7, titulo: "Monte seu LinkedIn", descricao: "Crie ou atualize seu LinkedIn com o que aprendeu. Conecte-se com pessoas da área.", tempo: "1 semana" },
       { numero: 8, titulo: "Entre em uma comunidade", descricao: "Participe de grupos no Discord, Slack ou LinkedIn. Networking é fundamental desde o início.", tempo: "Contínuo" }
@@ -2778,13 +2778,13 @@ export const roadmaps = [
     paraQuem: "Quem quer criar sites e interfaces web.",
     preRequisitos: "Lógica de programação básica é recomendada, mas não obrigatória.",
     etapas: [
-      { numero: 1, titulo: "HTML — A estrutura", descricao: "Aprenda a criar a estrutura de páginas web com HTML semântico.", tempo: "1-2 semanas" },
-      { numero: 2, titulo: "CSS — O estilo", descricao: "Aprenda a estilizar páginas com CSS: cores, fontes, layout com Flexbox e Grid.", tempo: "2-3 semanas" },
+      { numero: 1, titulo: "HTML: A estrutura", descricao: "Aprenda a criar a estrutura de páginas web com HTML semântico.", tempo: "1-2 semanas" },
+      { numero: 2, titulo: "CSS: O estilo", descricao: "Aprenda a estilizar páginas com CSS: cores, fontes, layout com Flexbox e Grid.", tempo: "2-3 semanas" },
       { numero: 3, titulo: "Primeiro projeto: Landing Page", descricao: "Crie uma landing page simples aplicando HTML e CSS. Publique no GitHub Pages.", tempo: "1 semana" },
-      { numero: 4, titulo: "JavaScript — A interatividade", descricao: "Aprenda JavaScript: variáveis, funções, eventos, DOM manipulation.", tempo: "4-6 semanas" },
+      { numero: 4, titulo: "JavaScript: A interatividade", descricao: "Aprenda JavaScript: variáveis, funções, eventos, DOM manipulation.", tempo: "4-6 semanas" },
       { numero: 5, titulo: "Projeto: To-do List", descricao: "Crie uma lista de tarefas com JavaScript puro. Adicionar, remover e marcar como concluído.", tempo: "1-2 semanas" },
       { numero: 6, titulo: "Git e GitHub", descricao: "Aprenda controle de versão com Git e publique seus projetos no GitHub.", tempo: "1 semana" },
-      { numero: 7, titulo: "React — O framework", descricao: "Aprenda React: componentes, props, state, hooks básicos.", tempo: "4-6 semanas" },
+      { numero: 7, titulo: "React: O framework", descricao: "Aprenda React: componentes, props, state, hooks básicos.", tempo: "4-6 semanas" },
       { numero: 8, titulo: "Projeto final: Portfólio", descricao: "Crie seu portfólio pessoal em React com seus projetos anteriores.", tempo: "2 semanas" }
     ],
     errosComuns: ["Pular direto para React sem aprender JavaScript", "Não criar projetos práticos", "Copiar código sem entender o que faz"],
@@ -3056,7 +3056,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-rocketseat-discover",
-    titulo: "Discover — Fundamentos Web",
+    titulo: "Discover: Fundamentos Web",
     canal: "Rocketseat",
     plataforma: "Rocketseat",
     link: "https://app.rocketseat.com.br/discover",
@@ -3097,7 +3097,7 @@ export const cursosGratuitos = [
     descricao: "Tutorial oficial do Figma para aprender a ferramenta do zero.",
     motivoIndicacao: "Conteúdo oficial, atualizado e gratuito. Melhor forma de aprender Figma.",
     oQueAprende: ["Interface do Figma", "Frames e componentes", "Auto-layout", "Prototipação"],
-    proximoConteudo: "Origamid — UI Design Avançado"
+    proximoConteudo: "Origamid: UI Design Avançado"
   },
   {
     id: "curso-dio-java",
@@ -3361,7 +3361,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-odin-project",
-    titulo: "The Odin Project — Full Stack",
+    titulo: "The Odin Project: Full Stack",
     canal: "The Odin Project",
     plataforma: "The Odin Project",
     link: "https://www.theodinproject.com/",
@@ -5082,7 +5082,7 @@ export const plataformas = plataformasBase.map((p) => ({
   categoria: plataformaCategorias[p.id] ?? "Cursos",
 }));
 
-/** Todos os estados + DF (sigla IBGE) — para filtros e cadastro de eventos */
+/** Todos os estados + DF (sigla IBGE), para filtros e cadastro de eventos */
 export const estadosBrasil: { sigla: string; nome: string }[] = [
   { sigla: "AC", nome: "Acre" },
   { sigla: "AL", nome: "Alagoas" },
@@ -5113,7 +5113,7 @@ export const estadosBrasil: { sigla: string; nome: string }[] = [
   { sigla: "TO", nome: "Tocantins" }
 ].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
-/** Eventos online nacionais, itinerantes ou globais voltados ao público BR — use no campo `estado` */
+/** Eventos online nacionais, itinerantes ou globais voltados ao público BR, use no campo `estado` */
 export const EVENTO_UF_NACIONAL = "NA" as const;
 
 export const eventos = [
@@ -5197,7 +5197,7 @@ export const eventos = [
     id: "hacktoberfest",
     nome: "Hacktoberfest",
     data: "Outubro (anual)",
-    horario: "Online — mês inteiro",
+    horario: "Online: mês inteiro",
     cidade: "Online",
     estado: EVENTO_UF_NACIONAL,
     formato: "Online",
@@ -5366,7 +5366,7 @@ export const eventos = [
   },
   {
     id: "gdg-rio-tech-talks",
-    nome: "Google Developer Groups Tech Talks — Rio",
+    nome: "Google Developer Groups Tech Talks: Rio",
     data: "Mensal",
     horario: "19h30",
     cidade: "Rio de Janeiro",
@@ -5466,7 +5466,7 @@ export const eventos = [
   },
   {
     id: "conexao-dados-df",
-    nome: "Conexão Informação Brasília — Dados públicos em prática",
+    nome: "Conexão Informação Brasília: Dados públicos em prática",
     data: "Setembro 2026",
     horario: "9h às 17h",
     cidade: "Brasília",
@@ -5506,7 +5506,7 @@ export const eventos = [
   },
   {
     id: "salvador-python",
-    nome: "Python Nordeste — Trilhas em Salvador",
+    nome: "Python Nordeste: Trilhas em Salvador",
     data: "Novembro 2026",
     horario: "Vários horários",
     cidade: "Salvador",
@@ -5979,7 +5979,7 @@ export const projetos = [
     passosSimplificados: ["Crie um repositório vazio", "Escreva o que o projeto faz", "Liste tecnologias e como rodar", "Adicione screenshots ou GIF", "Publique e peça feedback"],
     entregavel: "Repositório com README claro em português ou inglês.",
     comoPublicar: "GitHub",
-    sugestaoLinkedIn: "Escrevi meu primeiro README de projeto do zero — objetivo do app, como rodar e o que aprendi.",
+    sugestaoLinkedIn: "Escrevi meu primeiro README de projeto do zero: objetivo do app, como rodar e o que aprendi.",
     proximoProjeto: "Página pessoal com link para o repositório"
   },
   {
@@ -6031,7 +6031,7 @@ export const projetos = [
     passosSimplificados: ["Busque cidade ou use coords", "Chame API com fetch", "Trate erros e loading", "Mostre ícones ou emojis", "Responsivo"],
     entregavel: "App de clima com UX de carregamento e erro.",
     comoPublicar: "Vercel ou Netlify",
-    sugestaoLinkedIn: "Integrei API de clima com tratamento de rede, loading e estados de erro — ótimo treino de async.",
+    sugestaoLinkedIn: "Integrei API de clima com tratamento de rede, loading e estados de erro, ótimo treino de async.",
     proximoProjeto: "Salvar cidades favoritas"
   },
   {
@@ -6070,7 +6070,7 @@ export const projetos = [
     passosSimplificados: ["POST cria URL + slug", "GET redireciona", "Evite colisão de slugs", "Métricas básicas", "Documente com OpenAPI ou README"],
     entregavel: "API com exemplos curl e deploy.",
     comoPublicar: "Railway, Render ou Fly.io",
-    sugestaoLinkedIn: "API de encurtador: geração de slug, redirect 302 e persistência — papo reto de back-end.",
+    sugestaoLinkedIn: "API de encurtador: geração de slug, redirect 302 e persistência, papo reto de back-end.",
     proximoProjeto: "Rate limit e autenticação admin"
   },
   {
@@ -6148,7 +6148,7 @@ export const projetos = [
     passosSimplificados: ["Importe ou crie requests", "Scripts de teste em cada response", "Variáveis de ambiente", "Pipeline com newman run", "Badge ou log no repositório"],
     entregavel: "Repositório com workflow e coleção exportada.",
     comoPublicar: "GitHub Actions",
-    sugestaoLinkedIn: "Automatizei testes de contrato de API com Postman/Newman no CI — feedback rápido a cada push.",
+    sugestaoLinkedIn: "Automatizei testes de contrato de API com Postman/Newman no CI, feedback rápido a cada push.",
     proximoProjeto: "Testes E2E no front consumindo a mesma API"
   },
   {
@@ -6161,7 +6161,7 @@ export const projetos = [
     passosSimplificados: ["Descreva problema e público", "Escolha uma north star defensável", "Defina 3-5 métricas de acompanhamento", "Liste 3 hipóteses testáveis", "Mock de dashboard"],
     entregavel: "Documento de 2-4 páginas com hipóteses claras.",
     comoPublicar: "Notion público",
-    sugestaoLinkedIn: "Exercício de PM: north star, métricas e hipóteses para um produto imaginário — raciocínio explícito.",
+    sugestaoLinkedIn: "Exercício de PM: north star, métricas e hipóteses para um produto imaginário, raciocínio explícito.",
     proximoProjeto: "Roadmap trimestral alinhado às métricas"
   },
   {
@@ -6213,7 +6213,7 @@ export const projetos = [
     passosSimplificados: ["Cadastro de chave TMDB", "Lista com paginação ou scroll", "Busca debounced", "Página de detalhe", "Tratamento de limite de API"],
     entregavel: "App fluido com loading skeleton opcional.",
     comoPublicar: "Netlify/Vercel (chave em env)",
-    sugestaoLinkedIn: "Consumi a API do TMDB com busca, lista e detalhes — prática real de chave e rate limit.",
+    sugestaoLinkedIn: "Consumi a API do TMDB com busca, lista e detalhes, prática real de chave e rate limit.",
     proximoProjeto: "Favoritos persistidos"
   },
   {
@@ -6221,12 +6221,12 @@ export const projetos = [
     nome: "Assistente que responde com seus documentos (RAG)",
     areaSlug: "dados" as string | null,
     nivel: "Avançado",
-    objetivo: "Montar busca semântica em PDFs ou artigos e gerar respostas baseadas só no que está nos arquivos — habilidade muito pedida em vagas de produto com IA.",
+    objetivo: "Montar busca semântica em PDFs ou artigos e gerar respostas baseadas só no que está nos arquivos, habilidade muito pedida em vagas de produto com IA.",
     ferramentas: ["Python ou TypeScript", "Embeddings (API ou modelo local)", "Vector store (ex.: Chroma, pgvector)", "LLM via API"],
     passosSimplificados: ["Corte textos em chunks com sobreposição", "Gere embeddings e armazene", "Na pergunta, busque trechos parecidos", "Monte prompt só com trechos recuperados", "Cite trechos e trate 'não sei' quando faltar contexto"],
     entregavel: "Repositório com demo em vídeo ou notebook reprodutível (API key em .env.example).",
     comoPublicar: "GitHub + Hugging Face Space ou Streamlit opcional",
-    sugestaoLinkedIn: "Implementei RAG do zero: chunking, embeddings, vector store e respostas ancoradas em documentos — alinhado ao que empresas querem em IA aplicada.",
+    sugestaoLinkedIn: "Implementei RAG do zero: chunking, embeddings, vector store e respostas ancoradas em documentos, alinhado ao que empresas querem em IA aplicada.",
     proximoProjeto: "Painel para upload de arquivos e métricas de uso"
   },
   {
@@ -6234,12 +6234,12 @@ export const projetos = [
     nome: "Mini-SaaS com Next.js, auth e Stripe (modo teste)",
     areaSlug: "fullstack" as string | null,
     nivel: "Avançado",
-    objetivo: "Reproduzir o núcleo de um produto digital: login, área logada, plano pago e webhook de pagamento — combinação recorrente em vagas full stack e startups.",
+    objetivo: "Reproduzir o núcleo de um produto digital: login, área logada, plano pago e webhook de pagamento, combinação recorrente em vagas full stack e startups.",
     ferramentas: ["Next.js (App Router)", "Auth (NextAuth, Clerk ou Supabase Auth)", "Stripe em modo teste", "PostgreSQL"],
     passosSimplificados: ["Landing + CTA de cadastro", "Proteja rotas e perfil", "Checkout Stripe test + customer portal opcional", "Webhook marca assinatura ativa no banco", "README com diagrama simples do fluxo"],
     entregavel: "Deploy com variáveis de ambiente documentadas e fluxo gravado em vídeo curto.",
     comoPublicar: "Vercel + Neon/Supabase/Railway",
-    sugestaoLinkedIn: "Subi um mini-SaaS: auth, checkout Stripe em test e webhook — mostrei que entendo produto, pagamentos e deploy moderno.",
+    sugestaoLinkedIn: "Subi um mini-SaaS: auth, checkout Stripe em test e webhook. Mostrei que entendo produto, pagamentos e deploy moderno.",
     proximoProjeto: "Métricas de conversão e e-mail transacional"
   },
   {
@@ -6247,12 +6247,12 @@ export const projetos = [
     nome: "CRUD com Supabase + React",
     areaSlug: "fullstack" as string | null,
     nivel: "Intermediário",
-    objetivo: "Usar BaaS real (auth opcional, tabelas, políticas RLS) no front — stack muito comum nos últimos anos para MVPs e vagas júnior/pleno.",
+    objetivo: "Usar BaaS real (auth opcional, tabelas, políticas RLS) no front, stack muito comum nos últimos anos para MVPs e vagas júnior/pleno.",
     ferramentas: ["React ou Next.js", "Supabase (Postgres + API)", "Tailwind opcional"],
-    passosSimplificados: ["Modele 1–2 tabelas", "Configure Row Level Security básica", "Lista, cria, edita, apaga no client", "Trate loading/erro", "Explique no README o modelo de dados"],
+    passosSimplificados: ["Modele 1 a 2 tabelas", "Configure Row Level Security básica", "Lista, cria, edita, apaga no client", "Trate loading/erro", "Explique no README o modelo de dados"],
     entregavel: "App ao vivo com seed SQL no repositório.",
     comoPublicar: "Vercel + projeto Supabase",
-    sugestaoLinkedIn: "CRUD completo com Supabase: modelo no Postgres, RLS e UI em React — stack que aparece o tempo todo em vagas.",
+    sugestaoLinkedIn: "CRUD completo com Supabase: modelo no Postgres, RLS e UI em React, stack que aparece o tempo todo em vagas.",
     proximoProjeto: "Upload de arquivo no Storage + metadados na tabela"
   },
   {
@@ -6260,12 +6260,12 @@ export const projetos = [
     nome: "Sala de chat em tempo real (WebSocket)",
     areaSlug: "backend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Construir comunicação tempo real — conceito central em notificações, colaboração e jogos, ótimo para diferenciar o portfólio de back-end.",
+    objetivo: "Construir comunicação tempo real, conceito central em notificações, colaboração e jogos, ótimo para diferenciar o portfólio de back-end.",
     ferramentas: ["Node.js + ws ou Socket.io", "React ou HTML simples no cliente", "Redis opcional para escalar"],
     passosSimplificados: ["Servidor mantém salas ou IDs", "Cliente conecta e envia mensagens", "Broadcast para participantes", "Reconexão e nickname simples", "Limite de taxa básico anti-spam"],
     entregavel: "Repositório com instrução para rodar local e demo deployada.",
     comoPublicar: "Fly.io, Render ou Railway",
-    sugestaoLinkedIn: "Implementei chat com WebSocket: salas, broadcast e tratamento de queda de conexão — projeto que costuma impressionar em entrevistas de back-end.",
+    sugestaoLinkedIn: "Implementei chat com WebSocket: salas, broadcast e tratamento de queda de conexão, projeto que costuma impressionar em entrevistas de back-end.",
     proximoProjeto: "Persistência de mensagens em Postgres"
   },
   {
@@ -6273,12 +6273,12 @@ export const projetos = [
     nome: "API REST com Prisma e PostgreSQL",
     areaSlug: "backend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Dominar ORM moderno, migrações e tipagem — pedido explícito em muitas vagas Node/TypeScript.",
+    objetivo: "Dominar ORM moderno, migrações e tipagem, pedido explícito em muitas vagas Node/TypeScript.",
     ferramentas: ["Node.js", "TypeScript", "Prisma", "PostgreSQL", "Express ou Fastify"],
     passosSimplificados: ["Schema e primeira migration", "CRUD com validação (Zod)", "Tratamento de erros HTTP consistente", "Seeds para dados de demo", "OpenAPI ou tabela de rotas no README"],
     entregavel: "API containerizada ou com script `docker compose up` para o banco.",
     comoPublicar: "Railway, Render ou Fly.io",
-    sugestaoLinkedIn: "API em TypeScript com Prisma: migrações, relacionamentos e validação — espelha o dia a dia de times que usam Node corporativo.",
+    sugestaoLinkedIn: "API em TypeScript com Prisma: migrações, relacionamentos e validação. Espelha o dia a dia de times que usam Node corporativo.",
     proximoProjeto: "Adicionar filas ou cache Redis"
   },
   {
@@ -6286,12 +6286,12 @@ export const projetos = [
     nome: "API GraphQL (consultas e mutações)",
     areaSlug: "backend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Expor um domínio via GraphQL com schema claro — skill valorizada em empresas de produto e ecossistemas móveis.",
+    objetivo: "Expor um domínio via GraphQL com schema claro, skill valorizada em empresas de produto e ecossistemas móveis.",
     ferramentas: ["Node.js", "Apollo Server ou Mercurius", "TypeScript", "SQLite ou Postgres"],
-    passosSimplificados: ["Defina tipos, queries e mutations", "Resolvers com validação", "Trate N+1 com DataLoader ou estratégia simples", "Playground ou Apollo Sandbox documentado", "1–2 exemplos de query no README"],
+    passosSimplificados: ["Defina tipos, queries e mutations", "Resolvers com validação", "Trate N+1 com DataLoader ou estratégia simples", "Playground ou Apollo Sandbox documentado", "1 a 2 exemplos de query no README"],
     entregavel: "Servidor publicado ou Docker com schema exportado.",
     comoPublicar: "Render/Railway",
-    sugestaoLinkedIn: "Modelei um domínio em GraphQL com mutations, queries e cuidado com performance — mostra versatilidade além de REST.",
+    sugestaoLinkedIn: "Modelei um domínio em GraphQL com mutations, queries e cuidado com performance. Mostra versatilidade além de REST.",
     proximoProjeto: "Subscriptions em tempo real"
   },
   {
@@ -6299,7 +6299,7 @@ export const projetos = [
     nome: "Login social (OAuth 2.0 / OpenID)",
     areaSlug: "backend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Implementar fluxo Authorization Code com provedor (GitHub ou Google) e sessão/JWT — requisito frequente em sistemas reais.",
+    objetivo: "Implementar fluxo Authorization Code com provedor (GitHub ou Google) e sessão/JWT, requisito frequente em sistemas reais.",
     ferramentas: ["Node.js ou framework equivalente", "OAuth app no provedor", "Cookies seguros ou JWT"],
     passosSimplificados: ["Registrar app e callback URL", "Rota de login redireciona ao provedor", "Troca code por token no servidor", "Crie sessão ou JWT", "Documente variáveis e fluxo no README"],
     entregavel: "Demo com usuário de teste e checklist de segurança (HTTPS, state CSRF).",
@@ -6312,12 +6312,12 @@ export const projetos = [
     nome: "Ambiente local com Docker Compose (API + banco + front)",
     areaSlug: "devops" as string | null,
     nivel: "Intermediário",
-    objetivo: "Empacotar stack completa para `docker compose up` — esperado em times que prezam onboarding e paridade com produção.",
+    objetivo: "Empacotar stack completa para `docker compose up`, esperado em times que prezam onboarding e paridade com produção.",
     ferramentas: ["Docker", "Docker Compose", "Seu app full stack existente ou mínimo novo"],
     passosSimplificados: ["Dockerfile multi-stage para API e front", "Serviço Postgres com volume", "Rede interna e variáveis", "Healthcheck e ordem de subida", "README com comandos e troubleshooting"],
     entregavel: "Repo que sobe tudo com um comando documentado.",
     comoPublicar: "GitHub (execução local é o foco)",
-    sugestaoLinkedIn: "Containerizei API, front e Postgres com Compose — onboarding de um comando só, padrão que devs sênior cobram em code review.",
+    sugestaoLinkedIn: "Containerizei API, front e Postgres com Compose, onboarding de um comando só, padrão que devs sênior cobram em code review.",
     proximoProjeto: "GitHub Action que roda integração contra Compose"
   },
   {
@@ -6325,7 +6325,7 @@ export const projetos = [
     nome: "Testes E2E críticos com Playwright",
     areaSlug: "qa" as string | null,
     nivel: "Intermediário",
-    objetivo: "Automatizar jornadas que não podem quebrar (login, checkout feliz, criação de registro) — Playwright é referência atual em vagas de QA e eng com qualidade.",
+    objetivo: "Automatizar jornadas que não podem quebrar (login, checkout feliz, criação de registro). Playwright é referência atual em vagas de QA e eng com qualidade.",
     ferramentas: ["Playwright", "TypeScript", "Projeto web seu ou open source permitido"],
     passosSimplificados: ["Escolha 3 fluxos de alto valor", "Dados de teste isolados", "Asserts estáveis (roles, testids)", "Rodada em CI", "Relatório de falhas anexado"],
     entregavel: "Repositório com `npm run test:e2e` e workflow GitHub Actions.",
@@ -6338,12 +6338,12 @@ export const projetos = [
     nome: "Biblioteca de componentes com Storybook",
     areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Documentar componentes isolados, estados e acessibilidade — comum em design systems e vagas front React.",
+    objetivo: "Documentar componentes isolados, estados e acessibilidade, comum em design systems e vagas front React.",
     ferramentas: ["React", "Storybook 8+", "Tailwind ou CSS modules", "addon a11y opcional"],
-    passosSimplificados: ["Extraia 3–6 componentes reutilizáveis", "Stories para variantes e estados de erro", "Controles e documentação MDX breve", "Verifique contraste e roles básicos", "Publique em Chromatic ou estático"],
+    passosSimplificados: ["Extraia 3 a 6 componentes reutilizáveis", "Stories para variantes e estados de erro", "Controles e documentação MDX breve", "Verifique contraste e roles básicos", "Publique em Chromatic ou estático"],
     entregavel: "Storybook buildado em pasta ou URL pública.",
     comoPublicar: "GitHub Pages ou Chromatic",
-    sugestaoLinkedIn: "Publiquei Storybook com componentes documentados e checagens de acessibilidade — mostra maturidade de front em time grande.",
+    sugestaoLinkedIn: "Publiquei Storybook com componentes documentados e checagens de acessibilidade. Mostra maturidade de front em time grande.",
     proximoProjeto: "Integrar tokens de design do Figma"
   },
   {
@@ -6351,12 +6351,12 @@ export const projetos = [
     nome: "Quadro Kanban com arrastar e soltar",
     areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Treinar estado complexo, performance e UX de drag-and-drop — tipo de interação cobrada em ferramentas de produto e gestão.",
+    objetivo: "Treinar estado complexo, performance e UX de drag-and-drop, tipo de interação cobrada em ferramentas de produto e gestão.",
     ferramentas: ["React", "dnd-kit ou similar", "TypeScript"],
     passosSimplificados: ["Colunas e cartões", "Persistência em localStorage ou API", "Animações leves", "Teclado e foco acessível", "README com GIF do comportamento"],
     entregavel: "App deployado com persistência mínima.",
     comoPublicar: "Vercel/Netlify",
-    sugestaoLinkedIn: "Kanban com drag-and-drop acessível e estado persistente — projeto que mostra domínio de React além de CRUD simples.",
+    sugestaoLinkedIn: "Kanban com drag-and-drop acessível e estado persistente, projeto que mostra domínio de React além de CRUD simples.",
     proximoProjeto: "Colaboração em tempo real no mesmo quadro"
   },
   {
@@ -6364,12 +6364,12 @@ export const projetos = [
     nome: "Pipeline ETL com Python (arquivo → limpeza → destino)",
     areaSlug: "dados" as string | null,
     nivel: "Intermediário",
-    objetivo: "Simular engenharia de dados: extrair, validar, transformar e carregar — base para vagas de analista/engineer de dados júnior.",
+    objetivo: "Simular engenharia de dados: extrair, validar, transformar e carregar, base para vagas de analista/engineer de dados júnior.",
     ferramentas: ["Python", "Pandas", "SQLite ou DuckDB", "cron ou Makefile"],
     passosSimplificados: ["Fonte CSV ou API pública", "Regras de qualidade (nulos, duplicados)", "Tabelas agregadas ou star schema simples", "Script idempotente (reprocessável)", "Log ou relatório de linhas processadas"],
     entregavel: "Repositório com dados de exemplo e instrução para reexecutar.",
     comoPublicar: "GitHub",
-    sugestaoLinkedIn: "Montei um ETL reprodutível em Python com validação e carga em banco local — linguagem direta de quem quer entrar em dados.",
+    sugestaoLinkedIn: "Montei um ETL reprodutível em Python com validação e carga em banco local, linguagem direta de quem quer entrar em dados.",
     proximoProjeto: "Orquestrar com Airflow ou Dagster (cloud free tier)"
   },
   {
@@ -6377,12 +6377,12 @@ export const projetos = [
     nome: "Dashboard executivo de produto (Streamlit)",
     areaSlug: "dados" as string | null,
     nivel: "Básico",
-    objetivo: "Entregar painel interativo para ‘stakeholders’ — formato pedido para cases de dados em negócios e produto.",
+    objetivo: "Entregar painel interativo para ‘stakeholders’, formato pedido para cases de dados em negócios e produto.",
     ferramentas: ["Python", "Streamlit", "Pandas", "CSV ou API mock"],
     passosSimplificados: ["KPIs: retenção, conversão ou uso simulado", "Filtros por período e coorte simples", "Texto explicando o ‘so what’", "Deploy no Streamlit Community Cloud", "Código organizado em módulos"],
     entregavel: "URL pública do app com dados fictícios bem explicados.",
     comoPublicar: "Streamlit Community Cloud",
-    sugestaoLinkedIn: "Dashboard em Streamlit com narrativa de negócio — pratiquei traduzir número em decisão, skill que diferencia analistas.",
+    sugestaoLinkedIn: "Dashboard em Streamlit com narrativa de negócio. Pratiquei traduzir número em decisão, skill que diferencia analistas.",
     proximoProjeto: "Conectar a Postgres ou BigQuery de teste"
   },
   {
@@ -6390,12 +6390,12 @@ export const projetos = [
     nome: "PRD de feature com uso responsável de IA",
     areaSlug: "gestao" as string | null,
     nivel: "Intermediário",
-    objetivo: "Escrever documento que engenheiros e design consigam executar — formato padrão em PM para iniciativas com LLM ou recomendação.",
+    objetivo: "Escrever documento que engenheiros e design consigam executar, formato padrão em PM para iniciativas com LLM ou recomendação.",
     ferramentas: ["Notion, Google Docs ou template ADR+PRD"],
     passosSimplificados: ["Problema, público e métrica de sucesso", "Escopo in/out e riscos (privacidade, viés, custo de API)", "Fluxo da usuária e edge cases", "Requisitos funcionais e não funcionais", "Critérios de aceite testáveis"],
-    entregavel: "PRD de 3–5 páginas com anexo de riscos de IA.",
+    entregavel: "PRD de 3 a 5 páginas com anexo de riscos de IA.",
     comoPublicar: "Notion público ou PDF no portfólio",
-    sugestaoLinkedIn: "Redigi um PRD para feature com IA incluindo riscos, métricas e critérios de aceite — mostra maturidade de produto em 2025.",
+    sugestaoLinkedIn: "Redigi um PRD para feature com IA incluindo riscos, métricas e critérios de aceite. Mostra maturidade de produto em 2025.",
     proximoProjeto: "Discovery com entrevistas sintéticas e síntese"
   },
   {
@@ -6403,12 +6403,12 @@ export const projetos = [
     nome: "Automação de processo com n8n (ou Make)",
     areaSlug: "backend" as string | null,
     nivel: "Básico",
-    objetivo: "Integrar sistemas sem código pesado — competência crescente em operações, growth e squads enxutos.",
+    objetivo: "Integrar sistemas sem código pesado, competência crescente em operações, growth e squads enxutos.",
     ferramentas: ["n8n self-host ou cloud trial", "Webhooks", "Google Sheets ou Notion API"],
     passosSimplificados: ["Defina gatilho (form, webhook, planilha)", "Transforme e valide payload", "Ação final (Slack, e-mail, DB)", "Trate erro com retry/notificação", "Export JSON do workflow no repo"],
     entregavel: "README com diagrama do fluxo e print/video.",
     comoPublicar: "GitHub com cópia do workflow",
-    sugestaoLinkedIn: "Automatizei um processo ponta a ponta com n8n: webhooks, transformação e integração — habilidade pedida em ops e produto técnicos.",
+    sugestaoLinkedIn: "Automatizei um processo ponta a ponta com n8n: webhooks, transformação e integração, habilidade pedida em ops e produto técnicos.",
     proximoProjeto: "Filas e idempotência no mesmo fluxo"
   }
 ];
