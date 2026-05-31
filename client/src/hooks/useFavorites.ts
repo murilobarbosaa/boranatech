@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import posthog from "posthog-js";
+import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUrl } from "@/lib/api";
@@ -189,18 +190,23 @@ export function useFavorites() {
             void apiFetch("/", {
               method: "POST",
               body: JSON.stringify(favoriteToBookmark(optimistic)),
-            }).catch((err) => {
-              console.error("[useFavorites] queued favorite POST failed", err);
-              setFavorites((prev) =>
-                prev.filter((fav) => favoriteKey(fav) !== key),
-              );
-            });
-            posthog.capture("favorite_toggled", {
-              action: "added",
-              resource_type: optimistic.type,
-              resource_title: optimistic.title,
-              via: "auth_intent",
-            });
+            })
+              .then((res) => {
+                if (!res.ok) throw new Error("queued favorite insert failed");
+                posthog.capture("favorite_toggled", {
+                  action: "added",
+                  resource_type: optimistic.type,
+                  resource_title: optimistic.title,
+                  via: "auth_intent",
+                });
+              })
+              .catch((err) => {
+                console.error("[useFavorites] queued favorite POST failed", err);
+                setFavorites((prev) =>
+                  prev.filter((fav) => favoriteKey(fav) !== key),
+                );
+                toast.error("Não foi possível salvar nos favoritos. Tente novamente.");
+              });
           }
         }
 
@@ -399,10 +405,11 @@ async function maybeConsumeOAuthFavorite(): Promise<void> {
       subtitle_snapshot: fav.snapshot?.subtitle,
       url_snapshot: fav.snapshot?.url,
     };
-    await apiFetch("/", {
+    const res = await apiFetch("/", {
       method: "POST",
       body: JSON.stringify(bookmark),
     });
+    if (!res.ok) throw new Error("oauth favorite insert failed");
     posthog.capture("favorite_toggled", {
       action: "added",
       resource_type: fav.type,
@@ -411,5 +418,6 @@ async function maybeConsumeOAuthFavorite(): Promise<void> {
     });
   } catch (err) {
     console.error("[useFavorites] oauth favorite apply failed", err);
+    toast.error("Não foi possível salvar nos favoritos. Tente novamente.");
   }
 }
