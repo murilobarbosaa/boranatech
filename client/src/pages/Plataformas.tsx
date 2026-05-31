@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Plataformas Page
+  BORA NA TECH? (Plataformas Page)
   Style: Neo-Brutalism Suavizado
   - Compare study platforms
 */
@@ -69,7 +69,7 @@ export default function Plataformas() {
   return (
     <Layout>
       <SEO
-        title="Plataformas de Estudo — Onde aprender tecnologia online"
+        title="Plataformas de Estudo · Onde aprender tecnologia online"
         description="Compare plataformas de cursos online para aprender programação, dados, design, IA e tecnologia com mais clareza."
         keywords={["plataformas de cursos online", "onde estudar programação", "rocketseat alura udemy", "plataformas tecnologia"]}
         url="/plataformas"

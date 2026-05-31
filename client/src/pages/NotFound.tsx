@@ -13,7 +13,7 @@ export default function NotFound() {
           <h1 className="font-display font-bold text-6xl text-slate-900 mb-2">404</h1>
           <h2 className="font-display font-bold text-2xl text-slate-700 mb-3">Página não encontrada</h2>
           <p className="text-slate-950 mb-8">
-            Essa página não existe ou foi movida. Mas não se preocupe — tem muito conteúdo esperando por você!
+            Essa página não existe ou foi movida. Mas não se preocupe. Tem muito conteúdo esperando por você!
           </p>
           <Link
             href="/"

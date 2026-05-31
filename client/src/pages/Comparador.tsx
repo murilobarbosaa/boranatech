@@ -41,12 +41,12 @@ const comparisonGroups: Array<{
   {
     id: "cursos",
     label: "Cursos curtos e treinamentos",
-    hint: "Conteúdos online, gratuitos ou intensivos — não são diploma superior",
+    hint: "Conteúdos online, gratuitos ou intensivos, não são diploma superior",
   },
   {
     id: "areas",
     label: "Áreas de TI",
-    hint: "Front-end, dados, UX… — perfis de carreira, não instituições",
+    hint: "Front-end, dados, UX… perfis de carreira, não instituições",
   },
   {
     id: "plataformas",
@@ -729,7 +729,7 @@ export default function Comparador() {
   return (
     <Layout>
       <SEO
-        title="Comparador Tech — Compare faculdades, cursos, áreas e plataformas"
+        title="Comparador Tech · Compare faculdades, cursos, áreas e plataformas"
         description="Compare opções de estudo e carreira em tecnologia lado a lado, considerando custo, tempo, perfil, objetivo e riscos para iniciantes."
         keywords={["comparador tecnologia", "comparar cursos ti", "comparar faculdades tecnologia", "comparar áreas da ti"]}
         url="/comparador"
@@ -751,7 +751,7 @@ export default function Comparador() {
               <div>
                 <h2 className="font-display text-2xl font-black text-slate-950">Refine a comparação</h2>
                 <p className="mt-1 text-sm font-semibold text-slate-600">
-                  Primeiro escolha <strong className="text-slate-800">o mesmo tipo de caminho</strong> nas duas colunas — não dá para comparar, por exemplo, uma graduação com um curso curto online; são decisões diferentes.
+                  Primeiro escolha <strong className="text-slate-800">o mesmo tipo de caminho</strong> nas duas colunas. Não dá para comparar, por exemplo, uma graduação com um curso curto online; são decisões diferentes.
                 </p>
               </div>
               <button type="button" onClick={resetFilters} className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-emerald-50">
@@ -801,7 +801,7 @@ export default function Comparador() {
               <span>
                 {filteredItems.length >= 2
                   ? `${filteredItems.length} opções neste grupo batem com prioridade, pagamento e duração.`
-                  : `Com esses filtros há poucas opções — mostramos todas as ${itemsInKind.length} deste tipo para você ainda conseguir comparar duas.`}
+                  : `Com esses filtros há poucas opções. Mostramos todas as ${itemsInKind.length} deste tipo para você ainda conseguir comparar duas.`}
               </span>
             </div>
           </div>

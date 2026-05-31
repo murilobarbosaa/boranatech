@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Estágio e Carreira Page
+  BORA NA TECH? (Estágio e Carreira Page)
   Style: Neo-Brutalism Suavizado
 */
 
@@ -127,7 +127,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
   return (
     <Layout>
       <SEO
-        title="Estágio em TI — Vagas e oportunidades de início de carreira"
+        title="Estágio em TI · Vagas e oportunidades de início de carreira"
         description="Vagas, estágio, trainee e oportunidades para quem está começando em tecnologia, com orientação para o primeiro emprego em TI."
         keywords={["estágio ti", "vagas estágio tecnologia", "primeiro emprego programação", "trainee tecnologia", "vagas júnior"]}
         url="/estagio"

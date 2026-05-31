@@ -70,7 +70,7 @@ export default function RedefinirSenha() {
   if (recoveryState === "checking" || recoveryState === "redirect-change-password") {
     return (
       <Layout>
-        <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+        <SEO title="Redefinir senha · Bora na Tech?" url="/redefinir-senha" noindex />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8 text-center">
@@ -85,7 +85,7 @@ export default function RedefinirSenha() {
   if (recoveryState === "expired") {
     return (
       <Layout>
-        <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+        <SEO title="Redefinir senha · Bora na Tech?" url="/redefinir-senha" noindex />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
@@ -125,7 +125,7 @@ export default function RedefinirSenha() {
   if (recoveryState === "no-link") {
     return (
       <Layout>
-        <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+        <SEO title="Redefinir senha · Bora na Tech?" url="/redefinir-senha" noindex />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
@@ -161,7 +161,7 @@ export default function RedefinirSenha() {
 
   return (
     <Layout>
-      <SEO title="Redefinir senha — Bora na Tech?" url="/redefinir-senha" noindex />
+      <SEO title="Redefinir senha · Bora na Tech?" url="/redefinir-senha" noindex />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">

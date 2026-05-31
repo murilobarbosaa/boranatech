@@ -25,7 +25,7 @@ export default function Mentorias() {
             <h2 className="font-display text-2xl font-black text-slate-950">Estamos preparando algo especial</h2>
             <p className="mt-3 text-base font-medium leading-relaxed text-slate-700">
               Em breve você poderá se conectar a mentorias alinhadas ao jeito BORA NA TECH?: linguagem acessível, foco em quem está
-              entrando na área e conversas que realmente destravam o próximo passo — sem promessa vazia.
+              entrando na área e conversas que realmente destravam o próximo passo, sem promessa vazia.
             </p>
             <div className={cn("mt-6 rounded-2xl border-2 border-slate-200 p-5", ac.panelSoft)}>
               <div className="flex gap-3">
@@ -35,7 +35,7 @@ export default function Mentorias() {
                 <div>
                   <p className="font-display font-black text-slate-950">Quer ser avisada?</p>
                   <p className="mt-1 text-sm font-semibold text-slate-600">
-                    Fique de olho nas novidades da plataforma — avisaremos por aqui quando as mentorias abrirem.
+                    Fique de olho nas novidades da plataforma. Avisaremos por aqui quando as mentorias abrirem.
                   </p>
                 </div>
               </div>

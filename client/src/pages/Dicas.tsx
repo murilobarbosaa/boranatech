@@ -12,7 +12,7 @@ export default function Dicas() {
   return (
     <Layout>
       <SEO
-        title="Dicas de Carreira em TI — Conselhos práticos para sua jornada"
+        title="Dicas de Carreira em TI · Conselhos práticos para sua jornada"
         description="Dicas práticas para estudar tecnologia, evoluir em programação, montar portfólio e se preparar para oportunidades em TI."
         keywords={["dicas carreira ti", "como evoluir em ti", "dicas programação iniciantes", "conselhos tech"]}
         url="/dicas"

@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Layout Component
+  BORA NA TECH? (Layout Component)
   Wraps all pages with Header and Footer
 */
 

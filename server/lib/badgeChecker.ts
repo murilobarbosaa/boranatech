@@ -75,14 +75,14 @@ function calculateCurrentStreak(heatmap: HeatmapDay[]): number {
 
 async function gatherUserStats(userId: string): Promise<UserStats> {
   const [entriesAggResult, heatmapResult, progressResult, subscriptionResult] = await Promise.all([
-    // Totais de estudo (count + sum minutes) direto da tabela — get_study_stats não expõe esses números.
+    // Totais de estudo (count + sum minutes) direto da tabela, get_study_stats não expõe esses números.
     supabaseAdmin
       .from("study_entries")
       .select("minutes", { count: "exact" })
       .eq("user_id", userId),
-    // Heatmap completo (730 dias) — pra calcular streak histórico e atual.
+    // Heatmap completo (730 dias), pra calcular streak histórico e atual.
     supabaseAdmin.rpc("get_study_heatmap", { p_user_id: userId, p_days: 730 }),
-    // Progresso em trilhas — só linhas com status='completed' contam pra "step completado".
+    // Progresso em trilhas: só linhas com status='completed' contam pra "step completado".
     supabaseAdmin
       .from("user_roadmap_progress")
       .select("roadmap_id, status")

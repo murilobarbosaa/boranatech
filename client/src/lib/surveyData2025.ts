@@ -1,4 +1,4 @@
-// Stack Overflow Developer Survey 2025 — dados públicos
+// Stack Overflow Developer Survey 2025: dados públicos
 // Fonte: https://survey.stackoverflow.co/2025/technology/
 //
 // Centraliza todos os percentuais e textos vindos do survey num único arquivo

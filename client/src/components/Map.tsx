@@ -86,8 +86,8 @@ declare global {
   }
 }
 
-const API_KEY = ""; // removido — resíduo Manus
-const FORGE_BASE_URL = ""; // removido — resíduo Manus
+const API_KEY = ""; // removido, resíduo Manus
+const FORGE_BASE_URL = ""; // removido, resíduo Manus
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 
 function loadMapScript() {

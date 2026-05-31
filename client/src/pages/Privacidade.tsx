@@ -8,7 +8,7 @@ export default function Privacidade() {
   return (
     <>
       <SEO
-        title="Política de Privacidade — Bora na Tech?"
+        title="Política de Privacidade · Bora na Tech?"
         description="Política de privacidade do Bora na Tech?, com informações sobre dados pessoais, cookies, LGPD, compartilhamento e direitos dos titulares."
         keywords={["política de privacidade bora na tech", "lgpd", "dados pessoais", "cookies", "privacidade tecnologia"]}
         url="/privacidade"

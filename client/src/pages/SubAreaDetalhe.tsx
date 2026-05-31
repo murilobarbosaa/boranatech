@@ -427,7 +427,7 @@ export default function SubAreaDetalhe() {
   return (
     <Layout>
       <SEO
-        title={`${subarea.nome} — ${parentArea.nome} · Bora na Tech?`}
+        title={`${subarea.nome} · ${parentArea.nome} · Bora na Tech?`}
         description={
           subarea.descricaoCurta ??
           `Subárea de ${parentArea.nome}: ${subarea.nome}.`

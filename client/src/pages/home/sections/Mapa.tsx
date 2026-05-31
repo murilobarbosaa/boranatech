@@ -273,7 +273,7 @@ function OpenContent({ node }: { node: MapNode }) {
 }
 
 // =========================================
-// PANEL (Desktop) — wrapper que muda largura conforme estado
+// PANEL (Desktop): wrapper que muda largura conforme estado
 // =========================================
 
 function Panel({
@@ -336,7 +336,7 @@ function Panel({
 }
 
 // =========================================
-// PANEL MOBILE — acordeão vertical com expand/collapse de altura
+// PANEL MOBILE: acordeão vertical com expand/collapse de altura
 // =========================================
 
 function PanelMobile({
@@ -430,7 +430,7 @@ function PanelMobile({
 }
 
 // =========================================
-// BACKGROUND DECORATIVO — pontos + 4 shapes
+// BACKGROUND DECORATIVO: pontos + 4 shapes
 // =========================================
 
 function BackgroundDecoration() {
@@ -486,7 +486,7 @@ function BackgroundDecoration() {
 export default function Mapa() {
   // clickedKey: painel que está aberto por click (estado "âncora")
   // hoveredKey: painel que está em hover; quando ≠ null, TODOS entram
-  // em estado preview (regra do design — 25% cada).
+  // em estado preview (regra do design, 25% cada).
   const [clickedKey, setClickedKey] = useState<NodeKey>("descobrir");
   const [hoveredKey, setHoveredKey] = useState<NodeKey | null>(null);
 
@@ -516,7 +516,7 @@ export default function Mapa() {
     };
   }, []);
 
-  // Estado de cada painel — nova lógica "hover localizado":
+  // Estado de cada painel: nova lógica "hover localizado":
   // - hover no próprio aberto → ignora, estado padrão
   // - hover em outro painel → apenas esse vira preview, aberto continua
   //   aberto (encolhe um pouco), demais ficam colapsados
@@ -590,7 +590,7 @@ export default function Mapa() {
           </motion.p>
         </div>
 
-        {/* Acordeão Desktop — 4 painéis horizontais com altura fixa */}
+        {/* Acordeão Desktop: 4 painéis horizontais com altura fixa */}
         <div className="mt-16 hidden h-[480px] gap-2 md:flex">
           {NODES.map((node, index) => {
             const state = getPanelState(node.key);
@@ -609,7 +609,7 @@ export default function Mapa() {
           })}
         </div>
 
-        {/* Acordeão Mobile — vertical, sem estado preview */}
+        {/* Acordeão Mobile: vertical, sem estado preview */}
         <div className="mt-16 space-y-3 md:hidden">
           {NODES.map((node, index) => (
             <PanelMobile

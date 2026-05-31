@@ -150,7 +150,7 @@ export default function CheckoutSucesso() {
 
   return (
     <Layout>
-      <SEO title="Pagamento confirmado — Bora na Tech? Pro" url="/planos/sucesso" noindex />
+      <SEO title="Pagamento confirmado · Bora na Tech? Pro" url="/planos/sucesso" noindex />
       <section className="relative overflow-hidden bg-[radial-gradient(125%_125%_at_50%_10%,#fdfbf7_0%,#faf8f4_55%,#f6f2ea_100%)] py-16">
         {/* Camada decorativa: glow + blobs atras do card. Nao captura cliques,
             fica atras do conteudo (z-0), e flutua reusando .animate-gentle-float

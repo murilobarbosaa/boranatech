@@ -7,7 +7,7 @@ const router = Router();
 // Last-known-good em memória. Política: nunca devolver 0 inventado quando a
 // query degrada (count:null sem error, ou throw). Em degradação, serve o último
 // número REAL bem-sucedido. Sem persistência: cobre o soluço transiente do
-// Supabase sem adicionar tabela/escrita. Reinício do processo limpa o lkg —
+// Supabase sem adicionar tabela/escrita. Reinício do processo limpa o lkg,
 // próximo request bem-sucedido repopula.
 const FRESH_TTL_MS = 5 * 60 * 1000;
 let lastKnownGood: number | null = null;

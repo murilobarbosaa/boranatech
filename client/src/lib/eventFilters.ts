@@ -13,7 +13,7 @@ export const ESTADO_UF_OPTS = estadosBrasil;
 
 export function rotuloEstadoEvento(estado: string): string {
   if (estado === EVENTO_UF_NACIONAL) {
-    return "Brasil — nacional ou itinerante";
+    return "Brasil: nacional ou itinerante";
   }
   const u = estadosBrasil.find((x) => x.sigla === estado);
   return u ? u.nome : estado;

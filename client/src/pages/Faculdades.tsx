@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Faculdades Page
+  BORA NA TECH? (Faculdades Page)
   Style: Neo-Brutalism Suavizado
 */
 
@@ -57,7 +57,7 @@ export default function Faculdades() {
   return (
     <Layout>
       <SEO
-        title="Faculdades de TI — Cursos superiores em tecnologia no Brasil"
+        title="Faculdades de TI · Cursos superiores em tecnologia no Brasil"
         description="Conheça cursos superiores em tecnologia no Brasil, diferenças entre formações e caminhos para iniciar uma carreira em TI."
         keywords={["faculdade de ti", "graduação tecnologia", "engenharia de software", "ciência da computação", "análise de sistemas"]}
         url="/faculdades"
@@ -261,7 +261,7 @@ export default function Faculdades() {
                 { nome: "ProUni", desc: "Bolsas em faculdades privadas via ENEM", link: "https://prouni.mec.gov.br" },
                 { nome: "FIES", desc: "Financiamento estudantil para faculdades privadas", link: "https://fies.mec.gov.br" },
                 { nome: "SISU", desc: "Acesso a universidades federais via ENEM", link: "https://sisu.mec.gov.br" },
-                { nome: "EAD Gratuito", desc: "UAB — Universidade Aberta do Brasil", link: "https://uab.capes.gov.br" },
+                { nome: "EAD Gratuito", desc: "UAB: Universidade Aberta do Brasil", link: "https://uab.capes.gov.br" },
               ].map((item) => (
                 <a key={item.nome} href={item.link} target="_blank" rel="noopener noreferrer" className="block p-3 bg-white border-2 border-slate-200 rounded-lg hover:border-violet-400 transition-colors">
                   <p className="font-semibold text-sm text-slate-900 mb-1">{item.nome}</p>
