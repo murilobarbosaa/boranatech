@@ -34,6 +34,10 @@ const TAB_ORDER: FavoriteType[] = [
   "dica",
 ];
 
+const OTHERS_TAB = "__outros__";
+type TabKey = FavoriteType | typeof OTHERS_TAB;
+const KNOWN_TYPES = new Set<string>(TAB_ORDER);
+
 function favKey(item: Pick<FavoriteItem, "type" | "id">) {
   return `${item.type}:${item.id}`;
 }
@@ -41,8 +45,8 @@ function favKey(item: Pick<FavoriteItem, "type" | "id">) {
 export default function PerfilFavoritos() {
   const [, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
-  const { favorites, loading, toggleFavorite } = useFavorites();
-  const [activeTab, setActiveTab] = useState<FavoriteType | null>(null);
+  const { favorites, loading, toggleFavorite, refresh } = useFavorites();
+  const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,15 +55,26 @@ export default function PerfilFavoritos() {
     }
   }, [authLoading, user, setLocation]);
 
+  useEffect(() => {
+    void refresh().catch(() => {});
+  }, [refresh]);
+
   const visibleFavorites = useMemo(
     () => favorites.filter((f) => Boolean(f.title?.trim())),
     [favorites],
   );
 
-  const tabsWithData = useMemo(
-    () => TAB_ORDER.filter((type) => visibleFavorites.some((f) => f.type === type)),
+  const otherFavorites = useMemo(
+    () => visibleFavorites.filter((f) => !KNOWN_TYPES.has(f.type)),
     [visibleFavorites],
   );
+
+  const tabsWithData = useMemo<TabKey[]>(() => {
+    const known = TAB_ORDER.filter((type) =>
+      visibleFavorites.some((f) => f.type === type),
+    );
+    return otherFavorites.length > 0 ? [...known, OTHERS_TAB] : known;
+  }, [visibleFavorites, otherFavorites]);
 
   useEffect(() => {
     if (tabsWithData.length === 0) {
@@ -71,10 +86,11 @@ export default function PerfilFavoritos() {
     }
   }, [tabsWithData, activeTab]);
 
-  const itemsInTab = useMemo(
-    () => (activeTab ? visibleFavorites.filter((f) => f.type === activeTab) : []),
-    [visibleFavorites, activeTab],
-  );
+  const itemsInTab = useMemo(() => {
+    if (!activeTab) return [];
+    if (activeTab === OTHERS_TAB) return otherFavorites;
+    return visibleFavorites.filter((f) => f.type === activeTab);
+  }, [visibleFavorites, otherFavorites, activeTab]);
 
   async function handleRemove(item: FavoriteItem) {
     const key = favKey(item);
@@ -161,17 +177,20 @@ export default function PerfilFavoritos() {
                 aria-label="Filtrar favoritos por tipo"
                 className="flex flex-wrap gap-2"
               >
-                {tabsWithData.map((type) => {
-                  const meta = getFavoriteTypeMeta(type);
-                  const count = visibleFavorites.filter((f) => f.type === type).length;
-                  const isActive = activeTab === type;
+                {tabsWithData.map((tab) => {
+                  const meta = getFavoriteTypeMeta(tab);
+                  const count =
+                    tab === OTHERS_TAB
+                      ? otherFavorites.length
+                      : visibleFavorites.filter((f) => f.type === tab).length;
+                  const isActive = activeTab === tab;
                   return (
                     <button
-                      key={type}
+                      key={tab}
                       type="button"
                       role="tab"
                       aria-selected={isActive}
-                      onClick={() => setActiveTab(type)}
+                      onClick={() => setActiveTab(tab)}
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-sm font-black uppercase tracking-wide transition-all",
                         isActive
