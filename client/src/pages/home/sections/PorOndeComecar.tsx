@@ -1,7 +1,18 @@
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowRight, Sparkles, Map, Code2, Clock, ListChecks, Target } from "lucide-react";
-import { LEVEL_QUESTION_COUNT, QUIZ_ESTIMATED_MINUTES } from "@/lib/platformData";
+import {
+  ArrowRight,
+  Sparkles,
+  Map,
+  Code2,
+  Clock,
+  ListChecks,
+  Target,
+} from "lucide-react";
+import {
+  LEVEL_QUESTION_COUNT,
+  QUIZ_ESTIMATED_MINUTES,
+} from "@/lib/platformData";
 
 // =========================================
 // SEÇÃO PRINCIPAL
@@ -63,7 +74,11 @@ export default function PorOndeComecar() {
                 {/* Ícone gigante */}
                 <div className="shrink-0">
                   <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-2 border-slate-950 bg-violet-100 shadow-[4px_4px_0_#0f172a]">
-                    <Sparkles size={40} className="text-violet-700" strokeWidth={2.5} />
+                    <Sparkles
+                      size={40}
+                      className="text-violet-700"
+                      strokeWidth={2.5}
+                    />
                   </div>
                 </div>
 
@@ -76,14 +91,18 @@ export default function PorOndeComecar() {
                     Faça o Quiz de Carreira
                   </h3>
                   <p className="mt-3 text-base md:text-lg font-medium text-slate-700 leading-relaxed">
-                    Em {QUIZ_ESTIMATED_MINUTES} minutos, a gente descobre seu perfil e te diz exatamente qual área da TI combina com você.
+                    Em {QUIZ_ESTIMATED_MINUTES} minutos, a gente descobre seu
+                    perfil e te diz exatamente qual área da TI combina com você.
                   </p>
 
                   {/* CTA + Microinfos */}
                   <div className="mt-6 flex flex-col gap-4 md:flex-row md:items-center">
                     <div className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-violet-700 px-6 py-3 font-display font-black text-white shadow-[4px_4px_0_#0f172a] transition-all group-hover:bg-violet-800 group-hover:shadow-[6px_6px_0_#0f172a]">
                       <span>Descobrir meu perfil</span>
-                      <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+                      <ArrowRight
+                        size={20}
+                        className="transition-transform group-hover:translate-x-1"
+                      />
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-slate-600">
@@ -128,7 +147,9 @@ export default function PorOndeComecar() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
           <SecondaryCard
             href="/roadmaps"
-            icon={<Map size={32} className="text-violet-700" strokeWidth={2.5} />}
+            icon={
+              <Map size={32} className="text-violet-700" strokeWidth={2.5} />
+            }
             title="Já sei minha área"
             description="Vai direto pro roadmap certo pra você."
             linkText="Ver Roadmaps"
@@ -136,7 +157,9 @@ export default function PorOndeComecar() {
           />
           <SecondaryCard
             href="/projetos"
-            icon={<Code2 size={32} className="text-violet-700" strokeWidth={2.5} />}
+            icon={
+              <Code2 size={32} className="text-violet-700" strokeWidth={2.5} />
+            }
             title="Já tô estudando"
             description="Bora aplicar conhecimento em projetos práticos."
             linkText="Ver Projetos"
@@ -191,7 +214,10 @@ function SecondaryCard({
 
           {/* Link */}
           <div className="mt-5 inline-flex items-center gap-2 font-display text-sm font-black text-violet-700">
-            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            <ArrowRight
+              size={16}
+              className="transition-transform group-hover:translate-x-1"
+            />
             <span className="underline-offset-4 group-hover:underline">
               {linkText}
             </span>

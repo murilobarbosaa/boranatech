@@ -26,7 +26,9 @@ export function youtubeEmbedUrl(input: string): string | null {
     return `https://www.youtube-nocookie.com/embed/${trimmed}`;
   }
   const match = trimmed.match(
-    /(?:youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/watch\?(?:[^#]*&)?v=)([\w-]{11})/
+    /(?:youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/watch\?(?:[^#]*&)?v=)([\w-]{11})/,
   );
-  return match?.[1] ? `https://www.youtube-nocookie.com/embed/${match[1]}` : null;
+  return match?.[1]
+    ? `https://www.youtube-nocookie.com/embed/${match[1]}`
+    : null;
 }

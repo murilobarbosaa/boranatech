@@ -35,14 +35,20 @@ declare global {
 }
 
 async function isAdminUser(userId: string) {
-  const { data, error } = await supabaseAdmin.rpc("is_user_admin", { p_user_id: userId });
+  const { data, error } = await supabaseAdmin.rpc("is_user_admin", {
+    p_user_id: userId,
+  });
   return !error && data === true;
 }
 
 function isLocalDevelopmentRequest(req: AuthRequest) {
   if (env.isProd) return false;
 
-  const host = (req.hostname || firstHeaderValue(req.headers.host) || "").toLowerCase();
+  const host = (
+    req.hostname ||
+    firstHeaderValue(req.headers.host) ||
+    ""
+  ).toLowerCase();
   const hostname = host.split(":")[0];
   return (
     hostname === "localhost" ||
@@ -56,7 +62,11 @@ function isLocalDevelopmentRequest(req: AuthRequest) {
   );
 }
 
-export async function validateSupabaseJwt(req: AuthRequest, _res: Response, next: MiddlewareNext) {
+export async function validateSupabaseJwt(
+  req: AuthRequest,
+  _res: Response,
+  next: MiddlewareNext,
+) {
   try {
     const authHeader = firstHeaderValue(req.headers.authorization);
     if (!authHeader?.startsWith("Bearer ")) {
@@ -100,7 +110,11 @@ export async function validateSupabaseJwt(req: AuthRequest, _res: Response, next
   }
 }
 
-export function requireAuth(req: AuthRequest, _res: Response, next: MiddlewareNext) {
+export function requireAuth(
+  req: AuthRequest,
+  _res: Response,
+  next: MiddlewareNext,
+) {
   if (!req.user) {
     return next(createError(401, "unauthorized", "Autenticação necessária."));
   }
@@ -108,7 +122,11 @@ export function requireAuth(req: AuthRequest, _res: Response, next: MiddlewareNe
   next();
 }
 
-export async function checkProStatus(req: AuthRequest, _res: Response, next: MiddlewareNext) {
+export async function checkProStatus(
+  req: AuthRequest,
+  _res: Response,
+  next: MiddlewareNext,
+) {
   if (isLocalDevelopmentRequest(req)) {
     req.isPro = true;
     return next();
@@ -120,10 +138,12 @@ export async function checkProStatus(req: AuthRequest, _res: Response, next: Mid
   }
 
   try {
-    const [{ data: proData, error: proError }, adminAccess] = await Promise.all([
-      supabaseAdmin.rpc("is_user_pro", { p_user_id: req.user.id }),
-      isAdminUser(req.user.id),
-    ]);
+    const [{ data: proData, error: proError }, adminAccess] = await Promise.all(
+      [
+        supabaseAdmin.rpc("is_user_pro", { p_user_id: req.user.id }),
+        isAdminUser(req.user.id),
+      ],
+    );
     req.isPro = (!proError && proData === true) || adminAccess;
   } catch {
     req.isPro = false;
@@ -132,7 +152,11 @@ export async function checkProStatus(req: AuthRequest, _res: Response, next: Mid
   next();
 }
 
-export function requirePro(req: AuthRequest, _res: Response, next: MiddlewareNext) {
+export function requirePro(
+  req: AuthRequest,
+  _res: Response,
+  next: MiddlewareNext,
+) {
   if (!req.user) {
     return next(createError(401, "unauthorized", "Autenticação necessária."));
   }
@@ -143,13 +167,23 @@ export function requirePro(req: AuthRequest, _res: Response, next: MiddlewareNex
   }
 
   if (!req.isPro) {
-    return next(createError(403, "forbidden", "Plano Pro necessário para acessar esta funcionalidade."));
+    return next(
+      createError(
+        403,
+        "forbidden",
+        "Plano Pro necessário para acessar esta funcionalidade.",
+      ),
+    );
   }
 
   next();
 }
 
-export async function requireAdmin(req: AuthRequest, _res: Response, next: MiddlewareNext) {
+export async function requireAdmin(
+  req: AuthRequest,
+  _res: Response,
+  next: MiddlewareNext,
+) {
   if (!req.user) {
     return next(createError(401, "unauthorized", "Autenticação necessária."));
   }
@@ -158,7 +192,9 @@ export async function requireAdmin(req: AuthRequest, _res: Response, next: Middl
     const adminAccess = await isAdminUser(req.user.id);
 
     if (!adminAccess) {
-      return next(createError(403, "forbidden", "Acesso administrativo necessário."));
+      return next(
+        createError(403, "forbidden", "Acesso administrativo necessário."),
+      );
     }
 
     next();

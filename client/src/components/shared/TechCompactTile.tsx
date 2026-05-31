@@ -17,11 +17,21 @@ export type TechCompactTileProps = {
 };
 
 /** Azulejo compacto: logo pequeno + nome completo (várias linhas se precisar). */
-export default function TechCompactTile({ technology, style, onNavigate, fromArea, accent = "teal" }: TechCompactTileProps) {
+export default function TechCompactTile({
+  technology,
+  style,
+  onNavigate,
+  fromArea,
+  accent = "teal",
+}: TechCompactTileProps) {
   const ac = getPageAccentUi(accent);
   return (
     <Link
-      href={fromArea ? `/tecnologias/${technology.slug}?from=${fromArea}` : `/tecnologias/${technology.slug}`}
+      href={
+        fromArea
+          ? `/tecnologias/${technology.slug}?from=${fromArea}`
+          : `/tecnologias/${technology.slug}`
+      }
       title={`${technology.name} · ${technology.category}, nível ${technology.difficulty}`}
       style={style}
       onClick={() => onNavigate?.()}

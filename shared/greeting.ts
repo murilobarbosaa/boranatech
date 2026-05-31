@@ -6,6 +6,9 @@ export function greet(gender: Gender | null | undefined): string {
   return "Olá";
 }
 
-export function greetWithName(gender: Gender | null | undefined, name: string): string {
+export function greetWithName(
+  gender: Gender | null | undefined,
+  name: string,
+): string {
   return `${greet(gender)}, ${name}!`;
 }

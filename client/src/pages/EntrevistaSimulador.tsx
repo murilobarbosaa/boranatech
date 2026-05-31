@@ -8,7 +8,11 @@ export default function EntrevistaSimulador() {
   const { isPro } = useSubscription();
   return (
     <Layout>
-      <PageHero title="Simulador de Entrevista com IA" subtitle="Pratique uma entrevista e receba um relatório com pontos fortes e melhorias." accent="blue" />
+      <PageHero
+        title="Simulador de Entrevista com IA"
+        subtitle="Pratique uma entrevista e receba um relatório com pontos fortes e melhorias."
+        accent="blue"
+      />
       <section className="container py-12">
         {!isPro ? (
           <ProGate description="Simule entrevistas técnicas ou comportamentais com perguntas em sequência, feedback por resposta, nota geral e sugestões específicas." />
@@ -20,10 +24,36 @@ export default function EntrevistaSimulador() {
               title="Configurar entrevista"
               description="Escolha área, nível e tipo. A IA retornará perguntas e feedback em formato de conversa."
               fields={[
-                { name: "area", label: "Área", type: "select", options: ["Front-end", "Back-end", "Dados", "UX/UI", "DevOps"] },
-                { name: "level", label: "Nível", type: "select", options: ["Estágio", "Trainee", "Júnior", "Pleno"] },
-                { name: "kind", label: "Tipo", type: "select", options: ["Técnica", "Comportamental"] },
-                { name: "job", label: "Descrição da vaga (opcional)", type: "textarea", placeholder: "Cole a vaga aqui" },
+                {
+                  name: "area",
+                  label: "Área",
+                  type: "select",
+                  options: [
+                    "Front-end",
+                    "Back-end",
+                    "Dados",
+                    "UX/UI",
+                    "DevOps",
+                  ],
+                },
+                {
+                  name: "level",
+                  label: "Nível",
+                  type: "select",
+                  options: ["Estágio", "Trainee", "Júnior", "Pleno"],
+                },
+                {
+                  name: "kind",
+                  label: "Tipo",
+                  type: "select",
+                  options: ["Técnica", "Comportamental"],
+                },
+                {
+                  name: "job",
+                  label: "Descrição da vaga (opcional)",
+                  type: "textarea",
+                  placeholder: "Cole a vaga aqui",
+                },
               ]}
               buttonLabel="Iniciar simulação"
             />

@@ -5,7 +5,12 @@ export interface AppError extends Error {
   code?: string;
 }
 
-export function errorHandler(err: AppError, req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(
+  err: AppError,
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+) {
   const statusCode = err.statusCode || 500;
   const code = err.code || "internal_error";
   const message = err.message || "Erro interno do servidor.";
@@ -22,7 +27,11 @@ export function errorHandler(err: AppError, req: Request, res: Response, _next: 
   });
 }
 
-export function createError(statusCode: number, code: string, message: string): AppError {
+export function createError(
+  statusCode: number,
+  code: string,
+  message: string,
+): AppError {
   const err: AppError = new Error(message);
   err.statusCode = statusCode;
   err.code = code;

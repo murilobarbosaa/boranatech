@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
-type CancelReasonCode = "expensive" | "unused" | "missing_feature" | "paused" | "other";
+type CancelReasonCode =
+  | "expensive"
+  | "unused"
+  | "missing_feature"
+  | "paused"
+  | "other";
 
 interface CancelSubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (data: { reason_code?: CancelReasonCode; reason_text?: string }) => Promise<void>;
+  onConfirm: (data: {
+    reason_code?: CancelReasonCode;
+    reason_text?: string;
+  }) => Promise<void>;
   periodEnd?: string | null;
   isLoading?: boolean;
 }
@@ -86,20 +94,28 @@ export function CancelSubscriptionModal({
 
         {step === "retain" ? (
           <div className="p-6 md:p-8">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Cancelamento</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+              Cancelamento
+            </p>
             <h2 className="font-display mt-2 text-3xl font-black text-[#1a1a1a] md:text-4xl">
               Espera, antes de cancelar...
             </h2>
             <p className="mt-3 text-sm font-semibold text-slate-600">
-              Você vai perder acesso ao Pro {formattedDate ? `em ${formattedDate}` : "no fim do período"}.
-              Tem certeza? Olha o que você ainda tem disponível:
+              Você vai perder acesso ao Pro{" "}
+              {formattedDate ? `em ${formattedDate}` : "no fim do período"}. Tem
+              certeza? Olha o que você ainda tem disponível:
             </p>
 
             <ul className="mt-6 space-y-3">
               {BENEFITS.map((benefit) => (
-                <li key={benefit.text} className="flex items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-3">
+                <li
+                  key={benefit.text}
+                  className="flex items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-3"
+                >
                   <span className="text-xl leading-none">{benefit.icon}</span>
-                  <span className="text-sm font-bold text-[#1a1a1a]">{benefit.text}</span>
+                  <span className="text-sm font-bold text-[#1a1a1a]">
+                    {benefit.text}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -154,10 +170,14 @@ export function CancelSubscriptionModal({
                       name="reason"
                       value={reason.code}
                       checked={selected}
-                      onChange={(event) => setReasonCode(event.target.value as CancelReasonCode)}
+                      onChange={(event) =>
+                        setReasonCode(event.target.value as CancelReasonCode)
+                      }
                       className="h-4 w-4 accent-[#1a1a1a]"
                     />
-                    <span className="text-sm font-bold text-[#1a1a1a]">{reason.label}</span>
+                    <span className="text-sm font-bold text-[#1a1a1a]">
+                      {reason.label}
+                    </span>
                   </label>
                 );
               })}

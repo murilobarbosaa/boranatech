@@ -2,7 +2,13 @@ import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
 
-import { areasTI, cursosGratuitos, plataformas, projetos, roadmaps } from "../../client/src/lib/data";
+import {
+  areasTI,
+  cursosGratuitos,
+  plataformas,
+  projetos,
+  roadmaps,
+} from "../../client/src/lib/data";
 import { technologies } from "../../client/src/lib/technologyData";
 
 function loadEnvFile() {
@@ -26,7 +32,9 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !serviceRoleKey) {
-  console.error("[seed] SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios.");
+  console.error(
+    "[seed] SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios.",
+  );
   process.exit(1);
 }
 
@@ -62,7 +70,10 @@ async function seedAreas() {
         skills: area.habilidades,
         tools: area.ferramentas,
         roles: area.cargos,
-        average_salary: { label: area.faixaSalarial, difficulty: area.dificuldade },
+        average_salary: {
+          label: area.faixaSalarial,
+          difficulty: area.dificuldade,
+        },
         initial_roadmap: area.roadmapInicial,
         projects: area.projetos,
         free_courses: area.cursosGratuitos,
@@ -74,7 +85,8 @@ async function seedAreas() {
       { onConflict: "slug" },
     );
 
-    if (error) logSeedError(`[seed] Erro ao inserir área ${area.slug}:`, error.message);
+    if (error)
+      logSeedError(`[seed] Erro ao inserir área ${area.slug}:`, error.message);
     else console.log(`[seed] Área inserida: ${area.slug}`);
   }
 }
@@ -98,7 +110,9 @@ async function seedTechnologies() {
         difficulty: technology.difficulty,
         beginner_friendly_score: technology.difficultyScore,
         salary_context: { label: technology.salaryRange },
-        resources: technology.courses.map((course: string) => ({ title: course })),
+        resources: technology.courses.map((course: string) => ({
+          title: course,
+        })),
         tools: technology.tools,
         companies_using: technology.companies,
         is_published: true,
@@ -107,7 +121,11 @@ async function seedTechnologies() {
       { onConflict: "slug" },
     );
 
-    if (error) logSeedError(`[seed] Erro ao inserir tecnologia ${technology.slug}:`, error.message);
+    if (error)
+      logSeedError(
+        `[seed] Erro ao inserir tecnologia ${technology.slug}:`,
+        error.message,
+      );
     else console.log(`[seed] Tecnologia inserida: ${technology.slug}`);
   }
 }
@@ -127,7 +145,9 @@ async function seedCourses() {
         price_label: course.preco || course.tipo || "Gratuito",
         is_free: (course.tipo || "Gratuito") !== "Pago",
         workload_hours: parseInt(course.duracao, 10) || null,
-        certificate: course.motivoIndicacao?.toLowerCase().includes("certificado") || false,
+        certificate:
+          course.motivoIndicacao?.toLowerCase().includes("certificado") ||
+          false,
         description: course.descricao,
         tags: course.oQueAprende,
         language: course.idioma,
@@ -136,7 +156,8 @@ async function seedCourses() {
       { onConflict: "slug" },
     );
 
-    if (error) logSeedError(`[seed] Erro ao inserir curso ${course.id}:`, error.message);
+    if (error)
+      logSeedError(`[seed] Erro ao inserir curso ${course.id}:`, error.message);
     else console.log(`[seed] Curso inserido: ${course.id}`);
   }
 }
@@ -155,13 +176,19 @@ async function seedPlatforms() {
         strengths: platform.pontosFortes,
         limitations: platform.limitacoes,
         best_for: platform.areasFortes,
-        tags: [platform.tipo, platform.idioma, platform.nivelIdeal].filter(Boolean),
+        tags: [platform.tipo, platform.idioma, platform.nivelIdeal].filter(
+          Boolean,
+        ),
         is_published: true,
       },
       { onConflict: "slug" },
     );
 
-    if (error) logSeedError(`[seed] Erro ao inserir plataforma ${platform.id}:`, error.message);
+    if (error)
+      logSeedError(
+        `[seed] Erro ao inserir plataforma ${platform.id}:`,
+        error.message,
+      );
     else console.log(`[seed] Plataforma inserida: ${platform.id}`);
   }
 }
@@ -182,13 +209,19 @@ async function seedProjects() {
         simplified_steps: project.passosSimplificados,
         portfolio_tips: `${project.entregavel} Publicar em: ${project.comoPublicar}`,
         linkedin_suggestion: project.sugestaoLinkedIn,
-        tags: project.areaSlug ? [project.areaSlug, project.nivel] : [project.nivel],
+        tags: project.areaSlug
+          ? [project.areaSlug, project.nivel]
+          : [project.nivel],
         is_published: true,
       },
       { onConflict: "slug" },
     );
 
-    if (error) logSeedError(`[seed] Erro ao inserir projeto ${project.id}:`, error.message);
+    if (error)
+      logSeedError(
+        `[seed] Erro ao inserir projeto ${project.id}:`,
+        error.message,
+      );
     else console.log(`[seed] Projeto inserido: ${project.id}`);
   }
 }
@@ -207,7 +240,9 @@ async function seedRoadmaps() {
           description: roadmap.descricao,
           area_slug: roadmap.areaSlug,
           level: roadmap.nivel,
-          estimated_duration_weeks: parseInt(roadmap.duracaoDias, 10) ? Math.ceil(parseInt(roadmap.duracaoDias, 10) / 7) : null,
+          estimated_duration_weeks: parseInt(roadmap.duracaoDias, 10)
+            ? Math.ceil(parseInt(roadmap.duracaoDias, 10) / 7)
+            : null,
           is_pro: index > 0,
           is_published: true,
           sort_order: index + 1,
@@ -218,25 +253,39 @@ async function seedRoadmaps() {
       .single();
 
     if (error || !data) {
-      logSeedError(`[seed] Erro ao inserir roadmap ${roadmap.id}:`, error?.message);
+      logSeedError(
+        `[seed] Erro ao inserir roadmap ${roadmap.id}:`,
+        error?.message,
+      );
       continue;
     }
 
     await supabase.from("roadmap_steps").delete().eq("roadmap_id", data.id);
 
     const { error: stepsError } = await supabase.from("roadmap_steps").insert(
-      roadmap.etapas.map((step: { numero: number; titulo: string; descricao: string; tempo: string }) => ({
-        roadmap_id: data.id,
-        title: step.titulo,
-        description: step.descricao,
-        order_index: step.numero,
-        resources: [],
-        deliverable: step.tempo,
-        is_pro: false,
-      })),
+      roadmap.etapas.map(
+        (step: {
+          numero: number;
+          titulo: string;
+          descricao: string;
+          tempo: string;
+        }) => ({
+          roadmap_id: data.id,
+          title: step.titulo,
+          description: step.descricao,
+          order_index: step.numero,
+          resources: [],
+          deliverable: step.tempo,
+          is_pro: false,
+        }),
+      ),
     );
 
-    if (stepsError) logSeedError(`[seed] Erro ao inserir etapas do roadmap ${roadmap.id}:`, stepsError.message);
+    if (stepsError)
+      logSeedError(
+        `[seed] Erro ao inserir etapas do roadmap ${roadmap.id}:`,
+        stepsError.message,
+      );
     else console.log(`[seed] Roadmap inserido: ${roadmap.id}`);
   }
 }
@@ -250,7 +299,9 @@ async function main() {
   await seedProjects();
   await seedRoadmaps();
   if (seedErrors > 0) {
-    console.error(`[seed] Seed finalizado com ${seedErrors} erro(s). Verifique se as tabelas foram criadas no Supabase.`);
+    console.error(
+      `[seed] Seed finalizado com ${seedErrors} erro(s). Verifique se as tabelas foram criadas no Supabase.`,
+    );
     process.exit(1);
   }
   console.log("[seed] Seed concluído.");

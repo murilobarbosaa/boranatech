@@ -119,10 +119,16 @@ export default function Simulador() {
   const [applications, setApplications] = useState("Ainda não aplico");
   const [english, setEnglish] = useState("Básico");
   const [networking, setNetworking] = useState("Baixo");
-  const [projectCadence, setProjectCadence] = useState("Ainda estudo sem criar projetos");
-  const [jobMaterials, setJobMaterials] = useState("Ainda não tenho currículo nem LinkedIn prontos");
+  const [projectCadence, setProjectCadence] = useState(
+    "Ainda estudo sem criar projetos",
+  );
+  const [jobMaterials, setJobMaterials] = useState(
+    "Ainda não tenho currículo nem LinkedIn prontos",
+  );
   const [interview, setInterview] = useState("Nunca treinei entrevista");
-  const [consistency, setConsistency] = useState("Tenho dificuldade de manter rotina");
+  const [consistency, setConsistency] = useState(
+    "Tenho dificuldade de manter rotina",
+  );
   const [support, setSupport] = useState("Estou fazendo tudo sozinha");
   const [knowledge, setKnowledge] = useState<string[]>([]);
   const totalSteps = 11;
@@ -131,8 +137,10 @@ export default function Simulador() {
   const baseMonths = areaComplexity[area] || 12;
   const effortDiscount = Math.min(5, Math.floor(weeklyHours / 4));
   const knowledgeDiscount = Math.min(5, Math.floor(knowledge.length / 3));
-  const englishDiscount = english === "Avançado" ? 2 : english === "Intermediário" ? 1 : 0;
-  const networkingDiscount = networking === "Alto" ? 2 : networking === "Médio" ? 1 : 0;
+  const englishDiscount =
+    english === "Avançado" ? 2 : english === "Intermediário" ? 1 : 0;
+  const networkingDiscount =
+    networking === "Alto" ? 2 : networking === "Médio" ? 1 : 0;
   const lowPacePenalty = weeklyHours < 5 ? 2 : weeklyHours < 8 ? 1 : 0;
   const readinessDiscount =
     effortDiscount +
@@ -148,21 +156,48 @@ export default function Simulador() {
     englishDiscount +
     networkingDiscount;
   const adjustedBaseMonths = baseMonths + lowPacePenalty;
-  const months = Math.max(2, Math.round((adjustedBaseMonths - readinessDiscount) * (goalMultipliers[goal] || 1)));
-  const readinessScore = Math.min(100, Math.round((readinessDiscount / 37) * 100));
-  const studyIntensity = weeklyHours >= 20 ? "alta" : weeklyHours >= 10 ? "moderada" : "leve";
+  const months = Math.max(
+    2,
+    Math.round(
+      (adjustedBaseMonths - readinessDiscount) * (goalMultipliers[goal] || 1),
+    ),
+  );
+  const readinessScore = Math.min(
+    100,
+    Math.round((readinessDiscount / 37) * 100),
+  );
+  const studyIntensity =
+    weeklyHours >= 20 ? "alta" : weeklyHours >= 10 ? "moderada" : "leve";
   const priorityActions = [
-    portfolioDiscounts[portfolio] < 2 ? "Transformar estudos em projetos publicáveis com README, prints e contexto do problema." : null,
-    projectCadenceDiscounts[projectCadence] < 2 ? "Aumentar a prática com projetos próprios, não só aulas e exercícios isolados." : null,
-    jobMaterialsDiscounts[jobMaterials] < 2 ? "Organizar currículo, LinkedIn e apresentação curta antes de aplicar em volume." : null,
-    interviewDiscounts[interview] < 2 ? "Treinar entrevistas técnicas e comportamentais com perguntas reais da área." : null,
-    applicationDiscounts[applications] < 2 ? "Criar uma rotina semanal de aplicações com currículo adaptado para cada vaga." : null,
-    consistencyDiscounts[consistency] < 2 ? "Definir metas semanais e revisar o progresso para reduzir pausas longas." : null,
-    supportDiscounts[support] < 1 ? "Entrar em comunidades para ter feedback, repertório e indicações mais cedo." : null,
+    portfolioDiscounts[portfolio] < 2
+      ? "Transformar estudos em projetos publicáveis com README, prints e contexto do problema."
+      : null,
+    projectCadenceDiscounts[projectCadence] < 2
+      ? "Aumentar a prática com projetos próprios, não só aulas e exercícios isolados."
+      : null,
+    jobMaterialsDiscounts[jobMaterials] < 2
+      ? "Organizar currículo, LinkedIn e apresentação curta antes de aplicar em volume."
+      : null,
+    interviewDiscounts[interview] < 2
+      ? "Treinar entrevistas técnicas e comportamentais com perguntas reais da área."
+      : null,
+    applicationDiscounts[applications] < 2
+      ? "Criar uma rotina semanal de aplicações com currículo adaptado para cada vaga."
+      : null,
+    consistencyDiscounts[consistency] < 2
+      ? "Definir metas semanais e revisar o progresso para reduzir pausas longas."
+      : null,
+    supportDiscounts[support] < 1
+      ? "Entrar em comunidades para ter feedback, repertório e indicações mais cedo."
+      : null,
   ].filter(Boolean) as string[];
 
   function toggleKnowledge(item: string) {
-    setKnowledge((current) => (current.includes(item) ? current.filter((value) => value !== item) : [...current, item]));
+    setKnowledge((current) =>
+      current.includes(item)
+        ? current.filter((value) => value !== item)
+        : [...current, item],
+    );
   }
 
   useEffect(() => {
@@ -170,57 +205,113 @@ export default function Simulador() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [showResults]);
 
-  const progressPercent = showResults ? 100 : Math.round((step / totalSteps) * 100);
+  const progressPercent = showResults
+    ? 100
+    : Math.round((step / totalSteps) * 100);
 
   const areaSlug = areasTI.find((entry) => entry.nome === area)?.slug;
   const areaPageHref = areaSlug ? `/areas/${areaSlug}` : "/areas";
 
   const resultsBlock = (
-    <div className={cn("rounded-3xl border-2 border-slate-900 p-6 text-center shadow-[4px_4px_0_#0f172a] md:p-8", ac.panelSoft)}>
-      <p className={cn("inline-flex items-center justify-center gap-2 text-sm font-black uppercase", ac.progressLabel)}>
+    <div
+      className={cn(
+        "rounded-3xl border-2 border-slate-900 p-6 text-center shadow-[4px_4px_0_#0f172a] md:p-8",
+        ac.panelSoft,
+      )}
+    >
+      <p
+        className={cn(
+          "inline-flex items-center justify-center gap-2 text-sm font-black uppercase",
+          ac.progressLabel,
+        )}
+      >
         <ListChecks className="h-4 w-4" />
         Prazo estimado (orientativo)
       </p>
-      <p className={cn("font-display text-6xl font-black", ac.tbodyAccent)}>{months}</p>
+      <p className={cn("font-display text-6xl font-black", ac.tbodyAccent)}>
+        {months}
+      </p>
       <p className="text-xl font-black">meses</p>
       <p className="mx-auto mt-4 max-w-2xl text-left text-sm font-medium leading-relaxed text-slate-700 md:text-center">
-        O número combina a <strong className="font-black text-slate-950">complexidade típica da área</strong>, seu ritmo de estudo e o que você já tem (portfólio, aplicações, rotina). Não é promessa de vaga: é um <strong className="font-black text-slate-950">eixo para planejar</strong> e ver o que mais encurta o caminho.
+        O número combina a{" "}
+        <strong className="font-black text-slate-950">
+          complexidade típica da área
+        </strong>
+        , seu ritmo de estudo e o que você já tem (portfólio, aplicações,
+        rotina). Não é promessa de vaga: é um{" "}
+        <strong className="font-black text-slate-950">
+          eixo para planejar
+        </strong>{" "}
+        e ver o que mais encurta o caminho.
       </p>
       <p className="mx-auto mt-3 max-w-2xl text-sm font-medium text-slate-600 md:text-center">
-        Cenário: <strong className="font-black text-slate-900">{hours}h/dia</strong>, <strong className="font-black text-slate-900">{days} dias/semana</strong>, meta <strong className="font-black text-slate-900">{goal}</strong>, foco em <strong className="font-black text-slate-900">{area}</strong>.
+        Cenário:{" "}
+        <strong className="font-black text-slate-900">{hours}h/dia</strong>,{" "}
+        <strong className="font-black text-slate-900">
+          {days} dias/semana
+        </strong>
+        , meta <strong className="font-black text-slate-900">{goal}</strong>,
+        foco em <strong className="font-black text-slate-900">{area}</strong>.
       </p>
 
       <div className="mt-6 grid gap-3 md:grid-cols-5">
-        <span className="rounded-xl bg-white p-3 text-left text-sm font-bold md:text-center" title="Quanto dos fatores que encurtam prazo você já preencheu">
+        <span
+          className="rounded-xl bg-white p-3 text-left text-sm font-bold md:text-center"
+          title="Quanto dos fatores que encurtam prazo você já preencheu"
+        >
           Prontidão: {readinessScore}%
         </span>
-        <span className="rounded-xl bg-white p-3 text-sm font-bold">{weeklyHours}h/semana</span>
-        <span className="rounded-xl bg-white p-3 text-sm font-bold">{knowledge.length} bases marcadas</span>
-        <span className="rounded-xl bg-white p-3 text-sm font-bold">Prática: {projectCadenceDiscounts[projectCadence]}/4</span>
-        <span className="rounded-xl bg-white p-3 text-sm font-bold">Meta: {goal}</span>
+        <span className="rounded-xl bg-white p-3 text-sm font-bold">
+          {weeklyHours}h/semana
+        </span>
+        <span className="rounded-xl bg-white p-3 text-sm font-bold">
+          {knowledge.length} bases marcadas
+        </span>
+        <span className="rounded-xl bg-white p-3 text-sm font-bold">
+          Prática: {projectCadenceDiscounts[projectCadence]}/4
+        </span>
+        <span className="rounded-xl bg-white p-3 text-sm font-bold">
+          Meta: {goal}
+        </span>
       </div>
       <p className="mx-auto mt-3 max-w-xl text-xs font-medium text-slate-500">
-        O indicador <strong className="font-bold text-slate-700">Prontidão</strong> resume quanto você já traz de rotina, portfólio, candidatura e rede — não mede seu talento.
+        O indicador{" "}
+        <strong className="font-bold text-slate-700">Prontidão</strong> resume
+        quanto você já traz de rotina, portfólio, candidatura e rede — não mede
+        seu talento.
       </p>
 
       <div className="mt-8 grid gap-3 text-left md:grid-cols-3">
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
-          <p className="font-display font-black text-slate-950">Primeiro terço</p>
-          <p className="mt-1 text-sm text-slate-600">Base técnica, rotina de estudo e GitHub organizado.</p>
+          <p className="font-display font-black text-slate-950">
+            Primeiro terço
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Base técnica, rotina de estudo e GitHub organizado.
+          </p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
-          <p className="font-display font-black text-slate-950">Meio do caminho</p>
-          <p className="mt-1 text-sm text-slate-600">Projetos publicáveis, README bom e prática com ferramentas da área.</p>
+          <p className="font-display font-black text-slate-950">
+            Meio do caminho
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Projetos publicáveis, README bom e prática com ferramentas da área.
+          </p>
         </div>
         <div className="rounded-xl border-2 border-slate-200 bg-white p-4">
           <p className="font-display font-black text-slate-950">Reta final</p>
-          <p className="mt-1 text-sm text-slate-600">Aplicações consistentes, LinkedIn, networking e preparação para entrevistas.</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Aplicações consistentes, LinkedIn, networking e preparação para
+            entrevistas.
+          </p>
         </div>
       </div>
 
       {priorityActions.length ? (
         <div className="mt-8 rounded-2xl border-2 border-slate-900 bg-white p-5 text-left shadow-[3px_3px_0_#0f172a]">
-          <p className="font-display text-lg font-black text-slate-950">O que mais encurta o caminho no seu caso</p>
+          <p className="font-display text-lg font-black text-slate-950">
+            O que mais encurta o caminho no seu caso
+          </p>
           <ul className="mt-3 space-y-2 text-sm font-medium text-slate-700">
             {priorityActions.slice(0, 4).map((action) => (
               <li key={action}>• {action}</li>
@@ -229,16 +320,28 @@ export default function Simulador() {
         </div>
       ) : (
         <div className="mt-8 rounded-2xl border-2 border-slate-900 bg-white p-5 text-left shadow-[3px_3px_0_#0f172a]">
-          <p className="font-display text-lg font-black text-slate-950">Pelas suas respostas, você já cobre bastante do que acelera o processo</p>
-          <p className="mt-2 text-sm font-medium text-slate-700">Mantenha o ritmo, aplique com estratégia e use feedbacks de entrevistas para ajustar o plano.</p>
+          <p className="font-display text-lg font-black text-slate-950">
+            Pelas suas respostas, você já cobre bastante do que acelera o
+            processo
+          </p>
+          <p className="mt-2 text-sm font-medium text-slate-700">
+            Mantenha o ritmo, aplique com estratégia e use feedbacks de
+            entrevistas para ajustar o plano.
+          </p>
         </div>
       )}
 
       <div className="mt-8 flex flex-col flex-wrap justify-center gap-3 sm:flex-row">
-        <Link href="/estudos" className="btn-brutal-accent inline-flex cursor-pointer justify-center rounded-full px-6 py-3 font-black">
+        <Link
+          href="/estudos"
+          className="btn-brutal-accent inline-flex cursor-pointer justify-center rounded-full px-6 py-3 font-black"
+        >
           Ver plano de estudos
         </Link>
-        <Link href={areaPageHref} className="btn-brutal-primary inline-flex cursor-pointer justify-center rounded-full bg-white px-6 py-3 font-black">
+        <Link
+          href={areaPageHref}
+          className="btn-brutal-primary inline-flex cursor-pointer justify-center rounded-full bg-white px-6 py-3 font-black"
+        >
           Página da área ({area})
         </Link>
         <button
@@ -257,7 +360,9 @@ export default function Simulador() {
     <Layout>
       <PageHero
         accent="fuchsia"
-        eyebrow={showResults ? "resultado do diagnóstico" : "diagnóstico e prazo"}
+        eyebrow={
+          showResults ? "resultado do diagnóstico" : "diagnóstico e prazo"
+        }
         title={showResults ? "Seu cenário estimado" : "Simulador de Carreira"}
         subtitle={
           showResults
@@ -267,204 +372,128 @@ export default function Simulador() {
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
-        {!showResults ? (
-        <div className="card-brutal rounded-2xl bg-white p-6">
-          <div className="mb-6">
-            <div className="mb-2 flex items-center justify-between text-xs font-black uppercase">
-              <span className={ac.progressLabel}>Passo {step} de {totalSteps}</span>
-              <span className={ac.progressLabel}>{progressPercent}%</span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100">
-              <div className={cn("h-full rounded-full transition-all", ac.progressFill)} style={{ width: `${progressPercent}%` }} />
-            </div>
-            <p className="mt-3 text-xs font-medium text-slate-500">
-              Na última pergunta, use “Ver minha estimativa”: o resultado aparece em uma tela só, separado das perguntas.
-            </p>
-          </div>
-
-          {step === 1 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Qual área te interessa?</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">Áreas mais complexas tendem a exigir mais tempo de base e projetos.</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
-                {areasTI.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                  <button
-                    key={item.slug}
-                    type="button"
-                    onClick={() => setArea(item.nome)}
-                    className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 p-4 text-left font-black transition-all ${
-                      area === item.nome ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5 shrink-0 text-slate-700" strokeWidth={2.5} aria-hidden />
-                    {item.nome}
-                  </button>
-                  );
-                })}
+          {!showResults ? (
+            <div className="card-brutal rounded-2xl bg-white p-6">
+              <div className="mb-6">
+                <div className="mb-2 flex items-center justify-between text-xs font-black uppercase">
+                  <span className={ac.progressLabel}>
+                    Passo {step} de {totalSteps}
+                  </span>
+                  <span className={ac.progressLabel}>{progressPercent}%</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      ac.progressFill,
+                    )}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <p className="mt-3 text-xs font-medium text-slate-500">
+                  Na última pergunta, use “Ver minha estimativa”: o resultado
+                  aparece em uma tela só, separado das perguntas.
+                </p>
               </div>
-            </div>
-          )}
 
-          {step === 2 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Quanto tempo você pode estudar com consistência?</h2>
-              <div className="mt-5 grid gap-5 md:grid-cols-2">
-                <label className="block rounded-2xl border-2 border-slate-200 bg-slate-50 p-5 font-black">
-                  {hours}h por dia
-                  <input type="range" min="1" max="8" value={hours} onChange={(event) => setHours(Number(event.target.value))} className="mt-4 w-full cursor-pointer" />
-                </label>
-                <label className="block rounded-2xl border-2 border-slate-200 bg-slate-50 p-5 font-black">
-                  {days} dias por semana
-                  <input type="range" min="1" max="7" value={days} onChange={(event) => setDays(Number(event.target.value))} className="mt-4 w-full cursor-pointer" />
-                </label>
-              </div>
-              <p className={cn("mt-4 rounded-xl border-2 p-3 text-sm font-bold", ac.panelBorder, ac.panelSoft, ac.tbodyAccent)}>
-                Ritmo atual: {weeklyHours}h/semana, intensidade {studyIntensity}.
-              </p>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Qual é seu ponto de partida?</h2>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {Object.keys(experienceDiscounts).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setExperience(item)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
-                      experience === item ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">O que você já sabe ou já usa?</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">Marque tudo que você já conhece minimamente.</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                {knowledgeOptions.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => toggleKnowledge(item)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
-                      knowledge.includes(item) ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
-                  >
-                    <CheckCircle className="mb-2 h-4 w-4" />
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 5 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Como está seu portfólio?</h2>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {Object.keys(portfolioDiscounts).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setPortfolio(item)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
-                      portfolio === item ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 6 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Como você pratica?</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">Projetos próprios aceleram a transição porque mostram autonomia e resolução de problemas.</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {Object.keys(projectCadenceDiscounts).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setProjectCadence(item)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
-                      projectCadence === item ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 7 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Como estão seus materiais de candidatura?</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">Currículo, LinkedIn e apresentação precisam deixar claro o que você sabe fazer.</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {Object.keys(jobMaterialsDiscounts).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setJobMaterials(item)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
-                      jobMaterials === item ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 8 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Você já se prepara para entrevistas?</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">A primeira vaga costuma depender tanto de comunicação quanto de base técnica.</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {Object.keys(interviewDiscounts).map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setInterview(item)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
-                      interview === item ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {step === 9 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Busca de vagas, inglês e networking</h2>
-              <div className="mt-5 grid gap-5 lg:grid-cols-3">
+              {step === 1 && (
                 <div>
-                  <p className="mb-2 text-sm font-black uppercase text-slate-500">Aplicações</p>
-                  <div className="space-y-2">
-                    {Object.keys(applicationDiscounts).map((item) => (
+                  <h2 className="font-display text-2xl font-black">
+                    Qual área te interessa?
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Áreas mais complexas tendem a exigir mais tempo de base e
+                    projetos.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    {areasTI.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.slug}
+                          type="button"
+                          onClick={() => setArea(item.nome)}
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 p-4 text-left font-black transition-all ${
+                            area === item.nome
+                              ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                              : "border-slate-200 bg-white hover:border-slate-900"
+                          }`}
+                        >
+                          <Icon
+                            className="h-5 w-5 shrink-0 text-slate-700"
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
+                          {item.nome}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Quanto tempo você pode estudar com consistência?
+                  </h2>
+                  <div className="mt-5 grid gap-5 md:grid-cols-2">
+                    <label className="block rounded-2xl border-2 border-slate-200 bg-slate-50 p-5 font-black">
+                      {hours}h por dia
+                      <input
+                        type="range"
+                        min="1"
+                        max="8"
+                        value={hours}
+                        onChange={(event) =>
+                          setHours(Number(event.target.value))
+                        }
+                        className="mt-4 w-full cursor-pointer"
+                      />
+                    </label>
+                    <label className="block rounded-2xl border-2 border-slate-200 bg-slate-50 p-5 font-black">
+                      {days} dias por semana
+                      <input
+                        type="range"
+                        min="1"
+                        max="7"
+                        value={days}
+                        onChange={(event) =>
+                          setDays(Number(event.target.value))
+                        }
+                        className="mt-4 w-full cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                  <p
+                    className={cn(
+                      "mt-4 rounded-xl border-2 p-3 text-sm font-bold",
+                      ac.panelBorder,
+                      ac.panelSoft,
+                      ac.tbodyAccent,
+                    )}
+                  >
+                    Ritmo atual: {weeklyHours}h/semana, intensidade{" "}
+                    {studyIntensity}.
+                  </p>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Qual é seu ponto de partida?
+                  </h2>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {Object.keys(experienceDiscounts).map((item) => (
                       <button
                         key={item}
                         type="button"
-                        onClick={() => setApplications(item)}
-                        className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
-                          applications === item ? "border-slate-900 bg-yellow-300" : "border-slate-200 bg-white hover:border-slate-900"
+                        onClick={() => setExperience(item)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
+                          experience === item
+                            ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                            : "border-slate-200 bg-white hover:border-slate-900"
                         }`}
                       >
                         {item}
@@ -472,145 +501,337 @@ export default function Simulador() {
                     ))}
                   </div>
                 </div>
-                <div>
-                  <p className="mb-2 text-sm font-black uppercase text-slate-500">Inglês técnico</p>
-                  <div className="space-y-2">
-                    {["Básico", "Intermediário", "Avançado"].map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setEnglish(item)}
-                        className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
-                          english === item ? "border-slate-900 bg-yellow-300" : "border-slate-200 bg-white hover:border-slate-900"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="mb-2 text-sm font-black uppercase text-slate-500">Networking</p>
-                  <div className="space-y-2">
-                    {["Baixo", "Médio", "Alto"].map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setNetworking(item)}
-                        className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
-                          networking === item ? "border-slate-900 bg-yellow-300" : "border-slate-200 bg-white hover:border-slate-900"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {step === 10 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Consistência e apoio</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">Rotina, feedback e comunidade reduzem retrabalho e ajudam a manter velocidade.</p>
-              <div className="mt-5 grid gap-5 md:grid-cols-2">
+              {step === 4 && (
                 <div>
-                  <p className="mb-2 text-sm font-black uppercase text-slate-500">Consistência</p>
-                  <div className="space-y-2">
-                    {Object.keys(consistencyDiscounts).map((item) => (
+                  <h2 className="font-display text-2xl font-black">
+                    O que você já sabe ou já usa?
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Marque tudo que você já conhece minimamente.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                    {knowledgeOptions.map((item) => (
                       <button
                         key={item}
                         type="button"
-                        onClick={() => setConsistency(item)}
-                        className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
-                          consistency === item ? "border-slate-900 bg-yellow-300" : "border-slate-200 bg-white hover:border-slate-900"
+                        onClick={() => toggleKnowledge(item)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
+                          knowledge.includes(item)
+                            ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                            : "border-slate-200 bg-white hover:border-slate-900"
                         }`}
                       >
+                        <CheckCircle className="mb-2 h-4 w-4" />
                         {item}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <p className="mb-2 text-sm font-black uppercase text-slate-500">Apoio e feedback</p>
-                  <div className="space-y-2">
-                    {Object.keys(supportDiscounts).map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => setSupport(item)}
-                        className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
-                          support === item ? "border-slate-900 bg-yellow-300" : "border-slate-200 bg-white hover:border-slate-900"
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {step === 11 && (
-            <div>
-              <h2 className="font-display text-2xl font-black">Qual seu objetivo?</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">
-                Escolha a meta mais próxima do que você busca primeiro. Ao finalizar, o prazo aparece em uma tela só, separado das perguntas.
-              </p>
-              <div className="mt-4 grid gap-3 md:grid-cols-4">
-                {Object.keys(goalMultipliers).map((item) => (
+              {step === 5 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Como está seu portfólio?
+                  </h2>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {Object.keys(portfolioDiscounts).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setPortfolio(item)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
+                          portfolio === item
+                            ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                            : "border-slate-200 bg-white hover:border-slate-900"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {step === 6 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Como você pratica?
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Projetos próprios aceleram a transição porque mostram
+                    autonomia e resolução de problemas.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {Object.keys(projectCadenceDiscounts).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setProjectCadence(item)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
+                          projectCadence === item
+                            ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                            : "border-slate-200 bg-white hover:border-slate-900"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {step === 7 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Como estão seus materiais de candidatura?
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Currículo, LinkedIn e apresentação precisam deixar claro o
+                    que você sabe fazer.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {Object.keys(jobMaterialsDiscounts).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setJobMaterials(item)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
+                          jobMaterials === item
+                            ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                            : "border-slate-200 bg-white hover:border-slate-900"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {step === 8 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Você já se prepara para entrevistas?
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    A primeira vaga costuma depender tanto de comunicação quanto
+                    de base técnica.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {Object.keys(interviewDiscounts).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setInterview(item)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 text-left font-black transition-all ${
+                          interview === item
+                            ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                            : "border-slate-200 bg-white hover:border-slate-900"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {step === 9 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Busca de vagas, inglês e networking
+                  </h2>
+                  <div className="mt-5 grid gap-5 lg:grid-cols-3">
+                    <div>
+                      <p className="mb-2 text-sm font-black uppercase text-slate-500">
+                        Aplicações
+                      </p>
+                      <div className="space-y-2">
+                        {Object.keys(applicationDiscounts).map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setApplications(item)}
+                            className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
+                              applications === item
+                                ? "border-slate-900 bg-yellow-300"
+                                : "border-slate-200 bg-white hover:border-slate-900"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-sm font-black uppercase text-slate-500">
+                        Inglês técnico
+                      </p>
+                      <div className="space-y-2">
+                        {["Básico", "Intermediário", "Avançado"].map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setEnglish(item)}
+                            className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
+                              english === item
+                                ? "border-slate-900 bg-yellow-300"
+                                : "border-slate-200 bg-white hover:border-slate-900"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-sm font-black uppercase text-slate-500">
+                        Networking
+                      </p>
+                      <div className="space-y-2">
+                        {["Baixo", "Médio", "Alto"].map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setNetworking(item)}
+                            className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
+                              networking === item
+                                ? "border-slate-900 bg-yellow-300"
+                                : "border-slate-200 bg-white hover:border-slate-900"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 10 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Consistência e apoio
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Rotina, feedback e comunidade reduzem retrabalho e ajudam a
+                    manter velocidade.
+                  </p>
+                  <div className="mt-5 grid gap-5 md:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-sm font-black uppercase text-slate-500">
+                        Consistência
+                      </p>
+                      <div className="space-y-2">
+                        {Object.keys(consistencyDiscounts).map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setConsistency(item)}
+                            className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
+                              consistency === item
+                                ? "border-slate-900 bg-yellow-300"
+                                : "border-slate-200 bg-white hover:border-slate-900"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-sm font-black uppercase text-slate-500">
+                        Apoio e feedback
+                      </p>
+                      <div className="space-y-2">
+                        {Object.keys(supportDiscounts).map((item) => (
+                          <button
+                            key={item}
+                            type="button"
+                            onClick={() => setSupport(item)}
+                            className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left text-sm font-black transition-all ${
+                              support === item
+                                ? "border-slate-900 bg-yellow-300"
+                                : "border-slate-200 bg-white hover:border-slate-900"
+                            }`}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {step === 11 && (
+                <div>
+                  <h2 className="font-display text-2xl font-black">
+                    Qual seu objetivo?
+                  </h2>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    Escolha a meta mais próxima do que você busca primeiro. Ao
+                    finalizar, o prazo aparece em uma tela só, separado das
+                    perguntas.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                    {Object.keys(goalMultipliers).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setGoal(item)}
+                        className={`cursor-pointer rounded-xl border-2 p-4 font-black transition-all ${
+                          goal === item
+                            ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]"
+                            : "border-slate-200 bg-white hover:border-slate-900"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {step > 1 ? (
                   <button
-                    key={item}
                     type="button"
-                    onClick={() => setGoal(item)}
-                    className={`cursor-pointer rounded-xl border-2 p-4 font-black transition-all ${
-                      goal === item ? "border-slate-900 bg-yellow-300 shadow-[3px_3px_0_#0f172a]" : "border-slate-200 bg-white hover:border-slate-900"
-                    }`}
+                    onClick={() => setStep(step - 1)}
+                    className="btn-brutal-primary inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-6 py-3 font-black"
                   >
-                    {item}
+                    <ArrowLeft className="h-4 w-4" />
+                    Voltar
                   </button>
-                ))}
+                ) : null}
+                {step < totalSteps ? (
+                  <button
+                    type="button"
+                    onClick={() => setStep(step + 1)}
+                    className="btn-brutal-accent inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-3 font-black"
+                  >
+                    Continuar
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowResults(true)}
+                    className="btn-brutal-accent inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-3 font-black"
+                  >
+                    Ver minha estimativa
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </div>
+          ) : (
+            <div className="mx-auto max-w-4xl">{resultsBlock}</div>
           )}
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            {step > 1 ? (
-              <button
-                type="button"
-                onClick={() => setStep(step - 1)}
-                className="btn-brutal-primary inline-flex cursor-pointer items-center gap-2 rounded-full bg-white px-6 py-3 font-black"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
-              </button>
-            ) : null}
-            {step < totalSteps ? (
-              <button
-                type="button"
-                onClick={() => setStep(step + 1)}
-                className="btn-brutal-accent inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-3 font-black"
-              >
-                Continuar
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowResults(true)}
-                className="btn-brutal-accent inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-3 font-black"
-              >
-                Ver minha estimativa
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-        ) : (
-          <div className="mx-auto max-w-4xl">{resultsBlock}</div>
-        )}
         </div>
       </section>
     </Layout>

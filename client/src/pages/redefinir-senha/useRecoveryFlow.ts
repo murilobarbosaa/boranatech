@@ -59,12 +59,18 @@ export function useRecoveryFlow(): RecoveryFlowState {
       // Sem sessão ainda.
       if (recovery) {
         // Evento de recovery já visto; a sessão deve chegar — aguarda.
-        expiryTimer = window.setTimeout(() => finish("expired"), RECOVERY_TIMEOUT_MS);
+        expiryTimer = window.setTimeout(
+          () => finish("expired"),
+          RECOVERY_TIMEOUT_MS,
+        );
       } else if (hasAuthErrorInUrl()) {
         finish("expired"); // erro explícito na URL (link expirado/invalido)
       } else if (hasOAuthCallbackInUrl()) {
         // Callback em processamento (PKCE ?code= / implicit token): aguarda o evento.
-        expiryTimer = window.setTimeout(() => finish("expired"), RECOVERY_TIMEOUT_MS);
+        expiryTimer = window.setTimeout(
+          () => finish("expired"),
+          RECOVERY_TIMEOUT_MS,
+        );
       } else {
         finish("no-link"); // visita direta, sem link
       }

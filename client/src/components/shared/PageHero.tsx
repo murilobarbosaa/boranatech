@@ -18,16 +18,16 @@ const ACCENT: Record<
   PageHeroAccent,
   { hero: string; pill: string; color: string }
 > = {
-  violet:  { hero: "bg-violet-100",  pill: "bg-violet-300",  color: "#7c3aed" },
-  sky:     { hero: "bg-sky-100",     pill: "bg-sky-300",     color: "#0284c7" },
-  amber:   { hero: "bg-amber-100",   pill: "bg-amber-300",   color: "#f59e0b" },
+  violet: { hero: "bg-violet-100", pill: "bg-violet-300", color: "#7c3aed" },
+  sky: { hero: "bg-sky-100", pill: "bg-sky-300", color: "#0284c7" },
+  amber: { hero: "bg-amber-100", pill: "bg-amber-300", color: "#f59e0b" },
   emerald: { hero: "bg-emerald-100", pill: "bg-emerald-300", color: "#10b981" },
-  blue:    { hero: "bg-blue-100",    pill: "bg-blue-300",    color: "#2563eb" },
+  blue: { hero: "bg-blue-100", pill: "bg-blue-300", color: "#2563eb" },
   fuchsia: { hero: "bg-fuchsia-100", pill: "bg-fuchsia-300", color: "#c026d3" },
-  orange:  { hero: "bg-orange-100",  pill: "bg-orange-300",  color: "#ea580c" },
-  rose:    { hero: "bg-rose-100",    pill: "bg-rose-300",    color: "#e11d48" },
-  cyan:    { hero: "bg-cyan-100",    pill: "bg-cyan-300",    color: "#0891b2" },
-  teal:    { hero: "bg-teal-100",    pill: "bg-teal-300",    color: "#0d9488" },
+  orange: { hero: "bg-orange-100", pill: "bg-orange-300", color: "#ea580c" },
+  rose: { hero: "bg-rose-100", pill: "bg-rose-300", color: "#e11d48" },
+  cyan: { hero: "bg-cyan-100", pill: "bg-cyan-300", color: "#0891b2" },
+  teal: { hero: "bg-teal-100", pill: "bg-teal-300", color: "#0d9488" },
 };
 
 function patternStyle(pattern: PageHeroPattern, color: string): CSSProperties {
@@ -99,7 +99,9 @@ export default function PageHero({
             <div
               className={`mb-3 flex flex-wrap gap-4 ${titlePrefix ? "items-center" : "items-start"}`}
             >
-              {titlePrefix ? <span className="shrink-0">{titlePrefix}</span> : null}
+              {titlePrefix ? (
+                <span className="shrink-0">{titlePrefix}</span>
+              ) : null}
               <h1 className="min-w-[12rem] flex-1 font-display text-4xl font-bold leading-tight text-slate-950">
                 {title}
               </h1>

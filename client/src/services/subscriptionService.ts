@@ -27,7 +27,8 @@ export async function createCheckout(planId = "pro_monthly") {
   try {
     const storedAffiliate = window.localStorage.getItem(AFFILIATE_STORAGE_KEY);
     const affiliate = storedAffiliate ? JSON.parse(storedAffiliate) : null;
-    affiliateCode = affiliate?.expires > Date.now() ? affiliate.code : undefined;
+    affiliateCode =
+      affiliate?.expires > Date.now() ? affiliate.code : undefined;
   } catch {
     affiliateCode = undefined;
   }

@@ -7,7 +7,8 @@ export interface FriendlyError {
 }
 
 const FALLBACK: FriendlyError = {
-  message: "Não foi possível concluir a operação. Tente novamente em instantes.",
+  message:
+    "Não foi possível concluir a operação. Tente novamente em instantes.",
   code: "unknown",
 };
 
@@ -40,7 +41,8 @@ const PATTERNS: Array<{ match: string; result: FriendlyError }> = [
     match: "email rate limit exceeded",
     result: {
       code: "rate_limited",
-      message: "Muitas tentativas. Aguarde alguns minutos antes de tentar de novo.",
+      message:
+        "Muitas tentativas. Aguarde alguns minutos antes de tentar de novo.",
     },
   },
   {

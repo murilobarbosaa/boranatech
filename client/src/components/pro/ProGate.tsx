@@ -12,8 +12,12 @@ export default function ProGate({ description, className = "" }: ProGateProps) {
 
   if (loading) {
     return (
-      <div className={`card-brutal rounded-2xl border-slate-300 bg-slate-100 p-6 text-center ${className}`}>
-        <p className="font-display text-2xl font-black text-slate-950">Verificando acesso...</p>
+      <div
+        className={`card-brutal rounded-2xl border-slate-300 bg-slate-100 p-6 text-center ${className}`}
+      >
+        <p className="font-display text-2xl font-black text-slate-950">
+          Verificando acesso...
+        </p>
         <p className="mx-auto mt-2 max-w-2xl text-sm font-medium text-slate-600">
           Estamos conferindo sua assinatura e permissões administrativas.
         </p>

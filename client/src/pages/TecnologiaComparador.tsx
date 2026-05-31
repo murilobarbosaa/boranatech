@@ -19,7 +19,9 @@ export default function TecnologiaComparador() {
       .then((items) => {
         setTechnologyItems(items);
         setLeftSlug((current) => current || items[0]?.slug || "");
-        setRightSlug((current) => current || items[4]?.slug || items[1]?.slug || "");
+        setRightSlug(
+          (current) => current || items[4]?.slug || items[1]?.slug || "",
+        );
       })
       .catch(() => setTechnologyItems(technologies));
   }, []);
@@ -31,7 +33,11 @@ export default function TecnologiaComparador() {
     ["Dificuldade", left?.difficulty, right?.difficulty],
     ["Salário", left?.salaryRange, right?.salaryRange],
     ["Casos de uso", left?.useCases[0], right?.useCases[0]],
-    ["Curva de aprendizado", `${left?.difficultyScore}/5`, `${right?.difficultyScore}/5`],
+    [
+      "Curva de aprendizado",
+      `${left?.difficultyScore}/5`,
+      `${right?.difficultyScore}/5`,
+    ],
   ];
 
   return (
@@ -50,10 +56,16 @@ export default function TecnologiaComparador() {
                 key={index}
                 className="rounded-xl border-2 border-slate-900 bg-white p-3 font-bold"
                 value={value}
-                onChange={(event) => (index === 0 ? setLeftSlug(event.target.value) : setRightSlug(event.target.value))}
+                onChange={(event) =>
+                  index === 0
+                    ? setLeftSlug(event.target.value)
+                    : setRightSlug(event.target.value)
+                }
               >
                 {technologyItems.map((technology) => (
-                  <option key={technology.slug} value={technology.slug}>{technology.name}</option>
+                  <option key={technology.slug} value={technology.slug}>
+                    {technology.name}
+                  </option>
                 ))}
               </select>
             ))}
@@ -62,15 +74,23 @@ export default function TecnologiaComparador() {
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
                 <tr className="bg-violet-700 text-white">
-                  <th className="border-2 border-slate-900 p-3 text-left">Critério</th>
-                  <th className="border-2 border-slate-900 p-3 text-left">{left?.name}</th>
-                  <th className="border-2 border-slate-900 p-3 text-left">{right?.name}</th>
+                  <th className="border-2 border-slate-900 p-3 text-left">
+                    Critério
+                  </th>
+                  <th className="border-2 border-slate-900 p-3 text-left">
+                    {left?.name}
+                  </th>
+                  <th className="border-2 border-slate-900 p-3 text-left">
+                    {right?.name}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map(([label, a, b]) => (
                   <tr key={label}>
-                    <td className="border-2 border-slate-900 p-3 font-black">{label}</td>
+                    <td className="border-2 border-slate-900 p-3 font-black">
+                      {label}
+                    </td>
                     <td className="border-2 border-slate-900 p-3">{a}</td>
                     <td className="border-2 border-slate-900 p-3">{b}</td>
                   </tr>
@@ -78,7 +98,10 @@ export default function TecnologiaComparador() {
               </tbody>
             </table>
           </div>
-          <CopyButton className="mt-5" text={`Comparação: ${left?.name} vs ${right?.name}`} />
+          <CopyButton
+            className="mt-5"
+            text={`Comparação: ${left?.name} vs ${right?.name}`}
+          />
         </div>
       </section>
     </Layout>

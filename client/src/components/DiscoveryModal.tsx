@@ -33,9 +33,12 @@ export default function DiscoveryModal({ open, onClose }: DiscoveryModalProps) {
               <Sparkles className="h-3.5 w-3.5" />
               descubra sua área
             </div>
-            <h2 className="font-display text-3xl font-black text-slate-950">Vamos descobrir seu próximo passo?</h2>
+            <h2 className="font-display text-3xl font-black text-slate-950">
+              Vamos descobrir seu próximo passo?
+            </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Escolha a frase que mais parece com você. Todas levam para o quiz de descoberta de carreira.
+              Escolha a frase que mais parece com você. Todas levam para o quiz
+              de descoberta de carreira.
             </p>
           </div>
           <button
@@ -60,7 +63,9 @@ export default function DiscoveryModal({ open, onClose }: DiscoveryModalProps) {
                   <Compass className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-display text-lg font-black text-slate-950">{option.title}</h3>
+                  <h3 className="font-display text-lg font-black text-slate-950">
+                    {option.title}
+                  </h3>
                   <p className="text-sm text-slate-600">{option.desc}</p>
                 </div>
               </div>

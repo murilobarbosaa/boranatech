@@ -34,7 +34,9 @@ const RATE_LIMIT_MAX_REQUESTS = 180;
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 function isRateLimitExempt(pathname: string) {
-  return pathname === "/api/health" || pathname.startsWith("/api/billing/webhook");
+  return (
+    pathname === "/api/health" || pathname.startsWith("/api/billing/webhook")
+  );
 }
 
 app.use((req, res, next) => {
@@ -49,7 +51,12 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     console.log(
       JSON.stringify({
-        level: res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info",
+        level:
+          res.statusCode >= 500
+            ? "error"
+            : res.statusCode >= 400
+              ? "warn"
+              : "info",
         msg: "http_request",
         method: req.method,
         path: req.path,
@@ -78,7 +85,10 @@ app.use((req, res, next) => {
 
   current.count += 1;
   if (current.count > RATE_LIMIT_MAX_REQUESTS) {
-    res.setHeader("Retry-After", String(Math.ceil((current.resetAt - now) / 1000)));
+    res.setHeader(
+      "Retry-After",
+      String(Math.ceil((current.resetAt - now) / 1000)),
+    );
     return res.status(429).json({
       error: {
         code: "rate_limited",
@@ -98,7 +108,10 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", origin);
   }
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+  );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
 
   if (req.method === "OPTIONS") {
@@ -145,7 +158,10 @@ app.get("/api/health", async (_req, res) => {
   const startTime = Date.now();
 
   try {
-    const { error } = await supabaseAdmin.from("profiles").select("id").limit(1);
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .limit(1);
     checks.database = error ? "error" : "ok";
   } catch {
     checks.database = "error";
@@ -186,7 +202,9 @@ app.use("/api", (_req, res) => {
   });
 });
 
-const staticPath = env.isProd ? path.resolve(__dirname, "public") : path.resolve(__dirname, "..", "dist", "public");
+const staticPath = env.isProd
+  ? path.resolve(__dirname, "public")
+  : path.resolve(__dirname, "..", "dist", "public");
 
 app.use(express.static(staticPath));
 

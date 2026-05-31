@@ -6,9 +6,20 @@ interface DifficultyDotsProps {
   className?: string;
 }
 
-const LABELS = ["", "Muito fácil", "Fácil", "Médio", "Difícil", "Muito difícil"] as const;
+const LABELS = [
+  "",
+  "Muito fácil",
+  "Fácil",
+  "Médio",
+  "Difícil",
+  "Muito difícil",
+] as const;
 
-export function DifficultyDots({ level, fillClass, className }: DifficultyDotsProps) {
+export function DifficultyDots({
+  level,
+  fillClass,
+  className,
+}: DifficultyDotsProps) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex gap-1">

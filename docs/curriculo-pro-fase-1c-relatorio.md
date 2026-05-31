@@ -6,15 +6,15 @@ Este relatório foi produzido executando 8 conversas simuladas contra o systemPr
 
 ## Verificações transversais
 
-| Verificação | Resultado |
-|---|---|
-| Turnos do Natechinho totais | 36 |
-| Turnos com travessão (—) ou quase-hífen (–) | 0 ✅ |
-| Turnos com problema de tom masculino | 0 ✅ |
-| Marcador [[CURRICULO_READY]] emitido prematuramente | 0 ✅ |
-| Variantes inválidas do marcador detectadas | 0 ✅ |
-| Turnos com mais de 1 interrogação (regra S6) | 10 ❌ |
-| Total de "?" em respostas do Natechinho | 45 (média 1.25 por turno) |
+| Verificação                                         | Resultado                 |
+| --------------------------------------------------- | ------------------------- |
+| Turnos do Natechinho totais                         | 36                        |
+| Turnos com travessão (—) ou quase-hífen (–)         | 0 ✅                      |
+| Turnos com problema de tom masculino                | 0 ✅                      |
+| Marcador [[CURRICULO_READY]] emitido prematuramente | 0 ✅                      |
+| Variantes inválidas do marcador detectadas          | 0 ✅                      |
+| Turnos com mais de 1 interrogação (regra S6)        | 10 ❌                     |
+| Total de "?" em respostas do Natechinho             | 45 (média 1.25 por turno) |
 
 ---
 
@@ -37,7 +37,7 @@ Oi! Massa, é legal ver que tu tá buscando o primeiro estágio. Ciência da com
 **T2 · Natechinho:**
 
 ```
-Show! Desenvolvimento web é uma ótima escolha e tá super em alta. Bora montar teu currículo pra isso. 
+Show! Desenvolvimento web é uma ótima escolha e tá super em alta. Bora montar teu currículo pra isso.
 
 Qual é o idioma que tu preferiria usar no currículo? Português ou inglês?
 ```
@@ -47,7 +47,7 @@ Qual é o idioma que tu preferiria usar no currículo? Português ou inglês?
 **T3 · Natechinho:**
 
 ```
-Beleza, português então! Agora, vou te recomendar um formato. O Híbrido é o mais indicado pra ti. Ele destaca tuas habilidades e projetos logo no topo, o que é massa pra quem tá começando. 
+Beleza, português então! Agora, vou te recomendar um formato. O Híbrido é o mais indicado pra ti. Ele destaca tuas habilidades e projetos logo no topo, o que é massa pra quem tá começando.
 
 Tu quer montar o currículo do zero aqui ou já tem um que gostaria de reescrever?
 ```
@@ -88,7 +88,7 @@ Massa, Google Mountain View é um alvo de peso. Vou montar em inglês, já que �
 **T2 · Natechinho:**
 
 ```
-Show, então vamos montar um currículo focado pra essa vaga de Senior Software Engineer na área de infraestrutura. Vou usar o formato Harvard, que é mais enxuto e direto ao ponto, ideal pra vagas concorridas como essa. 
+Show, então vamos montar um currículo focado pra essa vaga de Senior Software Engineer na área de infraestrutura. Vou usar o formato Harvard, que é mais enxuto e direto ao ponto, ideal pra vagas concorridas como essa.
 
 Pra começar, me diz se tu tem algum contato extra que queira incluir, tipo telefone, LinkedIn ou GitHub.
 ```
@@ -98,7 +98,7 @@ Pra começar, me diz se tu tem algum contato extra que queira incluir, tipo tele
 **T3 · Natechinho:**
 
 ```
-Beleza, montar do zero é uma ótima escolha! Vamos fazer isso. 
+Beleza, montar do zero é uma ótima escolha! Vamos fazer isso.
 
 Começando com os contatos. Tu tem algum telefone, LinkedIn ou GitHub que gostaria de adicionar ao currículo?
 ```
@@ -131,7 +131,7 @@ Começando com os contatos. Tu tem algum telefone, LinkedIn ou GitHub que gostar
 **T1 · Natechinho:**
 
 ```
-Show, legal saber que tu tá fazendo essa transição! A experiência como contador pode trazer várias habilidades boas, como análise de dados e atenção a detalhes. 
+Show, legal saber que tu tá fazendo essa transição! A experiência como contador pode trazer várias habilidades boas, como análise de dados e atenção a detalhes.
 
 Me conta uma coisa, qual a posição que tu tá mirando na área de dados? Tipo, analista de dados, cientista de dados, ou algo mais específico?
 ```
@@ -180,7 +180,7 @@ Beleza, peguei que tu tem SQL básico e tá estudando Python. Isso é ótimo pra
 **T1 · Natechinho:**
 
 ```
-Oi, Maria! Massa que tu já trouxe essas informações. Então, tu tá buscando uma vaga efetiva como dev frontend júnior, currículo em português e no formato híbrido. 
+Oi, Maria! Massa que tu já trouxe essas informações. Então, tu tá buscando uma vaga efetiva como dev frontend júnior, currículo em português e no formato híbrido.
 
 Agora, me conta um pouco sobre a tua formação. Que curso ou grau tu fez e onde?
 ```
@@ -190,7 +190,7 @@ Agora, me conta um pouco sobre a tua formação. Que curso ou grau tu fez e onde
 **T2 · Natechinho:**
 
 ```
-Show, peguei tudo! Tu tem formação técnica em informática concluída em 2022 e tá fazendo um curso superior em Análise e Desenvolvimento de Sistemas na FATEC, que começou em 2023. 
+Show, peguei tudo! Tu tem formação técnica em informática concluída em 2022 e tá fazendo um curso superior em Análise e Desenvolvimento de Sistemas na FATEC, que começou em 2023.
 
 Agora, vamos falar sobre as tuas experiências. Como dev frontend júnior, onde tu trabalhou? Qual foi a empresa ou projeto?
 ```
@@ -200,7 +200,7 @@ Agora, vamos falar sobre as tuas experiências. Como dev frontend júnior, onde 
 **T3 · Natechinho:**
 
 ```
-Beleza, Maria! Anotei que tu tá trabalhando como dev frontend na empresa X desde janeiro de 2024, usando React e TypeScript no produto principal. 
+Beleza, Maria! Anotei que tu tá trabalhando como dev frontend na empresa X desde janeiro de 2024, usando React e TypeScript no produto principal.
 
 Agora, me conta um pouco sobre as tuas responsabilidades e se teve alguma conquista ou resultado legal que tu lembra desse trabalho.
 ```
@@ -388,7 +388,7 @@ Primeiro, tem algum contato extra além do email do cadastro que tu gostaria de 
 **T3 · Natechinho:**
 
 ```
-Show, então vamos montar do zero. 
+Show, então vamos montar do zero.
 
 Me diz, tu quer adicionar algum contato extra? Telefone, LinkedIn ou GitHub?
 ```
@@ -406,7 +406,7 @@ Beleza, então vamos com o formato híbrido. Agora, sobre os contatos, tu tem al
 **T5 · Natechinho:**
 
 ```
-Peguei tudo, Lucas! Aqui vai o que eu anotei: 
+Peguei tudo, Lucas! Aqui vai o que eu anotei:
 
 - Nome: Lucas Silva
 - Email: lucas.silva@email.com
@@ -422,7 +422,7 @@ Agora, me conta um pouco sobre o teu objetivo profissional. Além de dev backend
 **T6 · Natechinho:**
 
 ```
-Legal, Lucas! Então vamos lá. 
+Legal, Lucas! Então vamos lá.
 
 Aqui estão as informações que eu anotei sobre a tua formação:
 
@@ -437,7 +437,7 @@ Agora, vamos pra próxima etapa. Tu já teve alguma experiência ou projeto que 
 **T7 · Natechinho:**
 
 ```
-Sem problema, Lucas! Projetos são super importantes e mostram bem o que tu sabe fazer. Me conta então sobre um ou dois projetos que tu realizou. 
+Sem problema, Lucas! Projetos são super importantes e mostram bem o que tu sabe fazer. Me conta então sobre um ou dois projetos que tu realizou.
 
 Começando pelo primeiro, qual o nome do projeto e uma breve descrição do que ele faz?
 ```
@@ -517,7 +517,7 @@ Tá tudo certo? Posso gerar o currículo?
 **T11 · Natechinho:**
 
 ```
-Vou montar agora, leva uns segundinhos. 
+Vou montar agora, leva uns segundinhos.
 
 [[CURRICULO_READY]]
 ```
@@ -551,7 +551,7 @@ Vou montar agora, leva uns segundinhos.
 **T1 · Natechinho:**
 
 ```
-Massa! Um dev backend júnior é uma ótima escolha. Vou montar teu currículo em português, que é o ideal pra vagas no Brasil. 
+Massa! Um dev backend júnior é uma ótima escolha. Vou montar teu currículo em português, que é o ideal pra vagas no Brasil.
 
 Agora, me fala: tu tem algum contato extra que quer adicionar, tipo telefone, LinkedIn ou GitHub?
 ```
@@ -577,7 +577,7 @@ Sem problema! Vamos deixar a data em aberto. E sobre as responsabilidades, o que
 **T4 · Natechinho:**
 
 ```
-Legal, então tu trabalhou com Node.js e PostgreSQL, focando em API REST no time de produto. Isso é bem relevante! 
+Legal, então tu trabalhou com Node.js e PostgreSQL, focando em API REST no time de produto. Isso é bem relevante!
 
 Vamos seguir pra próxima parte. Me conta sobre a tua formação. Qual curso ou grau tu fez, em qual instituição, e se tá concluído ou em andamento?
 ```
@@ -606,9 +606,11 @@ Vamos seguir pra próxima parte. Me conta sobre a tua formação. Qual curso ou 
 _Preenchido manualmente abaixo após inspeção das transcrições._
 
 ### Decisão
+
 - [ ] Prompt está pronto pra UI (Fase 2)
 - [ ] Prompt precisa ajustes pontuais (listar abaixo)
 - [ ] Prompt tem problema estrutural (rever roteiro)
 
 ### Sugestões de ajuste (se houver)
+
 - (nenhuma ainda)

@@ -5,7 +5,12 @@ import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
-import { companies, companyCities, companyHiringLevels, companySegments } from "@/lib/companyData";
+import {
+  companies,
+  companyCities,
+  companyHiringLevels,
+  companySegments,
+} from "@/lib/companyData";
 
 const ac = getPageAccentUi("blue");
 
@@ -16,7 +21,11 @@ export default function Empresas() {
   const filtered = useMemo(
     () =>
       companies.filter((company) => {
-        return (segment === "Todas" || company.segment === segment) && (city === "Todas" || company.city === city) && (level === "Todas" || company.hiringLevels.includes(level));
+        return (
+          (segment === "Todas" || company.segment === segment) &&
+          (city === "Todas" || company.city === city) &&
+          (level === "Todas" || company.hiringLevels.includes(level))
+        );
       }),
     [city, level, segment],
   );
@@ -36,26 +45,46 @@ export default function Empresas() {
               <div className="grid flex-1 gap-3 md:grid-cols-3">
                 <label className="text-xs font-black uppercase text-slate-500">
                   Segmento
-                  <select className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500" value={segment} onChange={(event) => setSegment(event.target.value)}>
-                    {companySegments.map((item) => <option key={item}>{item}</option>)}
+                  <select
+                    className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
+                    value={segment}
+                    onChange={(event) => setSegment(event.target.value)}
+                  >
+                    {companySegments.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </label>
                 <label className="text-xs font-black uppercase text-slate-500">
                   Cidade
-                  <select className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500" value={city} onChange={(event) => setCity(event.target.value)}>
-                    {companyCities.map((item) => <option key={item}>{item}</option>)}
+                  <select
+                    className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
+                    value={city}
+                    onChange={(event) => setCity(event.target.value)}
+                  >
+                    {companyCities.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </label>
                 <label className="text-xs font-black uppercase text-slate-500">
                   Nível
-                  <select className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500" value={level} onChange={(event) => setLevel(event.target.value)}>
-                    {companyHiringLevels.map((item) => <option key={item}>{item}</option>)}
+                  <select
+                    className="mt-1 w-full rounded-lg border-2 border-blue-200 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
+                    value={level}
+                    onChange={(event) => setLevel(event.target.value)}
+                  >
+                    {companyHiringLevels.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </label>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                {(segment !== "Todas" || city !== "Todas" || level !== "Todas") && (
+                {(segment !== "Todas" ||
+                  city !== "Todas" ||
+                  level !== "Todas") && (
                   <button
                     type="button"
                     onClick={() => {
@@ -69,7 +98,10 @@ export default function Empresas() {
                     Limpar
                   </button>
                 )}
-                <Link href="/empresas/ranking-junior" className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-blue-700 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5">
+                <Link
+                  href="/empresas/ranking-junior"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-blue-700 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                >
                   <Trophy className="h-4 w-4" />
                   Ranking carreira inicial
                 </Link>
@@ -83,35 +115,69 @@ export default function Empresas() {
       </section>
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((company) => (
-            <article key={company.slug} className="card-brutal rounded-2xl bg-white p-5">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white p-2 shadow-[3px_3px_0_#0f172a]">
-                  <img src={company.logoUrl} alt={`Logo ${company.name}`} className="h-8 w-8 object-contain" loading="lazy" />
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((company) => (
+              <article
+                key={company.slug}
+                className="card-brutal rounded-2xl bg-white p-5"
+              >
+                <div className="mb-4 flex items-start gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white p-2 shadow-[3px_3px_0_#0f172a]">
+                    <img
+                      src={company.logoUrl}
+                      alt={`Logo ${company.name}`}
+                      className="h-8 w-8 object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-xl font-black">
+                      {company.name}
+                    </h2>
+                    <p className="text-sm font-bold text-slate-500">
+                      {company.segment} • {company.city}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-display text-xl font-black">{company.name}</h2>
-                  <p className="text-sm font-bold text-slate-500">{company.segment} • {company.city}</p>
+                <div className="flex flex-wrap gap-2">
+                  {company.hiringLevels.map((item) => (
+                    <span
+                      key={item}
+                      className={`rounded-full px-2 py-1 text-xs font-black ${["Estágio", "Trainee", "Júnior"].includes(item) ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}
+                    >
+                      {item}
+                    </span>
+                  ))}
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {company.hiringLevels.map((item) => (
-                  <span key={item} className={`rounded-full px-2 py-1 text-xs font-black ${["Estágio", "Trainee", "Júnior"].includes(item) ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
-                    {item}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {company.technologies.slice(0, 4).map((tech) => <span key={tech} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.panelSoft, ac.tbodyAccent)}>{tech}</span>)}
-              </div>
-              <p className="mt-4 text-sm font-bold text-slate-700">Júnior: {company.juniorSalary}</p>
-              <Link href={`/empresas/${company.slug}`} className={cn("mt-4 inline-flex items-center gap-2 text-sm font-black hover:underline", ac.link)}>
-                Ver detalhes <ArrowRight className="h-4 w-4" />
-              </Link>
-            </article>
-          ))}
-        </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {company.technologies.slice(0, 4).map((tech) => (
+                    <span
+                      key={tech}
+                      className={cn(
+                        "rounded-full px-2 py-1 text-xs font-bold",
+                        ac.panelSoft,
+                        ac.tbodyAccent,
+                      )}
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-4 text-sm font-bold text-slate-700">
+                  Júnior: {company.juniorSalary}
+                </p>
+                <Link
+                  href={`/empresas/${company.slug}`}
+                  className={cn(
+                    "mt-4 inline-flex items-center gap-2 text-sm font-black hover:underline",
+                    ac.link,
+                  )}
+                >
+                  Ver detalhes <ArrowRight className="h-4 w-4" />
+                </Link>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
     </Layout>

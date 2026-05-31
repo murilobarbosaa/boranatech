@@ -10,7 +10,12 @@ import { useBadges } from "@/hooks/useBadges";
 import type { BadgeInfo } from "@/services/badgesService";
 import { BADGE_CATEGORIES, type BadgeCategory } from "@shared/badges";
 
-const CATEGORY_ORDER: BadgeCategory[] = ["estudo", "trilhas", "pro", "comunidade"];
+const CATEGORY_ORDER: BadgeCategory[] = [
+  "estudo",
+  "trilhas",
+  "pro",
+  "comunidade",
+];
 
 export default function Conquistas() {
   const { badges, totalCount, unlockedCount, isLoading, error } = useBadges();
@@ -26,12 +31,19 @@ export default function Conquistas() {
     grouped[b.category].push(b);
   }
 
-  const categoriesToShow = CATEGORY_ORDER.filter((cat) => grouped[cat].length > 0);
-  const percentage = totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
+  const categoriesToShow = CATEGORY_ORDER.filter(
+    (cat) => grouped[cat].length > 0,
+  );
+  const percentage =
+    totalCount > 0 ? Math.round((unlockedCount / totalCount) * 100) : 0;
 
   return (
     <Layout>
-      <SEO title="Conquistas · Bora na Tech?" url="/perfil/conquistas" noindex />
+      <SEO
+        title="Conquistas · Bora na Tech?"
+        url="/perfil/conquistas"
+        noindex
+      />
 
       <div className="min-h-screen bg-[#faf8f4]">
         <div className="container max-w-5xl py-8 md:py-12">
@@ -52,7 +64,8 @@ export default function Conquistas() {
               className="mb-4 font-display font-black leading-none text-slate-950"
               style={{ fontSize: "clamp(4rem, 12vw, 9rem)" }}
             >
-              {unlockedCount} <span className="text-slate-300">/ {totalCount}</span>
+              {unlockedCount}{" "}
+              <span className="text-slate-300">/ {totalCount}</span>
             </h1>
 
             <p className="mb-6 max-w-md text-lg font-bold text-slate-600">
@@ -79,7 +92,9 @@ export default function Conquistas() {
 
           {isLoading ? (
             <div className="py-12 text-center">
-              <p className="font-mono text-sm text-slate-500">Carregando suas conquistas...</p>
+              <p className="font-mono text-sm text-slate-500">
+                Carregando suas conquistas...
+              </p>
             </div>
           ) : null}
 
@@ -93,7 +108,9 @@ export default function Conquistas() {
             ? categoriesToShow.map((category) => {
                 const categoryBadges = grouped[category];
                 const categoryStyle = BADGE_CATEGORIES[category];
-                const unlockedInCategory = categoryBadges.filter((b) => b.isUnlocked).length;
+                const unlockedInCategory = categoryBadges.filter(
+                  (b) => b.isUnlocked,
+                ).length;
 
                 return (
                   <section key={category} className="mb-10">
@@ -125,7 +142,10 @@ export default function Conquistas() {
         </div>
       </div>
 
-      <BadgeDetailModal badge={selectedBadge} onClose={() => setSelectedBadge(null)} />
+      <BadgeDetailModal
+        badge={selectedBadge}
+        onClose={() => setSelectedBadge(null)}
+      />
     </Layout>
   );
 }

@@ -15,7 +15,10 @@ import {
 } from "../server/lib/asaas";
 import { env } from "../server/lib/env";
 
-const BASE = env.asaasEnv === "production" ? "https://api.asaas.com" : "https://sandbox.asaas.com";
+const BASE =
+  env.asaasEnv === "production"
+    ? "https://api.asaas.com"
+    : "https://sandbox.asaas.com";
 
 function ymd(date: Date) {
   return date.toISOString().split("T")[0];
@@ -31,7 +34,10 @@ function ymd(date: Date) {
 async function createTestCustomer(stamp: number, cpfCnpj: string) {
   const res = await fetch(`${BASE}/api/v3/customers`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", access_token: env.asaasApiKey },
+    headers: {
+      "Content-Type": "application/json",
+      access_token: env.asaasApiKey,
+    },
     body: JSON.stringify({
       name: "Teste endDate",
       email: `enddate-test+${stamp}@boranatech.com.br`,
@@ -40,7 +46,10 @@ async function createTestCustomer(stamp: number, cpfCnpj: string) {
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(`create customer falhou ${res.status}: ${JSON.stringify(data)}`);
+  if (!res.ok)
+    throw new Error(
+      `create customer falhou ${res.status}: ${JSON.stringify(data)}`,
+    );
   return data as { id: string };
 }
 
@@ -48,7 +57,10 @@ async function createTestCustomer(stamp: number, cpfCnpj: string) {
 async function createBoletoTestSub(customerId: string, nextDueDate: string) {
   const res = await fetch(`${BASE}/api/v3/subscriptions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", access_token: env.asaasApiKey },
+    headers: {
+      "Content-Type": "application/json",
+      access_token: env.asaasApiKey,
+    },
     body: JSON.stringify({
       customer: customerId,
       billingType: "BOLETO",
@@ -60,19 +72,26 @@ async function createBoletoTestSub(customerId: string, nextDueDate: string) {
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(`create sub falhou ${res.status}: ${JSON.stringify(data)}`);
+  if (!res.ok)
+    throw new Error(`create sub falhou ${res.status}: ${JSON.stringify(data)}`);
   return data as { id: string; nextDueDate?: string; cycle?: string };
 }
 
 function show(label: string, payments: unknown) {
-  const list = Array.isArray((payments as { data?: unknown[] })?.data) ? (payments as { data: any[] }).data : [];
+  const list = Array.isArray((payments as { data?: unknown[] })?.data)
+    ? (payments as { data: any[] }).data
+    : [];
   console.log(`\n[${label}] ${list.length} cobranca(s):`);
-  for (const p of list) console.log(`  - id=${p.id} status=${p.status} dueDate=${p.dueDate} value=${p.value}`);
+  for (const p of list)
+    console.log(
+      `  - id=${p.id} status=${p.status} dueDate=${p.dueDate} value=${p.value}`,
+    );
   return list;
 }
 
 async function main() {
-  if (env.asaasEnv !== "sandbox") throw new Error(`ABORTADO: ASAAS_ENV=${env.asaasEnv}. Rode so em sandbox.`);
+  if (env.asaasEnv !== "sandbox")
+    throw new Error(`ABORTADO: ASAAS_ENV=${env.asaasEnv}. Rode so em sandbox.`);
 
   const stamp = Date.now();
   console.log("== Validacao endDate + s1 no sandbox Asaas ==");
@@ -90,11 +109,18 @@ async function main() {
   console.log(`\n>> updateAsaasSubscription(endDate=${endDate})`);
   await updateAsaasSubscription(sub.id, { endDate });
 
-  const afterEndDate = show("apos endDate", await getAsaasSubscriptionPayments(sub.id));
-  const survivors = afterEndDate.filter(
-    (p: any) => p.dueDate > endDate && ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"].includes(p.status),
+  const afterEndDate = show(
+    "apos endDate",
+    await getAsaasSubscriptionPayments(sub.id),
   );
-  console.log(`\nPendentes com vencimento > endDate (alvo da s1): ${survivors.length}`);
+  const survivors = afterEndDate.filter(
+    (p: any) =>
+      p.dueDate > endDate &&
+      ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"].includes(p.status),
+  );
+  console.log(
+    `\nPendentes com vencimento > endDate (alvo da s1): ${survivors.length}`,
+  );
   console.log(
     survivors.length === 0
       ? ">> endDate JA limpou a cobranca futura: s1 talvez desnecessaria."
@@ -103,12 +129,21 @@ async function main() {
 
   for (const p of survivors) {
     console.log(`>> deleteAsaasPayment(${p.id})`);
-    console.log(`   resposta: ${JSON.stringify(await deleteAsaasPayment(p.id))}`);
+    console.log(
+      `   resposta: ${JSON.stringify(await deleteAsaasPayment(p.id))}`,
+    );
   }
 
-  const afterDelete = show("apos neutralizar", await getAsaasSubscriptionPayments(sub.id));
-  const stillThere = afterDelete.filter((p: any) => survivors.some((s: any) => s.id === p.id));
-  console.log(`\nVEREDITO s1: ${stillThere.length === 0 ? "OK, cobranca futura neutralizada" : "FALHOU, ainda presente"}`);
+  const afterDelete = show(
+    "apos neutralizar",
+    await getAsaasSubscriptionPayments(sub.id),
+  );
+  const stillThere = afterDelete.filter((p: any) =>
+    survivors.some((s: any) => s.id === p.id),
+  );
+  console.log(
+    `\nVEREDITO s1: ${stillThere.length === 0 ? "OK, cobranca futura neutralizada" : "FALHOU, ainda presente"}`,
+  );
 
   console.log(`\n>> limpeza: cancelAsaasSubscription(${sub.id})`);
   await cancelAsaasSubscription(sub.id);

@@ -6,12 +6,18 @@ import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
-import { interviewQuestions, interviewStudySites, interviewVideoResources } from "@/lib/careerToolsData";
+import {
+  interviewQuestions,
+  interviewStudySites,
+  interviewVideoResources,
+} from "@/lib/careerToolsData";
 import { youtubeEmbedUrl } from "@/lib/utils";
 
 export default function EntrevistaPerguntas() {
   const [type, setType] = useState("Todas");
-  const filtered = interviewQuestions.filter((item) => type === "Todas" || item.type === type);
+  const filtered = interviewQuestions.filter(
+    (item) => type === "Todas" || item.type === type,
+  );
 
   return (
     <Layout>
@@ -20,34 +26,57 @@ export default function EntrevistaPerguntas() {
         subtitle="Perguntas técnicas, comportamentais e de lógica para praticar."
         accent="blue"
         actions={
-          <AiCtaLink href="/entrevistas/simulador" description="Simule a entrevista e receba feedback" accent="blue" className="w-full">
+          <AiCtaLink
+            href="/entrevistas/simulador"
+            description="Simule a entrevista e receba feedback"
+            accent="blue"
+            className="w-full"
+          >
             Praticar com IA
           </AiCtaLink>
         }
       />
       <section className="container space-y-10 py-12">
         <div className="mb-6 flex flex-wrap items-center justify-start gap-4">
-          <FilterPills options={["Todas", "Técnica", "Comportamental", "Lógica"]} value={type} onChange={setType} />
+          <FilterPills
+            options={["Todas", "Técnica", "Comportamental", "Lógica"]}
+            value={type}
+            onChange={setType}
+          />
         </div>
         <div className="space-y-4">
           {filtered.map((item) => (
             <DetailsChevronOnly
               key={item.question}
               className="card-brutal rounded-2xl bg-white p-5"
-              title={(
+              title={
                 <span>
                   <span className="mb-2 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-black text-violet-700">{item.area}</span>
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-black text-amber-800">{item.level}</span>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{item.type}</span>
+                    <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-black text-violet-700">
+                      {item.area}
+                    </span>
+                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-black text-amber-800">
+                      {item.level}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">
+                      {item.type}
+                    </span>
                   </span>
-                  <span className="font-display text-lg font-black">{item.question}</span>
+                  <span className="font-display text-lg font-black">
+                    {item.question}
+                  </span>
                 </span>
-              )}
+              }
             >
               <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="rounded-xl bg-emerald-50 p-4 text-sm"><strong>Boa resposta:</strong><p>{item.good}</p></div>
-                <div className="rounded-xl bg-red-50 p-4 text-sm"><strong>Resposta fraca:</strong><p>{item.bad}</p></div>
+                <div className="rounded-xl bg-emerald-50 p-4 text-sm">
+                  <strong>Boa resposta:</strong>
+                  <p>{item.good}</p>
+                </div>
+                <div className="rounded-xl bg-red-50 p-4 text-sm">
+                  <strong>Resposta fraca:</strong>
+                  <p>{item.bad}</p>
+                </div>
               </div>
             </DetailsChevronOnly>
           ))}
@@ -60,8 +89,13 @@ export default function EntrevistaPerguntas() {
                 <BookOpen className="h-6 w-6" />
               </span>
               <div>
-                <h2 className="font-display text-2xl font-black">Sites para estudar entrevistas</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-600">Use estes materiais para treinar respostas técnicas, comportamentais e simulações.</p>
+                <h2 className="font-display text-2xl font-black">
+                  Sites para estudar entrevistas
+                </h2>
+                <p className="mt-1 text-sm font-semibold text-slate-600">
+                  Use estes materiais para treinar respostas técnicas,
+                  comportamentais e simulações.
+                </p>
               </div>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
@@ -73,12 +107,16 @@ export default function EntrevistaPerguntas() {
                   rel="noreferrer"
                   className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 transition-all hover:-translate-y-0.5 hover:bg-violet-50 hover:shadow-[4px_4px_0_#0f172a]"
                 >
-                  <span className="mb-2 inline-flex rounded-full bg-white px-2 py-1 text-xs font-black uppercase text-violet-700">{site.type}</span>
+                  <span className="mb-2 inline-flex rounded-full bg-white px-2 py-1 text-xs font-black uppercase text-violet-700">
+                    {site.type}
+                  </span>
                   <h3 className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
                     {site.title}
                     <ExternalLink className="h-4 w-4 shrink-0" />
                   </h3>
-                  <p className="mt-2 text-sm font-medium text-slate-600">{site.desc}</p>
+                  <p className="mt-2 text-sm font-medium text-slate-600">
+                    {site.desc}
+                  </p>
                 </a>
               ))}
             </div>
@@ -90,14 +128,24 @@ export default function EntrevistaPerguntas() {
                 <PlayCircle className="h-6 w-6" />
               </span>
               <div>
-                <h2 className="font-display text-2xl font-black">Vídeos para praticar</h2>
-                <p className="mt-1 text-sm font-medium text-violet-100">Pesquisas prontas para assistir simulações, dicas e explicações.</p>
+                <h2 className="font-display text-2xl font-black">
+                  Vídeos para praticar
+                </h2>
+                <p className="mt-1 text-sm font-medium text-violet-100">
+                  Pesquisas prontas para assistir simulações, dicas e
+                  explicações.
+                </p>
               </div>
             </div>
             <div className="space-y-3">
               {interviewVideoResources.map((video) =>
                 youtubeEmbedUrl(video.url) ? (
-                  <VideoEmbedDialog key={video.title} source={video.url} title={video.title} href={video.url}>
+                  <VideoEmbedDialog
+                    key={video.title}
+                    source={video.url}
+                    title={video.title}
+                    href={video.url}
+                  >
                     <button
                       type="button"
                       className="flex w-full items-center gap-3 rounded-2xl border-2 border-white bg-white p-3 text-left text-sm font-black text-violet-800 transition-all hover:bg-amber-300 hover:text-slate-950"
@@ -117,7 +165,7 @@ export default function EntrevistaPerguntas() {
                     <PlayCircle className="h-5 w-5 shrink-0" />
                     {video.title}
                   </a>
-                )
+                ),
               )}
             </div>
           </div>

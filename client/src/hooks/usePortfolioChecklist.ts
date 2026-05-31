@@ -20,7 +20,9 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
   const { user, loading: authLoading } = useAuth();
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [pendingAuthItemId, setPendingAuthItemId] = useState<string | null>(null);
+  const [pendingAuthItemId, setPendingAuthItemId] = useState<string | null>(
+    null,
+  );
   const nextLoadMarkRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -41,7 +43,9 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
 
       const next = new Set(
         entries
-          .filter((entry) => (entry.state as { checked?: boolean }).checked === true)
+          .filter(
+            (entry) => (entry.state as { checked?: boolean }).checked === true,
+          )
           .map((entry) => entry.itemKey),
       );
 
@@ -50,8 +54,13 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
         nextLoadMarkRef.current = null;
         if (!next.has(mark)) {
           next.add(mark);
-          void upsertProgress("portfolio_checklist", mark, { checked: true }).catch((err) => {
-            console.error("[usePortfolioChecklist] queued mark upsert failed", err);
+          void upsertProgress("portfolio_checklist", mark, {
+            checked: true,
+          }).catch((err) => {
+            console.error(
+              "[usePortfolioChecklist] queued mark upsert failed",
+              err,
+            );
             setCheckedIds((prev) => {
               const reverted = new Set(prev);
               reverted.delete(mark);
@@ -75,7 +84,9 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
   }, [user, authLoading]);
 
   const toggle = useCallback(
-    async (itemId: string): Promise<{ ok: boolean; requiresAuth?: boolean }> => {
+    async (
+      itemId: string,
+    ): Promise<{ ok: boolean; requiresAuth?: boolean }> => {
       if (!user) {
         setPendingAuthItemId(itemId);
         return { ok: false, requiresAuth: true };
@@ -94,7 +105,9 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
         if (wasChecked) {
           await deleteProgress("portfolio_checklist", itemId);
         } else {
-          await upsertProgress("portfolio_checklist", itemId, { checked: true });
+          await upsertProgress("portfolio_checklist", itemId, {
+            checked: true,
+          });
         }
         return { ok: true };
       } catch (err) {

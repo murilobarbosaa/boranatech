@@ -1,8 +1,15 @@
 import { Router } from "express";
 import crypto from "crypto";
 
-import { createAsaasCheckout, getAsaasSubscriptionPayments, getOrCreateAsaasCustomer } from "../lib/asaas";
-import { cancelSubscriptionAtAsaas, reactivateSubscriptionAtAsaas } from "../lib/billing-asaas";
+import {
+  createAsaasCheckout,
+  getAsaasSubscriptionPayments,
+  getOrCreateAsaasCustomer,
+} from "../lib/asaas";
+import {
+  cancelSubscriptionAtAsaas,
+  reactivateSubscriptionAtAsaas,
+} from "../lib/billing-asaas";
 import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { env } from "../lib/env";
 import { enqueueEmail } from "../lib/queue";
@@ -45,17 +52,18 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
 
-    const [{ data: subscription, error }, { data: isProRpc, error: rpcError }] = await Promise.all([
-      supabaseAdmin
-        .from("subscriptions")
-        .select("*, plans(*)")
-        .eq("user_id", userId)
-        .in("status", ["active", "trialing", "past_due"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
-    ]);
+    const [{ data: subscription, error }, { data: isProRpc, error: rpcError }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("subscriptions")
+          .select("*, plans(*)")
+          .eq("user_id", userId)
+          .in("status", ["active", "trialing", "past_due"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
+      ]);
 
     if (error) {
       return next(createError(500, "db_error", "Erro ao buscar assinatura."));
@@ -68,7 +76,11 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
     const isPro = !rpcError && isProRpc === true;
 
     if (!subscription) {
-      const { data: freePlan } = await supabaseAdmin.from("plans").select("*").eq("code", "free").single();
+      const { data: freePlan } = await supabaseAdmin
+        .from("plans")
+        .select("*")
+        .eq("code", "free")
+        .single();
 
       return res.json({
         data: {
@@ -90,23 +102,44 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
   }
 });
 
-const VALID_CANCEL_REASONS = new Set(["expensive", "unused", "missing_feature", "paused", "other"]);
+const VALID_CANCEL_REASONS = new Set([
+  "expensive",
+  "unused",
+  "missing_feature",
+  "paused",
+  "other",
+]);
 
 router.post("/cancel", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
-    const body = (req.body || {}) as { reason_code?: unknown; reason_text?: unknown };
+    const body = (req.body || {}) as {
+      reason_code?: unknown;
+      reason_text?: unknown;
+    };
 
-    const reasonCode = typeof body.reason_code === "string" ? body.reason_code.trim() : "";
-    const reasonText = typeof body.reason_text === "string" ? body.reason_text.trim().slice(0, 500) : "";
+    const reasonCode =
+      typeof body.reason_code === "string" ? body.reason_code.trim() : "";
+    const reasonText =
+      typeof body.reason_text === "string"
+        ? body.reason_text.trim().slice(0, 500)
+        : "";
 
     if (reasonCode && !VALID_CANCEL_REASONS.has(reasonCode)) {
-      return next(createError(400, "invalid_reason_code", "Motivo de cancelamento inválido."));
+      return next(
+        createError(
+          400,
+          "invalid_reason_code",
+          "Motivo de cancelamento inválido.",
+        ),
+      );
     }
 
     const { data: subscription, error: subError } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, provider_subscription_id, current_period_end, status, cancel_at_period_end")
+      .select(
+        "id, provider_subscription_id, current_period_end, status, cancel_at_period_end",
+      )
       .eq("user_id", userId)
       .in("status", ["active", "trialing", "past_due"])
       .order("created_at", { ascending: false })
@@ -118,11 +151,15 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
     }
 
     if (!subscription) {
-      return next(createError(404, "not_found", "Nenhuma assinatura ativa encontrada."));
+      return next(
+        createError(404, "not_found", "Nenhuma assinatura ativa encontrada."),
+      );
     }
 
     if (subscription.cancel_at_period_end) {
-      return next(createError(409, "already_scheduled", "Cancelamento já está agendado."));
+      return next(
+        createError(409, "already_scheduled", "Cancelamento já está agendado."),
+      );
     }
 
     // c. endDate = current_period_end em YYYY-MM-DD (mesma conversao validada no sandbox).
@@ -136,7 +173,10 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
     // Logo, se o passo (f) falhar, basta repetir POST /cancel — sem efeito colateral.
     if (subscription.provider_subscription_id && endDate) {
       try {
-        await cancelSubscriptionAtAsaas(subscription.provider_subscription_id, endDate);
+        await cancelSubscriptionAtAsaas(
+          subscription.provider_subscription_id,
+          endDate,
+        );
       } catch (asaasErr) {
         // Falha em (d) ou na listagem: banco intacto, estado consistente. Pode repetir.
         console.error(
@@ -144,7 +184,11 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
           asaasErr,
         );
         return next(
-          createError(502, "asaas_error", "Não foi possível agendar o cancelamento no provedor. Tente novamente."),
+          createError(
+            502,
+            "asaas_error",
+            "Não foi possível agendar o cancelamento no provedor. Tente novamente.",
+          ),
         );
       }
     } else {
@@ -173,35 +217,48 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
         updateError,
       );
       return next(
-        createError(500, "db_error", "Cancelamento agendado no provedor, mas houve erro ao registrar. Tente novamente."),
+        createError(
+          500,
+          "db_error",
+          "Cancelamento agendado no provedor, mas houve erro ao registrar. Tente novamente.",
+        ),
       );
     }
 
-    const { error: logError } = await supabaseAdmin.from("subscription_cancellations").insert({
-      user_id: userId,
-      provider_subscription_id: subscription.provider_subscription_id || null,
-      reason_code: reasonCode || null,
-      reason_text: reasonText || null,
-      effective_at: subscription.current_period_end,
-      status: "scheduled",
-    });
+    const { error: logError } = await supabaseAdmin
+      .from("subscription_cancellations")
+      .insert({
+        user_id: userId,
+        provider_subscription_id: subscription.provider_subscription_id || null,
+        reason_code: reasonCode || null,
+        reason_text: reasonText || null,
+        effective_at: subscription.current_period_end,
+        status: "scheduled",
+      });
 
     if (logError) {
-      console.error("[billing/cancel] Erro ao registrar motivo de cancelamento:", logError);
+      console.error(
+        "[billing/cancel] Erro ao registrar motivo de cancelamento:",
+        logError,
+      );
     }
 
     try {
-      const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const { data: authData } =
+        await supabaseAdmin.auth.admin.getUserById(userId);
       const userEmail = authData?.user?.email || "";
       const userName = String(
-        authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário",
+        authData?.user?.user_metadata?.name ||
+          authData?.user?.email?.split("@")[0] ||
+          "usuário",
       );
       const { data: profileData } = await supabaseAdmin
         .from("profiles")
         .select("gender")
         .eq("user_id", userId)
         .maybeSingle();
-      const userGender = (profileData?.gender as Gender | null | undefined) ?? null;
+      const userGender =
+        (profileData?.gender as Gender | null | undefined) ?? null;
 
       if (userEmail && subscription.current_period_end) {
         await enqueueEmail({
@@ -213,12 +270,19 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
         });
       }
     } catch (emailError) {
-      console.error("[billing/cancel] Erro ao enfileirar e-mail de confirmação:", emailError);
+      console.error(
+        "[billing/cancel] Erro ao enfileirar e-mail de confirmação:",
+        emailError,
+      );
     }
 
     const effectiveAt = subscription.current_period_end;
     const formattedDate = effectiveAt
-      ? new Date(effectiveAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+      ? new Date(effectiveAt).toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        })
       : "o fim do período pago";
 
     res.json({
@@ -241,7 +305,9 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
     // canceladas para distinguir Caso A vs Caso B).
     const { data: subscription, error: subError } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, provider_subscription_id, current_period_end, status, cancel_at_period_end")
+      .select(
+        "id, provider_subscription_id, current_period_end, status, cancel_at_period_end",
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -273,7 +339,9 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
     // Idempotencia: ja esta ativa, nada a desfazer. 409 simetrico ao /cancel
     // ("already_scheduled" la, "already_active" aqui).
     if (!subscription.cancel_at_period_end) {
-      return next(createError(409, "already_active", "Assinatura já está ativa."));
+      return next(
+        createError(409, "already_active", "Assinatura já está ativa."),
+      );
     }
 
     // Boundary ampliado (decisao da etapa 5b): aceita status in
@@ -285,7 +353,8 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
         data: {
           redirect_to_checkout: true,
           checkout_path: "/planos",
-          message: "Reativação não disponível para este plano. Vamos para um novo plano.",
+          message:
+            "Reativação não disponível para este plano. Vamos para um novo plano.",
         },
       });
     }
@@ -296,14 +365,20 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
     // se o passo do banco falhar, repetir POST /reactivate e seguro.
     if (subscription.provider_subscription_id) {
       try {
-        await reactivateSubscriptionAtAsaas(subscription.provider_subscription_id);
+        await reactivateSubscriptionAtAsaas(
+          subscription.provider_subscription_id,
+        );
       } catch (asaasErr) {
         console.error(
           `[billing/reactivate] Asaas falhou para sub ${subscription.provider_subscription_id}; banco nao alterado:`,
           asaasErr,
         );
         return next(
-          createError(502, "asaas_error", "Não foi possível reativar a assinatura no provedor. Tente novamente."),
+          createError(
+            502,
+            "asaas_error",
+            "Não foi possível reativar a assinatura no provedor. Tente novamente.",
+          ),
         );
       }
     } else {
@@ -329,7 +404,11 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
         updateError,
       );
       return next(
-        createError(500, "db_error", "Reativação confirmada no provedor, mas houve erro ao registrar. Tente novamente."),
+        createError(
+          500,
+          "db_error",
+          "Reativação confirmada no provedor, mas houve erro ao registrar. Tente novamente.",
+        ),
       );
     }
 
@@ -342,7 +421,10 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
       .eq("status", "scheduled");
 
     if (revertError) {
-      console.error("[billing/reactivate] Erro ao marcar cancelamento como reverted:", revertError);
+      console.error(
+        "[billing/reactivate] Erro ao marcar cancelamento como reverted:",
+        revertError,
+      );
     }
 
     // PENDENCIA: nao ha email "reactivation confirmed" em server/lib/email.ts.
@@ -362,10 +444,20 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
 router.post("/checkout", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
-    const affiliateCode = typeof req.body?.affiliateCode === "string" ? req.body.affiliateCode.trim().toUpperCase() : "";
-    const planId = typeof req.body?.planId === "string" && PLAN_VALUES[req.body.planId] ? req.body.planId : "pro_monthly";
+    const affiliateCode =
+      typeof req.body?.affiliateCode === "string"
+        ? req.body.affiliateCode.trim().toUpperCase()
+        : "";
+    const planId =
+      typeof req.body?.planId === "string" && PLAN_VALUES[req.body.planId]
+        ? req.body.planId
+        : "pro_monthly";
 
-    const { data: profile } = await supabaseAdmin.from("profiles").select("name, email").eq("user_id", userId).single();
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("name, email")
+      .eq("user_id", userId)
+      .single();
 
     if (!profile) {
       return next(createError(404, "not_found", "Perfil não encontrado."));
@@ -379,7 +471,9 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       .maybeSingle();
 
     if (existing) {
-      return next(createError(409, "conflict", "Usuário já possui assinatura ativa."));
+      return next(
+        createError(409, "conflict", "Usuário já possui assinatura ativa."),
+      );
     }
 
     const customer = await getOrCreateAsaasCustomer({
@@ -401,7 +495,12 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
 
       if (!affiliateError && affiliate) {
         validAffiliateCode = affiliate.code;
-        checkoutValue = Number((checkoutValue * (1 - Number(affiliate.discount_percent || 0) / 100)).toFixed(2));
+        checkoutValue = Number(
+          (
+            checkoutValue *
+            (1 - Number(affiliate.discount_percent || 0) / 100)
+          ).toFixed(2),
+        );
         await supabaseAdmin
           .from("affiliates")
           .update({ trials: Number(affiliate.trials || 0) + 1 })
@@ -419,8 +518,14 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       successUrl: `${env.appPublicUrl}/planos/sucesso`,
     });
     const payments = await getAsaasSubscriptionPayments(asaasSubscription.id);
-    const firstPayment = Array.isArray(payments?.data) ? payments.data[0] : undefined;
-    const checkoutUrl = firstPayment?.invoiceUrl || firstPayment?.paymentLink || asaasSubscription.invoiceUrl || asaasSubscription.paymentLink;
+    const firstPayment = Array.isArray(payments?.data)
+      ? payments.data[0]
+      : undefined;
+    const checkoutUrl =
+      firstPayment?.invoiceUrl ||
+      firstPayment?.paymentLink ||
+      asaasSubscription.invoiceUrl ||
+      asaasSubscription.paymentLink;
 
     res.json({
       data: {
@@ -443,32 +548,49 @@ router.post("/webhook", async (req, res, next) => {
     // Fail-closed: se a env nao estiver configurada (so possivel em dev/staging,
     // pois requireEnv mata o boot em prod), rejeita 401 em vez de aceitar.
     if (!env.asaasWebhookToken) {
-      console.error("[webhook] ASAAS_WEBHOOK_TOKEN nao configurado, rejeitando (fail-closed).");
+      console.error(
+        "[webhook] ASAAS_WEBHOOK_TOKEN nao configurado, rejeitando (fail-closed).",
+      );
       return next(createError(401, "unauthorized", "Webhook desabilitado."));
     }
 
     const received = req.headers["asaas-access-token"];
     if (typeof received !== "string" || !received) {
-      return next(createError(401, "unauthorized", "Header asaas-access-token ausente."));
+      return next(
+        createError(401, "unauthorized", "Header asaas-access-token ausente."),
+      );
     }
 
     const receivedHash = crypto.createHash("sha256").update(received).digest();
-    const expectedHash = crypto.createHash("sha256").update(env.asaasWebhookToken).digest();
+    const expectedHash = crypto
+      .createHash("sha256")
+      .update(env.asaasWebhookToken)
+      .digest();
     if (!crypto.timingSafeEqual(receivedHash, expectedHash)) {
-      return next(createError(401, "unauthorized", "Token do webhook inválido."));
+      return next(
+        createError(401, "unauthorized", "Token do webhook inválido."),
+      );
     }
 
     const event = req.body as Record<string, unknown>;
     const eventType = String(event?.event || "");
     const rawBody = (req as typeof req & { rawBody?: Buffer }).rawBody;
     const eventId = String(
-      event.id || crypto.createHash("sha256").update(rawBody || JSON.stringify(event)).digest("hex"),
+      event.id ||
+        crypto
+          .createHash("sha256")
+          .update(rawBody || JSON.stringify(event))
+          .digest("hex"),
     );
     const eventCreatedAt =
-      typeof event.dateCreated === "string" ? new Date(event.dateCreated.replace(" ", "T")) : null;
+      typeof event.dateCreated === "string"
+        ? new Date(event.dateCreated.replace(" ", "T"))
+        : null;
 
     const payment = event.payment as Record<string, unknown> | undefined;
-    const subscription = event.subscription as Record<string, unknown> | undefined;
+    const subscription = event.subscription as
+      | Record<string, unknown>
+      | undefined;
     const subscriptionId = extractSubscriptionId(event);
     const paymentId = payment?.id ? String(payment.id) : null;
 
@@ -483,7 +605,9 @@ router.post("/webhook", async (req, res, next) => {
           event_type: eventType,
           provider_subscription_id: subscriptionId,
           payment_id: paymentId,
-          event_created_at: eventCreatedAt ? eventCreatedAt.toISOString() : null,
+          event_created_at: eventCreatedAt
+            ? eventCreatedAt.toISOString()
+            : null,
           raw: event,
         },
         { onConflict: "id", ignoreDuplicates: true },
@@ -502,8 +626,11 @@ router.post("/webhook", async (req, res, next) => {
     try {
       if (!subscriptionId) return res.json({ received: true });
 
-      const externalRef = String(subscription?.externalReference || payment?.externalReference || "");
-      const [userId, planCode = "pro_monthly", affiliateCode] = externalRef.split(":");
+      const externalRef = String(
+        subscription?.externalReference || payment?.externalReference || "",
+      );
+      const [userId, planCode = "pro_monthly", affiliateCode] =
+        externalRef.split(":");
       if (!userId) {
         console.warn("[webhook] externalReference não encontrado:", eventId);
         return res.json({ received: true });
@@ -514,37 +641,56 @@ router.post("/webhook", async (req, res, next) => {
         .select("id, name")
         .eq("code", planCode)
         .maybeSingle();
-      if (!proPlan) throw createError(500, "db_error", "Plano Pro não encontrado.");
+      if (!proPlan)
+        throw createError(500, "db_error", "Plano Pro não encontrado.");
 
       const { data: existing } = await supabaseAdmin
         .from("subscriptions")
-        .select("id, status, cancel_at_period_end, current_period_end, canceled_at, last_event_at")
+        .select(
+          "id, status, cancel_at_period_end, current_period_end, canceled_at, last_event_at",
+        )
         .eq("provider_subscription_id", subscriptionId)
         .maybeSingle();
 
       // (3) Ordenacao: ignora MUTACAO se o evento e mais antigo que o ultimo processado.
-      if (existing?.last_event_at && eventCreatedAt && eventCreatedAt < new Date(existing.last_event_at)) {
+      if (
+        existing?.last_event_at &&
+        eventCreatedAt &&
+        eventCreatedAt < new Date(existing.last_event_at)
+      ) {
         console.warn(`[webhook] evento fora de ordem ignorado (${eventId})`);
         return res.json({ received: true, out_of_order: true });
       }
 
       const now = new Date();
       const lastEventIso = (eventCreatedAt ?? now).toISOString();
-      const isPaymentConfirm = eventType === "PAYMENT_RECEIVED" || eventType === "PAYMENT_CONFIRMED";
+      const isPaymentConfirm =
+        eventType === "PAYMENT_RECEIVED" || eventType === "PAYMENT_CONFIRMED";
 
       // Decide a transicao.
-      let action: "skip" | "activate" | "past_due" | "cancel" | "create_incomplete" = "skip";
+      let action:
+        | "skip"
+        | "activate"
+        | "past_due"
+        | "cancel"
+        | "create_incomplete" = "skip";
       if (isPaymentConfirm) {
         action = existing?.cancel_at_period_end ? "skip" : "activate"; // (s2) nao reanima marcada p/ cancelar
       } else if (eventType === "PAYMENT_OVERDUE") {
         action = "past_due";
       } else if (eventType === "SUBSCRIPTION_CREATED") {
-        action = existing && ["active", "past_due"].includes(existing.status) ? "skip" : "create_incomplete"; // (5)
+        action =
+          existing && ["active", "past_due"].includes(existing.status)
+            ? "skip"
+            : "create_incomplete"; // (5)
       } else if (CANCELING_EVENTS.has(eventType)) {
         action = "cancel";
       } else if (eventType === "SUBSCRIPTION_UPDATED") {
         const subStatus = String(subscription?.status || "").toUpperCase();
-        action = subStatus === "INACTIVE" || subStatus === "EXPIRED" ? "cancel" : "skip"; // (s2) nao forca active
+        action =
+          subStatus === "INACTIVE" || subStatus === "EXPIRED"
+            ? "cancel"
+            : "skip"; // (s2) nao forca active
       }
       // PAYMENT_DELETED e demais: skip (10).
 
@@ -553,7 +699,9 @@ router.post("/webhook", async (req, res, next) => {
         plan_id: proPlan.id,
         provider: "asaas",
         provider_subscription_id: subscriptionId,
-        provider_customer_id: String(subscription?.customer || payment?.customer || ""),
+        provider_customer_id: String(
+          subscription?.customer || payment?.customer || "",
+        ),
         affiliate_code: affiliateCode || null,
       };
 
@@ -561,7 +709,9 @@ router.post("/webhook", async (req, res, next) => {
 
       if (action === "activate") {
         const cycleMonths = PLAN_CYCLE_MONTHS[planCode] ?? 1; // (4) cycle-aware
-        const periodStart = payment?.dueDate ? new Date(String(payment.dueDate)) : now;
+        const periodStart = payment?.dueDate
+          ? new Date(String(payment.dueDate))
+          : now;
         const periodEnd = addMonths(periodStart, cycleMonths);
         const patch = {
           status: "active",
@@ -573,8 +723,13 @@ router.post("/webhook", async (req, res, next) => {
           raw_provider_payload: event,
         };
         const result = existing
-          ? await supabaseAdmin.from("subscriptions").update(patch).eq("provider_subscription_id", subscriptionId)
-          : await supabaseAdmin.from("subscriptions").insert({ ...baseRequired, ...patch });
+          ? await supabaseAdmin
+              .from("subscriptions")
+              .update(patch)
+              .eq("provider_subscription_id", subscriptionId)
+          : await supabaseAdmin
+              .from("subscriptions")
+              .insert({ ...baseRequired, ...patch });
         if (result.error) {
           console.error("[webhook] subscriptions write failed:", result.error);
           throw createError(500, "db_error", "Erro ao ativar assinatura.");
@@ -584,7 +739,11 @@ router.post("/webhook", async (req, res, next) => {
         if (existing) {
           const { error } = await supabaseAdmin
             .from("subscriptions")
-            .update({ status: "past_due", last_event_at: lastEventIso, raw_provider_payload: event }) // (10) nao mexe no periodo
+            .update({
+              status: "past_due",
+              last_event_at: lastEventIso,
+              raw_provider_payload: event,
+            }) // (10) nao mexe no periodo
             .eq("provider_subscription_id", subscriptionId);
           if (error) {
             console.error("[webhook] subscriptions write failed:", error);
@@ -617,8 +776,13 @@ router.post("/webhook", async (req, res, next) => {
           raw_provider_payload: event,
         };
         const result = existing
-          ? await supabaseAdmin.from("subscriptions").update(patch).eq("provider_subscription_id", subscriptionId)
-          : await supabaseAdmin.from("subscriptions").insert({ ...baseRequired, ...patch });
+          ? await supabaseAdmin
+              .from("subscriptions")
+              .update(patch)
+              .eq("provider_subscription_id", subscriptionId)
+          : await supabaseAdmin
+              .from("subscriptions")
+              .insert({ ...baseRequired, ...patch });
         if (result.error) {
           console.error("[webhook] subscriptions write failed:", result.error);
           throw createError(500, "db_error", "Erro ao registrar assinatura.");
@@ -631,19 +795,27 @@ router.post("/webhook", async (req, res, next) => {
       if (affiliateCode && action === "activate") {
         const { data: affiliate } = await supabaseAdmin
           .from("affiliates")
-          .select("id, sales, revenue_cents, commission_due_cents, commission_percent")
+          .select(
+            "id, sales, revenue_cents, commission_due_cents, commission_percent",
+          )
           .eq("code", affiliateCode)
           .maybeSingle();
 
         if (affiliate) {
-          const revenueCents = Math.round(Number(payment?.value || subscription?.value || 0) * 100);
-          const commissionCents = Math.round(revenueCents * (Number(affiliate.commission_percent || 0) / 100));
+          const revenueCents = Math.round(
+            Number(payment?.value || subscription?.value || 0) * 100,
+          );
+          const commissionCents = Math.round(
+            revenueCents * (Number(affiliate.commission_percent || 0) / 100),
+          );
           await supabaseAdmin
             .from("affiliates")
             .update({
               sales: Number(affiliate.sales || 0) + 1,
-              revenue_cents: Number(affiliate.revenue_cents || 0) + revenueCents,
-              commission_due_cents: Number(affiliate.commission_due_cents || 0) + commissionCents,
+              revenue_cents:
+                Number(affiliate.revenue_cents || 0) + revenueCents,
+              commission_due_cents:
+                Number(affiliate.commission_due_cents || 0) + commissionCents,
             })
             .eq("id", affiliate.id);
         }
@@ -651,30 +823,57 @@ router.post("/webhook", async (req, res, next) => {
 
       // Emails: so em transicao real.
       try {
-        const { data: authData } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const { data: authData } =
+          await supabaseAdmin.auth.admin.getUserById(userId);
         const userEmail = authData?.user?.email || "";
-        const userName = String(authData?.user?.user_metadata?.name || authData?.user?.email?.split("@")[0] || "usuário");
+        const userName = String(
+          authData?.user?.user_metadata?.name ||
+            authData?.user?.email?.split("@")[0] ||
+            "usuário",
+        );
         const { data: profileData } = await supabaseAdmin
           .from("profiles")
           .select("gender")
           .eq("user_id", userId)
           .maybeSingle();
-        const userGender = (profileData?.gender as Gender | null | undefined) ?? null;
+        const userGender =
+          (profileData?.gender as Gender | null | undefined) ?? null;
 
         if (userEmail && transitionedTo === "active") {
-          await enqueueEmail({ type: "pro_upgrade", to: userEmail, name: userName, gender: userGender, planName: proPlan.name || planCode });
+          await enqueueEmail({
+            type: "pro_upgrade",
+            to: userEmail,
+            name: userName,
+            gender: userGender,
+            planName: proPlan.name || planCode,
+          });
         }
         if (userEmail && transitionedTo === "canceled") {
-          await enqueueEmail({ type: "cancellation", to: userEmail, name: userName, gender: userGender });
+          await enqueueEmail({
+            type: "cancellation",
+            to: userEmail,
+            name: userName,
+            gender: userGender,
+          });
         }
         if (userEmail && transitionedTo === "past_due") {
-          await enqueueEmail({ type: "payment_failed", to: userEmail, name: userName, gender: userGender });
+          await enqueueEmail({
+            type: "payment_failed",
+            to: userEmail,
+            name: userName,
+            gender: userGender,
+          });
         }
       } catch (emailError) {
-        console.error("[email] Erro ao processar e-mail transacional", emailError);
+        console.error(
+          "[email] Erro ao processar e-mail transacional",
+          emailError,
+        );
       }
 
-      console.log(`[webhook] ${subscriptionId} action=${action} -> ${transitionedTo ?? "no-op"} (user ${userId})`);
+      console.log(
+        `[webhook] ${subscriptionId} action=${action} -> ${transitionedTo ?? "no-op"} (user ${userId})`,
+      );
       return res.json({ received: true });
     } catch (procErr) {
       try {

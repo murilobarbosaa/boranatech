@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
-import { ArrowRight, Sparkles, Star, FileText, Linkedin, Github } from "lucide-react";
+import {
+  ArrowRight,
+  Sparkles,
+  Star,
+  FileText,
+  Linkedin,
+  Github,
+} from "lucide-react";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 
 type Message = {
@@ -84,7 +91,8 @@ export default function TurbineComIA() {
             className="mt-4 font-display font-black text-slate-950 leading-[1.05]"
             style={{ fontSize: "clamp(40px, 6vw, 72px)" }}
           >
-            A <span className="text-amber-600">IA</span> que te prepara pra entrevista, entrega análise e te ajuda a{" "}
+            A <span className="text-amber-600">IA</span> que te prepara pra
+            entrevista, entrega análise e te ajuda a{" "}
             <span className="relative inline-block">
               <span className="relative">chegar pronto</span>
               <span
@@ -137,7 +145,12 @@ export default function TurbineComIA() {
               <div className="flex flex-col items-center gap-6 text-center md:flex-row md:gap-8 md:text-left">
                 <div className="shrink-0">
                   <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-slate-950 bg-amber-300 shadow-[4px_4px_0_#0f172a]">
-                    <Star size={36} className="text-slate-950" fill="#F59E0B" strokeWidth={2.5} />
+                    <Star
+                      size={36}
+                      className="text-slate-950"
+                      fill="#F59E0B"
+                      strokeWidth={2.5}
+                    />
                   </div>
                 </div>
 
@@ -152,7 +165,10 @@ export default function TurbineComIA() {
 
                 <div className="pro-glare relative overflow-hidden inline-flex shrink-0 items-center gap-2 rounded-xl border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all group-hover:shadow-[6px_6px_0_#0f172a]">
                   <span>Conhecer o Pro</span>
-                  <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+                  <ArrowRight
+                    size={20}
+                    className="transition-transform group-hover:translate-x-1"
+                  />
                 </div>
               </div>
             </article>
@@ -176,7 +192,7 @@ function ConversationMockup() {
           setHasStarted(true);
         }
       },
-      { threshold: 0.3 }
+      { threshold: 0.3 },
     );
 
     if (containerRef.current) {
@@ -238,7 +254,11 @@ function ConversationMockup() {
         <div className="flex items-center justify-between border-b-2 border-slate-200 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-100">
-              <Sparkles size={20} className="text-violet-700" strokeWidth={2.5} />
+              <Sparkles
+                size={20}
+                className="text-violet-700"
+                strokeWidth={2.5}
+              />
             </div>
             <div>
               <p className="font-display text-sm font-black text-slate-950">
@@ -262,13 +282,11 @@ function ConversationMockup() {
             {CONVERSATION.map((msg) =>
               visibleMessages.includes(msg.id) ? (
                 <ChatMessage key={msg.id} message={msg} />
-              ) : null
+              ) : null,
             )}
           </AnimatePresence>
 
-          <AnimatePresence>
-            {isTyping && <TypingIndicator />}
-          </AnimatePresence>
+          <AnimatePresence>{isTyping && <TypingIndicator />}</AnimatePresence>
         </div>
 
         <div className="mt-6 pt-6 border-t-2 border-slate-200 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -279,7 +297,10 @@ function ConversationMockup() {
             <button className="pro-glare relative overflow-hidden group inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-amber-300 px-5 py-2.5 font-display font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[5px_5px_0_#0f172a] hover:-translate-y-0.5">
               <ProStarIcon />
               <span>Simular minha entrevista (PRO)</span>
-              <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+              <ArrowRight
+                size={16}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </button>
           </Link>
         </div>
@@ -360,7 +381,12 @@ function ToolListItem({
   tool,
   index,
 }: {
-  tool: { name: string; href: string; description: string; icon: typeof Sparkles };
+  tool: {
+    name: string;
+    href: string;
+    description: string;
+    icon: typeof Sparkles;
+  };
   index: number;
 }) {
   const Icon = tool.icon;
@@ -457,7 +483,10 @@ function WhiteSparkles() {
   ];
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-[1]" aria-hidden="true">
+    <div
+      className="absolute inset-0 pointer-events-none z-[1]"
+      aria-hidden="true"
+    >
       {sparkles.map((s, idx) => (
         <motion.div
           key={idx}

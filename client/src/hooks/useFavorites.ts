@@ -176,7 +176,9 @@ export function useFavorites() {
         if (queued) {
           nextLoadFavoriteRef.current = null;
           const key = favoriteKey({ id: queued.itemKey, type: queued.type });
-          const alreadyHas = nextFavorites.some((fav) => favoriteKey(fav) === key);
+          const alreadyHas = nextFavorites.some(
+            (fav) => favoriteKey(fav) === key,
+          );
           if (!alreadyHas) {
             const optimistic: FavoriteItem = {
               id: queued.itemKey,
