@@ -4,7 +4,7 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=22.12 <23"
+    "node": "^22.12.0 || >=24.0.0"
   },
   "scripts": {
     "dev": "concurrently -k -n \"client,server\" -c \"blue,green\" \"env -u NO_COLOR vite --host\" \"env -u NO_COLOR tsx --tsconfig tsconfig.node.json server/index.ts\"",
