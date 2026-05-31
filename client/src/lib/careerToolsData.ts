@@ -1253,6 +1253,27 @@ export const learnEnglishPlatforms: {
     cost: "Pago",
     level: "Avançado",
   },
+  {
+    name: "Conversation Exchange",
+    url: "https://www.conversationexchange.com/",
+    desc: "Encontre parceiros nativos para trocar idiomas por texto, áudio ou chamada.",
+    cost: "Grátis",
+    level: "Avançado",
+  },
+  {
+    name: "Tandem",
+    url: "https://www.tandem.net/",
+    desc: "App de intercâmbio de idiomas, converse com nativos de graça, recursos extras são pagos.",
+    cost: "Freemium",
+    level: "Avançado",
+  },
+  {
+    name: "YouGlish",
+    url: "https://youglish.com/",
+    desc: "Busque uma palavra e ouça como nativos pronunciam em vídeos reais.",
+    cost: "Grátis",
+    level: "Avançado",
+  },
 ];
 
 export const englishPodcasts: {
