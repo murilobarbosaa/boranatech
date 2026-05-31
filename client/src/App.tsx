@@ -5,6 +5,7 @@ import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import { AuthProvider } from "./contexts/AuthContext";
+import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
@@ -164,14 +165,16 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <AuthProvider>
-          <SubscriptionProvider>
-            <TooltipProvider>
-              <Toaster />
-              <AffiliateTracker />
-              <ScrollToTop />
-              <Router />
-            </TooltipProvider>
-          </SubscriptionProvider>
+          <FavoritesProvider>
+            <SubscriptionProvider>
+              <TooltipProvider>
+                <Toaster />
+                <AffiliateTracker />
+                <ScrollToTop />
+                <Router />
+              </TooltipProvider>
+            </SubscriptionProvider>
+          </FavoritesProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
