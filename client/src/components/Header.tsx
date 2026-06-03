@@ -159,7 +159,7 @@ const menuData: DropdownMenu[] = [
   },
   {
     id: "avancado",
-    label: "Só trabalho e/ou estudo",
+    label: "Já estou na área!",
     headerDescription: "Pra quem já está no mercado ou prestes a entrar",
     accentColor: "#BA7517",
     columns: [
