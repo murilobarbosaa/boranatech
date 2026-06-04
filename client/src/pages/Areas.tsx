@@ -25,9 +25,13 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
-import { areasTI, type AreaTI } from "@/lib/data";
+import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
+import { areasTI, livrosFundamentos, type AreaTI } from "@/lib/data";
 import { getAreas } from "@/services/contentService";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import PageHero from "@/components/shared/PageHero";
+
+const ac = getPageAccentUi("violet");
 
 const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "todos", label: "Todas as áreas", icon: LayoutGrid },
@@ -282,6 +286,14 @@ export default function Areas() {
               ))}
             </div>
           )}
+
+          <div className="mt-10">
+            <LivrosRecomendados
+              titulo="Fundamentos: clássicos para qualquer área"
+              livros={livrosFundamentos}
+              ac={ac}
+            />
+          </div>
         </div>
       </section>
     </Layout>

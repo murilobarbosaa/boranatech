@@ -46,6 +46,16 @@ export interface SubArea {
   dicasIniciais?: string;
 }
 
+export interface Livro {
+  titulo: string;
+  autor: string;
+  porque: string;
+  nivel: "Iniciante" | "Intermediário" | "Avançado";
+  ano?: number;
+  gratuito?: boolean;
+  link?: string;
+}
+
 export interface AreaTI {
   id: string;
   nome: string;
@@ -74,6 +84,7 @@ export interface AreaTI {
   crescimentoMercado?: "alto" | "medio" | "estavel" | "baixo";
   subareas?: SubArea[];
   faculdadesRelacionadas?: string[];
+  livros?: Livro[];
 }
 
 const baseAreasTI: AreaTI[] = [
@@ -4149,9 +4160,780 @@ function buildSalarios(faixas?: [string, string, string, string]) {
   return faixas.map((faixa, i) => ({ nivel: NIVEIS_SALARIO[i], faixa }));
 }
 
+const livrosPorArea: Record<string, Livro[]> = {
+  frontend: [
+    {
+      titulo: "Eloquent JavaScript",
+      autor: "Marijn Haverbeke",
+      nivel: "Iniciante",
+      porque: "Introdução gratuita e prática ao JavaScript, com exercícios.",
+      gratuito: true,
+      link: "https://eloquentjavascript.net",
+    },
+    {
+      titulo: "HTML and CSS: Design and Build Websites",
+      autor: "Jon Duckett",
+      nivel: "Iniciante",
+      porque: "Introdução visual e muito acessível a HTML e CSS.",
+    },
+    {
+      titulo: "You Don't Know JS Yet",
+      autor: "Kyle Simpson",
+      nivel: "Intermediário",
+      porque: "Série que destrincha o JavaScript a fundo, de graça no GitHub.",
+      gratuito: true,
+      link: "https://github.com/getify/You-Dont-Know-JS",
+    },
+    {
+      titulo: "JavaScript: The Good Parts",
+      autor: "Douglas Crockford",
+      nivel: "Intermediário",
+      porque: "Clássico curto sobre as partes boas da linguagem.",
+    },
+    {
+      titulo: "Refactoring UI",
+      autor: "Adam Wathan e Steve Schoger",
+      nivel: "Intermediário",
+      porque: "Design prático para devs deixarem interfaces bem acabadas.",
+    },
+    {
+      titulo: "CSS: The Definitive Guide",
+      autor: "Eric Meyer e Estelle Weyl",
+      nivel: "Avançado",
+      porque: "Referência completa e densa de CSS.",
+    },
+  ],
+  backend: [
+    {
+      titulo: "Código Limpo",
+      autor: "Robert C. Martin",
+      nivel: "Intermediário",
+      porque: "Clássico sobre escrever código legível e de fácil manutenção.",
+    },
+    {
+      titulo: "O Programador Pragmático",
+      autor: "Andrew Hunt e David Thomas",
+      nivel: "Intermediário",
+      porque: "Boas práticas atemporais de quem programa.",
+    },
+    {
+      titulo: "Refatoração",
+      autor: "Martin Fowler",
+      nivel: "Intermediário",
+      porque: "Como melhorar a estrutura do código sem mudar o comportamento.",
+    },
+    {
+      titulo: "Use a Cabeça! Padrões de Projetos",
+      autor: "Eric Freeman e Elisabeth Robson",
+      nivel: "Intermediário",
+      porque: "Padrões de projeto explicados de forma visual e didática.",
+    },
+    {
+      titulo: "Arquitetura Limpa",
+      autor: "Robert C. Martin",
+      nivel: "Avançado",
+      porque: "Princípios de arquitetura para sistemas sustentáveis.",
+    },
+    {
+      titulo: "Designing Data-Intensive Applications",
+      autor: "Martin Kleppmann",
+      nivel: "Avançado",
+      porque: "Referência densa sobre dados e sistemas de back-end.",
+    },
+  ],
+  fullstack: [
+    {
+      titulo: "Entendendo Algoritmos",
+      autor: "Aditya Bhargava",
+      nivel: "Iniciante",
+      porque: "Algoritmos explicados com desenhos, leve e didático.",
+    },
+    {
+      titulo: "O Programador Pragmático",
+      autor: "Andrew Hunt e David Thomas",
+      nivel: "Intermediário",
+      porque: "Boas práticas que servem do front ao back.",
+    },
+    {
+      titulo: "Código Limpo",
+      autor: "Robert C. Martin",
+      nivel: "Intermediário",
+      porque: "Como escrever código que outras pessoas conseguem manter.",
+    },
+    {
+      titulo: "Refatoração",
+      autor: "Martin Fowler",
+      nivel: "Intermediário",
+      porque: "Técnicas para melhorar código existente com segurança.",
+    },
+    {
+      titulo: "Designing Data-Intensive Applications",
+      autor: "Martin Kleppmann",
+      nivel: "Avançado",
+      porque: "Para entender o lado pesado de dados e escala.",
+    },
+  ],
+  dados: [
+    {
+      titulo: "Data Science do Zero",
+      autor: "Joel Grus",
+      nivel: "Iniciante",
+      porque: "Constrói os conceitos de ciência de dados do zero com Python.",
+    },
+    {
+      titulo: "A Arte da Estatística",
+      autor: "David Spiegelhalter",
+      nivel: "Iniciante",
+      porque:
+        "Raciocínio estatístico de forma acessível, sem fórmulas pesadas.",
+    },
+    {
+      titulo: "Storytelling com Dados",
+      autor: "Cole Nussbaumer Knaflic",
+      nivel: "Iniciante",
+      porque: "Como comunicar resultados com visualizações claras.",
+    },
+    {
+      titulo: "Python para Análise de Dados",
+      autor: "Wes McKinney",
+      nivel: "Intermediário",
+      porque: "Pandas e manipulação de dados pelo criador da biblioteca.",
+    },
+    {
+      titulo:
+        "Mãos à Obra: Aprendizado de Máquina com Scikit-Learn, Keras e TensorFlow",
+      autor: "Aurélien Géron",
+      nivel: "Intermediário",
+      porque: "Guia prático e muito usado de machine learning.",
+    },
+    {
+      titulo: "The Elements of Statistical Learning",
+      autor: "Trevor Hastie, Robert Tibshirani e Jerome Friedman",
+      nivel: "Avançado",
+      porque: "Referência teórica densa de aprendizado estatístico.",
+      ano: 2009,
+      gratuito: true,
+      link: "https://hastie.su.domains/ElemStatLearn/",
+    },
+  ],
+  uxui: [
+    {
+      titulo: "O Design do Dia a Dia",
+      autor: "Don Norman",
+      nivel: "Iniciante",
+      porque:
+        "Clássico sobre por que objetos e telas são fáceis ou difíceis de usar.",
+    },
+    {
+      titulo: "Não Me Faça Pensar",
+      autor: "Steve Krug",
+      nivel: "Iniciante",
+      porque: "Usabilidade web explicada de forma curta e direta.",
+    },
+    {
+      titulo: "Lean UX",
+      autor: "Jeff Gothelf e Josh Seiden",
+      nivel: "Intermediário",
+      porque: "UX aplicado a times ágeis e produtos reais.",
+    },
+    {
+      titulo: "Refactoring UI",
+      autor: "Adam Wathan e Steve Schoger",
+      nivel: "Intermediário",
+      porque: "Decisões visuais práticas para interfaces.",
+    },
+    {
+      titulo: "Sprint",
+      autor: "Jake Knapp, John Zeratsky e Braden Kowitz",
+      nivel: "Intermediário",
+      porque: "Processo de 5 dias para validar ideias com protótipos.",
+    },
+    {
+      titulo: "100 Things Every Designer Needs to Know About People",
+      autor: "Susan Weinschenk",
+      nivel: "Intermediário",
+      porque: "Psicologia aplicada ao design de produtos.",
+    },
+  ],
+  ia: [
+    {
+      titulo: "Data Science do Zero",
+      autor: "Joel Grus",
+      nivel: "Iniciante",
+      porque: "Boa porta de entrada para os fundamentos antes da IA.",
+    },
+    {
+      titulo: "Inteligência Artificial: Um Guia para Pessoas Pensantes",
+      autor: "Melanie Mitchell",
+      nivel: "Iniciante",
+      porque: "Panorama honesto e acessível sobre o que a IA faz e não faz.",
+    },
+    {
+      titulo:
+        "Mãos à Obra: Aprendizado de Máquina com Scikit-Learn, Keras e TensorFlow",
+      autor: "Aurélien Géron",
+      nivel: "Intermediário",
+      porque: "Guia prático para sair do papel.",
+    },
+    {
+      titulo: "Inteligência Artificial: Uma Abordagem Moderna",
+      autor: "Stuart Russell e Peter Norvig",
+      nivel: "Avançado",
+      porque: "A referência clássica e abrangente da área.",
+    },
+    {
+      titulo: "Deep Learning",
+      autor: "Ian Goodfellow, Yoshua Bengio e Aaron Courville",
+      nivel: "Avançado",
+      porque: "Referência teórica de redes neurais profundas.",
+      ano: 2016,
+      gratuito: true,
+      link: "https://www.deeplearningbook.org",
+    },
+  ],
+  produto: [
+    {
+      titulo: "A Startup Enxuta",
+      autor: "Eric Ries",
+      nivel: "Iniciante",
+      porque: "Base de validação e experimentação para produtos digitais.",
+    },
+    {
+      titulo: "Inspirado",
+      autor: "Marty Cagan",
+      nivel: "Intermediário",
+      porque:
+        "Como times de produto de tecnologia criam produtos que as pessoas amam.",
+    },
+    {
+      titulo:
+        "Hooked: Como Construir Produtos e Serviços Formadores de Hábitos",
+      autor: "Nir Eyal",
+      nivel: "Intermediário",
+      porque: "Como produtos criam hábito e engajamento.",
+    },
+    {
+      titulo: "Continuous Discovery Habits",
+      autor: "Teresa Torres",
+      nivel: "Intermediário",
+      porque: "Rotina prática de descoberta contínua com usuários.",
+    },
+    {
+      titulo: "Escaping the Build Trap",
+      autor: "Melissa Perri",
+      nivel: "Intermediário",
+      porque:
+        "Como focar em valor e resultados em vez de só entregar features.",
+    },
+    {
+      titulo: "User Story Mapping",
+      autor: "Jeff Patton",
+      nivel: "Intermediário",
+      porque: "Mapear o produto pela jornada do usuário.",
+    },
+  ],
+  ciberseguranca: [
+    {
+      titulo: "Metasploit: The Penetration Tester's Guide",
+      autor: "David Kennedy, Jim O'Gorman, Devon Kearns e Mati Aharoni",
+      nivel: "Intermediário",
+      porque: "Introdução prática a testes de invasão com Metasploit.",
+    },
+    {
+      titulo: "CISSP All-in-One Exam Guide",
+      autor: "Shon Harris e Fernando Maymí",
+      nivel: "Intermediário",
+      porque: "Visão ampla de segurança, boa para certificação.",
+    },
+    {
+      titulo: "The Hacker Playbook 3",
+      autor: "Peter Kim",
+      nivel: "Intermediário",
+      porque: "Guia prático de testes ofensivos no estilo passo a passo.",
+    },
+    {
+      titulo: "The Web Application Hacker's Handbook",
+      autor: "Dafydd Stuttard e Marcus Pinto",
+      nivel: "Avançado",
+      porque: "Referência clássica de segurança em aplicações web.",
+    },
+    {
+      titulo: "Hacking: The Art of Exploitation",
+      autor: "Jon Erickson",
+      nivel: "Avançado",
+      porque: "Entende exploração a fundo, com bastante mão na massa.",
+    },
+    {
+      titulo: "Practical Malware Analysis",
+      autor: "Michael Sikorski e Andrew Honig",
+      nivel: "Avançado",
+      porque: "Guia prático de análise de malware.",
+    },
+  ],
+  cloud: [
+    {
+      titulo: "Projeto Fênix",
+      autor: "Gene Kim, Kevin Behr e George Spafford",
+      nivel: "Iniciante",
+      porque: "Romance sobre TI e operação, leve e envolvente.",
+    },
+    {
+      titulo: "AWS Certified Solutions Architect Study Guide",
+      autor: "Ben Piper e David Clinton",
+      nivel: "Intermediário",
+      porque: "Prepara para a certificação base de arquitetura AWS.",
+    },
+    {
+      titulo: "Kubernetes: Up and Running",
+      autor: "Brendan Burns, Joe Beda e Kelsey Hightower",
+      nivel: "Intermediário",
+      porque: "Introdução prática a Kubernetes pelos criadores.",
+    },
+    {
+      titulo: "Cloud Native Patterns",
+      autor: "Cornelia Davis",
+      nivel: "Avançado",
+      porque: "Padrões para construir aplicações nativas de nuvem.",
+    },
+    {
+      titulo: "Designing Data-Intensive Applications",
+      autor: "Martin Kleppmann",
+      nivel: "Avançado",
+      porque: "Fundamentos de sistemas distribuídos que sustentam a nuvem.",
+    },
+  ],
+  gestao: [
+    {
+      titulo: "Scrum: A Arte de Fazer o Dobro do Trabalho na Metade do Tempo",
+      autor: "Jeff Sutherland",
+      nivel: "Iniciante",
+      porque: "Introdução ao Scrum pelo seu co-criador.",
+    },
+    {
+      titulo: "Projeto Fênix",
+      autor: "Gene Kim, Kevin Behr e George Spafford",
+      nivel: "Iniciante",
+      porque: "Narrativa sobre gestão de TI e fluxo de trabalho.",
+    },
+    {
+      titulo: "A Startup Enxuta",
+      autor: "Eric Ries",
+      nivel: "Intermediário",
+      porque: "Gestão de produto e projeto sob incerteza.",
+    },
+    {
+      titulo: "Making Things Happen",
+      autor: "Scott Berkun",
+      nivel: "Intermediário",
+      porque: "Gestão de projetos de software de forma realista.",
+    },
+    {
+      titulo: "Peopleware",
+      autor: "Tom DeMarco e Timothy Lister",
+      nivel: "Intermediário",
+      porque: "Sobre o lado humano de gerenciar times de software.",
+    },
+  ],
+  qa: [
+    {
+      titulo: "Agile Testing",
+      autor: "Lisa Crispin e Janet Gregory",
+      nivel: "Intermediário",
+      porque: "Referência de testes em times ágeis.",
+    },
+    {
+      titulo: "Explore It!",
+      autor: "Elisabeth Hendrickson",
+      nivel: "Intermediário",
+      porque: "Testes exploratórios na prática.",
+    },
+    {
+      titulo: "Lessons Learned in Software Testing",
+      autor: "Cem Kaner, James Bach e Bret Pettichord",
+      nivel: "Intermediário",
+      porque: "Lições práticas e provocativas sobre testar software.",
+    },
+    {
+      titulo: "Specification by Example",
+      autor: "Gojko Adzic",
+      nivel: "Intermediário",
+      porque: "Usar exemplos para alinhar requisitos e testes.",
+    },
+    {
+      titulo: "The Art of Software Testing",
+      autor: "Glenford Myers",
+      nivel: "Avançado",
+      porque: "Clássico sobre os fundamentos de teste.",
+    },
+  ],
+  mobile: [
+    {
+      titulo: "Head First Android Development",
+      autor: "Dawn Griffiths e David Griffiths",
+      nivel: "Iniciante",
+      porque: "Android de forma visual e amigável.",
+    },
+    {
+      titulo: "Android Programming: The Big Nerd Ranch Guide",
+      autor: "Bill Phillips, Chris Stewart e Kristin Marsicano",
+      nivel: "Intermediário",
+      porque: "Referência sólida e prática de Android.",
+    },
+    {
+      titulo: "iOS Programming: The Big Nerd Ranch Guide",
+      autor: "Christian Keur e Aaron Hillegass",
+      nivel: "Intermediário",
+      porque: "Guia respeitado de desenvolvimento iOS.",
+    },
+    {
+      titulo: "Kotlin in Action",
+      autor: "Dmitry Jemerov e Svetlana Isakova",
+      nivel: "Intermediário",
+      porque: "Kotlin pelos engenheiros da JetBrains.",
+    },
+  ],
+  devops: [
+    {
+      titulo: "Projeto Fênix",
+      autor: "Gene Kim, Kevin Behr e George Spafford",
+      nivel: "Iniciante",
+      porque: "Apresenta a cultura DevOps de forma envolvente.",
+    },
+    {
+      titulo: "O Manual de DevOps",
+      autor: "Gene Kim, Jez Humble, Patrick Debois e John Willis",
+      nivel: "Intermediário",
+      porque: "Guia central de práticas DevOps.",
+    },
+    {
+      titulo: "Accelerate",
+      autor: "Nicole Forsgren, Jez Humble e Gene Kim",
+      nivel: "Intermediário",
+      porque:
+        "O que a pesquisa diz sobre times de software de alta performance.",
+    },
+    {
+      titulo: "Entrega Contínua",
+      autor: "Jez Humble e David Farley",
+      nivel: "Avançado",
+      porque: "Pipeline de entrega de software confiável.",
+    },
+    {
+      titulo: "Site Reliability Engineering",
+      autor: "Betsy Beyer, Chris Jones, Jennifer Petoff e Niall Murphy",
+      nivel: "Avançado",
+      porque: "Como o Google opera sistemas em escala.",
+      ano: 2016,
+      gratuito: true,
+      link: "https://sre.google/sre-book/table-of-contents/",
+    },
+  ],
+  gamedev: [
+    {
+      titulo: "Level Up! The Guide to Great Video Game Design",
+      autor: "Scott Rogers",
+      nivel: "Iniciante",
+      porque: "Introdução divertida e acessível ao design de jogos.",
+    },
+    {
+      titulo: "Game Programming Patterns",
+      autor: "Robert Nystrom",
+      nivel: "Intermediário",
+      porque: "Padrões de código aplicados a jogos, gratuito online.",
+      gratuito: true,
+      link: "https://gameprogrammingpatterns.com",
+    },
+    {
+      titulo: "The Art of Game Design: A Book of Lenses",
+      autor: "Jesse Schell",
+      nivel: "Intermediário",
+      porque: "Referência ampla de design de jogos.",
+    },
+    {
+      titulo: "Game Engine Architecture",
+      autor: "Jason Gregory",
+      nivel: "Avançado",
+      porque: "Como motores de jogos funcionam por dentro.",
+    },
+  ],
+  "analise-dados": [
+    {
+      titulo: "Storytelling com Dados",
+      autor: "Cole Nussbaumer Knaflic",
+      nivel: "Iniciante",
+      porque: "Como comunicar dados com visualizações claras.",
+    },
+    {
+      titulo: "A Arte da Estatística",
+      autor: "David Spiegelhalter",
+      nivel: "Iniciante",
+      porque: "Raciocínio estatístico sem fórmulas pesadas.",
+    },
+    {
+      titulo: "Python para Análise de Dados",
+      autor: "Wes McKinney",
+      nivel: "Intermediário",
+      porque: "Pandas e limpeza de dados na prática.",
+    },
+    {
+      titulo: "The Big Book of Dashboards",
+      autor: "Steve Wexler, Jeffrey Shaffer e Andy Cotgreave",
+      nivel: "Intermediário",
+      porque: "Exemplos reais de dashboards que funcionam.",
+    },
+    {
+      titulo: "Show Me the Numbers",
+      autor: "Stephen Few",
+      nivel: "Intermediário",
+      porque: "Fundamentos de tabelas e gráficos bem feitos.",
+    },
+  ],
+  "engenharia-dados": [
+    {
+      titulo: "Python para Análise de Dados",
+      autor: "Wes McKinney",
+      nivel: "Intermediário",
+      porque: "Boa base para manipular dados com Python.",
+    },
+    {
+      titulo: "Fundamentals of Data Engineering",
+      autor: "Joe Reis e Matt Housley",
+      nivel: "Intermediário",
+      porque: "Visão moderna e completa do ciclo de engenharia de dados.",
+    },
+    {
+      titulo: "The Data Warehouse Toolkit",
+      autor: "Ralph Kimball e Margy Ross",
+      nivel: "Avançado",
+      porque: "Clássico de modelagem dimensional e data warehouse.",
+    },
+    {
+      titulo: "Spark: The Definitive Guide",
+      autor: "Bill Chambers e Matei Zaharia",
+      nivel: "Avançado",
+      porque: "Guia abrangente de processamento de dados com Apache Spark.",
+    },
+    {
+      titulo: "Designing Data-Intensive Applications",
+      autor: "Martin Kleppmann",
+      nivel: "Avançado",
+      porque: "Base essencial sobre sistemas de dados e escala.",
+    },
+  ],
+  "banco-de-dados": [
+    {
+      titulo: "Use a Cabeça! SQL",
+      autor: "Lynn Beighley",
+      nivel: "Iniciante",
+      porque: "SQL de forma visual e prática para começar.",
+    },
+    {
+      titulo: "SQL Performance Explained",
+      autor: "Markus Winand",
+      nivel: "Intermediário",
+      porque: "Como índices e consultas realmente performam.",
+    },
+    {
+      titulo: "SQL Antipatterns",
+      autor: "Bill Karwin",
+      nivel: "Intermediário",
+      porque: "Erros comuns de SQL e como evitá-los.",
+    },
+    {
+      titulo: "Database System Concepts",
+      autor: "Abraham Silberschatz, Henry F. Korth e S. Sudarshan",
+      nivel: "Avançado",
+      porque: "Livro-texto clássico de bancos de dados.",
+    },
+    {
+      titulo: "Designing Data-Intensive Applications",
+      autor: "Martin Kleppmann",
+      nivel: "Avançado",
+      porque: "Armazenamento, replicação e consistência a fundo.",
+    },
+  ],
+  sre: [
+    {
+      titulo: "Projeto Fênix",
+      autor: "Gene Kim, Kevin Behr e George Spafford",
+      nivel: "Iniciante",
+      porque: "Cultura de operação e confiabilidade em formato de história.",
+    },
+    {
+      titulo: "Site Reliability Engineering",
+      autor: "Betsy Beyer, Chris Jones, Jennifer Petoff e Niall Murphy",
+      nivel: "Intermediário",
+      porque: "O livro que define a prática de SRE no Google.",
+      ano: 2016,
+      gratuito: true,
+      link: "https://sre.google/sre-book/table-of-contents/",
+    },
+    {
+      titulo: "The Site Reliability Workbook",
+      autor:
+        "Betsy Beyer, Niall Murphy, David Rensin, Kent Kawahara e Stephen Thorne",
+      nivel: "Intermediário",
+      porque: "Aplicação prática dos conceitos de SRE.",
+      ano: 2018,
+      gratuito: true,
+      link: "https://sre.google/workbook/table-of-contents/",
+    },
+    {
+      titulo: "Designing Data-Intensive Applications",
+      autor: "Martin Kleppmann",
+      nivel: "Avançado",
+      porque: "Fundamentos de confiabilidade e sistemas distribuídos.",
+    },
+  ],
+  infraestrutura: [
+    {
+      titulo: "CompTIA Network+ Study Guide",
+      autor: "Todd Lammle",
+      nivel: "Iniciante",
+      porque: "Base de redes orientada à certificação.",
+    },
+    {
+      titulo: "Redes de Computadores: Uma Abordagem Top-Down",
+      autor: "James Kurose e Keith Ross",
+      nivel: "Intermediário",
+      porque: "Clássico muito usado em cursos de redes.",
+    },
+    {
+      titulo: "Redes de Computadores",
+      autor: "Andrew S. Tanenbaum e David Wetherall",
+      nivel: "Intermediário",
+      porque: "Outro clássico didático da área.",
+    },
+    {
+      titulo: "The Practice of System and Network Administration",
+      autor: "Thomas Limoncelli, Christina Hogan e Strata Chalup",
+      nivel: "Intermediário",
+      porque: "Referência de operação de sistemas e redes.",
+    },
+    {
+      titulo: "TCP/IP Illustrated, Volume 1",
+      autor: "W. Richard Stevens",
+      nivel: "Avançado",
+      porque: "Referência detalhada do funcionamento do TCP/IP.",
+    },
+  ],
+  "analise-sistemas": [
+    {
+      titulo: "UML Essencial",
+      autor: "Martin Fowler",
+      nivel: "Iniciante",
+      porque: "Guia curto e direto de UML.",
+    },
+    {
+      titulo: "Engenharia de Software",
+      autor: "Ian Sommerville",
+      nivel: "Intermediário",
+      porque: "Livro-texto abrangente da disciplina.",
+    },
+    {
+      titulo: "User Stories Applied",
+      autor: "Mike Cohn",
+      nivel: "Intermediário",
+      porque: "Levantamento de requisitos com histórias de usuário.",
+    },
+    {
+      titulo: "Domain-Driven Design",
+      autor: "Eric Evans",
+      nivel: "Avançado",
+      porque: "Como modelar software a partir do domínio do negócio.",
+    },
+  ],
+  blockchain: [
+    {
+      titulo: "Blockchain Basics",
+      autor: "Daniel Drescher",
+      nivel: "Iniciante",
+      porque: "Conceitos de blockchain sem código, passo a passo.",
+    },
+    {
+      titulo: "The Basics of Bitcoins and Blockchains",
+      autor: "Antony Lewis",
+      nivel: "Iniciante",
+      porque: "Introdução acessível a cripto e blockchain.",
+    },
+    {
+      titulo: "Mastering Bitcoin",
+      autor: "Andreas M. Antonopoulos",
+      nivel: "Intermediário",
+      porque: "Referência técnica para entender o Bitcoin a fundo.",
+    },
+    {
+      titulo: "Mastering Ethereum",
+      autor: "Andreas M. Antonopoulos e Gavin Wood",
+      nivel: "Intermediário",
+      porque: "Como o Ethereum e os contratos inteligentes funcionam.",
+    },
+  ],
+  iot: [
+    {
+      titulo: "Programming Arduino: Getting Started with Sketches",
+      autor: "Simon Monk",
+      nivel: "Iniciante",
+      porque: "Porta de entrada prática com Arduino.",
+    },
+    {
+      titulo: "Designing the Internet of Things",
+      autor: "Adrian McEwen e Hakim Cassimally",
+      nivel: "Iniciante",
+      porque: "Visão geral de como projetar produtos de IoT.",
+    },
+    {
+      titulo: "Making Embedded Systems",
+      autor: "Elecia White",
+      nivel: "Intermediário",
+      porque: "Boas práticas de software para sistemas embarcados.",
+    },
+    {
+      titulo: "The Art of Electronics",
+      autor: "Paul Horowitz e Winfield Hill",
+      nivel: "Avançado",
+      porque: "Referência completa e densa de eletrônica.",
+    },
+  ],
+};
+
+export const livrosFundamentos: Livro[] = [
+  {
+    titulo: "Código Limpo",
+    autor: "Robert C. Martin",
+    nivel: "Intermediário",
+    porque: "Escrever código legível e de fácil manutenção, em qualquer stack.",
+  },
+  {
+    titulo: "O Programador Pragmático",
+    autor: "Andrew Hunt e David Thomas",
+    nivel: "Intermediário",
+    porque: "Boas práticas atemporais da carreira de quem programa.",
+  },
+  {
+    titulo: "Entendendo Algoritmos",
+    autor: "Aditya Bhargava",
+    nivel: "Iniciante",
+    porque: "Algoritmos e estruturas de dados explicados com desenhos.",
+  },
+  {
+    titulo: "Refatoração",
+    autor: "Martin Fowler",
+    nivel: "Intermediário",
+    porque: "Melhorar a estrutura do código com segurança, passo a passo.",
+  },
+  {
+    titulo: "A Mítica do Homem-Mês",
+    autor: "Frederick P. Brooks Jr.",
+    nivel: "Intermediário",
+    porque: "Clássico sobre por que projetos de software atrasam.",
+  },
+];
+
 export const areasTI: AreaTI[] = baseAreasTI.map((area) => ({
   ...area,
   salarios: area.salarios ?? buildSalarios(areaSalarios[area.slug]),
+  livros: area.livros ?? livrosPorArea[area.slug],
 }));
 
 export const roadmaps = [
