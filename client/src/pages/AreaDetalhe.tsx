@@ -23,6 +23,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
+import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
@@ -716,6 +717,14 @@ export default function AreaDetalhe() {
                     </Link>
                   </div>
                 </div>
+
+                {area.livros && area.livros.length > 0 ? (
+                  <LivrosRecomendados
+                    titulo="Livros recomendados"
+                    livros={area.livros}
+                    ac={ac}
+                  />
+                ) : null}
               </div>
 
               {/* ============ ZONA 4 — Aprofundamento ============ */}
