@@ -11,12 +11,8 @@ import posthog from "posthog-js";
 import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGate, type ResumeContext } from "@/contexts/AuthGateContext";
 import { apiUrl } from "@/lib/api";
-import {
-  consumePendingIntent,
-  savePendingIntent,
-  type FavoriteIntent,
-} from "@/lib/pendingIntent";
 import { supabase } from "@/lib/supabase";
 import type {
   BookmarkItem,
@@ -106,12 +102,18 @@ async function apiFetch(path: string, options?: RequestInit) {
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
+  const { registerResumeHandler } = useAuthGate();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingAuthFavorite, setPendingAuthFavorite] =
     useState<PendingAuthFavorite | null>(null);
   const nextLoadFavoriteRef = useRef<PendingAuthFavorite | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
+  const favoritesRef = useRef<FavoriteItem[]>([]);
+
+  useEffect(() => {
+    favoritesRef.current = favorites;
+  }, [favorites]);
 
   const refresh = useCallback(async () => {
     const res = await apiFetch("/");
@@ -119,6 +121,70 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     const json = (await res.json()) as { data?: BookmarkItem[] };
     setFavorites((json.data || []).map(bookmarkToFavorite));
   }, []);
+
+  // OAuth resume: the AuthGate central resumer consumes the pending intent on
+  // boot and dispatches it here. Optimistic add + POST; on non-2xx, roll back
+  // the optimistic add and toast (no phantom favorite). Mirrors the same-tab
+  // path's res.ok / rollback / idempotent (server 23505) semantics.
+  const applyResumedFavorite = useCallback<
+    (ctx: ResumeContext) => Promise<void>
+  >(
+    async ({ intent }) => {
+      if (intent.kind !== "favorite") return;
+
+      const item: FavoriteItem = {
+        id: intent.itemKey,
+        type: intent.type as FavoriteType,
+        title: intent.snapshot?.title || intent.itemKey,
+        subtitle: intent.snapshot?.subtitle,
+        url: intent.snapshot?.url,
+      };
+      const key = favoriteKey(item);
+      const alreadyHas = favoritesRef.current.some(
+        (fav) => favoriteKey(fav) === key,
+      );
+      if (!alreadyHas) {
+        setFavorites((current) => [item, ...current]);
+      }
+
+      try {
+        const res = await apiFetch("/", {
+          method: "POST",
+          body: JSON.stringify(favoriteToBookmark(item)),
+        });
+        if (!res.ok) throw new Error("oauth favorite insert failed");
+        posthog.capture("favorite_toggled", {
+          action: "added",
+          resource_type: item.type,
+          resource_title: item.title,
+          via: "oauth_intent",
+        });
+      } catch (err) {
+        console.error("[favorites] oauth favorite apply failed", err);
+        if (!alreadyHas) {
+          setFavorites((current) =>
+            current.filter((fav) => favoriteKey(fav) !== key),
+          );
+        }
+        toast.error("Não foi possível salvar nos favoritos. Tente novamente.");
+        return;
+      }
+
+      // Reconcile against the concurrent sign-in load() that may overwrite the
+      // optimistic add with a server list that predates this POST. Best-effort.
+      try {
+        await refresh();
+      } catch {
+        // keep optimistic state; next load reconciles
+      }
+    },
+    [refresh],
+  );
+
+  useEffect(
+    () => registerResumeHandler("favorite", applyResumedFavorite),
+    [registerResumeHandler, applyResumedFavorite],
+  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -146,7 +212,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       try {
         if (justSignedIn) {
           await maybeMigrateLegacyBookmarks(user!.id);
-          await maybeConsumeOAuthFavorite();
         }
 
         const res = await apiFetch("/");
@@ -385,40 +450,5 @@ async function maybeMigrateLegacyBookmarks(userId: string): Promise<void> {
     }
   } catch (err) {
     console.error("[favorites] legacy migration failed", err);
-  }
-}
-
-async function maybeConsumeOAuthFavorite(): Promise<void> {
-  const intent = consumePendingIntent();
-  if (!intent) return;
-
-  if (intent.kind !== "favorite") {
-    savePendingIntent(intent);
-    return;
-  }
-
-  const fav = intent as FavoriteIntent;
-  try {
-    const bookmark: BookmarkItem = {
-      resource_type: fav.type as FavoriteType,
-      resource_id: fav.itemKey,
-      title_snapshot: fav.snapshot?.title,
-      subtitle_snapshot: fav.snapshot?.subtitle,
-      url_snapshot: fav.snapshot?.url,
-    };
-    const res = await apiFetch("/", {
-      method: "POST",
-      body: JSON.stringify(bookmark),
-    });
-    if (!res.ok) throw new Error("oauth favorite insert failed");
-    posthog.capture("favorite_toggled", {
-      action: "added",
-      resource_type: fav.type,
-      resource_title: fav.snapshot?.title || fav.itemKey,
-      via: "oauth_intent",
-    });
-  } catch (err) {
-    console.error("[favorites] oauth favorite apply failed", err);
-    toast.error("Não foi possível salvar nos favoritos. Tente novamente.");
   }
 }
