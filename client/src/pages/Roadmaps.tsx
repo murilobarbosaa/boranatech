@@ -4,7 +4,7 @@
   - List of roadmaps with detail view
 */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useSearch } from "wouter";
 import { ArrowRight, Clock, ChevronDown, ChevronUp, CheckCircle, AlertTriangle } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -16,7 +16,6 @@ import ProGate from "@/components/pro/ProGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, roadmaps } from "@/lib/data";
 import { roadmapPlans } from "@/lib/platformData";
-import { getRoadmaps } from "@/services/contentService";
 
 const roadmapImage = "https://d2xsxph8kpxj0f.cloudfront.net/310519663616665753/DXr9t3ifzyjk6U8zXioqGk/roadmap-banner-BKcp4QThC94ci8swjT8tVt.webp";
 
@@ -32,15 +31,11 @@ export default function Roadmaps() {
   const { isPro } = useSubscription();
   const search = useSearch();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
-  const [roadmapItems, setRoadmapItems] = useState(roadmaps);
+  const roadmapItems = roadmaps;
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>(initialAreaFromUrl ?? FILTER_ALL);
   const [durationFilter, setDurationFilter] = useState("todos");
   const [showAiCreator, setShowAiCreator] = useState(false);
-
-  useEffect(() => {
-    getRoadmaps().then(setRoadmapItems).catch(() => setRoadmapItems(roadmaps));
-  }, []);
 
   const areaSlugs: (string | null)[] = [
     FILTER_ALL,
