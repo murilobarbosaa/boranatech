@@ -21,6 +21,8 @@ import {
   notebookBuyingTips,
   notebookExtras,
   notebookFraming,
+  notebookModels,
+  notebookModelsAviso,
   notebookParts,
   notebookTiers,
 } from "@/lib/notebookGuideData";
@@ -354,6 +356,46 @@ export default function Dicas() {
                       </h3>
                     </div>
                     <p className="text-sm text-slate-600">{extra.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-5 flex items-center gap-2">
+                <Laptop className="h-6 w-6 text-amber-700" />
+                <h2 className="font-display text-3xl font-black text-slate-950">
+                  Modelos para começar a olhar
+                </h2>
+              </div>
+              <p className="mb-5 rounded-2xl border-2 border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                {notebookModelsAviso}
+              </p>
+              <div className="grid gap-5 md:grid-cols-2">
+                {notebookModels.map((model) => (
+                  <div
+                    key={model.faixa}
+                    className="card-brutal rounded-2xl bg-white p-5"
+                  >
+                    <span className="inline-flex w-fit rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                      {model.faixa}
+                    </span>
+                    <p className="mt-3 text-sm text-slate-600">
+                      {model.paraQuem}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {model.linhas.map((linha) => (
+                        <span
+                          key={linha}
+                          className="rounded-full border-2 border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800"
+                        >
+                          {linha}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                      O que procurar: {model.oQueProcurar}
+                    </p>
                   </div>
                 ))}
               </div>
