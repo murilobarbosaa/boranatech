@@ -3783,11 +3783,119 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
     },
   };
 
-export const careerInstitutes = [
+export const careerInstitutes: {
+  name: string;
+  desc: string;
+  url: string;
+  areas?: string[];
+}[] = [
   {
     name: "PMI",
-    desc: "Comunidade para gestão de projetos e certificações.",
+    desc: "Certificações de gestão de projetos PMP e CAPM.",
     url: "https://www.pmi.org",
+    areas: ["gestao"],
+  },
+  {
+    name: "Scrum.org",
+    desc: "Certificação PSM (Professional Scrum Master) e trilhas ágeis.",
+    url: "https://www.scrum.org",
+    areas: ["gestao"],
+  },
+  {
+    name: "Axelos",
+    desc: "ITIL, certificação de gestão de serviços de TI.",
+    url: "https://www.axelos.com",
+    areas: ["gestao"],
+  },
+  {
+    name: "ISTQB",
+    desc: "Certificação CTFL, padrão internacional de testes de software.",
+    url: "https://www.istqb.org",
+    areas: ["qa"],
+  },
+  {
+    name: "BSTQB",
+    desc: "Board brasileiro do ISTQB, com o CTFL em português.",
+    url: "https://www.bstqb.org.br",
+    areas: ["qa"],
+  },
+  {
+    name: "(ISC)2",
+    desc: "Certificação CISSP, referência em segurança da informação.",
+    url: "https://www.isc2.org",
+    areas: ["ciberseguranca"],
+  },
+  {
+    name: "ISACA",
+    desc: "Certificações CISA e CISM de auditoria e gestão de segurança.",
+    url: "https://www.isaca.org",
+    areas: ["ciberseguranca"],
+  },
+  {
+    name: "EC-Council",
+    desc: "Certificação CEH (Certified Ethical Hacker).",
+    url: "https://www.eccouncil.org",
+    areas: ["ciberseguranca"],
+  },
+  {
+    name: "CompTIA",
+    desc: "Certificações neutras de fornecedor: A+, Network+ e Security+.",
+    url: "https://www.comptia.org",
+    areas: ["ciberseguranca", "infraestrutura"],
+  },
+  {
+    name: "Cisco",
+    desc: "Certificação CCNA de redes.",
+    url: "https://learningnetwork.cisco.com",
+    areas: ["infraestrutura"],
+  },
+  {
+    name: "CNCF",
+    desc: "Certificações de Kubernetes CKA e CKAD.",
+    url: "https://www.cncf.io",
+    areas: ["cloud", "devops", "sre"],
+  },
+  {
+    name: "Linux Foundation",
+    desc: "Certificações de Linux e tecnologias cloud native.",
+    url: "https://www.linuxfoundation.org",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "AWS",
+    desc: "Certificações de fornecedor como Cloud Practitioner e Solutions Architect.",
+    url: "https://aws.amazon.com/certification/",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "Microsoft Azure",
+    desc: "Certificações de fornecedor como Azure Fundamentals e Administrator.",
+    url: "https://learn.microsoft.com/credentials/",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "Google Cloud",
+    desc: "Certificações de fornecedor nos níveis Associate e Professional.",
+    url: "https://cloud.google.com/learn/certification",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "Nielsen Norman Group",
+    desc: "NN/g UX Certification, referência em usabilidade e pesquisa.",
+    url: "https://www.nngroup.com",
+    areas: ["uxui"],
+  },
+  {
+    name: "Interaction Design Foundation",
+    desc: "Cursos e certificados de UX e design de interação.",
+    url: "https://www.interaction-design.org",
+    areas: ["uxui"],
+  },
+  {
+    name: "DAMA International",
+    desc: "Certificação CDMP de gestão de dados.",
+    url: "https://www.dama.org",
+    areas: ["dados", "engenharia-dados"],
   },
   {
     name: "SBC",
@@ -3795,9 +3903,14 @@ export const careerInstitutes = [
     url: "https://www.sbc.org.br",
   },
   {
-    name: "Interaction Design Foundation",
-    desc: "Comunidade e estudos para UX/Product Design.",
-    url: "https://www.interaction-design.org",
+    name: "IEEE",
+    desc: "Maior organização técnica do mundo, com padrões e publicações.",
+    url: "https://www.ieee.org",
+  },
+  {
+    name: "ACM",
+    desc: "Association for Computing Machinery, publicações e eventos.",
+    url: "https://www.acm.org",
   },
 ];
 
