@@ -1,9 +1,22 @@
 import { useState } from "react";
-import { ExternalLink, Lightbulb, PlayCircle, Sparkles } from "lucide-react";
+import { Link } from "wouter";
+import {
+  ArrowRight,
+  ExternalLink,
+  Lightbulb,
+  PlayCircle,
+  Sparkles,
+} from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
+import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import SEO from "@/components/SEO";
+import { livrosFundamentos } from "@/lib/data";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { tipCategories, tipsArticles } from "@/lib/platformData";
+import { cn } from "@/lib/utils";
+
+const ac = getPageAccentUi("amber");
 
 export default function Dicas() {
   const [category, setCategory] = useState("Todas");
@@ -120,6 +133,26 @@ export default function Dicas() {
               </a>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="bg-[#fff9e7] pb-12">
+        <div className="container">
+          <LivrosRecomendados
+            titulo="Leituras fundamentais"
+            livros={livrosFundamentos}
+            ac={ac}
+          />
+          <Link
+            href="/areas"
+            className={cn(
+              "mt-4 inline-flex items-center gap-1 text-sm font-bold",
+              ac.link,
+              ac.linkHover,
+            )}
+          >
+            Ver livros por área <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
     </Layout>
