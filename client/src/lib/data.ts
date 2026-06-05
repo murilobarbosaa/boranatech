@@ -4936,6 +4936,111 @@ export const areasTI: AreaTI[] = baseAreasTI.map((area) => ({
   livros: area.livros ?? livrosPorArea[area.slug],
 }));
 
+export const areasPoucoConhecidas: {
+  nome: string;
+  oQueE: string;
+  porQue: string;
+  relatedAreaSlug?: string;
+}[] = [
+  {
+    nome: "DevRel / Developer Advocate",
+    oQueE:
+      "Faz a ponte entre a empresa e a comunidade de desenvolvedores, com conteúdo, palestras e exemplos de uso.",
+    porQue:
+      "Para quem gosta de programar e também de comunicar, ensinar e estar perto da comunidade.",
+  },
+  {
+    nome: "Technical Writer",
+    oQueE:
+      "Escreve documentação técnica, tutoriais e referências de API para outras pessoas usarem um produto ou código.",
+    porQue:
+      "Para quem curte escrever com clareza e organizar informação técnica.",
+  },
+  {
+    nome: "Especialista em Acessibilidade (a11y)",
+    oQueE:
+      "Garante que sites e apps possam ser usados por pessoas com deficiência, seguindo padrões como o WCAG.",
+    porQue:
+      "Para quem quer unir tecnologia e impacto social, deixando produtos utilizáveis por todo mundo.",
+    relatedAreaSlug: "uxui",
+  },
+  {
+    nome: "Visão Computacional",
+    oQueE:
+      "Ensina computadores a interpretar imagens e vídeos, de reconhecer objetos a ler documentos.",
+    porQue:
+      "Para quem gosta de matemática, imagens e problemas visuais dentro de IA.",
+    relatedAreaSlug: "ia",
+  },
+  {
+    nome: "Processamento de Linguagem Natural (PLN)",
+    oQueE:
+      "Faz máquinas entenderem e gerarem linguagem humana, base de tradutores, chatbots e assistentes.",
+    porQue:
+      "Para quem curte idiomas, texto e o lado linguístico da inteligência artificial.",
+    relatedAreaSlug: "ia",
+  },
+  {
+    nome: "MLOps",
+    oQueE:
+      "Leva modelos de IA do experimento para produção, com versionamento, deploy e monitoramento.",
+    porQue: "Para quem gosta de IA mas também de infraestrutura e automação.",
+    relatedAreaSlug: "devops",
+  },
+  {
+    nome: "Engenharia de Plataforma",
+    oQueE:
+      "Constrói ferramentas e ambientes internos que facilitam o trabalho dos outros times de desenvolvimento.",
+    porQue:
+      "Para quem gosta de resolver problemas de produtividade e infraestrutura para outros devs.",
+    relatedAreaSlug: "devops",
+  },
+  {
+    nome: "FinOps",
+    oQueE:
+      "Otimiza e controla os custos de nuvem, equilibrando gasto, desempenho e necessidade do negócio.",
+    porQue:
+      "Para quem une tecnologia com visão financeira e gosta de eficiência.",
+    relatedAreaSlug: "cloud",
+  },
+  {
+    nome: "Perícia Digital / Forense",
+    oQueE:
+      "Investiga incidentes e crimes digitais, coletando e analisando evidências em sistemas e dispositivos.",
+    porQue:
+      "Para quem gosta de investigação, detalhes e segurança da informação.",
+    relatedAreaSlug: "ciberseguranca",
+  },
+  {
+    nome: "Sistemas Embarcados / Robótica",
+    oQueE:
+      "Programa o software que roda dentro de dispositivos físicos, de eletrodomésticos a robôs.",
+    porQue:
+      "Para quem gosta de hardware, eletrônica e de ver o código mexer no mundo real.",
+    relatedAreaSlug: "iot",
+  },
+  {
+    nome: "Localização / i18n",
+    oQueE:
+      "Adapta software para outros idiomas e culturas, cuidando de textos, formatos e contexto.",
+    porQue:
+      "Para quem curte idiomas e quer aproximar produtos de pessoas no mundo todo.",
+  },
+  {
+    nome: "Bioinformática",
+    oQueE:
+      "Usa programação e dados para resolver problemas de biologia, como analisar DNA e proteínas.",
+    porQue:
+      "Para quem gosta de biologia ou saúde e quer aplicar computação na ciência.",
+  },
+  {
+    nome: "Computação Quântica",
+    oQueE:
+      "Explora computadores que usam princípios da física quântica para resolver problemas além do alcance dos atuais.",
+    porQue: "Para quem gosta de física, matemática e pesquisa de fronteira.",
+  },
+];
+
 export const roadmaps = [
   {
     id: "zero-ti",
