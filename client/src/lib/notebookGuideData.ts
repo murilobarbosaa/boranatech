@@ -139,6 +139,53 @@ export const notebookExtras: { titulo: string; desc: string }[] = [
   },
 ];
 
+export const notebookModelsAviso =
+  "Estes são pontos de partida, não indicação de modelo exato. Linhas, configurações e preços mudam o tempo todo; confira a configuração (RAM, SSD, processador) e o valor atual antes de comprar.";
+
+export const notebookModels: {
+  faixa: string;
+  paraQuem: string;
+  linhas: string[];
+  oQueProcurar: string;
+}[] = [
+  {
+    faixa: "Entrada",
+    paraQuem:
+      "Quem está começando, foco em web e estudo geral, com orçamento curto.",
+    linhas: ["Lenovo IdeaPad", "Acer Aspire", "ASUS Vivobook"],
+    oQueProcurar:
+      "8 GB+ de RAM, SSD, processador a partir de i3 ou Ryzen 3 (i5 ou Ryzen 5 fica bem melhor).",
+  },
+  {
+    faixa: "Intermediário",
+    paraQuem:
+      "Quem já tem direção e quer rodar várias coisas ao mesmo tempo sem travar.",
+    linhas: [
+      "Acer Aspire 5",
+      "Dell Inspiron",
+      "ASUS Vivobook (versões i5/Ryzen 5)",
+      "Lenovo IdeaPad (versões mais fortes)",
+    ],
+    oQueProcurar: "i5 ou Ryzen 5, 16 GB de RAM e SSD de 512 GB.",
+  },
+  {
+    faixa: "Mac",
+    paraQuem:
+      "Quem tem orçamento maior ou precisa desenvolver para iOS, que exige um Mac.",
+    linhas: ["Apple MacBook Air (chip M)"],
+    oQueProcurar:
+      "Chip M recente e, se possível, 16 GB de RAM (a base de 8 GB fica justa para tarefas pesadas).",
+  },
+  {
+    faixa: "Parrudo",
+    paraQuem:
+      "Quem precisa de GPU dedicada para jogos, treinar IA localmente ou editar mídia.",
+    linhas: ["Acer Nitro", "ASUS TUF Gaming", "Dell G", "Avell"],
+    oQueProcurar:
+      "GPU dedicada (linha RTX), 16 GB de RAM e SSD de 512 GB ou mais.",
+  },
+];
+
 export const notebookBuyingTips: { titulo: string; desc: string }[] = [
   {
     titulo: "Priorize RAM e SSD",
