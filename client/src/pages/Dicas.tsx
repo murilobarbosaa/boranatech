@@ -1,29 +1,43 @@
 import { useState } from "react";
-import { Link } from "wouter";
-import {
-  ArrowRight,
-  ExternalLink,
-  Lightbulb,
-  PlayCircle,
-  Sparkles,
-} from "lucide-react";
+import { ExternalLink, Lightbulb, PlayCircle, Sparkles } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import SEO from "@/components/SEO";
-import { livrosFundamentos } from "@/lib/data";
+import { areasTI, livrosFundamentos, livrosPorArea } from "@/lib/data";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { tipCategories, tipsArticles } from "@/lib/platformData";
-import { cn } from "@/lib/utils";
 
 const ac = getPageAccentUi("amber");
 
+const areasComLivros = areasTI.filter(
+  (area) => (livrosPorArea[area.slug]?.length ?? 0) > 0,
+);
+
+const areaFiltros = [
+  { key: "todas", label: "Todas" },
+  { key: "fundamentos", label: "Fundamentos" },
+  ...areasComLivros.map((area) => ({ key: area.slug, label: area.nome })),
+];
+
 export default function Dicas() {
+  const [tab, setTab] = useState<"dicas" | "livros">("dicas");
   const [category, setCategory] = useState("Todas");
+  const [areaFiltro, setAreaFiltro] = useState("todas");
+
   const articles =
     category === "Todas"
       ? tipsArticles
       : tipsArticles.filter((tip) => tip.category === category);
+
+  const mostrarFundamentos =
+    areaFiltro === "todas" || areaFiltro === "fundamentos";
+  const areasVisiveis =
+    areaFiltro === "fundamentos"
+      ? []
+      : areaFiltro === "todas"
+        ? areasComLivros
+        : areasComLivros.filter((area) => area.slug === areaFiltro);
 
   return (
     <Layout>
@@ -44,14 +58,14 @@ export default function Dicas() {
         <div className="container relative">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
             <Lightbulb className="h-3.5 w-3.5" />
-            aba de dicas
+            dicas e livros
           </p>
           <h1 className="font-display text-4xl font-black text-slate-950">
             Dicas para sair do “não sei por onde começar”.
           </h1>
           <p className="mt-3 max-w-2xl text-slate-950">
             Artigos curados, créditos de autoria e vídeos para transformar
-            dúvida em próximo clique.
+            dúvida em próximo clique, mais um catálogo de livros por área.
           </p>
           <div className="mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
             {[
@@ -73,88 +87,130 @@ export default function Dicas() {
 
       <section className="sticky top-16 z-40 border-b-2 border-amber-200 bg-amber-50 py-4">
         <div className="container flex flex-wrap gap-2">
-          {["Todas", ...tipCategories].map((item) => (
+          {(
+            [
+              { key: "dicas", label: "Dicas" },
+              { key: "livros", label: "Livros" },
+            ] as const
+          ).map((item) => (
             <button
-              key={item}
-              onClick={() => setCategory(item)}
-              className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
-                category === item
+              key={item.key}
+              onClick={() => setTab(item.key)}
+              className={`rounded-full border-2 px-4 py-1.5 text-xs font-black uppercase ${
+                tab === item.key
                   ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
                   : "border-amber-200 bg-white hover:bg-amber-100"
               }`}
             >
-              {item}
+              {item.label}
             </button>
           ))}
         </div>
       </section>
 
-      <section className="bg-[#fff9e7] py-12">
-        <div className="container grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {articles.map((article) => (
-            <article
-              key={article.id}
-              className="card-invite flex flex-col rounded-2xl border-amber-200 bg-white p-6 shadow-[5px_5px_0_#fbbf24]"
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-200 px-3 py-1 text-xs font-black text-slate-900">
-                  <Lightbulb className="h-3 w-3" />
-                  {article.category}
-                </span>
-                <FavoriteButton
-                  compact
-                  item={{
-                    id: article.id,
-                    type: "dica",
-                    title: article.title,
-                    subtitle: article.category,
-                    url: article.url,
-                  }}
+      {tab === "dicas" ? (
+        <section className="bg-[#fff9e7] py-12">
+          <div className="container">
+            <div className="mb-8 flex flex-wrap gap-2">
+              {["Todas", ...tipCategories].map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setCategory(item)}
+                  className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
+                    category === item
+                      ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                      : "border-amber-200 bg-white hover:bg-amber-100"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {articles.map((article) => (
+                <article
+                  key={article.id}
+                  className="card-invite flex flex-col rounded-2xl border-amber-200 bg-white p-6 shadow-[5px_5px_0_#fbbf24]"
+                >
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-200 px-3 py-1 text-xs font-black text-slate-900">
+                      <Lightbulb className="h-3 w-3" />
+                      {article.category}
+                    </span>
+                    <FavoriteButton
+                      compact
+                      item={{
+                        id: article.id,
+                        type: "dica",
+                        title: article.title,
+                        subtitle: article.category,
+                        url: article.url,
+                      }}
+                    />
+                  </div>
+                  <h2 className="font-display text-xl font-black text-slate-950">
+                    {article.title}
+                  </h2>
+                  <p className="mt-2 flex-1 text-sm text-slate-600">
+                    {article.summary}
+                  </p>
+                  <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-slate-600">
+                    Crédito: <strong>{article.author}</strong> ·{" "}
+                    {article.credit}
+                  </p>
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-black text-amber-700"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    {article.youtube}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="bg-[#fff9e7] py-12">
+          <div className="container">
+            <div className="mb-8 flex flex-wrap gap-2">
+              {areaFiltros.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setAreaFiltro(item.key)}
+                  className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
+                    areaFiltro === item.key
+                      ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                      : "border-amber-200 bg-white hover:bg-amber-100"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-8">
+              {mostrarFundamentos ? (
+                <LivrosRecomendados
+                  titulo="Fundamentos"
+                  livros={livrosFundamentos}
+                  ac={ac}
                 />
-              </div>
-              <h2 className="font-display text-xl font-black text-slate-950">
-                {article.title}
-              </h2>
-              <p className="mt-2 flex-1 text-sm text-slate-600">
-                {article.summary}
-              </p>
-              <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-slate-600">
-                Crédito: <strong>{article.author}</strong> · {article.credit}
-              </p>
-              <a
-                href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center gap-2 text-sm font-black text-amber-700"
-              >
-                <PlayCircle className="h-4 w-4" />
-                {article.youtube}
-                <ExternalLink className="h-3.5 w-3.5" />
-              </a>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-[#fff9e7] pb-12">
-        <div className="container">
-          <LivrosRecomendados
-            titulo="Leituras fundamentais"
-            livros={livrosFundamentos}
-            ac={ac}
-          />
-          <Link
-            href="/areas"
-            className={cn(
-              "mt-4 inline-flex items-center gap-1 text-sm font-bold",
-              ac.link,
-              ac.linkHover,
-            )}
-          >
-            Ver livros por área <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </section>
+              ) : null}
+              {areasVisiveis.map((area) => (
+                <LivrosRecomendados
+                  key={area.slug}
+                  titulo={area.nome}
+                  livros={livrosPorArea[area.slug]}
+                  ac={ac}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </Layout>
   );
 }
