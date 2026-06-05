@@ -17,17 +17,13 @@ import {
 import FavoriteButton from "@/components/FavoriteButton";
 import { AiCtaButton } from "@/components/shared/AiCta";
 import AiToolPanel from "@/components/shared/AiToolPanel";
-import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { areasTI, livrosPorArea, roadmaps } from "@/lib/data";
-import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { areasTI, roadmaps } from "@/lib/data";
 import { roadmapPlans } from "@/lib/platformData";
 import { getRoadmaps } from "@/services/contentService";
-
-const ac = getPageAccentUi("emerald");
 
 const roadmapImage =
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663616665753/DXr9t3ifzyjk6U8zXioqGk/roadmap-banner-BKcp4QThC94ci8swjT8tVt.webp";
@@ -80,9 +76,6 @@ export default function Roadmaps() {
     : filtered.filter((r) => r.id === roadmapItems[0]?.id);
 
   const selectedRoadmap = roadmapItems.find((r) => r.id === selected);
-  const roadmapLivros = selectedRoadmap?.areaSlug
-    ? livrosPorArea[selectedRoadmap.areaSlug]
-    : undefined;
 
   return (
     <Layout>
@@ -517,14 +510,6 @@ export default function Roadmaps() {
                       Ver cursos <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
-
-                  {roadmapLivros && roadmapLivros.length > 0 ? (
-                    <LivrosRecomendados
-                      titulo="Livros recomendados"
-                      livros={roadmapLivros}
-                      ac={ac}
-                    />
-                  ) : null}
                 </div>
               ) : (
                 <div className="card-brutal bg-slate-50 rounded-xl p-12 text-center border-dashed">
