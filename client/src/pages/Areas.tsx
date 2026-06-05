@@ -14,6 +14,7 @@ import {
   BarChart3,
   Brain,
   ClipboardList,
+  Compass,
   LayoutGrid,
   Lock,
   Paintbrush,
@@ -25,9 +26,11 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
-import { areasTI, type AreaTI } from "@/lib/data";
+import { areasPoucoConhecidas, areasTI, type AreaTI } from "@/lib/data";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
+
+const areaSlugs = new Set(areasTI.map((area) => area.slug));
 
 const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "todos", label: "Todas as áreas", icon: LayoutGrid },
@@ -282,6 +285,64 @@ export default function Areas() {
               ))}
             </div>
           )}
+
+          <div className="mt-14">
+            <div className="mb-2 flex items-center gap-2">
+              <Compass className="h-6 w-6 text-violet-700" />
+              <h2 className="font-display text-3xl font-black text-slate-900">
+                Áreas menos conhecidas para explorar
+              </h2>
+            </div>
+            <p className="mb-6 max-w-2xl text-sm text-slate-600">
+              Carreiras de TI fora do óbvio. Algumas se conectam às áreas acima,
+              outras ficam como curiosidade para você descobrir.
+            </p>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {areasPoucoConhecidas.map((item) => {
+                const related =
+                  item.relatedAreaSlug && areaSlugs.has(item.relatedAreaSlug)
+                    ? item.relatedAreaSlug
+                    : undefined;
+                const conteudo = (
+                  <>
+                    <h3 className="font-display text-xl font-black text-slate-900">
+                      {item.nome}
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-600">{item.oQueE}</p>
+                    <p className="mt-2 flex-1 text-sm font-semibold text-slate-700">
+                      {item.porQue}
+                    </p>
+                    {related ? (
+                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-violet-700 group-hover:gap-2 transition-all">
+                        Explorar área relacionada{" "}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    ) : (
+                      <span className="mt-4 inline-flex w-fit rounded-full border-2 border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-black uppercase text-violet-700">
+                        curiosidade
+                      </span>
+                    )}
+                  </>
+                );
+                return related ? (
+                  <Link
+                    key={item.nome}
+                    href={`/areas/${related}`}
+                    className="card-brutal flex h-full flex-col rounded-xl bg-white p-6 group transition-all hover:-translate-y-1"
+                  >
+                    {conteudo}
+                  </Link>
+                ) : (
+                  <div
+                    key={item.nome}
+                    className="card-brutal flex h-full flex-col rounded-xl bg-white p-6"
+                  >
+                    {conteudo}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
     </Layout>
