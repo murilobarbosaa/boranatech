@@ -4160,7 +4160,7 @@ function buildSalarios(faixas?: [string, string, string, string]) {
   return faixas.map((faixa, i) => ({ nivel: NIVEIS_SALARIO[i], faixa }));
 }
 
-const livrosPorArea: Record<string, Livro[]> = {
+export const livrosPorArea: Record<string, Livro[]> = {
   frontend: [
     {
       titulo: "Eloquent JavaScript",
