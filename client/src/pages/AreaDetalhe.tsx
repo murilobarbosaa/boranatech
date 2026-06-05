@@ -27,6 +27,7 @@ import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
+import { careerInstitutes } from "@/lib/platformData";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { technologies } from "@/lib/technologyData";
@@ -341,6 +342,9 @@ export default function AreaDetalhe() {
   const faculdadesEntries = (area.faculdadesRelacionadas ?? [])
     .map((nome) => faculdades.cursos.find((c) => c.nome === nome))
     .filter((c): c is (typeof faculdades.cursos)[number] => Boolean(c));
+  const institutosDaArea = careerInstitutes.filter((inst) =>
+    inst.areas?.includes(area.slug),
+  );
 
   return (
     <Layout>
@@ -808,6 +812,50 @@ export default function AreaDetalhe() {
                       ))}
                   </div>
                 </div>
+
+                {institutosDaArea.length > 0 ? (
+                  <div
+                    className={cn(
+                      "card-brutal rounded-xl bg-white p-6",
+                      ac.liftShadow,
+                    )}
+                  >
+                    <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
+                      Institutos e certificações
+                    </h2>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {institutosDaArea.map((inst) => (
+                        <a
+                          key={inst.name}
+                          href={inst.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "rounded-lg border-2 p-4 transition-transform hover:-translate-y-0.5",
+                            ac.panelBorder,
+                            ac.panelSoft,
+                          )}
+                        >
+                          <h3 className="font-display text-lg font-black text-slate-950">
+                            {inst.name}
+                          </h3>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {inst.desc}
+                          </p>
+                          <span
+                            className={cn(
+                              "mt-3 inline-flex items-center gap-1 text-xs font-black uppercase",
+                              ac.link,
+                            )}
+                          >
+                            Site oficial{" "}
+                            <ExternalLink className="h-3 w-3" aria-hidden />
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* 4.3 Empresas */}
                 {empresasDaArea.length > 0 ? (
