@@ -153,6 +153,11 @@ const menuData: DropdownMenu[] = [
             description: "Setup e ferramentas essenciais",
             path: "/ferramentas",
           },
+          {
+            label: "Guia de IA",
+            description: "Quais IAs usar e como",
+            path: "/ia",
+          },
         ],
       },
     ],
