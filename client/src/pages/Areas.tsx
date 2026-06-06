@@ -26,6 +26,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
+import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import { areasPoucoConhecidas, areasTI, type AreaTI } from "@/lib/data";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
@@ -191,6 +192,9 @@ export default function Areas() {
       {/* Grid */}
       <section className="bg-violet-50 py-12">
         <div className="container">
+          <div className="mb-6 flex justify-end">
+            <EmbaixadoraBadge />
+          </div>
           {isLoading ? (
             <div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
