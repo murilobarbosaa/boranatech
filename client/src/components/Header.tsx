@@ -269,7 +269,11 @@ const menuData: DropdownMenu[] = [
             path: "/empregabilidade",
             isPro: true,
           },
-          { label: "Ranking", path: "/empresas/ranking-junior" },
+          {
+            label: "Ranking",
+            description: "Empresas com mais vagas para júnior",
+            path: "/empresas/ranking-junior",
+          },
         ],
       },
       {
@@ -300,7 +304,11 @@ const menuData: DropdownMenu[] = [
             description: "Grupos para aprender junto",
             path: "/comunidades",
           },
-          { label: "Mentorias", path: "/mentorias" },
+          {
+            label: "Mentorias",
+            description: "Sessões com quem já está na área",
+            path: "/mentorias",
+          },
           { label: "Mulheres", path: "/mulheres", isWomen: true },
         ],
       },
