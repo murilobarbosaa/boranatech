@@ -1,5 +1,16 @@
 # CLAUDE.md (Bora na Tech)
 
+## Regras de Trabalho
+
+- Investigar antes de mudar: ler o código relevante e entender a causa antes de propor correção, nunca chutar.
+- Tarefa ambígua: declarar a suposição ou perguntar, nunca escolher uma interpretação em silêncio.
+- Escopo fechado: mexer só no que a tarefa pede. Não refatorar nem "limpar" código adjacente. Se algo de fora precisar mudar, sinalizar, não fazer.
+- Não remover código nem comentário que não entende. Perguntar antes.
+- Solução mais simples primeiro. Não introduzir abstração, dependência ou camada que a tarefa não pediu.
+- Leitura direcionada: abrir arquivo e trecho específicos, não "ler o projeto inteiro".
+- Antes de considerar pronto: rodar `pnpm check`. Mudança em auth, controle de acesso ou deploy exige validação manual antes de subir.
+- Conteúdo e copy: nunca inventar dado (números de mercado, salários, instituições). Sem fonte, suavizar pra qualitativo ou remover.
+
 ## Stack
 
 - **Frontend**: React 19 SPA, Vite 7, TypeScript 5.6 (`strict: true`)
@@ -9,9 +20,11 @@
 - **State**: React Context puro (`AuthContext`, `SubscriptionContext`, `ThemeContext`)
 - **Forms**: react-hook-form + zod v4
 - **Backend**: Express 4 (porta 3100 em dev) + Supabase (supabase-js v2) + BullMQ/ioredis
+- **Integrações**: Asaas (pagamentos), Resend (email), Currents API + OpenAI gpt-4o-mini (notícias), PostHog (analytics); auth Supabase via PKCE
 - **Package manager**: pnpm 10
 
 ## Path Aliases
+
 @/*        → client/src/*
 @shared/*  → shared/*
 @assets    → attached_assets/   (vite.config apenas)
@@ -31,6 +44,7 @@ pnpm format         # prettier --write .
 > Sem script `test` no package.json. Vitest instalado mas não exposto.
 
 ## Estrutura
+
 client/src/
 components/
 ui/         # shadcn primitivos gerados, não editar manualmente
@@ -65,6 +79,11 @@ supabase/migrations/
 - Erros: `return next(createError(statusCode, "code_slug", "Mensagem."))`, nunca throw direto
 - Queries via `supabaseAdmin` (service role), nunca o client Supabase do frontend no server
 
+## Acesso Pro
+
+- `isPro || isAdmin` é intencional em toda a plataforma: admin enxerga como Pro por design, não é bug.
+- Produto: descoberta é grátis, análise personalizada por IA é Pro. Isso decide onde entra ProGate/paywall.
+
 ## Convenções de Git / Commits
 
 **REGRA CRÍTICA, sempre seguir:**
@@ -78,6 +97,8 @@ Commits são **uma única linha** no formato `tipo(escopo): descrição curta`.
 - **NUNCA** escrever mensagens multi-linha
 - **NUNCA** adicionar parágrafos de contexto, bullet points, ou descrição estendida
 - **NUNCA** adicionar `Co-Authored-By:` ou qualquer trailer
+- **NUNCA** reescrever histórico já publicado em `origin/main`.
+- **NUNCA** alterar `.nvmrc` nem o campo `engines` do `package.json`.
 - O subject é a única coisa que vai no commit, sem body, sem footer
 
 **Tipos permitidos**: `feat`, `fix`, `refactor`, `style`, `docs`, `chore`, `test`, `perf`
@@ -97,6 +118,7 @@ Co-Authored-By: Claude Opus 4.7 noreply@anthropic.com
 Se o contexto da mudança precisar de explicação detalhada, isso vai em PR description ou em documentação separada, nunca no commit message.
 
 **Como fazer commit no terminal sem cair na armadilha:**
+
 ```bash
 git commit -m "tipo(escopo): descrição curta"
 ```
@@ -105,23 +127,23 @@ Usar `-m` direto evita o editor abrir e tentar gerar descrição estendida autom
 
 ## Paleta & Design System
 
-| Token | Valor |
-|-------|-------|
-| Amarelo primário | `#FFB800` |
-| Fundo cream | `#faf8f4` |
-| Border padrão | `border-slate-950` (quase preto) |
-| Sombra flat | `shadow-[5px_5px_0_#0f172a]` ou cor de acento |
-| Violet acento | `violet-800` / `#c4b5fd` |
-| Emerald (grátis) | `emerald-*` |
+| Token             | Valor                                           |
+| ----------------- | ----------------------------------------------- |
+| Amarelo primário | `#FFB800`                                     |
+| Fundo cream       | `#faf8f4`                                     |
+| Border padrão    | `border-slate-950` (quase preto)              |
+| Sombra flat       | `shadow-[5px_5px_0_#0f172a]` ou cor de acento |
+| Violet acento     | `violet-800` / `#c4b5fd`                    |
+| Emerald (grátis) | `emerald-*`                                   |
 
 Tipografia de seção: `font-display font-black` para headings; labels de seção `text-sm font-black uppercase tracking-[0.2em]`.
 
 ## Deploy
 
-| Alvo | Config |
-|------|--------|
-| Vercel | Só frontend, catch-all rewrite `/(.*) → /index.html` |
-| Railway | Fullstack, nixpacks, `npm run build`, start: `node dist/index.js` |
+| Alvo    | Config                                                               |
+| ------- | -------------------------------------------------------------------- |
+| Vercel  | Só frontend, catch-all rewrite `/(.*) → /index.html`             |
+| Railway | Fullstack, nixpacks,`npm run build`, start: `node dist/index.js` |
 
 ## Arquivos Importantes
 
@@ -130,3 +152,4 @@ Tipografia de seção: `font-display font-black` para headings; labels de seçã
 - `client/src/lib/data.ts`, dados estáticos das áreas, eventos, notícias
 - `server/lib/env.ts`, validação de variáveis de ambiente
 - `server/middleware/auth.ts`, injeta `req.user` e `req.isPro`
+- Conteúdo vive em dois lugares: estático em `client/src/lib/data.ts` e tabelas no Supabase. Confirmar qual é o canônico da feature antes de editar (roadmaps renderizam do estático).
