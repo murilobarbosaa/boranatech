@@ -90,6 +90,7 @@ const AREA_SLUG_ACCENT: Record<string, PageHeroAccent> = {
   "analise-sistemas": "amber",
   blockchain: "emerald",
   iot: "rose",
+  mainframe: "blue",
 };
 
 export function accentForTechnology(technology: Technology): PageHeroAccent {

@@ -26,6 +26,7 @@ import {
   Gauge,
   Blocks,
   Cpu,
+  HardDrive,
 } from "lucide-react";
 
 export interface SubArea {
@@ -4013,6 +4014,91 @@ const baseAreasTI: AreaTI[] = [
       "Sistemas Embarcados (tecnólogo)",
     ],
   },
+  {
+    id: "mainframe",
+    nome: "Mainframe",
+    slug: "mainframe",
+    icon: HardDrive,
+    tagClass: "tag-backend",
+    descricaoCurta:
+      "Mantém e moderniza os sistemas de altíssimo volume que rodam em bancos, governo e grandes empresas.",
+    descricaoCompleta:
+      "Mainframe é o computador de grande porte que processa milhões de transações por dia com confiabilidade altíssima. Está no coração de bancos, governo, seguradoras e companhias aéreas, rodando sistemas críticos escritos em COBOL ao longo de décadas. Esses sistemas continuam no ar porque são estáveis e caros de substituir, então a demanda por quem sabe mantê-los segue alta enquanto poucos profissionais novos entram na área. É um nicho: menos vagas que web, mas com concorrência baixa e boa estabilidade.",
+    oQueFaz:
+      "Desenvolve e dá manutenção em programas COBOL, escreve JCL para rodar jobs em lote, acessa dados em DB2, VSAM e IMS, e cuida de sistemas transacionais no ambiente z/OS.",
+    tarefasDiarias: [
+      "Ler e dar manutenção em programas COBOL existentes",
+      "Escrever e ajustar JCL para executar jobs em lote",
+      "Consultar e atualizar dados em DB2, VSAM ou IMS",
+      "Investigar abends analisando logs e dumps",
+      "Editar e testar programas no TSO/ISPF",
+    ],
+    perfilIndicado:
+      "Gosta de lógica, atenção a detalhe e de entender sistemas grandes e antigos. Tem paciência para ler código legado e valoriza estabilidade mais do que novidade constante.",
+    habilidades: [
+      "Lógica de programação",
+      "COBOL",
+      "JCL (linguagem de controle de jobs)",
+      "SQL e DB2",
+      "Noções de z/OS e processamento em lote",
+    ],
+    ferramentas: [
+      "COBOL",
+      "JCL",
+      "z/OS",
+      "CICS",
+      "DB2",
+      "IMS",
+      "TSO/ISPF",
+      "VSAM",
+    ],
+    dificuldade: 4,
+    cargos: [
+      "Desenvolvedor COBOL/Mainframe Júnior",
+      "Analista de Mainframe",
+      "Programador COBOL",
+      "Analista de Sistemas Legados",
+    ],
+    faixaSalarial: "R$ 3.500 a R$ 6.500 (júnior)",
+    cursosGratuitos: [
+      "IBM Z Xplore (ambiente e desafios gratuitos da IBM, sucessor do Master the Mainframe)",
+      "freeCodeCamp: COBOL Programming Course (vídeo)",
+      "Open Mainframe Project: cursos abertos de COBOL e mainframe",
+    ],
+    roadmapInicial: [
+      "Aprender lógica de programação",
+      "Estudar COBOL (sintaxe, estruturas e arquivos)",
+      "Criar conta no IBM Z Xplore e praticar no ambiente real",
+      "Aprender JCL para rodar programas em lote",
+      "Entender SQL e DB2 para acessar dados",
+      "Conhecer o básico de z/OS, TSO/ISPF e CICS",
+    ],
+    projetos: [
+      "Resolver os desafios do IBM Z Xplore (ambiente gratuito)",
+      "Programa COBOL que lê um arquivo e gera um relatório",
+      "Job em lote com JCL processando um arquivo de entrada",
+    ],
+    termosEssenciais: [
+      "COBOL",
+      "JCL",
+      "z/OS",
+      "Batch",
+      "CICS",
+      "DB2",
+      "Abend",
+      "Dataset",
+    ],
+    dicasIniciais:
+      "Comece pela lógica e por COBOL, depois use o IBM Z Xplore para praticar em um ambiente real e gratuito. É um nicho: menos vagas, mas pouca concorrência e boa estabilidade.",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "9-18 meses até primeira vaga",
+    crescimentoMercado: "estavel",
+    faculdadesRelacionadas: [
+      "Análise e Desenvolvimento de Sistemas (ADS)",
+      "Ciência da Computação",
+      "Sistemas de Informação",
+    ],
+  },
 ];
 
 const NIVEIS_SALARIO = ["Estágio", "Júnior", "Pleno", "Sênior"] as const;
@@ -4151,6 +4237,12 @@ const areaSalarios: Record<string, [string, string, string, string]> = {
     "R$ 2.000 a R$ 3.500",
     "R$ 4.000 a R$ 7.000",
     "R$ 7.000 a R$ 13.000",
+    "R$ 12.000 a R$ 18.000",
+  ],
+  mainframe: [
+    "R$ 1.800 a R$ 3.000",
+    "R$ 3.500 a R$ 6.500",
+    "R$ 7.000 a R$ 11.000",
     "R$ 12.000 a R$ 18.000",
   ],
 };
@@ -4893,6 +4985,20 @@ export const livrosPorArea: Record<string, Livro[]> = {
       autor: "Paul Horowitz e Winfield Hill",
       nivel: "Avançado",
       porque: "Referência completa e densa de eletrônica.",
+    },
+  ],
+  mainframe: [
+    {
+      titulo: "Beginning COBOL for Programmers",
+      autor: "Michael Coughlin",
+      nivel: "Iniciante",
+      porque: "Introdução prática ao COBOL para quem já programa.",
+    },
+    {
+      titulo: "Murach's Mainframe COBOL",
+      autor: "Mike Murach e Anne Prince",
+      nivel: "Intermediário",
+      porque: "Referência didática de COBOL no ambiente mainframe.",
     },
   ],
 };
