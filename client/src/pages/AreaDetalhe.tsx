@@ -23,6 +23,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
+import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
@@ -387,6 +388,37 @@ export default function AreaDetalhe() {
           <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
             {/* ======================= MAIN ======================= */}
             <div className="space-y-10">
+              {area.slug === "mainframe" ? (
+                <div
+                  className={cn(
+                    "card-brutal rounded-2xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
+                  <EmbaixadoraBadge />
+                  <h2 className="mt-3 font-display text-2xl font-black text-slate-950">
+                    Comece no IBM Z Xplore
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Ambiente real e gratuito da IBM para aprender mainframe com
+                    desafios práticos.
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-slate-800">
+                    Ao se cadastrar no IBM Z Xplore, informe Ana Julia Moura
+                    como sua embaixadora (referral).
+                  </p>
+                  <a
+                    href="https://ibm.com/products/z/resources/zxplore"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+                  >
+                    Comece no IBM Z Xplore
+                    <ExternalLink className="h-4 w-4" aria-hidden />
+                  </a>
+                </div>
+              ) : null}
+
               {/* ============ ZONA 1 — Hero stats + CTAs ============ */}
               <div className="area-rise space-y-4">
                 <AreaHeroStats
