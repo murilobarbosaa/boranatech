@@ -105,6 +105,7 @@ const areaComplexity: Record<string, number> = {
   "QA / Testes de Software": 9,
   "Desenvolvimento Mobile": 13,
   DevOps: 16,
+  Mainframe: 14,
 };
 
 export default function Simulador() {

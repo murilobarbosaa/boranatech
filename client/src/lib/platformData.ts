@@ -3898,6 +3898,18 @@ export const careerInstitutes: {
     areas: ["dados", "engenharia-dados"],
   },
   {
+    name: "IBM Training",
+    desc: "Certificações e treinamentos de mainframe IBM Z e z/OS.",
+    url: "https://www.ibm.com/training/",
+    areas: ["mainframe"],
+  },
+  {
+    name: "Open Mainframe Project",
+    desc: "Projeto da Linux Foundation com cursos e comunidade de mainframe.",
+    url: "https://www.openmainframeproject.org",
+    areas: ["mainframe"],
+  },
+  {
     name: "SBC",
     desc: "Sociedade Brasileira de Computação, eventos e capítulos.",
     url: "https://www.sbc.org.br",
