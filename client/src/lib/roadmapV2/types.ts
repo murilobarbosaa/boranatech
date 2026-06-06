@@ -9,6 +9,7 @@ export type RoadmapNode = {
   title: string;
   description?: string;
   estimatedTime?: string;
+  optional?: boolean;
   resources?: RoadmapResource[];
   children?: RoadmapNode[];
 };
@@ -17,6 +18,7 @@ export type RoadmapSection = {
   id: string;
   title: string;
   description?: string;
+  level?: "iniciante" | "intermediario" | "avancado";
   children: RoadmapNode[];
 };
 
