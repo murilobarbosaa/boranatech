@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Check, Clock, Loader2 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import confetti from "canvas-confetti";
 
+import { fireProCelebration } from "@/lib/proConfetti";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
@@ -63,10 +63,8 @@ export default function CheckoutSucesso() {
   const showProcessing = processed && !isPro;
 
   // Confetti: dispara uma unica vez quando a tela de sucesso aparece.
-  // Sequencia de bursts ao longo de ~2s (estilo festao): burst inicial no card,
-  // depois alterna bursts aleatorios espalhados pela tela (x/y/angle randomicos)
-  // com canhoes dos cantos inferiores. Mantem as guardas: so dispara 1x, respeita
-  // reduced-motion, e limpa o interval no cleanup.
+  // Sequencia de bursts ao longo de ~2s (estilo festao), centrada no topo do card.
+  // Mantem as guardas: so dispara 1x, respeita reduced-motion, e para no cleanup.
   useEffect(() => {
     if (isLoadingScreen || !showSuccess || reduce || confettiFiredRef.current) return;
     confettiFiredRef.current = true;
@@ -74,72 +72,8 @@ export default function CheckoutSucesso() {
     const rect = cardRef.current?.getBoundingClientRect();
     const centerX = rect ? (rect.left + rect.width / 2) / window.innerWidth : 0.5;
     const baseY = rect ? (rect.top + 96) / window.innerHeight : 0.3;
-    const colors = ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"];
 
-    // Burst inicial mais forte, no centro-cima do card.
-    confetti({
-      particleCount: 90,
-      spread: 100,
-      origin: { x: centerX, y: baseY },
-      colors,
-      scalar: 0.9,
-      ticks: 140,
-      gravity: 0.85,
-    });
-
-    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
-
-    // Burst aleatorio espalhado: origem x/y e angulo randomicos cobrindo a tela.
-    const fireScatter = () => {
-      confetti({
-        particleCount: 45,
-        spread: randomInRange(70, 90),
-        angle: randomInRange(60, 120),
-        origin: { x: randomInRange(0.1, 0.9), y: randomInRange(0.1, 0.6) },
-        colors,
-        scalar: 0.9,
-        ticks: 120,
-        gravity: 0.9,
-      });
-    };
-
-    // Canhao de um canto inferior disparando pra dentro/cima.
-    const fireCannon = (side: "left" | "right") => {
-      confetti({
-        particleCount: 55,
-        spread: 55,
-        angle: side === "left" ? 60 : 120,
-        startVelocity: 45,
-        origin: { x: side === "left" ? 0 : 1, y: 1 },
-        colors,
-        scalar: 0.9,
-        ticks: 140,
-        gravity: 0.9,
-      });
-    };
-
-    // Ciclo: aleatorio, canhao-esquerdo, aleatorio, canhao-direito, ...
-    const sequence = [
-      () => fireScatter(),
-      () => fireCannon("left"),
-      () => fireScatter(),
-      () => fireCannon("right"),
-    ];
-    const end = Date.now() + 2000;
-    let tick = 0;
-
-    const interval = window.setInterval(() => {
-      if (Date.now() >= end) {
-        window.clearInterval(interval);
-        return;
-      }
-      sequence[tick % sequence.length]();
-      tick += 1;
-    }, 240);
-
-    return () => {
-      window.clearInterval(interval);
-    };
+    return fireProCelebration({ x: centerX, y: baseY });
   }, [isLoadingScreen, showSuccess, reduce]);
 
   const fadeSlideUp = {
