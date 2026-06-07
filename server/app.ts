@@ -15,6 +15,7 @@ import billingRouter from "./routes/billing";
 import bookmarksRouter from "./routes/bookmarks";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
+import githubRouter from "./routes/github";
 import meRouter from "./routes/me";
 import quizRouter from "./routes/quiz";
 import searchRouter from "./routes/search";
@@ -129,6 +130,7 @@ app.use("/api/stats", statsRouter);
 app.use("/api", validateSupabaseJwt);
 
 app.use("/api/ai", aiRouter);
+app.use("/api/github", githubRouter);
 app.use("/api/me", meRouter);
 app.use("/api/badges", badgesRouter);
 app.use("/api/billing", billingRouter);

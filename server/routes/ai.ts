@@ -3,9 +3,9 @@ import { NextFunction, Request, Response, Router } from "express";
 
 import { env } from "../lib/env";
 import { estimateCost, getToolConfig } from "../lib/aiTools";
+import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { buildLoginContextMessage } from "../lib/loginContext";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../lib/openai";
-import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
@@ -21,33 +21,25 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
   const toolConfig = getToolConfig(toolKey);
 
   if (!toolConfig) {
-    await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Tool not found" });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Tool not found" });
     return next(createError(404, "not_found", `Ferramenta '${toolKey}' não encontrada.`));
   }
 
   if (toolConfig.requiresPro && !req.isPro) {
-    await logUsage({ userId, tool: toolKey, requestId, status: "unauthorized", errorMessage: "Pro required", model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "unauthorized", errorMessage: "Pro required", model: toolConfig.model });
     return next(createError(403, "forbidden", "Plano Pro necessário para usar esta ferramenta."));
   }
 
-  try {
-    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc("get_ai_usage_today", { p_user_id: userId });
-
-    if (!usageError && usageCount !== null) {
-      const limit = req.isPro ? env.aiDailyLimitPro : env.aiDailyLimitFree;
-      if (usageCount >= limit) {
-        await logUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
-        return next(
-          createError(
-            429,
-            "rate_limited",
-            `Limite diário de ${limit} chamadas de IA atingido. ${req.isPro ? "Tente novamente amanhã." : "Faça upgrade para o Plano Pro para mais acesso."}`,
-          ),
-        );
-      }
-    }
-  } catch {
-    console.warn("[ai] Falha ao verificar rate limit para", userId);
+  const usage = await checkAiDailyLimit(userId, !!req.isPro);
+  if (!usage.allowed) {
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
+    return next(
+      createError(
+        429,
+        "rate_limited",
+        `Limite diário de ${usage.limit} chamadas de IA atingido. ${req.isPro ? "Tente novamente amanhã." : "Faça upgrade para o Plano Pro para mais acesso."}`,
+      ),
+    );
   }
 
   const bodyUnknown = req.body as Record<string, unknown>;
@@ -81,7 +73,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     }
 
     if (cleaned.length === 0) {
-      await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Invalid messages", model: toolConfig.model });
+      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Invalid messages", model: toolConfig.model });
       return next(createError(400, "invalid_request", "Envie pelo menos uma mensagem válida."));
     }
 
@@ -102,12 +94,12 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
   const inputChars = inputText.length;
 
   if (inputChars > toolConfig.maxInputChars) {
-    await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Payload too large", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Payload too large", inputChars, model: toolConfig.model });
     return next(createError(413, "payload_too_large", `Input muito grande. Máximo: ${toolConfig.maxInputChars} caracteres.`));
   }
 
   if (!env.openaiApiKey) {
-    await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "OpenAI key missing", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "OpenAI key missing", inputChars, model: toolConfig.model });
     return next(createError(503, "upstream_error", "Serviço de IA não configurado."));
   }
 
@@ -138,7 +130,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     if (!response.ok) {
       const text = await response.text();
       console.error("[ai] OpenAI error:", response.status, text);
-      await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: `OpenAI ${response.status}`, inputChars, model: toolConfig.model });
+      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: `OpenAI ${response.status}`, inputChars, model: toolConfig.model });
       return next(createError(502, "upstream_error", "Erro ao processar com IA. Tente novamente."));
     }
 
@@ -155,7 +147,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         parsedJson = JSON.parse(result);
       } catch (parseErr) {
         console.error("[ai] JSON parse falhou pra tool com responseFormat:", toolKey, parseErr, "raw:", result.slice(0, 500));
-        await logUsage({
+        await logAiUsage({
           userId,
           tool: toolKey,
           requestId,
@@ -175,7 +167,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
           toolKey,
           JSON.stringify(validation.error.issues, null, 2).slice(0, 1500),
         );
-        await logUsage({
+        await logAiUsage({
           userId,
           tool: toolKey,
           requestId,
@@ -191,7 +183,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         return next(createError(502, "upstream_error", "Resposta da IA não bateu com o schema esperado."));
       }
 
-      await logUsage({
+      await logAiUsage({
         userId,
         tool: toolKey,
         requestId,
@@ -208,7 +200,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
       return;
     }
 
-    await logUsage({
+    await logAiUsage({
       userId,
       tool: toolKey,
       requestId,
@@ -224,7 +216,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     res.json({ result });
   } catch (error) {
     console.error("[ai] Fetch error:", error);
-    await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
     return next(createError(502, "upstream_error", "Erro de conexão com o serviço de IA."));
   }
 });
@@ -241,7 +233,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
   const toolConfig = getToolConfig(toolKey);
 
   if (!toolConfig) {
-    await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Tool not found" });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Tool not found" });
     return next(createError(404, "not_found", `Ferramenta '${toolKey}' não encontrada.`));
   }
 
@@ -250,27 +242,20 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
   }
 
   if (toolConfig.requiresPro && !req.isPro) {
-    await logUsage({ userId, tool: toolKey, requestId, status: "unauthorized", errorMessage: "Pro required", model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "unauthorized", errorMessage: "Pro required", model: toolConfig.model });
     return next(createError(403, "forbidden", "Plano Pro necessário para usar esta ferramenta."));
   }
 
-  try {
-    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc("get_ai_usage_today", { p_user_id: userId });
-    if (!usageError && usageCount !== null) {
-      const limit = req.isPro ? env.aiDailyLimitPro : env.aiDailyLimitFree;
-      if (usageCount >= limit) {
-        await logUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
-        return next(
-          createError(
-            429,
-            "rate_limited",
-            `Limite diário de ${limit} chamadas de IA atingido. ${req.isPro ? "Tente novamente amanhã." : "Faça upgrade para o Plano Pro para mais acesso."}`,
-          ),
-        );
-      }
-    }
-  } catch {
-    console.warn("[ai/stream] Falha ao verificar rate limit para", userId);
+  const usage = await checkAiDailyLimit(userId, !!req.isPro, "[ai/stream]");
+  if (!usage.allowed) {
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
+    return next(
+      createError(
+        429,
+        "rate_limited",
+        `Limite diário de ${usage.limit} chamadas de IA atingido. ${req.isPro ? "Tente novamente amanhã." : "Faça upgrade para o Plano Pro para mais acesso."}`,
+      ),
+    );
   }
 
   const bodyUnknown = req.body as Record<string, unknown>;
@@ -336,7 +321,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
     });
   } catch (err) {
     console.error("[ai/stream] OpenAI fetch error:", err);
-    await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });
     res.write(`data: ${JSON.stringify({ error: "Erro de conexão com o serviço de IA." })}\n\n`);
     res.write(`data: [DONE]\n\n`);
     res.end();
@@ -346,7 +331,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
   if (!openaiResponse.ok || !openaiResponse.body) {
     const text = await openaiResponse.text().catch(() => "");
     console.error("[ai/stream] OpenAI error:", openaiResponse.status, text);
-    await logUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: `OpenAI ${openaiResponse.status}`, inputChars, model: toolConfig.model });
+    await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: `OpenAI ${openaiResponse.status}`, inputChars, model: toolConfig.model });
     res.write(`data: ${JSON.stringify({ error: "Erro ao processar com IA. Tente novamente." })}\n\n`);
     res.write(`data: [DONE]\n\n`);
     res.end();
@@ -396,7 +381,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
     console.error("[ai/stream] read loop error:", err);
   } finally {
     res.end();
-    await logUsage({
+    await logAiUsage({
       userId,
       tool: toolKey,
       requestId,
@@ -410,37 +395,5 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
     });
   }
 });
-
-async function logUsage(params: {
-  userId: string;
-  tool: string;
-  requestId: string;
-  status: string;
-  errorMessage?: string;
-  inputChars?: number;
-  outputChars?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  model?: string;
-  costEstimate?: number;
-}) {
-  try {
-    await supabaseAdmin.from("ai_usage_logs").insert({
-      user_id: params.userId,
-      tool: params.tool,
-      request_id: params.requestId,
-      status: params.status,
-      error_message: params.errorMessage || null,
-      input_chars: params.inputChars || 0,
-      output_chars: params.outputChars || 0,
-      input_tokens: params.inputTokens || 0,
-      output_tokens: params.outputTokens || 0,
-      model: params.model || DEFAULT_MODEL,
-      cost_estimate: params.costEstimate || 0,
-    });
-  } catch (err) {
-    console.warn("[ai] Falha ao registrar uso:", err);
-  }
-}
 
 export default router;

@@ -72,4 +72,5 @@ export const env = {
   resendApiKey: process.env.RESEND_API_KEY || "",
   redisUrl: process.env.REDIS_URL || "",
   cronSecret: process.env.CRON_SECRET || "",
+  githubToken: process.env.GITHUB_TOKEN || "",
 };
