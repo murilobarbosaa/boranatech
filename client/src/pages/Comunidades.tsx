@@ -4,11 +4,14 @@
 */
 
 import { useState } from "react";
+import { Link } from "wouter";
 import { ExternalLink, Users } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import { comunidades } from "@/lib/data";
+import { softSkills } from "@/lib/softSkillsData";
 
 const areas = ["Todas", ...Array.from(new Set(comunidades.map((c) => c.area)))];
 const idiomas = ["Todos", "Português", "Inglês"];
@@ -206,6 +209,97 @@ export default function Comunidades() {
                 <p className="text-sm text-slate-600">{item.desc}</p>
               </div>
             ))}
+          </div>
+
+          <div className="mt-12">
+            <div className="mb-2 max-w-2xl">
+              <p className="mb-3 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+                além do código
+              </p>
+              <h2 className="font-display text-3xl font-black text-slate-950">
+                Soft skills para se destacar
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                O que são, por que pesam em TI, como treinar de verdade e onde
+                praticar. Para inglês a fundo, veja também o{" "}
+                <Link
+                  href="/ia"
+                  className="font-bold text-violet-700 hover:underline"
+                >
+                  Guia de IA
+                </Link>{" "}
+                e o{" "}
+                <Link
+                  href="/ingles"
+                  className="font-bold text-violet-700 hover:underline"
+                >
+                  Inglês para Tech
+                </Link>
+                .
+              </p>
+            </div>
+            <div className="mt-5 space-y-3">
+              {softSkills.map((skill) => (
+                <DetailsChevronOnly
+                  key={skill.nome}
+                  className="card-brutal rounded-2xl border-violet-200 bg-white p-5 shadow-[5px_5px_0_#c4b5fd]"
+                  title={
+                    <span>
+                      <span className="font-display text-xl font-black text-slate-950">
+                        {skill.nome}
+                      </span>
+                      <span className="mt-1 block text-sm text-slate-600">
+                        {skill.oQueE}
+                      </span>
+                    </span>
+                  }
+                >
+                  <div className="mt-4 space-y-4">
+                    <p className="rounded-xl bg-violet-50 p-3 text-sm text-slate-700">
+                      <strong>Por que importa em TI:</strong>{" "}
+                      {skill.porQueImportaEmTI}
+                    </p>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-violet-700">
+                        Como desenvolver
+                      </p>
+                      <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                        {skill.comoDesenvolver.map((acao) => (
+                          <li key={acao} className="flex gap-2">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-500" />
+                            <span>{acao}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-violet-700">
+                        Recursos para praticar
+                      </p>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {skill.recursos.map((recurso) => (
+                          <a
+                            key={recurso.nome}
+                            href={recurso.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-xl border-2 border-violet-200 bg-violet-50 p-3 transition-colors hover:border-violet-400"
+                          >
+                            <span className="inline-flex items-center gap-1 font-black text-violet-900">
+                              {recurso.nome}
+                              <ExternalLink className="h-3 w-3" aria-hidden />
+                            </span>
+                            <p className="mt-1 text-xs text-slate-600">
+                              {recurso.oQueE}
+                            </p>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </DetailsChevronOnly>
+              ))}
+            </div>
           </div>
         </div>
       </section>
