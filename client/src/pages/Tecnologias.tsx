@@ -7,7 +7,11 @@ import PageHero from "@/components/shared/PageHero";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
-import { technologies, technologyCategories } from "@/lib/technologyData";
+import {
+  technologies,
+  technologyCategories,
+  technologyCategoryLabels,
+} from "@/lib/technologyData";
 import { getTechnologies } from "@/services/contentService";
 
 const ac = getPageAccentUi("violet");
@@ -28,6 +32,16 @@ const CATEGORY_SUBTITLES: Record<string, string> = {
     "Servidores de empresas como Amazon, Google e Microsoft que você aluga pela internet, sem precisar manter máquinas próprias.",
   DevOps:
     "Práticas e ferramentas pra colocar software no ar de forma automática, confiável e monitorada, do código até o usuário final.",
+  "Dados e IA":
+    "Bibliotecas e plataformas para analisar dados, treinar modelos e construir soluções de inteligência artificial.",
+  Segurança:
+    "Ferramentas para testar, proteger e investigar sistemas, redes e aplicações.",
+  Testes:
+    "Ferramentas para testar software de forma automática e garantir qualidade antes de ir pro ar.",
+  Design:
+    "Ferramentas para desenhar telas, protótipos e interfaces antes de virar código.",
+  Gestão:
+    "Ferramentas para organizar tarefas, documentar e tocar projetos com o time.",
 };
 
 export default function Tecnologias() {
@@ -79,6 +93,7 @@ export default function Tecnologias() {
             options={technologyCategories}
             value={category}
             onChange={setCategory}
+            labels={technologyCategoryLabels}
           />
           <div className="relative max-w-xl">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -142,7 +157,8 @@ export default function Tecnologias() {
                       ac.tag,
                     )}
                   >
-                    {technology.category}
+                    {technologyCategoryLabels[technology.category] ??
+                      technology.category}
                   </span>
                 </div>
                 <h2 className="font-display text-xl font-black text-slate-950">

@@ -8,6 +8,8 @@ interface FilterPillsProps {
   onChange: (value: string) => void;
   /** Se definido, o estado ativo/inativo segue a paleta da página. */
   accent?: PageHeroAccent;
+  /** Mapa opcional de rotulo visivel por valor. */
+  labels?: Record<string, string>;
 }
 
 export default function FilterPills({
@@ -15,6 +17,7 @@ export default function FilterPills({
   value,
   onChange,
   accent,
+  labels,
 }: FilterPillsProps) {
   const ui = accent ? pageAccentUi[accent] : null;
 
@@ -34,7 +37,7 @@ export default function FilterPills({
                   "border-slate-300 bg-white text-slate-700 hover:border-slate-500"),
           )}
         >
-          {option}
+          {labels?.[option] ?? option}
         </button>
       ))}
     </div>
