@@ -1,10 +1,17 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent,
+} from "react";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
 
 import AuthModal from "@/components/auth/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { type FavoriteItem, useFavorites } from "@/hooks/useFavorites";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
 
 type FavoriteButtonProps = {
@@ -12,6 +19,15 @@ type FavoriteButtonProps = {
   className?: string;
   compact?: boolean;
 };
+
+const FAVORITE_PARTICLES: { tx: string; ty: string }[] = [
+  { tx: "11px", ty: "0px" },
+  { tx: "6px", ty: "-10px" },
+  { tx: "-6px", ty: "-10px" },
+  { tx: "-11px", ty: "0px" },
+  { tx: "-6px", ty: "10px" },
+  { tx: "6px", ty: "10px" },
+];
 
 export default function FavoriteButton({
   item,
@@ -25,6 +41,23 @@ export default function FavoriteButton({
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const authJustSucceededRef = useRef(false);
   const active = isFavorite(item);
+
+  const reduceMotion = usePrefersReducedMotion();
+  const prevActiveRef = useRef(active);
+  const [pop, setPop] = useState<"none" | "in" | "out">("none");
+  const [burstKey, setBurstKey] = useState(0);
+
+  useEffect(() => {
+    if (prevActiveRef.current === active) return;
+    prevActiveRef.current = active;
+    if (reduceMotion) return;
+    if (active) {
+      setPop("in");
+      setBurstKey((key) => key + 1);
+    } else {
+      setPop("out");
+    }
+  }, [active, reduceMotion]);
 
   useEffect(() => {
     if (pendingAuthFavorite && !user) {
@@ -109,7 +142,38 @@ export default function FavoriteButton({
           className,
         )}
       >
-        <Heart className={cn("h-4 w-4", active && "fill-current")} />
+        <span className="relative inline-flex">
+          <Heart
+            className={cn(
+              "h-4 w-4 transition-colors duration-200",
+              active && "fill-current",
+              pop === "in" && "fav-pop",
+              pop === "out" && "fav-pop-out",
+            )}
+            onAnimationEnd={() => setPop("none")}
+          />
+          {burstKey > 0 && !reduceMotion ? (
+            <span
+              key={burstKey}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 flex items-center justify-center text-rose-500"
+            >
+              <span className="fav-ring absolute h-5 w-5 rounded-full border-2 border-current" />
+              {FAVORITE_PARTICLES.map((particle, index) => (
+                <span
+                  key={index}
+                  className="fav-particle absolute h-1 w-1 rounded-full bg-current"
+                  style={
+                    {
+                      "--fav-tx": particle.tx,
+                      "--fav-ty": particle.ty,
+                    } as CSSProperties
+                  }
+                />
+              ))}
+            </span>
+          ) : null}
+        </span>
         {!compact && <span>{active ? "Favorito" : "Favoritar"}</span>}
       </button>
 
