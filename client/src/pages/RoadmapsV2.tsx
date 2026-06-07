@@ -6,6 +6,7 @@ import RoadmapTrail, { type TrailHandle } from "@/components/roadmapV2/RoadmapTr
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { frontend } from "@/lib/roadmapV2/content";
 import { isComplete, nodeProgress, toggle } from "@/lib/roadmapV2/progress";
+import { loadProgress, saveProgress } from "@/lib/roadmapV2/progressStorage";
 
 // Beats of the section-complete sequence, with soft pauses between each step:
 // a) station turns green (immediate, derived from `done`)
@@ -18,8 +19,13 @@ const CLOSE_TO_BURST = 640;
 const BURST_TO_WALK = 480;
 
 export default function RoadmapsV2() {
-  const [done, setDone] = useState<Set<string>>(new Set());
+  const slug = frontend.slug;
+  const [done, setDone] = useState<Set<string>>(() => loadProgress(slug));
   const [openSectionId, setOpenSectionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    saveProgress(slug, done);
+  }, [slug, done]);
 
   const trailRef = useRef<TrailHandle>(null);
   const prevCompleted = useRef<boolean[]>(frontend.sections.map(() => false));
