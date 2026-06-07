@@ -65,7 +65,7 @@ function GroupItem({ node, done, onToggle }: RoadmapNodeItemProps) {
         className="grid transition-[grid-template-rows] duration-300 ease-out"
         style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
       >
-        <div className="overflow-hidden">
+        <div className="overflow-hidden py-1">
           <div className="ml-[12px] border-l-[2.5px] border-dashed border-slate-300 pl-4">
             {node.children?.map((child) => (
               <RoadmapNodeItem key={child.id} node={child} done={done} onToggle={onToggle} />
@@ -129,7 +129,7 @@ function LeafItem({ node, done, onToggle }: RoadmapNodeItemProps) {
             className="grid transition-[grid-template-rows] duration-200 ease-out"
             style={{ gridTemplateRows: resOpen ? "1fr" : "0fr" }}
           >
-            <div className="overflow-hidden">
+            <div className="overflow-hidden px-1 pt-1">
               <div className="flex flex-wrap gap-2 pb-2.5">
                 {node.resources?.map((resource) => (
                   <a
