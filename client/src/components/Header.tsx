@@ -86,7 +86,7 @@ const menuData: DropdownMenu[] = [
           {
             label: "Mapa de tecnologias",
             description: "Visualize o ecossistema tech",
-            path: "/tecnologias/mapa",
+            path: "/tecnologias/por-area",
           },
           {
             label: "Ranking de tecnologias",
