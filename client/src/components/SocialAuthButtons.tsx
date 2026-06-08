@@ -49,10 +49,20 @@ const providers: Array<{
   },
 ];
 
-export default function SocialAuthButtons({ mode, onBeforeOAuth, showDivider = true, redirectTo }: SocialAuthButtonsProps) {
+export default function SocialAuthButtons({
+  mode,
+  onBeforeOAuth,
+  showDivider = true,
+  redirectTo,
+}: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
-  const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(null);
-  const enabledProviders = useMemo(() => providers.filter((provider) => provider.enabled()), []);
+  const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(
+    null,
+  );
+  const enabledProviders = useMemo(
+    () => providers.filter((provider) => provider.enabled()),
+    [],
+  );
 
   if (enabledProviders.length === 0) return null;
 
@@ -68,7 +78,9 @@ export default function SocialAuthButtons({ mode, onBeforeOAuth, showDivider = t
     } catch (error) {
       console.error("[SocialAuthButtons] OAuth failed", error);
       setLoadingProvider(null);
-      toast.error("Não foi possível iniciar o login social. Verifique a configuração do provedor.");
+      toast.error(
+        "Não foi possível iniciar o login social. Verifique a configuração do provedor.",
+      );
     }
   }
 
@@ -97,7 +109,9 @@ export default function SocialAuthButtons({ mode, onBeforeOAuth, showDivider = t
               aria-label={`${mode === "cadastro" ? "Cadastrar" : "Entrar"} com ${provider.label}`}
             >
               {provider.icon}
-              {isLoading ? "Redirecionando..." : `${mode === "cadastro" ? "Cadastrar" : "Entrar"} com ${provider.label}`}
+              {isLoading
+                ? "Redirecionando..."
+                : `${mode === "cadastro" ? "Cadastrar" : "Entrar"} com ${provider.label}`}
             </button>
           );
         })}

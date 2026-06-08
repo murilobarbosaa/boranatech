@@ -1,30 +1,91 @@
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 
 export function ProfileBackground() {
   const { scrollY } = useScroll();
   const prefersReducedMotion = useReducedMotion();
 
-  const violetX = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : 100]);
-  const violetY = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : 200]);
-  const violetScale = useTransform(scrollY, [0, 2000], [1, prefersReducedMotion ? 1 : 1.3]);
-  const violetSkew = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : -8]);
+  const violetX = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : 100],
+  );
+  const violetY = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : 200],
+  );
+  const violetScale = useTransform(
+    scrollY,
+    [0, 2000],
+    [1, prefersReducedMotion ? 1 : 1.3],
+  );
+  const violetSkew = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : -8],
+  );
 
-  const amberX = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : -150]);
-  const amberY = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : -100]);
-  const amberScale = useTransform(scrollY, [0, 2000], [1, prefersReducedMotion ? 1 : 1.4]);
-  const amberSkew = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : 12]);
+  const amberX = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : -150],
+  );
+  const amberY = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : -100],
+  );
+  const amberScale = useTransform(
+    scrollY,
+    [0, 2000],
+    [1, prefersReducedMotion ? 1 : 1.4],
+  );
+  const amberSkew = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : 12],
+  );
 
-  const emeraldX = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : 80]);
-  const emeraldY = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : -250]);
-  const emeraldScale = useTransform(scrollY, [0, 2000], [1, prefersReducedMotion ? 1 : 1.2]);
-  const emeraldSkew = useTransform(scrollY, [0, 2000], [0, prefersReducedMotion ? 0 : -5]);
+  const emeraldX = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : 80],
+  );
+  const emeraldY = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : -250],
+  );
+  const emeraldScale = useTransform(
+    scrollY,
+    [0, 2000],
+    [1, prefersReducedMotion ? 1 : 1.2],
+  );
+  const emeraldSkew = useTransform(
+    scrollY,
+    [0, 2000],
+    [0, prefersReducedMotion ? 0 : -5],
+  );
 
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true">
+    <div
+      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      aria-hidden="true"
+    >
       <div className="absolute inset-0 bg-[#faf8f4]" />
 
       <motion.div
-        style={{ x: violetX, y: violetY, scale: violetScale, skewX: violetSkew }}
+        style={{
+          x: violetX,
+          y: violetY,
+          scale: violetScale,
+          skewX: violetSkew,
+        }}
         className="absolute -left-[20%] -top-[10%] h-[80vh] w-[80vh]"
       >
         <div
@@ -52,7 +113,12 @@ export function ProfileBackground() {
       </motion.div>
 
       <motion.div
-        style={{ x: emeraldX, y: emeraldY, scale: emeraldScale, skewX: emeraldSkew }}
+        style={{
+          x: emeraldX,
+          y: emeraldY,
+          scale: emeraldScale,
+          skewX: emeraldSkew,
+        }}
         className="absolute -left-[10%] top-[70%] h-[70vh] w-[70vh]"
       >
         <div

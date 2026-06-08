@@ -15,21 +15,44 @@ import SecaoProjetos from "../sections/SecaoProjetos";
  * da mais recente pra mais antiga, assumindo que a IA já entregou nessa
  * ordem), depois formação, habilidades, projetos. Pra quem tem histórico.
  */
-export default function CronologicoLayout({ curriculo }: { curriculo: Curriculo }) {
+export default function CronologicoLayout({
+  curriculo,
+}: {
+  curriculo: Curriculo;
+}) {
   const labels = getLabels(curriculo.idioma);
   const tituloExperiencia =
-    curriculo.persona === "estudante" ? labels.projetosAtividades : labels.experiencia;
+    curriculo.persona === "estudante"
+      ? labels.projetosAtividades
+      : labels.experiencia;
 
   return (
     <>
-      <Cabecalho dadosPessoais={curriculo.dadosPessoais} objetivo={curriculo.objetivo} variant="left" />
-      <ResumoProfissional resumo={curriculo.resumoProfissional} title={labels.resumo} />
-      <SecaoExperiencia title={tituloExperiencia} items={curriculo.experiencias} />
+      <Cabecalho
+        dadosPessoais={curriculo.dadosPessoais}
+        objetivo={curriculo.objetivo}
+        variant="left"
+      />
+      <ResumoProfissional
+        resumo={curriculo.resumoProfissional}
+        title={labels.resumo}
+      />
+      <SecaoExperiencia
+        title={tituloExperiencia}
+        items={curriculo.experiencias}
+      />
       <SecaoFormacao title={labels.formacao} items={curriculo.formacao} />
-      <SecaoHabilidades title={labels.habilidades} items={curriculo.habilidades} variant="wrap" />
+      <SecaoHabilidades
+        title={labels.habilidades}
+        items={curriculo.habilidades}
+        variant="wrap"
+      />
       <SecaoProjetos title={labels.projetos} items={curriculo.projetos} />
       <SecaoIdiomas title={labels.idiomas} items={curriculo.idiomas} />
-      <SecaoCertificacoes title={labels.certificacoes} items={curriculo.certificacoes} />
+      <SecaoCertificacoes
+        title={labels.certificacoes}
+        items={curriculo.certificacoes}
+      />
     </>
   );
 }

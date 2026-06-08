@@ -1,6 +1,17 @@
 import { usageEvidence } from "./surveyData2025";
 
-export type TechnologyCategory = "Linguagens" | "Frameworks" | "Banco de Dados" | "Ferramentas" | "Cloud" | "DevOps";
+export type TechnologyCategory =
+  | "Linguagens"
+  | "Frameworks"
+  | "Banco de Dados"
+  | "Ferramentas"
+  | "Cloud"
+  | "DevOps"
+  | "Dados e IA"
+  | "Segurança"
+  | "Testes"
+  | "Design"
+  | "Gestão";
 export type DifficultyLabel = "Iniciante" | "Intermediário" | "Avançado";
 
 export interface Technology {
@@ -30,7 +41,46 @@ export interface Technology {
 }
 
 const byCategory: Record<TechnologyCategory, string[]> = {
-  Linguagens: ["HTML", "CSS", "JavaScript", "TypeScript", "Python", "Java", "PHP", "Go", "Rust", "C#", "SQL", "Swift", "Kotlin", "R", "C++", "C", "Lua", "Solidity"],
+  Linguagens: [
+    "HTML",
+    "CSS",
+    "JavaScript",
+    "TypeScript",
+    "Python",
+    "Java",
+    "PHP",
+    "Go",
+    "Rust",
+    "C#",
+    "SQL",
+    "Swift",
+    "Kotlin",
+    "R",
+    "C++",
+    "C",
+    "Lua",
+    "Solidity",
+    "Ruby",
+    "Dart",
+    "Scala",
+    "Julia",
+    "MATLAB",
+    "COBOL",
+    "Fortran",
+    "Assembly",
+    "Ada",
+    "Visual Basic",
+    "Objective-C",
+    "Elixir",
+    "Erlang",
+    "Haskell",
+    "Clojure",
+    "F#",
+    "Groovy",
+    "Bash",
+    "PowerShell",
+    "Perl",
+  ],
   Frameworks: [
     "React",
     "Vue.js",
@@ -46,37 +96,47 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "React Native",
     "Flutter",
     "Redux",
-    "Spark",
-    "Pandas",
-    "TensorFlow",
-    "PyTorch",
-    "NumPy",
     "GraphQL",
     "Unity",
     "Unreal Engine",
     "Godot",
+    "Svelte",
+    "Nuxt",
+    "Astro",
+    "SolidJS",
+    "Bootstrap",
+    "Material UI",
+    "NestJS",
+    "Flask",
+    "Laravel",
+    "Ruby on Rails",
+    "ASP.NET Core",
+    "Phoenix",
+    "Quarkus",
+    "SwiftUI",
+    "Jetpack Compose",
+    "Ionic",
+    ".NET MAUI",
   ],
-  "Banco de Dados": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Snowflake"],
-  Ferramentas: [
-    "Git",
-    "Linux",
-    "Figma",
-    "Vite",
-    "Cypress",
-    "Playwright",
-    "Power BI",
-    "Webpack",
-    "Storybook",
-    "Arduino",
-    "dbt",
-    "Tableau",
-    "Looker",
-    "Jira",
-    "Trello",
-    "Notion",
-    "Confluence",
+  "Banco de Dados": [
+    "PostgreSQL",
+    "MySQL",
+    "MongoDB",
+    "Redis",
+    "Elasticsearch",
+    "Snowflake",
+    "MariaDB",
+    "SQL Server",
+    "Oracle",
+    "SQLite",
+    "Cassandra",
+    "DynamoDB",
+    "Neo4j",
+    "Firebase",
+    "Supabase",
   ],
-  Cloud: ["AWS", "Google Cloud", "Azure"],
+  Ferramentas: ["Vite", "Webpack", "Storybook", "Arduino", "Looker"],
+  Cloud: ["AWS", "Google Cloud", "Azure", "IBM Cloud", "DigitalOcean"],
   DevOps: [
     "Docker",
     "Kubernetes",
@@ -86,10 +146,53 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "Jenkins",
     "Prometheus",
     "Grafana",
-    "Kafka",
     "RabbitMQ",
-    "Apache Airflow",
+    "Git",
+    "Linux",
+    "GitLab CI",
+    "Nginx",
+    "Windows Server",
+    "Unix",
+    "VMware",
   ],
+  "Dados e IA": [
+    "Pandas",
+    "NumPy",
+    "TensorFlow",
+    "PyTorch",
+    "Spark",
+    "dbt",
+    "Power BI",
+    "Tableau",
+    "Kafka",
+    "Apache Airflow",
+    "scikit-learn",
+    "Keras",
+    "Hadoop",
+    "Jupyter",
+    "Hugging Face",
+    "LangChain",
+  ],
+  Segurança: [
+    "Kali Linux",
+    "Wireshark",
+    "Nmap",
+    "Burp Suite",
+    "Metasploit",
+    "OWASP ZAP",
+  ],
+  Testes: [
+    "Cypress",
+    "Playwright",
+    "Jest",
+    "Vitest",
+    "Selenium",
+    "JUnit",
+    "PyTest",
+    "Postman",
+  ],
+  Design: ["Figma", "Adobe XD", "Sketch", "Canva"],
+  Gestão: ["Jira", "Trello", "Notion", "Confluence", "Asana"],
 };
 
 const areaMap: Record<string, string[]> = {
@@ -107,7 +210,15 @@ const areaMap: Record<string, string[]> = {
   Redux: ["frontend"],
   Webpack: ["frontend", "devops"],
   Storybook: ["frontend", "qa", "uxui"],
-  Python: ["backend", "dados", "ia", "qa", "engenharia-dados", "analise-dados", "iot"],
+  Python: [
+    "backend",
+    "dados",
+    "ia",
+    "qa",
+    "engenharia-dados",
+    "analise-dados",
+    "iot",
+  ],
   "Node.js": ["backend", "frontend", "fullstack"],
   "Express.js": ["backend", "fullstack"],
   Java: ["backend", "mobile"],
@@ -118,13 +229,38 @@ const areaMap: Record<string, string[]> = {
   Go: ["backend", "devops", "blockchain"],
   Rust: ["backend", "ciberseguranca", "blockchain"],
   "C#": ["backend", "gamedev"],
-  SQL: ["backend", "dados", "banco-de-dados", "engenharia-dados", "analise-dados", "analise-sistemas"],
+  SQL: [
+    "backend",
+    "dados",
+    "banco-de-dados",
+    "engenharia-dados",
+    "analise-dados",
+    "analise-sistemas",
+  ],
   GraphQL: ["backend", "frontend", "mobile", "fullstack"],
-  PostgreSQL: ["backend", "dados", "fullstack", "banco-de-dados", "engenharia-dados"],
+  PostgreSQL: [
+    "backend",
+    "dados",
+    "fullstack",
+    "banco-de-dados",
+    "engenharia-dados",
+  ],
   MySQL: ["backend", "dados", "banco-de-dados", "engenharia-dados"],
-  MongoDB: ["backend", "dados", "fullstack", "banco-de-dados", "engenharia-dados"],
+  MongoDB: [
+    "backend",
+    "dados",
+    "fullstack",
+    "banco-de-dados",
+    "engenharia-dados",
+  ],
   Redis: ["backend", "devops", "banco-de-dados"],
-  Elasticsearch: ["backend", "dados", "devops", "banco-de-dados", "engenharia-dados"],
+  Elasticsearch: [
+    "backend",
+    "dados",
+    "devops",
+    "banco-de-dados",
+    "engenharia-dados",
+  ],
   Docker: ["devops", "backend", "cloud", "fullstack", "sre", "infraestrutura"],
   Kubernetes: ["devops", "cloud", "sre"],
   Terraform: ["devops", "cloud", "sre", "infraestrutura"],
@@ -141,7 +277,15 @@ const areaMap: Record<string, string[]> = {
   "Google Cloud": ["cloud", "dados", "ia", "infraestrutura"],
   Azure: ["cloud", "devops", "infraestrutura"],
   Git: ["frontend", "backend", "dados", "mobile", "devops", "qa", "fullstack"],
-  Linux: ["devops", "cloud", "ciberseguranca", "backend", "sre", "infraestrutura", "iot"],
+  Linux: [
+    "devops",
+    "cloud",
+    "ciberseguranca",
+    "backend",
+    "sre",
+    "infraestrutura",
+    "iot",
+  ],
   Figma: ["uxui", "frontend", "produto"],
   "Power BI": ["dados", "produto", "analise-dados"],
   Flutter: ["mobile"],
@@ -171,6 +315,81 @@ const areaMap: Record<string, string[]> = {
   Trello: ["gestao", "produto"],
   Notion: ["gestao", "produto"],
   Confluence: ["gestao"],
+  Ruby: ["backend", "fullstack"],
+  Dart: ["mobile", "frontend"],
+  Scala: ["backend", "dados", "engenharia-dados"],
+  Julia: ["dados", "ia", "analise-dados"],
+  MATLAB: ["dados", "analise-dados", "ia"],
+  COBOL: ["mainframe", "backend"],
+  Fortran: ["dados", "analise-sistemas"],
+  Assembly: ["iot", "ciberseguranca"],
+  Ada: ["backend", "iot"],
+  "Visual Basic": ["backend", "analise-sistemas"],
+  "Objective-C": ["mobile"],
+  Elixir: ["backend", "fullstack"],
+  Erlang: ["backend"],
+  Haskell: ["backend"],
+  Clojure: ["backend"],
+  "F#": ["backend"],
+  Groovy: ["backend", "devops", "qa"],
+  Bash: ["devops", "sre", "infraestrutura", "backend"],
+  PowerShell: ["devops", "infraestrutura", "ciberseguranca"],
+  Perl: ["backend", "devops"],
+  Svelte: ["frontend"],
+  Nuxt: ["frontend", "fullstack"],
+  Astro: ["frontend"],
+  SolidJS: ["frontend"],
+  Bootstrap: ["frontend", "uxui"],
+  "Material UI": ["frontend", "uxui"],
+  NestJS: ["backend", "fullstack"],
+  Flask: ["backend", "dados", "ia"],
+  Laravel: ["backend", "fullstack"],
+  "Ruby on Rails": ["backend", "fullstack"],
+  "ASP.NET Core": ["backend", "fullstack"],
+  Phoenix: ["backend", "fullstack"],
+  Quarkus: ["backend"],
+  SwiftUI: ["mobile"],
+  "Jetpack Compose": ["mobile"],
+  Ionic: ["mobile", "frontend"],
+  ".NET MAUI": ["mobile"],
+  MariaDB: ["backend", "banco-de-dados", "engenharia-dados"],
+  "SQL Server": ["backend", "banco-de-dados", "engenharia-dados"],
+  Oracle: ["backend", "banco-de-dados", "engenharia-dados"],
+  SQLite: ["backend", "mobile", "banco-de-dados"],
+  Cassandra: ["backend", "banco-de-dados", "engenharia-dados"],
+  DynamoDB: ["backend", "cloud", "banco-de-dados", "engenharia-dados"],
+  Neo4j: ["backend", "banco-de-dados", "dados"],
+  Firebase: ["mobile", "frontend", "fullstack", "backend"],
+  Supabase: ["frontend", "fullstack", "backend"],
+  "scikit-learn": ["dados", "ia", "analise-dados"],
+  Keras: ["ia", "dados"],
+  Hadoop: ["dados", "engenharia-dados"],
+  Jupyter: ["dados", "ia", "analise-dados", "engenharia-dados"],
+  "Hugging Face": ["ia", "dados"],
+  LangChain: ["ia", "backend"],
+  "IBM Cloud": ["cloud", "infraestrutura", "mainframe"],
+  DigitalOcean: ["cloud", "devops", "infraestrutura"],
+  "GitLab CI": ["devops", "sre", "qa"],
+  Nginx: ["devops", "backend", "sre", "infraestrutura"],
+  "Windows Server": ["devops", "infraestrutura"],
+  Unix: ["devops", "infraestrutura", "sre"],
+  VMware: ["devops", "infraestrutura", "cloud"],
+  "Kali Linux": ["ciberseguranca"],
+  Wireshark: ["ciberseguranca", "infraestrutura"],
+  Nmap: ["ciberseguranca", "infraestrutura"],
+  "Burp Suite": ["ciberseguranca"],
+  Metasploit: ["ciberseguranca"],
+  "OWASP ZAP": ["ciberseguranca", "qa"],
+  Jest: ["qa", "frontend"],
+  Vitest: ["qa", "frontend"],
+  Selenium: ["qa"],
+  JUnit: ["qa", "backend"],
+  PyTest: ["qa", "backend", "dados"],
+  Postman: ["qa", "backend"],
+  "Adobe XD": ["uxui", "produto"],
+  Sketch: ["uxui", "produto"],
+  Canva: ["uxui", "produto"],
+  Asana: ["gestao", "produto"],
 };
 
 const difficulties: Record<string, DifficultyLabel> = {
@@ -249,6 +468,50 @@ const difficulties: Record<string, DifficultyLabel> = {
   Trello: "Iniciante",
   Notion: "Iniciante",
   Confluence: "Iniciante",
+  Ruby: "Iniciante",
+  Dart: "Iniciante",
+  "Visual Basic": "Iniciante",
+  Bash: "Iniciante",
+  PowerShell: "Iniciante",
+  Perl: "Iniciante",
+  Bootstrap: "Iniciante",
+  "Material UI": "Iniciante",
+  Flask: "Iniciante",
+  SQLite: "Iniciante",
+  Firebase: "Iniciante",
+  Supabase: "Iniciante",
+  Jupyter: "Iniciante",
+  Postman: "Iniciante",
+  Jest: "Iniciante",
+  Vitest: "Iniciante",
+  Canva: "Iniciante",
+  Sketch: "Iniciante",
+  "Adobe XD": "Iniciante",
+  Asana: "Iniciante",
+  COBOL: "Avançado",
+  Fortran: "Avançado",
+  Assembly: "Avançado",
+  Ada: "Avançado",
+  Haskell: "Avançado",
+  Erlang: "Avançado",
+  Clojure: "Avançado",
+  Scala: "Avançado",
+  "F#": "Avançado",
+  Quarkus: "Avançado",
+  Cassandra: "Avançado",
+  Oracle: "Avançado",
+  "SQL Server": "Avançado",
+  DynamoDB: "Avançado",
+  Neo4j: "Avançado",
+  Hadoop: "Avançado",
+  "Hugging Face": "Avançado",
+  LangChain: "Avançado",
+  "Kali Linux": "Avançado",
+  Metasploit: "Avançado",
+  "Burp Suite": "Avançado",
+  Nmap: "Avançado",
+  "OWASP ZAP": "Avançado",
+  Selenium: "Avançado",
 };
 
 export function slugify(value: string) {
@@ -261,7 +524,11 @@ export function slugify(value: string) {
 }
 
 function categoryFor(name: string): TechnologyCategory {
-  return (Object.keys(byCategory) as TechnologyCategory[]).find((category) => byCategory[category].includes(name)) || "Ferramentas";
+  return (
+    (Object.keys(byCategory) as TechnologyCategory[]).find((category) =>
+      byCategory[category].includes(name),
+    ) || "Ferramentas"
+  );
 }
 
 function difficultyScore(label: DifficultyLabel) {
@@ -347,109 +614,249 @@ const names = [
   "Trello",
   "Notion",
   "Confluence",
+  "Ruby",
+  "Dart",
+  "Scala",
+  "Julia",
+  "MATLAB",
+  "COBOL",
+  "Fortran",
+  "Assembly",
+  "Ada",
+  "Visual Basic",
+  "Objective-C",
+  "Elixir",
+  "Erlang",
+  "Haskell",
+  "Clojure",
+  "F#",
+  "Groovy",
+  "Bash",
+  "PowerShell",
+  "Perl",
+  "Svelte",
+  "Nuxt",
+  "Astro",
+  "SolidJS",
+  "Bootstrap",
+  "Material UI",
+  "NestJS",
+  "Flask",
+  "Laravel",
+  "Ruby on Rails",
+  "ASP.NET Core",
+  "Phoenix",
+  "Quarkus",
+  "SwiftUI",
+  "Jetpack Compose",
+  "Ionic",
+  ".NET MAUI",
+  "MariaDB",
+  "SQL Server",
+  "Oracle",
+  "SQLite",
+  "Cassandra",
+  "DynamoDB",
+  "Neo4j",
+  "Firebase",
+  "Supabase",
+  "scikit-learn",
+  "Keras",
+  "Hadoop",
+  "Jupyter",
+  "Hugging Face",
+  "LangChain",
+  "IBM Cloud",
+  "DigitalOcean",
+  "GitLab CI",
+  "Nginx",
+  "Windows Server",
+  "Unix",
+  "VMware",
+  "Kali Linux",
+  "Wireshark",
+  "Nmap",
+  "Burp Suite",
+  "Metasploit",
+  "OWASP ZAP",
+  "Jest",
+  "Vitest",
+  "Selenium",
+  "JUnit",
+  "PyTest",
+  "Postman",
+  "Adobe XD",
+  "Sketch",
+  "Canva",
+  "Asana",
 ];
 
 const logoUrls: Record<string, string> = {
   HTML: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg",
   CSS: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/css3/css3-original.svg",
-  JavaScript: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg",
-  TypeScript: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg",
-  React: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg",
-  "Vue.js": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vuejs/vuejs-original.svg",
-  Angular: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/angularjs/angularjs-original.svg",
-  "Next.js": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg",
-  Python: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg",
-  "Node.js": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg",
+  JavaScript:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg",
+  TypeScript:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg",
+  React:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg",
+  "Vue.js":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vuejs/vuejs-original.svg",
+  Angular:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/angularjs/angularjs-original.svg",
+  "Next.js":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg",
+  Python:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg",
+  "Node.js":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg",
   Java: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg",
   PHP: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/php/php-original.svg",
   Go: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg",
   Rust: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rust/rust-original.svg",
   "C#": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/csharp/csharp-original.svg",
   SQL: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azuresqldatabase/azuresqldatabase-original.svg",
-  PostgreSQL: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg",
-  MySQL: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg",
-  MongoDB: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mongodb/mongodb-original.svg",
-  Redis: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/redis/redis-original.svg",
-  Docker: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg",
-  Kubernetes: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/kubernetes/kubernetes-original.svg",
+  PostgreSQL:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg",
+  MySQL:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mysql/mysql-original.svg",
+  MongoDB:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/mongodb/mongodb-original.svg",
+  Redis:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/redis/redis-original.svg",
+  Docker:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg",
+  Kubernetes:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/kubernetes/kubernetes-original.svg",
   AWS: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/amazonwebservices/amazonwebservices-original-wordmark.svg",
-  "Google Cloud": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/googlecloud/googlecloud-original.svg",
-  Azure: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg",
+  "Google Cloud":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/googlecloud/googlecloud-original.svg",
+  Azure:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg",
   Git: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/git/git-original.svg",
-  Linux: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg",
-  Figma: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/figma/figma-original.svg",
-  Flutter: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flutter/flutter-original.svg",
-  Swift: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/swift/swift-original.svg",
-  Kotlin: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/kotlin/kotlin-original.svg",
+  Linux:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg",
+  Figma:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/figma/figma-original.svg",
+  Flutter:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/flutter/flutter-original.svg",
+  Swift:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/swift/swift-original.svg",
+  Kotlin:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/kotlin/kotlin-original.svg",
   R: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/r/r-original.svg",
-  Spark: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apachespark/apachespark-original.svg",
-  Pandas: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pandas/pandas-original.svg",
-  TensorFlow: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tensorflow/tensorflow-original.svg",
-  "Tailwind CSS": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg",
+  Spark:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apachespark/apachespark-original.svg",
+  Pandas:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pandas/pandas-original.svg",
+  TensorFlow:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tensorflow/tensorflow-original.svg",
+  "Tailwind CSS":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/tailwindcss/tailwindcss-original.svg",
   Sass: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/sass/sass-original.svg",
   Vite: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg",
-  "Express.js": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/express/express-original.svg",
-  FastAPI: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg",
-  Django: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/django/django-plain.svg",
-  "Spring Boot": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/spring/spring-original.svg",
-  "React Native": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg",
-  GraphQL: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/graphql/graphql-plain.svg",
-  Redux: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/redux/redux-original.svg",
-  Webpack: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/webpack/webpack-original.svg",
-  Storybook: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/storybook/storybook-original.svg",
-  Cypress: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cypressio/cypressio-plain.svg",
-  Playwright: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/playwright/playwright-plain.svg",
-  Terraform: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg",
-  Ansible: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ansible/ansible-original.svg",
-  "GitHub Actions": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg",
-  Jenkins: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jenkins/jenkins-original.svg",
-  Prometheus: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/prometheus/prometheus-original.svg",
-  Grafana: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/grafana/grafana-original.svg",
-  Kafka: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apachekafka/apachekafka-original.svg",
-  RabbitMQ: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rabbitmq/rabbitmq-original.svg",
-  Elasticsearch: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/elasticsearch/elasticsearch-original.svg",
-  "Power BI": "https://www.google.com/s2/favicons?domain=powerbi.microsoft.com&sz=128",
-  NumPy: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/numpy/numpy-original.svg",
-  PyTorch: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg",
-  Unity: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unity/unity-original.svg",
-  "Unreal Engine": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unrealengine/unrealengine-original.svg",
-  Godot: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/godot/godot-original.svg",
-  "C++": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg",
+  "Express.js":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/express/express-original.svg",
+  FastAPI:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/fastapi/fastapi-original.svg",
+  Django:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/django/django-plain.svg",
+  "Spring Boot":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/spring/spring-original.svg",
+  "React Native":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg",
+  GraphQL:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/graphql/graphql-plain.svg",
+  Redux:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/redux/redux-original.svg",
+  Webpack:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/webpack/webpack-original.svg",
+  Storybook:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/storybook/storybook-original.svg",
+  Cypress:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cypressio/cypressio-plain.svg",
+  Playwright:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/playwright/playwright-plain.svg",
+  Terraform:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg",
+  Ansible:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/ansible/ansible-original.svg",
+  "GitHub Actions":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg",
+  Jenkins:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jenkins/jenkins-original.svg",
+  Prometheus:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/prometheus/prometheus-original.svg",
+  Grafana:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/grafana/grafana-original.svg",
+  Kafka:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apachekafka/apachekafka-original.svg",
+  RabbitMQ:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/rabbitmq/rabbitmq-original.svg",
+  Elasticsearch:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/elasticsearch/elasticsearch-original.svg",
+  "Power BI":
+    "https://www.google.com/s2/favicons?domain=powerbi.microsoft.com&sz=128",
+  NumPy:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/numpy/numpy-original.svg",
+  PyTorch:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/pytorch/pytorch-original.svg",
+  Unity:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unity/unity-original.svg",
+  "Unreal Engine":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/unrealengine/unrealengine-original.svg",
+  Godot:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/godot/godot-original.svg",
+  "C++":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg",
   Lua: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/lua/lua-original.svg",
-  Solidity: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/solidity/solidity-original.svg",
+  Solidity:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/solidity/solidity-original.svg",
   C: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/c/c-original.svg",
-  Arduino: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/arduino/arduino-original.svg",
-  "Apache Airflow": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apacheairflow/apacheairflow-original.svg",
+  Arduino:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/arduino/arduino-original.svg",
+  "Apache Airflow":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apacheairflow/apacheairflow-original.svg",
   dbt: "https://www.google.com/s2/favicons?domain=getdbt.com&sz=128",
   Snowflake: "https://www.google.com/s2/favicons?domain=snowflake.com&sz=128",
   Tableau: "https://www.google.com/s2/favicons?domain=tableau.com&sz=128",
   Looker: "https://www.google.com/s2/favicons?domain=looker.com&sz=128",
   Jira: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jira/jira-original.svg",
-  Trello: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/trello/trello-original.svg",
-  Notion: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/notion/notion-original.svg",
-  Confluence: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/confluence/confluence-original.svg",
+  Trello:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/trello/trello-original.svg",
+  Notion:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/notion/notion-original.svg",
+  Confluence:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/confluence/confluence-original.svg",
 };
 
 // Logos de ferramentas de apoio que não são tecnologias do catálogo principal.
 const toolLogoUrls: Record<string, string> = {
-  "VS Code": "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg",
-  GitHub: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg",
+  "VS Code":
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vscode/vscode-original.svg",
+  GitHub:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg",
   npm: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/npm/npm-original-wordmark.svg",
-  Postman: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postman/postman-original.svg",
-  Jupyter: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original.svg",
+  Postman:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postman/postman-original.svg",
+  Jupyter:
+    "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/jupyter/jupyter-original.svg",
 };
 
 // Resolve o nome de uma ferramenta para o que o TechnologyLogo precisa. Reaproveita
 // o catálogo de logos das tecnologias e o mapa de ferramentas de apoio; quando não
 // há logo, o TechnologyLogo cai no fallback de iniciais.
-export function resolveTool(name: string): { name: string; icon: string; logoUrl: string } {
+export function resolveTool(name: string): {
+  name: string;
+  icon: string;
+  logoUrl: string;
+} {
   return {
     name,
     icon: name.slice(0, 2).toUpperCase(),
     logoUrl: logoUrls[name] || toolLogoUrls[name] || "",
   };
 }
-
 
 const notableCompanies: Record<string, string[]> = {
   HTML: ["Google", "Wikipedia", "Netflix"],
@@ -620,7 +1027,12 @@ export const technologies: Technology[] = names.map((name) => {
     description: `${name} é usada para construir produtos digitais, resolver problemas reais e acelerar entregas em times de tecnologia.`,
     difficulty,
     difficultyScore: difficultyScore(difficulty),
-    salaryRange: difficulty === "Avançado" ? "R$ 6.000 a R$ 14.000" : difficulty === "Intermediário" ? "R$ 4.000 a R$ 10.000" : "R$ 2.500 a R$ 6.000",
+    salaryRange:
+      difficulty === "Avançado"
+        ? "R$ 6.000 a R$ 14.000"
+        : difficulty === "Intermediário"
+          ? "R$ 4.000 a R$ 10.000"
+          : "R$ 2.500 a R$ 6.000",
     usagePercent: evidence?.usagePercent,
     usageLabel: evidence?.usageLabel,
     sourceName: evidence?.sourceName,
@@ -642,13 +1054,40 @@ export const technologies: Technology[] = names.map((name) => {
     dailyTip: `Use ${name} em um projeto simples antes de tentar dominar todos os recursos.`,
     combinesWith: combinesWithMap[slugify(name)] || [],
     tools: ["VS Code", "Git", "GitHub"],
-    courses: ["Curso em Vídeo", "freeCodeCamp", "Documentação oficial", "YouTube"],
-    companies: notableCompanies[name] || ["GitHub", "Stack Overflow", "Comunidades open source"],
+    courses: [
+      "Curso em Vídeo",
+      "freeCodeCamp",
+      "Documentação oficial",
+      "YouTube",
+    ],
+    companies: notableCompanies[name] || [
+      "GitHub",
+      "Stack Overflow",
+      "Comunidades open source",
+    ],
     games: notableGames[name],
   };
 });
 
-export const technologyCategories = ["Todas", "Linguagens", "Frameworks", "Banco de Dados", "Ferramentas", "Cloud", "DevOps"];
+export const technologyCategories = [
+  "Todas",
+  "Linguagens",
+  "Frameworks",
+  "Banco de Dados",
+  "Ferramentas",
+  "Cloud",
+  "DevOps",
+  "Dados e IA",
+  "Segurança",
+  "Testes",
+  "Design",
+  "Gestão",
+];
+
+export const technologyCategoryLabels: Record<string, string> = {
+  Testes: "Testes / QA",
+  Gestão: "Gestão e Metodologias",
+};
 
 export const technologyRanking = technologies
   .slice()

@@ -20,7 +20,8 @@ export function rotuloEstadoEvento(estado: string): string {
 }
 
 /** Texto de data que indica evento recorrente (não tem uma data única que "passa"). */
-const RECORRENTE_RE = /(mensal|quinzenal|semanal|bimestral|trimestral|anual|cont[ií]nuo|ao longo do ano|v[áa]rios|varia|duas vezes|a confirmar)/i;
+const RECORRENTE_RE =
+  /(mensal|quinzenal|semanal|bimestral|trimestral|anual|cont[ií]nuo|ao longo do ano|v[áa]rios|varia|duas vezes|a confirmar)/i;
 
 export function isEventoRecorrente(data: string): boolean {
   return RECORRENTE_RE.test(data ?? "");

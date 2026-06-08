@@ -13,7 +13,11 @@ interface CabecaloProps {
  * visual; o conteúdo é o mesmo. variant="left" (cronológico),
  * "center" (harvard, sóbrio acadêmico), "tagline" (híbrido moderno).
  */
-export default function Cabecalho({ dadosPessoais, objetivo, variant }: CabecaloProps) {
+export default function Cabecalho({
+  dadosPessoais,
+  objetivo,
+  variant,
+}: CabecaloProps) {
   const align = variant === "center" ? "text-center" : "text-left";
   const contactSep = "·";
 
@@ -34,9 +38,13 @@ export default function Cabecalho({ dadosPessoais, objetivo, variant }: Cabecalo
           {objetivo.cargo}
         </p>
       ) : variant === "center" ? (
-        <p className="mt-1 text-[12px] font-medium text-slate-600">{objetivo.cargo}</p>
+        <p className="mt-1 text-[12px] font-medium text-slate-600">
+          {objetivo.cargo}
+        </p>
       ) : (
-        <p className="mt-0.5 text-[13px] font-medium text-slate-700">{objetivo.cargo}</p>
+        <p className="mt-0.5 text-[13px] font-medium text-slate-700">
+          {objetivo.cargo}
+        </p>
       )}
       <p
         className={`mt-2 flex flex-wrap gap-x-2 gap-y-1 text-[10.5px] text-slate-600 ${
@@ -45,7 +53,11 @@ export default function Cabecalho({ dadosPessoais, objetivo, variant }: Cabecalo
       >
         {contatos.map((item, idx) => (
           <span key={idx} className="inline-flex items-center gap-2">
-            {idx > 0 ? <span aria-hidden className="text-slate-400">{contactSep}</span> : null}
+            {idx > 0 ? (
+              <span aria-hidden className="text-slate-400">
+                {contactSep}
+              </span>
+            ) : null}
             <span>{item}</span>
           </span>
         ))}

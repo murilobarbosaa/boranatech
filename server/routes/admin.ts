@@ -13,7 +13,17 @@ router.use(requireAuth);
 router.use(requireAdmin);
 
 const EDITABLE_TABLES: Record<string, string[]> = {
-  news: ["title", "summary", "url", "image_url", "source", "author", "published_at", "tags", "is_published"],
+  news: [
+    "title",
+    "summary",
+    "url",
+    "image_url",
+    "source",
+    "author",
+    "published_at",
+    "tags",
+    "is_published",
+  ],
   external_jobs: [
     "title",
     "company",
@@ -104,7 +114,18 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "rating",
     "is_published",
   ],
-  platforms: ["name", "url", "description", "price_label", "strengths", "limitations", "best_for", "tags", "rating", "is_published"],
+  platforms: [
+    "name",
+    "url",
+    "description",
+    "price_label",
+    "strengths",
+    "limitations",
+    "best_for",
+    "tags",
+    "rating",
+    "is_published",
+  ],
   projects: [
     "title",
     "description",
@@ -118,7 +139,16 @@ const EDITABLE_TABLES: Record<string, string[]> = {
     "tags",
     "is_published",
   ],
-  roadmaps: ["title", "description", "area_slug", "level", "estimated_duration_weeks", "is_pro", "is_published", "sort_order"],
+  roadmaps: [
+    "title",
+    "description",
+    "area_slug",
+    "level",
+    "estimated_duration_weeks",
+    "is_pro",
+    "is_published",
+    "sort_order",
+  ],
   affiliates: [
     "name",
     "email",
@@ -133,7 +163,9 @@ const EDITABLE_TABLES: Record<string, string[]> = {
 };
 
 function getSearchColumn(type: string) {
-  return ["areas", "technologies", "platforms"].includes(type) ? "name" : "title";
+  return ["areas", "technologies", "platforms"].includes(type)
+    ? "name"
+    : "title";
 }
 
 function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
@@ -169,10 +201,15 @@ const emptyPosthogStats = {
 type PosthogEventName = keyof typeof emptyPosthogStats.events;
 
 function sumTrendValue(result: PosthogTrendResult): number {
-  if (typeof result.aggregated_value === "number") return result.aggregated_value;
-  if (typeof result.aggregated_value === "string") return Number(result.aggregated_value) || 0;
+  if (typeof result.aggregated_value === "number")
+    return result.aggregated_value;
+  if (typeof result.aggregated_value === "string")
+    return Number(result.aggregated_value) || 0;
 
-  return (result.data || []).reduce<number>((sum, value) => sum + (Number(value) || 0), 0);
+  return (result.data || []).reduce<number>(
+    (sum, value) => sum + (Number(value) || 0),
+    0,
+  );
 }
 
 function pagePath(value: string) {
@@ -185,7 +222,9 @@ function pagePath(value: string) {
 }
 
 async function fetchPosthogTrend(params: Record<string, string>) {
-  const url = new URL(`https://us.posthog.com/api/projects/${env.posthogProjectId}/insights/trend/`);
+  const url = new URL(
+    `https://us.posthog.com/api/projects/${env.posthogProjectId}/insights/trend/`,
+  );
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
   }
@@ -198,7 +237,9 @@ async function fetchPosthogTrend(params: Record<string, string>) {
   });
 
   if (response.status === 401 || response.status === 403) {
-    console.error(`[posthog] API rejeitou credenciais com status ${response.status}`);
+    console.error(
+      `[posthog] API rejeitou credenciais com status ${response.status}`,
+    );
     return null;
   }
 
@@ -212,19 +253,32 @@ async function fetchPosthogTrend(params: Record<string, string>) {
 
 router.get("/dashboard", async (_req, res, next) => {
   try {
-    const [{ count: usersCount }, { count: subsCount }, { count: areasCount }, { count: coursesCount }, { count: aiLogsCount }, recentAudit] =
-      await Promise.all([
-        supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
-        supabaseAdmin.from("subscriptions").select("*", { count: "exact", head: true }).eq("status", "active"),
-        supabaseAdmin.from("areas").select("*", { count: "exact", head: true }),
-        supabaseAdmin.from("courses").select("*", { count: "exact", head: true }),
-        supabaseAdmin.from("ai_usage_logs").select("*", { count: "exact", head: true }),
-        supabaseAdmin
-          .from("content_audit_logs")
-          .select("action, resource_type, resource_slug, created_at")
-          .order("created_at", { ascending: false })
-          .limit(10),
-      ]);
+    const [
+      { count: usersCount },
+      { count: subsCount },
+      { count: areasCount },
+      { count: coursesCount },
+      { count: aiLogsCount },
+      recentAudit,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("*", { count: "exact", head: true }),
+      supabaseAdmin
+        .from("subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "active"),
+      supabaseAdmin.from("areas").select("*", { count: "exact", head: true }),
+      supabaseAdmin.from("courses").select("*", { count: "exact", head: true }),
+      supabaseAdmin
+        .from("ai_usage_logs")
+        .select("*", { count: "exact", head: true }),
+      supabaseAdmin
+        .from("content_audit_logs")
+        .select("action, resource_type, resource_slug, created_at")
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
 
     res.json({
       data: {
@@ -254,33 +308,53 @@ router.get("/posthog-stats", async (_req, res) => {
   data.configured = true;
 
   try {
-    const events: PosthogEventName[] = ["user_signed_up", "user_signed_in", "checkout_started", "quiz_completed"];
-    const [pageviews, uniqueUsers, pages, customEvents, acquisition] = await Promise.all([
-      fetchPosthogTrend({
-        date_from: "-30d",
-        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0 }]),
-      }),
-      fetchPosthogTrend({
-        date_from: "-30d",
-        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0, math: "dau" }]),
-      }),
-      fetchPosthogTrend({
-        date_from: "-30d",
-        breakdown: "$current_url",
-        breakdown_type: "event",
-        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0 }]),
-      }),
-      fetchPosthogTrend({
-        date_from: "-30d",
-        events: JSON.stringify(events.map((event, index) => ({ id: event, type: "events", order: index }))),
-      }),
-      fetchPosthogTrend({
-        date_from: "-30d",
-        breakdown: "$referring_domain",
-        breakdown_type: "event",
-        events: JSON.stringify([{ id: "$pageview", type: "events", order: 0, math: "dau" }]),
-      }),
-    ]);
+    const events: PosthogEventName[] = [
+      "user_signed_up",
+      "user_signed_in",
+      "checkout_started",
+      "quiz_completed",
+    ];
+    const [pageviews, uniqueUsers, pages, customEvents, acquisition] =
+      await Promise.all([
+        fetchPosthogTrend({
+          date_from: "-30d",
+          events: JSON.stringify([
+            { id: "$pageview", type: "events", order: 0 },
+          ]),
+        }),
+        fetchPosthogTrend({
+          date_from: "-30d",
+          events: JSON.stringify([
+            { id: "$pageview", type: "events", order: 0, math: "dau" },
+          ]),
+        }),
+        fetchPosthogTrend({
+          date_from: "-30d",
+          breakdown: "$current_url",
+          breakdown_type: "event",
+          events: JSON.stringify([
+            { id: "$pageview", type: "events", order: 0 },
+          ]),
+        }),
+        fetchPosthogTrend({
+          date_from: "-30d",
+          events: JSON.stringify(
+            events.map((event, index) => ({
+              id: event,
+              type: "events",
+              order: index,
+            })),
+          ),
+        }),
+        fetchPosthogTrend({
+          date_from: "-30d",
+          breakdown: "$referring_domain",
+          breakdown_type: "event",
+          events: JSON.stringify([
+            { id: "$pageview", type: "events", order: 0, math: "dau" },
+          ]),
+        }),
+      ]);
 
     data.totalPageviews = sumTrendValue(pageviews?.result?.[0] || {});
     data.uniqueUsers = sumTrendValue(uniqueUsers?.result?.[0] || {});
@@ -324,39 +398,67 @@ router.get("/churn-risk", async (_req, res) => {
       .eq("status", "active");
 
     if (error) {
-      console.error("[admin] Erro ao buscar assinaturas para churn-risk", error);
+      console.error(
+        "[admin] Erro ao buscar assinaturas para churn-risk",
+        error,
+      );
       res.json({ data: [] });
       return;
     }
 
-    const activeSubscriptions = (subscriptions || []).filter((subscription) => subscription.user_id);
-    const userIds = activeSubscriptions.map((subscription) => subscription.user_id as string);
+    const activeSubscriptions = (subscriptions || []).filter(
+      (subscription) => subscription.user_id,
+    );
+    const userIds = activeSubscriptions.map(
+      (subscription) => subscription.user_id as string,
+    );
     const { data: profiles } = userIds.length
-      ? await supabaseAdmin.from("profiles").select("user_id, name, email").in("user_id", userIds)
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("user_id, name, email")
+          .in("user_id", userIds)
       : { data: [] };
-    const profilesByUserId = new Map((profiles || []).map((profile) => [profile.user_id, profile]));
+    const profilesByUserId = new Map(
+      (profiles || []).map((profile) => [profile.user_id, profile]),
+    );
     const inactiveThresholdMs = 14 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
     const users = await Promise.all(
       activeSubscriptions.map(async (subscription) => {
         const userId = subscription.user_id as string;
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+        const { data: authData, error: authError } =
+          await supabaseAdmin.auth.admin.getUserById(userId);
         if (authError || !authData.user) return null;
 
-        const lastSeenAt = authData.user.last_sign_in_at || authData.user.created_at;
+        const lastSeenAt =
+          authData.user.last_sign_in_at || authData.user.created_at;
         if (!lastSeenAt) return null;
 
-        const daysInactive = Math.floor((now - new Date(lastSeenAt).getTime()) / (24 * 60 * 60 * 1000));
-        if (daysInactive < 14 || now - new Date(lastSeenAt).getTime() < inactiveThresholdMs) return null;
+        const daysInactive = Math.floor(
+          (now - new Date(lastSeenAt).getTime()) / (24 * 60 * 60 * 1000),
+        );
+        if (
+          daysInactive < 14 ||
+          now - new Date(lastSeenAt).getTime() < inactiveThresholdMs
+        )
+          return null;
 
         const profile = profilesByUserId.get(userId);
         const metadata = authData.user.user_metadata || {};
-        const plan = Array.isArray(subscription.plans) ? subscription.plans[0] : subscription.plans;
+        const plan = Array.isArray(subscription.plans)
+          ? subscription.plans[0]
+          : subscription.plans;
         const priceCents = Number(plan?.price_cents || 0);
 
         return {
-          name: String(profile?.name || metadata.name || metadata.full_name || authData.user.email || "Usuário"),
+          name: String(
+            profile?.name ||
+              metadata.name ||
+              metadata.full_name ||
+              authData.user.email ||
+              "Usuário",
+          ),
           email: String(profile?.email || authData.user.email || ""),
           days_inactive: daysInactive,
           mrr: priceCents / 100,
@@ -366,7 +468,16 @@ router.get("/churn-risk", async (_req, res) => {
 
     res.json({
       data: users
-        .filter((user): user is { name: string; email: string; days_inactive: number; mrr: number } => Boolean(user))
+        .filter(
+          (
+            user,
+          ): user is {
+            name: string;
+            email: string;
+            days_inactive: number;
+            mrr: number;
+          } => Boolean(user),
+        )
         .sort((a, b) => b.days_inactive - a.days_inactive)
         .slice(0, 10),
     });
@@ -378,7 +489,11 @@ router.get("/churn-risk", async (_req, res) => {
 
 router.get("/me", async (req, res, next) => {
   try {
-    const { data: role } = await supabaseAdmin.from("admin_roles").select("role, created_at").eq("user_id", req.user!.id).single();
+    const { data: role } = await supabaseAdmin
+      .from("admin_roles")
+      .select("role, created_at")
+      .eq("user_id", req.user!.id)
+      .single();
     res.json({ data: { user: req.user, role: role?.role || "editor" } });
   } catch (err) {
     next(err);
@@ -388,17 +503,26 @@ router.get("/me", async (req, res, next) => {
 router.get("/content/:type", async (req, res, next) => {
   try {
     const { type } = req.params;
-    if (!EDITABLE_TABLES[type]) return next(createError(404, "not_found", `Tipo '${type}' não reconhecido.`));
+    if (!EDITABLE_TABLES[type])
+      return next(
+        createError(404, "not_found", `Tipo '${type}' não reconhecido.`),
+      );
 
     const { search, published } = req.query;
     const orderField = type === "external_jobs" ? "fetched_at" : "created_at";
-    let query = supabaseAdmin.from(type).select("*").order(orderField, { ascending: false }).limit(100);
+    let query = supabaseAdmin
+      .from(type)
+      .select("*")
+      .order(orderField, { ascending: false })
+      .limit(100);
 
-    if (published !== undefined) query = query.eq("is_published", published === "true");
+    if (published !== undefined)
+      query = query.eq("is_published", published === "true");
     if (search) query = query.ilike(getSearchColumn(type), `%${search}%`);
 
     const { data, error } = await query;
-    if (error) return next(createError(500, "db_error", "Erro ao buscar conteúdo."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar conteúdo."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -409,10 +533,18 @@ router.get("/content/:type", async (req, res, next) => {
 router.get("/content/:type/:id", async (req, res, next) => {
   try {
     const { type, id } = req.params;
-    if (!EDITABLE_TABLES[type]) return next(createError(404, "not_found", `Tipo '${type}' não reconhecido.`));
+    if (!EDITABLE_TABLES[type])
+      return next(
+        createError(404, "not_found", `Tipo '${type}' não reconhecido.`),
+      );
 
-    const { data, error } = await supabaseAdmin.from(type).select("*").eq("id", id).single();
-    if (error || !data) return next(createError(404, "not_found", "Item não encontrado."));
+    const { data, error } = await supabaseAdmin
+      .from(type)
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error || !data)
+      return next(createError(404, "not_found", "Item não encontrado."));
 
     res.json({ data });
   } catch (err) {
@@ -424,13 +556,26 @@ router.post("/content/:type", async (req, res, next) => {
   try {
     const { type } = req.params;
     const allowedFields = EDITABLE_TABLES[type];
-    if (!allowedFields) return next(createError(404, "not_found", `Tipo '${type}' não reconhecido.`));
+    if (!allowedFields)
+      return next(
+        createError(404, "not_found", `Tipo '${type}' não reconhecido.`),
+      );
 
-    const payload = filterPayload(req.body as Record<string, unknown>, allowedFields);
+    const payload = filterPayload(
+      req.body as Record<string, unknown>,
+      allowedFields,
+    );
 
-    const { data, error } = await supabaseAdmin.from(type).insert(payload).select().single();
+    const { data, error } = await supabaseAdmin
+      .from(type)
+      .insert(payload)
+      .select()
+      .single();
     if (error) {
-      if (error.code === "23505") return next(createError(409, "conflict", "Já existe um item com este slug."));
+      if (error.code === "23505")
+        return next(
+          createError(409, "conflict", "Já existe um item com este slug."),
+        );
       return next(createError(500, "db_error", "Erro ao criar item."));
     }
 
@@ -453,20 +598,49 @@ router.patch("/content/:type/:id", async (req, res, next) => {
   try {
     const { type, id } = req.params;
     const allowedFields = EDITABLE_TABLES[type];
-    if (!allowedFields) return next(createError(404, "not_found", `Tipo '${type}' não reconhecido.`));
+    if (!allowedFields)
+      return next(
+        createError(404, "not_found", `Tipo '${type}' não reconhecido.`),
+      );
 
-    const { data: before } = await supabaseAdmin.from(type).select("*").eq("id", id).single();
-    if (!before) return next(createError(404, "not_found", "Item não encontrado."));
+    const { data: before } = await supabaseAdmin
+      .from(type)
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (!before)
+      return next(createError(404, "not_found", "Item não encontrado."));
 
-    const updates = filterPayload(req.body as Record<string, unknown>, allowedFields);
+    const updates = filterPayload(
+      req.body as Record<string, unknown>,
+      allowedFields,
+    );
     delete updates.slug;
 
-    if (Object.keys(updates).length === 0) return next(createError(400, "invalid_request", "Nenhum campo válido para atualizar."));
+    if (Object.keys(updates).length === 0)
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "Nenhum campo válido para atualizar.",
+        ),
+      );
 
-    const { data, error } = await supabaseAdmin.from(type).update(updates).eq("id", id).select().single();
-    if (error) return next(createError(500, "db_error", "Erro ao atualizar item."));
+    const { data, error } = await supabaseAdmin
+      .from(type)
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error)
+      return next(createError(500, "db_error", "Erro ao atualizar item."));
 
-    const action = "is_published" in updates ? (updates.is_published ? "publish" : "unpublish") : "update";
+    const action =
+      "is_published" in updates
+        ? updates.is_published
+          ? "publish"
+          : "unpublish"
+        : "update";
 
     await logAudit({
       actorUserId: req.user!.id,
@@ -487,17 +661,30 @@ router.patch("/content/:type/:id", async (req, res, next) => {
 router.delete("/content/:type/:id", async (req, res, next) => {
   try {
     const { type, id } = req.params;
-    if (!EDITABLE_TABLES[type]) return next(createError(404, "not_found", `Tipo '${type}' não reconhecido.`));
+    if (!EDITABLE_TABLES[type])
+      return next(
+        createError(404, "not_found", `Tipo '${type}' não reconhecido.`),
+      );
 
-    const { data: before } = await supabaseAdmin.from(type).select("*").eq("id", id).single();
-    if (!before) return next(createError(404, "not_found", "Item não encontrado."));
+    const { data: before } = await supabaseAdmin
+      .from(type)
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (!before)
+      return next(createError(404, "not_found", "Item não encontrado."));
 
     if (req.query.force === "true" || type === "affiliates") {
       const { error } = await supabaseAdmin.from(type).delete().eq("id", id);
-      if (error) return next(createError(500, "db_error", "Erro ao deletar item."));
+      if (error)
+        return next(createError(500, "db_error", "Erro ao deletar item."));
     } else {
-      const { error } = await supabaseAdmin.from(type).update({ is_published: false }).eq("id", id);
-      if (error) return next(createError(500, "db_error", "Erro ao despublicar item."));
+      const { error } = await supabaseAdmin
+        .from(type)
+        .update({ is_published: false })
+        .eq("id", id);
+      if (error)
+        return next(createError(500, "db_error", "Erro ao despublicar item."));
     }
 
     await logAudit({
@@ -531,7 +718,8 @@ router.get("/audit-logs", async (req, res, next) => {
     if (resource_type) query = query.eq("resource_type", resource_type);
 
     const { data, error } = await query;
-    if (error) return next(createError(500, "db_error", "Erro ao buscar logs."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar logs."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -547,7 +735,9 @@ router.get("/users", async (req, res, next) => {
 
     let query = supabaseAdmin
       .from("profiles")
-      .select("id, user_id, name, email, area_interesse, onboarding_completed, created_at")
+      .select(
+        "id, user_id, name, email, area_interesse, onboarding_completed, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(parsedLimit)
       .range(parsedOffset, parsedOffset + parsedLimit - 1);
@@ -555,7 +745,8 @@ router.get("/users", async (req, res, next) => {
     if (search) query = query.ilike("email", `%${search}%`);
 
     const { data, error } = await query;
-    if (error) return next(createError(500, "db_error", "Erro ao buscar usuários."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar usuários."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -571,7 +762,8 @@ router.get("/subscriptions", async (_req, res, next) => {
       .order("created_at", { ascending: false })
       .limit(100);
 
-    if (error) return next(createError(500, "db_error", "Erro ao buscar assinaturas."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar assinaturas."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -584,11 +776,18 @@ router.get("/ai-stats", async (_req, res, next) => {
     const { data: byTool, error } = await supabaseAdmin
       .from("ai_usage_logs")
       .select("tool, status, cost_estimate")
-      .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+      .gte(
+        "created_at",
+        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      );
 
-    if (error) return next(createError(500, "db_error", "Erro ao buscar stats de IA."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar stats de IA."));
 
-    const stats: Record<string, { calls: number; success: number; cost: number }> = {};
+    const stats: Record<
+      string,
+      { calls: number; success: number; cost: number }
+    > = {};
     for (const log of byTool || []) {
       if (!stats[log.tool]) stats[log.tool] = { calls: 0, success: 0, cost: 0 };
       stats[log.tool].calls += 1;
@@ -624,7 +823,10 @@ router.get("/queue-stats", async (_req, res) => {
 
 router.get("/affiliates-stats", async (_req, res) => {
   try {
-    const { data, error } = await supabaseAdmin.from("affiliates").select("*").order("revenue_cents", { ascending: false });
+    const { data, error } = await supabaseAdmin
+      .from("affiliates")
+      .select("*")
+      .order("revenue_cents", { ascending: false });
 
     if (error) {
       console.error("[admin] Erro ao buscar afiliados", error);

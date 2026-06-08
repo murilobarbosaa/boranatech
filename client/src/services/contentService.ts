@@ -1,8 +1,19 @@
 import type { ContentSourceStatus } from "./contracts";
 import { Layout as LayoutIcon } from "lucide-react";
 import { apiUrl } from "@/lib/api";
-import { areasTI, cursosGratuitos, plataformas, projetos, roadmaps, type AreaTI } from "@/lib/data";
-import { technologies, technologyRanking, combinesWithMap } from "@/lib/technologyData";
+import {
+  areasTI,
+  cursosGratuitos,
+  plataformas,
+  projetos,
+  roadmaps,
+  type AreaTI,
+} from "@/lib/data";
+import {
+  technologies,
+  technologyRanking,
+  combinesWithMap,
+} from "@/lib/technologyData";
 import { usageEvidence } from "@/lib/surveyData2025";
 
 const API_BASE = apiUrl("/api/content");
@@ -68,9 +79,15 @@ function platformFromApi(row: any) {
   return {
     id: row.slug || row.id,
     nome: row.name,
-    logoUrl: row.url ? `https://www.google.com/s2/favicons?domain=${new URL(row.url).hostname}&sz=128` : "",
+    logoUrl: row.url
+      ? `https://www.google.com/s2/favicons?domain=${new URL(row.url).hostname}&sz=128`
+      : "",
     descricao: row.description || "",
-    tipo: row.price_label?.toLowerCase().includes("grat") ? "Gratuita" : row.price_label?.toLowerCase().includes("pago") ? "Paga" : "Híbrida",
+    tipo: row.price_label?.toLowerCase().includes("grat")
+      ? "Gratuita"
+      : row.price_label?.toLowerCase().includes("pago")
+        ? "Paga"
+        : "Híbrida",
     idioma: "Português",
     areasFortes: row.best_for || ["Todas as áreas de TI"],
     pontosFortes: row.strengths || [],
@@ -107,7 +124,9 @@ function roadmapFromApi(row: any) {
     nome: row.title,
     areaSlug: row.area_slug || null,
     nivel: row.level || "Iniciante",
-    duracaoDias: row.estimated_duration_weeks ? `${row.estimated_duration_weeks} semanas` : "30 dias",
+    duracaoDias: row.estimated_duration_weeks
+      ? `${row.estimated_duration_weeks} semanas`
+      : "30 dias",
     descricao: row.description || "",
     paraQuem: row.description || "",
     preRequisitos: "",
@@ -150,7 +169,9 @@ function technologyFromApi(row: any) {
     dailyTip: row.long_description || row.description || "",
     combinesWith: combinesWithMap[row.slug] || [],
     tools: row.tools || [],
-    courses: (row.resources || []).map((resource: any) => resource.title || resource.name || String(resource)),
+    courses: (row.resources || []).map(
+      (resource: any) => resource.title || resource.name || String(resource),
+    ),
     companies: row.companies_using || [],
   };
 }
@@ -223,7 +244,10 @@ const KEYWORD_PATTERNS: Array<{ keyword: NewsKeyword; pattern: RegExp }> = [
   },
 ];
 
-export function inferKeyword(title: string, summary: string): NewsKeyword | null {
+export function inferKeyword(
+  title: string,
+  summary: string,
+): NewsKeyword | null {
   if (!title) return null;
   const text = `${title} ${summary || ""}`;
   for (const { keyword, pattern } of KEYWORD_PATTERNS) {
@@ -239,10 +263,14 @@ function sanitizeImageUrl(raw: unknown): string | null {
 }
 
 function newsFromApi(row: any): NewsItem {
-  const tags = Array.isArray(row.tags) ? row.tags.filter((tag: unknown) => typeof tag === "string") : [];
+  const tags = Array.isArray(row.tags)
+    ? row.tags.filter((tag: unknown) => typeof tag === "string")
+    : [];
   const publishedAt = row.published_at ? new Date(row.published_at) : null;
   const categoria = tags[0] || "Tecnologia";
-  const nivel = VALID_LEVELS.includes(row.level) ? (row.level as NewsLevel) : null;
+  const nivel = VALID_LEVELS.includes(row.level)
+    ? (row.level as NewsLevel)
+    : null;
   const title = typeof row.title === "string" ? row.title : "";
   const summary = typeof row.summary === "string" ? row.summary : "";
 
@@ -251,7 +279,10 @@ function newsFromApi(row: any): NewsItem {
     titulo: row.title_pt_br || title,
     resumo: row.summary_pt_br || summary,
     fonte: row.source || "Fonte externa",
-    data: publishedAt && !Number.isNaN(publishedAt.getTime()) ? publishedAt.toLocaleDateString("pt-BR") : "",
+    data:
+      publishedAt && !Number.isNaN(publishedAt.getTime())
+        ? publishedAt.toLocaleDateString("pt-BR")
+        : "",
     link: row.url,
     imagem: sanitizeImageUrl(row.image_url),
     nivel,
@@ -281,14 +312,32 @@ export async function getContentSourceStatus(): Promise<ContentSourceStatus[]> {
     return json.data.map((source: any) => ({
       source: source.code || source.type || source.name,
       status: source.status || "inactive",
-      lastSyncLabel: source.last_sync_at ? new Date(source.last_sync_at).toLocaleString("pt-BR") : "Ainda não sincronizado",
+      lastSyncLabel: source.last_sync_at
+        ? new Date(source.last_sync_at).toLocaleString("pt-BR")
+        : "Ainda não sincronizado",
     }));
   } catch {
     return [
-      { source: "cms", status: "ready", lastSyncLabel: "API local indisponível" },
-      { source: "rss", status: "inactive", lastSyncLabel: "Usando curadoria local" },
-      { source: "jobs-api", status: "inactive", lastSyncLabel: "Aguardando sincronização externa" },
-      { source: "events-api", status: "inactive", lastSyncLabel: "Aguardando sincronização externa" },
+      {
+        source: "cms",
+        status: "ready",
+        lastSyncLabel: "API local indisponível",
+      },
+      {
+        source: "rss",
+        status: "inactive",
+        lastSyncLabel: "Usando curadoria local",
+      },
+      {
+        source: "jobs-api",
+        status: "inactive",
+        lastSyncLabel: "Aguardando sincronização externa",
+      },
+      {
+        source: "events-api",
+        status: "inactive",
+        lastSyncLabel: "Aguardando sincronização externa",
+      },
     ];
   }
 }
@@ -314,12 +363,17 @@ export async function getArea(slug: string) {
   }
 }
 
-export async function getTechnologies(params?: { category?: string; search?: string }) {
+export async function getTechnologies(params?: {
+  category?: string;
+  search?: string;
+}) {
   try {
     const qs = new URLSearchParams();
     if (params?.category) qs.set("category", params.category);
     if (params?.search) qs.set("search", params.search);
-    const json = await apiFetch(`/technologies${qs.toString() ? `?${qs}` : ""}`);
+    const json = await apiFetch(
+      `/technologies${qs.toString() ? `?${qs}` : ""}`,
+    );
     return json.data.map(technologyFromApi);
   } catch {
     return technologies;
@@ -341,7 +395,10 @@ export async function getTechnologyRanking() {
     return json.data
       .map(technologyFromApi)
       .sort((a: any, b: any) => (b.usagePercent || 0) - (a.usagePercent || 0))
-      .map((technology: any, index: number) => ({ ...technology, position: index + 1 }));
+      .map((technology: any, index: number) => ({
+        ...technology,
+        position: index + 1,
+      }));
   } catch {
     return technologyRanking;
   }
@@ -349,18 +406,27 @@ export async function getTechnologyRanking() {
 
 export async function compareTechnologies(left: string, right: string) {
   try {
-    const json = await apiFetch(`/technologies/compare?left=${left}&right=${right}`);
+    const json = await apiFetch(
+      `/technologies/compare?left=${left}&right=${right}`,
+    );
     return json.data.map(technologyFromApi);
   } catch {
-    return technologies.filter((technology) => [left, right].includes(technology.slug));
+    return technologies.filter((technology) =>
+      [left, right].includes(technology.slug),
+    );
   }
 }
 
-export async function getCourses(params?: { area?: string; is_free?: boolean; level?: string }) {
+export async function getCourses(params?: {
+  area?: string;
+  is_free?: boolean;
+  level?: string;
+}) {
   try {
     const qs = new URLSearchParams();
     if (params?.area) qs.set("area", params.area);
-    if (params?.is_free !== undefined) qs.set("is_free", String(params.is_free));
+    if (params?.is_free !== undefined)
+      qs.set("is_free", String(params.is_free));
     if (params?.level) qs.set("level", params.level);
     const json = await apiFetch(`/courses${qs.toString() ? `?${qs}` : ""}`);
     return json.data.map(courseFromApi);
@@ -410,7 +476,9 @@ export async function getRoadmap(slug: string) {
   }
 }
 
-export async function getNews(params: GetNewsParams = {}): Promise<NewsResponse | null> {
+export async function getNews(
+  params: GetNewsParams = {},
+): Promise<NewsResponse | null> {
   try {
     const qs = new URLSearchParams();
     if (params.page) qs.set("page", String(params.page));
@@ -436,7 +504,12 @@ export async function getNews(params: GetNewsParams = {}): Promise<NewsResponse 
   }
 }
 
-export async function getJobs(params?: { area?: string; seniority?: string; limit?: number; offset?: number }) {
+export async function getJobs(params?: {
+  area?: string;
+  seniority?: string;
+  limit?: number;
+  offset?: number;
+}) {
   try {
     const qs = new URLSearchParams();
     if (params?.area) qs.set("area", params.area);

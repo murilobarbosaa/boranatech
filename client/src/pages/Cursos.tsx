@@ -6,7 +6,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
-import { Search, ExternalLink, Clock, Globe, PlayCircle, Sparkles } from "lucide-react";
+import {
+  Search,
+  ExternalLink,
+  Clock,
+  Globe,
+  PlayCircle,
+  Sparkles,
+} from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -16,16 +23,25 @@ import { getCourses } from "@/services/contentService";
 import { youtubeEmbedUrl } from "@/lib/utils";
 
 const nivelOptions = ["Todos", "Iniciante", "Intermediário", "Avançado"];
-const nivelOrder: Record<string, number> = { Iniciante: 0, "Intermediário": 1, "Avançado": 2 };
+const nivelOrder: Record<string, number> = {
+  Iniciante: 0,
+  Intermediário: 1,
+  Avançado: 2,
+};
 const idiomaOptions = ["Todos", "Português", "Inglês"];
 const tipoOptions = ["Todos", "Gratuito", "Pago"];
 
 const AREA_ALL = "Todas";
-const SPECIAL_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+const SPECIAL_LABELS: Record<string, string> = {
+  carreira: "Carreira",
+  fullstack: "Full Stack",
+};
 
 function labelForAreaSlug(slug: string | null | undefined): string {
   if (!slug) return "Geral";
-  return areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug;
+  return (
+    areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_LABELS[slug] ?? slug
+  );
 }
 
 const areaTagClass: Record<string, string> = {
@@ -52,13 +68,16 @@ export default function Cursos() {
   );
 
   useEffect(() => {
-    getCourses().then(setCourses).catch(() => setCourses(cursosGratuitos));
+    getCourses()
+      .then(setCourses)
+      .catch(() => setCourses(cursosGratuitos));
   }, []);
 
   const filtered = courses
     .filter((c) => {
       const slugLabel = labelForAreaSlug(c.areaSlug);
-      const matchSearch = c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      const matchSearch =
+        c.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
         slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
       const matchArea = area === AREA_ALL || c.areaSlug === area;
@@ -68,7 +87,10 @@ export default function Cursos() {
       return matchSearch && matchArea && matchNivel && matchIdioma && matchTipo;
     })
     .sort((a, b) => {
-      const areaCompare = labelForAreaSlug(a.areaSlug).localeCompare(labelForAreaSlug(b.areaSlug), "pt-BR");
+      const areaCompare = labelForAreaSlug(a.areaSlug).localeCompare(
+        labelForAreaSlug(b.areaSlug),
+        "pt-BR",
+      );
       if (areaCompare !== 0) return areaCompare;
       return (nivelOrder[a.nivel] ?? 99) - (nivelOrder[b.nivel] ?? 99);
     });
@@ -78,7 +100,13 @@ export default function Cursos() {
       <SEO
         title="Cursos de TI — Curadoria de cursos online gratuitos e pagos"
         description="Cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
-        keywords={["cursos de ti gratuitos", "cursos online programação", "cursos tecnologia iniciantes", "melhores cursos ti", "cursos para começar em programação"]}
+        keywords={[
+          "cursos de ti gratuitos",
+          "cursos online programação",
+          "cursos tecnologia iniciantes",
+          "melhores cursos ti",
+          "cursos para começar em programação",
+        ]}
         url="/cursos"
         schemaType="CollectionPage"
       />
@@ -87,10 +115,15 @@ export default function Cursos() {
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
           <div className="max-w-2xl">
-            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">curadoria para estudar</p>
-            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Cursos</h1>
+            <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              curadoria para estudar
+            </p>
+            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
+              Cursos
+            </h1>
             <p className="text-slate-950 text-lg">
-              Cursos gratuitos e pagos selecionados para iniciantes, organizados por área, nível e tipo.
+              Cursos gratuitos e pagos selecionados para iniciantes, organizados
+              por área, nível e tipo.
             </p>
           </div>
         </div>
@@ -99,55 +132,119 @@ export default function Cursos() {
       {/* Filters */}
       <section className="bg-amber-50 border-b-2 border-amber-200 py-4 sticky top-16 z-40">
         <div className="container">
-          <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:flex-wrap">
             {/* Search */}
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar curso..."
-                className="w-full pl-9 pr-4 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
-              />
+            <div className="flex max-w-sm flex-1 flex-col gap-1">
+              <label
+                htmlFor="cursos-busca"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Buscar
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  id="cursos-busca"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Nome do curso ou canal"
+                  className="w-full pl-9 pr-4 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
             </div>
             {/* Area */}
-            <select
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {areaSlugOptions.map((slug) => {
-                const value = slug === AREA_ALL ? AREA_ALL : slug ?? "";
-                const key = slug ?? "__null__";
-                const label = slug === AREA_ALL ? AREA_ALL : labelForAreaSlug(slug);
-                return <option key={key} value={value}>{label}</option>;
-              })}
-            </select>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-area"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Área
+              </label>
+              <select
+                id="cursos-area"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {areaSlugOptions.map((slug) => {
+                  const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
+                  const key = slug ?? "__null__";
+                  const label =
+                    slug === AREA_ALL
+                      ? "Todas as áreas"
+                      : labelForAreaSlug(slug);
+                  return (
+                    <option key={key} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
             {/* Nivel */}
-            <select
-              value={nivel}
-              onChange={(e) => setNivel(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {nivelOptions.map((o) => <option key={o}>{o}</option>)}
-            </select>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-nivel"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Nível
+              </label>
+              <select
+                id="cursos-nivel"
+                value={nivel}
+                onChange={(e) => setNivel(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {nivelOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o === "Todos" ? "Todos os níveis" : o}
+                  </option>
+                ))}
+              </select>
+            </div>
             {/* Idioma */}
-            <select
-              value={idioma}
-              onChange={(e) => setIdioma(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {idiomaOptions.map((o) => <option key={o}>{o}</option>)}
-            </select>
-            {/* Tipo */}
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {tipoOptions.map((o) => <option key={o}>{o === "Todos" ? "Todos os tipos" : o}</option>)}
-            </select>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-idioma"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Idioma
+              </label>
+              <select
+                id="cursos-idioma"
+                value={idioma}
+                onChange={(e) => setIdioma(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {idiomaOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o === "Todos" ? "Todos os idiomas" : o}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Preço */}
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-preco"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Preço
+              </label>
+              <select
+                id="cursos-preco"
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {tipoOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o === "Todos" ? "Todos os preços" : o}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </section>
@@ -158,9 +255,22 @@ export default function Cursos() {
           {filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
-              <p className="text-slate-600 font-medium">Nenhum curso encontrado.</p>
-              <p className="text-slate-400 text-sm mt-1">Tente outros filtros.</p>
-              <button onClick={() => { setSearchQuery(""); setArea(AREA_ALL); setNivel("Todos"); setIdioma("Todos"); setTipo("Todos"); }} className="mt-4 text-slate-950 text-sm font-medium hover:underline">
+              <p className="text-slate-600 font-medium">
+                Nenhum curso encontrado.
+              </p>
+              <p className="text-slate-400 text-sm mt-1">
+                Tente outros filtros.
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setArea(AREA_ALL);
+                  setNivel("Todos");
+                  setIdioma("Todos");
+                  setTipo("Todos");
+                }}
+                className="mt-4 text-slate-950 text-sm font-medium hover:underline"
+              >
                 Limpar filtros
               </button>
             </div>
@@ -174,52 +284,85 @@ export default function Cursos() {
                   {/* Tags */}
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
-                      <span className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}>
+                      <span
+                        className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}
+                      >
                         {labelForAreaSlug(curso.areaSlug)}
                       </span>
-                      <span className={`rounded-md border px-2.5 py-1 text-[11px] font-black ${
-                        (curso.tipo || "Gratuito") === "Pago" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                      }`}>
+                      <span
+                        className={`rounded-md border px-2.5 py-1 text-[11px] font-black ${
+                          (curso.tipo || "Gratuito") === "Pago"
+                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
                         {curso.tipo || "Gratuito"}
                       </span>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className={`rounded-md px-2 py-1 text-[11px] font-bold ${
-                        curso.nivel === "Iniciante" ? "bg-blue-50 text-blue-700" :
-                        curso.nivel === "Intermediário" ? "bg-amber-50 text-amber-700" :
-                        "bg-red-50 text-red-700"
-                      }`}>
+                      <span
+                        className={`rounded-md px-2 py-1 text-[11px] font-bold ${
+                          curso.nivel === "Iniciante"
+                            ? "bg-blue-50 text-blue-700"
+                            : curso.nivel === "Intermediário"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-red-50 text-red-700"
+                        }`}
+                      >
                         {curso.nivel}
                       </span>
-                      <FavoriteButton compact item={{ id: curso.id, type: "curso", title: curso.titulo, subtitle: curso.canal, url: curso.link }} />
+                      <FavoriteButton
+                        compact
+                        item={{
+                          id: curso.id,
+                          type: "curso",
+                          title: curso.titulo,
+                          subtitle: curso.canal,
+                          url: curso.link,
+                        }}
+                      />
                     </div>
                   </div>
 
                   {/* Title */}
-                  <h3 className="font-display text-lg font-black leading-snug text-slate-950">{curso.titulo}</h3>
+                  <h3 className="font-display text-lg font-black leading-snug text-slate-950">
+                    {curso.titulo}
+                  </h3>
                   <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-amber-700">
-                    {curso.canal}{curso.preco ? ` · ${curso.preco}` : ""}
+                    {curso.canal}
+                    {curso.preco ? ` · ${curso.preco}` : ""}
                   </p>
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">{curso.descricao}</p>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
+                    {curso.descricao}
+                  </p>
 
                   {/* Why recommended */}
                   <div className="mt-4 flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+                    <Sparkles
+                      className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
+                      aria-hidden
+                    />
                     <p className="text-xs leading-relaxed text-amber-900">
-                      <span className="font-black">Por que indicamos:</span> {curso.motivoIndicacao}
+                      <span className="font-black">Por que indicamos:</span>{" "}
+                      {curso.motivoIndicacao}
                     </p>
                   </div>
 
                   {/* What you learn */}
                   <div className="mt-4">
-                    <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">O que você aprende</p>
+                    <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+                      O que você aprende
+                    </p>
                     <div className="flex flex-wrap gap-1.5">
                       {curso.oQueAprende.map((item) => (
                         <span
                           key={item}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition-colors group-hover:border-slate-300"
                         >
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden />
+                          <span
+                            className="h-1.5 w-1.5 rounded-full bg-amber-400"
+                            aria-hidden
+                          />
                           {item}
                         </span>
                       ))}
@@ -237,7 +380,11 @@ export default function Cursos() {
                       </span>
                     </div>
                     {youtubeEmbedUrl(curso.link) ? (
-                      <VideoEmbedDialog source={curso.link} title={curso.titulo} href={curso.link}>
+                      <VideoEmbedDialog
+                        source={curso.link}
+                        title={curso.titulo}
+                        href={curso.link}
+                      >
                         <button
                           type="button"
                           className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
@@ -264,7 +411,9 @@ export default function Cursos() {
           {/* Disclaimer */}
           <div className="mt-10 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-center">
             <p className="text-sm text-slate-600">
-              Os cursos listados pertencem aos seus respectivos criadores e plataformas. O BORA NA TECH? é um projeto de curadoria e recomenda verificar preço, turma e condições no site oficial.
+              Os cursos listados pertencem aos seus respectivos criadores e
+              plataformas. O BORA NA TECH? é um projeto de curadoria e recomenda
+              verificar preço, turma e condições no site oficial.
             </p>
           </div>
         </div>

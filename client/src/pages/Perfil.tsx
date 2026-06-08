@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import {
@@ -44,7 +50,10 @@ import {
 } from "@/constants/avatarOptions";
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import { getStatusLabel, type SubscriptionStatusVariant } from "@/lib/subscriptionLabels";
+import {
+  getStatusLabel,
+  type SubscriptionStatusVariant,
+} from "@/lib/subscriptionLabels";
 import {
   getStudyEntries,
   getStudyHeatmap,
@@ -70,7 +79,12 @@ type SubscriptionData = {
   cancel_at_period_end?: boolean;
 };
 
-type CancelReasonCode = "expensive" | "unused" | "missing_feature" | "paused" | "other";
+type CancelReasonCode =
+  | "expensive"
+  | "unused"
+  | "missing_feature"
+  | "paused"
+  | "other";
 
 const HEATMAP_TOTAL_WEEKS = 52;
 const HEATMAP_DAYS = 365;
@@ -87,7 +101,12 @@ type RoadmapProgress = {
 
 type AvatarSection = "border" | "icon" | "bg";
 
-const avatarSections: Array<{ id: AvatarSection; label: string; title: string; description: string }> = [
+const avatarSections: Array<{
+  id: AvatarSection;
+  label: string;
+  title: string;
+  description: string;
+}> = [
   {
     id: "border",
     label: "Borda",
@@ -147,14 +166,21 @@ async function apiFetch(path: string, options?: RequestInit) {
 }
 
 function formatCurrencyFromCents(value?: number | null) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((value || 0) / 100);
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format((value || 0) / 100);
 }
 
 function formatDate(value?: string | null) {
   if (!value) return "Não informado";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Não informado";
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function formatPeriodEnd(periodEnd?: string | null) {
@@ -245,7 +271,9 @@ function AvatarOptionGrid<T extends string>({
                 </span>
               ) : null}
               {renderPreview(option)}
-              <span className="text-[11px] font-black leading-tight sm:text-xs">{option.label}</span>
+              <span className="text-[11px] font-black leading-tight sm:text-xs">
+                {option.label}
+              </span>
             </button>
           );
         })}
@@ -293,20 +321,21 @@ function AvatarSectionTabs({
 
 type MetricVariant = "market" | "technical" | "application";
 
-const metricCardStyles: Record<MetricVariant, { card: string; icon: string }> = {
-  market: {
-    card: "bg-amber-50 border-amber-300 text-amber-900",
-    icon: "bg-amber-200 text-amber-800",
-  },
-  technical: {
-    card: "bg-emerald-50 border-emerald-300 text-emerald-900",
-    icon: "bg-emerald-200 text-emerald-800",
-  },
-  application: {
-    card: "bg-blue-50 border-blue-300 text-blue-900",
-    icon: "bg-blue-200 text-blue-800",
-  },
-};
+const metricCardStyles: Record<MetricVariant, { card: string; icon: string }> =
+  {
+    market: {
+      card: "bg-amber-50 border-amber-300 text-amber-900",
+      icon: "bg-amber-200 text-amber-800",
+    },
+    technical: {
+      card: "bg-emerald-50 border-emerald-300 text-emerald-900",
+      icon: "bg-emerald-200 text-emerald-800",
+    },
+    application: {
+      card: "bg-blue-50 border-blue-300 text-blue-900",
+      icon: "bg-blue-200 text-blue-800",
+    },
+  };
 
 function MetricCard({
   icon,
@@ -326,24 +355,42 @@ function MetricCard({
   const styles = metricCardStyles[variant];
 
   return (
-    <div className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 ${styles.card}`}>
-      <div className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.icon}`}>
+    <div
+      className={`flex items-center gap-3 rounded-2xl border-2 px-4 py-3 ${styles.card}`}
+    >
+      <div
+        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.icon}`}
+      >
         {icon}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] opacity-70">{label}</p>
+        <p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] opacity-70">
+          {label}
+        </p>
         <div className="flex items-baseline gap-1">
-          <span className="font-display text-xl font-black leading-none">{value}</span>
+          <span className="font-display text-xl font-black leading-none">
+            {value}
+          </span>
           <span className="font-mono text-[11px] opacity-70">{unit}</span>
         </div>
-        {subtext ? <p className="mt-0.5 truncate font-mono text-[10px] opacity-60">{subtext}</p> : null}
+        {subtext ? (
+          <p className="mt-0.5 truncate font-mono text-[10px] opacity-60">
+            {subtext}
+          </p>
+        ) : null}
       </div>
     </div>
   );
 }
 
-function StreakHeatmap({ data, isEmpty }: { data: StudyHeatmapDay[]; isEmpty: boolean }) {
+function StreakHeatmap({
+  data,
+  isEmpty,
+}: {
+  data: StudyHeatmapDay[];
+  isEmpty: boolean;
+}) {
   const dataMap = useMemo(() => {
     const map = new Map<string, number>();
     for (const day of data) map.set(day.date, day.minutes);
@@ -407,7 +454,20 @@ function StreakHeatmap({ data, isEmpty }: { data: StudyHeatmapDay[]; isEmpty: bo
 
   const monthLabels = useMemo(() => {
     const labels: Array<{ weekIdx: number; label: string }> = [];
-    const monthNames = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    const monthNames = [
+      "jan",
+      "fev",
+      "mar",
+      "abr",
+      "mai",
+      "jun",
+      "jul",
+      "ago",
+      "set",
+      "out",
+      "nov",
+      "dez",
+    ];
     let lastMonth = -1;
 
     weeks.forEach((week, weekIdx) => {
@@ -424,12 +484,17 @@ function StreakHeatmap({ data, isEmpty }: { data: StudyHeatmapDay[]; isEmpty: bo
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h3 className="font-display text-sm font-black text-slate-700">Atividade recente</h3>
+        <h3 className="font-display text-sm font-black text-slate-700">
+          Atividade recente
+        </h3>
         <p className="font-mono text-xs text-slate-500">últimos 12 meses</p>
       </div>
 
       <div className="w-full overflow-x-auto pb-2 lg:overflow-x-visible">
-        <div className="w-full lg:min-w-0" style={{ minWidth: `${totalWeeks * 10}px` }}>
+        <div
+          className="w-full lg:min-w-0"
+          style={{ minWidth: `${totalWeeks * 10}px` }}
+        >
           <div className="relative mb-1 h-4">
             {monthLabels.map(({ weekIdx, label }) => (
               <span
@@ -448,7 +513,11 @@ function StreakHeatmap({ data, isEmpty }: { data: StudyHeatmapDay[]; isEmpty: bo
                 {week.map((cell) => {
                   if (cell.isFuture) {
                     return (
-                      <div key={cell.dateStr} className="aspect-square rounded-[2px]" aria-hidden="true" />
+                      <div
+                        key={cell.dateStr}
+                        className="aspect-square rounded-[2px]"
+                        aria-hidden="true"
+                      />
                     );
                   }
 
@@ -505,7 +574,15 @@ function StreakHeatmap({ data, isEmpty }: { data: StudyHeatmapDay[]; isEmpty: bo
   );
 }
 
-function ProToolCard({ href, icon, title }: { href: string; icon: ReactNode; title: string }) {
+function ProToolCard({
+  href,
+  icon,
+  title,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+}) {
   return (
     <Link
       href={href}
@@ -514,15 +591,28 @@ function ProToolCard({ href, icon, title }: { href: string; icon: ReactNode; tit
       <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 transition-colors group-hover:bg-amber-200">
         {icon}
       </div>
-      <h3 className="font-display text-sm font-black leading-tight text-slate-950">{title}</h3>
+      <h3 className="font-display text-sm font-black leading-tight text-slate-950">
+        {title}
+      </h3>
     </Link>
   );
 }
 
 export default function Perfil() {
   const [, setLocation] = useLocation();
-  const { loading: authLoading, profile, refreshProfile, signOut, user } = useAuth();
-  const { isPro, loading: subscriptionLoading, subscription, refreshSubscription } = useSubscription();
+  const {
+    loading: authLoading,
+    profile,
+    refreshProfile,
+    signOut,
+    user,
+  } = useAuth();
+  const {
+    isPro,
+    loading: subscriptionLoading,
+    subscription,
+    refreshSubscription,
+  } = useSubscription();
   const { favorites, loading: favoritesLoading } = useFavorites();
   const [localProfile, setLocalProfile] = useState<Profile | null>(profile);
   const [studyStats, setStudyStats] = useState<StudyStats | null>(null);
@@ -533,10 +623,13 @@ export default function Perfil() {
   const [heatmapLoading, setHeatmapLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
   const [editName, setEditName] = useState("");
-  const [editAvatarBorder, setEditAvatarBorder] = useState<AvatarBorderId>(defaultAvatarBorder);
-  const [editAvatarIcon, setEditAvatarIcon] = useState<AvatarIconId>(defaultAvatarIcon);
+  const [editAvatarBorder, setEditAvatarBorder] =
+    useState<AvatarBorderId>(defaultAvatarBorder);
+  const [editAvatarIcon, setEditAvatarIcon] =
+    useState<AvatarIconId>(defaultAvatarIcon);
   const [editAvatarBg, setEditAvatarBg] = useState<AvatarBgId>(defaultAvatarBg);
-  const [activeAvatarSection, setActiveAvatarSection] = useState<AvatarSection>("border");
+  const [activeAvatarSection, setActiveAvatarSection] =
+    useState<AvatarSection>("border");
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
@@ -566,22 +659,30 @@ export default function Perfil() {
     setHeatmapLoading(true);
 
     async function loadData() {
-      const [statsResult, recentResult, roadmapResult, heatmapResult] = await Promise.allSettled([
-        getStudyStats("30d"),
-        getStudyEntries({ limit: 3 }),
-        apiFetch("/api/me/roadmaps"),
-        getStudyHeatmap(HEATMAP_DAYS),
-      ]);
+      const [statsResult, recentResult, roadmapResult, heatmapResult] =
+        await Promise.allSettled([
+          getStudyStats("30d"),
+          getStudyEntries({ limit: 3 }),
+          apiFetch("/api/me/roadmaps"),
+          getStudyHeatmap(HEATMAP_DAYS),
+        ]);
 
       if (cancelled) return;
-      setStudyStats(statsResult.status === "fulfilled" ? statsResult.value : null);
-      setRecentEntries(recentResult.status === "fulfilled" ? recentResult.value : []);
+      setStudyStats(
+        statsResult.status === "fulfilled" ? statsResult.value : null,
+      );
+      setRecentEntries(
+        recentResult.status === "fulfilled" ? recentResult.value : [],
+      );
       setRoadmaps(
-        roadmapResult.status === "fulfilled" && Array.isArray(roadmapResult.value?.data)
+        roadmapResult.status === "fulfilled" &&
+          Array.isArray(roadmapResult.value?.data)
           ? (roadmapResult.value.data as RoadmapProgress[])
           : [],
       );
-      setHeatmapData(heatmapResult.status === "fulfilled" ? heatmapResult.value : []);
+      setHeatmapData(
+        heatmapResult.status === "fulfilled" ? heatmapResult.value : [],
+      );
       setHeatmapLoading(false);
       setDataLoading(false);
     }
@@ -602,19 +703,31 @@ export default function Perfil() {
     };
   }, [user]);
 
-  const userName = localProfile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
-  const username = localProfile?.handle || user?.user_metadata?.username || user?.email?.split("@")[0] || "bora.na.tech";
+  const userName =
+    localProfile?.name ||
+    user?.user_metadata?.name ||
+    user?.email?.split("@")[0] ||
+    "Perfil";
+  const username =
+    localProfile?.handle ||
+    user?.user_metadata?.username ||
+    user?.email?.split("@")[0] ||
+    "bora.na.tech";
   const email = localProfile?.email || user?.email || "";
   const profileLoading = Boolean(user && !localProfile);
   const avatarBorder = normalizeAvatarBorder(localProfile?.avatar_border);
   const avatarIcon = normalizeAvatarIcon(localProfile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(localProfile?.avatar_bg);
-  const activeAvatarSectionConfig = avatarSections.find((s) => s.id === activeAvatarSection) || avatarSections[0];
-  const planName = subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
+  const activeAvatarSectionConfig =
+    avatarSections.find((s) => s.id === activeAvatarSection) ||
+    avatarSections[0];
+  const planName =
+    subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
   const planPrice = subscriptionData?.plans?.price_cents
     ? formatCurrencyFromCents(subscriptionData.plans.price_cents)
     : "—";
-  const subscriptionStatus = subscriptionData?.status ?? (isPro ? "active" : "free");
+  const subscriptionStatus =
+    subscriptionData?.status ?? (isPro ? "active" : "free");
   const statusInfo = getStatusLabel(subscriptionStatus);
   const proSince = formatProSince(subscriptionData?.created_at);
   const currentStreak = studyStats?.current_streak ?? 0;
@@ -654,7 +767,10 @@ export default function Perfil() {
     }
   }
 
-  async function handleCancelSubscription(data: { reason_code?: CancelReasonCode; reason_text?: string }) {
+  async function handleCancelSubscription(data: {
+    reason_code?: CancelReasonCode;
+    reason_text?: string;
+  }) {
     setCancelingSubscription(true);
     try {
       const json = await apiFetch("/api/billing/cancel", {
@@ -697,7 +813,10 @@ export default function Perfil() {
 
       // Caso B: o endpoint sinaliza que precisa de novo checkout.
       if (json?.data?.redirect_to_checkout) {
-        const target = typeof json.data.checkout_path === "string" ? json.data.checkout_path : "/planos";
+        const target =
+          typeof json.data.checkout_path === "string"
+            ? json.data.checkout_path
+            : "/planos";
         toast.info(json.data.message || "Vamos para um novo plano.");
         setLocation(target);
         return;
@@ -748,8 +867,12 @@ export default function Perfil() {
         <section className="bg-[#faf8f4] py-16">
           <div className="container">
             <div className="mx-auto max-w-lg rounded-3xl border-2 border-[#1a1a1a] bg-white p-8 text-center shadow-[4px_4px_0_#0f172a]">
-              <p className="font-display text-2xl font-black text-[#1a1a1a]">Carregando seu perfil...</p>
-              <p className="mt-2 text-sm font-semibold text-slate-500">Verificando sua sessão com segurança.</p>
+              <p className="font-display text-2xl font-black text-[#1a1a1a]">
+                Carregando seu perfil...
+              </p>
+              <p className="mt-2 text-sm font-semibold text-slate-500">
+                Verificando sua sessão com segurança.
+              </p>
             </div>
           </div>
         </section>
@@ -757,7 +880,9 @@ export default function Perfil() {
     );
   }
 
-  const sectionStyle = (delay: number): CSSProperties => ({ animationDelay: `${delay}ms` });
+  const sectionStyle = (delay: number): CSSProperties => ({
+    animationDelay: `${delay}ms`,
+  });
 
   return (
     <Layout>
@@ -785,7 +910,9 @@ export default function Perfil() {
                     {greet(profile?.gender)} de volta
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-3">
-                    <h1 className="font-display text-3xl font-black text-[#1a1a1a] md:text-4xl">{userName}</h1>
+                    <h1 className="font-display text-3xl font-black text-[#1a1a1a] md:text-4xl">
+                      {userName}
+                    </h1>
                     {isPro ? (
                       <span className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-3 py-1 text-xs font-black text-[#1a1a1a]">
                         <ProInlineBadge label="PRO" />
@@ -797,7 +924,9 @@ export default function Perfil() {
                     )}
                   </div>
                   <p className="mt-1.5 text-sm font-semibold text-slate-600">
-                    {username ? `@${String(username).replace(/^@/, "")} · ` : ""}
+                    {username
+                      ? `@${String(username).replace(/^@/, "")} · `
+                      : ""}
                     <span className="text-slate-400">{email}</span>
                   </p>
 
@@ -805,7 +934,8 @@ export default function Perfil() {
                     <div className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-amber-400 bg-amber-100 px-3 py-1.5 text-amber-900">
                       <Flame className="h-4 w-4" strokeWidth={2.5} />
                       <span className="font-display text-sm font-black">
-                        {currentStreak} {currentStreak === 1 ? "dia seguido" : "dias seguidos"}
+                        {currentStreak}{" "}
+                        {currentStreak === 1 ? "dia seguido" : "dias seguidos"}
                       </span>
                     </div>
                   ) : null}
@@ -825,7 +955,9 @@ export default function Perfil() {
 
             {editingProfile ? (
               <div className="mt-6 rounded-3xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-5 shadow-[4px_4px_0_#0f172a]">
-                <h2 className="font-display text-2xl font-black text-[#1a1a1a]">Editar perfil</h2>
+                <h2 className="font-display text-2xl font-black text-[#1a1a1a]">
+                  Editar perfil
+                </h2>
                 <label className="mt-4 block text-sm font-black text-[#1a1a1a]">
                   Nome completo
                   <input
@@ -836,9 +968,12 @@ export default function Perfil() {
                 </label>
                 <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4">
                   <div className="flex flex-col gap-1">
-                    <h3 className="font-display text-xl font-black text-[#1a1a1a]">Personalização do avatar</h3>
+                    <h3 className="font-display text-xl font-black text-[#1a1a1a]">
+                      Personalização do avatar
+                    </h3>
                     <p className="text-sm font-semibold text-slate-500">
-                      Escolha uma combinação para deixar seu perfil com a sua cara.
+                      Escolha uma combinação para deixar seu perfil com a sua
+                      cara.
                     </p>
                   </div>
 
@@ -853,13 +988,18 @@ export default function Perfil() {
                           size="xl"
                         />
                         <div className="mt-5 min-w-0">
-                          <p className="text-xs font-black uppercase text-slate-500">Preview</p>
+                          <p className="text-xs font-black uppercase text-slate-500">
+                            Preview
+                          </p>
                           <p className="mt-1 max-w-[180px] truncate text-sm font-black text-[#1a1a1a]">
                             {editName || userName}
                           </p>
                         </div>
                       </div>
-                      <AvatarSectionTabs active={activeAvatarSection} onChange={setActiveAvatarSection} />
+                      <AvatarSectionTabs
+                        active={activeAvatarSection}
+                        onChange={setActiveAvatarSection}
+                      />
                     </div>
 
                     <div className="rounded-3xl border border-slate-200 bg-[#faf8f4] p-4">
@@ -955,13 +1095,20 @@ export default function Perfil() {
             className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
           >
             <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-2xl font-black text-slate-950 md:text-3xl">Seu progresso</h2>
-              <p className="font-mono text-xs text-slate-500">últimos 30 dias</p>
+              <h2 className="font-display text-2xl font-black text-slate-950 md:text-3xl">
+                Seu progresso
+              </h2>
+              <p className="font-mono text-xs text-slate-500">
+                últimos 30 dias
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_200px]">
               <div className="w-full">
-                <StreakHeatmap data={heatmapData} isEmpty={!heatmapLoading && heatmapData.length === 0} />
+                <StreakHeatmap
+                  data={heatmapData}
+                  isEmpty={!heatmapLoading && heatmapData.length === 0}
+                />
               </div>
 
               <div className="flex flex-col gap-3">
@@ -971,7 +1118,9 @@ export default function Perfil() {
                   value={dataLoading ? "…" : currentStreak}
                   unit={currentStreak === 1 ? "dia" : "dias"}
                   variant="market"
-                  subtext={longestStreak > 0 ? `recorde: ${longestStreak}` : null}
+                  subtext={
+                    longestStreak > 0 ? `recorde: ${longestStreak}` : null
+                  }
                 />
                 <MetricCard
                   icon={<BookOpen className="h-5 w-5" strokeWidth={2.5} />}
@@ -1055,16 +1204,26 @@ export default function Perfil() {
           >
             <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-display text-xl font-black text-slate-950">Diário de estudos</h2>
-                <Link href="/estudos/diario" className="text-sm font-bold text-violet-700 hover:text-violet-900">
+                <h2 className="font-display text-xl font-black text-slate-950">
+                  Diário de estudos
+                </h2>
+                <Link
+                  href="/estudos/diario"
+                  className="text-sm font-bold text-violet-700 hover:text-violet-900"
+                >
                   Abrir →
                 </Link>
               </div>
 
               {recentEntries.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center">
-                  <BookOpen className="mx-auto h-10 w-10 text-slate-400" strokeWidth={2} />
-                  <p className="mt-2 text-sm font-semibold text-slate-600">Comece sua primeira entrada hoje.</p>
+                  <BookOpen
+                    className="mx-auto h-10 w-10 text-slate-400"
+                    strokeWidth={2}
+                  />
+                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                    Comece sua primeira entrada hoje.
+                  </p>
                   <Link
                     href="/estudos/diario"
                     className="mt-3 inline-block rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
@@ -1075,9 +1234,14 @@ export default function Perfil() {
               ) : (
                 <ul className="space-y-2">
                   {recentEntries.slice(0, 3).map((entry) => (
-                    <li key={entry.id} className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-3">
+                    <li
+                      key={entry.id}
+                      className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-3"
+                    >
                       <div className="mb-1 flex items-center justify-between gap-2">
-                        <span className="text-xl leading-none">{modeEmoji[entry.mode] || "📝"}</span>
+                        <span className="text-xl leading-none">
+                          {modeEmoji[entry.mode] || "📝"}
+                        </span>
                         <span className="font-mono text-[11px] text-slate-500">
                           {entry.minutes} min · {formatDate(entry.studied_at)}
                         </span>
@@ -1093,15 +1257,23 @@ export default function Perfil() {
 
             <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-display text-xl font-black text-slate-950">Minhas trilhas</h2>
-                <Link href="/roadmaps" className="text-sm font-bold text-violet-700 hover:text-violet-900">
+                <h2 className="font-display text-xl font-black text-slate-950">
+                  Minhas trilhas
+                </h2>
+                <Link
+                  href="/roadmaps"
+                  className="text-sm font-bold text-violet-700 hover:text-violet-900"
+                >
                   Ver todas →
                 </Link>
               </div>
 
               {roadmaps.length === 0 ? (
                 <div className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center">
-                  <MapPin className="mx-auto h-10 w-10 text-slate-400" strokeWidth={2} />
+                  <MapPin
+                    className="mx-auto h-10 w-10 text-slate-400"
+                    strokeWidth={2}
+                  />
                   <p className="mt-2 text-sm font-semibold text-slate-600">
                     Escolha um caminho e comece por etapas pequenas.
                   </p>
@@ -1115,17 +1287,24 @@ export default function Perfil() {
               ) : (
                 <ul className="space-y-3">
                   {roadmaps.slice(0, 3).map((roadmap) => (
-                    <li key={roadmap.id} className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-3">
+                    <li
+                      key={roadmap.id}
+                      className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-3"
+                    >
                       <div className="mb-2 flex items-center justify-between gap-3">
                         <h3 className="font-display text-sm font-black text-slate-950">
                           {truncate(roadmap.title, 40)}
                         </h3>
-                        <span className="font-mono text-[11px] text-slate-500">{roadmap.progress}%</span>
+                        <span className="font-mono text-[11px] text-slate-500">
+                          {roadmap.progress}%
+                        </span>
                       </div>
                       <div className="h-2 w-full overflow-hidden rounded-full border border-slate-300 bg-white">
                         <div
                           className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                          style={{ width: `${Math.min(Math.max(roadmap.progress, 0), 100)}%` }}
+                          style={{
+                            width: `${Math.min(Math.max(roadmap.progress, 0), 100)}%`,
+                          }}
                         />
                       </div>
                       <p className="mt-1.5 font-mono text-[11px] text-slate-600">
@@ -1147,7 +1326,10 @@ export default function Perfil() {
             >
               <div
                 className="absolute inset-0 z-0"
-                style={{ background: "linear-gradient(135deg, #fffbeb 0%, #ffffff 50%, #fff7ed 100%)" }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, #fffbeb 0%, #ffffff 50%, #fff7ed 100%)",
+                }}
                 aria-hidden="true"
               />
 
@@ -1178,7 +1360,9 @@ export default function Perfil() {
 
               <div className="relative z-10">
                 {subscriptionLoading ? (
-                  <p className="font-display text-xl font-black text-slate-950">Carregando assinatura...</p>
+                  <p className="font-display text-xl font-black text-slate-950">
+                    Carregando assinatura...
+                  </p>
                 ) : isPro ? (
                   <>
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
@@ -1201,7 +1385,9 @@ export default function Perfil() {
                         {statusInfo.label}
                       </span>
                       {proSince ? (
-                        <span className="font-mono text-xs text-slate-600">desde {proSince}</span>
+                        <span className="font-mono text-xs text-slate-600">
+                          desde {proSince}
+                        </span>
                       ) : null}
                     </div>
 
@@ -1212,14 +1398,18 @@ export default function Perfil() {
                         <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
                           Plano
                         </span>
-                        <span className="font-display font-black text-slate-950">{planName}</span>
+                        <span className="font-display font-black text-slate-950">
+                          {planName}
+                        </span>
                       </div>
 
                       <div className="flex items-baseline justify-between gap-3">
                         <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
                           Valor
                         </span>
-                        <span className="font-display font-black text-slate-950">{planPrice}</span>
+                        <span className="font-display font-black text-slate-950">
+                          {planPrice}
+                        </span>
                       </div>
 
                       <div className="flex items-baseline justify-between gap-3">
@@ -1227,16 +1417,20 @@ export default function Perfil() {
                           Próxima renovação
                         </span>
                         <span className="font-display font-black text-slate-950">
-                          {formatPeriodEnd(subscriptionData?.current_period_end)}
+                          {formatPeriodEnd(
+                            subscriptionData?.current_period_end,
+                          )}
                         </span>
                       </div>
                     </div>
 
-                    {subscriptionData?.cancel_at_period_end && subscriptionData?.current_period_end ? (
+                    {subscriptionData?.cancel_at_period_end &&
+                    subscriptionData?.current_period_end ? (
                       <div className="mt-5 rounded-2xl border-2 border-amber-400 bg-amber-50 p-3">
                         <p className="text-sm font-bold text-amber-900">
                           ⚠️ Cancelamento agendado. Acesso Pro até{" "}
-                          {formatPeriodEnd(subscriptionData.current_period_end)}.
+                          {formatPeriodEnd(subscriptionData.current_period_end)}
+                          .
                         </p>
                         <button
                           type="button"
@@ -1244,7 +1438,9 @@ export default function Perfil() {
                           disabled={reactivating}
                           className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {reactivating ? "Reativando..." : "Reativar meu plano"}
+                          {reactivating
+                            ? "Reativando..."
+                            : "Reativar meu plano"}
                         </button>
                       </div>
                     ) : null}
@@ -1295,16 +1491,30 @@ export default function Perfil() {
             >
               <div
                 className="absolute inset-0 z-0"
-                style={{ background: "linear-gradient(225deg, #faf5ff 0%, #ffffff 50%, #fdf4ff 100%)" }}
+                style={{
+                  background:
+                    "linear-gradient(225deg, #faf5ff 0%, #ffffff 50%, #fdf4ff 100%)",
+                }}
                 aria-hidden="true"
               />
 
-              <div className="absolute right-6 top-6 z-0 h-3 w-3 rounded-full bg-violet-400 opacity-40" aria-hidden="true" />
-              <div className="absolute right-14 top-12 z-0 h-2 w-2 rounded-full bg-fuchsia-400 opacity-30" aria-hidden="true" />
-              <div className="absolute right-20 top-8 z-0 h-1.5 w-1.5 rounded-full bg-violet-500 opacity-50" aria-hidden="true" />
+              <div
+                className="absolute right-6 top-6 z-0 h-3 w-3 rounded-full bg-violet-400 opacity-40"
+                aria-hidden="true"
+              />
+              <div
+                className="absolute right-14 top-12 z-0 h-2 w-2 rounded-full bg-fuchsia-400 opacity-30"
+                aria-hidden="true"
+              />
+              <div
+                className="absolute right-20 top-8 z-0 h-1.5 w-1.5 rounded-full bg-violet-500 opacity-50"
+                aria-hidden="true"
+              />
 
               <div className="relative z-10">
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">Conta</p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">
+                  Conta
+                </p>
 
                 <h2
                   className="font-display mt-2 break-words font-black uppercase leading-none text-slate-950"
@@ -1319,7 +1529,9 @@ export default function Perfil() {
                       @{String(username).replace(/^@/, "")}
                     </p>
                   ) : null}
-                  <p className="break-all font-mono text-xs text-slate-500">{email}</p>
+                  <p className="break-all font-mono text-xs text-slate-500">
+                    {email}
+                  </p>
                 </div>
 
                 <div className="my-6 border-t-2 border-dashed border-violet-200" />
@@ -1387,12 +1599,15 @@ export default function Perfil() {
                 <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-rose-700 bg-rose-100">
                   <Trash2 className="h-5 w-5 text-rose-700" strokeWidth={2.5} />
                 </div>
-                <h2 id="delete-modal-title" className="font-display text-2xl font-black text-rose-800">
+                <h2
+                  id="delete-modal-title"
+                  className="font-display text-2xl font-black text-rose-800"
+                >
                   Excluir conta
                 </h2>
                 <p className="mt-2 text-sm font-semibold text-slate-600">
-                  Esta ação é permanente e irreversível. Todos os seus dados, favoritos, histórico de estudos e
-                  assinatura serão apagados.
+                  Esta ação é permanente e irreversível. Todos os seus dados,
+                  favoritos, histórico de estudos e assinatura serão apagados.
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                   <button

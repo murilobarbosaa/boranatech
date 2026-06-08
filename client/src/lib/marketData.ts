@@ -28,7 +28,18 @@ export const marketMonitor = {
     { name: "DevOps", jobs: 760, change: 6 },
     { name: "UX/UI", jobs: 430, change: -2 },
   ],
-  hotTechnologies: ["JavaScript", "Python", "SQL", "React", "Java", "AWS", "TypeScript", "Docker", "Node.js", "Git"],
+  hotTechnologies: [
+    "JavaScript",
+    "Python",
+    "SQL",
+    "React",
+    "Java",
+    "AWS",
+    "TypeScript",
+    "Docker",
+    "Node.js",
+    "Git",
+  ],
   hotCities: [
     { name: "São Paulo", jobs: 3200 },
     { name: "Remoto", jobs: 2850 },
@@ -38,6 +49,23 @@ export const marketMonitor = {
   ],
 };
 
-export const cities = ["Todas", "São Paulo", "Rio de Janeiro", "Belo Horizonte", "Curitiba", "Recife", "Porto Alegre", "Remoto"];
-export const levels = ["Todos", "Estágio", "Trainee", "Júnior", "Pleno", "Sênior", "Especialista"];
+export const cities = [
+  "Todas",
+  "São Paulo",
+  "Rio de Janeiro",
+  "Belo Horizonte",
+  "Curitiba",
+  "Recife",
+  "Porto Alegre",
+  "Remoto",
+];
+export const levels = [
+  "Todos",
+  "Estágio",
+  "Trainee",
+  "Júnior",
+  "Pleno",
+  "Sênior",
+  "Especialista",
+];
 export const workTypes = ["Todos", "CLT", "PJ"];

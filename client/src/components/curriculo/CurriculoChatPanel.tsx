@@ -23,9 +23,12 @@ const TYPING_TICK_MS = Math.max(8, Math.round(1000 / TYPING_CHARS_PER_SECOND));
 
 function getAiErrorMessage(err: unknown): string {
   if (!(err instanceof Error)) return "Não foi possível enviar agora.";
-  if (err.message === "LOGIN_REQUIRED") return "Faça login pra usar esta ferramenta.";
-  if (err.message === "PRO_REQUIRED") return "Esta ferramenta requer o Plano Pro.";
-  if (err.message.startsWith("RATE_LIMITED")) return err.message.replace("RATE_LIMITED: ", "");
+  if (err.message === "LOGIN_REQUIRED")
+    return "Faça login pra usar esta ferramenta.";
+  if (err.message === "PRO_REQUIRED")
+    return "Esta ferramenta requer o Plano Pro.";
+  if (err.message.startsWith("RATE_LIMITED"))
+    return err.message.replace("RATE_LIMITED: ", "");
   return err.message || "Não foi possível enviar agora.";
 }
 
@@ -64,7 +67,10 @@ function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-2 py-1" aria-hidden>
       {[0, 1, 2].map((dot) => (
-        <span key={dot} className="ai-chat-typing-dot h-2.5 w-2.5 rounded-full bg-amber-500" />
+        <span
+          key={dot}
+          className="ai-chat-typing-dot h-2.5 w-2.5 rounded-full bg-amber-500"
+        />
       ))}
     </div>
   );
@@ -79,7 +85,9 @@ export default function CurriculoChatPanel({
 }: CurriculoChatPanelProps) {
   // A saudação começa vazia e é preenchida pelo efeito de typewriter abaixo
   // pra dar a mesma sensação visual do streaming das respostas reais.
-  const [messages, setMessages] = useState<AiChatMessage[]>([{ role: "assistant", content: "" }]);
+  const [messages, setMessages] = useState<AiChatMessage[]>([
+    { role: "assistant", content: "" },
+  ]);
   const [greetingDone, setGreetingDone] = useState(false);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -121,7 +129,10 @@ export default function CurriculoChatPanel({
     if (!trimmed) return;
 
     setError("");
-    const afterUser: AiChatMessage[] = [...messages, { role: "user", content: trimmed }];
+    const afterUser: AiChatMessage[] = [
+      ...messages,
+      { role: "user", content: trimmed },
+    ];
     setMessages([...afterUser, { role: "assistant", content: "" }]);
     setInput("");
     setChatLoading(true);
@@ -137,7 +148,10 @@ export default function CurriculoChatPanel({
 
     const revealDone = new Promise<void>((resolve) => {
       const timer = window.setInterval(() => {
-        const target = clipForReveal(fullBufferRef.current, streamDoneRef.current);
+        const target = clipForReveal(
+          fullBufferRef.current,
+          streamDoneRef.current,
+        );
         if (revealedLength < target.length) {
           revealedLength = Math.min(target.length, revealedLength + 1);
           const slice = target.slice(0, revealedLength);
@@ -217,7 +231,9 @@ export default function CurriculoChatPanel({
   const inputDisabled = chatLoading || generating || !greetingDone;
   const lastMessage = messages[messages.length - 1];
   const showTypingDots =
-    chatLoading && lastMessage?.role === "assistant" && lastMessage.content === "";
+    chatLoading &&
+    lastMessage?.role === "assistant" &&
+    lastMessage.content === "";
 
   return (
     <div className="card-brutal w-full overflow-hidden rounded-2xl bg-white">
@@ -227,11 +243,18 @@ export default function CurriculoChatPanel({
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
             aria-hidden
           >
-            <Wand2 className="h-5 w-5 text-slate-950 sm:h-6 sm:w-6" strokeWidth={2.5} />
+            <Wand2
+              className="h-5 w-5 text-slate-950 sm:h-6 sm:w-6"
+              strokeWidth={2.5}
+            />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">{title}</h2>
-            <p className="mt-0.5 truncate text-xs font-bold leading-snug text-slate-800 sm:text-sm">{description}</p>
+            <h2 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
+              {title}
+            </h2>
+            <p className="mt-0.5 truncate text-xs font-bold leading-snug text-slate-800 sm:text-sm">
+              {description}
+            </p>
           </div>
         </header>
 
@@ -282,7 +305,9 @@ export default function CurriculoChatPanel({
                         "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
-                      <p className="whitespace-pre-wrap break-words">{m.content}</p>
+                      <p className="whitespace-pre-wrap break-words">
+                        {m.content}
+                      </p>
                     </div>
                   </div>
                 );
@@ -304,24 +329,31 @@ export default function CurriculoChatPanel({
                     role="status"
                     aria-live="polite"
                   >
-                    <Loader2 className="h-5 w-5 animate-spin text-emerald-800" strokeWidth={2.5} aria-hidden />
+                    <Loader2
+                      className="h-5 w-5 animate-spin text-emerald-800"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
                     <div>
                       <p className="font-display text-sm font-black uppercase tracking-[0.15em] text-emerald-900">
                         Montando teu currículo
                       </p>
-                      <p className="mt-0.5 text-xs font-medium text-emerald-900/80">Leva uns segundinhos, organizando tudo que tu me contou.</p>
+                      <p className="mt-0.5 text-xs font-medium text-emerald-900/80">
+                        Leva uns segundinhos, organizando tudo que tu me contou.
+                      </p>
                     </div>
                   </div>
                 </div>
               ) : null}
-
             </div>
           </div>
         </div>
 
         {error ? (
           <div className="shrink-0 border-b-2 border-slate-950 bg-red-100 px-4 py-2.5 sm:px-5">
-            <p className="text-center text-sm font-bold text-red-900 sm:text-base">{error}</p>
+            <p className="text-center text-sm font-bold text-red-900 sm:text-base">
+              {error}
+            </p>
           </div>
         ) : null}
 
@@ -352,7 +384,10 @@ export default function CurriculoChatPanel({
               {chatLoading ? (
                 <Spinner className="h-5 w-5 text-slate-950 sm:h-6 sm:w-6" />
               ) : generating ? (
-                <FileText className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
+                <FileText
+                  className="h-5 w-5 sm:h-6 sm:w-6"
+                  strokeWidth={2.25}
+                />
               ) : (
                 <Send className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
               )}

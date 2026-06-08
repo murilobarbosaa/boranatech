@@ -60,18 +60,31 @@ router.get("/entries", async (req, res, next) => {
 router.post("/entries", async (req, res, next) => {
   try {
     const userId = req.user!.id;
-    const { text, minutes, mode, studied_at } = req.body as Record<string, unknown>;
+    const { text, minutes, mode, studied_at } = req.body as Record<
+      string,
+      unknown
+    >;
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
-      return next(createError(400, "invalid_request", "O campo text é obrigatório."));
+      return next(
+        createError(400, "invalid_request", "O campo text é obrigatório."),
+      );
     }
 
     if (typeof minutes !== "number" || minutes <= 0 || minutes > 1440) {
-      return next(createError(400, "invalid_request", "minutes deve ser entre 1 e 1440."));
+      return next(
+        createError(400, "invalid_request", "minutes deve ser entre 1 e 1440."),
+      );
     }
 
     if (!mode || typeof mode !== "string" || !VALID_MODES.includes(mode)) {
-      return next(createError(400, "invalid_request", `mode deve ser um de: ${VALID_MODES.join(", ")}`));
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          `mode deve ser um de: ${VALID_MODES.join(", ")}`,
+        ),
+      );
     }
 
     const { data, error } = await supabaseAdmin
@@ -106,14 +119,22 @@ router.patch("/entries/:id", async (req, res, next) => {
 
     if (text !== undefined) {
       if (typeof text !== "string" || text.trim().length === 0) {
-        return next(createError(400, "invalid_request", "text não pode ser vazio."));
+        return next(
+          createError(400, "invalid_request", "text não pode ser vazio."),
+        );
       }
       updates.text = text.trim();
     }
 
     if (minutes !== undefined) {
       if (typeof minutes !== "number" || minutes <= 0 || minutes > 1440) {
-        return next(createError(400, "invalid_request", "minutes deve ser entre 1 e 1440."));
+        return next(
+          createError(
+            400,
+            "invalid_request",
+            "minutes deve ser entre 1 e 1440.",
+          ),
+        );
       }
       updates.minutes = Math.round(minutes);
     }
@@ -126,7 +147,9 @@ router.patch("/entries/:id", async (req, res, next) => {
     }
 
     if (Object.keys(updates).length === 0) {
-      return next(createError(400, "invalid_request", "Nenhum campo para atualizar."));
+      return next(
+        createError(400, "invalid_request", "Nenhum campo para atualizar."),
+      );
     }
 
     const { data, error } = await supabaseAdmin
@@ -152,7 +175,11 @@ router.delete("/entries/:id", async (req, res, next) => {
     const userId = req.user!.id;
     const { id } = req.params;
 
-    const { error } = await supabaseAdmin.from("study_entries").delete().eq("id", id).eq("user_id", userId);
+    const { error } = await supabaseAdmin
+      .from("study_entries")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userId);
 
     if (error) {
       return next(createError(500, "db_error", "Erro ao remover entrada."));
@@ -171,7 +198,13 @@ router.get("/stats", async (req, res, next) => {
     const validRanges = ["7d", "30d", "90d"];
 
     if (!validRanges.includes(range)) {
-      return next(createError(400, "invalid_request", `range deve ser um de: ${validRanges.join(", ")}`));
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          `range deve ser um de: ${validRanges.join(", ")}`,
+        ),
+      );
     }
 
     const { data, error } = await supabaseAdmin.rpc("get_study_stats", {
@@ -180,7 +213,9 @@ router.get("/stats", async (req, res, next) => {
     });
 
     if (error) {
-      return next(createError(500, "db_error", "Erro ao calcular estatísticas."));
+      return next(
+        createError(500, "db_error", "Erro ao calcular estatísticas."),
+      );
     }
 
     res.json({ data });
@@ -193,7 +228,10 @@ router.get("/heatmap", async (req, res, next) => {
   try {
     const userId = req.user!.id;
     const requested = parseInt(String(req.query.days || "365"), 10);
-    const days = Math.min(Math.max(Number.isFinite(requested) ? requested : 365, 7), 730);
+    const days = Math.min(
+      Math.max(Number.isFinite(requested) ? requested : 365, 7),
+      730,
+    );
 
     const { data, error } = await supabaseAdmin.rpc("get_study_heatmap", {
       p_user_id: userId,

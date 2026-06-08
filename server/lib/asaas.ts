@@ -1,9 +1,16 @@
 import { env } from "./env";
 
-const ASAAS_BASE = env.asaasEnv === "production" ? "https://api.asaas.com" : "https://sandbox.asaas.com";
+const ASAAS_BASE =
+  env.asaasEnv === "production"
+    ? "https://api.asaas.com"
+    : "https://sandbox.asaas.com";
 const ASAAS_BASE_URL = `${ASAAS_BASE}/api/v3`;
 
-async function asaasRequest(method: string, path: string, body?: Record<string, unknown>) {
+async function asaasRequest(
+  method: string,
+  path: string,
+  body?: Record<string, unknown>,
+) {
   const res = await fetch(`${ASAAS_BASE_URL}${path}`, {
     method,
     headers: {
@@ -28,7 +35,10 @@ export async function getOrCreateAsaasCustomer(params: {
   email: string;
   cpfCnpj?: string;
 }) {
-  const search = await asaasRequest("GET", `/customers?email=${encodeURIComponent(params.email)}&limit=1`);
+  const search = await asaasRequest(
+    "GET",
+    `/customers?email=${encodeURIComponent(params.email)}&limit=1`,
+  );
 
   if (search.data?.length > 0) {
     return search.data[0];
@@ -60,7 +70,9 @@ export async function createAsaasCheckout(params: {
     nextDueDate: nextDueDate.toISOString().split("T")[0],
     cycle: params.cycle || "MONTHLY",
     description: "Bora na Tech? - Plano Pro",
-    externalReference: [params.userId, params.planCode, params.affiliateCode].filter(Boolean).join(":"),
+    externalReference: [params.userId, params.planCode, params.affiliateCode]
+      .filter(Boolean)
+      .join(":"),
     callback: params.successUrl ? { successUrl: params.successUrl } : undefined,
   });
 
@@ -69,15 +81,24 @@ export async function createAsaasCheckout(params: {
 }
 
 export async function getAsaasSubscriptionPayments(subscriptionId: string) {
-  return asaasRequest("GET", `/subscriptions/${encodeURIComponent(subscriptionId)}/payments`);
+  return asaasRequest(
+    "GET",
+    `/subscriptions/${encodeURIComponent(subscriptionId)}/payments`,
+  );
 }
 
 export async function getAsaasSubscription(subscriptionId: string) {
-  return asaasRequest("GET", `/subscriptions/${encodeURIComponent(subscriptionId)}`);
+  return asaasRequest(
+    "GET",
+    `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
 }
 
 export async function cancelAsaasSubscription(subscriptionId: string) {
-  return asaasRequest("DELETE", `/subscriptions/${encodeURIComponent(subscriptionId)}`);
+  return asaasRequest(
+    "DELETE",
+    `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+  );
 }
 
 type AsaasSubscriptionUpdate = {
@@ -90,7 +111,10 @@ type AsaasSubscriptionUpdate = {
 };
 
 // PUT /v3/subscriptions/{id}. Envia apenas os campos definidos (omite undefined).
-export async function updateAsaasSubscription(id: string, params: AsaasSubscriptionUpdate) {
+export async function updateAsaasSubscription(
+  id: string,
+  params: AsaasSubscriptionUpdate,
+) {
   const body: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined) body[key] = value;

@@ -35,11 +35,18 @@ const typeLabels: Record<string, string> = {
   roadmap: "Roadmap",
 };
 
-const SPECIAL_AREA_LABELS: Record<string, string> = { carreira: "Carreira", fullstack: "Full Stack" };
+const SPECIAL_AREA_LABELS: Record<string, string> = {
+  carreira: "Carreira",
+  fullstack: "Full Stack",
+};
 
 function labelForAreaSlug(slug: string | null | undefined): string {
   if (!slug) return "Geral";
-  return areasTI.find((a) => a.slug === slug)?.nome ?? SPECIAL_AREA_LABELS[slug] ?? slug;
+  return (
+    areasTI.find((a) => a.slug === slug)?.nome ??
+    SPECIAL_AREA_LABELS[slug] ??
+    slug
+  );
 }
 
 function searchAll(query: string): SearchResult[] {
@@ -117,7 +124,10 @@ function searchAll(query: string): SearchResult[] {
 
   projetos.forEach((p) => {
     const areaLabel = labelForAreaSlug(p.areaSlug);
-    if (p.nome.toLowerCase().includes(q) || areaLabel.toLowerCase().includes(q)) {
+    if (
+      p.nome.toLowerCase().includes(q) ||
+      areaLabel.toLowerCase().includes(q)
+    ) {
       results.push({
         type: "Projeto",
         title: p.nome,

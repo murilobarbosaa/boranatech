@@ -8,11 +8,17 @@
 // PENDENCIA: getOrCreateAsaasCustomer aceita cpfCnpj? mas nunca envia ao Asaas;
 // e profiles nao coleta cpf_cnpj. Tratar quando oferecer PIX/Boleto.
 
-import { cancelAsaasSubscription, getAsaasSubscriptionPayments } from "../server/lib/asaas";
+import {
+  cancelAsaasSubscription,
+  getAsaasSubscriptionPayments,
+} from "../server/lib/asaas";
 import { cancelSubscriptionAtAsaas } from "../server/lib/billing-asaas";
 import { env } from "../server/lib/env";
 
-const BASE = env.asaasEnv === "production" ? "https://api.asaas.com" : "https://sandbox.asaas.com";
+const BASE =
+  env.asaasEnv === "production"
+    ? "https://api.asaas.com"
+    : "https://sandbox.asaas.com";
 
 function ymd(date: Date) {
   return date.toISOString().split("T")[0];
@@ -24,7 +30,10 @@ function ymd(date: Date) {
 async function createTestCustomer(stamp: number, cpfCnpj: string) {
   const res = await fetch(`${BASE}/api/v3/customers`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", access_token: env.asaasApiKey },
+    headers: {
+      "Content-Type": "application/json",
+      access_token: env.asaasApiKey,
+    },
     body: JSON.stringify({
       name: "Teste cancel",
       email: `cancel-test+${stamp}@boranatech.com.br`,
@@ -33,14 +42,20 @@ async function createTestCustomer(stamp: number, cpfCnpj: string) {
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(`create customer falhou ${res.status}: ${JSON.stringify(data)}`);
+  if (!res.ok)
+    throw new Error(
+      `create customer falhou ${res.status}: ${JSON.stringify(data)}`,
+    );
   return data as { id: string };
 }
 
 async function createBoletoTestSub(customerId: string, nextDueDate: string) {
   const res = await fetch(`${BASE}/api/v3/subscriptions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", access_token: env.asaasApiKey },
+    headers: {
+      "Content-Type": "application/json",
+      access_token: env.asaasApiKey,
+    },
     body: JSON.stringify({
       customer: customerId,
       billingType: "BOLETO",
@@ -52,17 +67,22 @@ async function createBoletoTestSub(customerId: string, nextDueDate: string) {
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(`create sub falhou ${res.status}: ${JSON.stringify(data)}`);
+  if (!res.ok)
+    throw new Error(`create sub falhou ${res.status}: ${JSON.stringify(data)}`);
   return data as { id: string; nextDueDate?: string };
 }
 
 // GET /v3/subscriptions/{id}: le de volta o endDate apos o cancel (VEREDITO 1).
 async function getAsaasSubscription(id: string) {
-  const res = await fetch(`${BASE}/api/v3/subscriptions/${encodeURIComponent(id)}`, {
-    headers: { access_token: env.asaasApiKey },
-  });
+  const res = await fetch(
+    `${BASE}/api/v3/subscriptions/${encodeURIComponent(id)}`,
+    {
+      headers: { access_token: env.asaasApiKey },
+    },
+  );
   const data = await res.json();
-  if (!res.ok) throw new Error(`get sub falhou ${res.status}: ${JSON.stringify(data)}`);
+  if (!res.ok)
+    throw new Error(`get sub falhou ${res.status}: ${JSON.stringify(data)}`);
   return data as { id: string; endDate?: string | null; status?: string };
 }
 
@@ -74,36 +94,59 @@ async function receiveInCash(paymentId: string, value: number) {
   // garantir que o YYYY-MM-DD resultante seja sempre <= hoje no fuso de SP
   // (eventualmente ontem em chamadas pela manha — tolerado: paymentDate passado e ok).
   const paymentDate = ymd(new Date(Date.now() - 12 * 3600 * 1000));
-  const res = await fetch(`${BASE}/api/v3/payments/${encodeURIComponent(paymentId)}/receiveInCash`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", access_token: env.asaasApiKey },
-    body: JSON.stringify({ paymentDate, value }),
-  });
+  const res = await fetch(
+    `${BASE}/api/v3/payments/${encodeURIComponent(paymentId)}/receiveInCash`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        access_token: env.asaasApiKey,
+      },
+      body: JSON.stringify({ paymentDate, value }),
+    },
+  );
   const data = await res.json();
-  if (!res.ok) throw new Error(`receiveInCash falhou ${res.status}: ${JSON.stringify(data)}`);
+  if (!res.ok)
+    throw new Error(
+      `receiveInCash falhou ${res.status}: ${JSON.stringify(data)}`,
+    );
   return data as { id: string; status?: string };
 }
 
 function show(label: string, payments: unknown) {
-  const list = Array.isArray((payments as { data?: unknown[] })?.data) ? (payments as { data: any[] }).data : [];
+  const list = Array.isArray((payments as { data?: unknown[] })?.data)
+    ? (payments as { data: any[] }).data
+    : [];
   console.log(`\n[${label}] ${list.length} cobranca(s):`);
-  for (const p of list) console.log(`  - id=${p.id} status=${p.status} dueDate=${p.dueDate} value=${p.value}`);
+  for (const p of list)
+    console.log(
+      `  - id=${p.id} status=${p.status} dueDate=${p.dueDate} value=${p.value}`,
+    );
   return list;
 }
 
 // Cenario A: pontos 1 e 2 (endDate setado; PENDING futura removida).
 async function validateEndDateAndDelete() {
   const stamp = Date.now();
-  console.log("\n== Cenario A: endDate + remocao da pendente futura (pontos 1 e 2) ==");
+  console.log(
+    "\n== Cenario A: endDate + remocao da pendente futura (pontos 1 e 2) ==",
+  );
 
   const customer = await createTestCustomer(stamp, "24971563792"); // CPF de teste valido (sandbox)
   const dueIn5 = ymd(new Date(Date.now() + 5 * 864e5));
   const sub = await createBoletoTestSub(customer.id, dueIn5);
-  console.log(`customer.id=${customer.id} subscription.id=${sub.id} nextDueDate=${sub.nextDueDate}`);
+  console.log(
+    `customer.id=${customer.id} subscription.id=${sub.id} nextDueDate=${sub.nextDueDate}`,
+  );
 
-  const before = show("antes do cancel", await getAsaasSubscriptionPayments(sub.id));
+  const before = show(
+    "antes do cancel",
+    await getAsaasSubscriptionPayments(sub.id),
+  );
   if (!before.some((p: any) => p.status === "PENDING")) {
-    console.log("ATENCAO: nenhuma cobranca PENDING inicial — ponto 2 pode ficar inconclusivo.");
+    console.log(
+      "ATENCAO: nenhuma cobranca PENDING inicial — ponto 2 pode ficar inconclusivo.",
+    );
   }
 
   // Replica do que o POST /billing/cancel faz. Como nao ha subscription no banco,
@@ -116,13 +159,19 @@ async function validateEndDateAndDelete() {
 
   const fetched = await getAsaasSubscription(sub.id);
   console.log(`\nendDate no Asaas: ${fetched.endDate ?? "(nulo)"}`);
-  console.log(`VEREDITO 1 (endDate setado): ${fetched.endDate === endDate ? "OK" : `FALHOU (esperado ${endDate})`}`);
+  console.log(
+    `VEREDITO 1 (endDate setado): ${fetched.endDate === endDate ? "OK" : `FALHOU (esperado ${endDate})`}`,
+  );
 
   const after = show("apos cancel", await getAsaasSubscriptionPayments(sub.id));
   const survivors = after.filter(
-    (p: any) => p.dueDate > endDate && ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"].includes(p.status),
+    (p: any) =>
+      p.dueDate > endDate &&
+      ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"].includes(p.status),
   );
-  console.log(`VEREDITO 2 (pendente futura removida): ${survivors.length === 0 ? "OK" : `FALHOU (${survivors.length} sobreviveu)`}`);
+  console.log(
+    `VEREDITO 2 (pendente futura removida): ${survivors.length === 0 ? "OK" : `FALHOU (${survivors.length} sobreviveu)`}`,
+  );
 
   console.log(`>> limpeza: cancelAsaasSubscription(${sub.id})`);
   await cancelAsaasSubscription(sub.id);
@@ -131,13 +180,18 @@ async function validateEndDateAndDelete() {
 // Cenario B (best-effort): ponto 3 — cobranca RECEIVED NAO e tocada pelo cancel.
 // Depende de receiveInCash funcionar no sandbox; se nao funcionar, documenta SKIP.
 async function validateConfirmedUntouched() {
-  console.log("\n== Cenario B: cobranca confirmada nao e tocada (ponto 3, best-effort) ==");
+  console.log(
+    "\n== Cenario B: cobranca confirmada nao e tocada (ponto 3, best-effort) ==",
+  );
   try {
     const stamp = Date.now();
     const customer = await createTestCustomer(stamp, "24971563792");
     const dueIn5 = ymd(new Date(Date.now() + 5 * 864e5));
     const sub = await createBoletoTestSub(customer.id, dueIn5);
-    const before = show("antes (cenario B)", await getAsaasSubscriptionPayments(sub.id));
+    const before = show(
+      "antes (cenario B)",
+      await getAsaasSubscriptionPayments(sub.id),
+    );
     const charge = before[0];
     if (!charge) throw new Error("sem cobranca inicial para marcar como paga");
 
@@ -148,10 +202,17 @@ async function validateConfirmedUntouched() {
     console.log(`>> cancelSubscriptionAtAsaas(${sub.id}, endDate=${endDate})`);
     await cancelSubscriptionAtAsaas(sub.id, endDate);
 
-    const after = show("apos cancel (cenario B)", await getAsaasSubscriptionPayments(sub.id));
+    const after = show(
+      "apos cancel (cenario B)",
+      await getAsaasSubscriptionPayments(sub.id),
+    );
     const survived = after.find((p: any) => p.id === charge.id);
-    const ok = survived && ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(survived.status);
-    console.log(`VEREDITO 3 (confirmada intocada): ${ok ? "OK" : "FALHOU (a confirmada sumiu ou mudou de status)"}`);
+    const ok =
+      survived &&
+      ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(survived.status);
+    console.log(
+      `VEREDITO 3 (confirmada intocada): ${ok ? "OK" : "FALHOU (a confirmada sumiu ou mudou de status)"}`,
+    );
 
     console.log(`>> limpeza: cancelAsaasSubscription(${sub.id})`);
     await cancelAsaasSubscription(sub.id);
@@ -164,8 +225,11 @@ async function validateConfirmedUntouched() {
 }
 
 async function main() {
-  if (env.asaasEnv !== "sandbox") throw new Error(`ABORTADO: ASAAS_ENV=${env.asaasEnv}. Rode so em sandbox.`);
-  console.log("== Validacao do fluxo /billing/cancel (Passo 4) no sandbox Asaas ==");
+  if (env.asaasEnv !== "sandbox")
+    throw new Error(`ABORTADO: ASAAS_ENV=${env.asaasEnv}. Rode so em sandbox.`);
+  console.log(
+    "== Validacao do fluxo /billing/cancel (Passo 4) no sandbox Asaas ==",
+  );
   await validateEndDateAndDelete();
   await validateConfirmedUntouched();
   console.log("\nConcluido.");

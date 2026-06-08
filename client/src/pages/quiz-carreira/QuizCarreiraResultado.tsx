@@ -71,7 +71,9 @@ function normalizeHistoryEntry(entry: HistoryEntry): QuizResult | null {
 
 function accentForItem(kind: "area" | "tech", name: string): string {
   if (kind === "tech") {
-    return techRecommendations.find((t) => t.label === name)?.accent ?? "#0e7490";
+    return (
+      techRecommendations.find((t) => t.label === name)?.accent ?? "#0e7490"
+    );
   }
   return getAreaAccent(name);
 }
@@ -220,10 +222,7 @@ export default function QuizCarreiraResultado() {
             />
           )}
 
-          <CTAsSection
-            result={result}
-            accent={accent}
-          />
+          <CTAsSection result={result} accent={accent} />
         </div>
       </div>
     </Layout>
@@ -234,7 +233,10 @@ function ConfettiBurst({ accent }: { accent: string }) {
   const colors = [accent, "#FFB800", "#db2777", "#0e7490", "#15803d"];
   const dots = Array.from({ length: 14 });
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
       {dots.map((_, i) => {
         const left = (i * 53) % 100;
         const size = 6 + (i % 3) * 3;
@@ -263,7 +265,13 @@ function ConfettiBurst({ accent }: { accent: string }) {
   );
 }
 
-function ResultHero({ result, accent }: { result: QuizResult; accent: string }) {
+function ResultHero({
+  result,
+  accent,
+}: {
+  result: QuizResult;
+  accent: string;
+}) {
   const isTech = result.kind === "tech";
   const areaMeta = areasTI.find((a) => a.nome === result.resultArea);
   const Icon = areaMeta?.icon;
@@ -288,7 +296,11 @@ function ResultHero({ result, accent }: { result: QuizResult; accent: string }) 
         animate={{ y: [0, -6, 0], rotate: [12, 18, 12] }}
         transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <Sparkles className="h-8 w-8" style={{ color: `${accent}66` }} strokeWidth={2} />
+        <Sparkles
+          className="h-8 w-8"
+          style={{ color: `${accent}66` }}
+          strokeWidth={2}
+        />
       </motion.div>
 
       <div className="relative z-10">
@@ -296,7 +308,12 @@ function ResultHero({ result, accent }: { result: QuizResult; accent: string }) 
           <motion.span
             initial={{ scale: 0, rotate: -20 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.15 }}
+            transition={{
+              type: "spring",
+              stiffness: 260,
+              damping: 18,
+              delay: 0.15,
+            }}
             className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
             style={{ backgroundColor: accent, fontSize: "1.4rem" }}
           >
@@ -322,7 +339,10 @@ function ResultHero({ result, accent }: { result: QuizResult; accent: string }) 
         </h1>
 
         {isTech && rec?.tagline && (
-          <p className="mb-2 text-base font-black md:text-lg" style={{ color: accent }}>
+          <p
+            className="mb-2 text-base font-black md:text-lg"
+            style={{ color: accent }}
+          >
             {rec.tagline}
           </p>
         )}
@@ -345,7 +365,9 @@ function ResultHero({ result, accent }: { result: QuizResult; accent: string }) 
           <div className="h-3.5 w-full overflow-hidden rounded-full border-2 border-[#1a1a1a] bg-white">
             <motion.div
               className="h-full rounded-full"
-              style={{ background: `linear-gradient(90deg, ${accent}, #FFB800)` }}
+              style={{
+                background: `linear-gradient(90deg, ${accent}, #FFB800)`,
+              }}
               initial={{ width: 0 }}
               animate={{ width: `${result.confidence}%` }}
               transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
@@ -357,7 +379,13 @@ function ResultHero({ result, accent }: { result: QuizResult; accent: string }) 
   );
 }
 
-function TechStartHere({ result, accent }: { result: QuizResult; accent: string }) {
+function TechStartHere({
+  result,
+  accent,
+}: {
+  result: QuizResult;
+  accent: string;
+}) {
   const rec = getTechRecommendation(result.techKey || result.resultArea);
   return (
     <motion.section
@@ -393,7 +421,9 @@ function TechStartHere({ result, accent }: { result: QuizResult; accent: string 
             >
               {idx + 1}
             </span>
-            <p className="pt-0.5 text-base font-semibold text-slate-900">{step}</p>
+            <p className="pt-0.5 text-base font-semibold text-slate-900">
+              {step}
+            </p>
           </motion.li>
         ))}
       </ol>
@@ -489,7 +519,9 @@ function OtherAreas({
     >
       <div className="mb-4">
         <p className="mb-1 font-mono text-xs uppercase tracking-[0.22em] text-slate-500">
-          {kind === "tech" ? "Outras tecnologias" : "Outras áreas com afinidade"}
+          {kind === "tech"
+            ? "Outras tecnologias"
+            : "Outras áreas com afinidade"}
         </p>
         <h2 className="font-display text-2xl font-black text-slate-950">
           Também combinam com você
@@ -527,7 +559,11 @@ function OtherAreas({
                   style={{ backgroundColor: itemAccent }}
                   initial={{ width: 0 }}
                   animate={{ width: `${area.percentage}%` }}
-                  transition={{ duration: 0.6, delay: 0.4 + idx * 0.1, ease: "easeOut" }}
+                  transition={{
+                    duration: 0.6,
+                    delay: 0.4 + idx * 0.1,
+                    ease: "easeOut",
+                  }}
                 />
               </div>
             </div>
@@ -578,7 +614,9 @@ function ReasonsSection({
             >
               {idx + 1}
             </span>
-            <p className="pt-0.5 text-base font-semibold text-slate-900">{reason}</p>
+            <p className="pt-0.5 text-base font-semibold text-slate-900">
+              {reason}
+            </p>
           </motion.div>
         ))}
       </div>
@@ -586,7 +624,13 @@ function ReasonsSection({
   );
 }
 
-function CTAsSection({ result, accent }: { result: QuizResult; accent: string }) {
+function CTAsSection({
+  result,
+  accent,
+}: {
+  result: QuizResult;
+  accent: string;
+}) {
   const isTech = result.kind === "tech";
   const relatedArea = areasTI.find((a) => a.slug === result.resultAreaSlug);
   const exploreLabel = isTech

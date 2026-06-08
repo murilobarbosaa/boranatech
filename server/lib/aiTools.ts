@@ -40,7 +40,8 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Simulador de entrevista técnica",
-    systemPrompt: "Você é uma entrevistadora tech brasileira. Gere perguntas, feedback e próximos passos com linguagem objetiva.",
+    systemPrompt:
+      "Você é uma entrevistadora tech brasileira. Gere perguntas, feedback e próximos passos com linguagem objetiva.",
   },
   "resume-review": {
     key: "resume-review",
@@ -51,7 +52,8 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Análise de currículo",
-    systemPrompt: "Você é especialista em currículo tech e ATS. Avalie clareza, impacto, palavras-chave e compatibilidade com vaga.",
+    systemPrompt:
+      "Você é especialista em currículo tech e ATS. Avalie clareza, impacto, palavras-chave e compatibilidade com vaga.",
   },
   "resume-builder": {
     key: "resume-builder",
@@ -341,7 +343,8 @@ Não envolva o marcador em código, citação ou markdown. Linha solta, no fim.`
     maxInputChars: 40_000,
     temperature: 0.2,
     model: DEFAULT_MODEL,
-    description: "Extrai JSON estruturado do currículo a partir do histórico da conversa do Natechinho.",
+    description:
+      "Extrai JSON estruturado do currículo a partir do histórico da conversa do Natechinho.",
     responseFormat: {
       name: "curriculo",
       zodSchema: CurriculoSchema,
@@ -441,7 +444,8 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Otimizador de LinkedIn",
-    systemPrompt: "Você é o Natechinho, especialista em LinkedIn para tecnologia do BoraNaTech, em voz masculina. Gere headlines, bio e palavras-chave para recrutadores.",
+    systemPrompt:
+      "Você é o Natechinho, especialista em LinkedIn para tecnologia do BoraNaTech, em voz masculina. Gere headlines, bio e palavras-chave para recrutadores.",
   },
   "study-plan": {
     key: "study-plan",
@@ -464,7 +468,8 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Gerador de roadmap personalizado",
-    systemPrompt: "Você é o Natechinho, mentor de carreira tech do BoraNaTech, em voz masculina. Crie um roadmap personalizado com etapas, duração, entregáveis, cuidados e próximos passos realistas.",
+    systemPrompt:
+      "Você é o Natechinho, mentor de carreira tech do BoraNaTech, em voz masculina. Crie um roadmap personalizado com etapas, duração, entregáveis, cuidados e próximos passos realistas.",
   },
   employability: {
     key: "employability",
@@ -515,7 +520,8 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     temperature: 0.7,
     model: DEFAULT_MODEL,
     description: "Gerador de mensagem de networking",
-    systemPrompt: "Você escreve mensagens de networking humanas para LinkedIn, com tom direto, descontraído e formal.",
+    systemPrompt:
+      "Você escreve mensagens de networking humanas para LinkedIn, com tom direto, descontraído e formal.",
   },
 };
 
@@ -527,5 +533,8 @@ export function estimateCost(inputChars: number, outputChars: number): number {
   const inputTokens = inputChars / CHARS_PER_TOKEN;
   const outputTokens = outputChars / CHARS_PER_TOKEN;
 
-  return (inputTokens / 1000) * COST_PER_1K_INPUT_TOKENS + (outputTokens / 1000) * COST_PER_1K_OUTPUT_TOKENS;
+  return (
+    (inputTokens / 1000) * COST_PER_1K_INPUT_TOKENS +
+    (outputTokens / 1000) * COST_PER_1K_OUTPUT_TOKENS
+  );
 }

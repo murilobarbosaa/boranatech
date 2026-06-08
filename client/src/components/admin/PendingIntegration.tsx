@@ -1,4 +1,10 @@
-export default function PendingIntegration({ tool, description }: { tool: string; description: string }) {
+export default function PendingIntegration({
+  tool,
+  description,
+}: {
+  tool: string;
+  description: string;
+}) {
   return (
     <div
       style={{

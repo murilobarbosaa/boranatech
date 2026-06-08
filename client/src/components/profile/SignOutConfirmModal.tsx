@@ -8,7 +8,12 @@ interface SignOutConfirmModalProps {
   isLoading?: boolean;
 }
 
-export function SignOutConfirmModal({ isOpen, onClose, onConfirm, isLoading }: SignOutConfirmModalProps) {
+export function SignOutConfirmModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  isLoading,
+}: SignOutConfirmModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     function onKey(event: KeyboardEvent) {
@@ -38,7 +43,10 @@ export function SignOutConfirmModal({ isOpen, onClose, onConfirm, isLoading }: S
           <LogOut className="h-5 w-5 text-slate-700" strokeWidth={2.5} />
         </div>
 
-        <h2 id="signout-modal-title" className="font-display text-2xl font-black text-slate-950">
+        <h2
+          id="signout-modal-title"
+          className="font-display text-2xl font-black text-slate-950"
+        >
           Sair da conta?
         </h2>
         <p className="mt-2 text-sm font-semibold text-slate-600">

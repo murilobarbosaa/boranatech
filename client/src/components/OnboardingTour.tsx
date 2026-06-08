@@ -44,9 +44,12 @@ export default function OnboardingTour({ open, onClose }: OnboardingTourProps) {
             <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase tracking-wide">
               tour da plataforma
             </p>
-            <h2 className="font-display text-3xl font-black text-slate-950">Como usar o BORA NA TECH?</h2>
+            <h2 className="font-display text-3xl font-black text-slate-950">
+              Como usar o BORA NA TECH?
+            </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Pense na plataforma como uma bússola: ela mostra direção, próximos passos e lugares seguros para aprender.
+              Pense na plataforma como uma bússola: ela mostra direção, próximos
+              passos e lugares seguros para aprender.
             </p>
           </div>
           <button
@@ -60,14 +63,23 @@ export default function OnboardingTour({ open, onClose }: OnboardingTourProps) {
 
         <div className="grid gap-4 md:grid-cols-2">
           {steps.map((step, index) => (
-            <Link key={step.title} href={step.href} onClick={onClose} className="card-invite rounded-2xl border-indigo-100 bg-indigo-50 p-5">
+            <Link
+              key={step.title}
+              href={step.href}
+              onClick={onClose}
+              className="card-invite rounded-2xl border-indigo-100 bg-indigo-50 p-5"
+            >
               <div className="mb-3 flex items-center gap-3">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-200 font-black text-violet-900">
                   {index + 1}
                 </span>
-                <span className="rounded-xl border-2 border-slate-900 bg-white p-2">{step.icon}</span>
+                <span className="rounded-xl border-2 border-slate-900 bg-white p-2">
+                  {step.icon}
+                </span>
               </div>
-              <h3 className="font-display text-lg font-black text-slate-950">{step.title}</h3>
+              <h3 className="font-display text-lg font-black text-slate-950">
+                {step.title}
+              </h3>
               <p className="mt-1 text-sm text-slate-600">{step.desc}</p>
             </Link>
           ))}

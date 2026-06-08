@@ -27,11 +27,27 @@ type EmailTheme = {
   accentText: string; // cor que contrasta sobre accent (icones sociais e fallback de alt)
 };
 
-const GENDER_THEMES: Record<"feminino" | "masculino" | "default", EmailTheme> = {
-  feminino: { brand: "#6B1FC9", accent: "#FCC700", buttonText: "#ffffff", accentText: "#1a1a1a" },
-  masculino: { brand: "#3B7DD8", accent: "#FCC700", buttonText: "#ffffff", accentText: "#1a1a1a" },
-  default: { brand: "#FCC700", accent: "#6B1FC9", buttonText: "#1a1a1a", accentText: "#ffffff" },
-};
+const GENDER_THEMES: Record<"feminino" | "masculino" | "default", EmailTheme> =
+  {
+    feminino: {
+      brand: "#6B1FC9",
+      accent: "#FCC700",
+      buttonText: "#ffffff",
+      accentText: "#1a1a1a",
+    },
+    masculino: {
+      brand: "#3B7DD8",
+      accent: "#FCC700",
+      buttonText: "#ffffff",
+      accentText: "#1a1a1a",
+    },
+    default: {
+      brand: "#FCC700",
+      accent: "#6B1FC9",
+      buttonText: "#1a1a1a",
+      accentText: "#ffffff",
+    },
+  };
 
 function themeFor(gender?: Gender | null): EmailTheme {
   if (gender === "feminino") return GENDER_THEMES.feminino;
@@ -95,8 +111,7 @@ function socialIcons(theme: EmailTheme) {
                       </table>
                     </a>
                   </td>`,
-    )
-    .join("");
+  ).join("");
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr>${cells}</tr></table>`;
 }
 
@@ -157,7 +172,12 @@ function layout(theme: EmailTheme, title: string, body: string) {
   </table>`;
 }
 
-async function sendEmail(params: { to: string; from: string; subject: string; html: string }) {
+async function sendEmail(params: {
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
+}) {
   if (!env.resendApiKey || !resend) {
     console.warn("[email] RESEND_API_KEY ausente. E-mail não enviado.");
     return;
@@ -166,7 +186,11 @@ async function sendEmail(params: { to: string; from: string; subject: string; ht
   await resend.emails.send(params);
 }
 
-export async function sendWelcomeEmail(to: string, name: string, gender?: Gender | null) {
+export async function sendWelcomeEmail(
+  to: string,
+  name: string,
+  gender?: Gender | null,
+) {
   const safeName = escapeHtml(name);
   const hello = greet(gender);
   const theme = themeFor(gender);
@@ -183,10 +207,20 @@ export async function sendWelcomeEmail(to: string, name: string, gender?: Gender
     ])}
     ${button("Explorar a plataforma", APP_URL, theme)}
   `;
-  await sendEmail({ to, from: FROM_RELATIONSHIP, subject: title, html: layout(theme, title, body) });
+  await sendEmail({
+    to,
+    from: FROM_RELATIONSHIP,
+    subject: title,
+    html: layout(theme, title, body),
+  });
 }
 
-export async function sendProUpgradeEmail(to: string, name: string, planName: string, gender?: Gender | null) {
+export async function sendProUpgradeEmail(
+  to: string,
+  name: string,
+  planName: string,
+  gender?: Gender | null,
+) {
   const safeName = escapeHtml(name);
   const safePlanName = escapeHtml(planName);
   const hello = greet(gender);
@@ -199,17 +233,31 @@ export async function sendProUpgradeEmail(to: string, name: string, planName: st
     ${button("Ver meu plano", `${APP_URL}/perfil`, theme)}
     ${paragraph("Qualquer dúvida, é só responder este e-mail.")}
   `;
-  await sendEmail({ to, from: FROM_TRANSACTIONAL, subject: title, html: layout(theme, title, body) });
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
 }
 
-export async function sendCancellationScheduledEmail(to: string, name: string, effectiveAt: string, gender?: Gender | null) {
+export async function sendCancellationScheduledEmail(
+  to: string,
+  name: string,
+  effectiveAt: string,
+  gender?: Gender | null,
+) {
   const safeName = escapeHtml(name);
   const hello = greet(gender);
   const theme = themeFor(gender);
   const date = new Date(effectiveAt);
   const formattedDate = Number.isNaN(date.getTime())
     ? "o fim do período pago"
-    : date.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+    : date.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
   const safeDate = escapeHtml(formattedDate);
   const title = `${hello}, seu cancelamento foi agendado`;
   const body = `
@@ -217,10 +265,19 @@ export async function sendCancellationScheduledEmail(to: string, name: string, e
     ${paragraph("Mudou de ideia? Dá para reativar antes dessa data e continuar sem perder nada.")}
     ${button("Reativar meu plano", `${APP_URL}/perfil`, theme)}
   `;
-  await sendEmail({ to, from: FROM_TRANSACTIONAL, subject: title, html: layout(theme, title, body) });
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
 }
 
-export async function sendCancellationEmail(to: string, name: string, gender?: Gender | null) {
+export async function sendCancellationEmail(
+  to: string,
+  name: string,
+  gender?: Gender | null,
+) {
   const safeName = escapeHtml(name);
   const hello = greet(gender);
   const theme = themeFor(gender);
@@ -230,10 +287,19 @@ export async function sendCancellationEmail(to: string, name: string, gender?: G
     ${paragraph("Você continua com acesso gratuito à plataforma. Quando quiser voltar, a porta está aberta.")}
     ${button("Voltar para o Pro", `${APP_URL}/planos`, theme)}
   `;
-  await sendEmail({ to, from: FROM_TRANSACTIONAL, subject: title, html: layout(theme, title, body) });
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
 }
 
-export async function sendPaymentFailedEmail(to: string, name: string, gender?: Gender | null) {
+export async function sendPaymentFailedEmail(
+  to: string,
+  name: string,
+  gender?: Gender | null,
+) {
   const safeName = escapeHtml(name);
   const hello = greet(gender);
   const theme = themeFor(gender);
@@ -244,5 +310,10 @@ export async function sendPaymentFailedEmail(to: string, name: string, gender?: 
     ${button("Atualizar pagamento", `${APP_URL}/perfil`, theme)}
     ${paragraph("Se o pagamento não for regularizado, o acesso Pro pode ser suspenso.")}
   `;
-  await sendEmail({ to, from: FROM_TRANSACTIONAL, subject: title, html: layout(theme, title, body) });
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
 }

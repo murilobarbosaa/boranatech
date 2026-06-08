@@ -4,7 +4,10 @@ import type { AuthUser } from "./contracts";
 
 function toAuthUser(user: User): AuthUser {
   const email = user.email ?? "";
-  const name = typeof user.user_metadata.name === "string" ? user.user_metadata.name : email.split("@")[0] || "Usuária";
+  const name =
+    typeof user.user_metadata.name === "string"
+      ? user.user_metadata.name
+      : email.split("@")[0] || "Usuária";
 
   return {
     id: user.id,

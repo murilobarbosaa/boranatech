@@ -14,6 +14,7 @@ import {
   BarChart3,
   Brain,
   ClipboardList,
+  Compass,
   LayoutGrid,
   Lock,
   Paintbrush,
@@ -25,9 +26,12 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
-import { areasTI, type AreaTI } from "@/lib/data";
+import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
+import { areasPoucoConhecidas, areasTI, type AreaTI } from "@/lib/data";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
+
+const areaSlugs = new Set(areasTI.map((area) => area.slug));
 
 const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "todos", label: "Todas as áreas", icon: LayoutGrid },
@@ -41,11 +45,39 @@ const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
 
 const perfilMap: Record<string, string[]> = {
   criatividade: ["uxui", "frontend", "mobile", "gamedev"],
-  logica: ["backend", "devops", "cloud", "ciberseguranca", "ia", "fullstack", "gamedev", "engenharia-dados", "sre", "infraestrutura", "blockchain", "iot"],
+  logica: [
+    "backend",
+    "devops",
+    "cloud",
+    "ciberseguranca",
+    "ia",
+    "fullstack",
+    "gamedev",
+    "engenharia-dados",
+    "sre",
+    "infraestrutura",
+    "blockchain",
+    "iot",
+  ],
   pessoas: ["gestao", "produto", "analise-sistemas"],
-  organizacao: ["gestao", "qa", "produto", "analise-dados", "banco-de-dados", "infraestrutura", "analise-sistemas"],
+  organizacao: [
+    "gestao",
+    "qa",
+    "produto",
+    "analise-dados",
+    "banco-de-dados",
+    "infraestrutura",
+    "analise-sistemas",
+  ],
   seguranca: ["ciberseguranca", "cloud", "devops", "sre"],
-  dados: ["dados", "ia", "backend", "analise-dados", "engenharia-dados", "banco-de-dados"],
+  dados: [
+    "dados",
+    "ia",
+    "backend",
+    "analise-dados",
+    "engenharia-dados",
+    "banco-de-dados",
+  ],
 };
 
 function SkeletonAreaCard() {
@@ -80,14 +112,18 @@ export default function Areas() {
   const [perfil, setPerfil] = useState("todos");
 
   useEffect(() => {
-    getAreas().then(setAreas).catch(() => setAreas(areasTI));
+    getAreas()
+      .then(setAreas)
+      .catch(() => setAreas(areasTI));
   }, []);
 
   const isLoading = areas === null;
   const filtered = (areas ?? []).filter((a) => {
-    const matchSearch = a.nome.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch =
+      a.nome.toLowerCase().includes(search.toLowerCase()) ||
       a.descricaoCurta.toLowerCase().includes(search.toLowerCase());
-    const matchPerfil = perfil === "todos" || (perfilMap[perfil] || []).includes(a.id);
+    const matchPerfil =
+      perfil === "todos" || (perfilMap[perfil] || []).includes(a.id);
     return matchSearch && matchPerfil;
   });
 
@@ -96,7 +132,13 @@ export default function Areas() {
       <SEO
         title="Áreas da TI — Conheça todas as especializações em tecnologia"
         description="Explore as principais áreas da tecnologia: desenvolvimento, dados, segurança, design, infraestrutura, IA e mais. Descubra qual área combina com você."
-        keywords={["áreas da ti", "especializações tecnologia", "tipos de programador", "carreiras em tecnologia", "qual área da ti escolher"]}
+        keywords={[
+          "áreas da ti",
+          "especializações tecnologia",
+          "tipos de programador",
+          "carreiras em tecnologia",
+          "qual área da ti escolher",
+        ]}
         url="/areas"
         schemaType="CollectionPage"
       />
@@ -150,18 +192,38 @@ export default function Areas() {
       {/* Grid */}
       <section className="bg-violet-50 py-12">
         <div className="container">
+          <div className="mb-6 flex justify-end">
+            <EmbaixadoraBadge />
+          </div>
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" aria-busy="true" aria-label="Carregando áreas">
+            <div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+              aria-busy="true"
+              aria-label="Carregando áreas"
+            >
               {Array.from({ length: 9 }).map((_, i) => (
                 <SkeletonAreaCard key={i} />
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16">
-              <SearchX className="mx-auto mb-3 h-12 w-12 text-slate-400" aria-hidden />
-              <p className="text-slate-600 font-medium">Nenhuma área encontrada.</p>
-              <p className="text-slate-400 text-sm mt-1">Tente outro termo ou remova os filtros.</p>
-              <button onClick={() => { setSearch(""); setPerfil("todos"); }} className="mt-4 text-violet-700 text-sm font-medium hover:underline">
+              <SearchX
+                className="mx-auto mb-3 h-12 w-12 text-slate-400"
+                aria-hidden
+              />
+              <p className="text-slate-600 font-medium">
+                Nenhuma área encontrada.
+              </p>
+              <p className="text-slate-400 text-sm mt-1">
+                Tente outro termo ou remova os filtros.
+              </p>
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setPerfil("todos");
+                }}
+                className="mt-4 text-violet-700 text-sm font-medium hover:underline"
+              >
                 Limpar filtros
               </button>
             </div>
@@ -172,39 +234,119 @@ export default function Areas() {
                   <FavoriteButton
                     compact
                     className="absolute right-4 top-4 z-10"
-                    item={{ id: area.id, type: "area", title: area.nome, subtitle: area.descricaoCurta }}
+                    item={{
+                      id: area.id,
+                      type: "area",
+                      title: area.nome,
+                      subtitle: area.descricaoCurta,
+                    }}
                   />
                   <Link
                     href={`/areas/${area.slug}`}
                     className="card-brutal bg-white rounded-xl p-6 flex flex-col group h-full"
                   >
-                  <div className="mb-4 pr-12">
-                    <AreaIconBox icon={area.icon} areaSlug={area.slug} size="md" />
-                  </div>
-                  <h3 className="font-display font-bold text-xl text-slate-900 mb-2 group-hover:text-violet-700 transition-colors">
-                    {area.nome}
-                  </h3>
-                  <p className="text-sm text-slate-600 mb-4 line-clamp-2">{area.descricaoCurta}</p>
-                  <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
-                    <p className="text-xs font-black uppercase text-violet-800">Perfil que combina</p>
-                    <p className="mt-1 text-xs text-slate-800 line-clamp-3">{area.perfilIndicado}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
-                    {area.habilidades.slice(0, 3).map((h) => (
-                      <span key={h} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{h}</span>
-                    ))}
-                  </div>
-                  <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
-                    <span className="text-xs text-slate-600">{area.cargos[0]}</span>
-                    <span className="flex items-center gap-1 text-violet-700 text-sm font-medium group-hover:gap-2 transition-all">
-                      Explorar <ArrowRight className="w-4 h-4" />
-                    </span>
-                  </div>
+                    <div className="mb-4 pr-12">
+                      <AreaIconBox
+                        icon={area.icon}
+                        areaSlug={area.slug}
+                        size="md"
+                      />
+                    </div>
+                    <h3 className="font-display font-bold text-xl text-slate-900 mb-2 group-hover:text-violet-700 transition-colors">
+                      {area.nome}
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                      {area.descricaoCurta}
+                    </p>
+                    <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
+                      <p className="text-xs font-black uppercase text-violet-800">
+                        Perfil que combina
+                      </p>
+                      <p className="mt-1 text-xs text-slate-800 line-clamp-3">
+                        {area.perfilIndicado}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
+                      {area.habilidades.slice(0, 3).map((h) => (
+                        <span
+                          key={h}
+                          className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full"
+                        >
+                          {h}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
+                      <span className="text-xs text-slate-600">
+                        {area.cargos[0]}
+                      </span>
+                      <span className="flex items-center gap-1 text-violet-700 text-sm font-medium group-hover:gap-2 transition-all">
+                        Explorar <ArrowRight className="w-4 h-4" />
+                      </span>
+                    </div>
                   </Link>
                 </div>
               ))}
             </div>
           )}
+
+          <div className="mt-14">
+            <div className="mb-2 flex items-center gap-2">
+              <Compass className="h-6 w-6 text-violet-700" />
+              <h2 className="font-display text-3xl font-black text-slate-900">
+                Áreas menos conhecidas para explorar
+              </h2>
+            </div>
+            <p className="mb-6 max-w-2xl text-sm text-slate-600">
+              Carreiras de TI fora do óbvio. Algumas se conectam às áreas acima,
+              outras ficam como curiosidade para você descobrir.
+            </p>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {areasPoucoConhecidas.map((item) => {
+                const related =
+                  item.relatedAreaSlug && areaSlugs.has(item.relatedAreaSlug)
+                    ? item.relatedAreaSlug
+                    : undefined;
+                const conteudo = (
+                  <>
+                    <h3 className="font-display text-xl font-black text-slate-900">
+                      {item.nome}
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-600">{item.oQueE}</p>
+                    <p className="mt-2 flex-1 text-sm font-semibold text-slate-700">
+                      {item.porQue}
+                    </p>
+                    {related ? (
+                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-violet-700 group-hover:gap-2 transition-all">
+                        Explorar área relacionada{" "}
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    ) : (
+                      <span className="mt-4 inline-flex w-fit rounded-full border-2 border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-black uppercase text-violet-700">
+                        curiosidade
+                      </span>
+                    )}
+                  </>
+                );
+                return related ? (
+                  <Link
+                    key={item.nome}
+                    href={`/areas/${related}`}
+                    className="card-brutal flex h-full flex-col rounded-xl bg-white p-6 group transition-all hover:-translate-y-1"
+                  >
+                    {conteudo}
+                  </Link>
+                ) : (
+                  <div
+                    key={item.nome}
+                    className="card-brutal flex h-full flex-col rounded-xl bg-white p-6"
+                  >
+                    {conteudo}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
     </Layout>

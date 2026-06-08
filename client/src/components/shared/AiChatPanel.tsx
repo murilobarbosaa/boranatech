@@ -7,9 +7,12 @@ import { cn } from "@/lib/utils";
 
 function getAiErrorMessage(err: unknown) {
   if (!(err instanceof Error)) return "Não foi possível enviar agora.";
-  if (err.message === "LOGIN_REQUIRED") return "Faça login para usar esta ferramenta.";
-  if (err.message === "PRO_REQUIRED") return "Esta ferramenta requer o Plano Pro.";
-  if (err.message.startsWith("RATE_LIMITED")) return err.message.replace("RATE_LIMITED: ", "");
+  if (err.message === "LOGIN_REQUIRED")
+    return "Faça login para usar esta ferramenta.";
+  if (err.message === "PRO_REQUIRED")
+    return "Esta ferramenta requer o Plano Pro.";
+  if (err.message.startsWith("RATE_LIMITED"))
+    return err.message.replace("RATE_LIMITED: ", "");
   return err.message || "Não foi possível enviar agora.";
 }
 
@@ -25,7 +28,10 @@ function TypingDots() {
   return (
     <div className="flex items-center gap-1 px-2 py-1" aria-hidden>
       {[0, 1, 2].map((dot) => (
-        <span key={dot} className="ai-chat-typing-dot h-2.5 w-2.5 rounded-full bg-violet-500" />
+        <span
+          key={dot}
+          className="ai-chat-typing-dot h-2.5 w-2.5 rounded-full bg-violet-500"
+        />
       ))}
     </div>
   );
@@ -66,7 +72,10 @@ export default function AiChatPanel({
     if (!trimmed || loading) return;
 
     setError("");
-    const nextMessages: AiChatMessage[] = [...messages, { role: "user", content: trimmed }];
+    const nextMessages: AiChatMessage[] = [
+      ...messages,
+      { role: "user", content: trimmed },
+    ];
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
@@ -99,8 +108,12 @@ export default function AiChatPanel({
             <Sparkles className="h-5 w-5 text-amber-200 sm:h-6 sm:w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">{title}</h2>
-            <p className="mt-0.5 truncate text-xs font-medium leading-snug text-violet-100 sm:text-sm">{description}</p>
+            <h2 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
+              {title}
+            </h2>
+            <p className="mt-0.5 truncate text-xs font-medium leading-snug text-violet-100 sm:text-sm">
+              {description}
+            </p>
           </div>
         </header>
 
@@ -122,7 +135,9 @@ export default function AiChatPanel({
                         "text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
-                      <p className="whitespace-pre-wrap break-words font-body">{m.content}</p>
+                      <p className="whitespace-pre-wrap break-words font-body">
+                        {m.content}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -133,7 +148,9 @@ export default function AiChatPanel({
                         "text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
-                      <p className="whitespace-pre-wrap break-words font-body">{m.content}</p>
+                      <p className="whitespace-pre-wrap break-words font-body">
+                        {m.content}
+                      </p>
                     </div>
                   </div>
                 ),
@@ -149,14 +166,20 @@ export default function AiChatPanel({
                 </div>
               ) : null}
 
-              <div ref={bottomRef} className="h-0.5 w-full shrink-0" aria-hidden />
+              <div
+                ref={bottomRef}
+                className="h-0.5 w-full shrink-0"
+                aria-hidden
+              />
             </div>
           </div>
         </div>
 
         {error ? (
           <div className="shrink-0 border-b-2 border-slate-900 bg-red-50 px-4 py-2.5 sm:px-5">
-            <p className="text-center text-sm font-bold text-red-800 sm:text-base">{error}</p>
+            <p className="text-center text-sm font-bold text-red-800 sm:text-base">
+              {error}
+            </p>
           </div>
         ) : null}
 
@@ -184,7 +207,11 @@ export default function AiChatPanel({
               aria-label="Enviar"
               onClick={() => void handleSend()}
             >
-              {loading ? <Spinner className="h-5 w-5 sm:h-6 sm:w-6" /> : <Send className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />}
+              {loading ? (
+                <Spinner className="h-5 w-5 sm:h-6 sm:w-6" />
+              ) : (
+                <Send className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
+              )}
             </button>
           </div>
           <p className="mt-2 text-center text-xs font-bold text-slate-600 sm:text-sm">

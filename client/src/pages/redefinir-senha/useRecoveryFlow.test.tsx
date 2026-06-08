@@ -37,10 +37,15 @@ const supa = vi.hoisted(() => {
 const recovery = vi.hoisted(() => ({ seen: false }));
 
 vi.mock("@/lib/supabase", () => ({ supabase: supa.client }));
-vi.mock("@/lib/recoverySnapshot", () => ({ wasRecoverySeen: () => recovery.seen }));
+vi.mock("@/lib/recoverySnapshot", () => ({
+  wasRecoverySeen: () => recovery.seen,
+}));
 // @/lib/authCallback NÃO é mockado: lê window.location de verdade (setado via history).
 
-import { useRecoveryFlow, type RecoveryFlowState } from "@/pages/redefinir-senha/useRecoveryFlow";
+import {
+  useRecoveryFlow,
+  type RecoveryFlowState,
+} from "@/pages/redefinir-senha/useRecoveryFlow";
 
 const session = { user: { id: "u1" } };
 
@@ -99,7 +104,11 @@ describe("useRecoveryFlow — detecção de recuperação (implicit + PKCE)", ()
   });
 
   it("erro na URL (link expirado) -> expired", async () => {
-    window.history.replaceState({}, "", "/redefinir-senha?error=access_denied&error_code=otp_expired");
+    window.history.replaceState(
+      {},
+      "",
+      "/redefinir-senha?error=access_denied&error_code=otp_expired",
+    );
     supa.setGetSession(async () => ({ data: { session: null } }));
     const sink = { state: "checking" as RecoveryFlowState };
     render(<Probe sink={sink} />);
