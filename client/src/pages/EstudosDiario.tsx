@@ -46,7 +46,7 @@ const SESSION_MODES: Array<{
   {
     id: "ritmo",
     label: "No ritmo",
-    hint: "Sessão dentro do normal — nem brilhou, nem travou.",
+    hint: "Sessão dentro do normal, nem brilhou, nem travou.",
     Icon: Activity,
     idleClass: "border-slate-200 bg-slate-50 hover:border-slate-400",
     activeRing: "ring-2 ring-slate-700 ring-offset-2",
@@ -61,7 +61,7 @@ const SESSION_MODES: Array<{
   },
   {
     id: "revisar",
-    label: "Confusa — revisar",
+    label: "Confusa: revisar",
     hint: "Muitas dúvidas ou conteúdo denso; anote o que voltar e busque uma fonte extra.",
     Icon: HelpCircle,
     idleClass: "border-violet-200 bg-violet-50/90 hover:border-violet-400",
@@ -244,7 +244,7 @@ export default function EstudosDiario() {
         accent="fuchsia"
         eyebrow="só pelo perfil"
         title="Diário de Estudos"
-        subtitle="Cada registro conta como foi a sessão — não humor genérico, e sim o que importa para ajustar rotina."
+        subtitle="Cada registro conta como foi a sessão, não humor genérico, e sim o que importa para ajustar rotina."
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
@@ -288,7 +288,7 @@ export default function EstudosDiario() {
                   Registrar sessão
                 </h2>
                 <p className="mt-2 text-sm font-medium text-slate-600">
-                  Descreva o foco principal e marque como a sessão se saiu —
+                  Descreva o foco principal e marque como a sessão se saiu,
                   isso guia ajustes reais de estudo.
                 </p>
 
@@ -356,7 +356,7 @@ export default function EstudosDiario() {
                     Como foi a sessão?
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Escolha o que melhor descreve a qualidade do estudo — não é
+                    Escolha o que melhor descreve a qualidade do estudo. Não é
                     emoji, é diagnóstico para você.
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -550,7 +550,7 @@ export default function EstudosDiario() {
                   <strong className="text-slate-800">
                     {selectedMode.label}
                   </strong>{" "}
-                  — {selectedMode.hint}
+                  , {selectedMode.hint}
                 </p>
               </div>
             </div>

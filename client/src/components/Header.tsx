@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Header Component
+  BORA NA TECH? (Header Component)
   Mega menu navigation for desktop and accordion drawer for mobile.
 */
 

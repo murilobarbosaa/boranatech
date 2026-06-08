@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Area Detail Page
+  BORA NA TECH? (Area Detail Page)
   Style: Neo-Brutalism Suavizado
   Estrutura em 4 zonas: Hero+Stats, Entendimento, Como começar, Aprofundamento + sidebar sticky.
 */
@@ -419,7 +419,7 @@ export default function AreaDetalhe() {
                 </div>
               ) : null}
 
-              {/* ============ ZONA 1 — Hero stats + CTAs ============ */}
+              {/* ============ ZONA 1: Hero stats + CTAs ============ */}
               <div className="area-rise space-y-4">
                 <AreaHeroStats
                   area={area}
@@ -474,7 +474,7 @@ export default function AreaDetalhe() {
                 ) : null}
               </div>
 
-              {/* ============ ZONA 2 — Entendimento ============ */}
+              {/* ============ ZONA 2: Entendimento ============ */}
               <div
                 className="area-rise space-y-5"
                 style={{ animationDelay: "0.08s" }}
@@ -550,7 +550,7 @@ export default function AreaDetalhe() {
                 </div>
               </div>
 
-              {/* ============ ZONA 3 — Como começar ============ */}
+              {/* ============ ZONA 3: Como começar ============ */}
               <div
                 className="area-rise space-y-5"
                 style={{ animationDelay: "0.16s" }}
@@ -763,7 +763,7 @@ export default function AreaDetalhe() {
                 ) : null}
               </div>
 
-              {/* ============ ZONA 4 — Aprofundamento ============ */}
+              {/* ============ ZONA 4: Aprofundamento ============ */}
               <div
                 className="area-rise space-y-5"
                 style={{ animationDelay: "0.24s" }}
@@ -777,7 +777,7 @@ export default function AreaDetalhe() {
                   Aprofundamento
                 </p>
 
-                {/* 4.1 Influencer — placeholder enquanto curadoria não está pronta */}
+                {/* 4.1 Influencer: placeholder enquanto curadoria não está pronta */}
                 <div
                   className={cn(
                     "card-brutal rounded-xl border-2 border-dashed p-6 text-center",
@@ -1088,7 +1088,7 @@ export default function AreaDetalhe() {
 
             {/* ======================= SIDEBAR ======================= */}
             <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
-              {/* Resumo rápido — apenas desktop (stats já estão na Zona 1 no mobile) */}
+              {/* Resumo rápido: apenas desktop (stats já estão na Zona 1 no mobile) */}
               <div
                 className={cn(
                   "card-brutal hidden rounded-xl border-2 bg-white p-6 lg:block",
@@ -1240,7 +1240,7 @@ export default function AreaDetalhe() {
                 </ul>
               </div>
 
-              {/* Crescimento de mercado — apenas desktop, conforme regra mobile */}
+              {/* Crescimento de mercado: apenas desktop, conforme regra mobile */}
               {area.crescimentoMercado ? (
                 <div
                   className={cn(

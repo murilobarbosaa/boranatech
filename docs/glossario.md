@@ -1,4 +1,4 @@
-# Glossário — Bora na Tech
+# Glossário · Bora na Tech
 
 Vocabulário oficial do produto. Use estes termos no UI, copy e código.
 Quando houver conflito, esta página vence.
@@ -21,7 +21,7 @@ Quando houver conflito, esta página vence.
 - **Tem:** etapas ordenadas, duração estimada, nível inicial, pré-requisitos.
 - **Exemplo:** "Front-end do Zero (30 dias)".
 - **Tabela:** `roadmaps`. **Relação com Área:** `area_slug` → `areas.slug`.
-- **NÃO usar como sinônimo:** trilha (usar "roadmap" em todo lugar — escolha de marca).
+- **NÃO usar como sinônimo:** trilha (usar "roadmap" em todo lugar, escolha de marca).
 
 ### Curso
 
@@ -37,7 +37,7 @@ Quando houver conflito, esta página vence.
 
 - **Exemplo:** ADS, Sistemas de Informação, Engenharia de Computação.
 - **Página:** `/faculdades`.
-- **NÃO usar:** "curso superior" no UI — sempre "graduação".
+- **NÃO usar:** "curso superior" no UI, sempre "graduação".
 
 ### Carreira
 
@@ -65,7 +65,7 @@ Quando houver conflito, esta página vence.
 
 ## Convenção de identificadores
 
-- `slug`: usado para a entidade Área em si — `areas.slug` (PK).
+- `slug`: usado para a entidade Área em si, `areas.slug` (PK).
 - `areaSlug` (camelCase no frontend) / `area_slug` (snake_case no banco): chave estrangeira de outras entidades (Roadmap, Curso, Projeto, Vaga) apontando pra `areas.slug`.
 - **Lista canônica de areaSlugs:** `frontend`, `backend`, `dados`, `uxui`, `ia`, `produto`, `ciberseguranca`, `cloud`, `gestao`, `qa`, `mobile`, `devops`.
 - **Casos especiais:** `null` para conteúdo sem área (ex: roadmap "Começar do Zero"); `"carreira"` (sentinela) para trilhas de carreira; futuramente `fullstack` quando a área Full-stack for criada.

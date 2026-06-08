@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Cursos Page
+  BORA NA TECH? (Cursos Page)
   Style: Neo-Brutalism Suavizado
   - Grid of free and paid courses with filters
 */
@@ -98,7 +98,7 @@ export default function Cursos() {
   return (
     <Layout>
       <SEO
-        title="Cursos de TI — Curadoria de cursos online gratuitos e pagos"
+        title="Cursos de TI · Curadoria de cursos online gratuitos e pagos"
         description="Cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
         keywords={[
           "cursos de ti gratuitos",
