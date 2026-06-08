@@ -470,7 +470,7 @@ export const portfolioGuides = [
   ],
 ];
 
-// IDs são CONTRATO PERMANENTE, usados como chave de persistência por usuário
+// IDs são CONTRATO PERMANENTE — usados como chave de persistência por usuário
 // (tabela user_progress, context = 'portfolio_checklist'). Se o label mudar,
 // o id NUNCA muda; caso contrário, o progresso salvo do usuário se perde.
 export const portfolioChecklist: { id: string; label: string }[] = [
@@ -664,11 +664,11 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "MDN: Design responsivo (português)",
+          title: "MDN — Design responsivo (português)",
           href: "https://developer.mozilla.org/pt-BR/docs/Learn/CSS/CSS_layout/Responsive_Design",
         },
         {
-          title: "web.dev: Fundamentos de design na web",
+          title: "web.dev — Fundamentos de design na web",
           href: "https://web.dev/learn/design/",
         },
         {
@@ -693,15 +693,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "Microsoft: Introdução ao Power Automate (PT-BR)",
+          title: "Microsoft — Introdução ao Power Automate (PT-BR)",
           href: "https://learn.microsoft.com/pt-br/power-platform/power-automate/getting-started",
         },
         {
-          title: "Documentação oficial do Python: Tutorial",
+          title: "Documentação oficial do Python — Tutorial",
           href: "https://docs.python.org/pt-br/3/tutorial/index.html",
         },
         {
-          title: "YouTube: automação iniciante português",
+          title: "YouTube — automação iniciante português",
           href: "https://www.youtube.com/results?search_query=automa%C3%A7%C3%A3o+python+excel+para+iniciantes+portugu%C3%AAs",
         },
       ],
@@ -721,19 +721,19 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "Telegram: Introdução a bots",
+          title: "Telegram — Introdução a bots",
           href: "https://core.telegram.org/bots",
         },
         {
-          title: "Meta: WhatsApp Cloud API overview",
+          title: "Meta — WhatsApp Cloud API overview",
           href: "https://developers.facebook.com/docs/whatsapp/cloud-api/overview",
         },
         {
-          title: "freeCodeCamp (PT-BR): Bot no Telegram com Python",
+          title: "freeCodeCamp (PT-BR) — Bot no Telegram com Python",
           href: "https://www.freecodecamp.org/portuguese/news/como-criar-um-bot-do-telegram-usando-o-python/",
         },
         {
-          title: "YouTube: filtrar só tutoriais em português",
+          title: "YouTube — filtrar só tutoriais em português",
           href: "https://www.youtube.com/results?search_query=bot+whatsapp+telegram+python+portugu%C3%AAs",
         },
       ],
@@ -754,15 +754,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "Google: Centro de ajuda Looker Studio",
+          title: "Google — Centro de ajuda Looker Studio",
           href: "https://support.google.com/looker-studio/",
         },
         {
-          title: "Google: Conectar dados e relatórios",
+          title: "Google — Conectar dados e relatórios",
           href: "https://support.google.com/looker-studio/answer/6299724",
         },
         {
-          title: "YouTube: Looker Studio em português",
+          title: "YouTube — Looker Studio em português",
           href: "https://www.youtube.com/results?search_query=looker+studio+google+data+studio+tutorial+portugu%C3%AAs",
         },
       ],
@@ -783,15 +783,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "MDN: HTML: boas práticas",
+          title: "MDN — HTML: boas práticas",
           href: "https://developer.mozilla.org/pt-BR/docs/Learn/HTML/Introduction_to_HTML/Document_and_website_structure",
         },
         {
-          title: "web.dev: SEO e performance básicos",
+          title: "web.dev — SEO e performance básicos",
           href: "https://web.dev/learn/seo/",
         },
         {
-          title: "YouTube: site profissional portfolio português",
+          title: "YouTube — site profissional portfolio português",
           href: "https://www.youtube.com/results?search_query=site+one+page+portfolio+freelancer+html+css+portugu%C3%AAs",
         },
       ],
@@ -811,15 +811,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "WordPress: Primeiros passos com temas",
+          title: "WordPress — Primeiros passos com temas",
           href: "https://developer.wordpress.org/themes/getting-started/",
         },
         {
-          title: "WordPress.org (PT-BR): primeiro site com o editor em blocos",
+          title: "WordPress.org (PT-BR) — primeiro site com o editor em blocos",
           href: "https://wordpress.org/documentation/article/new-to-wordpress-where-to-start/",
         },
         {
-          title: "YouTube: manutenção e temas WordPress PT",
+          title: "YouTube — manutenção e temas WordPress PT",
           href: "https://www.youtube.com/results?search_query=wordpress+temas+e+child+theme+curso+portugu%C3%AAs",
         },
       ],
@@ -1173,6 +1173,349 @@ export const englishVocabulary = [
     "scalable",
   ],
 }));
+
+export type EnglishLevel = "Básico" | "Intermediário" | "Avançado";
+export type PlatformCost = "Grátis" | "Pago" | "Freemium";
+
+export const ENGLISH_LEVELS: EnglishLevel[] = [
+  "Básico",
+  "Intermediário",
+  "Avançado",
+];
+
+export const learnEnglishPlatforms: {
+  name: string;
+  url: string;
+  desc: string;
+  cost: PlatformCost;
+  level: EnglishLevel;
+}[] = [
+  {
+    name: "Duolingo",
+    url: "https://www.duolingo.com/",
+    desc: "Lições curtas e gamificadas para criar hábito e vocabulário base.",
+    cost: "Freemium",
+    level: "Básico",
+  },
+  {
+    name: "ELSA Speak",
+    url: "https://elsaspeak.com/",
+    desc: "Treino de pronúncia com IA que ouve e corrige a sua fala.",
+    cost: "Freemium",
+    level: "Básico",
+  },
+  {
+    name: "British Council LearnEnglish",
+    url: "https://learnenglish.britishcouncil.org/",
+    desc: "Exercícios e listening organizados por nível, do iniciante ao avançado.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "Anki",
+    url: "https://apps.ankiweb.net/",
+    desc: "Flashcards com repetição espaçada para montar o seu baralho técnico.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "Voscreen",
+    url: "https://www.voscreen.com/",
+    desc: "Pratique listening com clipes curtos e perguntas rápidas.",
+    cost: "Freemium",
+    level: "Intermediário",
+  },
+  {
+    name: "Coursera: English for Career Development",
+    url: "https://www.coursera.org/learn/careerdevelopment",
+    desc: "Inglês de currículo, entrevista e ambiente de trabalho, grátis para assistir.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "Cambly",
+    url: "https://www.cambly.com/",
+    desc: "Conversação ao vivo com falantes nativos sob demanda.",
+    cost: "Pago",
+    level: "Avançado",
+  },
+  {
+    name: "italki",
+    url: "https://www.italki.com/",
+    desc: "Aulas 1 a 1 com professores do mundo todo, você escolhe o foco.",
+    cost: "Pago",
+    level: "Avançado",
+  },
+  {
+    name: "Speak",
+    url: "https://www.speak.com/",
+    desc: "Tutor de conversação com IA para treinar fala sem pressão.",
+    cost: "Pago",
+    level: "Avançado",
+  },
+  {
+    name: "Conversation Exchange",
+    url: "https://www.conversationexchange.com/",
+    desc: "Encontre parceiros nativos para trocar idiomas por texto, áudio ou chamada.",
+    cost: "Grátis",
+    level: "Avançado",
+  },
+  {
+    name: "Tandem",
+    url: "https://www.tandem.net/",
+    desc: "App de intercâmbio de idiomas, converse com nativos de graça, recursos extras são pagos.",
+    cost: "Freemium",
+    level: "Avançado",
+  },
+  {
+    name: "YouGlish",
+    url: "https://youglish.com/",
+    desc: "Busque uma palavra e ouça como nativos pronunciam em vídeos reais.",
+    cost: "Grátis",
+    level: "Avançado",
+  },
+];
+
+export const englishPodcasts: {
+  name: string;
+  url: string;
+  desc: string;
+  level: EnglishLevel;
+}[] = [
+  {
+    name: "Espresso English Podcast",
+    url: "https://www.espressoenglish.net/",
+    desc: "Episódios curtos de vocabulário e frases do dia a dia.",
+    level: "Básico",
+  },
+  {
+    name: "Luke's English Podcast",
+    url: "https://teacherluke.co.uk/",
+    desc: "Inglês natural com explicação clara e ritmo tranquilo.",
+    level: "Básico",
+  },
+  {
+    name: "CodeNewbie",
+    url: "https://www.codenewbie.org/podcast",
+    desc: "Histórias de quem entrou na área tech, ótimo para listening.",
+    level: "Intermediário",
+  },
+  {
+    name: "Syntax",
+    url: "https://syntax.fm/",
+    desc: "Web dev com dois hosts e linguagem acessível.",
+    level: "Intermediário",
+  },
+  {
+    name: "Software Engineering Daily",
+    url: "https://softwareengineeringdaily.com/",
+    desc: "Entrevistas técnicas densas para quem já tem base.",
+    level: "Avançado",
+  },
+  {
+    name: "The Changelog",
+    url: "https://changelog.com/podcast",
+    desc: "Conversas sobre open source e engenharia de software.",
+    level: "Avançado",
+  },
+];
+
+export const englishWorkPhrases: {
+  situation: string;
+  phrases: { en: string; pt: string }[];
+}[] = [
+  {
+    situation: "Code review e pull request",
+    phrases: [
+      {
+        en: "Could you take a look at this PR when you have time?",
+        pt: "Pode revisar este PR quando puder?",
+      },
+      {
+        en: "I left a few comments, nothing blocking.",
+        pt: "Deixei alguns comentários, nada que trave o merge.",
+      },
+      {
+        en: "Good catch, I will fix that.",
+        pt: "Boa observação, vou corrigir.",
+      },
+      {
+        en: "Nit: this is minor, feel free to ignore.",
+        pt: "Detalhe pequeno, pode ignorar (nit = nitpick).",
+      },
+      {
+        en: "LGTM, approving now.",
+        pt: "Está bom pra mim, aprovando (LGTM = looks good to me).",
+      },
+    ],
+  },
+  {
+    situation: "Daily standup",
+    phrases: [
+      {
+        en: "Yesterday I worked on the login flow.",
+        pt: "Ontem trabalhei no fluxo de login.",
+      },
+      {
+        en: "Today I will focus on the API bug.",
+        pt: "Hoje vou focar no bug da API.",
+      },
+      {
+        en: "I am blocked by the missing credentials.",
+        pt: "Estou travado pelas credenciais que faltam.",
+      },
+      { en: "No blockers on my side.", pt: "Sem impedimentos do meu lado." },
+    ],
+  },
+  {
+    situation: "Pedir ajuda",
+    phrases: [
+      {
+        en: "I am stuck on this error, could you help me?",
+        pt: "Travei neste erro, pode me ajudar?",
+      },
+      {
+        en: "Do you have a few minutes to pair on this?",
+        pt: "Tem alguns minutos pra programar junto nisso?",
+      },
+      {
+        en: "Just to confirm, you mean X, right?",
+        pt: "Só pra confirmar, você quer dizer X, certo?",
+      },
+      { en: "Could you explain it again?", pt: "Pode explicar de novo?" },
+    ],
+  },
+  {
+    situation: "Comunicação async e Slack",
+    phrases: [
+      {
+        en: "Heads up: the deploy is scheduled for 3 PM.",
+        pt: "Aviso: o deploy está marcado pras 15h.",
+      },
+      {
+        en: "Following up on my last message.",
+        pt: "Retomando a minha última mensagem.",
+      },
+      {
+        en: "No rush, whenever you get a chance.",
+        pt: "Sem pressa, quando você puder.",
+      },
+      {
+        en: "Sorry for the late reply.",
+        pt: "Desculpe a demora pra responder.",
+      },
+    ],
+  },
+  {
+    situation: "Discordar com educação",
+    phrases: [
+      {
+        en: "I see your point, but I would suggest a different approach.",
+        pt: "Entendo seu ponto, mas sugeriria outra abordagem.",
+      },
+      {
+        en: "That makes sense. One concern I have is...",
+        pt: "Faz sentido. Uma preocupação que tenho é...",
+      },
+      {
+        en: "Could we consider another option here?",
+        pt: "Podemos considerar outra opção aqui?",
+      },
+      {
+        en: "Can we discuss the trade-offs?",
+        pt: "Podemos discutir os prós e contras?",
+      },
+    ],
+  },
+];
+
+export const englishFalseFriends: {
+  wrong: string;
+  right: string;
+  note: string;
+}[] = [
+  {
+    wrong: "I have a doubt.",
+    right: "I have a question.",
+    note: "Doubt é desconfiança; para perguntar, use question.",
+  },
+  {
+    wrong: "Explain me this.",
+    right: "Explain this to me.",
+    note: "Explain sempre pede 'to me'.",
+  },
+  {
+    wrong: "Make a question.",
+    right: "Ask a question.",
+    note: "Pergunta se faz com ask, não com make.",
+  },
+  {
+    wrong: "I am agree.",
+    right: "I agree.",
+    note: "Agree já é o verbo, não use 'am'.",
+  },
+  {
+    wrong: "Actually (como 'atualmente')",
+    right: "Actually = na verdade; currently = atualmente.",
+    note: "Actually corrige uma informação, não indica tempo.",
+  },
+  {
+    wrong: "Eventually (como 'talvez')",
+    right: "Eventually = no fim; occasionally = de vez em quando.",
+    note: "Eventually é algo que acaba acontecendo.",
+  },
+  {
+    wrong: "I pretend to learn.",
+    right: "I intend to learn.",
+    note: "Pretend = fingir; intend ou plan = pretender.",
+  },
+  {
+    wrong: "I realize a task.",
+    right: "I carry out a task.",
+    note: "Realize = perceber; para executar, use carry out.",
+  },
+];
+
+export const englishTechPronunciation: {
+  term: string;
+  say: string;
+  note: string;
+}[] = [
+  {
+    term: "cache",
+    say: "kash",
+    note: "Uma sílaba só, igual a 'cash'. Evite 'ca·xê'.",
+  },
+  {
+    term: "queue",
+    say: "kiu",
+    note: "Só o som da letra Q; o resto é mudo.",
+  },
+  { term: "query", say: "kuí·ri", note: "Primeira sílaba mais forte." },
+  {
+    term: "schema",
+    say: "skí·ma",
+    note: "Começa com 'sk', não com 'xema'.",
+  },
+  {
+    term: "tuple",
+    say: "tâ·pol",
+    note: "Em inglês americano também se ouve 'tchú·pol'.",
+  },
+  { term: "nginx", say: "én·gin·ex", note: "Lê-se 'engine-x'." },
+  {
+    term: "Kubernetes",
+    say: "ku·ber·né·tis",
+    note: "A forma curta k8s lê-se 'keits'.",
+  },
+  {
+    term: "SQL",
+    say: "és·kiu·él",
+    note: "A forma 'síquel' também é aceita.",
+  },
+  { term: "GUI", say: "gú·i", note: "Soa como 'gooey'." },
+  { term: "OAuth", say: "ô·óth", note: "Soa como 'oh-auth'." },
+];
 
 export const devTools = [
   {

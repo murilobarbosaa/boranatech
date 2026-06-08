@@ -2050,11 +2050,11 @@ export default function Admin() {
   const healthItemsReal = useMemo(() => buildHealthItems(health), [health]);
   const posthogHasData = Boolean(
     posthogStats &&
-      (posthogStats.totalPageviews > 0 ||
-        posthogStats.uniqueUsers > 0 ||
-        posthogStats.pages.length > 0 ||
-        Object.values(posthogStats.events).some((value) => value > 0) ||
-        posthogStats.acquisition.length > 0),
+    (posthogStats.totalPageviews > 0 ||
+      posthogStats.uniqueUsers > 0 ||
+      posthogStats.pages.length > 0 ||
+      Object.values(posthogStats.events).some((value) => value > 0) ||
+      posthogStats.acquisition.length > 0),
   );
   const posthogSignupConversion =
     posthogStats && posthogStats.uniqueUsers > 0

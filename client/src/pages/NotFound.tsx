@@ -17,8 +17,8 @@ export default function NotFound() {
             Página não encontrada
           </h2>
           <p className="text-slate-950 mb-8">
-            Essa página não existe ou foi movida. Mas não se preocupe. Tem muito
-            conteúdo esperando por você!
+            Essa página não existe ou foi movida. Mas não se preocupe — tem
+            muito conteúdo esperando por você!
           </p>
           <Link
             href="/"

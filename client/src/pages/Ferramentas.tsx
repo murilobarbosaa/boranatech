@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { Link, useSearch } from "wouter";
 import {
+  ArrowRight,
   ExternalLink,
   Keyboard,
   PlayCircle,
@@ -199,7 +201,13 @@ function TerminalCommand({
 }
 
 export default function Ferramentas() {
-  const [category, setCategory] = useState("Todas");
+  const search = useSearch();
+  const [category, setCategory] = useState(() => {
+    const requested = new URLSearchParams(search).get("categoria");
+    return requested && CATEGORY_ORDER.includes(requested)
+      ? requested
+      : "Todas";
+  });
   const categories = useMemo(() => {
     const present = new Set(devTools.flatMap((tool) => tool.category));
     return ["Todas", ...CATEGORY_ORDER.filter((c) => present.has(c))];
@@ -257,6 +265,18 @@ export default function Ferramentas() {
                   {c}
                 </button>
               ))}
+            </div>
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <Link
+                href="/ia"
+                className={cn(
+                  "inline-flex items-center gap-1 text-sm font-bold",
+                  ac.link,
+                )}
+              >
+                Novo: Guia de IA, pra que serve cada uma{" "}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">

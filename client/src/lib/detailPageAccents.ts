@@ -8,6 +8,11 @@ const CATEGORY_FALLBACK: Record<TechnologyCategory, PageHeroAccent> = {
   Ferramentas: "emerald",
   Cloud: "orange",
   DevOps: "cyan",
+  "Dados e IA": "blue",
+  Segurança: "rose",
+  Testes: "teal",
+  Design: "fuchsia",
+  Gestão: "emerald",
 };
 
 /** Cores próximas à identidade mais conhecida de cada stack */
@@ -90,6 +95,7 @@ const AREA_SLUG_ACCENT: Record<string, PageHeroAccent> = {
   "analise-sistemas": "amber",
   blockchain: "emerald",
   iot: "rose",
+  mainframe: "blue",
 };
 
 export function accentForTechnology(technology: Technology): PageHeroAccent {

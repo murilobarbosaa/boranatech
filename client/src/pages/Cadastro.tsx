@@ -32,7 +32,7 @@ export default function Cadastro() {
           <div className="rounded-2xl border-2 border-slate-900 bg-[#FFB800] p-4 text-slate-950 shadow-[4px_4px_0_#0f172a]">
             <p className="flex items-center gap-2 text-sm font-black">
               <TicketPercent className="h-5 w-5" />
-              Você vai assinar com {visibleDiscount}% de desconto, cupom{" "}
+              Você vai assinar com {visibleDiscount}% de desconto — cupom{" "}
               {affiliateCode} aplicado automaticamente
             </p>
           </div>

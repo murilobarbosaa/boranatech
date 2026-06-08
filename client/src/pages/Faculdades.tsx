@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? (Faculdades Page)
+  BORA NA TECH? — Faculdades Page
   Style: Neo-Brutalism Suavizado
 */
 
@@ -57,7 +57,7 @@ export default function Faculdades() {
   return (
     <Layout>
       <SEO
-        title="Faculdades de TI · Cursos superiores em tecnologia no Brasil"
+        title="Faculdades de TI — Cursos superiores em tecnologia no Brasil"
         description="Conheça cursos superiores em tecnologia no Brasil, diferenças entre formações e caminhos para iniciar uma carreira em TI."
         keywords={[
           "faculdade de ti",
@@ -384,7 +384,7 @@ export default function Faculdades() {
                 },
                 {
                   nome: "EAD Gratuito",
-                  desc: "UAB: Universidade Aberta do Brasil",
+                  desc: "UAB — Universidade Aberta do Brasil",
                   link: "https://uab.capes.gov.br",
                 },
               ].map((item) => (

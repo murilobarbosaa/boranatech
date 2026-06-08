@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? (Header Component)
+  BORA NA TECH? — Header Component
   Mega menu navigation for desktop and accordion drawer for mobile.
 */
 
@@ -86,7 +86,7 @@ const menuData: DropdownMenu[] = [
           {
             label: "Mapa de tecnologias",
             description: "Visualize o ecossistema tech",
-            path: "/tecnologias/mapa",
+            path: "/tecnologias/por-area",
           },
           {
             label: "Ranking de tecnologias",
@@ -153,13 +153,18 @@ const menuData: DropdownMenu[] = [
             description: "Setup e ferramentas essenciais",
             path: "/ferramentas",
           },
+          {
+            label: "Guia de IA",
+            description: "Quais IAs usar e como",
+            path: "/ia",
+          },
         ],
       },
     ],
   },
   {
     id: "avancado",
-    label: "Só trabalho e/ou estudo",
+    label: "Já estou na área!",
     headerDescription: "Pra quem já está no mercado ou prestes a entrar",
     accentColor: "#BA7517",
     columns: [
@@ -264,7 +269,11 @@ const menuData: DropdownMenu[] = [
             path: "/empregabilidade",
             isPro: true,
           },
-          { label: "Ranking", path: "/empresas/ranking-junior" },
+          {
+            label: "Ranking",
+            description: "Empresas com mais vagas para júnior",
+            path: "/empresas/ranking-junior",
+          },
         ],
       },
       {
@@ -295,7 +304,11 @@ const menuData: DropdownMenu[] = [
             description: "Grupos para aprender junto",
             path: "/comunidades",
           },
-          { label: "Mentorias", path: "/mentorias" },
+          {
+            label: "Mentorias",
+            description: "Sessões com quem já está na área",
+            path: "/mentorias",
+          },
           { label: "Mulheres", path: "/mulheres", isWomen: true },
         ],
       },

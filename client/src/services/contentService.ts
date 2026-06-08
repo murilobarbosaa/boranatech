@@ -6,6 +6,7 @@ import {
   cursosGratuitos,
   plataformas,
   projetos,
+  roadmaps,
   type AreaTI,
 } from "@/lib/data";
 import {
@@ -117,6 +118,29 @@ function projectFromApi(row: any) {
   };
 }
 
+function roadmapFromApi(row: any) {
+  return {
+    id: row.slug,
+    nome: row.title,
+    areaSlug: row.area_slug || null,
+    nivel: row.level || "Iniciante",
+    duracaoDias: row.estimated_duration_weeks
+      ? `${row.estimated_duration_weeks} semanas`
+      : "30 dias",
+    descricao: row.description || "",
+    paraQuem: row.description || "",
+    preRequisitos: "",
+    etapas: (row.roadmap_steps || []).map((step: any, index: number) => ({
+      numero: step.order_index || index + 1,
+      titulo: step.title,
+      descricao: step.description || "",
+      tempo: step.estimated_hours ? `${step.estimated_hours} horas` : "",
+    })),
+    errosComuns: [],
+    oQueEvitar: "",
+    proximoPasso: "",
+  };
+}
 function technologyFromApi(row: any) {
   // Enriquece a linha do Supabase (metadados) com os percentuais e fonte do
   // Survey, casados por slug. O Supabase é dono dos metadados; o arquivo de
@@ -431,6 +455,25 @@ export async function getProjects(params?: { area?: string; level?: string }) {
   }
 }
 
+export async function getRoadmaps(params?: { area?: string }) {
+  try {
+    const qs = new URLSearchParams();
+    if (params?.area) qs.set("area", params.area);
+    const json = await apiFetch(`/roadmaps${qs.toString() ? `?${qs}` : ""}`);
+    return json.data.map(roadmapFromApi);
+  } catch {
+    return roadmaps;
+  }
+}
+
+export async function getRoadmap(slug: string) {
+  try {
+    const json = await apiFetch(`/roadmaps/${slug}`);
+    return roadmapFromApi(json.data);
+  } catch {
+    return roadmaps.find((roadmap) => roadmap.id === slug) || null;
+  }
+}
 export async function getNews(
   params: GetNewsParams = {},
 ): Promise<NewsResponse | null> {
