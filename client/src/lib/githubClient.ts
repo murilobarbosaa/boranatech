@@ -1,5 +1,6 @@
 import { apiUrl } from "./api";
 import { supabase } from "./supabase";
+import type { AreaSelection } from "@shared/areas";
 import type { AnalysisMode, GithubAnalysisResponse } from "@shared/github/schema";
 
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -19,6 +20,7 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 export async function analyzeGithub(
   mode: AnalysisMode,
   input: string,
+  area: AreaSelection,
 ): Promise<GithubAnalysisResponse> {
   const authHeader = await getAuthHeader();
   const response = await fetch(apiUrl("/api/github/analyze"), {
@@ -27,7 +29,7 @@ export async function analyzeGithub(
       "Content-Type": "application/json",
       ...authHeader,
     },
-    body: JSON.stringify({ mode, input }),
+    body: JSON.stringify({ mode, input, area }),
   });
 
   if (response.status === 401) throw new Error("LOGIN_REQUIRED");

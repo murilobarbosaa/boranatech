@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
@@ -8,6 +8,7 @@ import { AnalysisError, AnalysisSkeleton } from "@/components/portfolio/Analysis
 import { HowItWorks, WhatYouGet } from "@/components/portfolio/AnalyzerIntro";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
+import NextStepsByArea from "@/components/portfolio/NextStepsByArea";
 import ScoreCard from "@/components/portfolio/ScoreCard";
 import {
   AiSummary,
@@ -15,10 +16,13 @@ import {
   ReadmeSuggestion,
   StrengthsWeaknesses,
 } from "@/components/portfolio/QualitativePanels";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { areasTI } from "@/lib/data";
 import { analyzeGithub } from "@/lib/githubClient";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+import { GENERAL_AREA, isAreaSlug, type AreaSelection } from "@shared/areas";
 import type { AnalysisMode, GithubAnalysisResponse } from "@shared/github/schema";
 
 const ac = getPageAccentUi("violet");
@@ -60,18 +64,33 @@ function coerceSlot(value: unknown): ModeSlot {
   return { input, result };
 }
 
-function loadSlots(): ModeSlots {
-  if (typeof window === "undefined") return emptySlots();
+interface StoredState {
+  slots: ModeSlots;
+  // null = nada valido salvo (ainda nao escolhido nesta sessao).
+  area: AreaSelection | null;
+}
+
+function coerceArea(value: unknown): AreaSelection | null {
+  if (value === GENERAL_AREA) return GENERAL_AREA;
+  if (isAreaSlug(value)) return value;
+  return null;
+}
+
+function loadState(): StoredState {
+  if (typeof window === "undefined") return { slots: emptySlots(), area: null };
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptySlots();
-    const parsed = JSON.parse(raw) as { perfil?: unknown; repo?: unknown };
+    if (!raw) return { slots: emptySlots(), area: null };
+    const parsed = JSON.parse(raw) as { perfil?: unknown; repo?: unknown; area?: unknown };
     return {
-      perfil: coerceSlot(parsed.perfil),
-      repo: coerceSlot(parsed.repo),
+      slots: {
+        perfil: coerceSlot(parsed.perfil),
+        repo: coerceSlot(parsed.repo),
+      },
+      area: coerceArea(parsed.area),
     };
   } catch {
-    return emptySlots();
+    return { slots: emptySlots(), area: null };
   }
 }
 
@@ -120,28 +139,49 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
 
 export default function PortfolioAnalisar() {
   const { isPro } = useSubscription();
+  const { profile } = useAuth();
 
+  const [bootstrap] = useState(loadState);
   const [mode, setMode] = useState<AnalysisMode>("perfil");
-  const [slots, setSlots] = useState<ModeSlots>(() => loadSlots());
+  const [slots, setSlots] = useState<ModeSlots>(bootstrap.slots);
+  // Area e selecao global (vale pros dois modos), nao por modo.
+  const [area, setArea] = useState<AreaSelection>(bootstrap.area ?? GENERAL_AREA);
+  // Se ja havia area salva, ou o usuario escolher, nao adotamos o default do perfil.
+  const areaTouched = useRef(bootstrap.area !== null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Persiste os slots (so input e result de cada modo) no sessionStorage.
-  // Nunca persiste loading nem error, que sao transitorios.
+  // Default da area pelo perfil logado, so se o usuario ainda nao escolheu nada
+  // e nada valido estava salvo. Usa o profile ja carregado, sem fetch novo.
+  useEffect(() => {
+    if (areaTouched.current) return;
+    const fromProfile = profile?.area_interesse;
+    if (fromProfile && isAreaSlug(fromProfile)) {
+      setArea(fromProfile);
+      areaTouched.current = true;
+    }
+  }, [profile]);
+
+  // Persiste slots e area no sessionStorage. Nunca persiste loading nem error.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(slots));
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...slots, area }));
     } catch {
       // storage cheio ou indisponivel: ignora, segue so em memoria.
     }
-  }, [slots]);
+  }, [slots, area]);
 
   const input = slots[mode].input;
   const result = slots[mode].result;
 
   function setInput(value: string) {
     setSlots((prev) => ({ ...prev, [mode]: { ...prev[mode], input: value } }));
+  }
+
+  function changeArea(next: AreaSelection) {
+    areaTouched.current = true;
+    setArea(next);
   }
 
   function changeMode(next: AnalysisMode) {
@@ -159,7 +199,7 @@ export default function PortfolioAnalisar() {
     setError("");
 
     try {
-      const data = await analyzeGithub(activeMode, trimmed);
+      const data = await analyzeGithub(activeMode, trimmed, area);
       setSlots((prev) => ({ ...prev, [activeMode]: { ...prev[activeMode], result: data } }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "ANALYSIS_FAILED");
@@ -188,27 +228,45 @@ export default function PortfolioAnalisar() {
           ) : (
             <div className="space-y-8">
               <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
-                <div className="inline-flex rounded-full border-2 border-slate-950 bg-white p-1 shadow-[3px_3px_0_#0f172a]">
-                  <button
-                    type="button"
-                    onClick={() => changeMode("perfil")}
-                    className={cn(
-                      "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                      mode === "perfil" ? "bg-amber-300 text-slate-950" : "text-slate-600 hover:text-slate-900",
-                    )}
-                  >
-                    Perfil
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => changeMode("repo")}
-                    className={cn(
-                      "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                      mode === "repo" ? "bg-amber-300 text-slate-950" : "text-slate-600 hover:text-slate-900",
-                    )}
-                  >
-                    Repositório
-                  </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="inline-flex rounded-full border-2 border-slate-950 bg-white p-1 shadow-[3px_3px_0_#0f172a]">
+                    <button
+                      type="button"
+                      onClick={() => changeMode("perfil")}
+                      className={cn(
+                        "rounded-full px-5 py-2 text-sm font-black transition-colors",
+                        mode === "perfil" ? "bg-amber-300 text-slate-950" : "text-slate-600 hover:text-slate-900",
+                      )}
+                    >
+                      Perfil
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => changeMode("repo")}
+                      className={cn(
+                        "rounded-full px-5 py-2 text-sm font-black transition-colors",
+                        mode === "repo" ? "bg-amber-300 text-slate-950" : "text-slate-600 hover:text-slate-900",
+                      )}
+                    >
+                      Repositório
+                    </button>
+                  </div>
+
+                  <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                    <span className="hidden sm:inline">Área alvo</span>
+                    <select
+                      value={area}
+                      onChange={(event) => changeArea(event.target.value as AreaSelection)}
+                      className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-violet-200"
+                    >
+                      <option value={GENERAL_AREA}>Geral</option>
+                      {areasTI.map((a) => (
+                        <option key={a.slug} value={a.slug}>
+                          {a.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
                 <p className="mt-4 text-sm font-medium text-slate-600">{MODE_DESCRIPTION[mode]}</p>
@@ -275,6 +333,8 @@ export default function PortfolioAnalisar() {
                   <Improvements melhorias={result.qualitative.melhorias} />
 
                   <ReadmeSuggestion markdown={result.qualitative.readmeSugestao} />
+
+                  <NextStepsByArea area={result.area} />
                 </div>
               ) : null}
             </div>
