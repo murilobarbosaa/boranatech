@@ -1,4 +1,4 @@
-# Fase 2A — Relatório de Teste: resume-render
+# Fase 2A: Relatório de Teste: resume-render
 
 > **Modelo:** `gpt-4o-mini` · **Temperature:** 0.2 · **Rodadas por cenário:** 3 · **Gerado em:** 2026-05-21T20:19:12.671Z
 

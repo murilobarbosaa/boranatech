@@ -470,7 +470,7 @@ export const portfolioGuides = [
   ],
 ];
 
-// IDs são CONTRATO PERMANENTE — usados como chave de persistência por usuário
+// IDs são CONTRATO PERMANENTE, usados como chave de persistência por usuário
 // (tabela user_progress, context = 'portfolio_checklist'). Se o label mudar,
 // o id NUNCA muda; caso contrário, o progresso salvo do usuário se perde.
 export const portfolioChecklist: { id: string; label: string }[] = [
@@ -664,11 +664,11 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "MDN — Design responsivo (português)",
+          title: "MDN: Design responsivo (português)",
           href: "https://developer.mozilla.org/pt-BR/docs/Learn/CSS/CSS_layout/Responsive_Design",
         },
         {
-          title: "web.dev — Fundamentos de design na web",
+          title: "web.dev: Fundamentos de design na web",
           href: "https://web.dev/learn/design/",
         },
         {
@@ -693,15 +693,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "Microsoft — Introdução ao Power Automate (PT-BR)",
+          title: "Microsoft: Introdução ao Power Automate (PT-BR)",
           href: "https://learn.microsoft.com/pt-br/power-platform/power-automate/getting-started",
         },
         {
-          title: "Documentação oficial do Python — Tutorial",
+          title: "Documentação oficial do Python: Tutorial",
           href: "https://docs.python.org/pt-br/3/tutorial/index.html",
         },
         {
-          title: "YouTube — automação iniciante português",
+          title: "YouTube: automação iniciante português",
           href: "https://www.youtube.com/results?search_query=automa%C3%A7%C3%A3o+python+excel+para+iniciantes+portugu%C3%AAs",
         },
       ],
@@ -721,19 +721,19 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "Telegram — Introdução a bots",
+          title: "Telegram: Introdução a bots",
           href: "https://core.telegram.org/bots",
         },
         {
-          title: "Meta — WhatsApp Cloud API overview",
+          title: "Meta: WhatsApp Cloud API overview",
           href: "https://developers.facebook.com/docs/whatsapp/cloud-api/overview",
         },
         {
-          title: "freeCodeCamp (PT-BR) — Bot no Telegram com Python",
+          title: "freeCodeCamp (PT-BR): Bot no Telegram com Python",
           href: "https://www.freecodecamp.org/portuguese/news/como-criar-um-bot-do-telegram-usando-o-python/",
         },
         {
-          title: "YouTube — filtrar só tutoriais em português",
+          title: "YouTube: filtrar só tutoriais em português",
           href: "https://www.youtube.com/results?search_query=bot+whatsapp+telegram+python+portugu%C3%AAs",
         },
       ],
@@ -754,15 +754,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "Google — Centro de ajuda Looker Studio",
+          title: "Google: Centro de ajuda Looker Studio",
           href: "https://support.google.com/looker-studio/",
         },
         {
-          title: "Google — Conectar dados e relatórios",
+          title: "Google: Conectar dados e relatórios",
           href: "https://support.google.com/looker-studio/answer/6299724",
         },
         {
-          title: "YouTube — Looker Studio em português",
+          title: "YouTube: Looker Studio em português",
           href: "https://www.youtube.com/results?search_query=looker+studio+google+data+studio+tutorial+portugu%C3%AAs",
         },
       ],
@@ -783,15 +783,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "MDN — HTML: boas práticas",
+          title: "MDN: HTML: boas práticas",
           href: "https://developer.mozilla.org/pt-BR/docs/Learn/HTML/Introduction_to_HTML/Document_and_website_structure",
         },
         {
-          title: "web.dev — SEO e performance básicos",
+          title: "web.dev: SEO e performance básicos",
           href: "https://web.dev/learn/seo/",
         },
         {
-          title: "YouTube — site profissional portfolio português",
+          title: "YouTube: site profissional portfolio português",
           href: "https://www.youtube.com/results?search_query=site+one+page+portfolio+freelancer+html+css+portugu%C3%AAs",
         },
       ],
@@ -811,15 +811,15 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
       },
       articles: [
         {
-          title: "WordPress — Primeiros passos com temas",
+          title: "WordPress: Primeiros passos com temas",
           href: "https://developer.wordpress.org/themes/getting-started/",
         },
         {
-          title: "WordPress.org (PT-BR) — primeiro site com o editor em blocos",
+          title: "WordPress.org (PT-BR): primeiro site com o editor em blocos",
           href: "https://wordpress.org/documentation/article/new-to-wordpress-where-to-start/",
         },
         {
-          title: "YouTube — manutenção e temas WordPress PT",
+          title: "YouTube: manutenção e temas WordPress PT",
           href: "https://www.youtube.com/results?search_query=wordpress+temas+e+child+theme+curso+portugu%C3%AAs",
         },
       ],

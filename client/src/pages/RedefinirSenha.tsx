@@ -76,7 +76,7 @@ export default function RedefinirSenha() {
     return (
       <Layout>
         <SEO
-          title="Redefinir senha — Bora na Tech?"
+          title="Redefinir senha · Bora na Tech?"
           url="/redefinir-senha"
           noindex
         />
@@ -97,7 +97,7 @@ export default function RedefinirSenha() {
     return (
       <Layout>
         <SEO
-          title="Redefinir senha — Bora na Tech?"
+          title="Redefinir senha · Bora na Tech?"
           url="/redefinir-senha"
           noindex
         />
@@ -142,7 +142,7 @@ export default function RedefinirSenha() {
     return (
       <Layout>
         <SEO
-          title="Redefinir senha — Bora na Tech?"
+          title="Redefinir senha · Bora na Tech?"
           url="/redefinir-senha"
           noindex
         />
@@ -183,7 +183,7 @@ export default function RedefinirSenha() {
   return (
     <Layout>
       <SEO
-        title="Redefinir senha — Bora na Tech?"
+        title="Redefinir senha · Bora na Tech?"
         url="/redefinir-senha"
         noindex
       />

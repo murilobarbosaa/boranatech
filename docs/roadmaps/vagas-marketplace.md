@@ -1,4 +1,4 @@
-# Roadmap — Vagas Marketplace BoraNaTech
+# Roadmap: Vagas Marketplace BoraNaTech
 
 Sistema de vagas multi-source com tier free/Pro, suporte BR e Exterior,
 e canal pra parcerias B2B (acordadas offline, postadas via admin).
@@ -7,7 +7,7 @@ e canal pra parcerias B2B (acordadas offline, postadas via admin).
 
 | Dimensão            | Decisão                                            |
 | ------------------- | -------------------------------------------------- |
-| **Tier BR**         | Free — todos veem                                  |
+| **Tier BR**         | Free, todos veem                                  |
 | **Tier Exterior**   | Pro (premium)                                      |
 | **UI**              | Tabs separadas: "Vagas BR" / "Vagas Exterior Pro"  |
 | **Fontes BR**       | A definir (scraping ou parcerias)                  |
@@ -42,8 +42,8 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 - jooble.ts (API oficial, USA)
 - remoteok.ts (RSS)
 - weworkremotely.ts (RSS)
-- programathor.ts (RSS, BR — investigar)
-- trampos.ts (RSS, BR — investigar)
+- programathor.ts (RSS, BR, investigar)
+- trampos.ts (RSS, BR, investigar)
 - manual.ts (sem ingestion, só admin)
 
 ### UI (/estagio aba Vagas)
@@ -54,7 +54,7 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 
 ## Fases de execução
 
-### Fase 1 — Foundation (~3-4h)
+### Fase 1: Foundation (~3-4h)
 
 - Migration colunas em external_jobs
 - Refactor syncJobs.ts (country, source, is_international)
@@ -64,34 +64,34 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 - Gate Pro na sub-tab Exterior
 - Copy adaptada
 
-### Fase 2 — Jooble exterior (~1h)
+### Fase 2: Jooble exterior (~1h)
 
 - Migration reabilitar cron sync-jobs
 - Refactor syncJobs.ts: query sem location, marcar is_international/is_pro/country='US'
 - Trigger manual + validar
 - QA
 
-### Fase 3 — Admin + parcerias (~2-3h)
+### Fase 3: Admin + parcerias (~2-3h)
 
 - Admin UI: form com is_partner, partner_name, expires_at
 - Validação editorial (parceira precisa logo)
 - Badge "Parceria oficial" UI pública
 - Cron expire-partner-jobs diário
 
-### Fase 4 — RemoteOK + WeWorkRemotely (~2-3h)
+### Fase 4: RemoteOK + WeWorkRemotely (~2-3h)
 
 - Source remoteok.ts (RSS)
 - Source weworkremotely.ts (RSS)
 - Cron unificado + dedupe global
 - QA
 
-### Fase 5 — Fontes BR (~3-5h, exploratório)
+### Fase 5: Fontes BR (~3-5h, exploratório)
 
 - Investigação legal de fontes (Programathor, Trampos, governo)
 - Implementar 1-2 fontes aprovadas
 - Cron BR independente
 
-### Fase 6 — Polimento (sob demanda)
+### Fase 6: Polimento (sob demanda)
 
 - Filtros avançados
 - Recomendação personalizada
@@ -121,10 +121,10 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 1. Mínimo de vagas pra lançar Exterior Pro? (20? 50? 100?)
 2. Salário exterior em BRL ou moeda original?
 3. Aplicar diretamente ou redirecionar pra fonte?
-4. Logo de parceiro — como obter?
+4. Logo de parceiro, como obter?
 5. Prazo padrão de parceria? (90 dias?)
 6. Categorização reusa schema atual ou expande?
 
 ## Próximo passo
 
-Começar pela Fase 1 (foundation) — desbloqueia todas as outras.
+Começar pela Fase 1 (foundation), desbloqueia todas as outras.

@@ -28,7 +28,7 @@ export default function Mentorias() {
             <p className="mt-3 text-base font-medium leading-relaxed text-slate-700">
               Em breve você poderá se conectar a mentorias alinhadas ao jeito
               BORA NA TECH?: linguagem acessível, foco em quem está entrando na
-              área e conversas que realmente destravam o próximo passo — sem
+              área e conversas que realmente destravam o próximo passo, sem
               promessa vazia.
             </p>
             <div
@@ -46,7 +46,7 @@ export default function Mentorias() {
                     Quer ser avisada?
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-600">
-                    Fique de olho nas novidades da plataforma — avisaremos por
+                    Fique de olho nas novidades da plataforma. Avisaremos por
                     aqui quando as mentorias abrirem.
                   </p>
                 </div>

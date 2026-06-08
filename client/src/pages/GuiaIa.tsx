@@ -35,7 +35,7 @@ export default function GuiaIa() {
   return (
     <Layout>
       <SEO
-        title="Guia de IA para iniciantes — Quais IAs usar e como"
+        title="Guia de IA para iniciantes: Quais IAs usar e como"
         description="Entenda quais inteligências artificiais existem, pra que serve cada uma, como usar bem e dicas de prompt para estudar e trabalhar em tecnologia."
         keywords={[
           "guia de ia",

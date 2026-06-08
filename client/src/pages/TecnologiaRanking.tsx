@@ -89,7 +89,7 @@ export default function TecnologiaRanking() {
               .
             </p>
             <p className="mt-3 text-sm font-medium text-slate-700">
-              Importante: indicadores públicos não medem vagas no Brasil — são
+              Importante: indicadores públicos não medem vagas no Brasil. São
               contexto para explorar tecnologias.
             </p>
           </div>
