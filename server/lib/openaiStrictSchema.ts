@@ -117,11 +117,15 @@ function strictify(node: JsonNode): JsonNode {
   return out;
 }
 
-export function toOpenAIStrictSchema(zodSchema: z.ZodTypeAny): Record<string, unknown> {
+export function toOpenAIStrictSchema(
+  zodSchema: z.ZodTypeAny,
+): Record<string, unknown> {
   const raw = z.toJSONSchema(zodSchema);
   const strict = strictify(raw);
   if (!isPlainObject(strict)) {
-    throw new Error("toOpenAIStrictSchema: resultado inesperado, schema raiz não é objeto");
+    throw new Error(
+      "toOpenAIStrictSchema: resultado inesperado, schema raiz não é objeto",
+    );
   }
   return strict;
 }

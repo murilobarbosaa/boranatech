@@ -88,7 +88,9 @@ function printAssistant(text: string) {
   stdout.write("\n" + C.cyan(C.bold("Natechinho:")) + "\n");
   stdout.write(text.trimEnd() + "\n");
   if (hasMarker) {
-    stdout.write("\n" + C.green(C.bold("(marcador [[CURRICULO_READY]] emitido)")) + "\n");
+    stdout.write(
+      "\n" + C.green(C.bold("(marcador [[CURRICULO_READY]] emitido)")) + "\n",
+    );
   }
   stdout.write("\n");
 }
@@ -101,7 +103,11 @@ async function main() {
   const rl = createInterface({ input: stdin, output: stdout });
   const history: ChatMessage[] = [];
 
-  stdout.write(C.dim(`▶ resume-builder REPL · modelo=${MODEL} · temperature=${TEMPERATURE}\n`));
+  stdout.write(
+    C.dim(
+      `▶ resume-builder REPL · modelo=${MODEL} · temperature=${TEMPERATURE}\n`,
+    ),
+  );
   printHelp();
   history.push({ role: "assistant", content: GREETING });
   printAssistant(GREETING);
@@ -130,7 +136,11 @@ async function main() {
       stdout.write(C.dim(`(${history.length} mensagens no histórico)\n`));
       for (const m of history) {
         const who = m.role === "user" ? "tu" : "Natechinho";
-        stdout.write(C.dim(`[${who}] ${m.content.slice(0, 120).replace(/\n/g, " ")}${m.content.length > 120 ? "..." : ""}\n`));
+        stdout.write(
+          C.dim(
+            `[${who}] ${m.content.slice(0, 120).replace(/\n/g, " ")}${m.content.length > 120 ? "..." : ""}\n`,
+          ),
+        );
       }
       continue;
     }
@@ -142,7 +152,9 @@ async function main() {
     try {
       reply = await callOpenAI(history);
     } catch (err) {
-      stdout.write(C.red(`Erro: ${err instanceof Error ? err.message : String(err)}\n`));
+      stdout.write(
+        C.red(`Erro: ${err instanceof Error ? err.message : String(err)}\n`),
+      );
       history.pop();
       continue;
     }

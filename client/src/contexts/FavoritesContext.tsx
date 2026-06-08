@@ -37,7 +37,9 @@ export interface FavoritesContextValue {
   refresh: () => Promise<void>;
 }
 
-export const FavoritesContext = createContext<FavoritesContextValue | null>(null);
+export const FavoritesContext = createContext<FavoritesContextValue | null>(
+  null,
+);
 
 const LEGACY_FAVORITES_KEY = "bora-na-tech:favorites";
 
@@ -225,7 +227,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         if (queued) {
           nextLoadFavoriteRef.current = null;
           const key = favoriteKey({ id: queued.itemKey, type: queued.type });
-          const alreadyHas = nextFavorites.some((fav) => favoriteKey(fav) === key);
+          const alreadyHas = nextFavorites.some(
+            (fav) => favoriteKey(fav) === key,
+          );
           if (!alreadyHas) {
             const optimistic: FavoriteItem = {
               id: queued.itemKey,
@@ -253,7 +257,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
                 setFavorites((prev) =>
                   prev.filter((fav) => favoriteKey(fav) !== key),
                 );
-                toast.error("Não foi possível salvar nos favoritos. Tente novamente.");
+                toast.error(
+                  "Não foi possível salvar nos favoritos. Tente novamente.",
+                );
               });
           }
         }

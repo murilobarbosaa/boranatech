@@ -28,7 +28,9 @@ export function useBadges(): UseBadgesResult {
       const result = await getBadgesList();
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao carregar conquistas");
+      setError(
+        err instanceof Error ? err.message : "Erro ao carregar conquistas",
+      );
     } finally {
       setIsLoading(false);
     }

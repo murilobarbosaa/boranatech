@@ -1,5 +1,14 @@
 import { useRoute, Link } from "wouter";
-import { ArrowLeft, ArrowRight, Briefcase, Construction, Lightbulb, Map, Sparkles, Wrench } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  Construction,
+  Lightbulb,
+  Map,
+  Sparkles,
+  Wrench,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
@@ -20,7 +29,13 @@ interface ZoneCardProps {
   className?: string;
 }
 
-function ZoneCard({ title, icon: Icon, accentTextClass, children, className }: ZoneCardProps) {
+function ZoneCard({
+  title,
+  icon: Icon,
+  accentTextClass,
+  children,
+  className,
+}: ZoneCardProps) {
   return (
     <section className={cn(CARD_BASE, className)}>
       <header className="mb-5 flex items-center gap-2.5">
@@ -30,7 +45,9 @@ function ZoneCard({ title, icon: Icon, accentTextClass, children, className }: Z
             strokeWidth={2.5}
           />
         ) : null}
-        <h2 className="font-display text-xl font-black text-slate-950 md:text-2xl">{title}</h2>
+        <h2 className="font-display text-xl font-black text-slate-950 md:text-2xl">
+          {title}
+        </h2>
       </header>
       {children}
     </section>
@@ -41,7 +58,10 @@ function BulletList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-2.5">
       {items.map((item) => (
-        <li key={item} className="flex gap-2.5 text-sm leading-relaxed text-slate-700">
+        <li
+          key={item}
+          className="flex gap-2.5 text-sm leading-relaxed text-slate-700"
+        >
           <span
             className="mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400"
             aria-hidden
@@ -53,11 +73,20 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
-function NumberedList({ items, accentBg }: { items: string[]; accentBg: string }) {
+function NumberedList({
+  items,
+  accentBg,
+}: {
+  items: string[];
+  accentBg: string;
+}) {
   return (
     <ol className="space-y-3">
       {items.map((item, idx) => (
-        <li key={item} className="flex gap-3 text-sm leading-relaxed text-slate-700">
+        <li
+          key={item}
+          className="flex gap-3 text-sm leading-relaxed text-slate-700"
+        >
           <span
             className={cn(
               "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 text-xs font-black text-slate-950",
@@ -121,7 +150,11 @@ interface SubAreaStatsRowProps {
   iconMutedClass: string;
 }
 
-function SubAreaStatsRow({ subarea, fillClass, iconMutedClass }: SubAreaStatsRowProps) {
+function SubAreaStatsRow({
+  subarea,
+  fillClass,
+  iconMutedClass,
+}: SubAreaStatsRowProps) {
   const hasDificuldade = typeof subarea.dificuldade === "number";
   const hasSalario = !!subarea.faixaSalarial;
   const hasCargos = !!subarea.cargos && subarea.cargos.length > 0;
@@ -133,31 +166,57 @@ function SubAreaStatsRow({ subarea, fillClass, iconMutedClass }: SubAreaStatsRow
       <div className="grid gap-6 md:grid-cols-3">
         {hasDificuldade ? (
           <div>
-            <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
+            <p
+              className={cn(
+                "mb-2 text-xs font-black uppercase tracking-[0.18em]",
+                iconMutedClass,
+              )}
+            >
               Dificuldade
             </p>
-            <DifficultyDots level={subarea.dificuldade as number} fillClass={fillClass} />
+            <DifficultyDots
+              level={subarea.dificuldade as number}
+              fillClass={fillClass}
+            />
           </div>
         ) : null}
         {hasSalario ? (
-          <div className={cn(hasDificuldade && "md:border-l-2 md:border-slate-100 md:pl-6")}>
-            <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
+          <div
+            className={cn(
+              hasDificuldade && "md:border-l-2 md:border-slate-100 md:pl-6",
+            )}
+          >
+            <p
+              className={cn(
+                "mb-2 text-xs font-black uppercase tracking-[0.18em]",
+                iconMutedClass,
+              )}
+            >
               Faixa salarial
             </p>
-            <p className="text-sm font-bold leading-snug text-slate-900">{subarea.faixaSalarial}</p>
+            <p className="text-sm font-bold leading-snug text-slate-900">
+              {subarea.faixaSalarial}
+            </p>
           </div>
         ) : null}
         {hasCargos ? (
           <div
             className={cn(
-              (hasDificuldade || hasSalario) && "md:border-l-2 md:border-slate-100 md:pl-6",
+              (hasDificuldade || hasSalario) &&
+                "md:border-l-2 md:border-slate-100 md:pl-6",
             )}
           >
-            <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
+            <p
+              className={cn(
+                "mb-2 text-xs font-black uppercase tracking-[0.18em]",
+                iconMutedClass,
+              )}
+            >
               Cargos típicos
             </p>
             <p className="text-sm font-bold leading-snug text-slate-900">
-              {subarea.cargos!.length} {subarea.cargos!.length === 1 ? "cargo" : "cargos"}
+              {subarea.cargos!.length}{" "}
+              {subarea.cargos!.length === 1 ? "cargo" : "cargos"}
             </p>
           </div>
         ) : null}
@@ -176,7 +235,11 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
   const accent = accentForAreaSlug(area.slug);
   const ac = getPageAccentUi(accent);
 
-  const hasZona1 = !!(subarea.descricaoCompleta || subarea.diferencasDaAreaMae || subarea.oQueFaz);
+  const hasZona1 = !!(
+    subarea.descricaoCompleta ||
+    subarea.diferencasDaAreaMae ||
+    subarea.oQueFaz
+  );
   const hasHabilidades = !!subarea.habilidadesEspecificas?.length;
   const hasFerramentas = !!subarea.ferramentasEspecificas?.length;
   const hasZona2 = hasHabilidades || hasFerramentas;
@@ -240,7 +303,9 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
                 <p className="mb-1.5 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
                   No dia a dia
                 </p>
-                <p className="text-sm leading-relaxed text-slate-700">{subarea.oQueFaz}</p>
+                <p className="text-sm leading-relaxed text-slate-700">
+                  {subarea.oQueFaz}
+                </p>
               </div>
             ) : null}
           </ZoneCard>
@@ -249,12 +314,20 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
         {hasZona2 ? (
           <div className="mb-8 grid gap-6 lg:grid-cols-2">
             {hasHabilidades ? (
-              <ZoneCard title="Habilidades específicas" icon={Sparkles} accentTextClass={ac.iconMuted}>
+              <ZoneCard
+                title="Habilidades específicas"
+                icon={Sparkles}
+                accentTextClass={ac.iconMuted}
+              >
                 <BulletList items={subarea.habilidadesEspecificas!} />
               </ZoneCard>
             ) : null}
             {hasFerramentas ? (
-              <ZoneCard title="Ferramentas específicas" icon={Wrench} accentTextClass={ac.iconMuted}>
+              <ZoneCard
+                title="Ferramentas específicas"
+                icon={Wrench}
+                accentTextClass={ac.iconMuted}
+              >
                 <BulletList items={subarea.ferramentasEspecificas!} />
               </ZoneCard>
             ) : null}
@@ -270,16 +343,27 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
                 accentTextClass={ac.iconMuted}
                 className={hasCursos || hasProjetos ? "" : "lg:col-span-2"}
               >
-                <NumberedList items={subarea.roadmapEspecifico!} accentBg={ac.panelSoft} />
+                <NumberedList
+                  items={subarea.roadmapEspecifico!}
+                  accentBg={ac.panelSoft}
+                />
               </ZoneCard>
             ) : null}
             {hasCursos ? (
-              <ZoneCard title="Cursos gratuitos" icon={Sparkles} accentTextClass={ac.iconMuted}>
+              <ZoneCard
+                title="Cursos gratuitos"
+                icon={Sparkles}
+                accentTextClass={ac.iconMuted}
+              >
                 <BulletList items={subarea.cursosGratuitos!} />
               </ZoneCard>
             ) : null}
             {hasProjetos ? (
-              <ZoneCard title="Projetos pra portfólio" icon={Wrench} accentTextClass={ac.iconMuted}>
+              <ZoneCard
+                title="Projetos pra portfólio"
+                icon={Wrench}
+                accentTextClass={ac.iconMuted}
+              >
                 <BulletList items={subarea.projetosSugeridos!} />
               </ZoneCard>
             ) : null}
@@ -289,7 +373,11 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
         {hasZona4 ? (
           <div className="mb-10 grid gap-6 lg:grid-cols-2">
             {hasCargos ? (
-              <ZoneCard title="Cargos típicos" icon={Briefcase} accentTextClass={ac.iconMuted}>
+              <ZoneCard
+                title="Cargos típicos"
+                icon={Briefcase}
+                accentTextClass={ac.iconMuted}
+              >
                 <div className="flex flex-wrap gap-2">
                   {subarea.cargos!.map((cargo) => (
                     <span
@@ -308,7 +396,11 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
               </ZoneCard>
             ) : null}
             {hasSalario ? (
-              <ZoneCard title="Faixa salarial" icon={Briefcase} accentTextClass={ac.iconMuted}>
+              <ZoneCard
+                title="Faixa salarial"
+                icon={Briefcase}
+                accentTextClass={ac.iconMuted}
+              >
                 <p className="text-lg font-black leading-snug text-slate-950 md:text-xl">
                   {subarea.faixaSalarial}
                 </p>
@@ -321,7 +413,9 @@ function FullSubArea({ area, subarea, parentSlug }: FullSubAreaProps) {
                 accentTextClass={ac.iconMuted}
                 className={hasCargos && hasSalario ? "lg:col-span-2" : ""}
               >
-                <p className="text-sm leading-relaxed text-slate-700">{subarea.dicasIniciais}</p>
+                <p className="text-sm leading-relaxed text-slate-700">
+                  {subarea.dicasIniciais}
+                </p>
               </ZoneCard>
             ) : null}
           </div>
@@ -345,7 +439,11 @@ interface PlaceholderSubAreaProps {
   parentSlug: string;
 }
 
-function PlaceholderSubArea({ area, subarea, parentSlug }: PlaceholderSubAreaProps) {
+function PlaceholderSubArea({
+  area,
+  subarea,
+  parentSlug,
+}: PlaceholderSubAreaProps) {
   const accent = accentForAreaSlug(area.slug);
   const ac = getPageAccentUi(accent);
 
@@ -372,9 +470,10 @@ function PlaceholderSubArea({ area, subarea, parentSlug }: PlaceholderSubAreaPro
 
           <p className="mb-7 text-base leading-relaxed text-slate-700">
             Estamos preparando conteúdo completo sobre{" "}
-            <span className="font-bold text-slate-950">{subarea.nome}</span> como subárea de{" "}
-            <span className="font-bold text-slate-950">{area.nome}</span>. Por enquanto, visite a
-            área principal pra entender o contexto.
+            <span className="font-bold text-slate-950">{subarea.nome}</span>{" "}
+            como subárea de{" "}
+            <span className="font-bold text-slate-950">{area.nome}</span>. Por
+            enquanto, visite a área principal pra entender o contexto.
           </p>
 
           <Link
@@ -435,9 +534,17 @@ export default function SubAreaDetalhe() {
         url={`/areas/${parentSlug}/${subareaSlug}`}
       />
       {hasContent ? (
-        <FullSubArea area={parentArea} subarea={subarea} parentSlug={parentSlug} />
+        <FullSubArea
+          area={parentArea}
+          subarea={subarea}
+          parentSlug={parentSlug}
+        />
       ) : (
-        <PlaceholderSubArea area={parentArea} subarea={subarea} parentSlug={parentSlug} />
+        <PlaceholderSubArea
+          area={parentArea}
+          subarea={subarea}
+          parentSlug={parentSlug}
+        />
       )}
     </Layout>
   );

@@ -1,71 +1,424 @@
 export const interviewSteps = [
-  ["Triagem de currículo (ATS)", "Aderência, palavras-chave e clareza.", "Adapte o currículo para a vaga e destaque projetos.", "Currículo genérico sem links.", "Use termos da vaga sem inventar experiência."],
-  ["Entrevista de RH / cultura fit", "Comunicação, motivação e contexto.", "Treine sua história e exemplos reais.", "Responder de forma vaga.", "Use situação, ação e resultado."],
-  ["Teste técnico / desafio de código", "Raciocínio e entrega.", "Leia o enunciado, documente decisões e entregue algo funcional.", "Tentar fazer complexo demais.", "Explique trade-offs no README."],
-  ["Entrevista técnica com dev", "Fundamentos e capacidade de explicar.", "Revise projetos e bases da sua stack.", "Chutar respostas.", "Diga como investigaria se não souber."],
-  ["Entrevista com gestor", "Autonomia e encaixe no time.", "Pergunte sobre expectativas e rotina.", "Não fazer perguntas.", "Mostre vontade de aprender com clareza."],
-  ["Proposta e negociação", "Alinhamento de salário e disponibilidade.", "Pesquise faixas e saiba seu mínimo.", "Aceitar sem entender benefícios.", "Negocie com dados e calma."],
-].map(([title, evaluate, prepare, mistakes, tip]) => ({ title, evaluate, prepare, mistakes, tip }));
+  [
+    "Triagem de currículo (ATS)",
+    "Aderência, palavras-chave e clareza.",
+    "Adapte o currículo para a vaga e destaque projetos.",
+    "Currículo genérico sem links.",
+    "Use termos da vaga sem inventar experiência.",
+  ],
+  [
+    "Entrevista de RH / cultura fit",
+    "Comunicação, motivação e contexto.",
+    "Treine sua história e exemplos reais.",
+    "Responder de forma vaga.",
+    "Use situação, ação e resultado.",
+  ],
+  [
+    "Teste técnico / desafio de código",
+    "Raciocínio e entrega.",
+    "Leia o enunciado, documente decisões e entregue algo funcional.",
+    "Tentar fazer complexo demais.",
+    "Explique trade-offs no README.",
+  ],
+  [
+    "Entrevista técnica com dev",
+    "Fundamentos e capacidade de explicar.",
+    "Revise projetos e bases da sua stack.",
+    "Chutar respostas.",
+    "Diga como investigaria se não souber.",
+  ],
+  [
+    "Entrevista com gestor",
+    "Autonomia e encaixe no time.",
+    "Pergunte sobre expectativas e rotina.",
+    "Não fazer perguntas.",
+    "Mostre vontade de aprender com clareza.",
+  ],
+  [
+    "Proposta e negociação",
+    "Alinhamento de salário e disponibilidade.",
+    "Pesquise faixas e saiba seu mínimo.",
+    "Aceitar sem entender benefícios.",
+    "Negocie com dados e calma.",
+  ],
+].map(([title, evaluate, prepare, mistakes, tip]) => ({
+  title,
+  evaluate,
+  prepare,
+  mistakes,
+  tip,
+}));
 
 export const interviewQuestions = [
-  { area: "Front-end", type: "Técnica", level: "Júnior", question: "Explique a diferença entre props e state no React.", good: "Props vêm do componente pai; state pertence ao componente e muda com interação.", bad: "São a mesma coisa." },
-  { area: "Back-end", type: "Técnica", level: "Júnior", question: "O que é uma API REST?", good: "É uma forma de expor recursos via HTTP usando métodos como GET, POST, PUT e DELETE.", bad: "É qualquer backend." },
-  { area: "Dados", type: "Técnica", level: "Júnior", question: "Como você trataria dados faltantes?", good: "Depende do contexto: remover, preencher, sinalizar ou investigar a origem.", bad: "Sempre coloco zero." },
-  { area: "Geral", type: "Comportamental", level: "Estágio", question: "Conte sobre um desafio que você teve aprendendo tecnologia.", good: "Descreve contexto, ação, dificuldade e aprendizado.", bad: "Nunca tive dificuldade." },
-  { area: "Geral", type: "Lógica", level: "Júnior", question: "Como investigaria um bug que só acontece em produção?", good: "Reproduzir, olhar logs, comparar ambientes e isolar hipóteses.", bad: "Tentaria mudar coisas até funcionar." },
-  { area: "Front-end", type: "Técnica", level: "Estágio", question: "O que é responsividade e como você testa uma interface responsiva?", good: "Explica adaptação a diferentes telas, uso de media queries/flex/grid e testes no navegador ou dispositivo real.", bad: "É quando o site fica bonito no meu computador." },
-  { area: "Front-end", type: "Técnica", level: "Trainee", question: "Como você organizaria uma pequena entrega front-end do início ao fim?", good: "Quebraria a demanda em layout, estados, consumo de dados, acessibilidade, testes manuais e revisão com o time.", bad: "Faria a tela direto e esperaria alguém testar." },
-  { area: "Front-end", type: "Técnica", level: "Júnior", question: "Qual a diferença entre HTML semântico e HTML comum?", good: "HTML semântico usa tags com significado, como header, main, section e button, melhorando acessibilidade e SEO.", bad: "É só usar div com nomes diferentes." },
-  { area: "Front-end", type: "Técnica", level: "Júnior", question: "Como você consumiria uma API em uma tela React?", good: "Usaria estado para dados e loading, efeito para buscar, tratamento de erro e renderização condicional.", bad: "Colocaria o fetch direto no HTML." },
-  { area: "Front-end", type: "Técnica", level: "Pleno", question: "O que pode causar re-renderizações desnecessárias em React?", good: "Mudanças de estado amplas, props recriadas, funções inline em componentes grandes e falta de memoização quando há custo real.", bad: "React sempre renderiza tudo e não tem como melhorar." },
-  { area: "Back-end", type: "Técnica", level: "Estágio", question: "O que é autenticação e o que é autorização?", good: "Autenticação confirma quem é a pessoa; autorização define o que ela pode acessar ou fazer.", bad: "As duas significam login." },
-  { area: "Back-end", type: "Técnica", level: "Trainee", question: "Como você documentaria uma API para outra pessoa do time usar?", good: "Descreveria rotas, métodos, payloads, respostas, erros comuns, autenticação e exemplos de request.", bad: "Mandaria o código e deixaria a pessoa descobrir." },
-  { area: "Back-end", type: "Técnica", level: "Júnior", question: "Qual a diferença entre banco SQL e NoSQL?", good: "SQL usa tabelas e relações estruturadas; NoSQL é mais flexível e pode usar documentos, chave-valor ou grafos.", bad: "SQL é antigo e NoSQL é sempre melhor." },
-  { area: "Back-end", type: "Técnica", level: "Júnior", question: "Como você lidaria com erros em uma API?", good: "Validaria entrada, retornaria status HTTP adequado, mensagem clara, logs e evitaria expor detalhes sensíveis.", bad: "Retornaria erro 500 para tudo." },
-  { area: "Back-end", type: "Técnica", level: "Pleno", question: "Quando você usaria cache em uma aplicação?", good: "Usaria para dados lidos com frequência e pouco mutáveis, medindo impacto e definindo invalidação.", bad: "Usaria cache em tudo para ficar rápido." },
-  { area: "Dados", type: "Técnica", level: "Estágio", question: "Qual a diferença entre média e mediana?", good: "Média soma valores e divide pela quantidade; mediana é o valor central e sofre menos com extremos.", bad: "São duas formas iguais de calcular resultado." },
-  { area: "Dados", type: "Técnica", level: "Trainee", question: "Como você validaria se um dashboard está respondendo à pergunta certa?", good: "Confirmaria a pergunta de negócio, métricas, fonte dos dados, filtros, público e decisão esperada.", bad: "Colocaria muitos gráficos para parecer completo." },
-  { area: "Dados", type: "Técnica", level: "Júnior", question: "Como você explicaria um insight para uma pessoa não técnica?", good: "Começaria pela pergunta de negócio, mostraria o dado principal, impacto e recomendação prática.", bad: "Mostraria todos os gráficos e deixaria a pessoa interpretar." },
-  { area: "Dados", type: "Técnica", level: "Júnior", question: "O que é uma query SQL com JOIN?", good: "É uma consulta que combina dados de tabelas relacionadas usando uma chave em comum.", bad: "É uma consulta que junta qualquer arquivo." },
-  { area: "QA", type: "Técnica", level: "Estágio", question: "O que deve ter em um bom bug report?", good: "Título claro, ambiente, passos para reproduzir, resultado esperado, resultado atual, evidências e impacto.", bad: "Só escrever que está quebrado." },
-  { area: "QA", type: "Técnica", level: "Júnior", question: "Qual a diferença entre teste manual e teste automatizado?", good: "Manual é executado por uma pessoa; automatizado usa scripts para repetir cenários com rapidez e consistência.", bad: "Teste automatizado substitui todo teste manual." },
-  { area: "DevOps", type: "Técnica", level: "Júnior", question: "O que é CI/CD?", good: "Integração e entrega contínua para testar, construir e publicar mudanças com mais segurança.", bad: "É só uma ferramenta para subir projeto." },
-  { area: "UX/UI", type: "Técnica", level: "Júnior", question: "Como você validaria se uma tela está fácil de usar?", good: "Observaria usuários, faria teste de usabilidade, analisaria tarefas, dúvidas e pontos de fricção.", bad: "Se eu achei bonita, está fácil." },
-  { area: "Geral", type: "Comportamental", level: "Estágio", question: "Por que você quer trabalhar com tecnologia?", good: "Conecta interesse real, aprendizado, projetos e o tipo de problema que quer resolver.", bad: "Porque paga bem." },
-  { area: "Geral", type: "Comportamental", level: "Estágio", question: "Como você organiza seus estudos?", good: "Mostra rotina, metas pequenas, prática com projetos, revisão e ajuste quando algo não funciona.", bad: "Estudo quando dá vontade." },
-  { area: "Geral", type: "Comportamental", level: "Trainee", question: "Por que você se interessou por um programa de trainee em tecnologia?", good: "Conecta aprendizado acelerado, rotação por áreas, visão de negócio e vontade de crescer com feedback.", bad: "Porque parece mais fácil que uma vaga normal." },
-  { area: "Geral", type: "Comportamental", level: "Júnior", question: "Conte sobre uma vez em que recebeu feedback.", good: "Explica o feedback, como reagiu, o que mudou e qual foi o resultado.", bad: "Não gosto de feedback porque atrapalha." },
-  { area: "Geral", type: "Comportamental", level: "Júnior", question: "Como você age quando não sabe resolver uma tarefa?", good: "Pesquisa, testa hipóteses, documenta tentativas e pede ajuda com contexto claro.", bad: "Espero alguém me dizer o que fazer." },
-  { area: "Geral", type: "Comportamental", level: "Júnior", question: "Fale sobre um projeto do seu portfólio.", good: "Apresenta problema, tecnologias, decisões, dificuldades, resultado e aprendizados.", bad: "Só lista tecnologias usadas." },
-  { area: "Geral", type: "Comportamental", level: "Pleno", question: "Como você prioriza tarefas quando tudo parece urgente?", good: "Alinha impacto, prazo, risco, dependências e comunica trade-offs para o time.", bad: "Faço tudo ao mesmo tempo." },
-  { area: "Geral", type: "Lógica", level: "Estágio", question: "Como você descobriria por que uma página está lenta?", good: "Mediria carregamento, olharia rede, console, tamanho de assets e isolaria mudanças recentes.", bad: "Colocaria outro framework." },
-  { area: "Geral", type: "Lógica", level: "Júnior", question: "Como você explicaria a solução de um problema antes de codar?", good: "Quebraria em entradas, saídas, regras, casos de borda e passos principais.", bad: "Começaria codando para ver no que dá." },
-  { area: "Geral", type: "Lógica", level: "Júnior", question: "Como encontrar valores duplicados em uma lista?", good: "Percorreria a lista usando uma estrutura auxiliar como Set ou mapa de contagem.", bad: "Compararia manualmente olhando item por item." },
-  { area: "Geral", type: "Lógica", level: "Júnior", question: "Como você estimaria o tempo de uma tarefa desconhecida?", good: "Dividiria em partes, identificaria riscos, faria uma investigação curta e comunicaria margem de incerteza.", bad: "Chutaria um prazo para parecer confiante." },
-  { area: "Geral", type: "Lógica", level: "Pleno", question: "Como decidir entre duas soluções técnicas parecidas?", good: "Compararia simplicidade, manutenção, performance, risco, custo, prazo e alinhamento com o time.", bad: "Escolheria a tecnologia mais nova." },
+  {
+    area: "Front-end",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Explique a diferença entre props e state no React.",
+    good: "Props vêm do componente pai; state pertence ao componente e muda com interação.",
+    bad: "São a mesma coisa.",
+  },
+  {
+    area: "Back-end",
+    type: "Técnica",
+    level: "Júnior",
+    question: "O que é uma API REST?",
+    good: "É uma forma de expor recursos via HTTP usando métodos como GET, POST, PUT e DELETE.",
+    bad: "É qualquer backend.",
+  },
+  {
+    area: "Dados",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Como você trataria dados faltantes?",
+    good: "Depende do contexto: remover, preencher, sinalizar ou investigar a origem.",
+    bad: "Sempre coloco zero.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Estágio",
+    question: "Conte sobre um desafio que você teve aprendendo tecnologia.",
+    good: "Descreve contexto, ação, dificuldade e aprendizado.",
+    bad: "Nunca tive dificuldade.",
+  },
+  {
+    area: "Geral",
+    type: "Lógica",
+    level: "Júnior",
+    question: "Como investigaria um bug que só acontece em produção?",
+    good: "Reproduzir, olhar logs, comparar ambientes e isolar hipóteses.",
+    bad: "Tentaria mudar coisas até funcionar.",
+  },
+  {
+    area: "Front-end",
+    type: "Técnica",
+    level: "Estágio",
+    question:
+      "O que é responsividade e como você testa uma interface responsiva?",
+    good: "Explica adaptação a diferentes telas, uso de media queries/flex/grid e testes no navegador ou dispositivo real.",
+    bad: "É quando o site fica bonito no meu computador.",
+  },
+  {
+    area: "Front-end",
+    type: "Técnica",
+    level: "Trainee",
+    question:
+      "Como você organizaria uma pequena entrega front-end do início ao fim?",
+    good: "Quebraria a demanda em layout, estados, consumo de dados, acessibilidade, testes manuais e revisão com o time.",
+    bad: "Faria a tela direto e esperaria alguém testar.",
+  },
+  {
+    area: "Front-end",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Qual a diferença entre HTML semântico e HTML comum?",
+    good: "HTML semântico usa tags com significado, como header, main, section e button, melhorando acessibilidade e SEO.",
+    bad: "É só usar div com nomes diferentes.",
+  },
+  {
+    area: "Front-end",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Como você consumiria uma API em uma tela React?",
+    good: "Usaria estado para dados e loading, efeito para buscar, tratamento de erro e renderização condicional.",
+    bad: "Colocaria o fetch direto no HTML.",
+  },
+  {
+    area: "Front-end",
+    type: "Técnica",
+    level: "Pleno",
+    question: "O que pode causar re-renderizações desnecessárias em React?",
+    good: "Mudanças de estado amplas, props recriadas, funções inline em componentes grandes e falta de memoização quando há custo real.",
+    bad: "React sempre renderiza tudo e não tem como melhorar.",
+  },
+  {
+    area: "Back-end",
+    type: "Técnica",
+    level: "Estágio",
+    question: "O que é autenticação e o que é autorização?",
+    good: "Autenticação confirma quem é a pessoa; autorização define o que ela pode acessar ou fazer.",
+    bad: "As duas significam login.",
+  },
+  {
+    area: "Back-end",
+    type: "Técnica",
+    level: "Trainee",
+    question: "Como você documentaria uma API para outra pessoa do time usar?",
+    good: "Descreveria rotas, métodos, payloads, respostas, erros comuns, autenticação e exemplos de request.",
+    bad: "Mandaria o código e deixaria a pessoa descobrir.",
+  },
+  {
+    area: "Back-end",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Qual a diferença entre banco SQL e NoSQL?",
+    good: "SQL usa tabelas e relações estruturadas; NoSQL é mais flexível e pode usar documentos, chave-valor ou grafos.",
+    bad: "SQL é antigo e NoSQL é sempre melhor.",
+  },
+  {
+    area: "Back-end",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Como você lidaria com erros em uma API?",
+    good: "Validaria entrada, retornaria status HTTP adequado, mensagem clara, logs e evitaria expor detalhes sensíveis.",
+    bad: "Retornaria erro 500 para tudo.",
+  },
+  {
+    area: "Back-end",
+    type: "Técnica",
+    level: "Pleno",
+    question: "Quando você usaria cache em uma aplicação?",
+    good: "Usaria para dados lidos com frequência e pouco mutáveis, medindo impacto e definindo invalidação.",
+    bad: "Usaria cache em tudo para ficar rápido.",
+  },
+  {
+    area: "Dados",
+    type: "Técnica",
+    level: "Estágio",
+    question: "Qual a diferença entre média e mediana?",
+    good: "Média soma valores e divide pela quantidade; mediana é o valor central e sofre menos com extremos.",
+    bad: "São duas formas iguais de calcular resultado.",
+  },
+  {
+    area: "Dados",
+    type: "Técnica",
+    level: "Trainee",
+    question:
+      "Como você validaria se um dashboard está respondendo à pergunta certa?",
+    good: "Confirmaria a pergunta de negócio, métricas, fonte dos dados, filtros, público e decisão esperada.",
+    bad: "Colocaria muitos gráficos para parecer completo.",
+  },
+  {
+    area: "Dados",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Como você explicaria um insight para uma pessoa não técnica?",
+    good: "Começaria pela pergunta de negócio, mostraria o dado principal, impacto e recomendação prática.",
+    bad: "Mostraria todos os gráficos e deixaria a pessoa interpretar.",
+  },
+  {
+    area: "Dados",
+    type: "Técnica",
+    level: "Júnior",
+    question: "O que é uma query SQL com JOIN?",
+    good: "É uma consulta que combina dados de tabelas relacionadas usando uma chave em comum.",
+    bad: "É uma consulta que junta qualquer arquivo.",
+  },
+  {
+    area: "QA",
+    type: "Técnica",
+    level: "Estágio",
+    question: "O que deve ter em um bom bug report?",
+    good: "Título claro, ambiente, passos para reproduzir, resultado esperado, resultado atual, evidências e impacto.",
+    bad: "Só escrever que está quebrado.",
+  },
+  {
+    area: "QA",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Qual a diferença entre teste manual e teste automatizado?",
+    good: "Manual é executado por uma pessoa; automatizado usa scripts para repetir cenários com rapidez e consistência.",
+    bad: "Teste automatizado substitui todo teste manual.",
+  },
+  {
+    area: "DevOps",
+    type: "Técnica",
+    level: "Júnior",
+    question: "O que é CI/CD?",
+    good: "Integração e entrega contínua para testar, construir e publicar mudanças com mais segurança.",
+    bad: "É só uma ferramenta para subir projeto.",
+  },
+  {
+    area: "UX/UI",
+    type: "Técnica",
+    level: "Júnior",
+    question: "Como você validaria se uma tela está fácil de usar?",
+    good: "Observaria usuários, faria teste de usabilidade, analisaria tarefas, dúvidas e pontos de fricção.",
+    bad: "Se eu achei bonita, está fácil.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Estágio",
+    question: "Por que você quer trabalhar com tecnologia?",
+    good: "Conecta interesse real, aprendizado, projetos e o tipo de problema que quer resolver.",
+    bad: "Porque paga bem.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Estágio",
+    question: "Como você organiza seus estudos?",
+    good: "Mostra rotina, metas pequenas, prática com projetos, revisão e ajuste quando algo não funciona.",
+    bad: "Estudo quando dá vontade.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Trainee",
+    question:
+      "Por que você se interessou por um programa de trainee em tecnologia?",
+    good: "Conecta aprendizado acelerado, rotação por áreas, visão de negócio e vontade de crescer com feedback.",
+    bad: "Porque parece mais fácil que uma vaga normal.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Júnior",
+    question: "Conte sobre uma vez em que recebeu feedback.",
+    good: "Explica o feedback, como reagiu, o que mudou e qual foi o resultado.",
+    bad: "Não gosto de feedback porque atrapalha.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Júnior",
+    question: "Como você age quando não sabe resolver uma tarefa?",
+    good: "Pesquisa, testa hipóteses, documenta tentativas e pede ajuda com contexto claro.",
+    bad: "Espero alguém me dizer o que fazer.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Júnior",
+    question: "Fale sobre um projeto do seu portfólio.",
+    good: "Apresenta problema, tecnologias, decisões, dificuldades, resultado e aprendizados.",
+    bad: "Só lista tecnologias usadas.",
+  },
+  {
+    area: "Geral",
+    type: "Comportamental",
+    level: "Pleno",
+    question: "Como você prioriza tarefas quando tudo parece urgente?",
+    good: "Alinha impacto, prazo, risco, dependências e comunica trade-offs para o time.",
+    bad: "Faço tudo ao mesmo tempo.",
+  },
+  {
+    area: "Geral",
+    type: "Lógica",
+    level: "Estágio",
+    question: "Como você descobriria por que uma página está lenta?",
+    good: "Mediria carregamento, olharia rede, console, tamanho de assets e isolaria mudanças recentes.",
+    bad: "Colocaria outro framework.",
+  },
+  {
+    area: "Geral",
+    type: "Lógica",
+    level: "Júnior",
+    question: "Como você explicaria a solução de um problema antes de codar?",
+    good: "Quebraria em entradas, saídas, regras, casos de borda e passos principais.",
+    bad: "Começaria codando para ver no que dá.",
+  },
+  {
+    area: "Geral",
+    type: "Lógica",
+    level: "Júnior",
+    question: "Como encontrar valores duplicados em uma lista?",
+    good: "Percorreria a lista usando uma estrutura auxiliar como Set ou mapa de contagem.",
+    bad: "Compararia manualmente olhando item por item.",
+  },
+  {
+    area: "Geral",
+    type: "Lógica",
+    level: "Júnior",
+    question: "Como você estimaria o tempo de uma tarefa desconhecida?",
+    good: "Dividiria em partes, identificaria riscos, faria uma investigação curta e comunicaria margem de incerteza.",
+    bad: "Chutaria um prazo para parecer confiante.",
+  },
+  {
+    area: "Geral",
+    type: "Lógica",
+    level: "Pleno",
+    question: "Como decidir entre duas soluções técnicas parecidas?",
+    good: "Compararia simplicidade, manutenção, performance, risco, custo, prazo e alinhamento com o time.",
+    bad: "Escolheria a tecnologia mais nova.",
+  },
 ];
 
 export const interviewStudySites = [
-  { title: "Pramp", type: "Simulação", desc: "Plataforma para praticar entrevistas técnicas com outras pessoas.", url: "https://www.pramp.com/" },
-  { title: "HackerRank Interview Preparation Kit", type: "Prática técnica", desc: "Exercícios de lógica, algoritmos e preparação para entrevistas.", url: "https://www.hackerrank.com/interview/interview-preparation-kit" },
-  { title: "LeetCode Explore", type: "Algoritmos", desc: "Trilhas guiadas para praticar problemas comuns em entrevistas técnicas.", url: "https://leetcode.com/explore/" },
-  { title: "Glassdoor - Entrevistas", type: "Relatos reais", desc: "Perguntas e experiências compartilhadas por candidatos em empresas.", url: "https://www.glassdoor.com.br/Entrevista/index.htm" },
-  { title: "The STAR Method", type: "Comportamental", desc: "Guia para estruturar respostas comportamentais com situação, tarefa, ação e resultado.", url: "https://www.themuse.com/advice/star-interview-method" },
-  { title: "roadmap.sh Questions", type: "Revisão por área", desc: "Perguntas e conceitos para revisar fundamentos de diferentes trilhas tech.", url: "https://roadmap.sh/questions" },
+  {
+    title: "Pramp",
+    type: "Simulação",
+    desc: "Plataforma para praticar entrevistas técnicas com outras pessoas.",
+    url: "https://www.pramp.com/",
+  },
+  {
+    title: "HackerRank Interview Preparation Kit",
+    type: "Prática técnica",
+    desc: "Exercícios de lógica, algoritmos e preparação para entrevistas.",
+    url: "https://www.hackerrank.com/interview/interview-preparation-kit",
+  },
+  {
+    title: "LeetCode Explore",
+    type: "Algoritmos",
+    desc: "Trilhas guiadas para praticar problemas comuns em entrevistas técnicas.",
+    url: "https://leetcode.com/explore/",
+  },
+  {
+    title: "Glassdoor - Entrevistas",
+    type: "Relatos reais",
+    desc: "Perguntas e experiências compartilhadas por candidatos em empresas.",
+    url: "https://www.glassdoor.com.br/Entrevista/index.htm",
+  },
+  {
+    title: "The STAR Method",
+    type: "Comportamental",
+    desc: "Guia para estruturar respostas comportamentais com situação, tarefa, ação e resultado.",
+    url: "https://www.themuse.com/advice/star-interview-method",
+  },
+  {
+    title: "roadmap.sh Questions",
+    type: "Revisão por área",
+    desc: "Perguntas e conceitos para revisar fundamentos de diferentes trilhas tech.",
+    url: "https://roadmap.sh/questions",
+  },
 ];
 
 export const interviewVideoResources = [
-  { title: "Como se preparar para entrevista técnica em programação? (Mayk Brito)", url: "https://www.youtube.com/watch?v=pD7NXkjLEa8" },
-  { title: "Entrevista de júnior: as perguntas mais comuns e como responder (O Novo Programador)", url: "https://www.youtube.com/watch?v=YgTE08MaSqg" },
-  { title: "Entrevista comportamental: método STAR (Agilidade+)", url: "https://www.youtube.com/watch?v=gXycGglSyvM" },
-  { title: "Se prepare para entrevistas de Front-End (Hipsters, Alura)", url: "https://www.youtube.com/watch?v=GEljZeWTVec" },
-  { title: "Entrevista técnica de back-end: dicas (Programador a Bordo)", url: "https://www.youtube.com/watch?v=ogqtSovsLYw" },
-  { title: "3 dicas para mandar bem em entrevistas como dev (Full Cycle)", url: "https://www.youtube.com/watch?v=nlbPOC0aQmU" },
+  {
+    title:
+      "Como se preparar para entrevista técnica em programação? (Mayk Brito)",
+    url: "https://www.youtube.com/watch?v=pD7NXkjLEa8",
+  },
+  {
+    title:
+      "Entrevista de júnior: as perguntas mais comuns e como responder (O Novo Programador)",
+    url: "https://www.youtube.com/watch?v=YgTE08MaSqg",
+  },
+  {
+    title: "Entrevista comportamental: método STAR (Agilidade+)",
+    url: "https://www.youtube.com/watch?v=gXycGglSyvM",
+  },
+  {
+    title: "Se prepare para entrevistas de Front-End (Hipsters, Alura)",
+    url: "https://www.youtube.com/watch?v=GEljZeWTVec",
+  },
+  {
+    title: "Entrevista técnica de back-end: dicas (Programador a Bordo)",
+    url: "https://www.youtube.com/watch?v=ogqtSovsLYw",
+  },
+  {
+    title: "3 dicas para mandar bem em entrevistas como dev (Full Cycle)",
+    url: "https://www.youtube.com/watch?v=nlbPOC0aQmU",
+  },
 ];
 
 export const technicalChallenges = [
-  ["Landing page responsiva", "Front-end", "Iniciante", "3h", "agências digitais"],
-  ["API de tarefas com autenticação", "Back-end", "Intermediário", "6h", "SaaS"],
+  [
+    "Landing page responsiva",
+    "Front-end",
+    "Iniciante",
+    "3h",
+    "agências digitais",
+  ],
+  [
+    "API de tarefas com autenticação",
+    "Back-end",
+    "Intermediário",
+    "6h",
+    "SaaS",
+  ],
   ["Dashboard de vendas", "Dados", "Intermediário", "5h", "varejo"],
   ["Plano de testes de login", "QA", "Iniciante", "2h", "consultorias"],
   ["Pipeline CI básico", "DevOps", "Avançado", "5h", "empresas cloud"],
@@ -76,16 +429,45 @@ export const technicalChallenges = [
   time,
   usedBy,
   statement: `Construa uma solução para ${name.toLowerCase()} com README, decisões técnicas e instruções de execução.`,
-  tips: ["Comece pelo mínimo funcional", "Documente decisões", "Inclua próximos passos"],
+  tips: [
+    "Comece pelo mínimo funcional",
+    "Documente decisões",
+    "Inclua próximos passos",
+  ],
   solutionUrl: "https://github.com/topics/challenge",
 }));
 
 export const portfolioGuides = [
-  ["Front-end", "3 a 5 projetos", "Interfaces responsivas, consumo de API e deploy", "Projetos sem deploy ou sem README"],
-  ["Back-end", "2 a 4 APIs", "APIs documentadas, autenticação e banco", "Endpoints sem instrução de execução"],
-  ["Dados", "3 análises", "Notebooks com contexto, gráficos e conclusão", "Gráfico sem insight"],
-  ["Mobile", "2 apps", "App publicado ou demo em vídeo", "Prints soltos sem explicação"],
-  ["UX/UI", "3 cases", "Processo, pesquisa, wireframes e protótipo", "Só telas bonitas sem problema"],
+  [
+    "Front-end",
+    "3 a 5 projetos",
+    "Interfaces responsivas, consumo de API e deploy",
+    "Projetos sem deploy ou sem README",
+  ],
+  [
+    "Back-end",
+    "2 a 4 APIs",
+    "APIs documentadas, autenticação e banco",
+    "Endpoints sem instrução de execução",
+  ],
+  [
+    "Dados",
+    "3 análises",
+    "Notebooks com contexto, gráficos e conclusão",
+    "Gráfico sem insight",
+  ],
+  [
+    "Mobile",
+    "2 apps",
+    "App publicado ou demo em vídeo",
+    "Prints soltos sem explicação",
+  ],
+  [
+    "UX/UI",
+    "3 cases",
+    "Processo, pesquisa, wireframes e protótipo",
+    "Só telas bonitas sem problema",
+  ],
 ];
 
 // IDs são CONTRATO PERMANENTE, usados como chave de persistência por usuário
@@ -112,35 +494,52 @@ export const portfolioChecklist: { id: string; label: string }[] = [
 export const readmeTemplates = [
   {
     title: "Landing page",
-    purpose: "Modelo para apresentar uma página web simples, visual e publicada.",
-    bestFor: "Front-end, UX/UI e primeiros projetos de HTML, CSS, JavaScript ou React.",
-    whyItMatters: "Mostra que você sabe criar uma interface, organizar seções, cuidar de responsividade e publicar um projeto acessível.",
+    purpose:
+      "Modelo para apresentar uma página web simples, visual e publicada.",
+    bestFor:
+      "Front-end, UX/UI e primeiros projetos de HTML, CSS, JavaScript ou React.",
+    whyItMatters:
+      "Mostra que você sabe criar uma interface, organizar seções, cuidar de responsividade e publicar um projeto acessível.",
     body: "# Nome do Projeto\n\nLanding page responsiva criada para praticar HTML, CSS e JavaScript.\n\n## Tecnologias\n- HTML\n- CSS\n- JavaScript\n\n## Como acessar\nLink do deploy aqui.\n",
   },
   {
     title: "API REST",
-    purpose: "Modelo para explicar um projeto de back-end que expõe rotas para outros sistemas consumirem.",
+    purpose:
+      "Modelo para explicar um projeto de back-end que expõe rotas para outros sistemas consumirem.",
     bestFor: "Back-end, Full Stack, QA de API e projetos com banco de dados.",
-    whyItMatters: "Ajuda recrutadores a entenderem quais rotas existem, como rodar o servidor e quais decisões técnicas você tomou.",
+    whyItMatters:
+      "Ajuda recrutadores a entenderem quais rotas existem, como rodar o servidor e quais decisões técnicas você tomou.",
     body: "# API REST\n\nAPI para gerenciar recursos com autenticação e banco de dados.\n\n## Rotas\n- GET /items\n- POST /items\n\n## Como rodar\nInstale dependências e execute o servidor.\n",
   },
   {
     title: "App mobile",
-    purpose: "Modelo para documentar um aplicativo de celular, protótipo funcional ou demo em vídeo.",
+    purpose:
+      "Modelo para documentar um aplicativo de celular, protótipo funcional ou demo em vídeo.",
     bestFor: "Mobile, Front-end e projetos com React Native, Flutter ou Expo.",
-    whyItMatters: "Mostra fluxo de telas, funcionalidades principais, decisões de experiência e como a pessoa pode testar o app.",
+    whyItMatters:
+      "Mostra fluxo de telas, funcionalidades principais, decisões de experiência e como a pessoa pode testar o app.",
     body: "# App Mobile\n\nAplicativo mobile com fluxo principal, consumo de API e navegação.\n\n## Funcionalidades\n- Login\n- Listagem\n- Detalhes\n",
   },
   {
     title: "Projeto de dados",
-    purpose: "Modelo para apresentar uma análise, notebook, dashboard ou estudo com dataset.",
-    bestFor: "Dados, BI, IA e projetos com Python, SQL, Pandas ou visualização.",
-    whyItMatters: "Mostra a pergunta respondida, os dados usados, os gráficos criados e principalmente os insights que você tirou.",
+    purpose:
+      "Modelo para apresentar uma análise, notebook, dashboard ou estudo com dataset.",
+    bestFor:
+      "Dados, BI, IA e projetos com Python, SQL, Pandas ou visualização.",
+    whyItMatters:
+      "Mostra a pergunta respondida, os dados usados, os gráficos criados e principalmente os insights que você tirou.",
     body: "# Análise de Dados\n\nNotebook com limpeza, exploração e insights.\n\n## Perguntas respondidas\n- O que cresceu?\n- Onde estão os gargalos?\n",
   },
 ];
 
-export const resumeTemplates = ["Front-end", "Back-end", "Dados", "Mobile", "DevOps", "UX/UI"].map((area) => ({
+export const resumeTemplates = [
+  "Front-end",
+  "Back-end",
+  "Dados",
+  "Mobile",
+  "DevOps",
+  "UX/UI",
+].map((area) => ({
   area,
   body: `Nome Sobrenome\n${area} Trainee/Júnior\n\nResumo\nProfissional em formação com projetos práticos em ${area}.\n\nProjetos\n- Projeto 1: problema, tecnologias e resultado.\n\nHabilidades\n- Git\n- Comunicação\n- Fundamentos da área`,
 }));
@@ -155,21 +554,68 @@ export const linkedinGuide = [
 ];
 
 export const studyTechniques = [
-  { title: "Tutorial Hell e como sair", description: "Pare de só assistir aula atrás de aula. Veja um trecho curto, pause e recrie sozinho antes de seguir: é a prática que fixa, não o play." },
-  { title: "Pomodoro aplicado ao código", description: "Blocos de 25 minutos focados em uma única tarefa, com pausa de 5. Vence a inércia e mantém o foco em bugs e features longas." },
-  { title: "Prática deliberada vs passiva", description: "Reler e assistir é passivo. Deliberado é resolver problemas no seu limite, com feedback rápido. Priorize exercícios que te desafiam." },
-  { title: "Spaced Repetition para conceitos técnicos", description: "Revise em intervalos crescentes (1, 3 e 7 dias) pra fixar na memória de longo prazo. Ótimo pra sintaxe, comandos e fundamentos." },
-  { title: "Como fazer projetos reais desde cedo", description: "Aprenda construindo: comece um projeto pequeno e real já nas primeiras semanas. Projeto publicado vale mais no portfólio que curso assistido." },
+  {
+    title: "Tutorial Hell e como sair",
+    description:
+      "Pare de só assistir aula atrás de aula. Veja um trecho curto, pause e recrie sozinho antes de seguir: é a prática que fixa, não o play.",
+  },
+  {
+    title: "Pomodoro aplicado ao código",
+    description:
+      "Blocos de 25 minutos focados em uma única tarefa, com pausa de 5. Vence a inércia e mantém o foco em bugs e features longas.",
+  },
+  {
+    title: "Prática deliberada vs passiva",
+    description:
+      "Reler e assistir é passivo. Deliberado é resolver problemas no seu limite, com feedback rápido. Priorize exercícios que te desafiam.",
+  },
+  {
+    title: "Spaced Repetition para conceitos técnicos",
+    description:
+      "Revise em intervalos crescentes (1, 3 e 7 dias) pra fixar na memória de longo prazo. Ótimo pra sintaxe, comandos e fundamentos.",
+  },
+  {
+    title: "Como fazer projetos reais desde cedo",
+    description:
+      "Aprenda construindo: comece um projeto pequeno e real já nas primeiras semanas. Projeto publicado vale mais no portfólio que curso assistido.",
+  },
 ];
 
-export const networkingGuide = ["Como abordar devs sênior sem ser invasivo", "O que postar no LinkedIn para aparecer", "Como participar de comunidades online", "Como se comportar em eventos tech", "Como manter contato após uma conversa"];
+export const networkingGuide = [
+  "Como abordar devs sênior sem ser invasivo",
+  "O que postar no LinkedIn para aparecer",
+  "Como participar de comunidades online",
+  "Como se comportar em eventos tech",
+  "Como manter contato após uma conversa",
+];
 
-export const communityMap = ["Front-end", "Back-end", "Dados", "Mobile", "UX", "DevOps", "Geral"].map((area) => ({
+export const communityMap = [
+  "Front-end",
+  "Back-end",
+  "Dados",
+  "Mobile",
+  "UX",
+  "DevOps",
+  "Geral",
+].map((area) => ({
   area,
-  links: ["Discord da comunidade", "Telegram de vagas", "Grupo LinkedIn", "WhatsApp local"],
+  links: [
+    "Discord da comunidade",
+    "Telegram de vagas",
+    "Grupo LinkedIn",
+    "WhatsApp local",
+  ],
 }));
 
-export const freelancePlatforms = ["99Freelas", "Workana", "Upwork", "Freelancer.com", "PeoplePerHour", "Contra", "Toptal"].map((name, index) => ({
+export const freelancePlatforms = [
+  "99Freelas",
+  "Workana",
+  "Upwork",
+  "Freelancer.com",
+  "PeoplePerHour",
+  "Contra",
+  "Toptal",
+].map((name, index) => ({
   name,
   focus: index < 2 ? "Brasil e pequenos negócios" : "Mercado internacional",
   difficulty: index > 4 ? "Alta" : "Média",
@@ -217,9 +663,18 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
         href: "https://www.youtube.com/watch?v=ZiXkYiI7LoI",
       },
       articles: [
-        { title: "MDN: Design responsivo (português)", href: "https://developer.mozilla.org/pt-BR/docs/Learn/CSS/CSS_layout/Responsive_Design" },
-        { title: "web.dev: Fundamentos de design na web", href: "https://web.dev/learn/design/" },
-        { title: "Buscar tutoriais no YouTube (PT)", href: "https://www.youtube.com/results?search_query=landing+page+html+css+curso+portugu%C3%AAs" },
+        {
+          title: "MDN: Design responsivo (português)",
+          href: "https://developer.mozilla.org/pt-BR/docs/Learn/CSS/CSS_layout/Responsive_Design",
+        },
+        {
+          title: "web.dev: Fundamentos de design na web",
+          href: "https://web.dev/learn/design/",
+        },
+        {
+          title: "Buscar tutoriais no YouTube (PT)",
+          href: "https://www.youtube.com/results?search_query=landing+page+html+css+curso+portugu%C3%AAs",
+        },
       ],
     },
   },
@@ -237,9 +692,18 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
         href: "https://www.youtube.com/watch?v=rfscVS0vtbw",
       },
       articles: [
-        { title: "Microsoft: Introdução ao Power Automate (PT-BR)", href: "https://learn.microsoft.com/pt-br/power-platform/power-automate/getting-started" },
-        { title: "Documentação oficial do Python: Tutorial", href: "https://docs.python.org/pt-br/3/tutorial/index.html" },
-        { title: "YouTube: automação iniciante português", href: "https://www.youtube.com/results?search_query=automa%C3%A7%C3%A3o+python+excel+para+iniciantes+portugu%C3%AAs" },
+        {
+          title: "Microsoft: Introdução ao Power Automate (PT-BR)",
+          href: "https://learn.microsoft.com/pt-br/power-platform/power-automate/getting-started",
+        },
+        {
+          title: "Documentação oficial do Python: Tutorial",
+          href: "https://docs.python.org/pt-br/3/tutorial/index.html",
+        },
+        {
+          title: "YouTube: automação iniciante português",
+          href: "https://www.youtube.com/results?search_query=automa%C3%A7%C3%A3o+python+excel+para+iniciantes+portugu%C3%AAs",
+        },
       ],
     },
   },
@@ -256,13 +720,22 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
         href: "https://www.youtube.com/results?search_query=bot+telegram+python+tutorial+portugu%C3%AAs",
       },
       articles: [
-        { title: "Telegram: Introdução a bots", href: "https://core.telegram.org/bots" },
-        { title: "Meta: WhatsApp Cloud API overview", href: "https://developers.facebook.com/docs/whatsapp/cloud-api/overview" },
+        {
+          title: "Telegram: Introdução a bots",
+          href: "https://core.telegram.org/bots",
+        },
+        {
+          title: "Meta: WhatsApp Cloud API overview",
+          href: "https://developers.facebook.com/docs/whatsapp/cloud-api/overview",
+        },
         {
           title: "freeCodeCamp (PT-BR): Bot no Telegram com Python",
           href: "https://www.freecodecamp.org/portuguese/news/como-criar-um-bot-do-telegram-usando-o-python/",
         },
-        { title: "YouTube: filtrar só tutoriais em português", href: "https://www.youtube.com/results?search_query=bot+whatsapp+telegram+python+portugu%C3%AAs" },
+        {
+          title: "YouTube: filtrar só tutoriais em português",
+          href: "https://www.youtube.com/results?search_query=bot+whatsapp+telegram+python+portugu%C3%AAs",
+        },
       ],
     },
   },
@@ -280,9 +753,18 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
         href: "https://www.youtube.com/watch?v=Coe_f79Xc2o",
       },
       articles: [
-        { title: "Google: Centro de ajuda Looker Studio", href: "https://support.google.com/looker-studio/" },
-        { title: "Google: Conectar dados e relatórios", href: "https://support.google.com/looker-studio/answer/6299724" },
-        { title: "YouTube: Looker Studio em português", href: "https://www.youtube.com/results?search_query=looker+studio+google+data+studio+tutorial+portugu%C3%AAs" },
+        {
+          title: "Google: Centro de ajuda Looker Studio",
+          href: "https://support.google.com/looker-studio/",
+        },
+        {
+          title: "Google: Conectar dados e relatórios",
+          href: "https://support.google.com/looker-studio/answer/6299724",
+        },
+        {
+          title: "YouTube: Looker Studio em português",
+          href: "https://www.youtube.com/results?search_query=looker+studio+google+data+studio+tutorial+portugu%C3%AAs",
+        },
       ],
     },
   },
@@ -300,9 +782,18 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
         href: "https://www.youtube.com/watch?v=ZiXkYiI7LoI",
       },
       articles: [
-        { title: "MDN: HTML: boas práticas", href: "https://developer.mozilla.org/pt-BR/docs/Learn/HTML/Introduction_to_HTML/Document_and_website_structure" },
-        { title: "web.dev: SEO e performance básicos", href: "https://web.dev/learn/seo/" },
-        { title: "YouTube: site profissional portfolio português", href: "https://www.youtube.com/results?search_query=site+one+page+portfolio+freelancer+html+css+portugu%C3%AAs" },
+        {
+          title: "MDN: HTML: boas práticas",
+          href: "https://developer.mozilla.org/pt-BR/docs/Learn/HTML/Introduction_to_HTML/Document_and_website_structure",
+        },
+        {
+          title: "web.dev: SEO e performance básicos",
+          href: "https://web.dev/learn/seo/",
+        },
+        {
+          title: "YouTube: site profissional portfolio português",
+          href: "https://www.youtube.com/results?search_query=site+one+page+portfolio+freelancer+html+css+portugu%C3%AAs",
+        },
       ],
     },
   },
@@ -319,12 +810,18 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
         href: "https://www.youtube.com/results?search_query=wordpress+child+theme+debug+tutorial",
       },
       articles: [
-        { title: "WordPress: Primeiros passos com temas", href: "https://developer.wordpress.org/themes/getting-started/" },
+        {
+          title: "WordPress: Primeiros passos com temas",
+          href: "https://developer.wordpress.org/themes/getting-started/",
+        },
         {
           title: "WordPress.org (PT-BR): primeiro site com o editor em blocos",
           href: "https://wordpress.org/documentation/article/new-to-wordpress-where-to-start/",
         },
-        { title: "YouTube: manutenção e temas WordPress PT", href: "https://www.youtube.com/results?search_query=wordpress+temas+e+child+theme+curso+portugu%C3%AAs" },
+        {
+          title: "YouTube: manutenção e temas WordPress PT",
+          href: "https://www.youtube.com/results?search_query=wordpress+temas+e+child+theme+curso+portugu%C3%AAs",
+        },
       ],
     },
   },
@@ -333,150 +830,366 @@ export const firstFreelaProjects: FreelaFirstProject[] = [
 export const evolutionTracks = [
   {
     title: "Estudante → Estagiário",
-    technical: ["Fundamentos da área escolhida", "Git e GitHub", "1 a 3 projetos simples", "README bem explicado"],
-    soft: ["Curiosidade", "Comunicação clara", "Organização de estudos", "Vontade de aprender"],
+    technical: [
+      "Fundamentos da área escolhida",
+      "Git e GitHub",
+      "1 a 3 projetos simples",
+      "README bem explicado",
+    ],
+    soft: [
+      "Curiosidade",
+      "Comunicação clara",
+      "Organização de estudos",
+      "Vontade de aprender",
+    ],
     time: "3 a 12 meses",
-    ready: "Você consegue explicar o que está estudando, mostrar projetos e aprender com orientação.",
-    accelerate: "Monte um portfólio simples, publique aprendizados no LinkedIn e aplique mesmo sem cumprir 100% da vaga.",
+    ready:
+      "Você consegue explicar o que está estudando, mostrar projetos e aprender com orientação.",
+    accelerate:
+      "Monte um portfólio simples, publique aprendizados no LinkedIn e aplique mesmo sem cumprir 100% da vaga.",
   },
   {
     title: "Estagiário → Trainee",
-    technical: ["Fundamentos sólidos", "Projetos entregues", "Debug básico", "Documentação do que fez"],
-    soft: ["Comunicação", "Responsabilidade", "Perguntas bem formuladas", "Feedback constante"],
+    technical: [
+      "Fundamentos sólidos",
+      "Projetos entregues",
+      "Debug básico",
+      "Documentação do que fez",
+    ],
+    soft: [
+      "Comunicação",
+      "Responsabilidade",
+      "Perguntas bem formuladas",
+      "Feedback constante",
+    ],
     time: "6 a 18 meses",
-    ready: "Você entrega tarefas pequenas com acompanhamento e consegue aprender em programas estruturados de desenvolvimento.",
-    accelerate: "Peça feedback frequente, documente resultados e aplique para programas com trilhas, rotação e mentoria.",
+    ready:
+      "Você entrega tarefas pequenas com acompanhamento e consegue aprender em programas estruturados de desenvolvimento.",
+    accelerate:
+      "Peça feedback frequente, documente resultados e aplique para programas com trilhas, rotação e mentoria.",
   },
   {
     title: "Trainee → Júnior",
-    technical: ["Base prática da stack", "Entendimento de produto", "Entrega acompanhada", "Testes e documentação"],
-    soft: ["Aprendizado acelerado", "Adaptação", "Comunicação com áreas", "Abertura a feedback"],
+    technical: [
+      "Base prática da stack",
+      "Entendimento de produto",
+      "Entrega acompanhada",
+      "Testes e documentação",
+    ],
+    soft: [
+      "Aprendizado acelerado",
+      "Adaptação",
+      "Comunicação com áreas",
+      "Abertura a feedback",
+    ],
     time: "6 a 12 meses",
-    ready: "Você transforma aprendizado guiado em entregas reais e começa a atuar com menos dependência.",
-    accelerate: "Registre aprendizados, peça contexto de negócio e conecte suas entregas aos objetivos do time.",
+    ready:
+      "Você transforma aprendizado guiado em entregas reais e começa a atuar com menos dependência.",
+    accelerate:
+      "Registre aprendizados, peça contexto de negócio e conecte suas entregas aos objetivos do time.",
   },
   {
     title: "Júnior → Pleno",
-    technical: ["Autonomia em tarefas médias", "Testes", "Code review", "Boas práticas da stack"],
-    soft: ["Autonomia", "Priorização", "Comunicação com produto", "Gestão de contexto"],
+    technical: [
+      "Autonomia em tarefas médias",
+      "Testes",
+      "Code review",
+      "Boas práticas da stack",
+    ],
+    soft: [
+      "Autonomia",
+      "Priorização",
+      "Comunicação com produto",
+      "Gestão de contexto",
+    ],
     time: "1 a 3 anos",
-    ready: "Você resolve problemas menos definidos, identifica riscos e ajuda outras pessoas iniciantes.",
-    accelerate: "Entenda o porquê das decisões, participe de refinamentos e aprenda a estimar impacto e esforço.",
+    ready:
+      "Você resolve problemas menos definidos, identifica riscos e ajuda outras pessoas iniciantes.",
+    accelerate:
+      "Entenda o porquê das decisões, participe de refinamentos e aprenda a estimar impacto e esforço.",
   },
   {
     title: "Pleno → Sênior",
-    technical: ["Arquitetura", "Qualidade", "Performance", "Observabilidade", "Decisões de longo prazo"],
-    soft: ["Influência", "Mentoria", "Comunicação com áreas", "Tomada de decisão"],
+    technical: [
+      "Arquitetura",
+      "Qualidade",
+      "Performance",
+      "Observabilidade",
+      "Decisões de longo prazo",
+    ],
+    soft: [
+      "Influência",
+      "Mentoria",
+      "Comunicação com áreas",
+      "Tomada de decisão",
+    ],
     time: "2 a 4 anos",
-    ready: "Você antecipa problemas, orienta soluções e melhora a qualidade do time, não só do próprio código.",
-    accelerate: "Lidere iniciativas, escreva propostas técnicas e desenvolva repertório de trade-offs.",
+    ready:
+      "Você antecipa problemas, orienta soluções e melhora a qualidade do time, não só do próprio código.",
+    accelerate:
+      "Lidere iniciativas, escreva propostas técnicas e desenvolva repertório de trade-offs.",
   },
   {
     title: "Sênior → Tech Lead / Especialista / Gestor",
-    technical: ["Estratégia técnica", "Sistemas complexos", "Padrões de time", "Escala e confiabilidade"],
-    soft: ["Mentoria", "Alinhamento estratégico", "Negociação", "Desenvolvimento de pessoas"],
+    technical: [
+      "Estratégia técnica",
+      "Sistemas complexos",
+      "Padrões de time",
+      "Escala e confiabilidade",
+    ],
+    soft: [
+      "Mentoria",
+      "Alinhamento estratégico",
+      "Negociação",
+      "Desenvolvimento de pessoas",
+    ],
     time: "Contínuo",
-    ready: "Você amplia o impacto por meio de decisões, direção técnica, pessoas e resultados do negócio.",
-    accelerate: "Escolha uma trilha de crescimento: liderança técnica, especialização profunda ou gestão de pessoas.",
+    ready:
+      "Você amplia o impacto por meio de decisões, direção técnica, pessoas e resultados do negócio.",
+    accelerate:
+      "Escolha uma trilha de crescimento: liderança técnica, especialização profunda ou gestão de pessoas.",
   },
 ];
 
 export const careerEvolutionByArea = [
   {
     area: "Front-end",
-    focus: "Interfaces, acessibilidade, responsividade, consumo de API e experiência do usuário.",
+    focus:
+      "Interfaces, acessibilidade, responsividade, consumo de API e experiência do usuário.",
     firstProject: "Landing page responsiva + projeto com API pública.",
-    tips: ["Priorize HTML, CSS e JavaScript antes de frameworks.", "Tenha projetos publicados com deploy.", "Explique decisões visuais e de acessibilidade no README."],
-    videos: [
-      { title: "Front-end para iniciantes", url: "https://www.youtube.com/results?search_query=front-end+para+iniciantes+html+css+javascript+portugu%C3%AAs" },
-      { title: "React para iniciantes", url: "https://www.youtube.com/results?search_query=react+para+iniciantes+portugu%C3%AAs" },
+    tips: [
+      "Priorize HTML, CSS e JavaScript antes de frameworks.",
+      "Tenha projetos publicados com deploy.",
+      "Explique decisões visuais e de acessibilidade no README.",
     ],
-    nextSteps: ["Criar portfólio visual", "Aprender GitHub Pages/Vercel", "Estudar React e TypeScript"],
+    videos: [
+      {
+        title: "Front-end para iniciantes",
+        url: "https://www.youtube.com/results?search_query=front-end+para+iniciantes+html+css+javascript+portugu%C3%AAs",
+      },
+      {
+        title: "React para iniciantes",
+        url: "https://www.youtube.com/results?search_query=react+para+iniciantes+portugu%C3%AAs",
+      },
+    ],
+    nextSteps: [
+      "Criar portfólio visual",
+      "Aprender GitHub Pages/Vercel",
+      "Estudar React e TypeScript",
+    ],
   },
   {
     area: "Back-end",
-    focus: "APIs, banco de dados, autenticação, regras de negócio e integração entre sistemas.",
+    focus:
+      "APIs, banco de dados, autenticação, regras de negócio e integração entre sistemas.",
     firstProject: "API REST com CRUD, banco de dados e documentação de rotas.",
-    tips: ["Documente como rodar a API localmente.", "Mostre exemplos de request e response.", "Inclua tratamento de erros e validação."],
-    videos: [
-      { title: "Back-end para iniciantes", url: "https://www.youtube.com/results?search_query=back-end+para+iniciantes+api+rest+portugu%C3%AAs" },
-      { title: "API REST Node.js", url: "https://www.youtube.com/results?search_query=api+rest+node.js+para+iniciantes+portugu%C3%AAs" },
+    tips: [
+      "Documente como rodar a API localmente.",
+      "Mostre exemplos de request e response.",
+      "Inclua tratamento de erros e validação.",
     ],
-    nextSteps: ["Aprender SQL", "Criar API com autenticação", "Estudar testes e Docker básico"],
+    videos: [
+      {
+        title: "Back-end para iniciantes",
+        url: "https://www.youtube.com/results?search_query=back-end+para+iniciantes+api+rest+portugu%C3%AAs",
+      },
+      {
+        title: "API REST Node.js",
+        url: "https://www.youtube.com/results?search_query=api+rest+node.js+para+iniciantes+portugu%C3%AAs",
+      },
+    ],
+    nextSteps: [
+      "Aprender SQL",
+      "Criar API com autenticação",
+      "Estudar testes e Docker básico",
+    ],
   },
   {
     area: "Dados",
-    focus: "Python, SQL, estatística, análise exploratória, visualização e comunicação de insights.",
-    firstProject: "Notebook com dataset público, gráficos e 3 conclusões bem explicadas.",
-    tips: ["Não mostre só gráfico: explique o insight.", "Use datasets reais e cite a fonte.", "Inclua perguntas de negócio no início do projeto."],
-    videos: [
-      { title: "Dados para iniciantes", url: "https://www.youtube.com/results?search_query=an%C3%A1lise+de+dados+para+iniciantes+python+portugu%C3%AAs" },
-      { title: "SQL para dados", url: "https://www.youtube.com/results?search_query=sql+para+an%C3%A1lise+de+dados+iniciantes+portugu%C3%AAs" },
+    focus:
+      "Python, SQL, estatística, análise exploratória, visualização e comunicação de insights.",
+    firstProject:
+      "Notebook com dataset público, gráficos e 3 conclusões bem explicadas.",
+    tips: [
+      "Não mostre só gráfico: explique o insight.",
+      "Use datasets reais e cite a fonte.",
+      "Inclua perguntas de negócio no início do projeto.",
     ],
-    nextSteps: ["Praticar SQL", "Publicar notebook no GitHub/Kaggle", "Criar dashboard simples"],
+    videos: [
+      {
+        title: "Dados para iniciantes",
+        url: "https://www.youtube.com/results?search_query=an%C3%A1lise+de+dados+para+iniciantes+python+portugu%C3%AAs",
+      },
+      {
+        title: "SQL para dados",
+        url: "https://www.youtube.com/results?search_query=sql+para+an%C3%A1lise+de+dados+iniciantes+portugu%C3%AAs",
+      },
+    ],
+    nextSteps: [
+      "Praticar SQL",
+      "Publicar notebook no GitHub/Kaggle",
+      "Criar dashboard simples",
+    ],
   },
   {
     area: "UX/UI",
-    focus: "Pesquisa, fluxo, wireframe, protótipo, usabilidade e construção de case.",
-    firstProject: "Redesign de app conhecido com problema, processo e protótipo no Figma.",
-    tips: ["Mostre o processo, não só telas bonitas.", "Explique problema, público e decisões.", "Inclua testes ou feedback de usuários quando possível."],
-    videos: [
-      { title: "UX/UI para iniciantes", url: "https://www.youtube.com/results?search_query=ux+ui+design+para+iniciantes+portugu%C3%AAs" },
-      { title: "Figma para iniciantes", url: "https://www.youtube.com/results?search_query=figma+para+iniciantes+portugu%C3%AAs" },
+    focus:
+      "Pesquisa, fluxo, wireframe, protótipo, usabilidade e construção de case.",
+    firstProject:
+      "Redesign de app conhecido com problema, processo e protótipo no Figma.",
+    tips: [
+      "Mostre o processo, não só telas bonitas.",
+      "Explique problema, público e decisões.",
+      "Inclua testes ou feedback de usuários quando possível.",
     ],
-    nextSteps: ["Criar 2 cases completos", "Estudar heurísticas", "Publicar no Behance ou portfólio"],
+    videos: [
+      {
+        title: "UX/UI para iniciantes",
+        url: "https://www.youtube.com/results?search_query=ux+ui+design+para+iniciantes+portugu%C3%AAs",
+      },
+      {
+        title: "Figma para iniciantes",
+        url: "https://www.youtube.com/results?search_query=figma+para+iniciantes+portugu%C3%AAs",
+      },
+    ],
+    nextSteps: [
+      "Criar 2 cases completos",
+      "Estudar heurísticas",
+      "Publicar no Behance ou portfólio",
+    ],
   },
   {
     area: "QA",
-    focus: "Casos de teste, bug report, teste manual, automação inicial e qualidade de produto.",
-    firstProject: "Plano de testes para app real + relatório de bugs + automação simples.",
-    tips: ["Escreva evidências com prints e passos claros.", "Aprenda Postman para testar APIs.", "Mostre pensamento crítico sobre risco e prioridade."],
-    videos: [
-      { title: "QA para iniciantes", url: "https://www.youtube.com/results?search_query=qa+testes+de+software+para+iniciantes+portugu%C3%AAs" },
-      { title: "Cypress para iniciantes", url: "https://www.youtube.com/results?search_query=cypress+para+iniciantes+portugu%C3%AAs" },
+    focus:
+      "Casos de teste, bug report, teste manual, automação inicial e qualidade de produto.",
+    firstProject:
+      "Plano de testes para app real + relatório de bugs + automação simples.",
+    tips: [
+      "Escreva evidências com prints e passos claros.",
+      "Aprenda Postman para testar APIs.",
+      "Mostre pensamento crítico sobre risco e prioridade.",
     ],
-    nextSteps: ["Criar plano de testes", "Aprender Postman", "Automatizar fluxo de login"],
+    videos: [
+      {
+        title: "QA para iniciantes",
+        url: "https://www.youtube.com/results?search_query=qa+testes+de+software+para+iniciantes+portugu%C3%AAs",
+      },
+      {
+        title: "Cypress para iniciantes",
+        url: "https://www.youtube.com/results?search_query=cypress+para+iniciantes+portugu%C3%AAs",
+      },
+    ],
+    nextSteps: [
+      "Criar plano de testes",
+      "Aprender Postman",
+      "Automatizar fluxo de login",
+    ],
   },
   {
     area: "DevOps / Cloud",
     focus: "Linux, redes, deploy, CI/CD, cloud, containers e observabilidade.",
-    firstProject: "Deploy de aplicação simples com pipeline de build e documentação.",
-    tips: ["Comece com Linux e Git antes de Kubernetes.", "Documente arquitetura e custos.", "Mostre logs, monitoramento ou pipeline funcionando."],
-    videos: [
-      { title: "DevOps para iniciantes", url: "https://www.youtube.com/results?search_query=devops+para+iniciantes+portugu%C3%AAs" },
-      { title: "AWS/Azure fundamentos", url: "https://www.youtube.com/results?search_query=cloud+computing+fundamentos+aws+azure+portugu%C3%AAs" },
+    firstProject:
+      "Deploy de aplicação simples com pipeline de build e documentação.",
+    tips: [
+      "Comece com Linux e Git antes de Kubernetes.",
+      "Documente arquitetura e custos.",
+      "Mostre logs, monitoramento ou pipeline funcionando.",
     ],
-    nextSteps: ["Aprender Linux", "Fazer deploy simples", "Estudar Docker e GitHub Actions"],
+    videos: [
+      {
+        title: "DevOps para iniciantes",
+        url: "https://www.youtube.com/results?search_query=devops+para+iniciantes+portugu%C3%AAs",
+      },
+      {
+        title: "AWS/Azure fundamentos",
+        url: "https://www.youtube.com/results?search_query=cloud+computing+fundamentos+aws+azure+portugu%C3%AAs",
+      },
+    ],
+    nextSteps: [
+      "Aprender Linux",
+      "Fazer deploy simples",
+      "Estudar Docker e GitHub Actions",
+    ],
   },
 ];
 
-export const certifications = ["AWS Solutions Architect", "Google Cloud Associate", "Azure Fundamentals", "Scrum Master", "ISTQB", "Google Analytics", "Kubernetes CKA", "Docker", "Salesforce"].map((name, index) => ({
+export const certifications = [
+  "AWS Solutions Architect",
+  "Google Cloud Associate",
+  "Azure Fundamentals",
+  "Scrum Master",
+  "ISTQB",
+  "Google Analytics",
+  "Kubernetes CKA",
+  "Docker",
+  "Salesforce",
+].map((name, index) => ({
   name,
-  area: ["Cloud", "Cloud", "Cloud", "Gestão", "QA", "Dados", "DevOps", "DevOps", "CRM"][index],
+  area: [
+    "Cloud",
+    "Cloud",
+    "Cloud",
+    "Gestão",
+    "QA",
+    "Dados",
+    "DevOps",
+    "DevOps",
+    "CRM",
+  ][index],
   difficulty: index < 4 ? "Média" : "Alta",
   cost: index < 3 ? "US$ 99 a US$ 150" : "Varia",
   impact: index < 3 || index === 6 ? "Alto" : "Médio",
   worth: index !== 7,
 }));
 
-export const englishVocabulary = ["Front-end", "Back-end", "Dados", "DevOps", "UX/UI"].map((area) => ({
+export const englishVocabulary = [
+  "Front-end",
+  "Back-end",
+  "Dados",
+  "DevOps",
+  "UX/UI",
+].map((area) => ({
   area,
-  terms: ["deploy", "branch", "issue", "release", "debug", "layout", "query", "pipeline", "feedback", "deadline", "feature", "bug", "endpoint", "repository", "commit", "review", "accessibility", "metric", "cache", "scalable"],
+  terms: [
+    "deploy",
+    "branch",
+    "issue",
+    "release",
+    "debug",
+    "layout",
+    "query",
+    "pipeline",
+    "feedback",
+    "deadline",
+    "feature",
+    "bug",
+    "endpoint",
+    "repository",
+    "commit",
+    "review",
+    "accessibility",
+    "metric",
+    "cache",
+    "scalable",
+  ],
 }));
 
 export const devTools = [
   {
     name: "VS Code",
-    description: "Editor de código leve e popular, com extensões para quase todas as stacks.",
+    description:
+      "Editor de código leve e popular, com extensões para quase todas as stacks.",
     areas: ["Front-end", "Back-end", "Dados", "DevOps"],
     category: ["Desenvolvimento"],
     need: "Obrigatório",
     url: "https://code.visualstudio.com/",
-    logoUrl: "https://www.google.com/s2/favicons?domain=code.visualstudio.com&sz=128",
+    logoUrl:
+      "https://www.google.com/s2/favicons?domain=code.visualstudio.com&sz=128",
   },
   {
     name: "Cursor",
-    description: "Editor com IA para explicar código, refatorar, criar arquivos e acelerar estudos.",
+    description:
+      "Editor com IA para explicar código, refatorar, criar arquivos e acelerar estudos.",
     areas: ["Front-end", "Back-end", "Dados", "DevOps", "UX/UI"],
     category: ["IA", "Desenvolvimento"],
     need: "Importante",
@@ -485,7 +1198,8 @@ export const devTools = [
   },
   {
     name: "Git",
-    description: "Sistema de versionamento usado para registrar mudanças e trabalhar com branches.",
+    description:
+      "Sistema de versionamento usado para registrar mudanças e trabalhar com branches.",
     areas: ["Front-end", "Back-end", "Dados", "DevOps"],
     category: ["Desenvolvimento"],
     need: "Obrigatório",
@@ -494,7 +1208,8 @@ export const devTools = [
   },
   {
     name: "GitHub",
-    description: "Plataforma para hospedar código, colaborar, abrir issues e mostrar portfólio.",
+    description:
+      "Plataforma para hospedar código, colaborar, abrir issues e mostrar portfólio.",
     areas: ["Front-end", "Back-end", "Dados", "DevOps", "UX/UI"],
     category: ["Desenvolvimento"],
     need: "Obrigatório",
@@ -503,7 +1218,8 @@ export const devTools = [
   },
   {
     name: "Docker",
-    description: "Ferramenta para empacotar aplicações e dependências em containers.",
+    description:
+      "Ferramenta para empacotar aplicações e dependências em containers.",
     areas: ["Back-end", "DevOps", "Dados"],
     category: ["DevOps", "Desenvolvimento"],
     need: "Obrigatório",
@@ -512,7 +1228,8 @@ export const devTools = [
   },
   {
     name: "Postman",
-    description: "Cliente para testar APIs, organizar requisições e documentar endpoints.",
+    description:
+      "Cliente para testar APIs, organizar requisições e documentar endpoints.",
     areas: ["Back-end", "QA", "Front-end"],
     category: ["Desenvolvimento"],
     need: "Importante",
@@ -521,7 +1238,8 @@ export const devTools = [
   },
   {
     name: "Figma",
-    description: "Ferramenta de design para criar, consultar e comentar interfaces.",
+    description:
+      "Ferramenta de design para criar, consultar e comentar interfaces.",
     areas: ["UX/UI", "Front-end", "Produto"],
     category: ["Design"],
     need: "Importante",
@@ -530,7 +1248,8 @@ export const devTools = [
   },
   {
     name: "Jira",
-    description: "Ferramenta de gestão de tarefas, sprints, backlog e acompanhamento de entregas.",
+    description:
+      "Ferramenta de gestão de tarefas, sprints, backlog e acompanhamento de entregas.",
     areas: ["Produto", "DevOps", "QA"],
     category: ["Produtividade"],
     need: "Importante",
@@ -539,7 +1258,8 @@ export const devTools = [
   },
   {
     name: "Slack",
-    description: "Comunicação de times, comunidades, canais de projeto e alertas de sistemas.",
+    description:
+      "Comunicação de times, comunidades, canais de projeto e alertas de sistemas.",
     areas: ["Front-end", "Back-end", "Dados", "DevOps", "UX/UI"],
     category: ["Produtividade"],
     need: "Importante",
@@ -548,7 +1268,8 @@ export const devTools = [
   },
   {
     name: "Notion",
-    description: "Organização de estudos, documentação, planejamento, notas e portfólio.",
+    description:
+      "Organização de estudos, documentação, planejamento, notas e portfólio.",
     areas: ["Produto", "UX/UI", "Carreira", "Estudos"],
     category: ["Produtividade"],
     need: "Importante",
@@ -557,7 +1278,8 @@ export const devTools = [
   },
   {
     name: "Terminal",
-    description: "Interface de linha de comando para navegar por pastas, rodar scripts e usar Git.",
+    description:
+      "Interface de linha de comando para navegar por pastas, rodar scripts e usar Git.",
     areas: ["Front-end", "Back-end", "Dados", "DevOps"],
     category: ["Desenvolvimento"],
     need: "Obrigatório",
@@ -566,7 +1288,8 @@ export const devTools = [
   },
   {
     name: "npm",
-    description: "Gerenciador de pacotes do ecossistema JavaScript, usado para instalar bibliotecas.",
+    description:
+      "Gerenciador de pacotes do ecossistema JavaScript, usado para instalar bibliotecas.",
     areas: ["Front-end", "Back-end", "Full Stack"],
     category: ["Desenvolvimento"],
     need: "Obrigatório",
@@ -575,7 +1298,8 @@ export const devTools = [
   },
   {
     name: "Yarn",
-    description: "Gerenciador de pacotes JavaScript usado como alternativa ao npm.",
+    description:
+      "Gerenciador de pacotes JavaScript usado como alternativa ao npm.",
     areas: ["Front-end", "Back-end", "Full Stack"],
     category: ["Desenvolvimento"],
     need: "Opcional",
@@ -584,7 +1308,8 @@ export const devTools = [
   },
   {
     name: "pnpm",
-    description: "Gerenciador de pacotes rápido e econômico em disco para projetos JavaScript.",
+    description:
+      "Gerenciador de pacotes rápido e econômico em disco para projetos JavaScript.",
     areas: ["Front-end", "Back-end", "Full Stack"],
     category: ["Desenvolvimento"],
     need: "Opcional",
@@ -593,16 +1318,19 @@ export const devTools = [
   },
   {
     name: "Chrome DevTools",
-    description: "Ferramentas do navegador para inspecionar HTML, CSS, rede, performance e console.",
+    description:
+      "Ferramentas do navegador para inspecionar HTML, CSS, rede, performance e console.",
     areas: ["Front-end", "QA", "Performance"],
     category: ["Desenvolvimento"],
     need: "Obrigatório",
     url: "https://developer.chrome.com/docs/devtools",
-    logoUrl: "https://www.google.com/s2/favicons?domain=developer.chrome.com&sz=128",
+    logoUrl:
+      "https://www.google.com/s2/favicons?domain=developer.chrome.com&sz=128",
   },
   {
     name: "ChatGPT",
-    description: "Assistente de IA para tirar dúvidas, explicar erros e revisar código.",
+    description:
+      "Assistente de IA para tirar dúvidas, explicar erros e revisar código.",
     areas: ["Front-end", "Back-end", "Dados", "Estudos"],
     category: ["IA"],
     need: "Importante",
@@ -629,7 +1357,8 @@ export const devTools = [
   },
   {
     name: "Node.js",
-    description: "Runtime JavaScript para rodar projetos e ferramentas fora do navegador.",
+    description:
+      "Runtime JavaScript para rodar projetos e ferramentas fora do navegador.",
     areas: ["Back-end", "Front-end", "Full Stack"],
     category: ["Desenvolvimento"],
     need: "Obrigatório",
@@ -638,7 +1367,8 @@ export const devTools = [
   },
   {
     name: "Vite",
-    description: "Bundler e servidor de desenvolvimento rápido para apps front-end modernos.",
+    description:
+      "Bundler e servidor de desenvolvimento rápido para apps front-end modernos.",
     areas: ["Front-end", "Full Stack"],
     category: ["Desenvolvimento"],
     need: "Importante",
@@ -647,7 +1377,8 @@ export const devTools = [
   },
   {
     name: "Insomnia",
-    description: "Cliente de API para testar requisições, alternativa ao Postman.",
+    description:
+      "Cliente de API para testar requisições, alternativa ao Postman.",
     areas: ["Back-end", "QA"],
     category: ["Desenvolvimento"],
     need: "Opcional",
@@ -692,7 +1423,8 @@ export const devTools = [
   },
   {
     name: "Linear",
-    description: "Gestão de issues e sprints enxuta usada por times de produto.",
+    description:
+      "Gestão de issues e sprints enxuta usada por times de produto.",
     areas: ["Produto", "DevOps"],
     category: ["Produtividade"],
     need: "Opcional",
@@ -728,7 +1460,8 @@ export const devTools = [
   },
   {
     name: "PostgreSQL",
-    description: "Banco de dados relacional open source muito usado no mercado.",
+    description:
+      "Banco de dados relacional open source muito usado no mercado.",
     areas: ["Back-end", "Dados"],
     category: ["Banco de dados"],
     need: "Importante",
@@ -746,7 +1479,8 @@ export const devTools = [
   },
   {
     name: "Supabase",
-    description: "Backend com Postgres, autenticação e APIs prontos (open source).",
+    description:
+      "Backend com Postgres, autenticação e APIs prontos (open source).",
     areas: ["Back-end", "Full Stack"],
     category: ["Banco de dados", "Desenvolvimento"],
     need: "Opcional",
@@ -776,7 +1510,12 @@ export const devTools = [
 export const setupGuides = [
   {
     area: "Front-end",
-    stack: ["Navegador + Chrome DevTools", "VS Code ou Cursor", "Node.js (LTS) + npm ou pnpm", "Git + GitHub"],
+    stack: [
+      "Navegador + Chrome DevTools",
+      "VS Code ou Cursor",
+      "Node.js (LTS) + npm ou pnpm",
+      "Git + GitHub",
+    ],
     steps: [
       "Instale o Node.js LTS e confirme com node -v.",
       "Crie um projeto com Vite e rode npm run dev.",
@@ -786,7 +1525,13 @@ export const setupGuides = [
   },
   {
     area: "Back-end",
-    stack: ["VS Code ou Cursor", "Node.js (ou a linguagem da sua stack)", "Git + GitHub", "Postman ou Insomnia", "Docker"],
+    stack: [
+      "VS Code ou Cursor",
+      "Node.js (ou a linguagem da sua stack)",
+      "Git + GitHub",
+      "Postman ou Insomnia",
+      "Docker",
+    ],
     steps: [
       "Instale a linguagem da stack e o gerenciador de pacotes.",
       "Crie uma API mínima com uma rota que responde um JSON.",
@@ -796,7 +1541,12 @@ export const setupGuides = [
   },
   {
     area: "Dados",
-    stack: ["Python (versão recente)", "VS Code ou Jupyter", "Git + GitHub", "Banco SQL + DBeaver"],
+    stack: [
+      "Python (versão recente)",
+      "VS Code ou Jupyter",
+      "Git + GitHub",
+      "Banco SQL + DBeaver",
+    ],
     steps: [
       "Instale o Python e confirme com python --version.",
       "Crie um ambiente virtual e instale pandas e jupyter.",
@@ -806,7 +1556,13 @@ export const setupGuides = [
   },
   {
     area: "DevOps",
-    stack: ["Terminal (Linux ou WSL)", "Git + GitHub", "Docker", "Plataforma de deploy (ex: Vercel)", "Kubernetes"],
+    stack: [
+      "Terminal (Linux ou WSL)",
+      "Git + GitHub",
+      "Docker",
+      "Plataforma de deploy (ex: Vercel)",
+      "Kubernetes",
+    ],
     steps: [
       "Domine o terminal e os comandos básicos de Git.",
       "Empacote uma aplicação simples com Docker e rode o container local.",

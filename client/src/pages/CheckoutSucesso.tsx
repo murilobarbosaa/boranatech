@@ -12,7 +12,8 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { greet } from "@shared/greeting";
 
 export default function CheckoutSucesso() {
-  const { isPro, loading, refreshSubscription, subscription } = useSubscription();
+  const { isPro, loading, refreshSubscription, subscription } =
+    useSubscription();
   const { profile } = useAuth();
   const [checking, setChecking] = useState(true);
   const [processed, setProcessed] = useState(false);
@@ -55,7 +56,8 @@ export default function CheckoutSucesso() {
 
   const planName =
     typeof subscription === "object" && subscription && "plans" in subscription
-      ? ((subscription as { plans?: { name?: string | null } | null }).plans?.name ?? "Plano Pro")
+      ? ((subscription as { plans?: { name?: string | null } | null }).plans
+          ?.name ?? "Plano Pro")
       : "Plano Pro";
 
   const isLoadingScreen = checking || loading;
@@ -66,11 +68,14 @@ export default function CheckoutSucesso() {
   // Sequencia de bursts ao longo de ~2s (estilo festao), centrada no topo do card.
   // Mantem as guardas: so dispara 1x, respeita reduced-motion, e para no cleanup.
   useEffect(() => {
-    if (isLoadingScreen || !showSuccess || reduce || confettiFiredRef.current) return;
+    if (isLoadingScreen || !showSuccess || reduce || confettiFiredRef.current)
+      return;
     confettiFiredRef.current = true;
 
     const rect = cardRef.current?.getBoundingClientRect();
-    const centerX = rect ? (rect.left + rect.width / 2) / window.innerWidth : 0.5;
+    const centerX = rect
+      ? (rect.left + rect.width / 2) / window.innerWidth
+      : 0.5;
     const baseY = rect ? (rect.top + 96) / window.innerHeight : 0.3;
 
     return fireProCelebration({ x: centerX, y: baseY });
@@ -84,12 +89,19 @@ export default function CheckoutSucesso() {
 
   return (
     <Layout>
-      <SEO title="Pagamento confirmado · Bora na Tech? Pro" url="/planos/sucesso" noindex />
+      <SEO
+        title="Pagamento confirmado · Bora na Tech? Pro"
+        url="/planos/sucesso"
+        noindex
+      />
       <section className="relative overflow-hidden bg-[radial-gradient(125%_125%_at_50%_10%,#fdfbf7_0%,#faf8f4_55%,#f6f2ea_100%)] py-16">
         {/* Camada decorativa: glow + blobs atras do card. Nao captura cliques,
             fica atras do conteudo (z-0), e flutua reusando .animate-gentle-float
             (que ja respeita prefers-reduced-motion no index.css). */}
-        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <div
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+          aria-hidden="true"
+        >
           {/* Glow amarelo central, atras do card. Intensidade sutilmente maior no sucesso. */}
           <div
             className="absolute left-1/2 top-1/2"
@@ -100,7 +112,10 @@ export default function CheckoutSucesso() {
           >
             <div
               className="animate-gentle-float h-[28rem] w-[28rem] rounded-full bg-[#FFB800] blur-[120px]"
-              style={{ opacity: showSuccess ? 0.26 : 0.18, transition: "opacity 600ms ease" }}
+              style={{
+                opacity: showSuccess ? 0.26 : 0.18,
+                transition: "opacity 600ms ease",
+              }}
             />
           </div>
 
@@ -129,11 +144,17 @@ export default function CheckoutSucesso() {
           >
             <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] shadow-[4px_4px_0_#0f172a]">
               {isLoadingScreen ? (
-                <Loader2 className={`h-12 w-12 text-[#1a1a1a] ${reduce ? "" : "animate-spin"}`} />
+                <Loader2
+                  className={`h-12 w-12 text-[#1a1a1a] ${reduce ? "" : "animate-spin"}`}
+                />
               ) : showProcessing ? (
                 <motion.span
                   animate={reduce ? undefined : { scale: [1, 1.08, 1] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                   className="inline-flex"
                 >
                   <Clock className="h-12 w-12 text-[#1a1a1a]" />
@@ -142,7 +163,12 @@ export default function CheckoutSucesso() {
                 <motion.span
                   initial={reduce ? false : { scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 520, damping: 16, delay: 0.1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 520,
+                    damping: 16,
+                    delay: 0.1,
+                  }}
                   className="inline-flex"
                 >
                   <Check className="h-12 w-12 text-[#1a1a1a]" strokeWidth={3} />
@@ -152,7 +178,9 @@ export default function CheckoutSucesso() {
 
             {isLoadingScreen ? (
               <motion.div key="loading" {...fadeSlideUp}>
-                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">Quase lá...</h1>
+                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">
+                  Quase lá...
+                </h1>
                 <p className="mx-auto mt-3 max-w-lg text-sm font-semibold leading-relaxed text-slate-600">
                   Estamos confirmando seu pagamento. Leva só alguns segundos.
                 </p>
@@ -171,14 +199,20 @@ export default function CheckoutSucesso() {
                   <motion.span
                     initial={reduce ? false : { scale: 0, rotate: -35 }}
                     animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", stiffness: 480, damping: 14, delay: 0.35 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 480,
+                      damping: 14,
+                      delay: 0.35,
+                    }}
                     className="inline-flex"
                   >
                     <ProStarIcon className="h-7 w-7 [&>svg]:h-5 [&>svg]:w-5" />
                   </motion.span>
                 </h1>
                 <p className="mx-auto mt-3 max-w-lg text-base font-semibold leading-relaxed text-slate-600">
-                  Sua assinatura {planName} está ativa. Bora explorar tudo que o Pro libera na sua jornada tech.
+                  Sua assinatura {planName} está ativa. Bora explorar tudo que o
+                  Pro libera na sua jornada tech.
                 </p>
                 <Link
                   href="/perfil"
@@ -189,9 +223,12 @@ export default function CheckoutSucesso() {
               </motion.div>
             ) : (
               <motion.div key="processing" {...fadeSlideUp}>
-                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">Tá quase!</h1>
+                <h1 className="font-display mt-8 text-4xl font-black text-[#1a1a1a]">
+                  Tá quase!
+                </h1>
                 <p className="mx-auto mt-3 max-w-lg text-base font-semibold leading-relaxed text-slate-600">
-                  Seu pagamento está sendo processado. Assim que confirmar, o Pro libera automaticamente. Você também recebe um e-mail.
+                  Seu pagamento está sendo processado. Assim que confirmar, o
+                  Pro libera automaticamente. Você também recebe um e-mail.
                 </p>
                 <Link
                   href="/perfil"

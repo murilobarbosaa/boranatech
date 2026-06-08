@@ -98,7 +98,9 @@ export async function deleteStudyEntry(id: string): Promise<void> {
   await apiFetch(`/entries/${id}`, { method: "DELETE" });
 }
 
-export async function getStudyStats(range: "7d" | "30d" | "90d" = "7d"): Promise<StudyStats> {
+export async function getStudyStats(
+  range: "7d" | "30d" | "90d" = "7d",
+): Promise<StudyStats> {
   const json = await apiFetch(`/stats?range=${range}`);
   return json.data;
 }

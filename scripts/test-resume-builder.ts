@@ -23,8 +23,13 @@ const repoRoot = dirname(here);
 const argv = process.argv.slice(2);
 const modelOverride = argv.find((a) => a.startsWith("--model="))?.split("=")[1];
 const onlyArg = argv.find((a) => a.startsWith("--only="))?.split("=")[1];
-const onlySet = onlyArg ? new Set(onlyArg.split(",").map((s) => s.trim().toUpperCase())) : null;
-const turnDelayMs = parseInt(argv.find((a) => a.startsWith("--delay="))?.split("=")[1] ?? "0", 10);
+const onlySet = onlyArg
+  ? new Set(onlyArg.split(",").map((s) => s.trim().toUpperCase()))
+  : null;
+const turnDelayMs = parseInt(
+  argv.find((a) => a.startsWith("--delay="))?.split("=")[1] ?? "0",
+  10,
+);
 
 const tool = AI_TOOLS["resume-builder"];
 if (!tool) {
@@ -126,11 +131,7 @@ const SCENARIOS: Scenario[] = [
   {
     id: "C6",
     title: "User vago / respostas fracas",
-    userTurns: [
-      "quero um currículo",
-      "fiz um projeto",
-      "ah é, um site",
-    ],
+    userTurns: ["quero um currículo", "fiz um projeto", "ah é, um site"],
     checks: [
       "No turno 2 cava com UMA pergunta de aprofundamento (não 3 simultâneas)",
       "Tom acolhedor, não cobra como manual",
@@ -176,7 +177,8 @@ const SCENARIOS: Scenario[] = [
   },
   {
     id: "C9",
-    title: "Experiência mencionada sem período (Fase 3.1: cava E aceita ausência)",
+    title:
+      "Experiência mencionada sem período (Fase 3.1: cava E aceita ausência)",
     userTurns: [
       "tô buscando vaga de dev backend júnior, alvo BR",
       "trabalhei na Acme Solutions como Desenvolvedora Backend Júnior",
@@ -234,7 +236,9 @@ async function callOpenAI(messages: ChatMessage[]): Promise<string> {
     throw new Error(`OpenAI ${res.status}: ${text.slice(0, 300)}`);
   }
 
-  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
   const out = data.choices?.[0]?.message?.content;
   if (!out) throw new Error("Resposta vazia da OpenAI");
   return out;
@@ -247,7 +251,8 @@ async function runScenario(scenario: Scenario): Promise<ScenarioResult> {
 
   try {
     for (let i = 0; i < scenario.userTurns.length; i++) {
-      if (i > 0 && turnDelayMs > 0) await new Promise((r) => setTimeout(r, turnDelayMs));
+      if (i > 0 && turnDelayMs > 0)
+        await new Promise((r) => setTimeout(r, turnDelayMs));
       const userMsg = scenario.userTurns[i];
       history.push({ role: "user", content: userMsg });
       const t0 = Date.now();
@@ -273,7 +278,8 @@ async function runScenario(scenario: Scenario): Promise<ScenarioResult> {
 const EM_DASH = "—";
 const EN_DASH = "–";
 const MARKER = "[[CURRICULO_READY]]";
-const MARKER_VARIANT_RE = /\[CURRICULO_READY\]|CURRICULO[\s_]?PRONTO|\bCURRICULO READY\b/i;
+const MARKER_VARIANT_RE =
+  /\[CURRICULO_READY\]|CURRICULO[\s_]?PRONTO|\bCURRICULO READY\b/i;
 
 function hasEmDash(s: string): boolean {
   return s.includes(EM_DASH) || s.includes(EN_DASH);
@@ -301,8 +307,10 @@ function masculineToneIssues(s: string): string[] {
   const issues: string[] = [];
   // Feminino claro do assistente sobre si mesmo. Procura "sou a" "estou aqui pra te ajudar como sua" etc.
   // É conservador: só pega marcadores fortes pra evitar falsos positivos.
-  if (/\bsou a (Natechinha|sua mentora|uma mentora)\b/i.test(s)) issues.push("auto-referência feminina explícita");
-  if (/\bestou aqui como sua\b/i.test(s)) issues.push("'como sua' (gênero feminino)");
+  if (/\bsou a (Natechinha|sua mentora|uma mentora)\b/i.test(s))
+    issues.push("auto-referência feminina explícita");
+  if (/\bestou aqui como sua\b/i.test(s))
+    issues.push("'como sua' (gênero feminino)");
   return issues;
 }
 
@@ -320,7 +328,10 @@ function markerVariant(reply: string): string | null {
   const m = reply.match(MARKER_VARIANT_RE);
   if (!m) return null;
   // ignore se for o marcador exato
-  if (reply.includes(MARKER) && m[0].toUpperCase().includes("CURRICULO_READY")) {
+  if (
+    reply.includes(MARKER) &&
+    m[0].toUpperCase().includes("CURRICULO_READY")
+  ) {
     // verificar se há instância "fora" do marcador exato
     const stripped = reply.replace(/\[\[CURRICULO_READY\]\]/g, "");
     if (MARKER_VARIANT_RE.test(stripped)) return m[0];
@@ -341,9 +352,13 @@ function buildReport(results: ScenarioResult[]): string {
 
   lines.push(`# Fase 1C — Relatório de Diagnóstico: resume-builder`);
   lines.push("");
-  lines.push(`> **Modelo:** \`${MODEL}\` · **Temperature:** ${TEMPERATURE} · **Gerado em:** ${now}`);
+  lines.push(
+    `> **Modelo:** \`${MODEL}\` · **Temperature:** ${TEMPERATURE} · **Gerado em:** ${now}`,
+  );
   lines.push("");
-  lines.push("Este relatório foi produzido executando 8 conversas simuladas contra o systemPrompt canônico de `server/lib/aiTools.ts` (sem passar pelo Express, auth, Supabase). Nenhum prompt foi alterado nesta fase.");
+  lines.push(
+    "Este relatório foi produzido executando 8 conversas simuladas contra o systemPrompt canônico de `server/lib/aiTools.ts` (sem passar pelo Express, auth, Supabase). Nenhum prompt foi alterado nesta fase.",
+  );
   lines.push("");
 
   /* sumário transversal */
@@ -374,13 +389,27 @@ function buildReport(results: ScenarioResult[]): string {
 
   transversalRows.push(`| Verificação | Resultado |`);
   transversalRows.push(`|---|---|`);
-  transversalRows.push(`| Turnos do Natechinho totais | ${totalAssistantTurns} |`);
-  transversalRows.push(`| Turnos com travessão (—) ou quase-hífen (–) | ${turnsWithEmDash} ${turnsWithEmDash === 0 ? "✅" : "❌"} |`);
-  transversalRows.push(`| Turnos com problema de tom masculino | ${toneIssueTurns} ${toneIssueTurns === 0 ? "✅" : "⚠️"} |`);
-  transversalRows.push(`| Marcador [[CURRICULO_READY]] emitido prematuramente | ${prematureMarker} ${prematureMarker === 0 ? "✅" : "❌"} |`);
-  transversalRows.push(`| Variantes inválidas do marcador detectadas | ${invalidVariant} ${invalidVariant === 0 ? "✅" : "❌"} |`);
-  transversalRows.push(`| Turnos com mais de 1 interrogação (regra S6) | ${turnsWithMultipleQ} ${turnsWithMultipleQ === 0 ? "✅" : "❌"} |`);
-  transversalRows.push(`| Total de "?" em respostas do Natechinho | ${totalQuestionMarks} (média ${(totalQuestionMarks / Math.max(1, totalAssistantTurns)).toFixed(2)} por turno) |`);
+  transversalRows.push(
+    `| Turnos do Natechinho totais | ${totalAssistantTurns} |`,
+  );
+  transversalRows.push(
+    `| Turnos com travessão (—) ou quase-hífen (–) | ${turnsWithEmDash} ${turnsWithEmDash === 0 ? "✅" : "❌"} |`,
+  );
+  transversalRows.push(
+    `| Turnos com problema de tom masculino | ${toneIssueTurns} ${toneIssueTurns === 0 ? "✅" : "⚠️"} |`,
+  );
+  transversalRows.push(
+    `| Marcador [[CURRICULO_READY]] emitido prematuramente | ${prematureMarker} ${prematureMarker === 0 ? "✅" : "❌"} |`,
+  );
+  transversalRows.push(
+    `| Variantes inválidas do marcador detectadas | ${invalidVariant} ${invalidVariant === 0 ? "✅" : "❌"} |`,
+  );
+  transversalRows.push(
+    `| Turnos com mais de 1 interrogação (regra S6) | ${turnsWithMultipleQ} ${turnsWithMultipleQ === 0 ? "✅" : "❌"} |`,
+  );
+  transversalRows.push(
+    `| Total de "?" em respostas do Natechinho | ${totalQuestionMarks} (média ${(totalQuestionMarks / Math.max(1, totalAssistantTurns)).toFixed(2)} por turno) |`,
+  );
 
   lines.push(`## Verificações transversais`);
   lines.push("");
@@ -398,7 +427,9 @@ function buildReport(results: ScenarioResult[]): string {
       lines.push("");
       continue;
     }
-    lines.push(`**Tempo total:** ${fmtMs(r.totalMs)} · **Turnos:** ${r.turns.length}`);
+    lines.push(
+      `**Tempo total:** ${fmtMs(r.totalMs)} · **Turnos:** ${r.turns.length}`,
+    );
     lines.push("");
 
     /* checks transversais por turno */
@@ -443,24 +474,36 @@ function buildReport(results: ScenarioResult[]): string {
 
     lines.push(`### Sinais automáticos`);
     lines.push("");
-    lines.push(`- Travessão/quase-hífen em turnos: ${dashTurns.length ? dashTurns.join(", ") + " ❌" : "nenhum ✅"}`);
+    lines.push(
+      `- Travessão/quase-hífen em turnos: ${dashTurns.length ? dashTurns.join(", ") + " ❌" : "nenhum ✅"}`,
+    );
     if (dashTurns.length) {
       for (const idx of dashTurns) {
         const samples = findEmDashSamples(r.turns[idx - 1].assistant);
         for (const s of samples) lines.push(`  - T${idx}: \`${s}\``);
       }
     }
-    lines.push(`- Tom masculino: ${toneTurns.length ? `problemas em T${toneTurns.join(", T")} ⚠️` : "ok ✅"}`);
-    lines.push(`- Marcador prematuro: ${intermediateMarker.length ? `T${intermediateMarker.join(", T")} ❌` : "nenhum ✅"}`);
-    lines.push(`- Variantes inválidas do marcador: ${variantTurns.length ? variantTurns.map((v) => `T${v.idx} (\`${v.sample}\`)`).join(", ") + " ❌" : "nenhuma ✅"}`);
+    lines.push(
+      `- Tom masculino: ${toneTurns.length ? `problemas em T${toneTurns.join(", T")} ⚠️` : "ok ✅"}`,
+    );
+    lines.push(
+      `- Marcador prematuro: ${intermediateMarker.length ? `T${intermediateMarker.join(", T")} ❌` : "nenhum ✅"}`,
+    );
+    lines.push(
+      `- Variantes inválidas do marcador: ${variantTurns.length ? variantTurns.map((v) => `T${v.idx} (\`${v.sample}\`)`).join(", ") + " ❌" : "nenhuma ✅"}`,
+    );
     if (r.scenario.id === "C8") {
-      lines.push(`- Marcador exato na última linha do último turno: ${finalMarkerOk ? "sim ✅" : "NÃO ❌"}`);
+      lines.push(
+        `- Marcador exato na última linha do último turno: ${finalMarkerOk ? "sim ✅" : "NÃO ❌"}`,
+      );
     }
     const qDesc = qCounts
       .map((c, i) => `T${i + 1}=${c}${c > 1 ? "❌" : ""}`)
       .join(", ");
     const offending = qCounts.filter((c) => c > 1).length;
-    lines.push(`- Interrogações por turno (S6): ${qDesc} ${offending === 0 ? "✅" : `(${offending} turno(s) com >1 ❌)`}`);
+    lines.push(
+      `- Interrogações por turno (S6): ${qDesc} ${offending === 0 ? "✅" : `(${offending} turno(s) com >1 ❌)`}`,
+    );
     lines.push("");
   }
 
@@ -489,14 +532,19 @@ async function main() {
     ? SCENARIOS.filter((s) => onlySet.has(s.id.toUpperCase()))
     : SCENARIOS;
 
-  console.log(`▶ resume-builder Fase 1C · modelo=${MODEL} · cenários=${targets.map((s) => s.id).join(",")}`);
+  console.log(
+    `▶ resume-builder Fase 1C · modelo=${MODEL} · cenários=${targets.map((s) => s.id).join(",")}`,
+  );
 
   const results: ScenarioResult[] = [];
   for (const sc of targets) {
     process.stdout.write(`  ${sc.id} ${sc.title} …`);
     const r = await runScenario(sc);
     if (r.error) process.stdout.write(` ❌ ${r.error}\n`);
-    else process.stdout.write(` ok (${r.turns.length} turnos, ${fmtMs(r.totalMs)})\n`);
+    else
+      process.stdout.write(
+        ` ok (${r.turns.length} turnos, ${fmtMs(r.totalMs)})\n`,
+      );
     results.push(r);
   }
 

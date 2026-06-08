@@ -21,7 +21,12 @@ interface VideoEmbedDialogProps {
   children: ReactNode;
 }
 
-export default function VideoEmbedDialog({ source, title, href, children }: VideoEmbedDialogProps) {
+export default function VideoEmbedDialog({
+  source,
+  title,
+  href,
+  children,
+}: VideoEmbedDialogProps) {
   const embed = youtubeEmbedUrl(source);
   const externalHref = href ?? (source.startsWith("http") ? source : undefined);
 
@@ -37,7 +42,9 @@ export default function VideoEmbedDialog({ source, title, href, children }: Vide
         className="max-h-[92vh] w-[calc(100%-1.25rem)] max-w-4xl gap-4 overflow-y-auto border-2 border-slate-900 p-4 sm:p-6"
       >
         <DialogHeader className="text-left">
-          <DialogTitle className="font-display text-lg font-black sm:text-xl">{title}</DialogTitle>
+          <DialogTitle className="font-display text-lg font-black sm:text-xl">
+            {title}
+          </DialogTitle>
         </DialogHeader>
         <div className="aspect-video overflow-hidden rounded-xl border-2 border-slate-900 bg-black shadow-[4px_4px_0_0_rgb(15_23_42)]">
           <iframe
@@ -51,7 +58,12 @@ export default function VideoEmbedDialog({ source, title, href, children }: Vide
           />
         </div>
         {externalHref ? (
-          <Button asChild variant="secondary" size="sm" className="w-full gap-2 font-black sm:w-auto">
+          <Button
+            asChild
+            variant="secondary"
+            size="sm"
+            className="w-full gap-2 font-black sm:w-auto"
+          >
             <a href={externalHref} target="_blank" rel="noopener noreferrer">
               Abrir no YouTube
               <ExternalLink className="size-4" aria-hidden />

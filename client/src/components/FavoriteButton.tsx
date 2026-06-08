@@ -24,7 +24,11 @@ function showSavedToast() {
   });
 }
 
-export default function FavoriteButton({ item, className, compact = false }: FavoriteButtonProps) {
+export default function FavoriteButton({
+  item,
+  className,
+  compact = false,
+}: FavoriteButtonProps) {
   const { user } = useAuth();
   const { isFavorite, toggleFavorite, loading, clearPendingAuth } =
     useFavorites();
@@ -84,7 +88,11 @@ export default function FavoriteButton({ item, className, compact = false }: Fav
       aria-pressed={isLoadingState ? undefined : active}
       aria-busy={isLoadingState || undefined}
       disabled={isLoadingState}
-      aria-label={active ? `Remover ${item.title} dos favoritos` : `Favoritar ${item.title}`}
+      aria-label={
+        active
+          ? `Remover ${item.title} dos favoritos`
+          : `Favoritar ${item.title}`
+      }
       onClick={handleClick}
       className={cn(
         "inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-white font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]",
@@ -95,7 +103,9 @@ export default function FavoriteButton({ item, className, compact = false }: Fav
       )}
     >
       <Heart className={cn("h-4 w-4", active && "fill-current")} />
-      {!compact && !isLoadingState && <span>{active ? "Favorito" : "Favoritar"}</span>}
+      {!compact && !isLoadingState && (
+        <span>{active ? "Favorito" : "Favoritar"}</span>
+      )}
     </button>
   );
 }

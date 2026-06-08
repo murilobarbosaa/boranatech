@@ -32,14 +32,18 @@ export async function getMyProfile(): Promise<Profile> {
   if (!res.ok) {
     throw new Error(`Erro ao buscar perfil (HTTP ${res.status}).`);
   }
-  const json = (await res.json().catch(() => null)) as { data?: Profile | null } | null;
+  const json = (await res.json().catch(() => null)) as {
+    data?: Profile | null;
+  } | null;
   if (!json?.data?.id) {
     throw new Error("Erro ao buscar perfil (resposta vazia ou inválida).");
   }
   return json.data;
 }
 
-export async function updateMyProfile(updates: Record<string, unknown>): Promise<Profile> {
+export async function updateMyProfile(
+  updates: Record<string, unknown>,
+): Promise<Profile> {
   const headers = await getAuthHeader();
   const res = await fetch(`${API_BASE}/me`, {
     method: "PATCH",

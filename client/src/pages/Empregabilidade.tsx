@@ -36,7 +36,8 @@ export default function Empregabilidade() {
                   {
                     name: "jobTitle",
                     label: "Cargo ou título da vaga",
-                    placeholder: 'Ex.: "Desenvolvedora Front-end Júnior" ou como aparece no anúncio',
+                    placeholder:
+                      'Ex.: "Desenvolvedora Front-end Júnior" ou como aparece no anúncio',
                   },
                   {
                     name: "jobPosting",
@@ -55,7 +56,8 @@ export default function Empregabilidade() {
                   {
                     name: "yearsExperience",
                     label: "Tempo na área (anos ou estágio iniciante)",
-                    placeholder: 'Ex.: "0, em transição", "6 meses estágio", "2 anos"',
+                    placeholder:
+                      'Ex.: "0, em transição", "6 meses estágio", "2 anos"',
                   },
                   {
                     name: "interviewPrep",
@@ -68,18 +70,33 @@ export default function Empregabilidade() {
                     name: "targetLevel",
                     label: "Nível declarado na vaga",
                     type: "select",
-                    options: ["Estágio", "Trainee", "Júnior", "Pleno", "Sênior", "Especialista", "Nível misto ou não claro"],
+                    options: [
+                      "Estágio",
+                      "Trainee",
+                      "Júnior",
+                      "Pleno",
+                      "Sênior",
+                      "Especialista",
+                      "Nível misto ou não claro",
+                    ],
                   },
                   {
                     name: "workMode",
                     label: "Modalidade (como você entende pela vaga ou desejo)",
                     type: "select",
-                    options: ["Remoto", "Híbrido", "Presencial", "Presencial não informado na vaga", "Qualquer uma"],
+                    options: [
+                      "Remoto",
+                      "Híbrido",
+                      "Presencial",
+                      "Presencial não informado na vaga",
+                      "Qualquer uma",
+                    ],
                   },
                   {
                     name: "salaryExpectation",
                     label: "Pretensão ou faixa que a vaga mostra",
-                    placeholder: 'Ex.: "R$ 4 a 5k", só CLT ou "salário não divulgado na vaga"',
+                    placeholder:
+                      'Ex.: "R$ 4 a 5k", só CLT ou "salário não divulgado na vaga"',
                   },
                 ]}
               />
@@ -105,7 +122,8 @@ export default function Empregabilidade() {
                   {
                     name: "salaryInPosting",
                     label: "Salário ou benefício financeiro mencionado",
-                    placeholder: 'Cole só a parte salarial/remuneração, ou digite "não mencionado".',
+                    placeholder:
+                      'Cole só a parte salarial/remuneração, ou digite "não mencionado".',
                   },
                   {
                     name: "workModeDeclared",
@@ -115,10 +133,11 @@ export default function Empregabilidade() {
                   },
                   {
                     name: "referenceMarket",
-                    label: "Contexto opcional para comparar (sua cidade, área habitual)",
+                    label:
+                      "Contexto opcional para comparar (sua cidade, área habitual)",
                     type: "textarea",
                     placeholder:
-                      "Opcional: ex. \"Sou front júnior no Nordeste\" ou números de referência que você conheça. A IA usará só como referência.",
+                      'Opcional: ex. "Sou front júnior no Nordeste" ou números de referência que você conheça. A IA usará só como referência.',
                   },
                   {
                     name: "whatYouPrioritize",

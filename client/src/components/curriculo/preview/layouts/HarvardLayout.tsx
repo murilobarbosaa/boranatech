@@ -17,22 +17,47 @@ import SecaoProjetos from "../sections/SecaoProjetos";
 export default function HarvardLayout({ curriculo }: { curriculo: Curriculo }) {
   const labels = getLabels(curriculo.idioma);
   const tituloExperiencia =
-    curriculo.persona === "estudante" ? labels.projetosAtividades : labels.experiencia;
+    curriculo.persona === "estudante"
+      ? labels.projetosAtividades
+      : labels.experiencia;
 
   return (
     <>
-      <Cabecalho dadosPessoais={curriculo.dadosPessoais} objetivo={curriculo.objetivo} variant="center" />
+      <Cabecalho
+        dadosPessoais={curriculo.dadosPessoais}
+        objetivo={curriculo.objetivo}
+        variant="center"
+      />
       {curriculo.resumoProfissional?.trim() ? (
         <p className="mb-4 text-center text-[11px] italic leading-[1.5] text-slate-700">
           {curriculo.resumoProfissional}
         </p>
       ) : null}
-      <SecaoFormacao title={labels.formacao} items={curriculo.formacao} compact />
-      <SecaoExperiencia title={tituloExperiencia} items={curriculo.experiencias} compact />
-      <SecaoProjetos title={labels.projetos} items={curriculo.projetos} compact />
-      <SecaoHabilidades title={labels.habilidades} items={curriculo.habilidades} variant="inline" />
+      <SecaoFormacao
+        title={labels.formacao}
+        items={curriculo.formacao}
+        compact
+      />
+      <SecaoExperiencia
+        title={tituloExperiencia}
+        items={curriculo.experiencias}
+        compact
+      />
+      <SecaoProjetos
+        title={labels.projetos}
+        items={curriculo.projetos}
+        compact
+      />
+      <SecaoHabilidades
+        title={labels.habilidades}
+        items={curriculo.habilidades}
+        variant="inline"
+      />
       <SecaoIdiomas title={labels.idiomas} items={curriculo.idiomas} />
-      <SecaoCertificacoes title={labels.certificacoes} items={curriculo.certificacoes} />
+      <SecaoCertificacoes
+        title={labels.certificacoes}
+        items={curriculo.certificacoes}
+      />
     </>
   );
 }

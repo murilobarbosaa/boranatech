@@ -174,7 +174,10 @@ type AuditLog = {
   created_at: string;
 };
 
-type AiStatsData = Record<string, { calls: number; success: number; cost: number }>;
+type AiStatsData = Record<
+  string,
+  { calls: number; success: number; cost: number }
+>;
 
 type ChurnRiskUser = {
   name: string;
@@ -218,7 +221,13 @@ type ContentItem = {
   url?: string;
 };
 
-type ContentType = "news" | "external_jobs" | "events" | "areas" | "courses" | "roadmaps";
+type ContentType =
+  | "news"
+  | "external_jobs"
+  | "events"
+  | "areas"
+  | "courses"
+  | "roadmaps";
 
 const metricCards: MetricCard[] = [
   {
@@ -278,16 +287,44 @@ const metricCards: MetricCard[] = [
 ];
 
 const adminNavItems: AdminNavItem[] = [
-  { href: "#visao-geral", label: "Visão", icon: <LayoutDashboard className="h-4 w-4" /> },
-  { href: "#conversao", label: "Conversão", icon: <MousePointerClick className="h-4 w-4" /> },
+  {
+    href: "#visao-geral",
+    label: "Visão",
+    icon: <LayoutDashboard className="h-4 w-4" />,
+  },
+  {
+    href: "#conversao",
+    label: "Conversão",
+    icon: <MousePointerClick className="h-4 w-4" />,
+  },
   { href: "#paginas", label: "Páginas", icon: <Eye className="h-4 w-4" /> },
-  { href: "#conteudo", label: "Conteúdo", icon: <FileText className="h-4 w-4" /> },
-  { href: "#usuarios", label: "Usuários", icon: <UserRound className="h-4 w-4" /> },
-  { href: "#retencao", label: "Retenção", icon: <RefreshCcw className="h-4 w-4" /> },
+  {
+    href: "#conteudo",
+    label: "Conteúdo",
+    icon: <FileText className="h-4 w-4" />,
+  },
+  {
+    href: "#usuarios",
+    label: "Usuários",
+    icon: <UserRound className="h-4 w-4" />,
+  },
+  {
+    href: "#retencao",
+    label: "Retenção",
+    icon: <RefreshCcw className="h-4 w-4" />,
+  },
   { href: "#seo", label: "SEO", icon: <Search className="h-4 w-4" /> },
-  { href: "#financeiro", label: "Financeiro", icon: <DollarSign className="h-4 w-4" /> },
+  {
+    href: "#financeiro",
+    label: "Financeiro",
+    icon: <DollarSign className="h-4 w-4" />,
+  },
   { href: "#ia", label: "IA", icon: <Bot className="h-4 w-4" /> },
-  { href: "#afiliados", label: "Afiliados", icon: <Handshake className="h-4 w-4" /> },
+  {
+    href: "#afiliados",
+    label: "Afiliados",
+    icon: <Handshake className="h-4 w-4" />,
+  },
 ];
 
 function slugifyAffiliateCode(value: string) {
@@ -324,7 +361,9 @@ function toUserProfile(record: AdminUserRecord): UserProfile {
     signedUpAt: formatAdminDate(record.created_at),
     convertedAt: "Não convertido",
     interest: record.area_interesse || "Não informado",
-    source: record.onboarding_completed ? "Onboarding completo" : "Não informado",
+    source: record.onboarding_completed
+      ? "Onboarding completo"
+      : "Não informado",
     status: record.onboarding_completed ? "Ativo" : "Cadastro incompleto",
     paidTotal: "R$ 0,00",
     features: [],
@@ -333,7 +372,10 @@ function toUserProfile(record: AdminUserRecord): UserProfile {
 }
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value || 0);
 }
 
 function formatCents(value: number) {
@@ -382,23 +424,33 @@ function buildHealthItems(health: HealthResponse | null): HealthItem[] {
     {
       service: "Supabase Auth",
       status: databaseOk ? "Operando" : "Falha",
-      detail: databaseOk ? "Validação dependente do banco operacional" : "Banco indisponível no health check",
+      detail: databaseOk
+        ? "Validação dependente do banco operacional"
+        : "Banco indisponível no health check",
       icon: <ShieldCheck className="h-5 w-5" />,
-      tone: databaseOk ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800",
+      tone: databaseOk
+        ? "bg-emerald-50 text-emerald-800"
+        : "bg-rose-50 text-rose-800",
     },
     {
       service: "Banco de dados",
       status: databaseOk ? "Estável" : "Falha",
       detail: `Resposta em ${health.responseTime ?? 0}ms`,
       icon: <Database className="h-5 w-5" />,
-      tone: databaseOk ? "bg-blue-50 text-blue-800" : "bg-rose-50 text-rose-800",
+      tone: databaseOk
+        ? "bg-blue-50 text-blue-800"
+        : "bg-rose-50 text-rose-800",
     },
     {
       service: "Serviços de IA",
       status: openaiOk ? "Operando" : "Sem chave",
-      detail: openaiOk ? "OpenAI respondeu no health check" : "OPENAI_API_KEY ausente ou inválida",
+      detail: openaiOk
+        ? "OpenAI respondeu no health check"
+        : "OPENAI_API_KEY ausente ou inválida",
       icon: <BrainCircuit className="h-5 w-5" />,
-      tone: openaiOk ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900",
+      tone: openaiOk
+        ? "bg-emerald-50 text-emerald-800"
+        : "bg-amber-50 text-amber-900",
     },
     {
       service: "Servidor web",
@@ -414,12 +466,23 @@ function contentTitle(item: ContentItem) {
   return item.title || item.name || item.slug || item.id;
 }
 
-function TrendBadge({ direction, value }: { direction: MetricCard["direction"]; value: string }) {
+function TrendBadge({
+  direction,
+  value,
+}: {
+  direction: MetricCard["direction"];
+  value: string;
+}) {
   const Icon = direction === "down" ? ArrowDownRight : ArrowUpRight;
-  const tone = direction === "down" ? "bg-orange-100 text-orange-800" : "bg-emerald-100 text-emerald-800";
+  const tone =
+    direction === "down"
+      ? "bg-orange-100 text-orange-800"
+      : "bg-emerald-100 text-emerald-800";
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border border-slate-900 px-2 py-1 text-xs font-black ${tone}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full border border-slate-900 px-2 py-1 text-xs font-black ${tone}`}
+    >
       <Icon className="h-3.5 w-3.5" />
       {value}
     </span>
@@ -440,7 +503,9 @@ function StatusPill({ status }: { status: AiUsage["status"] }) {
   };
 
   return (
-    <span className={`rounded-full border border-slate-900 px-2 py-1 text-[11px] font-black uppercase ${classes[status]}`}>
+    <span
+      className={`rounded-full border border-slate-900 px-2 py-1 text-[11px] font-black uppercase ${classes[status]}`}
+    >
       {labels[status]}
     </span>
   );
@@ -450,7 +515,9 @@ function PublishBadge({ published }: { published?: boolean }) {
   return (
     <span
       className={`w-fit rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black ${
-        published ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"
+        published
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-slate-100 text-slate-700"
       }`}
     >
       {published ? "Publicado" : "Rascunho"}
@@ -479,7 +546,10 @@ function AdminShell({
   session?: AdminSession | null;
   setActiveSection?: (section: AdminSectionId) => void;
 }) {
-  function handleSectionClick(event: React.MouseEvent<HTMLButtonElement>, href: string) {
+  function handleSectionClick(
+    event: React.MouseEvent<HTMLButtonElement>,
+    href: string,
+  ) {
     event.preventDefault();
     const nextSection = href.replace("#", "") as AdminSectionId;
     setActiveSection?.(nextSection);
@@ -490,7 +560,10 @@ function AdminShell({
       <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
         <div className="container">
           <div className="flex min-h-16 items-center justify-between gap-4">
-            <a href="/admin" className="group flex min-w-fit items-center gap-2">
+            <a
+              href="/admin"
+              className="group flex min-w-fit items-center gap-2"
+            >
               <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-slate-900 bg-yellow-400 text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all group-hover:shadow-[4px_4px_0_#0f172a]">
                 <Compass className="h-5 w-5" />
               </span>
@@ -498,7 +571,9 @@ function AdminShell({
                 <span className="font-display block text-sm font-black uppercase leading-tight text-slate-900">
                   BORA NA TECH?
                 </span>
-                <span className="block text-xs font-bold text-slate-500">Admin da plataforma</span>
+                <span className="block text-xs font-bold text-slate-500">
+                  Admin da plataforma
+                </span>
               </div>
             </a>
 
@@ -510,7 +585,9 @@ function AdminShell({
                     type="button"
                     onClick={(event) => handleSectionClick(event, item.href)}
                     className={`nav-pill inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:text-slate-950 ${
-                      activeSection === item.href.replace("#", "") ? "nav-pill-active text-slate-950" : "text-slate-700"
+                      activeSection === item.href.replace("#", "")
+                        ? "nav-pill-active text-slate-950"
+                        : "text-slate-700"
                     }`}
                   >
                     {item.icon}
@@ -527,8 +604,12 @@ function AdminShell({
                     {session.displayName.slice(0, 2).toUpperCase()}
                   </span>
                   <div>
-                    <p className="text-[10px] font-black uppercase leading-none text-violet-700">Admin</p>
-                    <p className="text-xs font-black leading-tight text-slate-950">{session.displayName}</p>
+                    <p className="text-[10px] font-black uppercase leading-none text-violet-700">
+                      Admin
+                    </p>
+                    <p className="text-xs font-black leading-tight text-slate-950">
+                      {session.displayName}
+                    </p>
                   </div>
                 </div>
                 <button
@@ -556,7 +637,9 @@ function AdminShell({
                   type="button"
                   onClick={(event) => handleSectionClick(event, item.href)}
                   className={`nav-pill inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs font-bold hover:text-slate-950 ${
-                    activeSection === item.href.replace("#", "") ? "nav-pill-active text-slate-950" : "text-slate-700"
+                    activeSection === item.href.replace("#", "")
+                      ? "nav-pill-active text-slate-950"
+                      : "text-slate-700"
                   }`}
                 >
                   {item.icon}
@@ -595,8 +678,12 @@ function AdminSection({
             {icon}
             {eyebrow}
           </p>
-          <h2 className="font-display mt-3 text-3xl font-black text-slate-950">{title}</h2>
-          <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">{subtitle}</p>
+          <h2 className="font-display mt-3 text-3xl font-black text-slate-950">
+            {title}
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm font-semibold text-slate-600">
+            {subtitle}
+          </p>
         </div>
       </div>
       {children}
@@ -604,7 +691,11 @@ function AdminSection({
   );
 }
 
-function AdminAccessGate({ reason }: { reason: "loading" | "login" | "forbidden" }) {
+function AdminAccessGate({
+  reason,
+}: {
+  reason: "loading" | "login" | "forbidden";
+}) {
   return (
     <AdminShell>
       <SEO title="Admin · Bora na Tech?" url="/admin" noindex />
@@ -618,7 +709,8 @@ function AdminAccessGate({ reason }: { reason: "loading" | "login" | "forbidden"
               Painel admin do BORA NA TECH?
             </h1>
             <p className="mt-5 max-w-2xl text-lg font-semibold leading-relaxed text-slate-700">
-              O acesso agora é validado pela sua sessão Supabase e pela role administrativa registrada no banco.
+              O acesso agora é validado pela sua sessão Supabase e pela role
+              administrativa registrada no banco.
             </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {[
@@ -626,11 +718,16 @@ function AdminAccessGate({ reason }: { reason: "loading" | "login" | "forbidden"
                 { label: "IA", icon: <Bot className="h-5 w-5" /> },
                 { label: "Operação", icon: <Activity className="h-5 w-5" /> },
               ].map((item) => (
-                <div key={item.label} className="card-brutal rounded-2xl bg-white p-4">
+                <div
+                  key={item.label}
+                  className="card-brutal rounded-2xl bg-white p-4"
+                >
                   <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-900 bg-yellow-300">
                     {item.icon}
                   </span>
-                  <p className="font-display text-lg font-black text-slate-950">{item.label}</p>
+                  <p className="font-display text-lg font-black text-slate-950">
+                    {item.label}
+                  </p>
                 </div>
               ))}
             </div>
@@ -643,7 +740,11 @@ function AdminAccessGate({ reason }: { reason: "loading" | "login" | "forbidden"
               </span>
               <div>
                 <h2 className="font-display text-2xl font-black text-slate-950">
-                  {reason === "loading" ? "Verificando acesso" : reason === "login" ? "Faça login primeiro" : "Acesso negado"}
+                  {reason === "loading"
+                    ? "Verificando acesso"
+                    : reason === "login"
+                      ? "Faça login primeiro"
+                      : "Acesso negado"}
                 </h2>
                 <p className="text-sm font-semibold text-slate-500">
                   {reason === "loading"
@@ -655,7 +756,10 @@ function AdminAccessGate({ reason }: { reason: "loading" | "login" | "forbidden"
               </div>
             </div>
             {reason === "login" ? (
-              <a href="/login" className="btn-brutal-accent inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 font-black">
+              <a
+                href="/login"
+                className="btn-brutal-accent inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
+              >
                 Ir para login
                 <ShieldCheck className="h-5 w-5" />
               </a>
@@ -667,16 +771,53 @@ function AdminAccessGate({ reason }: { reason: "loading" | "login" | "forbidden"
   );
 }
 
-const contentTabs: Array<{ type: ContentType; label: string; supported: boolean; description: string }> = [
-  { type: "news", label: "Notícias", supported: true, description: "Adicionar, editar e publicar notícias." },
-  { type: "external_jobs", label: "Vagas", supported: true, description: "Adicionar, editar e publicar vagas." },
-  { type: "events", label: "Eventos", supported: true, description: "Adicionar, editar e publicar eventos." },
-  { type: "areas", label: "Áreas", supported: true, description: "Editar nome, descrições e publicação." },
-  { type: "courses", label: "Cursos", supported: true, description: "Adicionar, editar, despublicar e remover cursos." },
-  { type: "roadmaps", label: "Roadmaps", supported: true, description: "Editar título, descrição, duração e publicação." },
+const contentTabs: Array<{
+  type: ContentType;
+  label: string;
+  supported: boolean;
+  description: string;
+}> = [
+  {
+    type: "news",
+    label: "Notícias",
+    supported: true,
+    description: "Adicionar, editar e publicar notícias.",
+  },
+  {
+    type: "external_jobs",
+    label: "Vagas",
+    supported: true,
+    description: "Adicionar, editar e publicar vagas.",
+  },
+  {
+    type: "events",
+    label: "Eventos",
+    supported: true,
+    description: "Adicionar, editar e publicar eventos.",
+  },
+  {
+    type: "areas",
+    label: "Áreas",
+    supported: true,
+    description: "Editar nome, descrições e publicação.",
+  },
+  {
+    type: "courses",
+    label: "Cursos",
+    supported: true,
+    description: "Adicionar, editar, despublicar e remover cursos.",
+  },
+  {
+    type: "roadmaps",
+    label: "Roadmaps",
+    supported: true,
+    description: "Editar título, descrição, duração e publicação.",
+  },
 ];
 
-function emptyContentForm(type: ContentType): Record<string, string | boolean | number> {
+function emptyContentForm(
+  type: ContentType,
+): Record<string, string | boolean | number> {
   if (type === "news") {
     return {
       title: "",
@@ -733,13 +874,30 @@ function emptyContentForm(type: ContentType): Record<string, string | boolean | 
   }
 
   if (type === "areas") {
-    return { name: "", short_description: "", full_description: "", is_pro: false, is_published: true };
+    return {
+      name: "",
+      short_description: "",
+      full_description: "",
+      is_pro: false,
+      is_published: true,
+    };
   }
 
-  return { title: "", description: "", area_slug: "", level: "iniciante", estimated_duration_weeks: 0, is_pro: false, is_published: true };
+  return {
+    title: "",
+    description: "",
+    area_slug: "",
+    level: "iniciante",
+    estimated_duration_weeks: 0,
+    is_pro: false,
+    is_published: true,
+  };
 }
 
-function contentPayload(type: ContentType, form: Record<string, string | boolean | number>) {
+function contentPayload(
+  type: ContentType,
+  form: Record<string, string | boolean | number>,
+) {
   if (type === "news") {
     return {
       title: String(form.title || "").trim(),
@@ -824,7 +982,9 @@ function ContentAdminSection() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [editing, setEditing] = useState<ContentItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ContentItem | null>(null);
-  const [form, setForm] = useState<Record<string, string | boolean | number>>(emptyContentForm("areas"));
+  const [form, setForm] = useState<Record<string, string | boolean | number>>(
+    emptyContentForm("areas"),
+  );
   const activeConfig = contentTabs.find((tab) => tab.type === activeType)!;
 
   async function loadItems(type = activeType) {
@@ -840,7 +1000,9 @@ function ContentAdminSection() {
       setItems(Array.isArray(json.data) ? json.data : []);
     } catch (error) {
       setItems([]);
-      toast.error(error instanceof Error ? error.message : "Erro ao carregar conteúdo.");
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao carregar conteúdo.",
+      );
     } finally {
       setLoading(false);
     }
@@ -864,16 +1026,29 @@ function ContentAdminSection() {
     const payload = contentPayload(activeType, form);
     setSaving(true);
     try {
-      await adminFetch(editing ? `/content/${activeType}/${editing.id}` : `/content/${activeType}`, {
-        method: editing ? "PATCH" : "POST",
-        body: JSON.stringify(payload),
-      });
-      toast.success(editing ? "Conteúdo atualizado com sucesso." : "Conteúdo criado com sucesso.");
+      await adminFetch(
+        editing
+          ? `/content/${activeType}/${editing.id}`
+          : `/content/${activeType}`,
+        {
+          method: editing ? "PATCH" : "POST",
+          body: JSON.stringify(payload),
+        },
+      );
+      toast.success(
+        editing
+          ? "Conteúdo atualizado com sucesso."
+          : "Conteúdo criado com sucesso.",
+      );
       setEditing(null);
       setForm(emptyContentForm(activeType));
       await loadItems();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar. Tente novamente.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao salvar. Tente novamente.",
+      );
     } finally {
       setSaving(false);
     }
@@ -886,10 +1061,18 @@ function ContentAdminSection() {
         method: "PATCH",
         body: JSON.stringify({ is_published: !item.is_published }),
       });
-      toast.success(item.is_published ? "Conteúdo despublicado com sucesso." : "Conteúdo publicado com sucesso.");
+      toast.success(
+        item.is_published
+          ? "Conteúdo despublicado com sucesso."
+          : "Conteúdo publicado com sucesso.",
+      );
       await loadItems();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao publicar. Tente novamente.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao publicar. Tente novamente.",
+      );
     } finally {
       setBusyId(null);
     }
@@ -900,12 +1083,18 @@ function ContentAdminSection() {
 
     setBusyId(deleteTarget.id);
     try {
-      await adminFetch(`/content/${activeType}/${deleteTarget.id}`, { method: "DELETE" });
+      await adminFetch(`/content/${activeType}/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
       toast.success("Item despublicado com sucesso.");
       setDeleteTarget(null);
       await loadItems();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao excluir. Tente novamente.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao excluir. Tente novamente.",
+      );
     } finally {
       setBusyId(null);
     }
@@ -927,11 +1116,15 @@ function ContentAdminSection() {
               type="button"
               onClick={() => setActiveType(tab.type)}
               className={`mb-2 flex w-full items-center justify-between rounded-2xl border-2 px-4 py-3 text-left text-sm font-black ${
-                activeType === tab.type ? "border-slate-900 bg-yellow-300" : "border-slate-200 bg-white text-slate-700"
+                activeType === tab.type
+                  ? "border-slate-900 bg-yellow-300"
+                  : "border-slate-200 bg-white text-slate-700"
               }`}
             >
               {tab.label}
-              {!tab.supported ? <AlertTriangle className="h-4 w-4 text-amber-700" /> : null}
+              {!tab.supported ? (
+                <AlertTriangle className="h-4 w-4 text-amber-700" />
+              ) : null}
             </button>
           ))}
         </aside>
@@ -939,10 +1132,17 @@ function ContentAdminSection() {
         <div className="grid gap-6">
           {!activeConfig.supported ? (
             <article className="card-brutal rounded-3xl bg-white p-6">
-              <h3 className="font-display text-2xl font-black text-slate-950">{activeConfig.label}</h3>
-              <p className="mt-2 text-sm font-semibold text-slate-600">{activeConfig.description}</p>
+              <h3 className="font-display text-2xl font-black text-slate-950">
+                {activeConfig.label}
+              </h3>
+              <p className="mt-2 text-sm font-semibold text-slate-600">
+                {activeConfig.description}
+              </p>
               <div className="mt-5">
-                <PendingIntegration tool={`Admin CRUD de ${activeConfig.label}`} description={activeConfig.description} />
+                <PendingIntegration
+                  tool={`Admin CRUD de ${activeConfig.label}`}
+                  description={activeConfig.description}
+                />
               </div>
             </article>
           ) : (
@@ -951,9 +1151,13 @@ function ContentAdminSection() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="font-display text-2xl font-black text-slate-950">
-                      {editing ? `Editar ${activeConfig.label}` : `Adicionar ${activeConfig.label}`}
+                      {editing
+                        ? `Editar ${activeConfig.label}`
+                        : `Adicionar ${activeConfig.label}`}
                     </h3>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{activeConfig.description}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      {activeConfig.description}
+                    </p>
                   </div>
                   {editing ? (
                     <button
@@ -969,102 +1173,428 @@ function ContentAdminSection() {
                   ) : null}
                 </div>
 
-                <form onSubmit={handleSubmit} className="mt-5 grid gap-4 md:grid-cols-2">
+                <form
+                  onSubmit={handleSubmit}
+                  className="mt-5 grid gap-4 md:grid-cols-2"
+                >
                   {activeType === "news" ? (
                     <>
-                      <AdminInput label="Título" value={String(form.title || "")} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
-                      <AdminInput label="URL da notícia" value={String(form.url || "")} onChange={(value) => setForm((current) => ({ ...current, url: value }))} required />
-                      <AdminInput label="URL da imagem" value={String(form.image_url || "")} onChange={(value) => setForm((current) => ({ ...current, image_url: value }))} />
-                      <AdminInput label="Fonte" value={String(form.source || "")} onChange={(value) => setForm((current) => ({ ...current, source: value }))} />
-                      <AdminInput label="Data de publicação" type="date" value={String(form.published_at || "")} onChange={(value) => setForm((current) => ({ ...current, published_at: value }))} />
-                      <AdminTextarea label="Resumo" value={String(form.summary || "")} onChange={(value) => setForm((current) => ({ ...current, summary: value }))} />
+                      <AdminInput
+                        label="Título"
+                        value={String(form.title || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, title: value }))
+                        }
+                        required
+                      />
+                      <AdminInput
+                        label="URL da notícia"
+                        value={String(form.url || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, url: value }))
+                        }
+                        required
+                      />
+                      <AdminInput
+                        label="URL da imagem"
+                        value={String(form.image_url || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            image_url: value,
+                          }))
+                        }
+                      />
+                      <AdminInput
+                        label="Fonte"
+                        value={String(form.source || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, source: value }))
+                        }
+                      />
+                      <AdminInput
+                        label="Data de publicação"
+                        type="date"
+                        value={String(form.published_at || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            published_at: value,
+                          }))
+                        }
+                      />
+                      <AdminTextarea
+                        label="Resumo"
+                        value={String(form.summary || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, summary: value }))
+                        }
+                      />
                     </>
                   ) : activeType === "external_jobs" ? (
                     <>
-                      <AdminInput label="Título" value={String(form.title || "")} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
-                      <AdminInput label="URL da vaga" value={String(form.url || "")} onChange={(value) => setForm((current) => ({ ...current, url: value }))} required />
-                      <AdminInput label="Empresa" value={String(form.company || "")} onChange={(value) => setForm((current) => ({ ...current, company: value }))} />
-                      <AdminInput label="Localização" value={String(form.location || "")} onChange={(value) => setForm((current) => ({ ...current, location: value }))} />
+                      <AdminInput
+                        label="Título"
+                        value={String(form.title || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, title: value }))
+                        }
+                        required
+                      />
+                      <AdminInput
+                        label="URL da vaga"
+                        value={String(form.url || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, url: value }))
+                        }
+                        required
+                      />
+                      <AdminInput
+                        label="Empresa"
+                        value={String(form.company || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, company: value }))
+                        }
+                      />
+                      <AdminInput
+                        label="Localização"
+                        value={String(form.location || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            location: value,
+                          }))
+                        }
+                      />
                       <AdminSelect
                         label="Senioridade"
                         value={String(form.seniority || "junior")}
                         options={["estagio", "junior", "pleno", "senior"]}
-                        onChange={(value) => setForm((current) => ({ ...current, seniority: value }))}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            seniority: value,
+                          }))
+                        }
                       />
-                      <AdminInput label="Área" value={String(form.area_slug || "")} onChange={(value) => setForm((current) => ({ ...current, area_slug: value }))} />
-                      <AdminInput label="Data de publicação" type="date" value={String(form.published_at || "")} onChange={(value) => setForm((current) => ({ ...current, published_at: value }))} />
-                      <AdminTextarea label="Descrição" value={String(form.description || "")} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
+                      <AdminInput
+                        label="Área"
+                        value={String(form.area_slug || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            area_slug: value,
+                          }))
+                        }
+                      />
+                      <AdminInput
+                        label="Data de publicação"
+                        type="date"
+                        value={String(form.published_at || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            published_at: value,
+                          }))
+                        }
+                      />
+                      <AdminTextarea
+                        label="Descrição"
+                        value={String(form.description || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            description: value,
+                          }))
+                        }
+                      />
                     </>
                   ) : activeType === "events" ? (
                     <>
-                      <AdminInput label="Título" value={String(form.title || "")} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
-                      <AdminInput label="URL" value={String(form.url || "")} onChange={(value) => setForm((current) => ({ ...current, url: value }))} />
-                      <AdminInput label="Local" value={String(form.location_label || "")} onChange={(value) => setForm((current) => ({ ...current, location_label: value }))} />
-                      <AdminInput label="Cidade" value={String(form.city || "")} onChange={(value) => setForm((current) => ({ ...current, city: value }))} />
+                      <AdminInput
+                        label="Título"
+                        value={String(form.title || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, title: value }))
+                        }
+                        required
+                      />
+                      <AdminInput
+                        label="URL"
+                        value={String(form.url || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, url: value }))
+                        }
+                      />
+                      <AdminInput
+                        label="Local"
+                        value={String(form.location_label || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            location_label: value,
+                          }))
+                        }
+                      />
+                      <AdminInput
+                        label="Cidade"
+                        value={String(form.city || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, city: value }))
+                        }
+                      />
                       <AdminInput
                         label="Data de início"
                         type="datetime-local"
                         value={String(form.starts_at || "")}
-                        onChange={(value) => setForm((current) => ({ ...current, starts_at: value }))}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            starts_at: value,
+                          }))
+                        }
                       />
                       <AdminInput
                         label="Data de fim"
                         type="datetime-local"
                         value={String(form.ends_at || "")}
-                        onChange={(value) => setForm((current) => ({ ...current, ends_at: value }))}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, ends_at: value }))
+                        }
                       />
-                      <AdminTextarea label="Descrição" value={String(form.description || "")} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
+                      <AdminTextarea
+                        label="Descrição"
+                        value={String(form.description || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            description: value,
+                          }))
+                        }
+                      />
                     </>
                   ) : activeType === "areas" ? (
                     <>
-                      <AdminInput label="Nome" value={String(form.name || "")} onChange={(value) => setForm((current) => ({ ...current, name: value }))} required />
+                      <AdminInput
+                        label="Nome"
+                        value={String(form.name || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, name: value }))
+                        }
+                        required
+                      />
                       <AdminInput
                         label="Resumo"
                         value={String(form.short_description || "")}
-                        onChange={(value) => setForm((current) => ({ ...current, short_description: value }))}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            short_description: value,
+                          }))
+                        }
                       />
                       <AdminTextarea
                         label="Descrição completa"
                         value={String(form.full_description || "")}
-                        onChange={(value) => setForm((current) => ({ ...current, full_description: value }))}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            full_description: value,
+                          }))
+                        }
                       />
                     </>
                   ) : activeType === "courses" ? (
                     <>
-                      <AdminInput label="Título" value={String(form.title || "")} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
-                      <AdminInput label="Provedor" value={String(form.provider || "")} onChange={(value) => setForm((current) => ({ ...current, provider: value }))} />
-                      <AdminInput label="URL" value={String(form.url || "")} onChange={(value) => setForm((current) => ({ ...current, url: value }))} />
-                      <AdminInput label="Área" value={String(form.area_slug || "")} onChange={(value) => setForm((current) => ({ ...current, area_slug: value }))} />
-                      <AdminSelect label="Nível" value={String(form.level || "iniciante")} options={["iniciante", "intermediário", "avançado"]} onChange={(value) => setForm((current) => ({ ...current, level: value }))} />
-                      <AdminInput label="Carga horária" type="number" value={String(form.workload_hours || 0)} onChange={(value) => setForm((current) => ({ ...current, workload_hours: Number(value) }))} />
-                      <AdminTextarea label="Descrição" value={String(form.description || "")} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
+                      <AdminInput
+                        label="Título"
+                        value={String(form.title || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, title: value }))
+                        }
+                        required
+                      />
+                      <AdminInput
+                        label="Provedor"
+                        value={String(form.provider || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            provider: value,
+                          }))
+                        }
+                      />
+                      <AdminInput
+                        label="URL"
+                        value={String(form.url || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, url: value }))
+                        }
+                      />
+                      <AdminInput
+                        label="Área"
+                        value={String(form.area_slug || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            area_slug: value,
+                          }))
+                        }
+                      />
+                      <AdminSelect
+                        label="Nível"
+                        value={String(form.level || "iniciante")}
+                        options={["iniciante", "intermediário", "avançado"]}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, level: value }))
+                        }
+                      />
+                      <AdminInput
+                        label="Carga horária"
+                        type="number"
+                        value={String(form.workload_hours || 0)}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            workload_hours: Number(value),
+                          }))
+                        }
+                      />
+                      <AdminTextarea
+                        label="Descrição"
+                        value={String(form.description || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            description: value,
+                          }))
+                        }
+                      />
                     </>
                   ) : (
                     <>
-                      <AdminInput label="Título" value={String(form.title || "")} onChange={(value) => setForm((current) => ({ ...current, title: value }))} required />
-                      <AdminInput label="Área" value={String(form.area_slug || "")} onChange={(value) => setForm((current) => ({ ...current, area_slug: value }))} />
-                      <AdminSelect label="Nível" value={String(form.level || "iniciante")} options={["iniciante", "intermediário", "avançado"]} onChange={(value) => setForm((current) => ({ ...current, level: value }))} />
-                      <AdminInput label="Duração em semanas" type="number" value={String(form.estimated_duration_weeks || 0)} onChange={(value) => setForm((current) => ({ ...current, estimated_duration_weeks: Number(value) }))} />
-                      <AdminTextarea label="Descrição" value={String(form.description || "")} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
+                      <AdminInput
+                        label="Título"
+                        value={String(form.title || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, title: value }))
+                        }
+                        required
+                      />
+                      <AdminInput
+                        label="Área"
+                        value={String(form.area_slug || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            area_slug: value,
+                          }))
+                        }
+                      />
+                      <AdminSelect
+                        label="Nível"
+                        value={String(form.level || "iniciante")}
+                        options={["iniciante", "intermediário", "avançado"]}
+                        onChange={(value) =>
+                          setForm((current) => ({ ...current, level: value }))
+                        }
+                      />
+                      <AdminInput
+                        label="Duração em semanas"
+                        type="number"
+                        value={String(form.estimated_duration_weeks || 0)}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            estimated_duration_weeks: Number(value),
+                          }))
+                        }
+                      />
+                      <AdminTextarea
+                        label="Descrição"
+                        value={String(form.description || "")}
+                        onChange={(value) =>
+                          setForm((current) => ({
+                            ...current,
+                            description: value,
+                          }))
+                        }
+                      />
                     </>
                   )}
 
                   <div className="flex flex-wrap items-center gap-4 md:col-span-2">
                     {activeType === "external_jobs" ? (
-                      <AdminCheckbox label="Remoto" checked={Boolean(form.remote)} onChange={(checked) => setForm((current) => ({ ...current, remote: checked }))} />
+                      <AdminCheckbox
+                        label="Remoto"
+                        checked={Boolean(form.remote)}
+                        onChange={(checked) =>
+                          setForm((current) => ({
+                            ...current,
+                            remote: checked,
+                          }))
+                        }
+                      />
                     ) : null}
                     {activeType === "events" ? (
-                      <AdminCheckbox label="Online" checked={Boolean(form.online)} onChange={(checked) => setForm((current) => ({ ...current, online: checked }))} />
+                      <AdminCheckbox
+                        label="Online"
+                        checked={Boolean(form.online)}
+                        onChange={(checked) =>
+                          setForm((current) => ({
+                            ...current,
+                            online: checked,
+                          }))
+                        }
+                      />
                     ) : null}
                     {activeType === "courses" ? (
-                      <AdminCheckbox label="Gratuito" checked={Boolean(form.is_free)} onChange={(checked) => setForm((current) => ({ ...current, is_free: checked }))} />
+                      <AdminCheckbox
+                        label="Gratuito"
+                        checked={Boolean(form.is_free)}
+                        onChange={(checked) =>
+                          setForm((current) => ({
+                            ...current,
+                            is_free: checked,
+                          }))
+                        }
+                      />
                     ) : null}
-                    {activeType !== "courses" && activeType !== "news" && activeType !== "external_jobs" && activeType !== "events" ? (
-                      <AdminCheckbox label="Pro" checked={Boolean(form.is_pro)} onChange={(checked) => setForm((current) => ({ ...current, is_pro: checked }))} />
+                    {activeType !== "courses" &&
+                    activeType !== "news" &&
+                    activeType !== "external_jobs" &&
+                    activeType !== "events" ? (
+                      <AdminCheckbox
+                        label="Pro"
+                        checked={Boolean(form.is_pro)}
+                        onChange={(checked) =>
+                          setForm((current) => ({
+                            ...current,
+                            is_pro: checked,
+                          }))
+                        }
+                      />
                     ) : null}
-                    <AdminCheckbox label="Publicado" checked={Boolean(form.is_published)} onChange={(checked) => setForm((current) => ({ ...current, is_published: checked }))} />
-                    <button type="submit" disabled={saving} className="btn-brutal-accent rounded-full px-5 py-3 text-sm font-black disabled:opacity-60">
-                      {saving ? "Salvando..." : editing ? "Salvar alterações" : "Adicionar"}
+                    <AdminCheckbox
+                      label="Publicado"
+                      checked={Boolean(form.is_published)}
+                      onChange={(checked) =>
+                        setForm((current) => ({
+                          ...current,
+                          is_published: checked,
+                        }))
+                      }
+                    />
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="btn-brutal-accent rounded-full px-5 py-3 text-sm font-black disabled:opacity-60"
+                    >
+                      {saving
+                        ? "Salvando..."
+                        : editing
+                          ? "Salvar alterações"
+                          : "Adicionar"}
                     </button>
                   </div>
                 </form>
@@ -1078,18 +1608,39 @@ function ContentAdminSection() {
                   <span>Ações</span>
                 </div>
                 {loading ? (
-                  <div className="p-5"><LoadingBlock /></div>
+                  <div className="p-5">
+                    <LoadingBlock />
+                  </div>
                 ) : items.length ? (
                   items.map((item) => (
-                    <div key={item.id} className="grid gap-3 border-b border-slate-100 p-4 text-sm font-bold md:grid-cols-[1fr_0.7fr_0.5fr_0.9fr] md:items-center">
+                    <div
+                      key={item.id}
+                      className="grid gap-3 border-b border-slate-100 p-4 text-sm font-bold md:grid-cols-[1fr_0.7fr_0.5fr_0.9fr] md:items-center"
+                    >
                       <div>
-                        <p className="font-display text-lg font-black text-slate-950">{contentTitle(item)}</p>
-                        <p className="text-xs font-semibold text-slate-500">{item.slug || item.created_at ? `Criado em ${formatAdminDate(item.created_at)}` : "Sem slug"}</p>
+                        <p className="font-display text-lg font-black text-slate-950">
+                          {contentTitle(item)}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          {item.slug || item.created_at
+                            ? `Criado em ${formatAdminDate(item.created_at)}`
+                            : "Sem slug"}
+                        </p>
                       </div>
-                      <p className="text-slate-600">{item.provider || item.tag || item.area_slug || item.level || "Não informado"}</p>
+                      <p className="text-slate-600">
+                        {item.provider ||
+                          item.tag ||
+                          item.area_slug ||
+                          item.level ||
+                          "Não informado"}
+                      </p>
                       <PublishBadge published={item.is_published} />
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={() => startEdit(item)} className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black"
+                        >
                           Editar
                         </button>
                         <button
@@ -1098,9 +1649,17 @@ function ContentAdminSection() {
                           onClick={() => togglePublish(item)}
                           className="rounded-full border-2 border-slate-900 bg-yellow-300 px-3 py-2 text-xs font-black disabled:opacity-60"
                         >
-                          {busyId === item.id ? "..." : item.is_published ? "Despublicar" : "Publicar"}
+                          {busyId === item.id
+                            ? "..."
+                            : item.is_published
+                              ? "Despublicar"
+                              : "Publicar"}
                         </button>
-                        <button type="button" onClick={() => setDeleteTarget(item)} className="rounded-full border-2 border-slate-900 bg-rose-50 px-3 py-2 text-xs font-black text-rose-800">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(item)}
+                          className="rounded-full border-2 border-slate-900 bg-rose-50 px-3 py-2 text-xs font-black text-rose-800"
+                        >
                           Excluir
                         </button>
                       </div>
@@ -1108,8 +1667,12 @@ function ContentAdminSection() {
                   ))
                 ) : (
                   <div className="p-6">
-                    <p className="font-display text-xl font-black text-slate-950">Nenhum item encontrado</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">Crie o primeiro item usando o formulário acima.</p>
+                    <p className="font-display text-xl font-black text-slate-950">
+                      Nenhum item encontrado
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-500">
+                      Crie o primeiro item usando o formulário acima.
+                    </p>
                   </div>
                 )}
               </article>
@@ -1121,13 +1684,26 @@ function ContentAdminSection() {
       {deleteTarget ? (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
           <div className="card-brutal max-w-md rounded-3xl bg-white p-6">
-            <h3 className="font-display text-2xl font-black text-slate-950">Tem certeza que deseja excluir este item?</h3>
-            <p className="mt-3 text-sm font-semibold text-slate-600">Esta ação vai despublicar o conteúdo. Para exclusão permanente, use ?force=true.</p>
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Tem certeza que deseja excluir este item?
+            </h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              Esta ação vai despublicar o conteúdo. Para exclusão permanente,
+              use ?force=true.
+            </p>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setDeleteTarget(null)} className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
                 Cancelar
               </button>
-              <button type="button" onClick={confirmDelete} className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800">
+              <button
+                type="button"
+                onClick={confirmDelete}
+                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800"
+              >
                 Confirmar exclusão
               </button>
             </div>
@@ -1138,7 +1714,19 @@ function ContentAdminSection() {
   );
 }
 
-function AdminInput({ label, onChange, required, type = "text", value }: { label: string; onChange: (value: string) => void; required?: boolean; type?: string; value: string }) {
+function AdminInput({
+  label,
+  onChange,
+  required,
+  type = "text",
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  type?: string;
+  value: string;
+}) {
   return (
     <label className="text-sm font-black text-slate-950">
       {label}
@@ -1153,7 +1741,15 @@ function AdminInput({ label, onChange, required, type = "text", value }: { label
   );
 }
 
-function AdminTextarea({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+function AdminTextarea({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
   return (
     <label className="text-sm font-black text-slate-950 md:col-span-2">
       {label}
@@ -1166,7 +1762,17 @@ function AdminTextarea({ label, onChange, value }: { label: string; onChange: (v
   );
 }
 
-function AdminSelect({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: string[]; value: string }) {
+function AdminSelect({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: string[];
+  value: string;
+}) {
   return (
     <label className="text-sm font-black text-slate-950">
       {label}
@@ -1176,17 +1782,32 @@ function AdminSelect({ label, onChange, options, value }: { label: string; onCha
         className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
       >
         {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
+          <option key={option} value={option}>
+            {option}
+          </option>
         ))}
       </select>
     </label>
   );
 }
 
-function AdminCheckbox({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
+function AdminCheckbox({
+  checked,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
   return (
     <label className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="h-4 w-4 accent-violet-700" />
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 accent-violet-700"
+      />
       {label}
     </label>
   );
@@ -1195,7 +1816,9 @@ function AdminCheckbox({ checked, label, onChange }: { checked: boolean; label: 
 export default function Admin() {
   const { loading: authLoading, signOut, user } = useAuth();
   const [session, setSession] = useState<AdminSession | null>(null);
-  const [accessState, setAccessState] = useState<"loading" | "login" | "forbidden" | "allowed">("loading");
+  const [accessState, setAccessState] = useState<
+    "loading" | "login" | "forbidden" | "allowed"
+  >("loading");
   const [dashboard, setDashboard] = useState<{
     counts?: {
       users: number;
@@ -1204,17 +1827,32 @@ export default function Admin() {
       courses: number;
       ai_calls_total: number;
     };
-    recent_audit?: Array<{ action: string; resource_type: string; resource_slug: string; created_at: string }>;
+    recent_audit?: Array<{
+      action: string;
+      resource_type: string;
+      resource_slug: string;
+      created_at: string;
+    }>;
   } | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
-  const [queueStats, setQueueStats] = useState<QueueStats>({ waiting: 0, active: 0, completed: 0, failed: 0 });
-  const [posthogStats, setPosthogStats] = useState<PosthogStatsData | null>(null);
-  const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(null);
+  const [queueStats, setQueueStats] = useState<QueueStats>({
+    waiting: 0,
+    active: 0,
+    completed: 0,
+    failed: 0,
+  });
+  const [posthogStats, setPosthogStats] = useState<PosthogStatsData | null>(
+    null,
+  );
+  const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
+    null,
+  );
   const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
   const [overviewLoading, setOverviewLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<AdminSectionId>("visao-geral");
+  const [activeSection, setActiveSection] =
+    useState<AdminSectionId>("visao-geral");
   const [affiliateName, setAffiliateName] = useState("Nova parceira tech");
   const [affiliateCode, setAffiliateCode] = useState("PARCEIRA20");
   const [affiliateDiscount, setAffiliateDiscount] = useState(20);
@@ -1223,13 +1861,25 @@ export default function Admin() {
   const [affiliates, setAffiliates] = useState<AffiliateRecord[]>([]);
   const [affiliatesLoading, setAffiliatesLoading] = useState(false);
   const [savingAffiliate, setSavingAffiliate] = useState(false);
-  const [payingAffiliateId, setPayingAffiliateId] = useState<string | null>(null);
-  const [editingAffiliateId, setEditingAffiliateId] = useState<string | null>(null);
-  const [affiliateEditForm, setAffiliateEditForm] = useState<AffiliateEditForm | null>(null);
-  const [savingAffiliateEditId, setSavingAffiliateEditId] = useState<string | null>(null);
-  const [deleteAffiliateTarget, setDeleteAffiliateTarget] = useState<AffiliateRecord | null>(null);
-  const [deletingAffiliateId, setDeletingAffiliateId] = useState<string | null>(null);
-  const [copiedAffiliateCardId, setCopiedAffiliateCardId] = useState<string | null>(null);
+  const [payingAffiliateId, setPayingAffiliateId] = useState<string | null>(
+    null,
+  );
+  const [editingAffiliateId, setEditingAffiliateId] = useState<string | null>(
+    null,
+  );
+  const [affiliateEditForm, setAffiliateEditForm] =
+    useState<AffiliateEditForm | null>(null);
+  const [savingAffiliateEditId, setSavingAffiliateEditId] = useState<
+    string | null
+  >(null);
+  const [deleteAffiliateTarget, setDeleteAffiliateTarget] =
+    useState<AffiliateRecord | null>(null);
+  const [deletingAffiliateId, setDeletingAffiliateId] = useState<string | null>(
+    null,
+  );
+  const [copiedAffiliateCardId, setCopiedAffiliateCardId] = useState<
+    string | null
+  >(null);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [selectedUserEmail, setSelectedUserEmail] = useState("");
 
@@ -1260,24 +1910,54 @@ export default function Admin() {
           adminFetch("/dashboard"),
           fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
-          adminFetch("/queue-stats").catch(() => ({ data: { waiting: 0, active: 0, completed: 0, failed: 0 } })),
+          adminFetch("/queue-stats").catch(() => ({
+            data: { waiting: 0, active: 0, completed: 0, failed: 0 },
+          })),
           adminFetch("/posthog-stats"),
           adminFetch("/churn-risk").catch(() => ({ data: null })),
           adminFetch("/affiliates-stats").catch(() => ({ data: [] })),
           adminFetch("/subscriptions"),
         ]);
       })
-      .then(([dashboardJson, healthJson, aiJson, queueJson, posthogJson, churnRiskJson, affiliatesJson, subscriptionsJson]) => {
-        setDashboard(dashboardJson.data);
-        setHealth(healthJson);
-        setAuditLogs(Array.isArray(dashboardJson.data?.recent_audit) ? dashboardJson.data.recent_audit : []);
-        setAiStats(aiJson.data || {});
-        setQueueStats(queueJson.data || { waiting: 0, active: 0, completed: 0, failed: 0 });
-        setPosthogStats(posthogJson.data || null);
-        setChurnRiskUsers(Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null);
-        setAffiliates(Array.isArray(affiliatesJson.data) ? affiliatesJson.data : []);
-        setSubscriptions(Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : []);
-      })
+      .then(
+        ([
+          dashboardJson,
+          healthJson,
+          aiJson,
+          queueJson,
+          posthogJson,
+          churnRiskJson,
+          affiliatesJson,
+          subscriptionsJson,
+        ]) => {
+          setDashboard(dashboardJson.data);
+          setHealth(healthJson);
+          setAuditLogs(
+            Array.isArray(dashboardJson.data?.recent_audit)
+              ? dashboardJson.data.recent_audit
+              : [],
+          );
+          setAiStats(aiJson.data || {});
+          setQueueStats(
+            queueJson.data || {
+              waiting: 0,
+              active: 0,
+              completed: 0,
+              failed: 0,
+            },
+          );
+          setPosthogStats(posthogJson.data || null);
+          setChurnRiskUsers(
+            Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null,
+          );
+          setAffiliates(
+            Array.isArray(affiliatesJson.data) ? affiliatesJson.data : [],
+          );
+          setSubscriptions(
+            Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
+          );
+        },
+      )
       .catch(() => {
         setSession(null);
         setDashboard(null);
@@ -1314,7 +1994,8 @@ export default function Admin() {
           : [];
         setUserProfiles(profiles);
         setSelectedUserEmail((current) => {
-          if (profiles.some((profile) => profile.email === current)) return current;
+          if (profiles.some((profile) => profile.email === current))
+            return current;
           return profiles[0]?.email ?? "";
         });
       })
@@ -1344,13 +2025,19 @@ export default function Admin() {
     [affiliateCode, affiliateDiscount],
   );
 
-  const selectedUser = userProfiles.find((user) => user.email === selectedUserEmail) ?? userProfiles[0] ?? null;
+  const selectedUser =
+    userProfiles.find((user) => user.email === selectedUserEmail) ??
+    userProfiles[0] ??
+    null;
   const selectedUserSubscription = selectedUser?.userId
-    ? subscriptions.find((subscription) => subscription.user_id === selectedUser.userId)
+    ? subscriptions.find(
+        (subscription) => subscription.user_id === selectedUser.userId,
+      )
     : undefined;
   const aiUsageReal = useMemo<AiUsage[]>(() => {
     return Object.entries(aiStats).map(([tool, stats]) => {
-      const successRate = stats.calls > 0 ? Math.round((stats.success / stats.calls) * 100) : 0;
+      const successRate =
+        stats.calls > 0 ? Math.round((stats.success / stats.calls) * 100) : 0;
       return {
         feature: tool,
         requests: String(stats.calls),
@@ -1370,23 +2057,40 @@ export default function Admin() {
         posthogStats.acquisition.length > 0),
   );
   const posthogSignupConversion =
-    posthogStats && posthogStats.uniqueUsers > 0 ? Math.round((posthogStats.events.user_signed_up / posthogStats.uniqueUsers) * 100) : 0;
+    posthogStats && posthogStats.uniqueUsers > 0
+      ? Math.round(
+          (posthogStats.events.user_signed_up / posthogStats.uniqueUsers) * 100,
+        )
+      : 0;
   const posthogCheckoutConversion =
-    posthogStats && posthogStats.uniqueUsers > 0 ? Math.round((posthogStats.events.checkout_started / posthogStats.uniqueUsers) * 100) : 0;
+    posthogStats && posthogStats.uniqueUsers > 0
+      ? Math.round(
+          (posthogStats.events.checkout_started / posthogStats.uniqueUsers) *
+            100,
+        )
+      : 0;
   const posthogFunnel = posthogStats
     ? [
         { label: "Visitantes únicos", value: posthogStats.uniqueUsers },
         { label: "Cadastros", value: posthogStats.events.user_signed_up },
-        { label: "Checkouts iniciados", value: posthogStats.events.checkout_started },
+        {
+          label: "Checkouts iniciados",
+          value: posthogStats.events.checkout_started,
+        },
       ]
     : [];
-  const posthogAcquisitionTotal = posthogStats?.acquisition.reduce((sum, channel) => sum + channel.users, 0) || 0;
+  const posthogAcquisitionTotal =
+    posthogStats?.acquisition.reduce(
+      (sum, channel) => sum + channel.users,
+      0,
+    ) || 0;
   const affiliateTotals = useMemo(
     () =>
       affiliates.reduce(
         (totals, affiliate) => ({
           revenue: totals.revenue + Number(affiliate.revenue_cents || 0),
-          commissionDue: totals.commissionDue + Number(affiliate.commission_due_cents || 0),
+          commissionDue:
+            totals.commissionDue + Number(affiliate.commission_due_cents || 0),
           sales: totals.sales + Number(affiliate.sales || 0),
           clicks: totals.clicks + Number(affiliate.clicks || 0),
         }),
@@ -1398,12 +2102,48 @@ export default function Admin() {
     if (!dashboard?.counts) return metricCards;
 
     return [
-      { ...metricCards[0], value: String(dashboard.counts.users), detail: "Perfis cadastrados no banco", trend: "real", direction: "neutral" },
-      { ...metricCards[1], value: String(dashboard.counts.active_subscriptions), detail: "Assinaturas ativas no banco", trend: "real", direction: "neutral" },
-      { ...metricCards[2], value: String(dashboard.counts.areas), label: "Áreas publicadas", detail: "Itens na tabela areas" },
-      { ...metricCards[3], value: String(dashboard.counts.ai_calls_total), label: "Chamadas de IA", detail: "Chamadas registradas em ai_usage_logs" },
-      { ...metricCards[4], value: String(dashboard.counts.courses), label: "Cursos cadastrados", detail: "Itens na tabela courses" },
-      { ...metricCards[5], value: formatCurrency(Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0)), label: "Custo de IA", detail: "Custo estimado dos últimos 30 dias", trend: "real", direction: "neutral" },
+      {
+        ...metricCards[0],
+        value: String(dashboard.counts.users),
+        detail: "Perfis cadastrados no banco",
+        trend: "real",
+        direction: "neutral",
+      },
+      {
+        ...metricCards[1],
+        value: String(dashboard.counts.active_subscriptions),
+        detail: "Assinaturas ativas no banco",
+        trend: "real",
+        direction: "neutral",
+      },
+      {
+        ...metricCards[2],
+        value: String(dashboard.counts.areas),
+        label: "Áreas publicadas",
+        detail: "Itens na tabela areas",
+      },
+      {
+        ...metricCards[3],
+        value: String(dashboard.counts.ai_calls_total),
+        label: "Chamadas de IA",
+        detail: "Chamadas registradas em ai_usage_logs",
+      },
+      {
+        ...metricCards[4],
+        value: String(dashboard.counts.courses),
+        label: "Cursos cadastrados",
+        detail: "Itens na tabela courses",
+      },
+      {
+        ...metricCards[5],
+        value: formatCurrency(
+          Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0),
+        ),
+        label: "Custo de IA",
+        detail: "Custo estimado dos últimos 30 dias",
+        trend: "real",
+        direction: "neutral",
+      },
     ];
   }, [dashboard, aiStats]);
 
@@ -1457,7 +2197,9 @@ export default function Admin() {
       toast.success("Afiliado criado com sucesso.");
       await refreshAffiliates();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao criar afiliado.");
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao criar afiliado.",
+      );
     } finally {
       setSavingAffiliate(false);
     }
@@ -1471,14 +2213,20 @@ export default function Admin() {
       await adminFetch(`/content/affiliates/${affiliate.id}`, {
         method: "PATCH",
         body: JSON.stringify({
-          commission_paid_cents: Number(affiliate.commission_paid_cents || 0) + Number(affiliate.commission_due_cents || 0),
+          commission_paid_cents:
+            Number(affiliate.commission_paid_cents || 0) +
+            Number(affiliate.commission_due_cents || 0),
           commission_due_cents: 0,
         }),
       });
       toast.success("Comissão marcada como paga.");
       await refreshAffiliates();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao marcar comissão como paga.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao marcar comissão como paga.",
+      );
     } finally {
       setPayingAffiliateId(null);
     }
@@ -1521,7 +2269,9 @@ export default function Admin() {
       cancelAffiliateEdit();
       await refreshAffiliates();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar afiliado.");
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao salvar afiliado.",
+      );
     } finally {
       setSavingAffiliateEditId(null);
     }
@@ -1532,13 +2282,18 @@ export default function Admin() {
 
     setDeletingAffiliateId(deleteAffiliateTarget.id);
     try {
-      await adminFetch(`/content/affiliates/${deleteAffiliateTarget.id}`, { method: "DELETE" });
+      await adminFetch(`/content/affiliates/${deleteAffiliateTarget.id}`, {
+        method: "DELETE",
+      });
       toast.success("Afiliado excluído com sucesso.");
       setDeleteAffiliateTarget(null);
-      if (editingAffiliateId === deleteAffiliateTarget.id) cancelAffiliateEdit();
+      if (editingAffiliateId === deleteAffiliateTarget.id)
+        cancelAffiliateEdit();
       await refreshAffiliates();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao excluir afiliado.");
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao excluir afiliado.",
+      );
     } finally {
       setDeletingAffiliateId(null);
     }
@@ -1549,12 +2304,18 @@ export default function Admin() {
     await navigator.clipboard.writeText(link);
     setCopiedAffiliateCardId(affiliate.id);
     window.setTimeout(() => {
-      setCopiedAffiliateCardId((current) => (current === affiliate.id ? null : current));
+      setCopiedAffiliateCardId((current) =>
+        current === affiliate.id ? null : current,
+      );
     }, 2000);
   }
 
   if (accessState !== "allowed" || !session) {
-    return <AdminAccessGate reason={accessState === "allowed" ? "loading" : accessState} />;
+    return (
+      <AdminAccessGate
+        reason={accessState === "allowed" ? "loading" : accessState}
+      />
+    );
   }
 
   return (
@@ -1577,13 +2338,21 @@ export default function Admin() {
                 Centro de comando do BORA NA TECH?
               </h1>
               <p className="mt-4 max-w-3xl text-base font-semibold leading-relaxed text-slate-700">
-                Visão executiva e operacional para acompanhar crescimento, receita, uso de IA, engajamento, saúde do sistema e gargalos do funil.
+                Visão executiva e operacional para acompanhar crescimento,
+                receita, uso de IA, engajamento, saúde do sistema e gargalos do
+                funil.
               </p>
             </div>
             <div className="card-brutal rounded-3xl bg-white p-4">
-              <p className="text-xs font-black uppercase text-slate-500">central admin</p>
-              <p className="font-display text-xl font-black text-slate-950">Dados separados por seção</p>
-              <p className="mt-1 text-xs font-semibold text-slate-500">Atualizado em {lastUpdated}</p>
+              <p className="text-xs font-black uppercase text-slate-500">
+                central admin
+              </p>
+              <p className="font-display text-xl font-black text-slate-950">
+                Dados separados por seção
+              </p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                Atualizado em {lastUpdated}
+              </p>
             </div>
           </div>
         </div>
@@ -1593,959 +2362,1475 @@ export default function Admin() {
         <div className="container space-y-10">
           {activeSection === "visao-geral" ? (
             <>
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {adminMetricCards.map((metric) => (
-              <article key={metric.label} className="card-brutal rounded-3xl bg-white p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <span className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}>
-                    {metric.icon}
-                  </span>
-                  <TrendBadge direction={metric.direction} value={metric.trend} />
-                </div>
-                <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">{metric.label}</p>
-                <p className="font-display mt-1 text-4xl font-black text-slate-950">{metric.value}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-600">{metric.detail}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-            <article className="card-brutal rounded-3xl bg-white p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wide text-violet-700">funil principal</p>
-                  <h2 className="font-display text-2xl font-black text-slate-950">Do visitante ao assinante Pro</h2>
-                </div>
-                <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
-                  <PieChart className="h-4 w-4" />
-                  conversão cadastro {posthogSignupConversion}%
-                </span>
-              </div>
-              <div className="mt-6 space-y-4">
-                {overviewLoading ? (
-                  <LoadingBlock />
-                ) : posthogHasData && posthogFunnel.length ? (
-                  posthogFunnel.map((step, index) => {
-                    const maxValue = Math.max(posthogFunnel[0]?.value || 1, 1);
-                    return (
-                      <div key={step.label} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-black uppercase text-violet-700">{step.label}</p>
-                            <p className="font-display text-3xl font-black text-slate-950">{formatCount(step.value)}</p>
-                          </div>
-                          <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">etapa {index + 1}</span>
-                        </div>
-                        <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                          <div className="h-full rounded-full bg-violet-700" style={{ width: `${Math.max((step.value / maxValue) * 100, step.value > 0 ? 5 : 0)}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <PendingIntegration tool="Posthog" description="Configure POSTHOG_API_KEY e POSTHOG_PROJECT_ID para rastrear visitantes e sessões" />
-                )}
-              </div>
-            </article>
-
-            <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
-              <div className="flex items-center gap-3">
-                <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-                  <Sparkles className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="text-xs font-black uppercase text-violet-100">insight rápido</p>
-                  <h2 className="font-display text-2xl font-black">{aiUsageReal.length ? "Uso de IA conectado." : "Sem uso de IA registrado."}</h2>
-                </div>
-              </div>
-              <p className="mt-5 text-sm font-semibold leading-relaxed text-violet-100">
-                {aiUsageReal.length
-                  ? "Os custos e chamadas abaixo vêm de ai_usage_logs nos últimos 30 dias."
-                  : "Quando houver chamadas registradas, este resumo passa a exibir custos e volume real por ferramenta."}
-              </p>
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                  <p className="text-2xl font-black">{dashboard?.counts?.ai_calls_total ?? 0}</p>
-                  <p className="text-xs font-bold text-violet-100">chamadas registradas</p>
-                </div>
-                <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                  <p className="text-2xl font-black">{formatCurrency(Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0))}</p>
-                  <p className="text-xs font-bold text-violet-100">custo estimado</p>
-                </div>
-              </div>
-            </article>
-
-            <article className="card-brutal rounded-3xl bg-white p-6">
-              <div className="flex items-center gap-3">
-                <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-                  <Mail className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="text-xs font-black uppercase text-violet-700">sistema</p>
-                  <h2 className="font-display text-2xl font-black text-slate-950">Fila de e-mails</h2>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {[
-                  { label: "na fila", value: queueStats.waiting },
-                  { label: "processando", value: queueStats.active },
-                  { label: "enviados", value: queueStats.completed },
-                  { label: "com falha", value: queueStats.failed },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                    <p className="text-2xl font-black text-slate-950">{item.value}</p>
-                    <p className="text-xs font-bold text-slate-500">{item.label}</p>
-                  </div>
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {adminMetricCards.map((metric) => (
+                  <article
+                    key={metric.label}
+                    className="card-brutal rounded-3xl bg-white p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <span
+                        className={`flex h-13 w-13 items-center justify-center rounded-2xl border-2 border-slate-900 shadow-[3px_3px_0_#0f172a] ${metric.color}`}
+                      >
+                        {metric.icon}
+                      </span>
+                      <TrendBadge
+                        direction={metric.direction}
+                        value={metric.trend}
+                      />
+                    </div>
+                    <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
+                      {metric.label}
+                    </p>
+                    <p className="font-display mt-1 text-4xl font-black text-slate-950">
+                      {metric.value}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-600">
+                      {metric.detail}
+                    </p>
+                  </article>
                 ))}
               </div>
-            </article>
-          </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-              <div className="border-b-2 border-slate-900 bg-pink-100 p-6">
-                <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                  <Bot className="h-6 w-6" />
-                  Consumo de créditos de IA
-                </h2>
-                <p className="mt-2 text-sm font-semibold text-slate-600">Custos por recurso, volume de uso e alertas de orçamento.</p>
-              </div>
-              <div className="divide-y-2 divide-slate-100">
-                {overviewLoading ? (
-                  <div className="p-5"><LoadingBlock /></div>
-                ) : aiUsageReal.length ? aiUsageReal.map((item) => (
-                  <div key={item.feature} className="grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="font-display text-lg font-black text-slate-950">{item.feature}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
-                        {item.requests} chamadas • {item.credits} créditos
+                      <p className="text-xs font-black uppercase tracking-wide text-violet-700">
+                        funil principal
+                      </p>
+                      <h2 className="font-display text-2xl font-black text-slate-950">
+                        Do visitante ao assinante Pro
+                      </h2>
+                    </div>
+                    <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
+                      <PieChart className="h-4 w-4" />
+                      conversão cadastro {posthogSignupConversion}%
+                    </span>
+                  </div>
+                  <div className="mt-6 space-y-4">
+                    {overviewLoading ? (
+                      <LoadingBlock />
+                    ) : posthogHasData && posthogFunnel.length ? (
+                      posthogFunnel.map((step, index) => {
+                        const maxValue = Math.max(
+                          posthogFunnel[0]?.value || 1,
+                          1,
+                        );
+                        return (
+                          <div
+                            key={step.label}
+                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-black uppercase text-violet-700">
+                                  {step.label}
+                                </p>
+                                <p className="font-display text-3xl font-black text-slate-950">
+                                  {formatCount(step.value)}
+                                </p>
+                              </div>
+                              <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">
+                                etapa {index + 1}
+                              </span>
+                            </div>
+                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
+                              <div
+                                className="h-full rounded-full bg-violet-700"
+                                style={{
+                                  width: `${Math.max((step.value / maxValue) * 100, step.value > 0 ? 5 : 0)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <PendingIntegration
+                        tool="Posthog"
+                        description="Configure POSTHOG_API_KEY e POSTHOG_PROJECT_ID para rastrear visitantes e sessões"
+                      />
+                    )}
+                  </div>
+                </article>
+
+                <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
+                      <Sparkles className="h-6 w-6" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-black uppercase text-violet-100">
+                        insight rápido
+                      </p>
+                      <h2 className="font-display text-2xl font-black">
+                        {aiUsageReal.length
+                          ? "Uso de IA conectado."
+                          : "Sem uso de IA registrado."}
+                      </h2>
+                    </div>
+                  </div>
+                  <p className="mt-5 text-sm font-semibold leading-relaxed text-violet-100">
+                    {aiUsageReal.length
+                      ? "Os custos e chamadas abaixo vêm de ai_usage_logs nos últimos 30 dias."
+                      : "Quando houver chamadas registradas, este resumo passa a exibir custos e volume real por ferramenta."}
+                  </p>
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
+                      <p className="text-2xl font-black">
+                        {dashboard?.counts?.ai_calls_total ?? 0}
+                      </p>
+                      <p className="text-xs font-bold text-violet-100">
+                        chamadas registradas
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 sm:justify-end">
-                      <p className="font-display text-xl font-black text-slate-950">{item.cost}</p>
-                      <StatusPill status={item.status} />
+                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
+                      <p className="text-2xl font-black">
+                        {formatCurrency(
+                          Object.values(aiStats).reduce(
+                            (sum, item) => sum + item.cost,
+                            0,
+                          ),
+                        )}
+                      </p>
+                      <p className="text-xs font-bold text-violet-100">
+                        custo estimado
+                      </p>
                     </div>
                   </div>
-                )) : (
-                  <div className="p-5">
-                    <p className="font-display text-xl font-black text-slate-950">Nenhuma chamada de IA registrada</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">Os dados aparecem quando ai_usage_logs receber eventos.</p>
-                  </div>
-                )}
-              </div>
-            </article>
+                </article>
 
-            <article className="card-brutal rounded-3xl bg-white p-6">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                <WalletCards className="h-6 w-6" />
-                Assinaturas e planos
-              </h2>
-              <div className="mt-6 space-y-5">
-                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                  <p className="text-xs font-black uppercase text-violet-700">Assinaturas ativas</p>
-                  <p className="font-display text-3xl font-black text-slate-950">{dashboard?.counts?.active_subscriptions ?? 0}</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">Fonte: /api/admin/dashboard</p>
-                </div>
-                <PendingIntegration tool="Asaas Webhook" description="Distribuição por plano e MRR requer webhook de pagamento configurado no Asaas" />
-              </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                {[
-                  ["Churn", "3,1%"],
-                  ["LTV médio", "R$ 312"],
-                  ["ARPU", "R$ 36"],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                    <p className="text-xs font-black uppercase text-violet-700">{label}</p>
-                    <p className="font-display text-2xl font-black text-slate-950">{value}</p>
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-2xl border-2 border-slate-950 bg-yellow-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
+                      <Mail className="h-6 w-6" />
+                    </span>
+                    <div>
+                      <p className="text-xs font-black uppercase text-violet-700">
+                        sistema
+                      </p>
+                      <h2 className="font-display text-2xl font-black text-slate-950">
+                        Fila de e-mails
+                      </h2>
+                    </div>
                   </div>
-                ))}
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    {[
+                      { label: "na fila", value: queueStats.waiting },
+                      { label: "processando", value: queueStats.active },
+                      { label: "enviados", value: queueStats.completed },
+                      { label: "com falha", value: queueStats.failed },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                      >
+                        <p className="text-2xl font-black text-slate-950">
+                          {item.value}
+                        </p>
+                        <p className="text-xs font-bold text-slate-500">
+                          {item.label}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </article>
               </div>
-            </article>
-          </div>
+
+              <div className="grid gap-6 xl:grid-cols-2">
+                <article className="card-brutal overflow-hidden rounded-3xl bg-white">
+                  <div className="border-b-2 border-slate-900 bg-pink-100 p-6">
+                    <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                      <Bot className="h-6 w-6" />
+                      Consumo de créditos de IA
+                    </h2>
+                    <p className="mt-2 text-sm font-semibold text-slate-600">
+                      Custos por recurso, volume de uso e alertas de orçamento.
+                    </p>
+                  </div>
+                  <div className="divide-y-2 divide-slate-100">
+                    {overviewLoading ? (
+                      <div className="p-5">
+                        <LoadingBlock />
+                      </div>
+                    ) : aiUsageReal.length ? (
+                      aiUsageReal.map((item) => (
+                        <div
+                          key={item.feature}
+                          className="grid gap-3 p-5 sm:grid-cols-[1fr_auto] sm:items-center"
+                        >
+                          <div>
+                            <p className="font-display text-lg font-black text-slate-950">
+                              {item.feature}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-slate-500">
+                              {item.requests} chamadas • {item.credits} créditos
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 sm:justify-end">
+                            <p className="font-display text-xl font-black text-slate-950">
+                              {item.cost}
+                            </p>
+                            <StatusPill status={item.status} />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-5">
+                        <p className="font-display text-xl font-black text-slate-950">
+                          Nenhuma chamada de IA registrada
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-slate-500">
+                          Os dados aparecem quando ai_usage_logs receber
+                          eventos.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </article>
+
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <WalletCards className="h-6 w-6" />
+                    Assinaturas e planos
+                  </h2>
+                  <div className="mt-6 space-y-5">
+                    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
+                      <p className="text-xs font-black uppercase text-violet-700">
+                        Assinaturas ativas
+                      </p>
+                      <p className="font-display text-3xl font-black text-slate-950">
+                        {dashboard?.counts?.active_subscriptions ?? 0}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                        Fonte: /api/admin/dashboard
+                      </p>
+                    </div>
+                    <PendingIntegration
+                      tool="Asaas Webhook"
+                      description="Distribuição por plano e MRR requer webhook de pagamento configurado no Asaas"
+                    />
+                  </div>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    {[
+                      ["Churn", "3,1%"],
+                      ["LTV médio", "R$ 312"],
+                      ["ARPU", "R$ 36"],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4"
+                      >
+                        <p className="text-xs font-black uppercase text-violet-700">
+                          {label}
+                        </p>
+                        <p className="font-display text-2xl font-black text-slate-950">
+                          {value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              </div>
             </>
           ) : null}
 
           {activeSection === "conversao" ? (
-          <AdminSection
-            id="conversao"
-            eyebrow="jornada de conversão"
-            icon={<MousePointerClick className="h-4 w-4" />}
-            title="De onde vem a assinatura Pro"
-            subtitle="Entenda a última página, o tempo, a quantidade de sessões e a funcionalidade Pro que mais empurra o usuário para assinar."
-          >
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {overviewLoading ? (
-                <div className="md:col-span-2 xl:col-span-4"><LoadingBlock /></div>
-              ) : posthogHasData ? (
-                [
-                  { label: "Visitantes únicos", value: formatCount(posthogStats?.uniqueUsers || 0), detail: "Últimos 30 dias no Posthog" },
-                  { label: "Cadastros", value: formatCount(posthogStats?.events.user_signed_up || 0), detail: `${posthogSignupConversion}% dos visitantes únicos` },
-                  { label: "Logins", value: formatCount(posthogStats?.events.user_signed_in || 0), detail: "Evento user_signed_in" },
-                  { label: "Checkouts", value: formatCount(posthogStats?.events.checkout_started || 0), detail: `${posthogCheckoutConversion}% dos visitantes únicos` },
-                ].map((metric) => (
-                  <div key={metric.label} className="card-brutal rounded-3xl bg-white p-5">
-                    <p className="text-xs font-black uppercase text-violet-700">{metric.label}</p>
-                    <p className="font-display mt-2 text-3xl font-black text-slate-950">{metric.value}</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">{metric.detail}</p>
+            <AdminSection
+              id="conversao"
+              eyebrow="jornada de conversão"
+              icon={<MousePointerClick className="h-4 w-4" />}
+              title="De onde vem a assinatura Pro"
+              subtitle="Entenda a última página, o tempo, a quantidade de sessões e a funcionalidade Pro que mais empurra o usuário para assinar."
+            >
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+                {overviewLoading ? (
+                  <div className="md:col-span-2 xl:col-span-4">
+                    <LoadingBlock />
                   </div>
-                ))
-              ) : (
-                <div className="md:col-span-2 xl:col-span-4">
-                  <PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" />
-                </div>
-              )}
-            </div>
-            <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <h3 className="font-display text-2xl font-black text-slate-950">Páginas que antecedem a assinatura</h3>
-                <div className="mt-5">
-                  {posthogHasData && posthogStats?.pages.length ? (
-                    <div className="space-y-3">
-                      {posthogStats.pages.slice(0, 5).map((page) => (
-                        <div key={page.page} className="flex items-center justify-between gap-4 rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                          <p className="truncate text-sm font-black text-slate-950">{page.page}</p>
-                          <p className="text-sm font-black text-violet-700">{formatCount(page.views)} views</p>
-                        </div>
-                      ))}
+                ) : posthogHasData ? (
+                  [
+                    {
+                      label: "Visitantes únicos",
+                      value: formatCount(posthogStats?.uniqueUsers || 0),
+                      detail: "Últimos 30 dias no Posthog",
+                    },
+                    {
+                      label: "Cadastros",
+                      value: formatCount(
+                        posthogStats?.events.user_signed_up || 0,
+                      ),
+                      detail: `${posthogSignupConversion}% dos visitantes únicos`,
+                    },
+                    {
+                      label: "Logins",
+                      value: formatCount(
+                        posthogStats?.events.user_signed_in || 0,
+                      ),
+                      detail: "Evento user_signed_in",
+                    },
+                    {
+                      label: "Checkouts",
+                      value: formatCount(
+                        posthogStats?.events.checkout_started || 0,
+                      ),
+                      detail: `${posthogCheckoutConversion}% dos visitantes únicos`,
+                    },
+                  ].map((metric) => (
+                    <div
+                      key={metric.label}
+                      className="card-brutal rounded-3xl bg-white p-5"
+                    >
+                      <p className="text-xs font-black uppercase text-violet-700">
+                        {metric.label}
+                      </p>
+                      <p className="font-display mt-2 text-3xl font-black text-slate-950">
+                        {metric.value}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-500">
+                        {metric.detail}
+                      </p>
                     </div>
-                  ) : (
-                    <PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" />
-                  )}
-                </div>
-              </article>
-              <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
-                <h3 className="font-display text-2xl font-black">Ação recomendada</h3>
-                <p className="mt-3 text-sm font-semibold text-violet-100">
-                  {posthogHasData && posthogStats?.pages[0]
-                    ? `Priorize CTAs Pro em ${posthogStats.pages[0].page}, a página com maior volume nos últimos 30 dias.`
-                    : "Quando o Posthog retornar sessões e eventos, esta área passa a sugerir ações com base no comportamento real."}
-                </p>
-                <div className="mt-5">
-                  {posthogHasData ? (
-                    <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                      <p className="text-2xl font-black">{formatCount(posthogStats?.events.quiz_completed || 0)}</p>
-                      <p className="text-xs font-bold text-violet-100">quizzes concluídos nos últimos 30 dias</p>
-                    </div>
-                  ) : (
-                    <PendingIntegration tool="Posthog" description="Requer eventos de sessão do Posthog" />
-                  )}
-                </div>
-              </article>
-            </div>
-          </AdminSection>
+                  ))
+                ) : (
+                  <div className="md:col-span-2 xl:col-span-4">
+                    <PendingIntegration
+                      tool="Posthog"
+                      description="Requer eventos de sessão do Posthog"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h3 className="font-display text-2xl font-black text-slate-950">
+                    Páginas que antecedem a assinatura
+                  </h3>
+                  <div className="mt-5">
+                    {posthogHasData && posthogStats?.pages.length ? (
+                      <div className="space-y-3">
+                        {posthogStats.pages.slice(0, 5).map((page) => (
+                          <div
+                            key={page.page}
+                            className="flex items-center justify-between gap-4 rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                          >
+                            <p className="truncate text-sm font-black text-slate-950">
+                              {page.page}
+                            </p>
+                            <p className="text-sm font-black text-violet-700">
+                              {formatCount(page.views)} views
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <PendingIntegration
+                        tool="Posthog"
+                        description="Requer eventos de sessão do Posthog"
+                      />
+                    )}
+                  </div>
+                </article>
+                <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
+                  <h3 className="font-display text-2xl font-black">
+                    Ação recomendada
+                  </h3>
+                  <p className="mt-3 text-sm font-semibold text-violet-100">
+                    {posthogHasData && posthogStats?.pages[0]
+                      ? `Priorize CTAs Pro em ${posthogStats.pages[0].page}, a página com maior volume nos últimos 30 dias.`
+                      : "Quando o Posthog retornar sessões e eventos, esta área passa a sugerir ações com base no comportamento real."}
+                  </p>
+                  <div className="mt-5">
+                    {posthogHasData ? (
+                      <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
+                        <p className="text-2xl font-black">
+                          {formatCount(
+                            posthogStats?.events.quiz_completed || 0,
+                          )}
+                        </p>
+                        <p className="text-xs font-bold text-violet-100">
+                          quizzes concluídos nos últimos 30 dias
+                        </p>
+                      </div>
+                    ) : (
+                      <PendingIntegration
+                        tool="Posthog"
+                        description="Requer eventos de sessão do Posthog"
+                      />
+                    )}
+                  </div>
+                </article>
+              </div>
+            </AdminSection>
           ) : null}
 
           {activeSection === "paginas" ? (
-          <AdminSection
-            id="paginas"
-            eyebrow="comportamento por página"
-            icon={<Eye className="h-4 w-4" />}
-            title="Qualidade real das páginas"
-            subtitle="Compare tempo médio, profundidade de scroll, taxa de saída e páginas por sessão para descobrir onde o conteúdo prende ou perde pessoas."
-          >
-            <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-              <div className="p-6">
-                {overviewLoading ? (
-                  <LoadingBlock />
-                ) : posthogHasData && posthogStats?.pages.length ? (
-                  <div className="overflow-hidden rounded-2xl border-2 border-slate-900">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-100 text-xs font-black uppercase text-slate-600">
-                        <tr>
-                          <th className="px-4 py-3">Página</th>
-                          <th className="px-4 py-3">Pageviews</th>
-                          <th className="px-4 py-3">Participação</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y-2 divide-slate-100">
-                        {posthogStats.pages.map((page) => {
-                          const share = posthogStats.totalPageviews > 0 ? Math.round((page.views / posthogStats.totalPageviews) * 100) : 0;
-                          return (
-                            <tr key={page.page}>
-                              <td className="px-4 py-3 font-black text-slate-950">{page.page}</td>
-                              <td className="px-4 py-3 font-semibold text-slate-600">{formatCount(page.views)}</td>
-                              <td className="px-4 py-3 font-semibold text-violet-700">{share}%</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <PendingIntegration tool="Posthog" description="Requer rastreamento de páginas e sessões" />
-                )}
-              </div>
-            </article>
-          </AdminSection>
+            <AdminSection
+              id="paginas"
+              eyebrow="comportamento por página"
+              icon={<Eye className="h-4 w-4" />}
+              title="Qualidade real das páginas"
+              subtitle="Compare tempo médio, profundidade de scroll, taxa de saída e páginas por sessão para descobrir onde o conteúdo prende ou perde pessoas."
+            >
+              <article className="card-brutal overflow-hidden rounded-3xl bg-white">
+                <div className="p-6">
+                  {overviewLoading ? (
+                    <LoadingBlock />
+                  ) : posthogHasData && posthogStats?.pages.length ? (
+                    <div className="overflow-hidden rounded-2xl border-2 border-slate-900">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-100 text-xs font-black uppercase text-slate-600">
+                          <tr>
+                            <th className="px-4 py-3">Página</th>
+                            <th className="px-4 py-3">Pageviews</th>
+                            <th className="px-4 py-3">Participação</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y-2 divide-slate-100">
+                          {posthogStats.pages.map((page) => {
+                            const share =
+                              posthogStats.totalPageviews > 0
+                                ? Math.round(
+                                    (page.views / posthogStats.totalPageviews) *
+                                      100,
+                                  )
+                                : 0;
+                            return (
+                              <tr key={page.page}>
+                                <td className="px-4 py-3 font-black text-slate-950">
+                                  {page.page}
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-slate-600">
+                                  {formatCount(page.views)}
+                                </td>
+                                <td className="px-4 py-3 font-semibold text-violet-700">
+                                  {share}%
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <PendingIntegration
+                      tool="Posthog"
+                      description="Requer rastreamento de páginas e sessões"
+                    />
+                  )}
+                </div>
+              </article>
+            </AdminSection>
           ) : null}
 
           {activeSection === "conteudo" ? <ContentAdminSection /> : null}
 
           {activeSection === "usuarios" ? (
-          <AdminSection
-            id="usuarios"
-            eyebrow="perfil individual"
-            icon={<UserRound className="h-4 w-4" />}
-            title="Usuários, sessões e valor pago"
-            subtitle="Clique em um usuário para ver cadastro, conversão Pro, área de interesse, funcionalidades usadas, origem, status e histórico de navegação."
-          >
-            <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-              <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-                {userProfiles.length ? (
-                  userProfiles.map((user) => (
-                    <button
-                      key={user.email}
-                      type="button"
-                      onClick={() => setSelectedUserEmail(user.email)}
-                      className={`grid w-full gap-2 border-b-2 border-slate-100 p-4 text-left transition hover:bg-yellow-50 ${
-                        selectedUser?.email === user.email ? "bg-violet-100" : "bg-white"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-display text-lg font-black text-slate-950">{user.name}</p>
-                        <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">{user.status}</span>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-500">{user.email}</p>
-                      <p className="text-xs font-black uppercase text-violet-700">{user.source} • {user.paidTotal}</p>
-                    </button>
-                  ))
-                ) : (
-                  <div className="p-6">
-                    <p className="font-display text-xl font-black text-slate-950">Nenhum usuário encontrado</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">A lista será preenchida com os perfis retornados por /api/admin/users.</p>
-                  </div>
-                )}
-              </article>
-              {selectedUser ? (
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="font-display text-2xl font-black text-slate-950">{selectedUser.name}</h3>
-                    <p className="text-sm font-semibold text-slate-500">{selectedUser.email}</p>
-                  </div>
-                  <span className="rounded-full border-2 border-slate-900 bg-yellow-300 px-3 py-1 text-xs font-black">
-                    {selectedUser.paidTotal} pagos
-                  </span>
-                </div>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {[
-                    ["Cadastro", selectedUser.signedUpAt],
-                    ["Assinatura", selectedUserSubscription?.status || "Sem assinatura ativa"],
-                    ["Área", selectedUser.interest],
-                    ["Origem", selectedUser.source],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                      <p className="text-xs font-black uppercase text-violet-700">{label}</p>
-                      <p className="font-display text-lg font-black text-slate-950">{value}</p>
+            <AdminSection
+              id="usuarios"
+              eyebrow="perfil individual"
+              icon={<UserRound className="h-4 w-4" />}
+              title="Usuários, sessões e valor pago"
+              subtitle="Clique em um usuário para ver cadastro, conversão Pro, área de interesse, funcionalidades usadas, origem, status e histórico de navegação."
+            >
+              <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+                <article className="card-brutal overflow-hidden rounded-3xl bg-white">
+                  {userProfiles.length ? (
+                    userProfiles.map((user) => (
+                      <button
+                        key={user.email}
+                        type="button"
+                        onClick={() => setSelectedUserEmail(user.email)}
+                        className={`grid w-full gap-2 border-b-2 border-slate-100 p-4 text-left transition hover:bg-yellow-50 ${
+                          selectedUser?.email === user.email
+                            ? "bg-violet-100"
+                            : "bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-display text-lg font-black text-slate-950">
+                            {user.name}
+                          </p>
+                          <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">
+                            {user.status}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-slate-500">
+                          {user.email}
+                        </p>
+                        <p className="text-xs font-black uppercase text-violet-700">
+                          {user.source} • {user.paidTotal}
+                        </p>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-6">
+                      <p className="font-display text-xl font-black text-slate-950">
+                        Nenhum usuário encontrado
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-500">
+                        A lista será preenchida com os perfis retornados por
+                        /api/admin/users.
+                      </p>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-5 grid gap-5 lg:grid-cols-2">
-                  <div>
-                    <p className="mb-2 font-display text-lg font-black text-slate-950">Funcionalidades usadas</p>
-                    <div className="space-y-2">
-                      <PendingIntegration tool="Posthog" description="Integração com analytics pendente (Posthog)" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="mb-2 font-display text-lg font-black text-slate-950">Sessões recentes</p>
-                    <div className="space-y-2">
-                      <PendingIntegration tool="Posthog" description="Integração com analytics pendente (Posthog)" />
-                    </div>
-                  </div>
-                </div>
-              </article>
-              ) : (
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <p className="font-display text-2xl font-black text-slate-950">Selecione um usuário</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-500">Os detalhes aparecem aqui quando houver perfis retornados pelo backend.</p>
+                  )}
                 </article>
-              )}
-            </div>
-          </AdminSection>
+                {selectedUser ? (
+                  <article className="card-brutal rounded-3xl bg-white p-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="font-display text-2xl font-black text-slate-950">
+                          {selectedUser.name}
+                        </h3>
+                        <p className="text-sm font-semibold text-slate-500">
+                          {selectedUser.email}
+                        </p>
+                      </div>
+                      <span className="rounded-full border-2 border-slate-900 bg-yellow-300 px-3 py-1 text-xs font-black">
+                        {selectedUser.paidTotal} pagos
+                      </span>
+                    </div>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      {[
+                        ["Cadastro", selectedUser.signedUpAt],
+                        [
+                          "Assinatura",
+                          selectedUserSubscription?.status ||
+                            "Sem assinatura ativa",
+                        ],
+                        ["Área", selectedUser.interest],
+                        ["Origem", selectedUser.source],
+                      ].map(([label, value]) => (
+                        <div
+                          key={label}
+                          className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4"
+                        >
+                          <p className="text-xs font-black uppercase text-violet-700">
+                            {label}
+                          </p>
+                          <p className="font-display text-lg font-black text-slate-950">
+                            {value}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                      <div>
+                        <p className="mb-2 font-display text-lg font-black text-slate-950">
+                          Funcionalidades usadas
+                        </p>
+                        <div className="space-y-2">
+                          <PendingIntegration
+                            tool="Posthog"
+                            description="Integração com analytics pendente (Posthog)"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="mb-2 font-display text-lg font-black text-slate-950">
+                          Sessões recentes
+                        </p>
+                        <div className="space-y-2">
+                          <PendingIntegration
+                            tool="Posthog"
+                            description="Integração com analytics pendente (Posthog)"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ) : (
+                  <article className="card-brutal rounded-3xl bg-white p-6">
+                    <p className="font-display text-2xl font-black text-slate-950">
+                      Selecione um usuário
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-500">
+                      Os detalhes aparecem aqui quando houver perfis retornados
+                      pelo backend.
+                    </p>
+                  </article>
+                )}
+              </div>
+            </AdminSection>
           ) : null}
 
           {activeSection === "retencao" ? (
-          <AdminSection
-            id="retencao"
-            eyebrow="retenção e churn"
-            icon={<RefreshCcw className="h-4 w-4" />}
-            title="Quem fica, quem cancela e quem está em risco"
-            subtitle="Monitore cohorts, motivos de cancelamento, assinantes sem login e distribuição de dias desde o último acesso."
-          >
-            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <AdminSection
+              id="retencao"
+              eyebrow="retenção e churn"
+              icon={<RefreshCcw className="h-4 w-4" />}
+              title="Quem fica, quem cancela e quem está em risco"
+              subtitle="Monitore cohorts, motivos de cancelamento, assinantes sem login e distribuição de dias desde o último acesso."
+            >
+              <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                <article className="card-brutal overflow-hidden rounded-3xl bg-white">
+                  <div className="p-6">
+                    <PendingIntegration
+                      tool="Posthog"
+                      description="Requer dados de sessão históricos"
+                    />
+                  </div>
+                </article>
+                <div className="grid gap-6">
+                  <article className="card-brutal rounded-3xl bg-white p-6">
+                    <h3 className="font-display text-2xl font-black text-slate-950">
+                      Motivos de cancelamento
+                    </h3>
+                    <div className="mt-4">
+                      <PendingIntegration
+                        tool="Asaas Webhook"
+                        description="Requer pergunta de motivo no cancelamento do Asaas"
+                      />
+                    </div>
+                  </article>
+                  <article className="card-brutal rounded-3xl bg-rose-50 p-6">
+                    <h3 className="font-display text-2xl font-black text-slate-950">
+                      Usuários em risco
+                    </h3>
+                    <div className="mt-4">
+                      {overviewLoading ? (
+                        <LoadingBlock />
+                      ) : churnRiskUsers === null ? (
+                        <PendingIntegration
+                          tool="Supabase Admin API"
+                          description="Requer endpoint de último login via Supabase Admin API"
+                        />
+                      ) : churnRiskUsers.length ? (
+                        <div className="space-y-3">
+                          {churnRiskUsers.map((riskUser) => (
+                            <div
+                              key={`${riskUser.email}-${riskUser.days_inactive}`}
+                              className="rounded-2xl border-2 border-slate-900 bg-white p-4"
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div>
+                                  <p className="font-display text-lg font-black text-slate-950">
+                                    {riskUser.name}
+                                  </p>
+                                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                                    {riskUser.email}
+                                  </p>
+                                </div>
+                                <span className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1 text-xs font-black text-rose-800">
+                                  {riskUser.days_inactive} dias
+                                </span>
+                              </div>
+                              <p className="mt-3 text-sm font-black text-slate-700">
+                                MRR: {formatCurrency(riskUser.mrr)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border-2 border-slate-900 bg-white p-4">
+                          <p className="font-display text-lg font-black text-slate-950">
+                            Nenhum assinante Pro em risco no momento
+                          </p>
+                          <p className="mt-2 text-sm font-semibold text-slate-500">
+                            Todos os assinantes ativos consultados fizeram login
+                            nos últimos 14 dias.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </AdminSection>
+          ) : null}
+
+          {activeSection === "seo" ? (
+            <AdminSection
+              id="seo"
+              eyebrow="conteúdo e SEO"
+              icon={<Search className="h-4 w-4" />}
+              title="Conteúdo que vira cadastro"
+              subtitle="Veja páginas que geram conta criada, keyword orgânica principal e status de indexação para priorizar SEO."
+            >
               <article className="card-brutal overflow-hidden rounded-3xl bg-white">
                 <div className="p-6">
-                  <PendingIntegration tool="Posthog" description="Requer dados de sessão históricos" />
+                  <PendingIntegration
+                    tool="Google Search Console"
+                    description="Requer integração com Search Console API"
+                  />
                 </div>
               </article>
-              <div className="grid gap-6">
+            </AdminSection>
+          ) : null}
+
+          {activeSection === "financeiro" ? (
+            <AdminSection
+              id="financeiro"
+              eyebrow="financeiro detalhado"
+              icon={<DollarSign className="h-4 w-4" />}
+              title="MRR, canal, risco e afiliados externos"
+              subtitle="Separe assinatura própria, receita por canal, previsão de churn e comissões recebidas de parceiros como Alura e Udemy."
+            >
+              <div className="grid gap-6 xl:grid-cols-3">
                 <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h3 className="font-display text-2xl font-black text-slate-950">Motivos de cancelamento</h3>
-                  <div className="mt-4"><PendingIntegration tool="Asaas Webhook" description="Requer pergunta de motivo no cancelamento do Asaas" /></div>
-                </article>
-                <article className="card-brutal rounded-3xl bg-rose-50 p-6">
-                  <h3 className="font-display text-2xl font-black text-slate-950">Usuários em risco</h3>
+                  <h3 className="font-display text-2xl font-black">
+                    MRR por cohort
+                  </h3>
                   <div className="mt-4">
-                    {overviewLoading ? (
+                    <PendingIntegration
+                      tool="Asaas Webhook"
+                      description="Requer webhook de pagamento configurado no Asaas"
+                    />
+                  </div>
+                </article>
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h3 className="font-display text-2xl font-black">
+                    Receita por canal
+                  </h3>
+                  <div className="mt-4">
+                    <PendingIntegration
+                      tool="GA4 + Asaas"
+                      description="Requer UTMs + webhook do Asaas"
+                    />
+                  </div>
+                </article>
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h3 className="font-display text-2xl font-black">
+                    Afiliados externos
+                  </h3>
+                  <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
+                    <p className="text-xs font-black uppercase text-violet-700">
+                      Comissões a pagar
+                    </p>
+                    <p className="font-display mt-1 text-2xl font-black text-slate-950">
+                      {formatCents(affiliateTotals.commissionDue)}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-500">
+                      {formatCount(affiliateTotals.sales)} vendas atribuídas
+                    </p>
+                  </div>
+                </article>
+              </div>
+            </AdminSection>
+          ) : null}
+
+          {activeSection === "ia" ? (
+            <AdminSection
+              id="ia"
+              eyebrow="ia granular"
+              icon={<BrainCircuit className="h-4 w-4" />}
+              title="Custo, limites e qualidade das respostas"
+              subtitle="Vá além do consumo por funcionalidade: veja custo por usuário, proximidade de limites e avaliação thumbs up/down por recurso."
+            >
+              <div className="grid gap-6 xl:grid-cols-3">
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h3 className="font-display text-2xl font-black">
+                    Chamadas por ferramenta
+                  </h3>
+                  <div className="mt-4 space-y-3">
+                    {aiUsageReal.length ? (
+                      aiUsageReal.map((item) => (
+                        <div
+                          key={item.feature}
+                          className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3"
+                        >
+                          <div className="flex justify-between font-bold">
+                            <span>{item.feature}</span>
+                            <span>{item.requests}</span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-500">
+                            {item.credits}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500">
+                        Nenhuma chamada registrada.
+                      </p>
+                    )}
+                  </div>
+                </article>
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h3 className="font-display text-2xl font-black">
+                    Custo por ferramenta
+                  </h3>
+                  <div className="mt-4 space-y-4">
+                    {aiUsageReal.length ? (
+                      aiUsageReal.map((item) => (
+                        <div key={item.feature}>
+                          <div className="mb-1 flex justify-between text-sm font-bold">
+                            <span>{item.feature}</span>
+                            <span>{item.cost}</span>
+                          </div>
+                          <div className="h-3 rounded-full border border-slate-900 bg-slate-100">
+                            <div
+                              className="h-full rounded-full bg-pink-600"
+                              style={{ width: "100%" }}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500">
+                        Nenhum custo registrado.
+                      </p>
+                    )}
+                  </div>
+                </article>
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h3 className="font-display text-2xl font-black">
+                    Custo por usuário
+                  </h3>
+                  <div className="mt-4">
+                    <PendingIntegration
+                      tool="ai_usage_logs por usuário"
+                      description="Dados agregados por usuário disponíveis após 30 dias"
+                    />
+                  </div>
+                </article>
+              </div>
+            </AdminSection>
+          ) : null}
+
+          {activeSection === "afiliados" ? (
+            <article
+              id="afiliados"
+              className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white"
+            >
+              <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                      <Handshake className="h-4 w-4" />
+                      afiliados
+                    </p>
+                    <h2 className="font-display mt-4 text-3xl font-black text-slate-950">
+                      Links com desconto e comissão para parceiros
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm font-bold text-slate-800">
+                      Gere cupons rastreáveis para influenciadores, comunidades,
+                      mentorias e embaixadores. Cada link aplica desconto ao
+                      aluno e calcula comissão para o afiliado.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
+                    <p className="text-xs font-black uppercase text-slate-500">
+                      status
+                    </p>
+                    <p className="font-display text-xl font-black text-slate-950">
+                      Manual ativo
+                    </p>
+                    <p className="text-sm font-bold text-slate-600">
+                      {affiliates.length} afiliados cadastrados
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    label: "Receita atribuída",
+                    value: formatCents(affiliateTotals.revenue),
+                    icon: <DollarSign className="h-5 w-5" />,
+                  },
+                  {
+                    label: "Comissões a pagar",
+                    value: formatCents(affiliateTotals.commissionDue),
+                    icon: <WalletCards className="h-5 w-5" />,
+                  },
+                  {
+                    label: "Vendas atribuídas",
+                    value: formatCount(affiliateTotals.sales),
+                    icon: <Trophy className="h-5 w-5" />,
+                  },
+                  {
+                    label: "Cliques registrados",
+                    value: formatCount(affiliateTotals.clicks),
+                    icon: <MousePointerClick className="h-5 w-5" />,
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                  >
+                    <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">
+                      {item.icon}
+                    </span>
+                    <p className="mt-3 text-xs font-black uppercase text-violet-700">
+                      {item.label}
+                    </p>
+                    <p className="font-display mt-1 text-2xl font-black text-slate-950">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                  <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <PlusCircle className="h-6 w-6" />
+                    Gerar link de afiliado
+                  </h3>
+                  <div className="mt-5 grid gap-4">
+                    <label className="text-sm font-black text-slate-950">
+                      Nome do afiliado
+                      <input
+                        value={affiliateName}
+                        onChange={(event) => {
+                          setAffiliateName(event.target.value);
+                          setCopiedAffiliateLink(false);
+                        }}
+                        className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                        placeholder="Ex: Parceiro Tech"
+                      />
+                    </label>
+
+                    <label className="text-sm font-black text-slate-950">
+                      Código/cupom
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          value={affiliateCode}
+                          onChange={(event) => {
+                            setAffiliateCode(
+                              slugifyAffiliateCode(event.target.value),
+                            );
+                            setCopiedAffiliateLink(false);
+                          }}
+                          className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
+                          placeholder="PARCEIRA20"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleGenerateAffiliateCode}
+                          className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
+                        >
+                          Gerar
+                        </button>
+                      </div>
+                    </label>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm font-black text-slate-950">
+                        Desconto para aluno: {affiliateDiscount}%
+                        <input
+                          type="range"
+                          min="5"
+                          max="50"
+                          step="5"
+                          value={affiliateDiscount}
+                          onChange={(event) => {
+                            setAffiliateDiscount(Number(event.target.value));
+                            setCopiedAffiliateLink(false);
+                          }}
+                          className="mt-4 w-full accent-violet-700"
+                        />
+                      </label>
+                      <label className="text-sm font-black text-slate-950">
+                        Comissão afiliado: {affiliateCommission}%
+                        <input
+                          type="range"
+                          min="5"
+                          max="50"
+                          step="5"
+                          value={affiliateCommission}
+                          onChange={(event) =>
+                            setAffiliateCommission(Number(event.target.value))
+                          }
+                          className="mt-4 w-full accent-violet-700"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                      <p className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
+                        <LinkIcon className="h-4 w-4" />
+                        link gerado
+                      </p>
+                      <p className="mt-2 break-all font-mono text-sm font-black text-slate-950">
+                        {generatedAffiliateLink}
+                      </p>
+                      <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-2">
+                        <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
+                          Cupom: {slugifyAffiliateCode(affiliateCode)}
+                        </span>
+                        <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
+                          Comissão: {affiliateCommission}% por venda paga
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={handleCreateAffiliate}
+                        disabled={savingAffiliate}
+                        className="btn-brutal-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black disabled:opacity-60"
+                      >
+                        <PlusCircle className="h-5 w-5" />
+                        {savingAffiliate ? "Salvando..." : "Criar afiliado"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCopyAffiliateLink}
+                        className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
+                      >
+                        <Copy className="h-5 w-5" />
+                        {copiedAffiliateLink ? "Link copiado" : "Copiar link"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
+                  <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <Tag className="h-6 w-6" />
+                    Afiliados cadastrados
+                  </h3>
+                  <div className="mt-5">
+                    {overviewLoading || affiliatesLoading ? (
                       <LoadingBlock />
-                    ) : churnRiskUsers === null ? (
-                      <PendingIntegration tool="Supabase Admin API" description="Requer endpoint de último login via Supabase Admin API" />
-                    ) : churnRiskUsers.length ? (
+                    ) : affiliates.length ? (
                       <div className="space-y-3">
-                        {churnRiskUsers.map((riskUser) => (
-                          <div key={`${riskUser.email}-${riskUser.days_inactive}`} className="rounded-2xl border-2 border-slate-900 bg-white p-4">
-                            <div className="flex items-start justify-between gap-4">
+                        {affiliates.map((affiliate) => (
+                          <div
+                            key={affiliate.id}
+                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div>
-                                <p className="font-display text-lg font-black text-slate-950">{riskUser.name}</p>
-                                <p className="mt-1 text-xs font-semibold text-slate-500">{riskUser.email}</p>
+                                <p className="font-display text-lg font-black text-slate-950">
+                                  {affiliate.name}
+                                </p>
+                                <p className="mt-1 font-mono text-xs font-black text-violet-700">
+                                  {affiliate.code}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">
+                                  {affiliate.discount_percent}% desconto •{" "}
+                                  {affiliate.commission_percent}% comissão •{" "}
+                                  {affiliate.status}
+                                </p>
                               </div>
-                              <span className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1 text-xs font-black text-rose-800">
-                                {riskUser.days_inactive} dias
+                              <div className="flex flex-wrap gap-2 sm:justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => startAffiliateEdit(affiliate)}
+                                  className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleCopyAffiliateCardLink(affiliate)
+                                  }
+                                  className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                                >
+                                  {copiedAffiliateCardId === affiliate.id
+                                    ? "Link copiado!"
+                                    : "Copiar link"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleMarkAffiliatePaid(affiliate)
+                                  }
+                                  disabled={
+                                    affiliate.commission_due_cents <= 0 ||
+                                    payingAffiliateId === affiliate.id
+                                  }
+                                  className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+                                >
+                                  {payingAffiliateId === affiliate.id
+                                    ? "Pagando..."
+                                    : "Marcar comissão paga"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setDeleteAffiliateTarget(affiliate)
+                                  }
+                                  className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
+                                >
+                                  Excluir
+                                </button>
+                              </div>
+                            </div>
+                            <div className="mt-4 grid gap-2 text-xs font-black sm:grid-cols-4">
+                              <span className="rounded-xl bg-white px-3 py-2">
+                                Cliques: {formatCount(affiliate.clicks)}
+                              </span>
+                              <span className="rounded-xl bg-white px-3 py-2">
+                                Vendas: {formatCount(affiliate.sales)}
+                              </span>
+                              <span className="rounded-xl bg-white px-3 py-2">
+                                Receita: {formatCents(affiliate.revenue_cents)}
+                              </span>
+                              <span className="rounded-xl bg-white px-3 py-2">
+                                A pagar:{" "}
+                                {formatCents(affiliate.commission_due_cents)}
                               </span>
                             </div>
-                            <p className="mt-3 text-sm font-black text-slate-700">MRR: {formatCurrency(riskUser.mrr)}</p>
+                            {editingAffiliateId === affiliate.id &&
+                            affiliateEditForm ? (
+                              <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-white p-4">
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <label className="text-xs font-black uppercase text-slate-600">
+                                    Nome
+                                    <input
+                                      value={affiliateEditForm.name}
+                                      onChange={(event) =>
+                                        setAffiliateEditForm({
+                                          ...affiliateEditForm,
+                                          name: event.target.value,
+                                        })
+                                      }
+                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                    />
+                                  </label>
+                                  <label className="text-xs font-black uppercase text-slate-600">
+                                    Email
+                                    <input
+                                      value={affiliateEditForm.email}
+                                      onChange={(event) =>
+                                        setAffiliateEditForm({
+                                          ...affiliateEditForm,
+                                          email: event.target.value,
+                                        })
+                                      }
+                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                      type="email"
+                                    />
+                                  </label>
+                                  <label className="text-xs font-black uppercase text-slate-600">
+                                    Desconto (%)
+                                    <input
+                                      value={affiliateEditForm.discount_percent}
+                                      onChange={(event) =>
+                                        setAffiliateEditForm({
+                                          ...affiliateEditForm,
+                                          discount_percent: Number(
+                                            event.target.value,
+                                          ),
+                                        })
+                                      }
+                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                      min={1}
+                                      max={100}
+                                      type="number"
+                                    />
+                                  </label>
+                                  <label className="text-xs font-black uppercase text-slate-600">
+                                    Comissão (%)
+                                    <input
+                                      value={
+                                        affiliateEditForm.commission_percent
+                                      }
+                                      onChange={(event) =>
+                                        setAffiliateEditForm({
+                                          ...affiliateEditForm,
+                                          commission_percent: Number(
+                                            event.target.value,
+                                          ),
+                                        })
+                                      }
+                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                      min={1}
+                                      max={100}
+                                      type="number"
+                                    />
+                                  </label>
+                                  <label className="text-xs font-black uppercase text-slate-600">
+                                    Status
+                                    <select
+                                      value={affiliateEditForm.status}
+                                      onChange={(event) =>
+                                        setAffiliateEditForm({
+                                          ...affiliateEditForm,
+                                          status: event.target
+                                            .value as AffiliateEditForm["status"],
+                                        })
+                                      }
+                                      className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                    >
+                                      <option value="active">active</option>
+                                      <option value="paused">paused</option>
+                                      <option value="inactive">inactive</option>
+                                    </select>
+                                  </label>
+                                  <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
+                                    Notas
+                                    <textarea
+                                      value={affiliateEditForm.notes}
+                                      onChange={(event) =>
+                                        setAffiliateEditForm({
+                                          ...affiliateEditForm,
+                                          notes: event.target.value,
+                                        })
+                                      }
+                                      className="mt-1 min-h-24 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
+                                    />
+                                  </label>
+                                </div>
+                                <div className="mt-4 flex justify-end gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={cancelAffiliateEdit}
+                                    className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+                                  >
+                                    Cancelar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void handleSaveAffiliateEdit(affiliate)
+                                    }
+                                    disabled={
+                                      savingAffiliateEditId === affiliate.id
+                                    }
+                                    className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
+                                  >
+                                    {savingAffiliateEditId === affiliate.id
+                                      ? "Salvando..."
+                                      : "Salvar"}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="rounded-2xl border-2 border-slate-900 bg-white p-4">
-                        <p className="font-display text-lg font-black text-slate-950">Nenhum assinante Pro em risco no momento</p>
-                        <p className="mt-2 text-sm font-semibold text-slate-500">Todos os assinantes ativos consultados fizeram login nos últimos 14 dias.</p>
+                      <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
+                        <p className="font-display text-lg font-black text-slate-950">
+                          Nenhum afiliado cadastrado ainda
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-slate-500">
+                          Crie o primeiro afiliado pelo formulário ao lado.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </article>
+          ) : null}
+
+          {activeSection === "visao-geral" ? (
+            <>
+              <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <Activity className="h-6 w-6" />
+                    Saúde do sistema
+                  </h2>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    {overviewLoading ? (
+                      <div className="sm:col-span-2">
+                        <LoadingBlock />
+                      </div>
+                    ) : healthItemsReal.length ? (
+                      healthItemsReal.map((item) => (
+                        <div
+                          key={item.service}
+                          className={`rounded-2xl border-2 border-slate-900 p-4 ${item.tone}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {item.icon}
+                            <p className="font-display text-lg font-black">
+                              {item.service}
+                            </p>
+                          </div>
+                          <p className="mt-3 text-sm font-black uppercase">
+                            {item.status}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold opacity-80">
+                            {item.detail}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="sm:col-span-2">
+                        <PendingIntegration
+                          tool="/api/health"
+                          description="Health check indisponível no momento"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </article>
+
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <Eye className="h-6 w-6" />
+                    Páginas mais acessadas
+                  </h2>
+                  <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900">
+                    {overviewLoading ? (
+                      <div className="p-5">
+                        <LoadingBlock />
+                      </div>
+                    ) : posthogHasData && posthogStats?.pages.length ? (
+                      <div className="divide-y-2 divide-slate-100">
+                        {posthogStats.pages.slice(0, 5).map((page) => (
+                          <div
+                            key={page.page}
+                            className="flex items-center justify-between gap-4 p-4"
+                          >
+                            <p className="truncate text-sm font-black text-slate-950">
+                              {page.page}
+                            </p>
+                            <p className="font-display text-lg font-black text-violet-700">
+                              {formatCount(page.views)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-5">
+                        <PendingIntegration
+                          tool="Posthog"
+                          description="Requer rastreamento de páginas e sessões"
+                        />
                       </div>
                     )}
                   </div>
                 </article>
               </div>
-            </div>
-          </AdminSection>
-          ) : null}
 
-          {activeSection === "seo" ? (
-          <AdminSection
-            id="seo"
-            eyebrow="conteúdo e SEO"
-            icon={<Search className="h-4 w-4" />}
-            title="Conteúdo que vira cadastro"
-            subtitle="Veja páginas que geram conta criada, keyword orgânica principal e status de indexação para priorizar SEO."
-          >
-            <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-              <div className="p-6">
-                <PendingIntegration tool="Google Search Console" description="Requer integração com Search Console API" />
-              </div>
-            </article>
-          </AdminSection>
-          ) : null}
-
-          {activeSection === "financeiro" ? (
-          <AdminSection
-            id="financeiro"
-            eyebrow="financeiro detalhado"
-            icon={<DollarSign className="h-4 w-4" />}
-            title="MRR, canal, risco e afiliados externos"
-            subtitle="Separe assinatura própria, receita por canal, previsão de churn e comissões recebidas de parceiros como Alura e Udemy."
-          >
-            <div className="grid gap-6 xl:grid-cols-3">
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <h3 className="font-display text-2xl font-black">MRR por cohort</h3>
-                <div className="mt-4"><PendingIntegration tool="Asaas Webhook" description="Requer webhook de pagamento configurado no Asaas" /></div>
-              </article>
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <h3 className="font-display text-2xl font-black">Receita por canal</h3>
-                <div className="mt-4"><PendingIntegration tool="GA4 + Asaas" description="Requer UTMs + webhook do Asaas" /></div>
-              </article>
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <h3 className="font-display text-2xl font-black">Afiliados externos</h3>
-                <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                  <p className="text-xs font-black uppercase text-violet-700">Comissões a pagar</p>
-                  <p className="font-display mt-1 text-2xl font-black text-slate-950">{formatCents(affiliateTotals.commissionDue)}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-500">{formatCount(affiliateTotals.sales)} vendas atribuídas</p>
-                </div>
-              </article>
-            </div>
-          </AdminSection>
-          ) : null}
-
-          {activeSection === "ia" ? (
-          <AdminSection
-            id="ia"
-            eyebrow="ia granular"
-            icon={<BrainCircuit className="h-4 w-4" />}
-            title="Custo, limites e qualidade das respostas"
-            subtitle="Vá além do consumo por funcionalidade: veja custo por usuário, proximidade de limites e avaliação thumbs up/down por recurso."
-          >
-            <div className="grid gap-6 xl:grid-cols-3">
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <h3 className="font-display text-2xl font-black">Chamadas por ferramenta</h3>
-                <div className="mt-4 space-y-3">
-                  {aiUsageReal.length ? aiUsageReal.map((item) => (
-                    <div key={item.feature} className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
-                      <div className="flex justify-between font-bold"><span>{item.feature}</span><span>{item.requests}</span></div>
-                      <p className="text-xs font-semibold text-slate-500">{item.credits}</p>
-                    </div>
-                  )) : <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500">Nenhuma chamada registrada.</p>}
-                </div>
-              </article>
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <h3 className="font-display text-2xl font-black">Custo por ferramenta</h3>
-                <div className="mt-4 space-y-4">
-                  {aiUsageReal.length ? aiUsageReal.map((item) => (
-                    <div key={item.feature}>
-                      <div className="mb-1 flex justify-between text-sm font-bold"><span>{item.feature}</span><span>{item.cost}</span></div>
-                      <div className="h-3 rounded-full border border-slate-900 bg-slate-100"><div className="h-full rounded-full bg-pink-600" style={{ width: "100%" }} /></div>
-                    </div>
-                  )) : <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500">Nenhum custo registrado.</p>}
-                </div>
-              </article>
-              <article className="card-brutal rounded-3xl bg-white p-6">
-                <h3 className="font-display text-2xl font-black">Custo por usuário</h3>
-                <div className="mt-4">
-                  <PendingIntegration tool="ai_usage_logs por usuário" description="Dados agregados por usuário disponíveis após 30 dias" />
-                </div>
-              </article>
-            </div>
-          </AdminSection>
-          ) : null}
-
-          {activeSection === "afiliados" ? (
-          <article id="afiliados" className="card-brutal scroll-mt-28 overflow-hidden rounded-[2rem] bg-white">
-            <div className="border-b-2 border-slate-900 bg-[#ffb800] p-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a]">
-                    <Handshake className="h-4 w-4" />
-                    afiliados
-                  </p>
-                  <h2 className="font-display mt-4 text-3xl font-black text-slate-950">
-                    Links com desconto e comissão para parceiros
+              <div className="grid gap-6 xl:grid-cols-3">
+                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
+                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <Globe2 className="h-6 w-6" />
+                    Aquisição de usuários
                   </h2>
-                  <p className="mt-2 max-w-3xl text-sm font-bold text-slate-800">
-                    Gere cupons rastreáveis para influenciadores, comunidades, mentorias e embaixadores. Cada link aplica desconto ao aluno e calcula comissão para o afiliado.
-                  </p>
-                </div>
-                <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]">
-                  <p className="text-xs font-black uppercase text-slate-500">status</p>
-                  <p className="font-display text-xl font-black text-slate-950">Manual ativo</p>
-                  <p className="text-sm font-bold text-slate-600">{affiliates.length} afiliados cadastrados</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
-              {[
-                { label: "Receita atribuída", value: formatCents(affiliateTotals.revenue), icon: <DollarSign className="h-5 w-5" /> },
-                { label: "Comissões a pagar", value: formatCents(affiliateTotals.commissionDue), icon: <WalletCards className="h-5 w-5" /> },
-                { label: "Vendas atribuídas", value: formatCount(affiliateTotals.sales), icon: <Trophy className="h-5 w-5" /> },
-                { label: "Cliques registrados", value: formatCount(affiliateTotals.clicks), icon: <MousePointerClick className="h-5 w-5" /> },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]">
-                  <span className="inline-flex rounded-xl border-2 border-slate-900 bg-yellow-300 p-2 text-slate-950">{item.icon}</span>
-                  <p className="mt-3 text-xs font-black uppercase text-violet-700">{item.label}</p>
-                  <p className="font-display mt-1 text-2xl font-black text-slate-950">{item.value}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid gap-6 p-6 xl:grid-cols-[0.9fr_1.1fr]">
-              <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
-                <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                  <PlusCircle className="h-6 w-6" />
-                  Gerar link de afiliado
-                </h3>
-                <div className="mt-5 grid gap-4">
-                  <label className="text-sm font-black text-slate-950">
-                    Nome do afiliado
-                    <input
-                      value={affiliateName}
-                      onChange={(event) => {
-                        setAffiliateName(event.target.value);
-                        setCopiedAffiliateLink(false);
-                      }}
-                      className="mt-2 w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
-                      placeholder="Ex: Parceiro Tech"
-                    />
-                  </label>
-
-                  <label className="text-sm font-black text-slate-950">
-                    Código/cupom
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        value={affiliateCode}
-                        onChange={(event) => {
-                          setAffiliateCode(slugifyAffiliateCode(event.target.value));
-                          setCopiedAffiliateLink(false);
-                        }}
-                        className="w-full rounded-2xl border-2 border-slate-900 bg-violet-50 px-4 py-3 font-bold uppercase outline-none focus:bg-white focus:ring-4 focus:ring-violet-200"
-                        placeholder="PARCEIRA20"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleGenerateAffiliateCode}
-                        className="rounded-2xl border-2 border-slate-900 bg-yellow-300 px-4 text-sm font-black shadow-[3px_3px_0_#0f172a]"
-                      >
-                        Gerar
-                      </button>
-                    </div>
-                  </label>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="text-sm font-black text-slate-950">
-                      Desconto para aluno: {affiliateDiscount}%
-                      <input
-                        type="range"
-                        min="5"
-                        max="50"
-                        step="5"
-                        value={affiliateDiscount}
-                        onChange={(event) => {
-                          setAffiliateDiscount(Number(event.target.value));
-                          setCopiedAffiliateLink(false);
-                        }}
-                        className="mt-4 w-full accent-violet-700"
-                      />
-                    </label>
-                    <label className="text-sm font-black text-slate-950">
-                      Comissão afiliado: {affiliateCommission}%
-                      <input
-                        type="range"
-                        min="5"
-                        max="50"
-                        step="5"
-                        value={affiliateCommission}
-                        onChange={(event) => setAffiliateCommission(Number(event.target.value))}
-                        className="mt-4 w-full accent-violet-700"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                    <p className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
-                      <LinkIcon className="h-4 w-4" />
-                      link gerado
-                    </p>
-                    <p className="mt-2 break-all font-mono text-sm font-black text-slate-950">{generatedAffiliateLink}</p>
-                    <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600 sm:grid-cols-2">
-                      <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
-                        Cupom: {slugifyAffiliateCode(affiliateCode)}
-                      </span>
-                      <span className="rounded-full border border-slate-300 bg-white px-3 py-2">
-                        Comissão: {affiliateCommission}% por venda paga
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={handleCreateAffiliate}
-                      disabled={savingAffiliate}
-                      className="btn-brutal-primary inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black disabled:opacity-60"
-                    >
-                      <PlusCircle className="h-5 w-5" />
-                      {savingAffiliate ? "Salvando..." : "Criar afiliado"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCopyAffiliateLink}
-                      className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 font-black"
-                    >
-                      <Copy className="h-5 w-5" />
-                      {copiedAffiliateLink ? "Link copiado" : "Copiar link"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
-                <h3 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                  <Tag className="h-6 w-6" />
-                  Afiliados cadastrados
-                </h3>
-                <div className="mt-5">
-                  {overviewLoading || affiliatesLoading ? (
-                    <LoadingBlock />
-                  ) : affiliates.length ? (
-                    <div className="space-y-3">
-                      {affiliates.map((affiliate) => (
-                        <div key={affiliate.id} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                              <p className="font-display text-lg font-black text-slate-950">{affiliate.name}</p>
-                              <p className="mt-1 font-mono text-xs font-black text-violet-700">{affiliate.code}</p>
-                              <p className="mt-1 text-xs font-semibold text-slate-500">
-                                {affiliate.discount_percent}% desconto • {affiliate.commission_percent}% comissão • {affiliate.status}
+                  <div className="mt-6 space-y-4">
+                    {overviewLoading ? (
+                      <LoadingBlock />
+                    ) : posthogHasData && posthogStats?.acquisition.length ? (
+                      posthogStats.acquisition.map((channel) => {
+                        const percent =
+                          posthogAcquisitionTotal > 0
+                            ? Math.round(
+                                (channel.users / posthogAcquisitionTotal) * 100,
+                              )
+                            : 0;
+                        return (
+                          <div
+                            key={channel.channel}
+                            className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <p className="font-display text-lg font-black text-slate-950">
+                                {channel.channel === "None"
+                                  ? "Direto"
+                                  : channel.channel}
+                              </p>
+                              <p className="text-sm font-black text-violet-700">
+                                {formatCount(channel.users)} usuários
                               </p>
                             </div>
-                            <div className="flex flex-wrap gap-2 sm:justify-end">
-                              <button
-                                type="button"
-                                onClick={() => startAffiliateEdit(affiliate)}
-                                className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a]"
-                              >
-                                Editar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void handleCopyAffiliateCardLink(affiliate)}
-                                className="rounded-full border-2 border-slate-900 bg-yellow-100 px-3 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]"
-                              >
-                                {copiedAffiliateCardId === affiliate.id ? "Link copiado!" : "Copiar link"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void handleMarkAffiliatePaid(affiliate)}
-                                disabled={affiliate.commission_due_cents <= 0 || payingAffiliateId === affiliate.id}
-                                className="rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
-                              >
-                                {payingAffiliateId === affiliate.id ? "Pagando..." : "Marcar comissão paga"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleteAffiliateTarget(affiliate)}
-                                className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-2 text-xs font-black text-rose-800 shadow-[2px_2px_0_#0f172a]"
-                              >
-                                Excluir
-                              </button>
+                            <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
+                              <div
+                                className="h-full rounded-full bg-emerald-600"
+                                style={{ width: `${percent}%` }}
+                              />
                             </div>
                           </div>
-                          <div className="mt-4 grid gap-2 text-xs font-black sm:grid-cols-4">
-                            <span className="rounded-xl bg-white px-3 py-2">Cliques: {formatCount(affiliate.clicks)}</span>
-                            <span className="rounded-xl bg-white px-3 py-2">Vendas: {formatCount(affiliate.sales)}</span>
-                            <span className="rounded-xl bg-white px-3 py-2">Receita: {formatCents(affiliate.revenue_cents)}</span>
-                            <span className="rounded-xl bg-white px-3 py-2">A pagar: {formatCents(affiliate.commission_due_cents)}</span>
-                          </div>
-                          {editingAffiliateId === affiliate.id && affiliateEditForm ? (
-                            <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-white p-4">
-                              <div className="grid gap-3 sm:grid-cols-2">
-                                <label className="text-xs font-black uppercase text-slate-600">
-                                  Nome
-                                  <input
-                                    value={affiliateEditForm.name}
-                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, name: event.target.value })}
-                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                  />
-                                </label>
-                                <label className="text-xs font-black uppercase text-slate-600">
-                                  Email
-                                  <input
-                                    value={affiliateEditForm.email}
-                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, email: event.target.value })}
-                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                    type="email"
-                                  />
-                                </label>
-                                <label className="text-xs font-black uppercase text-slate-600">
-                                  Desconto (%)
-                                  <input
-                                    value={affiliateEditForm.discount_percent}
-                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, discount_percent: Number(event.target.value) })}
-                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                    min={1}
-                                    max={100}
-                                    type="number"
-                                  />
-                                </label>
-                                <label className="text-xs font-black uppercase text-slate-600">
-                                  Comissão (%)
-                                  <input
-                                    value={affiliateEditForm.commission_percent}
-                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, commission_percent: Number(event.target.value) })}
-                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                    min={1}
-                                    max={100}
-                                    type="number"
-                                  />
-                                </label>
-                                <label className="text-xs font-black uppercase text-slate-600">
-                                  Status
-                                  <select
-                                    value={affiliateEditForm.status}
-                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, status: event.target.value as AffiliateEditForm["status"] })}
-                                    className="mt-1 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                  >
-                                    <option value="active">active</option>
-                                    <option value="paused">paused</option>
-                                    <option value="inactive">inactive</option>
-                                  </select>
-                                </label>
-                                <label className="text-xs font-black uppercase text-slate-600 sm:col-span-2">
-                                  Notas
-                                  <textarea
-                                    value={affiliateEditForm.notes}
-                                    onChange={(event) => setAffiliateEditForm({ ...affiliateEditForm, notes: event.target.value })}
-                                    className="mt-1 min-h-24 w-full rounded-xl border-2 border-slate-300 p-3 text-sm font-bold normal-case text-slate-950"
-                                  />
-                                </label>
-                              </div>
-                              <div className="mt-4 flex justify-end gap-3">
-                                <button type="button" onClick={cancelAffiliateEdit} className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black">
-                                  Cancelar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleSaveAffiliateEdit(affiliate)}
-                                  disabled={savingAffiliateEditId === affiliate.id}
-                                  className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-2 text-sm font-black shadow-[2px_2px_0_#0f172a] disabled:opacity-60"
-                                >
-                                  {savingAffiliateEditId === affiliate.id ? "Salvando..." : "Salvar"}
-                                </button>
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                      <p className="font-display text-lg font-black text-slate-950">Nenhum afiliado cadastrado ainda</p>
-                      <p className="mt-2 text-sm font-semibold text-slate-500">Crie o primeiro afiliado pelo formulário ao lado.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </article>
-          ) : null}
-
-          {activeSection === "visao-geral" ? (
-            <>
-          <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-            <article className="card-brutal rounded-3xl bg-white p-6">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                <Activity className="h-6 w-6" />
-                Saúde do sistema
-              </h2>
-              <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                {overviewLoading ? (
-                  <div className="sm:col-span-2"><LoadingBlock /></div>
-                ) : healthItemsReal.length ? healthItemsReal.map((item) => (
-                  <div key={item.service} className={`rounded-2xl border-2 border-slate-900 p-4 ${item.tone}`}>
-                    <div className="flex items-center gap-2">
-                      {item.icon}
-                      <p className="font-display text-lg font-black">{item.service}</p>
-                    </div>
-                    <p className="mt-3 text-sm font-black uppercase">{item.status}</p>
-                    <p className="mt-1 text-sm font-semibold opacity-80">{item.detail}</p>
+                        );
+                      })
+                    ) : (
+                      <PendingIntegration
+                        tool="Posthog"
+                        description="Requer eventos com origem/referrer para rastrear aquisição"
+                      />
+                    )}
                   </div>
-                )) : (
-                  <div className="sm:col-span-2"><PendingIntegration tool="/api/health" description="Health check indisponível no momento" /></div>
-                )}
-              </div>
-            </article>
+                </article>
 
-            <article className="card-brutal rounded-3xl bg-white p-6">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                <Eye className="h-6 w-6" />
-                Páginas mais acessadas
-              </h2>
-              <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900">
-                {overviewLoading ? (
-                  <div className="p-5"><LoadingBlock /></div>
-                ) : posthogHasData && posthogStats?.pages.length ? (
-                  <div className="divide-y-2 divide-slate-100">
-                    {posthogStats.pages.slice(0, 5).map((page) => (
-                      <div key={page.page} className="flex items-center justify-between gap-4 p-4">
-                        <p className="truncate text-sm font-black text-slate-950">{page.page}</p>
-                        <p className="font-display text-lg font-black text-violet-700">{formatCount(page.views)}</p>
+                <article className="card-brutal rounded-3xl bg-white p-6">
+                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <Zap className="h-6 w-6" />
+                    Eventos recentes
+                  </h2>
+                  <div className="mt-5 space-y-4">
+                    {overviewLoading ? (
+                      <LoadingBlock />
+                    ) : auditLogs.length ? (
+                      auditLogs.map((event) => (
+                        <div
+                          key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`}
+                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
+                              <FileText className="h-4 w-4" />
+                              {formatRelativeTime(event.created_at)}
+                            </span>
+                            <Clock3 className="h-4 w-4 text-slate-400" />
+                          </div>
+                          <p className="mt-2 font-display text-lg font-black text-slate-950">
+                            {auditTitle(event.action)}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-slate-600">
+                            {event.resource_type} {event.resource_slug || ""}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">
+                        Nenhuma ação registrada ainda.
+                      </p>
+                    )}
+                  </div>
+                </article>
+              </div>
+
+              <div className="grid gap-6 xl:grid-cols-3">
+                <article className="card-brutal rounded-3xl bg-yellow-300 p-6">
+                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <Search className="h-6 w-6" />O que monitorar
+                  </h2>
+                  <ul className="mt-5 space-y-3 text-sm font-bold text-slate-800">
+                    <li className="flex gap-2">
+                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Crescimento
+                      diário de usuários ativos.
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Custo por
+                      chamada de IA e limite mensal.
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Conversão de
+                      recursos Pro para assinatura.
+                    </li>
+                    <li className="flex gap-2">
+                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Erros em
+                      login, pagamento e geração com IA.
+                    </li>
+                  </ul>
+                </article>
+
+                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
+                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
+                    <Mail className="h-6 w-6" />
+                    Próximas integrações recomendadas
+                  </h2>
+                  <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    {[
+                      "Endpoint admin no backend para contar usuários e assinantes reais.",
+                      "Webhook do provedor de pagamento para MRR, churn e inadimplência.",
+                      "Tabela de affiliates, coupons e referrals para rastrear links, descontos e comissão.",
+                      "Tabela de usage_logs para registrar chamadas, tokens e custo de IA.",
+                      "Monitor de erros por rota, dispositivo, navegador e usuário afetado.",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4 text-sm font-bold text-slate-700"
+                      >
+                        {item}
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="p-5"><PendingIntegration tool="Posthog" description="Requer rastreamento de páginas e sessões" /></div>
-                )}
+                </article>
               </div>
-            </article>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-3">
-            <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                <Globe2 className="h-6 w-6" />
-                Aquisição de usuários
-              </h2>
-              <div className="mt-6 space-y-4">
-                {overviewLoading ? (
-                  <LoadingBlock />
-                ) : posthogHasData && posthogStats?.acquisition.length ? (
-                  posthogStats.acquisition.map((channel) => {
-                    const percent = posthogAcquisitionTotal > 0 ? Math.round((channel.users / posthogAcquisitionTotal) * 100) : 0;
-                    return (
-                      <div key={channel.channel} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <p className="font-display text-lg font-black text-slate-950">{channel.channel === "None" ? "Direto" : channel.channel}</p>
-                          <p className="text-sm font-black text-violet-700">{formatCount(channel.users)} usuários</p>
-                        </div>
-                        <div className="mt-3 h-3 rounded-full border-2 border-slate-900 bg-white">
-                          <div className="h-full rounded-full bg-emerald-600" style={{ width: `${percent}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <PendingIntegration tool="Posthog" description="Requer eventos com origem/referrer para rastrear aquisição" />
-                )}
-              </div>
-            </article>
-
-            <article className="card-brutal rounded-3xl bg-white p-6">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                <Zap className="h-6 w-6" />
-                Eventos recentes
-              </h2>
-              <div className="mt-5 space-y-4">
-                {overviewLoading ? <LoadingBlock /> : auditLogs.length ? auditLogs.map((event) => (
-                  <div key={`${event.created_at}-${event.resource_type}-${event.resource_slug || ""}`} className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-2 text-xs font-black uppercase text-violet-700">
-                        <FileText className="h-4 w-4" />
-                        {formatRelativeTime(event.created_at)}
-                      </span>
-                      <Clock3 className="h-4 w-4 text-slate-400" />
-                    </div>
-                    <p className="mt-2 font-display text-lg font-black text-slate-950">{auditTitle(event.action)}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-600">{event.resource_type} {event.resource_slug || ""}</p>
-                  </div>
-                )) : (
-                  <p className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4 text-sm font-black text-slate-600">Nenhuma ação registrada ainda.</p>
-                )}
-              </div>
-            </article>
-          </div>
-
-          <div className="grid gap-6 xl:grid-cols-3">
-            <article className="card-brutal rounded-3xl bg-yellow-300 p-6">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                <Search className="h-6 w-6" />
-                O que monitorar
-              </h2>
-              <ul className="mt-5 space-y-3 text-sm font-bold text-slate-800">
-                <li className="flex gap-2"><CheckCircle2 className="h-5 w-5 shrink-0" /> Crescimento diário de usuários ativos.</li>
-                <li className="flex gap-2"><CheckCircle2 className="h-5 w-5 shrink-0" /> Custo por chamada de IA e limite mensal.</li>
-                <li className="flex gap-2"><CheckCircle2 className="h-5 w-5 shrink-0" /> Conversão de recursos Pro para assinatura.</li>
-                <li className="flex gap-2"><CheckCircle2 className="h-5 w-5 shrink-0" /> Erros em login, pagamento e geração com IA.</li>
-              </ul>
-            </article>
-
-            <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-              <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                <Mail className="h-6 w-6" />
-                Próximas integrações recomendadas
-              </h2>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                {[
-                  "Endpoint admin no backend para contar usuários e assinantes reais.",
-                  "Webhook do provedor de pagamento para MRR, churn e inadimplência.",
-                  "Tabela de affiliates, coupons e referrals para rastrear links, descontos e comissão.",
-                  "Tabela de usage_logs para registrar chamadas, tokens e custo de IA.",
-                  "Monitor de erros por rota, dispositivo, navegador e usuário afetado.",
-                ].map((item) => (
-                  <div key={item} className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4 text-sm font-bold text-slate-700">
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </article>
-          </div>
             </>
           ) : null}
         </div>
@@ -2553,8 +3838,13 @@ export default function Admin() {
       {deleteAffiliateTarget ? (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
           <div className="card-brutal max-w-md rounded-3xl bg-white p-6">
-            <h3 className="font-display text-2xl font-black text-slate-950">Tem certeza que deseja excluir o afiliado {deleteAffiliateTarget.name}?</h3>
-            <p className="mt-3 text-sm font-semibold text-slate-600">Esta ação não pode ser desfeita.</p>
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Tem certeza que deseja excluir o afiliado{" "}
+              {deleteAffiliateTarget.name}?
+            </h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              Esta ação não pode ser desfeita.
+            </p>
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
@@ -2569,7 +3859,9 @@ export default function Admin() {
                 disabled={deletingAffiliateId === deleteAffiliateTarget.id}
                 className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-60"
               >
-                {deletingAffiliateId === deleteAffiliateTarget.id ? "Excluindo..." : "Confirmar exclusão"}
+                {deletingAffiliateId === deleteAffiliateTarget.id
+                  ? "Excluindo..."
+                  : "Confirmar exclusão"}
               </button>
             </div>
           </div>

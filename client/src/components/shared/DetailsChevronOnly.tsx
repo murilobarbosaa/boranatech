@@ -1,5 +1,10 @@
 import { ChevronRight } from "lucide-react";
-import { useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import {
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 
 type DetailsChevronOnlyProps = {
   title: ReactNode;
@@ -19,7 +24,9 @@ export function DetailsChevronOnly({
 }: DetailsChevronOnlyProps) {
   const [open, setOpen] = useState(defaultOpen);
 
-  const blockSummaryToggle = (e: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>) => {
+  const blockSummaryToggle = (
+    e: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>,
+  ) => {
     e.preventDefault();
   };
 
@@ -52,7 +59,9 @@ export function DetailsChevronOnly({
               aria-hidden
             />
           </button>
-          <span className="min-w-0 flex-1 cursor-default select-text">{title}</span>
+          <span className="min-w-0 flex-1 cursor-default select-text">
+            {title}
+          </span>
         </span>
       </summary>
       {children}

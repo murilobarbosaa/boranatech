@@ -119,7 +119,11 @@ export default function PerfilFavoritos() {
   if (authLoading || !user) {
     return (
       <Layout>
-        <SEO title="Favoritos · Bora na Tech?" url="/perfil/favoritos" noindex />
+        <SEO
+          title="Favoritos · Bora na Tech?"
+          url="/perfil/favoritos"
+          noindex
+        />
         <section className="bg-[#faf8f4] py-12">
           <div className="container">
             <p className="text-sm text-slate-500">Carregando…</p>
@@ -198,12 +202,18 @@ export default function PerfilFavoritos() {
                           : "border-slate-300 bg-white text-slate-700 hover:border-slate-900",
                       )}
                     >
-                      <meta.Icon className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                      <meta.Icon
+                        className="h-3.5 w-3.5"
+                        strokeWidth={2.5}
+                        aria-hidden
+                      />
                       {meta.label}
                       <span
                         className={cn(
                           "rounded-full px-1.5 text-[10px] font-black",
-                          isActive ? "bg-slate-950 text-[#FFB800]" : "bg-slate-100 text-slate-600",
+                          isActive
+                            ? "bg-slate-950 text-[#FFB800]"
+                            : "bg-slate-100 text-slate-600",
                         )}
                       >
                         {count}
@@ -215,7 +225,11 @@ export default function PerfilFavoritos() {
 
               <div
                 role="tabpanel"
-                aria-label={activeTab ? `Favoritos de ${getFavoriteTypeMeta(activeTab).label}` : undefined}
+                aria-label={
+                  activeTab
+                    ? `Favoritos de ${getFavoriteTypeMeta(activeTab).label}`
+                    : undefined
+                }
                 className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
               >
                 {itemsInTab.map((item) => (

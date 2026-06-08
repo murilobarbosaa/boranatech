@@ -89,12 +89,25 @@ const FREE_COMMANDS: CommandMap = {
     kind: "output",
     content: (
       <div className="space-y-1">
-        <div><span className="text-amber-400">help</span>     mostra esta ajuda</div>
-        <div><span className="text-amber-400">start</span>    {ctx.user ? "abre seu perfil" : "inicia sua jornada (cadastro)"}</div>
-        <div><span className="text-amber-400">pro</span>      ver planos Pro</div>
-        <div><span className="text-amber-400">skills</span>   áreas de TI disponíveis</div>
-        <div><span className="text-amber-400">roadmap</span>  exemplo de roadmap</div>
-        <div><span className="text-amber-400">clear</span>    limpa o terminal</div>
+        <div>
+          <span className="text-amber-400">help</span> mostra esta ajuda
+        </div>
+        <div>
+          <span className="text-amber-400">start</span>{" "}
+          {ctx.user ? "abre seu perfil" : "inicia sua jornada (cadastro)"}
+        </div>
+        <div>
+          <span className="text-amber-400">pro</span> ver planos Pro
+        </div>
+        <div>
+          <span className="text-amber-400">skills</span> áreas de TI disponíveis
+        </div>
+        <div>
+          <span className="text-amber-400">roadmap</span> exemplo de roadmap
+        </div>
+        <div>
+          <span className="text-amber-400">clear</span> limpa o terminal
+        </div>
       </div>
     ),
   }),
@@ -103,14 +116,19 @@ const FREE_COMMANDS: CommandMap = {
     system: "Iniciando sua jornada em TI...",
     to: ctx.user ? "/perfil" : "/cadastro",
   }),
-  pro: () => ({ kind: "navigate", system: "Carregando planos Pro...", to: "/planos" }),
+  pro: () => ({
+    kind: "navigate",
+    system: "Carregando planos Pro...",
+    to: "/planos",
+  }),
   skills: () => ({
     kind: "output",
     content: (
       <div>
         <div className="mb-1 text-slate-400">12 áreas de TI disponíveis:</div>
         <div className="text-slate-300">
-          Frontend · Backend · Mobile · Data · DevOps · Cloud · QA · UX/UI · Cybersec · IA/ML · Game Dev · Embedded
+          Frontend · Backend · Mobile · Data · DevOps · Cloud · QA · UX/UI ·
+          Cybersec · IA/ML · Game Dev · Embedded
         </div>
       </div>
     ),
@@ -119,12 +137,24 @@ const FREE_COMMANDS: CommandMap = {
     kind: "output",
     content: (
       <div>
-        <div className="mb-2 text-slate-400">Exemplo: roadmap Frontend Iniciante</div>
+        <div className="mb-2 text-slate-400">
+          Exemplo: roadmap Frontend Iniciante
+        </div>
         <div className="space-y-1 text-slate-300">
-          <div><span className="text-emerald-400">[01]</span> HTML + CSS fundamentos</div>
-          <div><span className="text-emerald-400">[02]</span> JavaScript moderno (ES6+)</div>
-          <div><span className="text-emerald-400">[03]</span> Git + GitHub básico</div>
-          <div className="mt-2 text-slate-500">... e mais 8 etapas. Digite 'start' pra ver completo.</div>
+          <div>
+            <span className="text-emerald-400">[01]</span> HTML + CSS
+            fundamentos
+          </div>
+          <div>
+            <span className="text-emerald-400">[02]</span> JavaScript moderno
+            (ES6+)
+          </div>
+          <div>
+            <span className="text-emerald-400">[03]</span> Git + GitHub básico
+          </div>
+          <div className="mt-2 text-slate-500">
+            ... e mais 8 etapas. Digite 'start' pra ver completo.
+          </div>
         </div>
       </div>
     ),
@@ -144,20 +174,63 @@ const FREE_COMMAND_SET: CommandSet = {
 type ProTool = { label: string; title: string; route: string; desc: string };
 
 const PRO_TOOLS: ProTool[] = [
-  { label: "curriculo", title: "Currículo", route: "/curriculo/analisar", desc: "Analisa seu currículo com IA" },
-  { label: "roadmap", title: "Roadmaps", route: "/roadmaps", desc: "Roadmaps completos de carreira" },
-  { label: "entrevista", title: "Entrevistas", route: "/entrevistas/simulador", desc: "Simulador de entrevistas com IA" },
-  { label: "estudos", title: "Plano de estudos", route: "/estudos", desc: "Plano de estudos personalizado" },
-  { label: "linkedin", title: "LinkedIn", route: "/curriculo/linkedin", desc: "Otimiza seu perfil do LinkedIn" },
-  { label: "portfolio", title: "Portfólio", route: "/portfolio/analisar", desc: "Analisa seu portfólio do GitHub" },
-  { label: "networking", title: "Networking", route: "/networking", desc: "Gera mensagens de networking" },
-  { label: "empregabilidade", title: "Empregabilidade", route: "/empregabilidade", desc: "Análise da sua empregabilidade" },
+  {
+    label: "curriculo",
+    title: "Currículo",
+    route: "/curriculo/analisar",
+    desc: "Analisa seu currículo com IA",
+  },
+  {
+    label: "roadmap",
+    title: "Roadmaps",
+    route: "/roadmaps",
+    desc: "Roadmaps completos de carreira",
+  },
+  {
+    label: "entrevista",
+    title: "Entrevistas",
+    route: "/entrevistas/simulador",
+    desc: "Simulador de entrevistas com IA",
+  },
+  {
+    label: "estudos",
+    title: "Plano de estudos",
+    route: "/estudos",
+    desc: "Plano de estudos personalizado",
+  },
+  {
+    label: "linkedin",
+    title: "LinkedIn",
+    route: "/curriculo/linkedin",
+    desc: "Otimiza seu perfil do LinkedIn",
+  },
+  {
+    label: "portfolio",
+    title: "Portfólio",
+    route: "/portfolio/analisar",
+    desc: "Analisa seu portfólio do GitHub",
+  },
+  {
+    label: "networking",
+    title: "Networking",
+    route: "/networking",
+    desc: "Gera mensagens de networking",
+  },
+  {
+    label: "empregabilidade",
+    title: "Empregabilidade",
+    route: "/empregabilidade",
+    desc: "Análise da sua empregabilidade",
+  },
 ];
 
 const PRO_SIDEBAR_SECTIONS: CommandSection[] = [
   {
     title: "FERRAMENTAS",
-    commands: PRO_TOOLS.map((t) => ({ label: t.label, variant: "primary" as SidebarVariant })),
+    commands: PRO_TOOLS.map((t) => ({
+      label: t.label,
+      variant: "primary" as SidebarVariant,
+    })),
   },
   {
     title: "CONTA",
@@ -192,16 +265,20 @@ function ProToolsList() {
           </div>
         ))}
       </div>
-      <div className="mt-2 text-slate-500">Digite o nome de uma ferramenta pra abrir.</div>
+      <div className="mt-2 text-slate-500">
+        Digite o nome de uma ferramenta pra abrir.
+      </div>
     </div>
   );
 }
 
 function ProStatus({ ctx }: { ctx: CommandContext }) {
   const planName =
-    (ctx.subscription as { plans?: { name?: string | null } | null } | null)?.plans?.name ?? "Pro";
+    (ctx.subscription as { plans?: { name?: string | null } | null } | null)
+      ?.plans?.name ?? "Pro";
   const validUntil = formatValidUntil(
-    (ctx.subscription as { current_period_end?: string | null } | null)?.current_period_end ?? null,
+    (ctx.subscription as { current_period_end?: string | null } | null)
+      ?.current_period_end ?? null,
   );
 
   return (
@@ -211,7 +288,9 @@ function ProStatus({ ctx }: { ctx: CommandContext }) {
         <span>STATUS: PRO ✓</span>
       </div>
       <div className="text-slate-300">Plano: {planName}</div>
-      {validUntil && <div className="text-slate-300">Válido até: {validUntil}</div>}
+      {validUntil && (
+        <div className="text-slate-300">Válido até: {validUntil}</div>
+      )}
     </div>
   );
 }
@@ -219,10 +298,19 @@ function ProStatus({ ctx }: { ctx: CommandContext }) {
 function ProHelp() {
   return (
     <div className="space-y-1">
-      <div><span className="text-amber-400">tools</span>   lista suas ferramentas Pro</div>
-      <div><span className="text-amber-400">status</span>  detalhes da sua assinatura</div>
-      <div><span className="text-amber-400">clear</span>   limpa o terminal</div>
-      <div className="mt-2 text-slate-500">Ou digite o nome de uma ferramenta (ex. curriculo, roadmap).</div>
+      <div>
+        <span className="text-amber-400">tools</span> lista suas ferramentas Pro
+      </div>
+      <div>
+        <span className="text-amber-400">status</span> detalhes da sua
+        assinatura
+      </div>
+      <div>
+        <span className="text-amber-400">clear</span> limpa o terminal
+      </div>
+      <div className="mt-2 text-slate-500">
+        Ou digite o nome de uma ferramenta (ex. curriculo, roadmap).
+      </div>
     </div>
   );
 }
@@ -230,7 +318,11 @@ function ProHelp() {
 function buildProCommands(): CommandMap {
   const map: CommandMap = {};
   for (const tool of PRO_TOOLS) {
-    map[tool.label] = () => ({ kind: "navigate", system: `Abrindo ${tool.title}...`, to: tool.route });
+    map[tool.label] = () => ({
+      kind: "navigate",
+      system: `Abrindo ${tool.title}...`,
+      to: tool.route,
+    });
   }
   map.tools = () => ({ kind: "output", content: <ProToolsList /> });
   map.status = (ctx) => ({ kind: "output", content: <ProStatus ctx={ctx} /> });
@@ -280,12 +372,18 @@ function CtaFinalInteractive({ commandSet }: { commandSet: CommandSet }) {
       <div className="container relative z-10">
         <div className="mx-auto max-w-5xl">
           <div className="md:hidden mb-4">
-            <CommandChipsMobile sections={commandSet.sidebar} onCommand={handleCommandClick} />
+            <CommandChipsMobile
+              sections={commandSet.sidebar}
+              onCommand={handleCommandClick}
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr] md:gap-6">
             <div className="hidden md:block">
-              <CommandSidebar sections={commandSet.sidebar} onCommand={handleCommandClick} />
+              <CommandSidebar
+                sections={commandSet.sidebar}
+                onCommand={handleCommandClick}
+              />
             </div>
             <TerminalCard
               ref={terminalRef}
@@ -346,7 +444,10 @@ function MatrixBackground() {
   );
 
   return (
-    <div className="pointer-events-none select-none absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div
+      className="pointer-events-none select-none absolute inset-0 overflow-hidden"
+      aria-hidden="true"
+    >
       {chars.map((c) => {
         const style: CSSProperties = {
           left: `${c.left}%`,
@@ -416,7 +517,10 @@ function CommandSidebar({
               ))}
             </div>
             {idx < sections.length - 1 && (
-              <div className="mt-3 border-t border-slate-800" aria-hidden="true" />
+              <div
+                className="mt-3 border-t border-slate-800"
+                aria-hidden="true"
+              />
             )}
           </div>
         ))}
@@ -446,7 +550,10 @@ function CommandItem({
       aria-label={ariaLabel}
       className={`group flex w-full items-center gap-2 rounded px-2 py-1.5 font-mono text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 ${ITEM_STYLES[variant]}`}
     >
-      <span aria-hidden="true" className="text-slate-500 transition-colors group-hover:text-current">
+      <span
+        aria-hidden="true"
+        className="text-slate-500 transition-colors group-hover:text-current"
+      >
         {">"}
       </span>
       <span>{command}</span>
@@ -535,196 +642,219 @@ type TerminalCardProps = {
 let lineIdCounter = 0;
 const nextLineId = (prefix: string) => `${prefix}-${++lineIdCounter}`;
 
-const TerminalCard = forwardRef<TerminalCardHandle, TerminalCardProps>(function TerminalCard(
-  {
-    commands = FREE_COMMANDS,
-    renderWelcome = (_ctx, reduce) => <InitialWelcome reduce={reduce} />,
-    placeholder = "digite um comando...",
-  },
-  ref,
-) {
-  const [input, setInput] = useState("");
-  const [history, setHistory] = useState<TerminalLine[]>([]);
-  const [isLoadingNav, setIsLoadingNav] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [, setLocation] = useLocation();
-  const { user, profile } = useAuth();
-  const { subscription, isPro } = useSubscription();
-  const reduce = useReducedMotion();
-
-  const isInitialMode = history.length === 0;
-
-  const executeCommand = useCallback(
-    (raw: string) => {
-      const trimmed = raw.trim().toLowerCase();
-      if (!trimmed || isLoadingNav) {
-        inputRef.current?.focus({ preventScroll: true });
-        return;
-      }
-
-      setInput("");
-
-      const inputLine: TerminalLine = {
-        id: nextLineId("in"),
-        type: "input",
-        content: trimmed,
-      };
-
-      const command = commands[trimmed];
-
-      if (!command) {
-        const errLine: TerminalLine = {
-          id: nextLineId("err"),
-          type: "error",
-          content: `comando não encontrado: "${trimmed}". digite 'help' pra ver os comandos.`,
-        };
-        setHistory((h) => [...h, inputLine, errLine]);
-        inputRef.current?.focus({ preventScroll: true });
-        return;
-      }
-
-      const ctx: CommandContext = { user, profile, subscription, isPro };
-      const result = command(ctx);
-
-      switch (result.kind) {
-        case "clear": {
-          setHistory([]);
-          break;
-        }
-        case "output": {
-          const outLine: TerminalLine = {
-            id: nextLineId("out"),
-            type: "output",
-            content: result.content,
-          };
-          setHistory((h) => [...h, inputLine, outLine]);
-          break;
-        }
-        case "navigate": {
-          const sysLine: TerminalLine = {
-            id: nextLineId("sys"),
-            type: "system",
-            content: result.system,
-          };
-          setHistory((h) => [...h, inputLine, sysLine]);
-          setIsLoadingNav(true);
-          navTimeoutRef.current = setTimeout(() => setLocation(result.to), 800);
-          break;
-        }
-      }
-
-      inputRef.current?.focus({ preventScroll: true });
+const TerminalCard = forwardRef<TerminalCardHandle, TerminalCardProps>(
+  function TerminalCard(
+    {
+      commands = FREE_COMMANDS,
+      renderWelcome = (_ctx, reduce) => <InitialWelcome reduce={reduce} />,
+      placeholder = "digite um comando...",
     },
-    [commands, isLoadingNav, setLocation, user, profile, subscription, isPro],
-  );
-
-  useImperativeHandle(
     ref,
-    () => ({
-      execute: executeCommand,
-      fillInput: (cmd: string) => {
-        setInput(cmd);
+  ) {
+    const [input, setInput] = useState("");
+    const [history, setHistory] = useState<TerminalLine[]>([]);
+    const [isLoadingNav, setIsLoadingNav] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [, setLocation] = useLocation();
+    const { user, profile } = useAuth();
+    const { subscription, isPro } = useSubscription();
+    const reduce = useReducedMotion();
+
+    const isInitialMode = history.length === 0;
+
+    const executeCommand = useCallback(
+      (raw: string) => {
+        const trimmed = raw.trim().toLowerCase();
+        if (!trimmed || isLoadingNav) {
+          inputRef.current?.focus({ preventScroll: true });
+          return;
+        }
+
+        setInput("");
+
+        const inputLine: TerminalLine = {
+          id: nextLineId("in"),
+          type: "input",
+          content: trimmed,
+        };
+
+        const command = commands[trimmed];
+
+        if (!command) {
+          const errLine: TerminalLine = {
+            id: nextLineId("err"),
+            type: "error",
+            content: `comando não encontrado: "${trimmed}". digite 'help' pra ver os comandos.`,
+          };
+          setHistory((h) => [...h, inputLine, errLine]);
+          inputRef.current?.focus({ preventScroll: true });
+          return;
+        }
+
+        const ctx: CommandContext = { user, profile, subscription, isPro };
+        const result = command(ctx);
+
+        switch (result.kind) {
+          case "clear": {
+            setHistory([]);
+            break;
+          }
+          case "output": {
+            const outLine: TerminalLine = {
+              id: nextLineId("out"),
+              type: "output",
+              content: result.content,
+            };
+            setHistory((h) => [...h, inputLine, outLine]);
+            break;
+          }
+          case "navigate": {
+            const sysLine: TerminalLine = {
+              id: nextLineId("sys"),
+              type: "system",
+              content: result.system,
+            };
+            setHistory((h) => [...h, inputLine, sysLine]);
+            setIsLoadingNav(true);
+            navTimeoutRef.current = setTimeout(
+              () => setLocation(result.to),
+              800,
+            );
+            break;
+          }
+        }
+
         inputRef.current?.focus({ preventScroll: true });
-        setTimeout(() => {
-          inputRef.current?.setSelectionRange(cmd.length, cmd.length);
-        }, 0);
       },
-    }),
-    [executeCommand],
-  );
+      [commands, isLoadingNav, setLocation, user, profile, subscription, isPro],
+    );
 
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: reduce ? "auto" : "smooth" });
-  }, [history, reduce]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        execute: executeCommand,
+        fillInput: (cmd: string) => {
+          setInput(cmd);
+          inputRef.current?.focus({ preventScroll: true });
+          setTimeout(() => {
+            inputRef.current?.setSelectionRange(cmd.length, cmd.length);
+          }, 0);
+        },
+      }),
+      [executeCommand],
+    );
 
-  useEffect(() => {
-    const isTouchDevice =
-      typeof window !== "undefined" &&
-      window.matchMedia("(pointer: coarse)").matches;
+    useEffect(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: reduce ? "auto" : "smooth",
+      });
+    }, [history, reduce]);
 
-    if (!isTouchDevice) {
-      inputRef.current?.focus({ preventScroll: true });
-    }
-  }, []);
+    useEffect(() => {
+      const isTouchDevice =
+        typeof window !== "undefined" &&
+        window.matchMedia("(pointer: coarse)").matches;
 
-  useEffect(() => {
-    return () => {
-      if (navTimeoutRef.current) clearTimeout(navTimeoutRef.current);
+      if (!isTouchDevice) {
+        inputRef.current?.focus({ preventScroll: true });
+      }
+    }, []);
+
+    useEffect(() => {
+      return () => {
+        if (navTimeoutRef.current) clearTimeout(navTimeoutRef.current);
+      };
+    }, []);
+
+    const handleSubmit = (e: FormEvent) => {
+      e.preventDefault();
+      executeCommand(input);
     };
-  }, []);
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    executeCommand(input);
-  };
+    const handleBodyClick = () => {
+      const isTouchDevice =
+        typeof window !== "undefined" &&
+        window.matchMedia("(pointer: coarse)").matches;
+      if (isTouchDevice) return;
+      if (!isLoadingNav) inputRef.current?.focus({ preventScroll: true });
+    };
 
-  const handleBodyClick = () => {
-    const isTouchDevice =
-      typeof window !== "undefined" &&
-      window.matchMedia("(pointer: coarse)").matches;
-    if (isTouchDevice) return;
-    if (!isLoadingNav) inputRef.current?.focus({ preventScroll: true });
-  };
+    const welcomeCtx: CommandContext = { user, profile, subscription, isPro };
 
-  const welcomeCtx: CommandContext = { user, profile, subscription, isPro };
-
-  return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-950 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]">
-      <div className="relative flex items-center border-b-2 border-slate-950 bg-slate-800 px-4 py-2.5">
-        <div className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full border border-red-700 bg-red-500" aria-hidden="true" />
-          <span className="h-3 w-3 rounded-full border border-yellow-700 bg-yellow-500" aria-hidden="true" />
-          <span className="h-3 w-3 rounded-full border border-green-700 bg-green-500" aria-hidden="true" />
-        </div>
-        <div className="absolute left-1/2 hidden -translate-x-1/2 font-mono text-xs text-slate-400 md:block">
-          {isPro ? "boranatech ~ pro" : "boranatech ~ terminal"}
-        </div>
-      </div>
-
-      <div
-        ref={scrollRef}
-        onClick={handleBodyClick}
-        className="max-h-[600px] min-h-[320px] flex-1 overflow-y-auto bg-slate-950 p-4 md:min-h-[500px] md:p-8"
-      >
-        {isInitialMode && renderWelcome(welcomeCtx, !!reduce)}
-
-        {history.map((line) => (
-          <HistoryLine key={line.id} line={line} />
-        ))}
-
-        {!isLoadingNav && (
-          <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2">
-            <span aria-hidden="true" className="font-mono text-sm text-amber-400 md:text-base">
-              $
-            </span>
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={placeholder}
-              autoComplete="off"
-              spellCheck={false}
-              aria-label="Terminal de comando"
-              className="flex-1 border-none bg-transparent font-mono text-sm text-white caret-amber-400 outline-none placeholder:text-slate-600 md:text-base"
+    return (
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-slate-950 shadow-[5px_5px_0_#0f172a] md:shadow-[8px_8px_0_#0f172a]">
+        <div className="relative flex items-center border-b-2 border-slate-950 bg-slate-800 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-3 w-3 rounded-full border border-red-700 bg-red-500"
+              aria-hidden="true"
             />
-          </form>
-        )}
-
-        {isLoadingNav && (
-          <div className="mt-3 flex animate-pulse items-center gap-2 font-mono text-amber-400">
-            <span aria-hidden="true">$</span>
-            <span>loading...</span>
+            <span
+              className="h-3 w-3 rounded-full border border-yellow-700 bg-yellow-500"
+              aria-hidden="true"
+            />
+            <span
+              className="h-3 w-3 rounded-full border border-green-700 bg-green-500"
+              aria-hidden="true"
+            />
           </div>
-        )}
+          <div className="absolute left-1/2 hidden -translate-x-1/2 font-mono text-xs text-slate-400 md:block">
+            {isPro ? "boranatech ~ pro" : "boranatech ~ terminal"}
+          </div>
+        </div>
+
+        <div
+          ref={scrollRef}
+          onClick={handleBodyClick}
+          className="max-h-[600px] min-h-[320px] flex-1 overflow-y-auto bg-slate-950 p-4 md:min-h-[500px] md:p-8"
+        >
+          {isInitialMode && renderWelcome(welcomeCtx, !!reduce)}
+
+          {history.map((line) => (
+            <HistoryLine key={line.id} line={line} />
+          ))}
+
+          {!isLoadingNav && (
+            <form
+              onSubmit={handleSubmit}
+              className="mt-3 flex items-center gap-2"
+            >
+              <span
+                aria-hidden="true"
+                className="font-mono text-sm text-amber-400 md:text-base"
+              >
+                $
+              </span>
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={placeholder}
+                autoComplete="off"
+                spellCheck={false}
+                aria-label="Terminal de comando"
+                className="flex-1 border-none bg-transparent font-mono text-sm text-white caret-amber-400 outline-none placeholder:text-slate-600 md:text-base"
+              />
+            </form>
+          )}
+
+          {isLoadingNav && (
+            <div className="mt-3 flex animate-pulse items-center gap-2 font-mono text-amber-400">
+              <span aria-hidden="true">$</span>
+              <span>loading...</span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 function InitialWelcome({ reduce }: { reduce: boolean }) {
   return (
@@ -768,7 +898,9 @@ function InitialWelcome({ reduce }: { reduce: boolean }) {
       </h2>
 
       <div className="flex items-start gap-2 font-mono text-sm text-slate-300 md:text-base">
-        <span aria-hidden="true" className="mt-0.5 text-slate-500">{">"}</span>
+        <span aria-hidden="true" className="mt-0.5 text-slate-500">
+          {">"}
+        </span>
         {reduce ? (
           <span>{SUBHEAD_TEXT}</span>
         ) : (
@@ -803,12 +935,19 @@ function ProWelcome({ profile }: { profile: Profile | null }) {
         className="font-display font-black text-white"
         style={{ fontSize: "clamp(1.5rem, 4.5vw, 3.5rem)", lineHeight: 1.1 }}
       >
-        {firstName ? `${greeting} de volta, ${firstName}.` : `${greeting} de volta.`}
+        {firstName
+          ? `${greeting} de volta, ${firstName}.`
+          : `${greeting} de volta.`}
       </h2>
 
       <div className="flex items-start gap-2 font-mono text-sm text-slate-300 md:text-base">
-        <span aria-hidden="true" className="mt-0.5 text-slate-500">{">"}</span>
-        <span>Suas ferramentas Pro estão prontas. Digite 'tools' pra ver tudo ou 'help' pros comandos.</span>
+        <span aria-hidden="true" className="mt-0.5 text-slate-500">
+          {">"}
+        </span>
+        <span>
+          Suas ferramentas Pro estão prontas. Digite 'tools' pra ver tudo ou
+          'help' pros comandos.
+        </span>
       </div>
     </div>
   );
@@ -824,10 +963,18 @@ function HistoryLine({ line }: { line: TerminalLine }) {
     );
   }
   if (line.type === "output") {
-    return <div className="ml-4 mt-3 font-mono text-sm text-slate-300 md:text-base">{line.content}</div>;
+    return (
+      <div className="ml-4 mt-3 font-mono text-sm text-slate-300 md:text-base">
+        {line.content}
+      </div>
+    );
   }
   if (line.type === "error") {
-    return <div className="ml-4 mt-3 font-mono text-sm text-red-400 md:text-base">{line.content}</div>;
+    return (
+      <div className="ml-4 mt-3 font-mono text-sm text-red-400 md:text-base">
+        {line.content}
+      </div>
+    );
   }
   return (
     <div className="ml-4 mt-3 font-mono text-sm italic text-violet-400 md:text-base">

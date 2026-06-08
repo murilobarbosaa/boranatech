@@ -27,13 +27,48 @@ type ConstellationStar = {
 
 const STARS: ConstellationStar[] = [
   { id: "roadmaps", name: "Roadmaps", icon: Map, position: { x: 8, y: 15 } },
-  { id: "estudos", name: "Plano de estudos", icon: CalendarCheck, position: { x: 18, y: 45 } },
-  { id: "curriculo", name: "Currículo", icon: FileText, position: { x: 70, y: 12 } },
-  { id: "linkedin", name: "LinkedIn", icon: Linkedin, position: { x: 88, y: 38 } },
-  { id: "portfolio", name: "Portfólio", icon: Github, position: { x: 50, y: 58 } },
-  { id: "entrevistas", name: "Entrevistas", icon: Mic, position: { x: 22, y: 85 } },
-  { id: "empregabilidade", name: "Empregabilidade", icon: TrendingUp, position: { x: 58, y: 82 } },
-  { id: "networking", name: "Networking", icon: Send, position: { x: 92, y: 92 } },
+  {
+    id: "estudos",
+    name: "Plano de estudos",
+    icon: CalendarCheck,
+    position: { x: 18, y: 45 },
+  },
+  {
+    id: "curriculo",
+    name: "Currículo",
+    icon: FileText,
+    position: { x: 70, y: 12 },
+  },
+  {
+    id: "linkedin",
+    name: "LinkedIn",
+    icon: Linkedin,
+    position: { x: 88, y: 38 },
+  },
+  {
+    id: "portfolio",
+    name: "Portfólio",
+    icon: Github,
+    position: { x: 50, y: 58 },
+  },
+  {
+    id: "entrevistas",
+    name: "Entrevistas",
+    icon: Mic,
+    position: { x: 22, y: 85 },
+  },
+  {
+    id: "empregabilidade",
+    name: "Empregabilidade",
+    icon: TrendingUp,
+    position: { x: 58, y: 82 },
+  },
+  {
+    id: "networking",
+    name: "Networking",
+    icon: Send,
+    position: { x: 92, y: 92 },
+  },
 ];
 
 const CONNECTIONS: ReadonlyArray<readonly [string, string]> = [
@@ -98,7 +133,8 @@ function ProPitchVariant() {
             className="mb-4 font-display font-black leading-[1.05] text-white"
             style={{ fontSize: "clamp(2.75rem, 5.5vw, 4.5rem)" }}
           >
-            Tudo isso, em uma <span className="text-amber-400">assinatura</span>.
+            Tudo isso, em uma <span className="text-amber-400">assinatura</span>
+            .
           </motion.h2>
 
           <motion.p
@@ -108,7 +144,8 @@ function ProPitchVariant() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mx-auto max-w-2xl text-base md:text-lg font-medium text-slate-300"
           >
-            8 ferramentas com IA pra entrar em TI. Currículo, LinkedIn, portfólio, entrevista e mais.
+            8 ferramentas com IA pra entrar em TI. Currículo, LinkedIn,
+            portfólio, entrevista e mais.
           </motion.p>
         </div>
 
@@ -131,10 +168,15 @@ function ProPitchVariant() {
             >
               <ProStarIcon />
               <span>Ver planos</span>
-              <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
+              <ArrowRight
+                size={18}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </button>
           </Link>
-          <p className="text-sm text-slate-400">A partir de R$ 14,99/mês no plano anual.</p>
+          <p className="text-sm text-slate-400">
+            A partir de R$ 14,99/mês no plano anual.
+          </p>
         </motion.div>
       </div>
     </section>
@@ -202,11 +244,20 @@ function ProThankYouVariant() {
               <Link href={tool.href}>
                 <article className="group flex items-center gap-4 rounded-2xl border-2 border-amber-400/30 bg-white/5 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/60 hover:bg-white/10">
                   <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10">
-                    <tool.icon size={20} className="text-amber-400" strokeWidth={2.5} aria-hidden="true" />
+                    <tool.icon
+                      size={20}
+                      className="text-amber-400"
+                      strokeWidth={2.5}
+                      aria-hidden="true"
+                    />
                   </span>
                   <div className="flex-1">
-                    <p className="font-display text-base font-black text-white">{tool.name}</p>
-                    <p className="text-xs font-medium text-slate-400">Acessar agora</p>
+                    <p className="font-display text-base font-black text-white">
+                      {tool.name}
+                    </p>
+                    <p className="text-xs font-medium text-slate-400">
+                      Acessar agora
+                    </p>
                   </div>
                   <ArrowRight
                     size={18}
@@ -246,8 +297,10 @@ function Constellation() {
     return set;
   }, [hovered]);
 
-  const starsByPositionX = (s: ConstellationStar) => (s.position.x / 100) * VIEWBOX_W;
-  const starsByPositionY = (s: ConstellationStar) => (s.position.y / 100) * VIEWBOX_H;
+  const starsByPositionX = (s: ConstellationStar) =>
+    (s.position.x / 100) * VIEWBOX_W;
+  const starsByPositionY = (s: ConstellationStar) =>
+    (s.position.y / 100) * VIEWBOX_H;
 
   return (
     <div className="relative mx-auto w-full max-w-[1400px]">
@@ -286,7 +339,11 @@ function Constellation() {
               initial={reduce ? false : { opacity: 0 }}
               whileInView={reduce ? undefined : { opacity: 1 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.4, delay: 0.9 + idx * 0.05, ease: "easeOut" }}
+              transition={{
+                duration: 0.4,
+                delay: 0.9 + idx * 0.05,
+                ease: "easeOut",
+              }}
               className="transition-[stroke,stroke-width] duration-300"
             />
           );
@@ -297,10 +354,20 @@ function Constellation() {
           const cy = starsByPositionY(star);
           const isHovered = hovered === star.id;
           const isConnected = connectedSet.has(star.id);
-          const baseOpacity = !hovered ? 0.7 : isHovered ? 1 : isConnected ? 0.85 : 0.5;
+          const baseOpacity = !hovered
+            ? 0.7
+            : isHovered
+              ? 1
+              : isConnected
+                ? 0.85
+                : 0.5;
           const radius = isHovered ? 22 : 13;
           const labelAnchor: "start" | "end" | "middle" =
-            star.position.x < 15 ? "start" : star.position.x > 85 ? "end" : "middle";
+            star.position.x < 15
+              ? "start"
+              : star.position.x > 85
+                ? "end"
+                : "middle";
 
           return (
             <motion.g
@@ -312,11 +379,17 @@ function Constellation() {
               onMouseLeave={() => setHovered(null)}
               onFocus={() => setHovered(star.id)}
               onBlur={() => setHovered(null)}
-              onClick={() => setHovered((prev) => (prev === star.id ? null : star.id))}
+              onClick={() =>
+                setHovered((prev) => (prev === star.id ? null : star.id))
+              }
               initial={reduce ? false : { opacity: 0, scale: 0 }}
               whileInView={reduce ? undefined : { opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5, delay: 0.2 + idx * 0.08, ease: "backOut" }}
+              transition={{
+                duration: 0.5,
+                delay: 0.2 + idx * 0.08,
+                ease: "backOut",
+              }}
               className="cursor-pointer outline-none focus-visible:[&_circle]:stroke-amber-300"
               style={{ transformOrigin: `${cx}px ${cy}px` }}
             >
@@ -366,7 +439,8 @@ function BackgroundDecoration() {
       <div
         className="pointer-events-none absolute left-[5%] top-[10%] h-[500px] w-[500px] rounded-full"
         style={{
-          background: "radial-gradient(circle, rgba(255,184,0,0.08) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(255,184,0,0.08) 0%, transparent 70%)",
           filter: "blur(40px)",
         }}
         aria-hidden="true"
@@ -374,7 +448,8 @@ function BackgroundDecoration() {
       <div
         className="pointer-events-none absolute bottom-[10%] right-[5%] h-[600px] w-[600px] rounded-full"
         style={{
-          background: "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
           filter: "blur(50px)",
         }}
         aria-hidden="true"
@@ -382,4 +457,3 @@ function BackgroundDecoration() {
     </>
   );
 }
-

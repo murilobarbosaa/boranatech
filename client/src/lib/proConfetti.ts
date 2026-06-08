@@ -8,7 +8,10 @@ const COLORS = ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"];
 // (0..1), matching canvas-confetti. Returns a stop() that clears the interval so
 // callers can clean up on unmount. Reduced-motion is the caller's responsibility,
 // as it was inline in the Pro flow.
-export function fireProCelebration(origin: { x: number; y: number }): () => void {
+export function fireProCelebration(origin: {
+  x: number;
+  y: number;
+}): () => void {
   // Burst inicial mais forte, no ponto de origem.
   confetti({
     particleCount: 90,
@@ -20,7 +23,8 @@ export function fireProCelebration(origin: { x: number; y: number }): () => void
     gravity: 0.85,
   });
 
-  const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+  const randomInRange = (min: number, max: number) =>
+    Math.random() * (max - min) + min;
 
   // Burst aleatorio espalhado: origem x/y e angulo randomicos cobrindo a tela.
   const fireScatter = () => {

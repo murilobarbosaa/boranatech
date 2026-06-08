@@ -46,7 +46,11 @@ export default function TrocarSenha() {
       return;
     }
 
-    const parsed = trocarSenhaSchema.safeParse({ currentPassword, password, confirmPassword });
+    const parsed = trocarSenhaSchema.safeParse({
+      currentPassword,
+      password,
+      confirmPassword,
+    });
     if (!parsed.success) {
       toast.error(firstIssueMessage(parsed.error));
       return;
@@ -55,7 +59,10 @@ export default function TrocarSenha() {
     setIsSubmitting(true);
 
     try {
-      await signIn({ email: user.email, password: parsed.data.currentPassword });
+      await signIn({
+        email: user.email,
+        password: parsed.data.currentPassword,
+      });
     } catch {
       toast.error("Senha atual incorreta.");
       setIsSubmitting(false);
@@ -99,15 +106,22 @@ export default function TrocarSenha() {
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
-            <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">trocar senha</p>
-            <h1 className="font-display text-3xl font-black text-slate-950">Defina uma nova senha segura.</h1>
+            <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">
+              trocar senha
+            </p>
+            <h1 className="font-display text-3xl font-black text-slate-950">
+              Defina uma nova senha segura.
+            </h1>
             <p className="mt-2 text-sm text-slate-600">
-              Pra sua segurança, confirme a senha atual antes de trocar. Outras sessões serão encerradas.
+              Pra sua segurança, confirme a senha atual antes de trocar. Outras
+              sessões serão encerradas.
             </p>
 
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">Senha atual</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  Senha atual
+                </span>
                 <PasswordInput
                   autoComplete="current-password"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -117,7 +131,9 @@ export default function TrocarSenha() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">Nova senha</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  Nova senha
+                </span>
                 <PasswordInput
                   autoComplete="new-password"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -129,7 +145,9 @@ export default function TrocarSenha() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">Confirmar nova senha</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  Confirmar nova senha
+                </span>
                 <PasswordInput
                   autoComplete="new-password"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -138,7 +156,10 @@ export default function TrocarSenha() {
                   value={confirmPassword}
                 />
               </label>
-              <PasswordRequirements value={password} isFocused={passwordFocused} />
+              <PasswordRequirements
+                value={password}
+                isFocused={passwordFocused}
+              />
               <button
                 className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSubmitting}
@@ -148,7 +169,10 @@ export default function TrocarSenha() {
               </button>
             </form>
 
-            <Link href="/perfil" className="mt-4 block text-center text-sm font-bold text-violet-700">
+            <Link
+              href="/perfil"
+              className="mt-4 block text-center text-sm font-bold text-violet-700"
+            >
               Voltar para o perfil
             </Link>
           </div>

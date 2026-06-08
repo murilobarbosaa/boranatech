@@ -19,9 +19,15 @@ const FRESH_TTL_MS = 5 * 60 * 1000;
 type Body = { count: number | null };
 
 function getUsersCountHandler() {
-  const layer = (statsRouter as unknown as { stack: Array<{ route?: { path: string; stack: Array<{ handle: Function }> } }> }).stack
-    .find((l) => l.route?.path === "/users-count");
-  if (!layer || !layer.route) throw new Error("rota /users-count não encontrada");
+  const layer = (
+    statsRouter as unknown as {
+      stack: Array<{
+        route?: { path: string; stack: Array<{ handle: Function }> };
+      }>;
+    }
+  ).stack.find((l) => l.route?.path === "/users-count");
+  if (!layer || !layer.route)
+    throw new Error("rota /users-count não encontrada");
   return layer.route.stack[0].handle as (
     req: unknown,
     res: { status: (n: number) => unknown; json: (body: Body) => void },
@@ -77,7 +83,10 @@ describe("GET /api/stats/users-count: last-known-good em memória, sem 0 inventa
 
   it("[no-lkg-error-null] sem lkg prévio, query throw -> 200 {count: null}, nada cacheado", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    supaSpy.select.mockResolvedValueOnce({ count: null, error: new Error("db down") });
+    supaSpy.select.mockResolvedValueOnce({
+      count: null,
+      error: new Error("db down"),
+    });
 
     const r = await callEndpoint();
     expect(r.status).toBe(200);
@@ -136,7 +145,10 @@ describe("GET /api/stats/users-count: last-known-good em memória, sem 0 inventa
 
     vi.advanceTimersByTime(FRESH_TTL_MS + 1);
 
-    supaSpy.select.mockResolvedValueOnce({ count: null, error: new Error("connection reset") });
+    supaSpy.select.mockResolvedValueOnce({
+      count: null,
+      error: new Error("connection reset"),
+    });
     const r = await callEndpoint();
     expect(r.status).toBe(200);
     expect(r.body).toEqual({ count: 32 });

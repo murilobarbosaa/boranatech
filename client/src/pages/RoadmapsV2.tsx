@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import FavoriteButton from "@/components/FavoriteButton";
-import RoadmapTrail, { type TrailHandle } from "@/components/roadmapV2/RoadmapTrail";
+import RoadmapTrail, {
+  type TrailHandle,
+} from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { frontend } from "@/lib/roadmapV2/content";
 import { isComplete, nodeProgress, toggle } from "@/lib/roadmapV2/progress";
@@ -44,13 +46,17 @@ export default function RoadmapsV2() {
     return frontend.sections.reduce(
       (acc, section) => {
         const progress = nodeProgress(section, done);
-        return { done: acc.done + progress.done, total: acc.total + progress.total };
+        return {
+          done: acc.done + progress.done,
+          total: acc.total + progress.total,
+        };
       },
       { done: 0, total: 0 },
     );
   }, [done]);
 
-  const overallPct = overall.total > 0 ? Math.round((overall.done / overall.total) * 100) : 0;
+  const overallPct =
+    overall.total > 0 ? Math.round((overall.done / overall.total) * 100) : 0;
 
   useEffect(() => {
     const prev = prevCompleted.current;
@@ -60,7 +66,10 @@ export default function RoadmapsV2() {
       if (nowComplete && !wasComplete) {
         const sequence = () => {
           // c) confetti, then d) the slow walk once it settles
-          const burstTimer = setTimeout(() => trailRef.current?.burst(i), CLOSE_TO_BURST);
+          const burstTimer = setTimeout(
+            () => trailRef.current?.burst(i),
+            CLOSE_TO_BURST,
+          );
           const walkTimer = setTimeout(
             () => trailRef.current?.walk(i),
             CLOSE_TO_BURST + BURST_TO_WALK,
@@ -92,7 +101,8 @@ export default function RoadmapsV2() {
   }, []);
 
   const openSection = openSectionId
-    ? (frontend.sections.find((section) => section.id === openSectionId) ?? null)
+    ? (frontend.sections.find((section) => section.id === openSectionId) ??
+      null)
     : null;
 
   return (
@@ -115,7 +125,9 @@ export default function RoadmapsV2() {
               <h1 className="font-display text-[clamp(2rem,6vw,2.7rem)] font-black leading-[1.03] tracking-tight text-slate-950">
                 {frontend.title}
               </h1>
-              <p className="mt-2 text-base font-medium text-slate-600">{frontend.description}</p>
+              <p className="mt-2 text-base font-medium text-slate-600">
+                {frontend.description}
+              </p>
               <span className="mt-4 inline-block rounded-[10px] border-[2.5px] border-slate-900 bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-800 shadow-[3px_3px_0_#0f172a]">
                 {overall.done} de {overall.total} tópicos · {overallPct}%
               </span>

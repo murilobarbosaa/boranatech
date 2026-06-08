@@ -21,7 +21,11 @@ function SocialIcon({ icon, href, label }: SocialIconProps) {
 
   if (isPlaceholder) {
     return (
-      <span className={className} aria-label={`${label} (em breve)`} title={`${label} (em breve)`}>
+      <span
+        className={className}
+        aria-label={`${label} (em breve)`}
+        title={`${label} (em breve)`}
+      >
         <Icon icon={icon} style={{ fontSize: "32px" }} aria-hidden="true" />
       </span>
     );
@@ -42,21 +46,45 @@ function SocialIcon({ icon, href, label }: SocialIconProps) {
 }
 
 const SOCIAL_ITEMS = [
-  { key: "instagram", icon: "ph:instagram-logo-bold", href: SOCIAL_LINKS.instagram, label: "Instagram da BoraNaTech" },
-  { key: "linkedin", icon: "ph:linkedin-logo-bold", href: SOCIAL_LINKS.linkedin, label: "LinkedIn da BoraNaTech" },
-  { key: "tiktok", icon: "ph:tiktok-logo-bold", href: SOCIAL_LINKS.tiktok, label: "TikTok da BoraNaTech" },
-  { key: "twitter", icon: "ph:x-logo-bold", href: SOCIAL_LINKS.twitter, label: "X da BoraNaTech" },
+  {
+    key: "instagram",
+    icon: "ph:instagram-logo-bold",
+    href: SOCIAL_LINKS.instagram,
+    label: "Instagram da BoraNaTech",
+  },
+  {
+    key: "linkedin",
+    icon: "ph:linkedin-logo-bold",
+    href: SOCIAL_LINKS.linkedin,
+    label: "LinkedIn da BoraNaTech",
+  },
+  {
+    key: "tiktok",
+    icon: "ph:tiktok-logo-bold",
+    href: SOCIAL_LINKS.tiktok,
+    label: "TikTok da BoraNaTech",
+  },
+  {
+    key: "twitter",
+    icon: "ph:x-logo-bold",
+    href: SOCIAL_LINKS.twitter,
+    label: "X da BoraNaTech",
+  },
 ] as const;
 
 export default function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="relative overflow-hidden bg-slate-950 text-slate-300" role="contentinfo">
+    <footer
+      className="relative overflow-hidden bg-slate-950 text-slate-300"
+      role="contentinfo"
+    >
       <div
         className="pointer-events-none absolute left-1/2 top-0 h-[200px] w-[600px] -translate-x-1/2"
         style={{
-          background: "radial-gradient(ellipse at top, rgba(255,184,0,0.08) 0%, transparent 70%)",
+          background:
+            "radial-gradient(ellipse at top, rgba(255,184,0,0.08) 0%, transparent 70%)",
           filter: "blur(40px)",
         }}
         aria-hidden="true"
@@ -68,7 +96,8 @@ export default function Footer() {
             <Logo variant="dark" size="lg" />
           </Link>
           <p className="max-w-sm text-base text-slate-400 md:text-right md:text-lg">
-            Sua porta de entrada para o universo da tecnologia. Simples, organizado e feito pra quem está começando.
+            Sua porta de entrada para o universo da tecnologia. Simples,
+            organizado e feito pra quem está começando.
           </p>
         </div>
 
@@ -126,25 +155,39 @@ export default function Footer() {
             </span>
             <div className="flex flex-wrap items-center justify-center gap-4 md:justify-start">
               {SOCIAL_ITEMS.map((item) => (
-                <SocialIcon key={item.key} icon={item.icon} href={item.href} label={item.label} />
+                <SocialIcon
+                  key={item.key}
+                  icon={item.icon}
+                  href={item.href}
+                  label={item.label}
+                />
               ))}
             </div>
           </div>
         </div>
 
         <div className="border-b-2 border-slate-800 py-6 text-center text-xs text-slate-500">
-          Os conteúdos externos (cursos, plataformas, links) pertencem aos seus respectivos criadores. O{" "}
-          <span className="font-bold text-amber-400">BORA NA TECH?</span> é um projeto de curadoria.
+          Os conteúdos externos (cursos, plataformas, links) pertencem aos seus
+          respectivos criadores. O{" "}
+          <span className="font-bold text-amber-400">BORA NA TECH?</span> é um
+          projeto de curadoria.
         </div>
 
         <div className="flex flex-col gap-3 py-6 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
           <div>
             © {year} BORA NA TECH? Feito{" "}
-            <Heart className="inline h-3.5 w-3.5 text-amber-400" aria-hidden="true" /> pra quem está começando.
+            <Heart
+              className="inline h-3.5 w-3.5 text-amber-400"
+              aria-hidden="true"
+            />{" "}
+            pra quem está começando.
           </div>
           <div>
             Conteúdo original sob{" "}
-            <Link href="/licenca" className="text-slate-400 transition-colors hover:text-white">
+            <Link
+              href="/licenca"
+              className="text-slate-400 transition-colors hover:text-white"
+            >
               CC BY-NC-SA 4.0
             </Link>
           </div>

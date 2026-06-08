@@ -6,7 +6,15 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronDown, Heart, LogOut, Menu, ShieldCheck, Sparkles, X } from "lucide-react";
+import {
+  ChevronDown,
+  Heart,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -43,24 +51,53 @@ const menuData: DropdownMenu[] = [
   {
     id: "iniciante",
     label: "Não sei nada",
-    headerDescription: "Pra quem está começando do zero e quer descobrir o universo de TI",
+    headerDescription:
+      "Pra quem está começando do zero e quer descobrir o universo de TI",
     accentColor: "#534AB7",
     columns: [
       {
         groupLabel: "EXPLORAR A ÁREA",
         items: [
-          { label: "Áreas de TI", description: "Conheça os caminhos da TI", path: "/areas" },
-          { label: "Quiz carreira", description: "Descubra sua área ideal", path: "/quiz-carreira" },
-          { label: "Faculdades", description: "Cursos superiores de TI", path: "/faculdades" },
+          {
+            label: "Áreas de TI",
+            description: "Conheça os caminhos da TI",
+            path: "/areas",
+          },
+          {
+            label: "Quiz carreira",
+            description: "Descubra sua área ideal",
+            path: "/quiz-carreira",
+          },
+          {
+            label: "Faculdades",
+            description: "Cursos superiores de TI",
+            path: "/faculdades",
+          },
         ],
       },
       {
         groupLabel: "CONHECER TECNOLOGIAS",
         items: [
-          { label: "Tecnologias", description: "Linguagens e frameworks", path: "/tecnologias" },
-          { label: "Mapa de tecnologias", description: "Visualize o ecossistema tech", path: "/tecnologias/mapa" },
-          { label: "Ranking de tecnologias", description: "As mais pedidas no mercado", path: "/tecnologias/ranking" },
-          { label: "Dicionário", description: "Termos técnicos sem complicar", path: "/dicionario" },
+          {
+            label: "Tecnologias",
+            description: "Linguagens e frameworks",
+            path: "/tecnologias",
+          },
+          {
+            label: "Mapa de tecnologias",
+            description: "Visualize o ecossistema tech",
+            path: "/tecnologias/mapa",
+          },
+          {
+            label: "Ranking de tecnologias",
+            description: "As mais pedidas no mercado",
+            path: "/tecnologias/ranking",
+          },
+          {
+            label: "Dicionário",
+            description: "Termos técnicos sem complicar",
+            path: "/dicionario",
+          },
         ],
       },
     ],
@@ -74,18 +111,48 @@ const menuData: DropdownMenu[] = [
       {
         groupLabel: "ESTUDAR",
         items: [
-          { label: "Roadmaps", description: "Planos de estudo por área", path: "/roadmaps", isPro: true },
-          { label: "Plano de Estudos", description: "Monte sua rotina personalizada", path: "/estudos", isPro: true },
-          { label: "Cursos", description: "Cursos gratuitos e pagos", path: "/cursos" },
-          { label: "Plataformas", description: "Onde estudar com clareza", path: "/plataformas" },
+          {
+            label: "Roadmaps",
+            description: "Planos de estudo por área",
+            path: "/roadmaps",
+            isPro: true,
+          },
+          {
+            label: "Plano de Estudos",
+            description: "Monte sua rotina personalizada",
+            path: "/estudos",
+            isPro: true,
+          },
+          {
+            label: "Cursos",
+            description: "Cursos gratuitos e pagos",
+            path: "/cursos",
+          },
+          {
+            label: "Plataformas",
+            description: "Onde estudar com clareza",
+            path: "/plataformas",
+          },
         ],
       },
       {
         groupLabel: "PRATICAR",
         items: [
-          { label: "Projetos", description: "Ideias para seu portfólio", path: "/projetos" },
-          { label: "Inglês", description: "O inglês que o mercado usa", path: "/ingles" },
-          { label: "Ferramentas", description: "Setup e ferramentas essenciais", path: "/ferramentas" },
+          {
+            label: "Projetos",
+            description: "Ideias para seu portfólio",
+            path: "/projetos",
+          },
+          {
+            label: "Inglês",
+            description: "O inglês que o mercado usa",
+            path: "/ingles",
+          },
+          {
+            label: "Ferramentas",
+            description: "Setup e ferramentas essenciais",
+            path: "/ferramentas",
+          },
         ],
       },
     ],
@@ -99,19 +166,52 @@ const menuData: DropdownMenu[] = [
       {
         groupLabel: "ENCONTRAR EMPREGO",
         items: [
-          { label: "Vagas, estágio e trainee", description: "Vagas, currículo e institutos", path: "/estagio" },
-          { label: "Empresas Tech", description: "Conheça quem contrata", path: "/empresas" },
-          { label: "Freelance", description: "Como ganhar dinheiro com tech", path: "/freelance" },
-          { label: "Simulador de carreira", description: "Quanto tempo até sua primeira vaga", path: "/simulador" },
+          {
+            label: "Vagas, estágio e trainee",
+            description: "Vagas, currículo e institutos",
+            path: "/estagio",
+          },
+          {
+            label: "Empresas Tech",
+            description: "Conheça quem contrata",
+            path: "/empresas",
+          },
+          {
+            label: "Freelance",
+            description: "Como ganhar dinheiro com tech",
+            path: "/freelance",
+          },
+          {
+            label: "Simulador de carreira",
+            description: "Quanto tempo até sua primeira vaga",
+            path: "/simulador",
+          },
         ],
       },
       {
         groupLabel: "PROCESSO SELETIVO",
         items: [
-          { label: "Entrevista", description: "Prepare-se para processos seletivos", path: "/entrevistas" },
-          { label: "Currículo", description: "Apareça para os recrutadores certos", path: "/curriculo" },
-          { label: "Networking", description: "Conecte-se com as pessoas certas", path: "/networking", isPro: true },
-          { label: "Portfólio", description: "Monte um portfólio que gera entrevistas", path: "/portfolio" },
+          {
+            label: "Entrevista",
+            description: "Prepare-se para processos seletivos",
+            path: "/entrevistas",
+          },
+          {
+            label: "Currículo",
+            description: "Apareça para os recrutadores certos",
+            path: "/curriculo",
+          },
+          {
+            label: "Networking",
+            description: "Conecte-se com as pessoas certas",
+            path: "/networking",
+            isPro: true,
+          },
+          {
+            label: "Portfólio",
+            description: "Monte um portfólio que gera entrevistas",
+            path: "/portfolio",
+          },
         ],
       },
       {
@@ -129,8 +229,17 @@ const menuData: DropdownMenu[] = [
             path: "/curriculo/linkedin",
             isPro: true,
           },
-          { label: "Avaliador GitHub", description: "Avalie e melhore seu perfil", path: "/portfolio/analisar", isPro: true },
-          { label: "Evolução de Carreira", description: "De júnior a sênior e além", path: "/evolucao" },
+          {
+            label: "Avaliador GitHub",
+            description: "Avalie e melhore seu perfil",
+            path: "/portfolio/analisar",
+            isPro: true,
+          },
+          {
+            label: "Evolução de Carreira",
+            description: "De júnior a sênior e além",
+            path: "/evolucao",
+          },
         ],
       },
     ],
@@ -144,23 +253,48 @@ const menuData: DropdownMenu[] = [
       {
         groupLabel: "MERCADO",
         items: [
-          { label: "Salários", description: "Tabela salarial e calculadoras", path: "/salarios" },
-          { label: "Empregabilidade", description: "Prontidão vaga × perfil e análise crítica do anúncio", path: "/empregabilidade", isPro: true },
+          {
+            label: "Salários",
+            description: "Tabela salarial e calculadoras",
+            path: "/salarios",
+          },
+          {
+            label: "Empregabilidade",
+            description: "Prontidão vaga × perfil e análise crítica do anúncio",
+            path: "/empregabilidade",
+            isPro: true,
+          },
           { label: "Ranking", path: "/empresas/ranking-junior" },
         ],
       },
       {
         groupLabel: "CONTEÚDO",
         items: [
-          { label: "Notícias", description: "Novidades da área tech", path: "/noticias" },
-          { label: "Eventos", description: "Encontros por cidade e formato", path: "/eventos" },
-          { label: "Dicas", description: "Rotina, mercado e portfólio", path: "/dicas" },
+          {
+            label: "Notícias",
+            description: "Novidades da área tech",
+            path: "/noticias",
+          },
+          {
+            label: "Eventos",
+            description: "Encontros por cidade e formato",
+            path: "/eventos",
+          },
+          {
+            label: "Dicas",
+            description: "Rotina, mercado e portfólio",
+            path: "/dicas",
+          },
         ],
       },
       {
         groupLabel: "CONEXÕES",
         items: [
-          { label: "Comunidades", description: "Grupos para aprender junto", path: "/comunidades" },
+          {
+            label: "Comunidades",
+            description: "Grupos para aprender junto",
+            path: "/comunidades",
+          },
           { label: "Mentorias", path: "/mentorias" },
           { label: "Mulheres", path: "/mulheres", isWomen: true },
         ],
@@ -198,21 +332,31 @@ function isPathActive(path: string, location: string) {
 }
 
 function getActiveDropdownItemPath(menu: DropdownMenu, location: string) {
-  return menu.columns
-    .flatMap((column) => column.items)
-    .filter((item) => isNavItemActive(location, item.path))
-    .sort((a, b) => {
-      const pathA = a.path.replace(/\/+$/, "") || "/";
-      const pathB = b.path.replace(/\/+$/, "") || "/";
-      return pathB.length - pathA.length;
-    })[0]?.path ?? null;
+  return (
+    menu.columns
+      .flatMap((column) => column.items)
+      .filter((item) => isNavItemActive(location, item.path))
+      .sort((a, b) => {
+        const pathA = a.path.replace(/\/+$/, "") || "/";
+        const pathB = b.path.replace(/\/+$/, "") || "/";
+        return pathB.length - pathA.length;
+      })[0]?.path ?? null
+  );
 }
 
 function ProStarBadge() {
   return <ProStarIcon className="ml-1.5 mt-[1px]" />;
 }
 
-function dropdownItemClass({ isActive, isPro, isWomen }: { isActive: boolean; isPro?: boolean; isWomen?: boolean }) {
+function dropdownItemClass({
+  isActive,
+  isPro,
+  isWomen,
+}: {
+  isActive: boolean;
+  isPro?: boolean;
+  isWomen?: boolean;
+}) {
   const base =
     "block rounded-xl border px-3 py-2.5 transition-all duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200";
 
@@ -237,7 +381,10 @@ function dropdownItemClass({ isActive, isPro, isWomen }: { isActive: boolean; is
 
 function ActiveRouteDot() {
   return (
-    <span className="ml-1.5 mt-[5px] inline-flex h-2 w-2 shrink-0 rounded-full border border-slate-900 bg-violet-700 shadow-[1px_1px_0_#0f172a]" aria-hidden="true" />
+    <span
+      className="ml-1.5 mt-[5px] inline-flex h-2 w-2 shrink-0 rounded-full border border-slate-900 bg-violet-700 shadow-[1px_1px_0_#0f172a]"
+      aria-hidden="true"
+    />
   );
 }
 
@@ -255,15 +402,23 @@ function DropdownItemTitle({
   if (isWomen) {
     return (
       <span className="relative z-10 flex w-full items-center justify-between gap-2 text-sm leading-snug text-slate-900">
-        <Sparkles className="h-3.5 w-3.5 shrink-0 text-pink-600" aria-hidden="true" />
+        <Sparkles
+          className="h-3.5 w-3.5 shrink-0 text-pink-600"
+          aria-hidden="true"
+        />
         <span className="flex-1 text-center font-medium">{label}</span>
-        <Heart className="h-3.5 w-3.5 shrink-0 text-pink-600" aria-hidden="true" />
+        <Heart
+          className="h-3.5 w-3.5 shrink-0 text-pink-600"
+          aria-hidden="true"
+        />
       </span>
     );
   }
 
   return (
-    <span className={`relative z-10 flex items-start text-sm leading-snug text-slate-900 ${isPro || active ? "font-bold" : "font-medium"}`}>
+    <span
+      className={`relative z-10 flex items-start text-sm leading-snug text-slate-900 ${isPro || active ? "font-bold" : "font-medium"}`}
+    >
       <span>{label}</span>
       {isPro ? <ProStarBadge /> : null}
       {active ? <ActiveRouteDot /> : null}
@@ -313,11 +468,15 @@ function DesktopMenuItem({
         onKeyDown={handleKeyDown}
         onMouseEnter={() => setOpenMenu(menu.id)}
         className={`nav-pill flex cursor-default items-center gap-1 px-3 py-1.5 text-sm font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200 ${
-          isActive || isOpen ? "nav-pill-active text-slate-900" : "text-slate-700"
+          isActive || isOpen
+            ? "nav-pill-active text-slate-900"
+            : "text-slate-700"
         }`}
       >
         {menu.label}
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-3.5 w-3.5 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       <div
@@ -325,65 +484,88 @@ function DesktopMenuItem({
         onMouseEnter={() => setOpenMenu(menu.id)}
         style={{ minWidth: `${menu.columns.length * 240}px` }}
         className={`absolute left-0 top-full z-[1001] max-w-[calc(100vw-2rem)] pt-3 transition-all duration-150 ${
-          isOpen ? "visible translate-y-0 opacity-100" : "invisible -translate-y-1.5 opacity-0 pointer-events-none"
+          isOpen
+            ? "visible translate-y-0 opacity-100"
+            : "invisible -translate-y-1.5 opacity-0 pointer-events-none"
         }`}
       >
         <div
           className={`overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
         >
-        <div className="mb-4">
-          <p className="text-[13px] font-black text-slate-900">{menu.label}</p>
-          <p className="mt-1 text-xs font-bold text-slate-500">{menu.headerDescription}</p>
-        </div>
-        <div className="mb-4 h-px bg-slate-200" />
+          <div className="mb-4">
+            <p className="text-[13px] font-black text-slate-900">
+              {menu.label}
+            </p>
+            <p className="mt-1 text-xs font-bold text-slate-500">
+              {menu.headerDescription}
+            </p>
+          </div>
+          <div className="mb-4 h-px bg-slate-200" />
 
-        <div
-          className="grid gap-4"
-          style={{ gridTemplateColumns: `repeat(${menu.columns.length}, minmax(0, 1fr))` }}
-        >
-          {menu.columns.map((column, columnIndex) => (
-            <div
-              key={`${menu.id}-${columnIndex}`}
-              className={`${hasGroupedColumns && columnIndex > 0 ? "border-l border-slate-200 pl-4" : ""}`}
-            >
-              {column.groupLabel ? (
-                <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  {column.groupLabel}
-                </p>
-              ) : null}
+          <div
+            className="grid gap-4"
+            style={{
+              gridTemplateColumns: `repeat(${menu.columns.length}, minmax(0, 1fr))`,
+            }}
+          >
+            {menu.columns.map((column, columnIndex) => (
+              <div
+                key={`${menu.id}-${columnIndex}`}
+                className={`${hasGroupedColumns && columnIndex > 0 ? "border-l border-slate-200 pl-4" : ""}`}
+              >
+                {column.groupLabel ? (
+                  <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                    {column.groupLabel}
+                  </p>
+                ) : null}
 
-              <div className={menu.columns.length === 1 ? "space-y-2" : "space-y-1"}>
-                {column.items.map((item) => {
-                  const itemActive = item.path === activeItemPath;
+                <div
+                  className={
+                    menu.columns.length === 1 ? "space-y-2" : "space-y-1"
+                  }
+                >
+                  {column.items.map((item) => {
+                    const itemActive = item.path === activeItemPath;
 
-                  return (
-                    <Link
-                      key={item.path}
-                      href={item.path}
-                      onClick={() => setOpenMenu(null)}
-                      aria-current={itemActive ? "page" : undefined}
-                      className={dropdownItemClass({ isActive: itemActive, isPro: item.isPro, isWomen: item.isWomen })}
-                    >
-                      <DropdownItemTitle active={itemActive} isPro={item.isPro} isWomen={item.isWomen} label={item.label} />
-                      {item.description ? (
-                        <span className={`relative z-10 mt-0.5 block text-xs leading-snug ${itemActive ? "text-slate-700" : "text-slate-500"}`}>
-                          {item.description}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
+                    return (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        onClick={() => setOpenMenu(null)}
+                        aria-current={itemActive ? "page" : undefined}
+                        className={dropdownItemClass({
+                          isActive: itemActive,
+                          isPro: item.isPro,
+                          isWomen: item.isWomen,
+                        })}
+                      >
+                        <DropdownItemTitle
+                          active={itemActive}
+                          isPro={item.isPro}
+                          isWomen={item.isWomen}
+                          label={item.label}
+                        />
+                        {item.description ? (
+                          <span
+                            className={`relative z-10 mt-0.5 block text-xs leading-snug ${itemActive ? "text-slate-700" : "text-slate-500"}`}
+                          >
+                            {item.description}
+                          </span>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[#BA7517]">
-          <span className="inline-flex items-center gap-1.5">
-            <ProStarIcon />
-            funcionalidade Pro
-          </span>
-        </div>
+          <div className="mt-4 border-t border-slate-200 pt-3 text-right text-[11px] font-bold text-[#BA7517]">
+            <span className="inline-flex items-center gap-1.5">
+              <ProStarIcon />
+              funcionalidade Pro
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -403,7 +585,10 @@ function DesktopNav({ location }: { location: string }) {
   }, []);
 
   return (
-    <nav className="hidden flex-1 items-center justify-center gap-0.5 2xl:flex 2xl:gap-1" aria-label="Navegação principal">
+    <nav
+      className="hidden flex-1 items-center justify-center gap-0.5 2xl:flex 2xl:gap-1"
+      aria-label="Navegação principal"
+    >
       {menuData.map((menu) => (
         <DesktopMenuItem
           key={menu.id}
@@ -415,9 +600,13 @@ function DesktopNav({ location }: { location: string }) {
       ))}
       <Link
         href="/comparador"
-        aria-current={isPathActive("/comparador", location) ? "page" : undefined}
+        aria-current={
+          isPathActive("/comparador", location) ? "page" : undefined
+        }
         className={`nav-pill inline-flex items-center gap-1 px-3 py-1.5 text-sm font-bold ${
-          isPathActive("/comparador", location) ? "nav-pill-active text-slate-900" : "text-slate-700"
+          isPathActive("/comparador", location)
+            ? "nav-pill-active text-slate-900"
+            : "text-slate-700"
         }`}
       >
         Comparador
@@ -453,10 +642,16 @@ function MobileAccordion({
         className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm font-bold ${
           isActive ? "text-slate-950" : "text-slate-700"
         }`}
-        style={{ borderLeft: isActive ? `3px solid ${menu.accentColor}` : "3px solid transparent" }}
+        style={{
+          borderLeft: isActive
+            ? `3px solid ${menu.accentColor}`
+            : "3px solid transparent",
+        }}
       >
         {menu.label}
-        <ChevronDown className={`h-4 w-4 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-4 w-4 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       {isOpen ? (
@@ -480,9 +675,18 @@ function MobileAccordion({
                     aria-current={itemActive ? "page" : undefined}
                     className={`${dropdownItemClass({ isActive: itemActive, isPro: item.isPro, isWomen: item.isWomen })} my-1 px-2`}
                   >
-                    <DropdownItemTitle active={itemActive} isPro={item.isPro} isWomen={item.isWomen} label={item.label} />
+                    <DropdownItemTitle
+                      active={itemActive}
+                      isPro={item.isPro}
+                      isWomen={item.isWomen}
+                      label={item.label}
+                    />
                     {item.description ? (
-                      <span className={`relative z-10 block text-xs ${itemActive ? "text-slate-700" : "text-slate-500"}`}>{item.description}</span>
+                      <span
+                        className={`relative z-10 block text-xs ${itemActive ? "text-slate-700" : "text-slate-500"}`}
+                      >
+                        {item.description}
+                      </span>
                     ) : null}
                   </Link>
                 );
@@ -499,14 +703,26 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
   const [location] = useLocation();
-  const { loading: authLoading, profile, profileStatus, signOut, user } = useAuth();
+  const {
+    loading: authLoading,
+    profile,
+    profileStatus,
+    signOut,
+    user,
+  } = useAuth();
   const { isAdmin } = useAdmin();
   const { isPro, loading: subscriptionLoading } = useSubscription();
-  const userName = profile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "Perfil";
+  const userName =
+    profile?.name ||
+    user?.user_metadata?.name ||
+    user?.email?.split("@")[0] ||
+    "Perfil";
   // Skeleton só quando user existe mas perfil ainda não chegou E estamos
   // genuinamente carregando. Em status='error' sem perfil, cai no fallback
   // (UserAvatar com iniciais + cores padrão) em vez de girar para sempre.
-  const avatarLoading = Boolean(user && !profile && (authLoading || profileStatus === "loading"));
+  const avatarLoading = Boolean(
+    user && !profile && (authLoading || profileStatus === "loading"),
+  );
   const avatarBorder = normalizeAvatarBorder(profile?.avatar_border);
   const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(profile?.avatar_bg);
@@ -555,7 +771,14 @@ export default function Header() {
                   className="inline-flex"
                   aria-label="Abrir perfil"
                 >
-                  <UserAvatar name={userName} border={avatarBorder} icon={avatarIcon} bg={avatarBg} size="sm" loading={avatarLoading} />
+                  <UserAvatar
+                    name={userName}
+                    border={avatarBorder}
+                    icon={avatarIcon}
+                    bg={avatarBg}
+                    size="sm"
+                    loading={avatarLoading}
+                  />
                 </Link>
                 {isAdmin ? (
                   <Link
@@ -567,12 +790,12 @@ export default function Header() {
                   </Link>
                 ) : null}
                 {!isPro && !subscriptionLoading ? (
-                <Link
-                  href="/planos"
-                  className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-2.5 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
-                >
-                  <ProInlineBadge label="Assinar Pro" />
-                </Link>
+                  <Link
+                    href="/planos"
+                    className="inline-flex items-center rounded-full border-2 border-slate-900 bg-[#FFB800] px-2.5 py-2 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                  >
+                    <ProInlineBadge label="Assinar Pro" />
+                  </Link>
                 ) : null}
                 <button
                   type="button"
@@ -597,7 +820,12 @@ export default function Header() {
         </div>
       </header>
 
-      {mobileOpen ? <div className="fixed inset-0 z-[1001] bg-black/50 2xl:hidden" onClick={closeMobileDrawer} /> : null}
+      {mobileOpen ? (
+        <div
+          className="fixed inset-0 z-[1001] bg-black/50 2xl:hidden"
+          onClick={closeMobileDrawer}
+        />
+      ) : null}
 
       <div
         className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 2xl:hidden ${
@@ -618,7 +846,10 @@ export default function Header() {
           </button>
         </div>
 
-        <nav className="h-[calc(100%-64px)] overflow-y-auto pb-24" aria-label="Navegação principal mobile">
+        <nav
+          className="h-[calc(100%-64px)] overflow-y-auto pb-24"
+          aria-label="Navegação principal mobile"
+        >
           {!user ? (
             <Link
               href="/login"
@@ -634,7 +865,14 @@ export default function Header() {
                 onClick={closeMobileDrawer}
                 className="flex items-center gap-3 text-sm font-black text-slate-950"
               >
-                <UserAvatar name={userName} border={avatarBorder} icon={avatarIcon} bg={avatarBg} size="sm" loading={avatarLoading} />
+                <UserAvatar
+                  name={userName}
+                  border={avatarBorder}
+                  icon={avatarIcon}
+                  bg={avatarBg}
+                  size="sm"
+                  loading={avatarLoading}
+                />
                 <span>{userName}</span>
               </Link>
               <div className="mt-3 flex gap-2">
@@ -682,7 +920,9 @@ export default function Header() {
           <Link
             href="/comparador"
             onClick={closeMobileDrawer}
-            aria-current={isPathActive("/comparador", location) ? "page" : undefined}
+            aria-current={
+              isPathActive("/comparador", location) ? "page" : undefined
+            }
             className={`mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
               isPathActive("/comparador", location)
                 ? "border-slate-900 bg-white text-slate-950"

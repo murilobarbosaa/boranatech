@@ -10,14 +10,30 @@ export const passwordSchema = z
   .regex(/[^A-Za-z0-9]/, "Inclua um caractere especial.");
 
 export const signupSchema = z.object({
-  name: z.string().trim().min(2, "Informe seu nome.").max(80, "Use um nome mais curto."),
-  email: z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(160, "Use um e-mail mais curto."),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Informe seu nome.")
+    .max(80, "Use um nome mais curto."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Informe um e-mail válido.")
+    .max(160, "Use um e-mail mais curto."),
   password: passwordSchema,
-  gender: z.enum(GENDER_VALUES, { message: "Selecione como você se identifica." }),
+  gender: z.enum(GENDER_VALUES, {
+    message: "Selecione como você se identifica.",
+  }),
 });
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(160, "Use um e-mail mais curto."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Informe um e-mail válido.")
+    .max(160, "Use um e-mail mais curto."),
   password: z.string().min(1, "Informe sua senha."),
 });
 

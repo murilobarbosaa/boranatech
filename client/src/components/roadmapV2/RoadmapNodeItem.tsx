@@ -36,19 +36,31 @@ function GroupItem({ node, done, onToggle }: RoadmapNodeItemProps) {
         />
         <span
           className={`grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_#0f172a] ${
-            complete ? "bg-emerald-500 shadow-[2px_2px_0_#047857]" : partial ? "bg-[#FFB800]" : "bg-white"
+            complete
+              ? "bg-emerald-500 shadow-[2px_2px_0_#047857]"
+              : partial
+                ? "bg-[#FFB800]"
+                : "bg-white"
           }`}
         >
-          {complete && <Check className="h-3.5 w-3.5 text-white" strokeWidth={4} />}
-          {partial && <Minus className="h-3 w-3 text-slate-900" strokeWidth={4} />}
+          {complete && (
+            <Check className="h-3.5 w-3.5 text-white" strokeWidth={4} />
+          )}
+          {partial && (
+            <Minus className="h-3 w-3 text-slate-900" strokeWidth={4} />
+          )}
         </span>
-        <span className="text-[1.05rem] font-extrabold text-slate-900">{node.title}</span>
+        <span className="text-[1.05rem] font-extrabold text-slate-900">
+          {node.title}
+        </span>
         <span className="ml-auto flex items-center gap-2">
           {optional && <OptionalBadge />}
           {showCount && (
             <span
               className={`rounded-[7px] border-2 border-slate-900 px-2 py-0.5 text-[0.72rem] font-extrabold ${
-                complete ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                complete
+                  ? "bg-emerald-100 text-emerald-800"
+                  : "bg-slate-100 text-slate-500"
               }`}
             >
               {progress.done}/{progress.total}
@@ -68,7 +80,12 @@ function GroupItem({ node, done, onToggle }: RoadmapNodeItemProps) {
         <div className="overflow-hidden py-1">
           <div className="ml-[12px] border-l-[2.5px] border-dashed border-slate-300 pl-4">
             {node.children?.map((child) => (
-              <RoadmapNodeItem key={child.id} node={child} done={done} onToggle={onToggle} />
+              <RoadmapNodeItem
+                key={child.id}
+                node={child}
+                done={done}
+                onToggle={onToggle}
+              />
             ))}
           </div>
         </div>
@@ -88,13 +105,17 @@ function LeafItem({ node, done, onToggle }: RoadmapNodeItemProps) {
       <button
         type="button"
         aria-pressed={checked}
-        aria-label={checked ? `Desmarcar ${node.title}` : `Marcar ${node.title}`}
+        aria-label={
+          checked ? `Desmarcar ${node.title}` : `Marcar ${node.title}`
+        }
         onClick={() => onToggle(node.id)}
         className={`mt-[9px] grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] ${
           checked ? "bg-emerald-500 shadow-[2px_2px_0_#047857]" : "bg-white"
         }`}
       >
-        {checked && <Check className="h-3.5 w-3.5 text-white" strokeWidth={4} />}
+        {checked && (
+          <Check className="h-3.5 w-3.5 text-white" strokeWidth={4} />
+        )}
       </button>
       <div className="min-w-0 flex-1">
         <div
@@ -103,7 +124,9 @@ function LeafItem({ node, done, onToggle }: RoadmapNodeItemProps) {
         >
           <span
             className={`text-[1rem] font-semibold ${
-              checked ? "text-slate-400 line-through decoration-emerald-300 decoration-2" : "text-slate-700"
+              checked
+                ? "text-slate-400 line-through decoration-emerald-300 decoration-2"
+                : "text-slate-700"
             }`}
           >
             {node.title}
@@ -151,7 +174,11 @@ function LeafItem({ node, done, onToggle }: RoadmapNodeItemProps) {
   );
 }
 
-export default function RoadmapNodeItem({ node, done, onToggle }: RoadmapNodeItemProps) {
+export default function RoadmapNodeItem({
+  node,
+  done,
+  onToggle,
+}: RoadmapNodeItemProps) {
   const isGroup = Boolean(node.children && node.children.length > 0);
   return isGroup ? (
     <GroupItem node={node} done={done} onToggle={onToggle} />
