@@ -1,8 +1,48 @@
-import { BrainCircuit, Code2, Crown, Laptop, Rocket, Sparkles, Star, Target, type LucideIcon } from "lucide-react";
+import {
+  BrainCircuit,
+  Code2,
+  Crown,
+  Laptop,
+  Rocket,
+  Sparkles,
+  Star,
+  Target,
+  type LucideIcon,
+} from "lucide-react";
 
-export const avatarBorderIds = ["classic", "purple", "gold", "pink", "green", "blue", "orange", "red", "cyan"] as const;
-export const avatarIconIds = ["initials", "code", "sparkles", "rocket", "brain", "laptop", "star", "target", "crown"] as const;
-export const avatarBgIds = ["slate", "yellow", "purple", "pink", "green", "blue", "orange", "cream", "white"] as const;
+export const avatarBorderIds = [
+  "classic",
+  "purple",
+  "gold",
+  "pink",
+  "green",
+  "blue",
+  "orange",
+  "red",
+  "cyan",
+] as const;
+export const avatarIconIds = [
+  "initials",
+  "code",
+  "sparkles",
+  "rocket",
+  "brain",
+  "laptop",
+  "star",
+  "target",
+  "crown",
+] as const;
+export const avatarBgIds = [
+  "slate",
+  "yellow",
+  "purple",
+  "pink",
+  "green",
+  "blue",
+  "orange",
+  "cream",
+  "white",
+] as const;
 
 export type AvatarBorderId = (typeof avatarBorderIds)[number];
 export type AvatarIconId = (typeof avatarIconIds)[number];
@@ -204,25 +244,42 @@ export const avatarBgOptions: AvatarBgOption[] = [
 ];
 
 export function normalizeAvatarBorder(value: unknown): AvatarBorderId {
-  return avatarBorderIds.includes(value as AvatarBorderId) ? (value as AvatarBorderId) : defaultAvatarBorder;
+  return avatarBorderIds.includes(value as AvatarBorderId)
+    ? (value as AvatarBorderId)
+    : defaultAvatarBorder;
 }
 
 export function normalizeAvatarIcon(value: unknown): AvatarIconId {
-  return avatarIconIds.includes(value as AvatarIconId) ? (value as AvatarIconId) : defaultAvatarIcon;
+  return avatarIconIds.includes(value as AvatarIconId)
+    ? (value as AvatarIconId)
+    : defaultAvatarIcon;
 }
 
 export function normalizeAvatarBg(value: unknown): AvatarBgId {
-  return avatarBgIds.includes(value as AvatarBgId) ? (value as AvatarBgId) : defaultAvatarBg;
+  return avatarBgIds.includes(value as AvatarBgId)
+    ? (value as AvatarBgId)
+    : defaultAvatarBg;
 }
 
 export function getAvatarBorderOption(value: unknown) {
-  return avatarBorderOptions.find((option) => option.id === normalizeAvatarBorder(value)) || avatarBorderOptions[0];
+  return (
+    avatarBorderOptions.find(
+      (option) => option.id === normalizeAvatarBorder(value),
+    ) || avatarBorderOptions[0]
+  );
 }
 
 export function getAvatarIconOption(value: unknown) {
-  return avatarIconOptions.find((option) => option.id === normalizeAvatarIcon(value)) || avatarIconOptions[0];
+  return (
+    avatarIconOptions.find(
+      (option) => option.id === normalizeAvatarIcon(value),
+    ) || avatarIconOptions[0]
+  );
 }
 
 export function getAvatarBgOption(value: unknown) {
-  return avatarBgOptions.find((option) => option.id === normalizeAvatarBg(value)) || avatarBgOptions[0];
+  return (
+    avatarBgOptions.find((option) => option.id === normalizeAvatarBg(value)) ||
+    avatarBgOptions[0]
+  );
 }

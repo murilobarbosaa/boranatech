@@ -11,12 +11,22 @@ type LogoItem = {
 };
 
 const LOGOS: LogoItem[] = [
-  { name: "HTML5", icon: "simple-icons:html5", kind: "technology", slug: "html" },
+  {
+    name: "HTML5",
+    icon: "simple-icons:html5",
+    kind: "technology",
+    slug: "html",
+  },
   { name: "CSS3", icon: "simple-icons:css3", kind: "technology", slug: "css" },
   { name: "JavaScript", icon: "simple-icons:javascript", kind: "technology" },
   { name: "TypeScript", icon: "simple-icons:typescript", kind: "technology" },
   { name: "React", icon: "simple-icons:react", kind: "technology" },
-  { name: "Vue", icon: "simple-icons:vuedotjs", kind: "technology", slug: "vuejs" },
+  {
+    name: "Vue",
+    icon: "simple-icons:vuedotjs",
+    kind: "technology",
+    slug: "vuejs",
+  },
   { name: "Python", icon: "simple-icons:python", kind: "technology" },
   { name: "Java", icon: "simple-icons:openjdk", kind: "technology" },
   { name: "C#", icon: "simple-icons:csharp", kind: "technology" },
@@ -38,7 +48,10 @@ function hrefFor(item: LogoItem) {
 }
 
 function LogoLink({ item }: { item: LogoItem }) {
-  const label = item.kind === "tool" ? `Ver ferramenta ${item.name}` : `Ver tecnologia ${item.name}`;
+  const label =
+    item.kind === "tool"
+      ? `Ver ferramenta ${item.name}`
+      : `Ver tecnologia ${item.name}`;
   return (
     <Link
       href={hrefFor(item)}

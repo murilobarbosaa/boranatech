@@ -4,7 +4,13 @@
 */
 
 import { useMemo, useState } from "react";
-import { Calendar, CalendarPlus, ExternalLink, MapPin, Users } from "lucide-react";
+import {
+  Calendar,
+  CalendarPlus,
+  ExternalLink,
+  MapPin,
+  Users,
+} from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -44,7 +50,9 @@ function EventLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
 
   return (
     <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
-      <span className={`font-display text-sm font-black leading-none text-fuchsia-700 ${loaded ? "opacity-0" : "opacity-100"}`}>
+      <span
+        className={`font-display text-sm font-black leading-none text-fuchsia-700 ${loaded ? "opacity-0" : "opacity-100"}`}
+      >
         {eventInitials(name)}
       </span>
       <img
@@ -68,7 +76,10 @@ export default function Eventos() {
   const [apenasGratuitos, setApenasGratuitos] = useState(false);
 
   const categoriasUnicas = useMemo(
-    () => Array.from(new Set(eventos.map((e) => e.categoria))).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    () =>
+      Array.from(new Set(eventos.map((e) => e.categoria))).sort((a, b) =>
+        a.localeCompare(b, "pt-BR"),
+      ),
     [],
   );
 
@@ -83,7 +94,8 @@ export default function Eventos() {
 
         const matchEst = !estadoUF || e.estado === estadoUF;
 
-        const matchGratuito = !apenasGratuitos || e.valor.toLowerCase().includes("gratuito");
+        const matchGratuito =
+          !apenasGratuitos || e.valor.toLowerCase().includes("gratuito");
         return matchCat && matchFmt && matchEst && matchGratuito;
       }),
     [categoria, formato, estadoUF, apenasGratuitos],
@@ -97,7 +109,12 @@ export default function Eventos() {
       <SEO
         title="Eventos Tech — Hackathons, meetups e conferências de tecnologia"
         description="Encontre eventos de tecnologia, hackathons, meetups e conferências para aprender, fazer networking e entrar no mercado tech."
-        keywords={["eventos tech brasil", "hackathon programação", "meetup tecnologia", "conferências ti"]}
+        keywords={[
+          "eventos tech brasil",
+          "hackathon programação",
+          "meetup tecnologia",
+          "conferências ti",
+        ]}
         url="/eventos"
         schemaType="CollectionPage"
       />
@@ -108,9 +125,12 @@ export default function Eventos() {
             <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-fuchsia-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
               networking e movimento
             </p>
-            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Eventos Tech</h1>
+            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
+              Eventos Tech
+            </h1>
             <p className="text-slate-950 text-lg">
-              Encontre eventos de tecnologia, networking e aprendizado perto de você.
+              Encontre eventos de tecnologia, networking e aprendizado perto de
+              você.
             </p>
           </div>
         </div>
@@ -120,7 +140,10 @@ export default function Eventos() {
         <div className="container">
           <div className="flex flex-wrap items-end gap-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="filter-evento-tipo" className="text-xs font-bold text-slate-700">
+              <label
+                htmlFor="filter-evento-tipo"
+                className="text-xs font-bold text-slate-700"
+              >
                 {LABEL_FILTROS.categoria}
               </label>
               <select
@@ -139,7 +162,10 @@ export default function Eventos() {
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="filter-evento-modalidade" className="text-xs font-bold text-slate-700">
+              <label
+                htmlFor="filter-evento-modalidade"
+                className="text-xs font-bold text-slate-700"
+              >
                 {LABEL_FILTROS.modalidade}
               </label>
               <select
@@ -156,13 +182,18 @@ export default function Eventos() {
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="filter-evento-estado" className="text-xs font-bold text-slate-700">
+              <label
+                htmlFor="filter-evento-estado"
+                className="text-xs font-bold text-slate-700"
+              >
                 {LABEL_FILTROS.estado}
               </label>
               <select
                 id="filter-evento-estado"
                 value={estadoUF}
-                onChange={(e) => setEstadoUF(e.target.value as "" | EstadoUfSigla)}
+                onChange={(e) =>
+                  setEstadoUF(e.target.value as "" | EstadoUfSigla)
+                }
                 className={`${selectClass} min-w-[13rem]`}
                 title={LABEL_FILTROS.estado}
               >
@@ -191,7 +222,10 @@ export default function Eventos() {
         <div className="container">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((ev) => (
-              <div key={ev.id} className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#f0abfc]">
+              <div
+                key={ev.id}
+                className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#f0abfc]"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <EventLogo name={ev.nome} logoUrl={ev.logoUrl} />
@@ -217,8 +251,12 @@ export default function Eventos() {
                     />
                   </div>
                 </div>
-                <h3 className="font-display font-bold text-lg text-slate-900 mb-2">{ev.nome}</h3>
-                <p className="text-sm text-slate-600 mb-4 flex-1">{ev.descricao}</p>
+                <h3 className="font-display font-bold text-lg text-slate-900 mb-2">
+                  {ev.nome}
+                </h3>
+                <p className="text-sm text-slate-600 mb-4 flex-1">
+                  {ev.descricao}
+                </p>
                 <div className="space-y-1.5 mb-4">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <Calendar className="w-3.5 h-3.5 shrink-0" /> {ev.data}{" "}
@@ -227,7 +265,8 @@ export default function Eventos() {
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <MapPin className="w-3.5 h-3.5 shrink-0" />
                     <span className="line-clamp-2">
-                      {ev.cidade} · {rotuloEstadoEvento(ev.estado)} · {ev.formato}
+                      {ev.cidade} · {rotuloEstadoEvento(ev.estado)} ·{" "}
+                      {ev.formato}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -235,7 +274,9 @@ export default function Eventos() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100">
-                  <span className="text-xs text-slate-400">{ev.organizador}</span>
+                  <span className="text-xs text-slate-400">
+                    {ev.organizador}
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     <a
                       href={googleCalendarUrl(ev)}
@@ -243,7 +284,8 @@ export default function Eventos() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 px-3 py-1.5 bg-white text-slate-900 text-xs font-black rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
                     >
-                      Google Calendar <CalendarPlus className="w-3 h-3 shrink-0" />
+                      Google Calendar{" "}
+                      <CalendarPlus className="w-3 h-3 shrink-0" />
                     </a>
                     <a
                       href={ev.link}
@@ -262,7 +304,9 @@ export default function Eventos() {
           {filtered.length === 0 && (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📅</p>
-              <p className="text-slate-600 font-medium">Nenhum evento encontrado com esses filtros.</p>
+              <p className="text-slate-600 font-medium">
+                Nenhum evento encontrado com esses filtros.
+              </p>
               <button
                 type="button"
                 onClick={() => {
@@ -279,11 +323,15 @@ export default function Eventos() {
           )}
 
           <div className="mt-10 p-5 bg-fuchsia-50 border-2 border-fuchsia-200 rounded-xl">
-            <h3 className="font-display font-semibold text-slate-900 mb-2">Dica: como encontrar mais eventos</h3>
+            <h3 className="font-display font-semibold text-slate-900 mb-2">
+              Dica: como encontrar mais eventos
+            </h3>
             <p className="text-sm text-slate-600">
-              Além dos eventos listados aqui, você pode buscar eventos no <strong>Meetup.com</strong>,{" "}
-              <strong>Sympla</strong> e <strong>Eventbrite</strong>. Pesquise por &quot;tech&quot;, &quot;programação&quot;,
-              &quot;UX&quot; ou &quot;dados&quot; na sua cidade.
+              Além dos eventos listados aqui, você pode buscar eventos no{" "}
+              <strong>Meetup.com</strong>, <strong>Sympla</strong> e{" "}
+              <strong>Eventbrite</strong>. Pesquise por &quot;tech&quot;,
+              &quot;programação&quot;, &quot;UX&quot; ou &quot;dados&quot; na
+              sua cidade.
             </p>
           </div>
         </div>

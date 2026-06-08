@@ -2,7 +2,17 @@ import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const FETCH_TIMEOUT_MS = 15_000;
-const TECH_KEYWORDS = ["desenvolvedor", "programador", "engenheiro de software", "data scientist", "UX designer", "devops", "backend", "frontend", "fullstack"];
+const TECH_KEYWORDS = [
+  "desenvolvedor",
+  "programador",
+  "engenheiro de software",
+  "data scientist",
+  "UX designer",
+  "devops",
+  "backend",
+  "frontend",
+  "fullstack",
+];
 
 type SyncJobsResult = {
   found: number;
@@ -37,12 +47,19 @@ export async function syncJobs(): Promise<SyncJobsResult> {
       const res = await fetch(`https://jooble.org/api/${env.joobleApiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keywords: keyword, location: "Brasil", resultonpage: 20 }),
+        body: JSON.stringify({
+          keywords: keyword,
+          location: "Brasil",
+          resultonpage: 20,
+        }),
         signal: controller.signal,
       });
 
       if (!res.ok) {
-        console.error(`[sync-jobs] Jooble API error para "${keyword}":`, res.status);
+        console.error(
+          `[sync-jobs] Jooble API error para "${keyword}":`,
+          res.status,
+        );
         continue;
       }
 
@@ -55,7 +72,8 @@ export async function syncJobs(): Promise<SyncJobsResult> {
         const title = typeof job.title === "string" ? job.title : "";
         if (!url || !title) continue;
 
-        const location = typeof job.location === "string" ? job.location : "Brasil";
+        const location =
+          typeof job.location === "string" ? job.location : "Brasil";
         const { error } = await supabaseAdmin.from("external_jobs").upsert(
           {
             external_id: typeof job.id === "string" ? job.id : null,
@@ -68,7 +86,10 @@ export async function syncJobs(): Promise<SyncJobsResult> {
             url,
             description: typeof job.snippet === "string" ? job.snippet : null,
             area_slug: detectArea(title),
-            published_at: typeof job.updated === "string" ? job.updated : new Date().toISOString(),
+            published_at:
+              typeof job.updated === "string"
+                ? job.updated
+                : new Date().toISOString(),
             is_published: true,
           },
           { onConflict: "url" },
@@ -87,26 +108,47 @@ export async function syncJobs(): Promise<SyncJobsResult> {
     }
   }
 
-  console.log(`[sync-jobs] Resultado: ${result.created} salvas, ${result.failed} falhas`);
+  console.log(
+    `[sync-jobs] Resultado: ${result.created} salvas, ${result.failed} falhas`,
+  );
   return result;
 }
 
 function detectSeniority(title: string): string {
   const t = title.toLowerCase();
-  if (t.includes("sênior") || t.includes("senior") || t.includes("sr.")) return "senior";
+  if (t.includes("sênior") || t.includes("senior") || t.includes("sr."))
+    return "senior";
   if (t.includes("pleno") || t.includes("mid")) return "pleno";
-  if (t.includes("estágio") || t.includes("estagiário") || t.includes("intern")) return "estagio";
+  if (t.includes("estágio") || t.includes("estagiário") || t.includes("intern"))
+    return "estagio";
   return "junior";
 }
 
 function detectArea(title: string): string {
   const t = title.toLowerCase();
-  if (t.includes("front") || t.includes("react") || t.includes("vue") || t.includes("angular")) return "frontend";
-  if (t.includes("back") || t.includes("node") || t.includes("python") || t.includes("java")) return "backend";
-  if (t.includes("dados") || t.includes("data") || t.includes("analytics")) return "dados";
-  if (t.includes("ux") || t.includes("design") || t.includes("ui")) return "uxui";
-  if (t.includes("devops") || t.includes("cloud") || t.includes("infra")) return "devops";
-  if (t.includes("mobile") || t.includes("ios") || t.includes("android")) return "mobile";
-  if (t.includes("segurança") || t.includes("security") || t.includes("cyber")) return "ciberseguranca";
+  if (
+    t.includes("front") ||
+    t.includes("react") ||
+    t.includes("vue") ||
+    t.includes("angular")
+  )
+    return "frontend";
+  if (
+    t.includes("back") ||
+    t.includes("node") ||
+    t.includes("python") ||
+    t.includes("java")
+  )
+    return "backend";
+  if (t.includes("dados") || t.includes("data") || t.includes("analytics"))
+    return "dados";
+  if (t.includes("ux") || t.includes("design") || t.includes("ui"))
+    return "uxui";
+  if (t.includes("devops") || t.includes("cloud") || t.includes("infra"))
+    return "devops";
+  if (t.includes("mobile") || t.includes("ios") || t.includes("android"))
+    return "mobile";
+  if (t.includes("segurança") || t.includes("security") || t.includes("cyber"))
+    return "ciberseguranca";
   return "backend";
 }

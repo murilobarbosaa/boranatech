@@ -18,12 +18,19 @@ export default function Entrevistas() {
         title="Processo Seletivo em Tech"
         subtitle="Tudo que você precisa saber para passar nas entrevistas."
         actions={
-          <AiCtaLink href="/entrevistas/simulador" description="Treine respostas com feedback" accent="blue" className="w-full">
+          <AiCtaLink
+            href="/entrevistas/simulador"
+            description="Treine respostas com feedback"
+            accent="blue"
+            className="w-full"
+          >
             Simulador com IA
           </AiCtaLink>
         }
       />
-      <section className={cn("sticky top-16 z-40 border-b-2 py-4", ac.stickyBar)}>
+      <section
+        className={cn("sticky top-16 z-40 border-b-2 py-4", ac.stickyBar)}
+      >
         <div className="container flex flex-wrap items-center gap-3">
           <Link
             href="/entrevistas/perguntas"
@@ -54,13 +61,25 @@ export default function Entrevistas() {
               <DetailsChevronOnly
                 key={step.title}
                 className="card-brutal rounded-2xl bg-white p-5"
-                title={<span className="font-display text-xl font-black">{index + 1}. {step.title}</span>}
+                title={
+                  <span className="font-display text-xl font-black">
+                    {index + 1}. {step.title}
+                  </span>
+                }
               >
                 <div className="mt-4 space-y-3 text-sm text-slate-700">
-                  <p><strong>O que avaliam:</strong> {step.evaluate}</p>
-                  <p><strong>Como se preparar:</strong> {step.prepare}</p>
-                  <p><strong>Erro comum:</strong> {step.mistakes}</p>
-                  <p><strong>Dica prática:</strong> {step.tip}</p>
+                  <p>
+                    <strong>O que avaliam:</strong> {step.evaluate}
+                  </p>
+                  <p>
+                    <strong>Como se preparar:</strong> {step.prepare}
+                  </p>
+                  <p>
+                    <strong>Erro comum:</strong> {step.mistakes}
+                  </p>
+                  <p>
+                    <strong>Dica prática:</strong> {step.tip}
+                  </p>
                 </div>
               </DetailsChevronOnly>
             ))}

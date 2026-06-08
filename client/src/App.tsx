@@ -66,7 +66,12 @@ import Freelance from "./pages/Freelance";
 import Evolucao from "./pages/Evolucao";
 import Simulador from "./pages/Simulador";
 import Ingles from "./pages/Ingles";
+import InglesOndeEstudar from "./pages/InglesOndeEstudar";
+import InglesNoTrabalho from "./pages/InglesNoTrabalho";
+import InglesEntrevista from "./pages/InglesEntrevista";
+import InglesVocabulario from "./pages/InglesVocabulario";
 import Ferramentas from "./pages/Ferramentas";
+import GuiaIa from "./pages/GuiaIa";
 import Mentorias from "./pages/Mentorias";
 import Admin from "./pages/Admin";
 import Licenca from "./pages/Licenca";
@@ -84,7 +89,9 @@ function Router() {
       <Route path="/tecnologias/comparar" component={TecnologiaComparador} />
       <Route path="/tecnologias/por-area" component={TecnologiaMapa} />
       {/* TODO: remover redirect após 90 dias em prod */}
-      <Route path="/tecnologias/mapa">{() => <Redirect to="/tecnologias/por-area" />}</Route>
+      <Route path="/tecnologias/mapa">
+        {() => <Redirect to="/tecnologias/por-area" />}
+      </Route>
       <Route path="/tecnologias/ranking" component={TecnologiaRanking} />
       <Route path="/tecnologias/:slug" component={TecnologiaDetalhe} />
       <Route path="/empresas" component={Empresas} />
@@ -109,7 +116,12 @@ function Router() {
       <Route path="/evolucao" component={Evolucao} />
       <Route path="/simulador" component={Simulador} />
       <Route path="/ingles" component={Ingles} />
+      <Route path="/ingles/onde-estudar" component={InglesOndeEstudar} />
+      <Route path="/ingles/no-trabalho" component={InglesNoTrabalho} />
+      <Route path="/ingles/entrevista" component={InglesEntrevista} />
+      <Route path="/ingles/vocabulario" component={InglesVocabulario} />
       <Route path="/ferramentas" component={Ferramentas} />
+      <Route path="/ia" component={GuiaIa} />
       <Route path="/mentorias" component={Mentorias} />
       <Route path="/admin" component={Admin} />
       <Route path="/roadmaps" component={Roadmaps} />
@@ -129,7 +141,10 @@ function Router() {
       <Route path="/mulheres" component={Mulheres} />
       <Route path="/dicionario" component={Dicionario} />
       <Route path="/comparador" component={Comparador} />
-      <Route path="/quiz-carreira/resultado" component={QuizCarreiraResultado} />
+      <Route
+        path="/quiz-carreira/resultado"
+        component={QuizCarreiraResultado}
+      />
       <Route path="/quiz-carreira" component={QuizCarreira} />
       <Route path="/perfil/conquistas" component={Conquistas} />
       <Route path="/perfil/favoritos" component={PerfilFavoritos} />
@@ -137,7 +152,9 @@ function Router() {
       <Route path="/planos/sucesso" component={CheckoutSucesso} />
       <Route path="/planos" component={Checkout} />
       {/* TODO: remover redirect após 90 dias em prod */}
-      <Route path="/pro/sucesso">{() => <Redirect to="/planos/sucesso" />}</Route>
+      <Route path="/pro/sucesso">
+        {() => <Redirect to="/planos/sucesso" />}
+      </Route>
       <Route path="/pro">{() => <Redirect to="/planos" />}</Route>
       <Route path="/checkout" component={Checkout} />
       <Route path="/login">{() => <Auth mode="login" />}</Route>

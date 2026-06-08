@@ -16,7 +16,9 @@ function requireEnv(key: string, fallbackKeys: string[] = []): string {
 
   if (!value) {
     if (process.env.NODE_ENV === "production") {
-      console.error(`[env] ERRO FATAL: variável ${key} não definida em produção`);
+      console.error(
+        `[env] ERRO FATAL: variável ${key} não definida em produção`,
+      );
       process.exit(1);
     }
 
@@ -58,7 +60,10 @@ export const env = {
   supabaseAnonKey: requireEnv("SUPABASE_ANON_KEY", ["VITE_SUPABASE_ANON_KEY"]),
   supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
   supabaseJwtSecret: requireEnv("SUPABASE_JWT_SECRET"),
-  appPublicUrl: requireEnvWithDefault("APP_PUBLIC_URL", "http://localhost:3000"),
+  appPublicUrl: requireEnvWithDefault(
+    "APP_PUBLIC_URL",
+    "http://localhost:3000",
+  ),
   corsOrigin: requireEnvWithDefault("CORS_ORIGIN", "http://localhost:5173"),
   asaasApiKey: requireEnv("ASAAS_API_KEY"),
   asaasWebhookToken: requireEnv("ASAAS_WEBHOOK_TOKEN"),

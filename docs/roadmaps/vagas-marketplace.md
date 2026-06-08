@@ -5,15 +5,15 @@ e canal pra parcerias B2B (acordadas offline, postadas via admin).
 
 ## Decisões tomadas
 
-| Dimensão | Decisão |
-|---|---|
-| **Tier BR** | Free — todos veem |
-| **Tier Exterior** | Pro (premium) |
-| **UI** | Tabs separadas: "Vagas BR" / "Vagas Exterior Pro" |
-| **Fontes BR** | A definir (scraping ou parcerias) |
+| Dimensão            | Decisão                                            |
+| ------------------- | -------------------------------------------------- |
+| **Tier BR**         | Free — todos veem                                  |
+| **Tier Exterior**   | Pro (premium)                                      |
+| **UI**              | Tabs separadas: "Vagas BR" / "Vagas Exterior Pro"  |
+| **Fontes BR**       | A definir (scraping ou parcerias)                  |
 | **Fontes Exterior** | Jooble (curto) + RemoteOK/We Work Remotely (médio) |
-| **B2B Marketplace** | Não exposto. Acordos offline, postados via admin |
-| **Cadastro manual** | Sim, via admin (parcerias B2B + curadoria) |
+| **B2B Marketplace** | Não exposto. Acordos offline, postados via admin   |
+| **Cadastro manual** | Sim, via admin (parcerias B2B + curadoria)         |
 
 ## Arquitetura
 
@@ -38,6 +38,7 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 ```
 
 ### Fontes (módulos independentes em server/jobs/sources/)
+
 - jooble.ts (API oficial, USA)
 - remoteok.ts (RSS)
 - weworkremotely.ts (RSS)
@@ -46,6 +47,7 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 - manual.ts (sem ingestion, só admin)
 
 ### UI (/estagio aba Vagas)
+
 - Sub-tab "Brasil" (free, sempre visível)
 - Sub-tab "Exterior" (badge Pro, gate)
 - Vagas com is_partner=true ganham badge "Parceria oficial"
@@ -53,6 +55,7 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 ## Fases de execução
 
 ### Fase 1 — Foundation (~3-4h)
+
 - Migration colunas em external_jobs
 - Refactor syncJobs.ts (country, source, is_international)
 - Refactor contentService.ts (remover bug `|| "Brasil"`)
@@ -62,29 +65,34 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 - Copy adaptada
 
 ### Fase 2 — Jooble exterior (~1h)
+
 - Migration reabilitar cron sync-jobs
 - Refactor syncJobs.ts: query sem location, marcar is_international/is_pro/country='US'
 - Trigger manual + validar
 - QA
 
 ### Fase 3 — Admin + parcerias (~2-3h)
+
 - Admin UI: form com is_partner, partner_name, expires_at
 - Validação editorial (parceira precisa logo)
 - Badge "Parceria oficial" UI pública
 - Cron expire-partner-jobs diário
 
 ### Fase 4 — RemoteOK + WeWorkRemotely (~2-3h)
+
 - Source remoteok.ts (RSS)
 - Source weworkremotely.ts (RSS)
 - Cron unificado + dedupe global
 - QA
 
 ### Fase 5 — Fontes BR (~3-5h, exploratório)
+
 - Investigação legal de fontes (Programathor, Trampos, governo)
 - Implementar 1-2 fontes aprovadas
 - Cron BR independente
 
 ### Fase 6 — Polimento (sob demanda)
+
 - Filtros avançados
 - Recomendação personalizada
 - Notificações
@@ -99,14 +107,14 @@ ALTER TABLE public.external_jobs ADD COLUMN:
 
 ## Riscos
 
-| Risco | Mitigação |
-|---|---|
+| Risco                                    | Mitigação                                        |
+| ---------------------------------------- | ------------------------------------------------ |
 | Scraping ilegal compromete parcerias B2B | APIs/RSS oficiais; scraping só com consentimento |
-| Jooble = só USA | RemoteOK + WWR diversificam |
-| Vagas expiradas poluem UI | Cron expire-jobs diário |
-| Parceiros pedem alteração pós-post | Admin UI com edit completo |
-| Volume BR baixo | Cadastro manual como fallback |
-| Gate Pro frustra sem volume | Lançar Exterior só com 20+ vagas |
+| Jooble = só USA                          | RemoteOK + WWR diversificam                      |
+| Vagas expiradas poluem UI                | Cron expire-jobs diário                          |
+| Parceiros pedem alteração pós-post       | Admin UI com edit completo                       |
+| Volume BR baixo                          | Cadastro manual como fallback                    |
+| Gate Pro frustra sem volume              | Lançar Exterior só com 20+ vagas                 |
 
 ## Decisões pendentes
 

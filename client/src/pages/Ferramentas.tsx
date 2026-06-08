@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
-import { ExternalLink, Keyboard, PlayCircle, RotateCcw, SlidersHorizontal, Terminal } from "lucide-react";
+import { Link, useSearch } from "wouter";
+import {
+  ArrowRight,
+  ExternalLink,
+  Keyboard,
+  PlayCircle,
+  RotateCcw,
+  SlidersHorizontal,
+  Terminal,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
@@ -11,7 +20,14 @@ import { devTools, setupGuides } from "@/lib/careerToolsData";
 
 const ac = getPageAccentUi("orange");
 
-const CATEGORY_ORDER = ["IA", "Desenvolvimento", "Design", "Produtividade", "Banco de dados", "DevOps"];
+const CATEGORY_ORDER = [
+  "IA",
+  "Desenvolvimento",
+  "Design",
+  "Produtividade",
+  "Banco de dados",
+  "DevOps",
+];
 
 type ShortcutItem = {
   label: string;
@@ -20,20 +36,68 @@ type ShortcutItem = {
 };
 
 const shortcuts: ShortcutItem[] = [
-  { label: "Ctrl+P", type: "keys", description: "Abrir arquivo rapidamente no editor." },
-  { label: "Ctrl+Shift+P", type: "keys", description: "Abrir a paleta de comandos." },
-  { label: "Ctrl+`", type: "keys", description: "Abrir ou fechar o terminal integrado." },
+  {
+    label: "Ctrl+P",
+    type: "keys",
+    description: "Abrir arquivo rapidamente no editor.",
+  },
+  {
+    label: "Ctrl+Shift+P",
+    type: "keys",
+    description: "Abrir a paleta de comandos.",
+  },
+  {
+    label: "Ctrl+`",
+    type: "keys",
+    description: "Abrir ou fechar o terminal integrado.",
+  },
   { label: "Ctrl+S", type: "keys", description: "Salvar o arquivo atual." },
-  { label: "Ctrl+/", type: "keys", description: "Comentar ou descomentar linha." },
-  { label: "Alt+Shift+F", type: "keys", description: "Formatar o arquivo no VS Code/Cursor." },
-  { label: "git status", type: "terminal", description: "Ver arquivos modificados e estado do repositório." },
-  { label: "git add .", type: "terminal", description: "Adicionar mudanças ao próximo commit." },
-  { label: "git commit -m \"mensagem\"", type: "terminal", description: "Criar um commit com mensagem." },
-  { label: "npm install", type: "terminal", description: "Instalar dependências do projeto." },
-  { label: "npm run dev", type: "terminal", description: "Rodar o servidor de desenvolvimento." },
-  { label: "cd pasta", type: "terminal", description: "Entrar em uma pasta pelo terminal." },
+  {
+    label: "Ctrl+/",
+    type: "keys",
+    description: "Comentar ou descomentar linha.",
+  },
+  {
+    label: "Alt+Shift+F",
+    type: "keys",
+    description: "Formatar o arquivo no VS Code/Cursor.",
+  },
+  {
+    label: "git status",
+    type: "terminal",
+    description: "Ver arquivos modificados e estado do repositório.",
+  },
+  {
+    label: "git add .",
+    type: "terminal",
+    description: "Adicionar mudanças ao próximo commit.",
+  },
+  {
+    label: 'git commit -m "mensagem"',
+    type: "terminal",
+    description: "Criar um commit com mensagem.",
+  },
+  {
+    label: "npm install",
+    type: "terminal",
+    description: "Instalar dependências do projeto.",
+  },
+  {
+    label: "npm run dev",
+    type: "terminal",
+    description: "Rodar o servidor de desenvolvimento.",
+  },
+  {
+    label: "cd pasta",
+    type: "terminal",
+    description: "Entrar em uma pasta pelo terminal.",
+  },
   { label: "ls", type: "terminal", description: "Listar arquivos e pastas." },
-  { label: "mkdir projeto", type: "terminal", description: "Criar uma nova pasta." },
+  {
+    label: "mkdir projeto",
+    type: "terminal",
+    description: "Criar uma nova pasta.",
+  },
 ];
 
 const tutorialVideos: Record<string, { title: string; url: string }> = {
@@ -114,23 +178,45 @@ function KeySequence({ value }: { value: string }) {
   );
 }
 
-function TerminalCommand({ value, accentShadow }: { value: string; accentShadow: string }) {
+function TerminalCommand({
+  value,
+  accentShadow,
+}: {
+  value: string;
+  accentShadow: string;
+}) {
   return (
-    <span className={cn("inline-flex max-w-full items-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-950 px-3 py-2 text-white", accentShadow)}>
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center gap-2 rounded-xl border-2 border-slate-900 bg-slate-950 px-3 py-2 text-white",
+        accentShadow,
+      )}
+    >
       <Terminal className="h-4 w-4 shrink-0 text-emerald-300" />
-      <code className="overflow-x-auto whitespace-nowrap font-mono text-xs font-black">{value}</code>
+      <code className="overflow-x-auto whitespace-nowrap font-mono text-xs font-black">
+        {value}
+      </code>
     </span>
   );
 }
 
 export default function Ferramentas() {
-  const [category, setCategory] = useState("Todas");
+  const search = useSearch();
+  const [category, setCategory] = useState(() => {
+    const requested = new URLSearchParams(search).get("categoria");
+    return requested && CATEGORY_ORDER.includes(requested)
+      ? requested
+      : "Todas";
+  });
   const categories = useMemo(() => {
     const present = new Set(devTools.flatMap((tool) => tool.category));
     return ["Todas", ...CATEGORY_ORDER.filter((c) => present.has(c))];
   }, []);
   const filtered = useMemo(
-    () => (category === "Todas" ? devTools : devTools.filter((tool) => tool.category.includes(category))),
+    () =>
+      category === "Todas"
+        ? devTools
+        : devTools.filter((tool) => tool.category.includes(category)),
     [category],
   );
   return (
@@ -143,140 +229,246 @@ export default function Ferramentas() {
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
-        <div className="card-brutal rounded-2xl bg-white p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 font-display text-sm font-black text-slate-900">
-              <SlidersHorizontal className="h-4 w-4 text-orange-700" />
-              Filtrar por categoria
-            </div>
-            <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
-              <span>{filtered.length} ferramenta{filtered.length === 1 ? "" : "s"}</span>
-              {category !== "Todas" && (
-                <button type="button" onClick={() => setCategory("Todas")} className="inline-flex items-center gap-1 text-orange-700 hover:underline">
-                  <RotateCcw className="h-3 w-3" />
-                  Limpar filtro
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={cn("rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all", category === c ? ac.filterActive : ac.filterInactive)}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((tool) => {
-            const video = tutorialVideos[tool.name];
-            return (
-            <article key={tool.name} className="card-brutal rounded-2xl bg-white p-5">
-              <div className="flex items-start gap-3">
-                <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white p-2", ac.brutalShadow)}>
-                  <img src={tool.logoUrl} alt={`Logo ${tool.name}`} className="h-9 w-9 object-contain" loading="lazy" />
-                </div>
-                <div>
-                  <h2 className="font-display text-xl font-black">{tool.name}</h2>
-                  <span className={cn("mt-1 inline-flex rounded-full px-2 py-1 text-xs font-black", ac.panelSoft, ac.tbodyAccent)}>{tool.need}</span>
-                </div>
+          <div className="card-brutal rounded-2xl bg-white p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 font-display text-sm font-black text-slate-900">
+                <SlidersHorizontal className="h-4 w-4 text-orange-700" />
+                Filtrar por categoria
               </div>
-              <p className="mt-4 text-sm text-slate-600">{tool.description}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {tool.areas.map((area) => (
-                  <span key={area} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.panelSoft, ac.tbodyAccent)}>{area}</span>
-                ))}
-              </div>
-              <a href={tool.url} target="_blank" rel="noreferrer" className={cn("mt-4 inline-flex items-center gap-1 text-sm font-black hover:underline", ac.link)}>
-                Site oficial <ExternalLink className="h-3 w-3" />
-              </a>
-              {video && (youtubeEmbedUrl(video.url) ? (
-                <VideoEmbedDialog
-                  source={video.url}
-                  title={video.title}
-                  href={video.url}
-                >
+              <div className="flex items-center gap-3 text-xs font-bold text-slate-500">
+                <span>
+                  {filtered.length} ferramenta{filtered.length === 1 ? "" : "s"}
+                </span>
+                {category !== "Todas" && (
                   <button
                     type="button"
-                    className="mt-3 flex w-full items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-left text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
+                    onClick={() => setCategory("Todas")}
+                    className="inline-flex items-center gap-1 text-orange-700 hover:underline"
                   >
-                    <PlayCircle className="h-5 w-5 shrink-0" />
-                    <span>
-                      Assistir aqui
-                      <span className="block text-xs font-bold text-red-500">{video.title}</span>
-                    </span>
+                    <RotateCcw className="h-3 w-3" />
+                    Limpar filtro
                   </button>
-                </VideoEmbedDialog>
-              ) : (
-                <a
-                  href={video.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
-                >
-                  <PlayCircle className="h-5 w-5 shrink-0" />
-                  <span>
-                    Ver vídeo
-                    <span className="block text-xs font-bold text-red-500">{video.title}</span>
-                  </span>
-                </a>
-              ))}
-            </article>
-            );
-          })}
-        </div>
-
-        <div className="card-brutal rounded-2xl bg-white p-6">
-          <h2 className="font-display text-2xl font-black">Guia de setup por área</h2>
-          {setupGuides.map((guide) => (
-            <DetailsChevronOnly key={guide.area} className="mt-3 rounded-xl border-2 border-slate-900 p-4" title={<span className="font-black">{guide.area}</span>}>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {guide.stack.map((item) => (
-                  <span key={item} className={cn("rounded-full px-2 py-1 text-xs font-bold", ac.panelSoft, ac.tbodyAccent)}>{item}</span>
-                ))}
+                )}
               </div>
-              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
-                {guide.steps.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
-            </DetailsChevronOnly>
-          ))}
-        </div>
-
-        <div>
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">atalhos e terminal</p>
-              <h2 className="font-display text-3xl font-black text-slate-950">Teclas e comandos essenciais</h2>
             </div>
-            <p className="hidden max-w-md text-sm text-slate-600 md:block">
-              Atalhos aparecem como teclas. Comandos de terminal aparecem com ícone e fundo escuro.
-            </p>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  className={cn(
+                    "rounded-full border-2 px-3 py-1.5 text-xs font-medium transition-all",
+                    category === c ? ac.filterActive : ac.filterInactive,
+                  )}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <Link
+                href="/ia"
+                className={cn(
+                  "inline-flex items-center gap-1 text-sm font-bold",
+                  ac.link,
+                )}
+              >
+                Novo: Guia de IA, pra que serve cada uma{" "}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
-          <div className="grid gap-5 md:grid-cols-2">
-            {shortcuts.map((shortcut) => (
-              <div key={shortcut.label} className="card-brutal rounded-2xl bg-white p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black uppercase text-slate-700">
-                      {shortcut.type === "keys" ? <Keyboard className="h-3 w-3" /> : <Terminal className="h-3 w-3" />}
-                      {shortcut.type === "keys" ? "Tecla / atalho" : "Terminal"}
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((tool) => {
+              const video = tutorialVideos[tool.name];
+              return (
+                <article
+                  key={tool.name}
+                  className="card-brutal rounded-2xl bg-white p-5"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white p-2",
+                        ac.brutalShadow,
+                      )}
+                    >
+                      <img
+                        src={tool.logoUrl}
+                        alt={`Logo ${tool.name}`}
+                        className="h-9 w-9 object-contain"
+                        loading="lazy"
+                      />
                     </div>
-                    {shortcut.type === "keys" ? <KeySequence value={shortcut.label} /> : <TerminalCommand accentShadow={ac.brutalShadow} value={shortcut.label} />}
-                    <p className="mt-3 text-sm text-slate-600">{shortcut.description}</p>
+                    <div>
+                      <h2 className="font-display text-xl font-black">
+                        {tool.name}
+                      </h2>
+                      <span
+                        className={cn(
+                          "mt-1 inline-flex rounded-full px-2 py-1 text-xs font-black",
+                          ac.panelSoft,
+                          ac.tbodyAccent,
+                        )}
+                      >
+                        {tool.need}
+                      </span>
+                    </div>
                   </div>
-                  <CopyButton text={shortcut.label} />
+                  <p className="mt-4 text-sm text-slate-600">
+                    {tool.description}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {tool.areas.map((area) => (
+                      <span
+                        key={area}
+                        className={cn(
+                          "rounded-full px-2 py-1 text-xs font-bold",
+                          ac.panelSoft,
+                          ac.tbodyAccent,
+                        )}
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                  <a
+                    href={tool.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={cn(
+                      "mt-4 inline-flex items-center gap-1 text-sm font-black hover:underline",
+                      ac.link,
+                    )}
+                  >
+                    Site oficial <ExternalLink className="h-3 w-3" />
+                  </a>
+                  {video &&
+                    (youtubeEmbedUrl(video.url) ? (
+                      <VideoEmbedDialog
+                        source={video.url}
+                        title={video.title}
+                        href={video.url}
+                      >
+                        <button
+                          type="button"
+                          className="mt-3 flex w-full items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-left text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
+                        >
+                          <PlayCircle className="h-5 w-5 shrink-0" />
+                          <span>
+                            Assistir aqui
+                            <span className="block text-xs font-bold text-red-500">
+                              {video.title}
+                            </span>
+                          </span>
+                        </button>
+                      </VideoEmbedDialog>
+                    ) : (
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 flex items-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-black text-red-700 transition-all hover:border-red-400 hover:bg-red-100"
+                      >
+                        <PlayCircle className="h-5 w-5 shrink-0" />
+                        <span>
+                          Ver vídeo
+                          <span className="block text-xs font-bold text-red-500">
+                            {video.title}
+                          </span>
+                        </span>
+                      </a>
+                    ))}
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="card-brutal rounded-2xl bg-white p-6">
+            <h2 className="font-display text-2xl font-black">
+              Guia de setup por área
+            </h2>
+            {setupGuides.map((guide) => (
+              <DetailsChevronOnly
+                key={guide.area}
+                className="mt-3 rounded-xl border-2 border-slate-900 p-4"
+                title={<span className="font-black">{guide.area}</span>}
+              >
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {guide.stack.map((item) => (
+                    <span
+                      key={item}
+                      className={cn(
+                        "rounded-full px-2 py-1 text-xs font-bold",
+                        ac.panelSoft,
+                        ac.tbodyAccent,
+                      )}
+                    >
+                      {item}
+                    </span>
+                  ))}
                 </div>
-              </div>
+                <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+                  {guide.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+              </DetailsChevronOnly>
             ))}
           </div>
-        </div>
+
+          <div>
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+                  atalhos e terminal
+                </p>
+                <h2 className="font-display text-3xl font-black text-slate-950">
+                  Teclas e comandos essenciais
+                </h2>
+              </div>
+              <p className="hidden max-w-md text-sm text-slate-600 md:block">
+                Atalhos aparecem como teclas. Comandos de terminal aparecem com
+                ícone e fundo escuro.
+              </p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              {shortcuts.map((shortcut) => (
+                <div
+                  key={shortcut.label}
+                  className="card-brutal rounded-2xl bg-white p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-slate-100 px-2 py-1 text-[11px] font-black uppercase text-slate-700">
+                        {shortcut.type === "keys" ? (
+                          <Keyboard className="h-3 w-3" />
+                        ) : (
+                          <Terminal className="h-3 w-3" />
+                        )}
+                        {shortcut.type === "keys"
+                          ? "Tecla / atalho"
+                          : "Terminal"}
+                      </div>
+                      {shortcut.type === "keys" ? (
+                        <KeySequence value={shortcut.label} />
+                      ) : (
+                        <TerminalCommand
+                          accentShadow={ac.brutalShadow}
+                          value={shortcut.label}
+                        />
+                      )}
+                      <p className="mt-3 text-sm text-slate-600">
+                        {shortcut.description}
+                      </p>
+                    </div>
+                    <CopyButton text={shortcut.label} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </Layout>

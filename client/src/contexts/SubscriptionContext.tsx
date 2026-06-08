@@ -1,5 +1,12 @@
 import { getMySubscription } from "@/services/subscriptionService";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "./AuthContext";
@@ -11,7 +18,9 @@ interface SubscriptionContextValue {
   refreshSubscription: (options?: { silent?: boolean }) => Promise<void>;
 }
 
-const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
+const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
+  undefined,
+);
 
 function buildDevMockSubscription() {
   const now = Date.now();
@@ -46,48 +55,55 @@ function isLocalDevelopmentHost() {
   );
 }
 
-export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
+export function SubscriptionProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const [subscription, setSubscription] = useState<unknown>(null);
   const [isPro, setIsPro] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const refreshSubscription = useCallback(async (options?: { silent?: boolean }) => {
-    const silent = options?.silent === true;
+  const refreshSubscription = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent === true;
 
-    if (isLocalDevelopmentHost()) {
-      setSubscription(buildDevMockSubscription());
-      setIsPro(true);
-      setLoading(false);
-      return;
-    }
-
-    if (!user) {
-      setSubscription(null);
-      setIsPro(false);
-      setLoading(false);
-      return;
-    }
-
-    if (!silent) {
-      setLoading(true);
-    }
-
-    try {
-      const sub = await getMySubscription();
-      setSubscription(sub);
-      setIsPro(sub?.isPro === true);
-    } catch (error) {
-      console.error("[SubscriptionContext] getMySubscription failed", error);
-      setSubscription(null);
-      setIsPro(false);
-    } finally {
-      if (!silent) {
+      if (isLocalDevelopmentHost()) {
+        setSubscription(buildDevMockSubscription());
+        setIsPro(true);
         setLoading(false);
+        return;
       }
-    }
-  }, [user]);
+
+      if (!user) {
+        setSubscription(null);
+        setIsPro(false);
+        setLoading(false);
+        return;
+      }
+
+      if (!silent) {
+        setLoading(true);
+      }
+
+      try {
+        const sub = await getMySubscription();
+        setSubscription(sub);
+        setIsPro(sub?.isPro === true);
+      } catch (error) {
+        console.error("[SubscriptionContext] getMySubscription failed", error);
+        setSubscription(null);
+        setIsPro(false);
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [user],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -118,11 +134,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!user || isPro) return;
 
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void refreshSubscription({ silent: true });
-      }
-    }, 3 * 60 * 1000);
+    const interval = setInterval(
+      () => {
+        if (document.visibilityState === "visible") {
+          void refreshSubscription({ silent: true });
+        }
+      },
+      3 * 60 * 1000,
+    );
 
     return () => clearInterval(interval);
   }, [user, isPro, refreshSubscription]);
@@ -137,14 +156,20 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     [adminLoading, isAdmin, isPro, loading, refreshSubscription, subscription],
   );
 
-  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
+  return (
+    <SubscriptionContext.Provider value={value}>
+      {children}
+    </SubscriptionContext.Provider>
+  );
 }
 
 export function useSubscription() {
   const context = useContext(SubscriptionContext);
 
   if (!context) {
-    throw new Error("useSubscription must be used inside SubscriptionProvider.");
+    throw new Error(
+      "useSubscription must be used inside SubscriptionProvider.",
+    );
   }
 
   return context;

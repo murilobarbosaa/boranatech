@@ -6,6 +6,7 @@ Quando houver conflito, esta página vence.
 ## Termos canônicos
 
 ### Área
+
 **Especialidade de TI** com perfil profissional, salário, ferramentas e mercado próprios.
 
 - **Exemplos:** Front-end, Back-end, Ciência de Dados, UX/UI Design, Mobile, Cloud, DevOps, IA, Cibersegurança, Produto Digital, QA, Gestão de Projetos Tech.
@@ -14,6 +15,7 @@ Quando houver conflito, esta página vence.
 - **NÃO usar como sinônimo:** carreira, curso, trilha.
 
 ### Roadmap
+
 **Trilha de aprendizado estruturada em etapas numeradas** dentro de uma área específica (ou de carreira).
 
 - **Tem:** etapas ordenadas, duração estimada, nível inicial, pré-requisitos.
@@ -22,13 +24,15 @@ Quando houver conflito, esta página vence.
 - **NÃO usar como sinônimo:** trilha (usar "roadmap" em todo lugar — escolha de marca).
 
 ### Curso
+
 **Conteúdo de vídeo/aula online** produzido por terceiros (YouTube, plataformas, etc).
 
 - **Tem:** canal, plataforma, link externo, carga horária, idioma, área.
 - **Tabela:** `courses`.
-- **NÃO confundir com:** curso superior (use *graduação*).
+- **NÃO confundir com:** curso superior (use _graduação_).
 
 ### Graduação
+
 **Formação acadêmica formal** (tecnólogo, bacharelado, licenciatura) em instituição reconhecida.
 
 - **Exemplo:** ADS, Sistemas de Informação, Engenharia de Computação.
@@ -36,12 +40,14 @@ Quando houver conflito, esta página vence.
 - **NÃO usar:** "curso superior" no UI — sempre "graduação".
 
 ### Carreira
+
 **Trajeto profissional macro:** vagas, currículo, entrevistas, salários, transição de área.
 
 - **Páginas relacionadas:** `/empregabilidade`, `/curriculo`, `/entrevistas`, `/salarios`, `/freelance`, `/estagio`.
 - **NÃO sobrepor com:** área. Carreira é o caminho; área é o destino.
 
 ### Tecnologia
+
 **Linguagem, framework, biblioteca ou ferramenta específica.**
 
 - **Exemplos:** React, Python, Docker, Figma, Kubernetes.
@@ -50,12 +56,12 @@ Quando houver conflito, esta página vence.
 
 ## Termos descontinuados
 
-| Não usar | Usar |
-|---|---|
-| Trilha | Roadmap |
-| Curso superior | Graduação |
-| Especialidade tech | Área |
-| Carreira (como sinônimo de área) | Área |
+| Não usar                         | Usar      |
+| -------------------------------- | --------- |
+| Trilha                           | Roadmap   |
+| Curso superior                   | Graduação |
+| Especialidade tech               | Área      |
+| Carreira (como sinônimo de área) | Área      |
 
 ## Convenção de identificadores
 

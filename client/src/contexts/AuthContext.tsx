@@ -65,7 +65,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 interface AuthInternalsForTests {
   profileRef: React.RefObject<Profile | null>;
 }
-const AuthInternalsForTestsContext = createContext<AuthInternalsForTests | undefined>(undefined);
+const AuthInternalsForTestsContext = createContext<
+  AuthInternalsForTests | undefined
+>(undefined);
 
 export function __useAuthInternalsForTests() {
   return useContext(AuthInternalsForTestsContext);
@@ -178,7 +180,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    function startProfileLifecycle(targetSession: Session, mode: "initial" | "background") {
+    function startProfileLifecycle(
+      targetSession: Session,
+      mode: "initial" | "background",
+    ) {
       generationRef.current += 1;
       const gen = generationRef.current;
       retryAttempt = 0;
@@ -237,7 +242,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // travar em spinner eterno — degrada graciosamente para "não autenticado".
           safetyTimer = window.setTimeout(() => {
             if (!mounted) return;
-            console.warn("[auth] safety timeout fired; treating as unauthenticated");
+            console.warn(
+              "[auth] safety timeout fired; treating as unauthenticated",
+            );
             setSession(null);
             cancelProfileLifecycle();
             setLoading(false);
@@ -248,7 +255,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       });
 
-    function handleAuthChange(event: AuthChangeEvent, nextSession: Session | null) {
+    function handleAuthChange(
+      event: AuthChangeEvent,
+      nextSession: Session | null,
+    ) {
       // Durante um callback de OAuth, um INITIAL_SESSION(null) pode chegar antes
       // do SIGNED_IN. Ignore esse estado transitório para não fechar o loading
       // (e reabrir a janela). O SIGNED_IN — ou a salvaguarda — resolve depois.
@@ -267,13 +277,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Modo 'initial' apenas quando ainda não há perfil cacheado.
         // TOKEN_REFRESHED/USER_UPDATED com perfil presente entram em 'background'
         // e nunca acendem skeleton.
-        const mode: "initial" | "background" = profileRef.current ? "background" : "initial";
+        const mode: "initial" | "background" = profileRef.current
+          ? "background"
+          : "initial";
         startProfileLifecycle(nextSession, mode);
-        if (event === "SIGNED_IN" && localStorage.getItem("bnt_social_signup_pending") === "true") {
+        if (
+          event === "SIGNED_IN" &&
+          localStorage.getItem("bnt_social_signup_pending") === "true"
+        ) {
           localStorage.removeItem("bnt_social_signup_pending");
           localStorage.setItem("bnt_signup_completed", "true");
           window.setTimeout(() => {
-            if (window.location.pathname !== "/planos") window.location.assign("/planos");
+            if (window.location.pathname !== "/planos")
+              window.location.assign("/planos");
           }, 0);
         }
       }
@@ -293,29 +309,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signUp = useCallback(async ({ name, email, password, gender }: SignUpInput) => {
-    try {
-      const client = assertSupabaseConfigured();
-      const { error } = await client.auth.signUp({
-        email: normalizeEmail(email),
-        password,
-        options: {
-          data: {
-            name: name.trim(),
-            gender,
+  const signUp = useCallback(
+    async ({ name, email, password, gender }: SignUpInput) => {
+      try {
+        const client = assertSupabaseConfigured();
+        const { error } = await client.auth.signUp({
+          email: normalizeEmail(email),
+          password,
+          options: {
+            data: {
+              name: name.trim(),
+              gender,
+            },
+            emailRedirectTo: `${window.location.origin}/perfil`,
           },
-          emailRedirectTo: `${window.location.origin}/perfil`,
-        },
-      });
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      posthog.capture("user_signed_up");
-    } catch (error) {
-      console.error("[AuthContext] signUp failed", error);
-      throw error;
-    }
-  }, []);
+        posthog.capture("user_signed_up");
+      } catch (error) {
+        console.error("[AuthContext] signUp failed", error);
+        throw error;
+      }
+    },
+    [],
+  );
 
   const signIn = useCallback(async ({ email, password }: SignInInput) => {
     const client = assertSupabaseConfigured();
@@ -333,10 +352,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithOAuth = useCallback(
-    async (
-      provider: OAuthProvider,
-      options?: { redirectTo?: string },
-    ) => {
+    async (provider: OAuthProvider, options?: { redirectTo?: string }) => {
       const client = assertSupabaseConfigured();
       posthog.capture("oauth_sign_in_started", { provider });
 
@@ -377,7 +393,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const gen = generationRef.current;
     const nextProfile = await getMyProfile();
     if (gen !== generationRef.current) {
-      console.info("[AuthContext] refreshProfile suplantado; estado atual já reflete dado >= este");
+      console.info(
+        "[AuthContext] refreshProfile suplantado; estado atual já reflete dado >= este",
+      );
       return;
     }
     profileRef.current = nextProfile;
@@ -446,7 +464,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  const internalsValue = useMemo<AuthInternalsForTests>(() => ({ profileRef }), []);
+  const internalsValue = useMemo<AuthInternalsForTests>(
+    () => ({ profileRef }),
+    [],
+  );
 
   return (
     <AuthInternalsForTestsContext.Provider value={internalsValue}>

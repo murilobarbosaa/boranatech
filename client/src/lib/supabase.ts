@@ -18,7 +18,9 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
 
 export function assertSupabaseConfigured(): SupabaseClient {
   if (!supabase) {
-    throw new Error("Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before using authentication.");
+    throw new Error(
+      "Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before using authentication.",
+    );
   }
 
   return supabase;

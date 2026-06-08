@@ -66,7 +66,8 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
   },
   sky: {
     contentBg: "bg-sky-50",
-    stickyBar: "border-sky-200 bg-sky-50/95 supports-[backdrop-filter]:bg-sky-50/90",
+    stickyBar:
+      "border-sky-200 bg-sky-50/95 supports-[backdrop-filter]:bg-sky-50/90",
     input: "border-sky-200 focus:border-sky-500",
     link: "text-sky-700",
     linkHover: "hover:text-sky-800",
@@ -152,7 +153,8 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
   },
   blue: {
     contentBg: "bg-blue-50",
-    stickyBar: "border-blue-200 bg-blue-50/95 supports-[backdrop-filter]:bg-blue-50/90",
+    stickyBar:
+      "border-blue-200 bg-blue-50/95 supports-[backdrop-filter]:bg-blue-50/90",
     input: "border-blue-200 focus:border-blue-500",
     link: "text-blue-700",
     linkHover: "hover:text-blue-800",
@@ -238,7 +240,8 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
   },
   rose: {
     contentBg: "bg-rose-50",
-    stickyBar: "border-rose-200 bg-rose-50/95 supports-[backdrop-filter]:bg-rose-50/90",
+    stickyBar:
+      "border-rose-200 bg-rose-50/95 supports-[backdrop-filter]:bg-rose-50/90",
     input: "border-rose-200 focus:border-rose-500",
     link: "text-rose-700",
     linkHover: "hover:text-rose-800",
@@ -266,7 +269,8 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
   },
   cyan: {
     contentBg: "bg-cyan-50",
-    stickyBar: "border-cyan-200 bg-cyan-50/95 supports-[backdrop-filter]:bg-cyan-50/90",
+    stickyBar:
+      "border-cyan-200 bg-cyan-50/95 supports-[backdrop-filter]:bg-cyan-50/90",
     input: "border-cyan-200 focus:border-cyan-500",
     link: "text-cyan-700",
     linkHover: "hover:text-cyan-800",
@@ -294,7 +298,8 @@ export const pageAccentUi: Record<PageHeroAccent, PageAccentUi> = {
   },
   teal: {
     contentBg: "bg-teal-50",
-    stickyBar: "border-teal-200 bg-teal-50/95 supports-[backdrop-filter]:bg-teal-50/90",
+    stickyBar:
+      "border-teal-200 bg-teal-50/95 supports-[backdrop-filter]:bg-teal-50/90",
     input: "border-teal-200 focus:border-teal-500",
     link: "text-teal-700",
     linkHover: "hover:text-teal-800",

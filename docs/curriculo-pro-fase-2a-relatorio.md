@@ -4,13 +4,13 @@
 
 ## Sumário
 
-| Métrica | Resultado |
-|---|---|
-| Rodadas executadas | 12 |
-| HTTP 200 da OpenAI | 12/12 ✅ |
-| JSON parse OK | 12/12 ✅ |
-| Zod validation OK | 12/12 ✅ |
-| Checks semânticos | 214/214 ✅ |
+| Métrica            | Resultado  |
+| ------------------ | ---------- |
+| Rodadas executadas | 12         |
+| HTTP 200 da OpenAI | 12/12 ✅   |
+| JSON parse OK      | 12/12 ✅   |
+| Zod validation OK  | 12/12 ✅   |
+| Checks semânticos  | 214/214 ✅ |
 
 ---
 
@@ -24,19 +24,19 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (estudante) | ✅ (obtido=estudante) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Maria Souza) |
-| Email do cadastro usado | ✅ (obtido=maria.souza@email.com) |
-| Habilidades mencionam "React" | ✅ |
-| Habilidades mencionam "TypeScript" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "exemplo@" | ✅ |
-| Sem fantasia "01/01/2020" | ✅ |
-| Sem fantasia "lorem" | ✅ |
+| Check                                    | Resultado                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                      | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (estudante)                 | ✅ (obtido=estudante)                                                                                                                           |
+| Formato em hibrido                       | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                   | ✅ (obtido=Maria Souza)                                                                                                                         |
+| Email do cadastro usado                  | ✅ (obtido=maria.souza@email.com)                                                                                                               |
+| Habilidades mencionam "React"            | ✅                                                                                                                                              |
+| Habilidades mencionam "TypeScript"       | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"           | ✅                                                                                                                                              |
+| Sem fantasia "exemplo@"                  | ✅                                                                                                                                              |
+| Sem fantasia "01/01/2020"                | ✅                                                                                                                                              |
+| Sem fantasia "lorem"                     | ✅                                                                                                                                              |
 | Resumo profissional escrito em português | ✅ (resumo[:120]="Estudante de Ciência da Computação na UFRJ, com foco em desenvolvimento web e habilidades em frontend. Experiência em pr...") |
 
 <details><summary>JSON do currículo</summary>
@@ -79,32 +79,17 @@ Schema válido ✅
     {
       "nome": "Clone do Spotify",
       "descricao": "Projeto que replica a interface e funcionalidades do Spotify utilizando React e TypeScript, com integração na API do Deezer.",
-      "tecnologias": [
-        "React",
-        "TypeScript",
-        "API do Deezer"
-      ],
+      "tecnologias": ["React", "TypeScript", "API do Deezer"],
       "link": null
     },
     {
       "nome": "Calculadora Simples",
       "descricao": "Calculadora desenvolvida em HTML, CSS e JavaScript para um trabalho da faculdade.",
-      "tecnologias": [
-        "HTML",
-        "CSS",
-        "JavaScript"
-      ],
+      "tecnologias": ["HTML", "CSS", "JavaScript"],
       "link": null
     }
   ],
-  "habilidades": [
-    "JavaScript",
-    "TypeScript",
-    "React",
-    "HTML",
-    "CSS",
-    "Git"
-  ],
+  "habilidades": ["JavaScript", "TypeScript", "React", "HTML", "CSS", "Git"],
   "idiomas": [
     {
       "idioma": "Inglês",
@@ -123,19 +108,19 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (estudante) | ✅ (obtido=estudante) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Maria Souza) |
-| Email do cadastro usado | ✅ (obtido=maria.souza@email.com) |
-| Habilidades mencionam "React" | ✅ |
-| Habilidades mencionam "TypeScript" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "exemplo@" | ✅ |
-| Sem fantasia "01/01/2020" | ✅ |
-| Sem fantasia "lorem" | ✅ |
+| Check                                    | Resultado                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                      | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (estudante)                 | ✅ (obtido=estudante)                                                                                                                           |
+| Formato em hibrido                       | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                   | ✅ (obtido=Maria Souza)                                                                                                                         |
+| Email do cadastro usado                  | ✅ (obtido=maria.souza@email.com)                                                                                                               |
+| Habilidades mencionam "React"            | ✅                                                                                                                                              |
+| Habilidades mencionam "TypeScript"       | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"           | ✅                                                                                                                                              |
+| Sem fantasia "exemplo@"                  | ✅                                                                                                                                              |
+| Sem fantasia "01/01/2020"                | ✅                                                                                                                                              |
+| Sem fantasia "lorem"                     | ✅                                                                                                                                              |
 | Resumo profissional escrito em português | ✅ (resumo[:120]="Estudante de Ciência da Computação na UFRJ, com foco em desenvolvimento web e habilidades em frontend. Experiência em pr...") |
 
 <details><summary>JSON do currículo</summary>
@@ -178,32 +163,17 @@ Schema válido ✅
     {
       "nome": "Clone do Spotify",
       "descricao": "Projeto que replica a interface e funcionalidades do Spotify, utilizando React e TypeScript com integração na API do Deezer.",
-      "tecnologias": [
-        "React",
-        "TypeScript",
-        "API do Deezer"
-      ],
+      "tecnologias": ["React", "TypeScript", "API do Deezer"],
       "link": null
     },
     {
       "nome": "Calculadora Simples",
       "descricao": "Calculadora desenvolvida em HTML, CSS e JavaScript para um trabalho da faculdade.",
-      "tecnologias": [
-        "HTML",
-        "CSS",
-        "JavaScript"
-      ],
+      "tecnologias": ["HTML", "CSS", "JavaScript"],
       "link": null
     }
   ],
-  "habilidades": [
-    "JavaScript",
-    "TypeScript",
-    "React",
-    "HTML",
-    "CSS",
-    "Git"
-  ],
+  "habilidades": ["JavaScript", "TypeScript", "React", "HTML", "CSS", "Git"],
   "idiomas": [
     {
       "idioma": "Inglês",
@@ -222,19 +192,19 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (estudante) | ✅ (obtido=estudante) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Maria Souza) |
-| Email do cadastro usado | ✅ (obtido=maria.souza@email.com) |
-| Habilidades mencionam "React" | ✅ |
-| Habilidades mencionam "TypeScript" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "exemplo@" | ✅ |
-| Sem fantasia "01/01/2020" | ✅ |
-| Sem fantasia "lorem" | ✅ |
+| Check                                    | Resultado                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                      | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (estudante)                 | ✅ (obtido=estudante)                                                                                                                           |
+| Formato em hibrido                       | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                   | ✅ (obtido=Maria Souza)                                                                                                                         |
+| Email do cadastro usado                  | ✅ (obtido=maria.souza@email.com)                                                                                                               |
+| Habilidades mencionam "React"            | ✅                                                                                                                                              |
+| Habilidades mencionam "TypeScript"       | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"           | ✅                                                                                                                                              |
+| Sem fantasia "exemplo@"                  | ✅                                                                                                                                              |
+| Sem fantasia "01/01/2020"                | ✅                                                                                                                                              |
+| Sem fantasia "lorem"                     | ✅                                                                                                                                              |
 | Resumo profissional escrito em português | ✅ (resumo[:120]="Estudante de Ciência da Computação na UFRJ, com experiência em desenvolvimento web e foco em frontend. Possuo habilidade...") |
 
 <details><summary>JSON do currículo</summary>
@@ -277,32 +247,17 @@ Schema válido ✅
     {
       "nome": "Clone do Spotify",
       "descricao": "Projeto que replica a interface e funcionalidades do Spotify utilizando React e TypeScript, com integração na API do Deezer.",
-      "tecnologias": [
-        "React",
-        "TypeScript",
-        "API do Deezer"
-      ],
+      "tecnologias": ["React", "TypeScript", "API do Deezer"],
       "link": null
     },
     {
       "nome": "Calculadora Simples",
       "descricao": "Calculadora desenvolvida em HTML, CSS e JavaScript para um trabalho da faculdade.",
-      "tecnologias": [
-        "HTML",
-        "CSS",
-        "JavaScript"
-      ],
+      "tecnologias": ["HTML", "CSS", "JavaScript"],
       "link": null
     }
   ],
-  "habilidades": [
-    "JavaScript",
-    "TypeScript",
-    "React",
-    "HTML",
-    "CSS",
-    "Git"
-  ],
+  "habilidades": ["JavaScript", "TypeScript", "React", "HTML", "CSS", "Git"],
   "idiomas": [
     {
       "idioma": "Inglês",
@@ -327,19 +282,19 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (estudante) | ✅ (obtido=estudante) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Lucas Silva) |
-| Email do cadastro usado | ✅ (obtido=lucas.silva@email.com) |
-| Habilidades mencionam "Node.js" | ✅ |
-| Habilidades mencionam "PostgreSQL" | ✅ |
-| Habilidades mencionam "React" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "exemplo@" | ✅ |
-| Sem fantasia "Acme" | ✅ |
+| Check                                    | Resultado                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                      | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (estudante)                 | ✅ (obtido=estudante)                                                                                                                           |
+| Formato em hibrido                       | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                   | ✅ (obtido=Lucas Silva)                                                                                                                         |
+| Email do cadastro usado                  | ✅ (obtido=lucas.silva@email.com)                                                                                                               |
+| Habilidades mencionam "Node.js"          | ✅                                                                                                                                              |
+| Habilidades mencionam "PostgreSQL"       | ✅                                                                                                                                              |
+| Habilidades mencionam "React"            | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"           | ✅                                                                                                                                              |
+| Sem fantasia "exemplo@"                  | ✅                                                                                                                                              |
+| Sem fantasia "Acme"                      | ✅                                                                                                                                              |
 | Resumo profissional escrito em português | ✅ (resumo[:120]="Desenvolvedor backend júnior com formação em Bootcamp Full Stack na Rocketseat. Possuo experiência em projetos práticos,...") |
 
 <details><summary>JSON do currículo</summary>
@@ -382,19 +337,13 @@ Schema válido ✅
     {
       "nome": "API REST em Node.js",
       "descricao": "API REST para controle de gastos pessoais.",
-      "tecnologias": [
-        "Node.js",
-        "PostgreSQL"
-      ],
+      "tecnologias": ["Node.js", "PostgreSQL"],
       "link": "Railway"
     },
     {
       "nome": "Clone do Twitter",
       "descricao": "Clone simples do Twitter feito durante o bootcamp.",
-      "tecnologias": [
-        "React",
-        "Express"
-      ],
+      "tecnologias": ["React", "Express"],
       "link": null
     }
   ],
@@ -425,19 +374,19 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (estudante) | ✅ (obtido=estudante) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Lucas Silva) |
-| Email do cadastro usado | ✅ (obtido=lucas.silva@email.com) |
-| Habilidades mencionam "Node.js" | ✅ |
-| Habilidades mencionam "PostgreSQL" | ✅ |
-| Habilidades mencionam "React" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "exemplo@" | ✅ |
-| Sem fantasia "Acme" | ✅ |
+| Check                                    | Resultado                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                      | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (estudante)                 | ✅ (obtido=estudante)                                                                                                                           |
+| Formato em hibrido                       | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                   | ✅ (obtido=Lucas Silva)                                                                                                                         |
+| Email do cadastro usado                  | ✅ (obtido=lucas.silva@email.com)                                                                                                               |
+| Habilidades mencionam "Node.js"          | ✅                                                                                                                                              |
+| Habilidades mencionam "PostgreSQL"       | ✅                                                                                                                                              |
+| Habilidades mencionam "React"            | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"           | ✅                                                                                                                                              |
+| Sem fantasia "exemplo@"                  | ✅                                                                                                                                              |
+| Sem fantasia "Acme"                      | ✅                                                                                                                                              |
 | Resumo profissional escrito em português | ✅ (resumo[:120]="Desenvolvedor backend júnior com formação em Bootcamp Full Stack na Rocketseat. Experiência em projetos de desenvolvimen...") |
 
 <details><summary>JSON do currículo</summary>
@@ -480,19 +429,13 @@ Schema válido ✅
     {
       "nome": "API REST em Node.js",
       "descricao": "API REST para controle de gastos pessoais.",
-      "tecnologias": [
-        "Node.js",
-        "PostgreSQL"
-      ],
+      "tecnologias": ["Node.js", "PostgreSQL"],
       "link": "Railway"
     },
     {
       "nome": "Clone do Twitter",
       "descricao": "Clone simples do Twitter feito durante o bootcamp.",
-      "tecnologias": [
-        "React",
-        "Express"
-      ],
+      "tecnologias": ["React", "Express"],
       "link": null
     }
   ],
@@ -523,19 +466,19 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (estudante) | ✅ (obtido=estudante) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Lucas Silva) |
-| Email do cadastro usado | ✅ (obtido=lucas.silva@email.com) |
-| Habilidades mencionam "Node.js" | ✅ |
-| Habilidades mencionam "PostgreSQL" | ✅ |
-| Habilidades mencionam "React" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "exemplo@" | ✅ |
-| Sem fantasia "Acme" | ✅ |
+| Check                                    | Resultado                                                                                                                                       |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                      | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (estudante)                 | ✅ (obtido=estudante)                                                                                                                           |
+| Formato em hibrido                       | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                   | ✅ (obtido=Lucas Silva)                                                                                                                         |
+| Email do cadastro usado                  | ✅ (obtido=lucas.silva@email.com)                                                                                                               |
+| Habilidades mencionam "Node.js"          | ✅                                                                                                                                              |
+| Habilidades mencionam "PostgreSQL"       | ✅                                                                                                                                              |
+| Habilidades mencionam "React"            | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"           | ✅                                                                                                                                              |
+| Sem fantasia "exemplo@"                  | ✅                                                                                                                                              |
+| Sem fantasia "Acme"                      | ✅                                                                                                                                              |
 | Resumo profissional escrito em português | ✅ (resumo[:120]="Desenvolvedor Backend Júnior com formação em Bootcamp Full Stack e experiência em projetos práticos. Habilidades em Java...") |
 
 <details><summary>JSON do currículo</summary>
@@ -578,19 +521,13 @@ Schema válido ✅
     {
       "nome": "API REST em Node.js",
       "descricao": "API REST para controle de gastos pessoais.",
-      "tecnologias": [
-        "Node.js",
-        "PostgreSQL"
-      ],
+      "tecnologias": ["Node.js", "PostgreSQL"],
       "link": "Railway"
     },
     {
       "nome": "Clone do Twitter",
       "descricao": "Clone simples do Twitter feito durante o bootcamp.",
-      "tecnologias": [
-        "React",
-        "Express"
-      ],
+      "tecnologias": ["React", "Express"],
       "link": null
     }
   ],
@@ -627,37 +564,37 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (en) | ✅ (obtido=en) |
-| Persona bate (experiente) | ✅ (obtido=experiente) |
-| Formato em harvard|hibrido | ✅ (obtido=harvard) |
-| Nome do cadastro usado | ✅ (obtido=Carlos Mendes) |
-| Email do cadastro usado | ✅ (obtido=carlos.mendes@email.com) |
-| Habilidades mencionam "Kubernetes" | ✅ |
-| Habilidades mencionam "Kotlin" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "Acme Corp" | ✅ |
-| Sem fantasia "lorem" | ✅ |
-| EN sem vazamento de PT em objetivo.cargo | ✅ ("Senior Software Engineer") |
-| EN sem vazamento de PT em objetivo.area | ✅ ("infrastructure") |
-| EN sem vazamento de PT em objetivo.nivel | ✅ ("Senior") |
-| EN sem vazamento de PT em resumoProfissional | ✅ ("Experienced Senior Software Engineer with 8 years in backend and cloud infrastru") |
-| EN sem vazamento de PT em formacao[0].curso | ✅ ("Bachelor's in Computer Engineering") |
-| EN sem vazamento de PT em formacao[0].status | ✅ ("completed") |
-| EN sem vazamento de PT em experiencias[0].responsabilidades[0] | ✅ ("Led migration of job orchestrator to Kubernetes") |
-| EN sem vazamento de PT em experiencias[0].responsabilidades[1] | ✅ ("Reduced infrastructure costs by 30%") |
-| EN sem vazamento de PT em experiencias[0].responsabilidades[2] | ✅ ("Improved p99 latency of queues from 500ms to 80ms") |
-| EN sem vazamento de PT em experiencias[1].responsabilidades[0] | ✅ ("Worked on the payments team") |
-| EN sem vazamento de PT em experiencias[1].responsabilidades[1] | ✅ ("Scaled the boleto system to process 5x more transactions") |
-| EN sem vazamento de PT em experiencias[2].responsabilidades[0] | ✅ ("Consulted for financial clients") |
-| EN sem vazamento de PT em experiencias[2].responsabilidades[1] | ✅ ("Worked primarily with Java and microservices") |
-| EN sem vazamento de PT em idiomas[0].idioma | ✅ ("Portuguese") |
-| EN sem vazamento de PT em idiomas[0].nivel | ✅ ("Native") |
-| EN sem vazamento de PT em idiomas[1].idioma | ✅ ("English") |
-| EN sem vazamento de PT em idiomas[1].nivel | ✅ ("Fluent") |
-| EN sem vazamento de PT em idiomas[2].idioma | ✅ ("Spanish") |
-| EN sem vazamento de PT em idiomas[2].nivel | ✅ ("Intermediate") |
+| Check                                                          | Resultado                                                                               |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------- |
+| Idioma bate (en)                                               | ✅ (obtido=en)                                                                          |
+| Persona bate (experiente)                                      | ✅ (obtido=experiente)                                                                  |
+| Formato em harvard                                             | hibrido                                                                                 | ✅ (obtido=harvard) |
+| Nome do cadastro usado                                         | ✅ (obtido=Carlos Mendes)                                                               |
+| Email do cadastro usado                                        | ✅ (obtido=carlos.mendes@email.com)                                                     |
+| Habilidades mencionam "Kubernetes"                             | ✅                                                                                      |
+| Habilidades mencionam "Kotlin"                                 | ✅                                                                                      |
+| Sem fantasia "Empresa Exemplo"                                 | ✅                                                                                      |
+| Sem fantasia "Acme Corp"                                       | ✅                                                                                      |
+| Sem fantasia "lorem"                                           | ✅                                                                                      |
+| EN sem vazamento de PT em objetivo.cargo                       | ✅ ("Senior Software Engineer")                                                         |
+| EN sem vazamento de PT em objetivo.area                        | ✅ ("infrastructure")                                                                   |
+| EN sem vazamento de PT em objetivo.nivel                       | ✅ ("Senior")                                                                           |
+| EN sem vazamento de PT em resumoProfissional                   | ✅ ("Experienced Senior Software Engineer with 8 years in backend and cloud infrastru") |
+| EN sem vazamento de PT em formacao[0].curso                    | ✅ ("Bachelor's in Computer Engineering")                                               |
+| EN sem vazamento de PT em formacao[0].status                   | ✅ ("completed")                                                                        |
+| EN sem vazamento de PT em experiencias[0].responsabilidades[0] | ✅ ("Led migration of job orchestrator to Kubernetes")                                  |
+| EN sem vazamento de PT em experiencias[0].responsabilidades[1] | ✅ ("Reduced infrastructure costs by 30%")                                              |
+| EN sem vazamento de PT em experiencias[0].responsabilidades[2] | ✅ ("Improved p99 latency of queues from 500ms to 80ms")                                |
+| EN sem vazamento de PT em experiencias[1].responsabilidades[0] | ✅ ("Worked on the payments team")                                                      |
+| EN sem vazamento de PT em experiencias[1].responsabilidades[1] | ✅ ("Scaled the boleto system to process 5x more transactions")                         |
+| EN sem vazamento de PT em experiencias[2].responsabilidades[0] | ✅ ("Consulted for financial clients")                                                  |
+| EN sem vazamento de PT em experiencias[2].responsabilidades[1] | ✅ ("Worked primarily with Java and microservices")                                     |
+| EN sem vazamento de PT em idiomas[0].idioma                    | ✅ ("Portuguese")                                                                       |
+| EN sem vazamento de PT em idiomas[0].nivel                     | ✅ ("Native")                                                                           |
+| EN sem vazamento de PT em idiomas[1].idioma                    | ✅ ("English")                                                                          |
+| EN sem vazamento de PT em idiomas[1].nivel                     | ✅ ("Fluent")                                                                           |
+| EN sem vazamento de PT em idiomas[2].idioma                    | ✅ ("Spanish")                                                                          |
+| EN sem vazamento de PT em idiomas[2].nivel                     | ✅ ("Intermediate")                                                                     |
 
 <details><summary>JSON do currículo</summary>
 
@@ -761,35 +698,35 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (en) | ✅ (obtido=en) |
-| Persona bate (experiente) | ✅ (obtido=experiente) |
-| Formato em harvard|hibrido | ✅ (obtido=harvard) |
-| Nome do cadastro usado | ✅ (obtido=Carlos Mendes) |
-| Email do cadastro usado | ✅ (obtido=carlos.mendes@email.com) |
-| Habilidades mencionam "Kubernetes" | ✅ |
-| Habilidades mencionam "Kotlin" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "Acme Corp" | ✅ |
-| Sem fantasia "lorem" | ✅ |
-| EN sem vazamento de PT em objetivo.cargo | ✅ ("Senior Software Engineer") |
-| EN sem vazamento de PT em objetivo.area | ✅ ("infrastructure") |
-| EN sem vazamento de PT em objetivo.nivel | ✅ ("Senior") |
-| EN sem vazamento de PT em resumoProfissional | ✅ ("Experienced Senior Software Engineer with 8 years in backend and infrastructure.") |
-| EN sem vazamento de PT em formacao[0].curso | ✅ ("Bachelor's in Computer Engineering") |
-| EN sem vazamento de PT em formacao[0].status | ✅ ("completed") |
-| EN sem vazamento de PT em experiencias[0].responsabilidades[0] | ✅ ("Led migration of job orchestrator to Kubernetes") |
-| EN sem vazamento de PT em experiencias[0].responsabilidades[1] | ✅ ("Reduced infrastructure costs by 30%") |
-| EN sem vazamento de PT em experiencias[0].responsabilidades[2] | ✅ ("Improved p99 latency of queues from 500ms to 80ms") |
-| EN sem vazamento de PT em experiencias[1].responsabilidades[0] | ✅ ("Scaled the boleto system to process 5x more transactions") |
-| EN sem vazamento de PT em experiencias[2].responsabilidades[0] | ✅ ("Consulted for financial clients, primarily working with Java and microservices") |
-| EN sem vazamento de PT em idiomas[0].idioma | ✅ ("Portuguese") |
-| EN sem vazamento de PT em idiomas[0].nivel | ✅ ("Native") |
-| EN sem vazamento de PT em idiomas[1].idioma | ✅ ("English") |
-| EN sem vazamento de PT em idiomas[1].nivel | ✅ ("Fluent") |
-| EN sem vazamento de PT em idiomas[2].idioma | ✅ ("Spanish") |
-| EN sem vazamento de PT em idiomas[2].nivel | ✅ ("Intermediate") |
+| Check                                                          | Resultado                                                                               |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------- |
+| Idioma bate (en)                                               | ✅ (obtido=en)                                                                          |
+| Persona bate (experiente)                                      | ✅ (obtido=experiente)                                                                  |
+| Formato em harvard                                             | hibrido                                                                                 | ✅ (obtido=harvard) |
+| Nome do cadastro usado                                         | ✅ (obtido=Carlos Mendes)                                                               |
+| Email do cadastro usado                                        | ✅ (obtido=carlos.mendes@email.com)                                                     |
+| Habilidades mencionam "Kubernetes"                             | ✅                                                                                      |
+| Habilidades mencionam "Kotlin"                                 | ✅                                                                                      |
+| Sem fantasia "Empresa Exemplo"                                 | ✅                                                                                      |
+| Sem fantasia "Acme Corp"                                       | ✅                                                                                      |
+| Sem fantasia "lorem"                                           | ✅                                                                                      |
+| EN sem vazamento de PT em objetivo.cargo                       | ✅ ("Senior Software Engineer")                                                         |
+| EN sem vazamento de PT em objetivo.area                        | ✅ ("infrastructure")                                                                   |
+| EN sem vazamento de PT em objetivo.nivel                       | ✅ ("Senior")                                                                           |
+| EN sem vazamento de PT em resumoProfissional                   | ✅ ("Experienced Senior Software Engineer with 8 years in backend and infrastructure.") |
+| EN sem vazamento de PT em formacao[0].curso                    | ✅ ("Bachelor's in Computer Engineering")                                               |
+| EN sem vazamento de PT em formacao[0].status                   | ✅ ("completed")                                                                        |
+| EN sem vazamento de PT em experiencias[0].responsabilidades[0] | ✅ ("Led migration of job orchestrator to Kubernetes")                                  |
+| EN sem vazamento de PT em experiencias[0].responsabilidades[1] | ✅ ("Reduced infrastructure costs by 30%")                                              |
+| EN sem vazamento de PT em experiencias[0].responsabilidades[2] | ✅ ("Improved p99 latency of queues from 500ms to 80ms")                                |
+| EN sem vazamento de PT em experiencias[1].responsabilidades[0] | ✅ ("Scaled the boleto system to process 5x more transactions")                         |
+| EN sem vazamento de PT em experiencias[2].responsabilidades[0] | ✅ ("Consulted for financial clients, primarily working with Java and microservices")   |
+| EN sem vazamento de PT em idiomas[0].idioma                    | ✅ ("Portuguese")                                                                       |
+| EN sem vazamento de PT em idiomas[0].nivel                     | ✅ ("Native")                                                                           |
+| EN sem vazamento de PT em idiomas[1].idioma                    | ✅ ("English")                                                                          |
+| EN sem vazamento de PT em idiomas[1].nivel                     | ✅ ("Fluent")                                                                           |
+| EN sem vazamento de PT em idiomas[2].idioma                    | ✅ ("Spanish")                                                                          |
+| EN sem vazamento de PT em idiomas[2].nivel                     | ✅ ("Intermediate")                                                                     |
 
 <details><summary>JSON do currículo</summary>
 
@@ -855,9 +792,7 @@ Schema válido ✅
     {
       "nome": "rufus-rs",
       "descricao": null,
-      "tecnologias": [
-        "Rust"
-      ],
+      "tecnologias": ["Rust"],
       "link": null
     }
   ],
@@ -900,37 +835,37 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (en) | ✅ (obtido=en) |
-| Persona bate (experiente) | ✅ (obtido=experiente) |
-| Formato em harvard|hibrido | ✅ (obtido=harvard) |
-| Nome do cadastro usado | ✅ (obtido=Carlos Mendes) |
-| Email do cadastro usado | ✅ (obtido=carlos.mendes@email.com) |
-| Habilidades mencionam "Kubernetes" | ✅ |
-| Habilidades mencionam "Kotlin" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "Acme Corp" | ✅ |
-| Sem fantasia "lorem" | ✅ |
-| EN sem vazamento de PT em objetivo.cargo | ✅ ("Senior Software Engineer") |
-| EN sem vazamento de PT em objetivo.area | ✅ ("infrastructure") |
-| EN sem vazamento de PT em objetivo.nivel | ✅ ("Senior") |
-| EN sem vazamento de PT em resumoProfissional | ✅ ("Experienced Senior Software Engineer with 8 years in backend development and inf") |
-| EN sem vazamento de PT em formacao[0].curso | ✅ ("Bachelor's in Computer Engineering") |
-| EN sem vazamento de PT em formacao[0].status | ✅ ("completed") |
-| EN sem vazamento de PT em experiencias[0].responsabilidades[0] | ✅ ("Led the migration of the job orchestrator to Kubernetes.") |
-| EN sem vazamento de PT em experiencias[0].conquistas[0] | ✅ ("Reduced infrastructure costs by 30%.") |
-| EN sem vazamento de PT em experiencias[0].conquistas[1] | ✅ ("Improved p99 latency of queues from 500ms to 80ms.") |
-| EN sem vazamento de PT em experiencias[1].responsabilidades[0] | ✅ ("Worked on the payments team.") |
-| EN sem vazamento de PT em experiencias[1].conquistas[0] | ✅ ("Scaled the boleto system to process 5x more transactions.") |
-| EN sem vazamento de PT em experiencias[2].responsabilidades[0] | ✅ ("Consulted for financial clients.") |
-| EN sem vazamento de PT em experiencias[2].conquistas[0] | ✅ ("Worked mainly with Java and microservices.") |
-| EN sem vazamento de PT em idiomas[0].idioma | ✅ ("Portuguese") |
-| EN sem vazamento de PT em idiomas[0].nivel | ✅ ("Native") |
-| EN sem vazamento de PT em idiomas[1].idioma | ✅ ("English") |
-| EN sem vazamento de PT em idiomas[1].nivel | ✅ ("Fluent") |
-| EN sem vazamento de PT em idiomas[2].idioma | ✅ ("Spanish") |
-| EN sem vazamento de PT em idiomas[2].nivel | ✅ ("Intermediate") |
+| Check                                                          | Resultado                                                                               |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------- |
+| Idioma bate (en)                                               | ✅ (obtido=en)                                                                          |
+| Persona bate (experiente)                                      | ✅ (obtido=experiente)                                                                  |
+| Formato em harvard                                             | hibrido                                                                                 | ✅ (obtido=harvard) |
+| Nome do cadastro usado                                         | ✅ (obtido=Carlos Mendes)                                                               |
+| Email do cadastro usado                                        | ✅ (obtido=carlos.mendes@email.com)                                                     |
+| Habilidades mencionam "Kubernetes"                             | ✅                                                                                      |
+| Habilidades mencionam "Kotlin"                                 | ✅                                                                                      |
+| Sem fantasia "Empresa Exemplo"                                 | ✅                                                                                      |
+| Sem fantasia "Acme Corp"                                       | ✅                                                                                      |
+| Sem fantasia "lorem"                                           | ✅                                                                                      |
+| EN sem vazamento de PT em objetivo.cargo                       | ✅ ("Senior Software Engineer")                                                         |
+| EN sem vazamento de PT em objetivo.area                        | ✅ ("infrastructure")                                                                   |
+| EN sem vazamento de PT em objetivo.nivel                       | ✅ ("Senior")                                                                           |
+| EN sem vazamento de PT em resumoProfissional                   | ✅ ("Experienced Senior Software Engineer with 8 years in backend development and inf") |
+| EN sem vazamento de PT em formacao[0].curso                    | ✅ ("Bachelor's in Computer Engineering")                                               |
+| EN sem vazamento de PT em formacao[0].status                   | ✅ ("completed")                                                                        |
+| EN sem vazamento de PT em experiencias[0].responsabilidades[0] | ✅ ("Led the migration of the job orchestrator to Kubernetes.")                         |
+| EN sem vazamento de PT em experiencias[0].conquistas[0]        | ✅ ("Reduced infrastructure costs by 30%.")                                             |
+| EN sem vazamento de PT em experiencias[0].conquistas[1]        | ✅ ("Improved p99 latency of queues from 500ms to 80ms.")                               |
+| EN sem vazamento de PT em experiencias[1].responsabilidades[0] | ✅ ("Worked on the payments team.")                                                     |
+| EN sem vazamento de PT em experiencias[1].conquistas[0]        | ✅ ("Scaled the boleto system to process 5x more transactions.")                        |
+| EN sem vazamento de PT em experiencias[2].responsabilidades[0] | ✅ ("Consulted for financial clients.")                                                 |
+| EN sem vazamento de PT em experiencias[2].conquistas[0]        | ✅ ("Worked mainly with Java and microservices.")                                       |
+| EN sem vazamento de PT em idiomas[0].idioma                    | ✅ ("Portuguese")                                                                       |
+| EN sem vazamento de PT em idiomas[0].nivel                     | ✅ ("Native")                                                                           |
+| EN sem vazamento de PT em idiomas[1].idioma                    | ✅ ("English")                                                                          |
+| EN sem vazamento de PT em idiomas[1].nivel                     | ✅ ("Fluent")                                                                           |
+| EN sem vazamento de PT em idiomas[2].idioma                    | ✅ ("Spanish")                                                                          |
+| EN sem vazamento de PT em idiomas[2].nivel                     | ✅ ("Intermediate")                                                                     |
 
 <details><summary>JSON do currículo</summary>
 
@@ -978,9 +913,7 @@ Schema válido ✅
       "empresa": "iFood",
       "cargo": "Senior Backend Engineer",
       "periodo": "2018 - 2021",
-      "responsabilidades": [
-        "Worked on the payments team."
-      ],
+      "responsabilidades": ["Worked on the payments team."],
       "conquistas": [
         "Scaled the boleto system to process 5x more transactions."
       ]
@@ -989,12 +922,8 @@ Schema válido ✅
       "empresa": "ThoughtWorks",
       "cargo": "Software Engineer",
       "periodo": "2017 - 2018",
-      "responsabilidades": [
-        "Consulted for financial clients."
-      ],
-      "conquistas": [
-        "Worked mainly with Java and microservices."
-      ]
+      "responsabilidades": ["Consulted for financial clients."],
+      "conquistas": ["Worked mainly with Java and microservices."]
     }
   ],
   "projetos": [],
@@ -1043,27 +972,27 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (junior) | ✅ (obtido=junior) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Joana Lima) |
-| Email do cadastro usado | ✅ (obtido=joana.lima@email.com) |
-| Habilidades mencionam "Node.js" | ✅ |
-| Habilidades mencionam "PostgreSQL" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "Udemy" | ✅ |
-| Sem fantasia "Coursera" | ✅ |
-| Sem fantasia "Alura" | ✅ |
-| Sem fantasia "2020" | ✅ |
-| Sem fantasia "2021" | ✅ |
-| Sem fantasia "2022" | ✅ |
-| Sem fantasia "2023" | ✅ |
-| Campo nullable "experiencias[0].periodo" veio null (não inventado) | ✅ (null) |
-| Campo nullable "formacao[0].instituicao" veio null (não inventado) | ✅ (null) |
-| Campo nullable "formacao[0].periodo" veio null (não inventado) | ✅ (null) |
-| Resumo profissional escrito em português | ✅ (resumo[:120]="Desenvolvedora Backend Júnior com experiência em Node.js e PostgreSQL. Habilidade em trabalhar com API REST e em equipe ...") |
+| Check                                                              | Resultado                                                                                                                                       |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                                                | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (junior)                                              | ✅ (obtido=junior)                                                                                                                              |
+| Formato em hibrido                                                 | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                                             | ✅ (obtido=Joana Lima)                                                                                                                          |
+| Email do cadastro usado                                            | ✅ (obtido=joana.lima@email.com)                                                                                                                |
+| Habilidades mencionam "Node.js"                                    | ✅                                                                                                                                              |
+| Habilidades mencionam "PostgreSQL"                                 | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"                                     | ✅                                                                                                                                              |
+| Sem fantasia "Udemy"                                               | ✅                                                                                                                                              |
+| Sem fantasia "Coursera"                                            | ✅                                                                                                                                              |
+| Sem fantasia "Alura"                                               | ✅                                                                                                                                              |
+| Sem fantasia "2020"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2021"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2022"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2023"                                                | ✅                                                                                                                                              |
+| Campo nullable "experiencias[0].periodo" veio null (não inventado) | ✅ (null)                                                                                                                                       |
+| Campo nullable "formacao[0].instituicao" veio null (não inventado) | ✅ (null)                                                                                                                                       |
+| Campo nullable "formacao[0].periodo" veio null (não inventado)     | ✅ (null)                                                                                                                                       |
+| Resumo profissional escrito em português                           | ✅ (resumo[:120]="Desenvolvedora Backend Júnior com experiência em Node.js e PostgreSQL. Habilidade em trabalhar com API REST e em equipe ...") |
 
 <details><summary>JSON do currículo</summary>
 
@@ -1107,13 +1036,7 @@ Schema válido ✅
     }
   ],
   "projetos": [],
-  "habilidades": [
-    "Node.js",
-    "PostgreSQL",
-    "JavaScript",
-    "Git",
-    "API REST"
-  ],
+  "habilidades": ["Node.js", "PostgreSQL", "JavaScript", "Git", "API REST"],
   "idiomas": [
     {
       "idioma": "Português",
@@ -1132,27 +1055,27 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (junior) | ✅ (obtido=junior) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Joana Lima) |
-| Email do cadastro usado | ✅ (obtido=joana.lima@email.com) |
-| Habilidades mencionam "Node.js" | ✅ |
-| Habilidades mencionam "PostgreSQL" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "Udemy" | ✅ |
-| Sem fantasia "Coursera" | ✅ |
-| Sem fantasia "Alura" | ✅ |
-| Sem fantasia "2020" | ✅ |
-| Sem fantasia "2021" | ✅ |
-| Sem fantasia "2022" | ✅ |
-| Sem fantasia "2023" | ✅ |
-| Campo nullable "experiencias[0].periodo" veio null (não inventado) | ✅ (null) |
-| Campo nullable "formacao[0].instituicao" veio null (não inventado) | ✅ (null) |
-| Campo nullable "formacao[0].periodo" veio null (não inventado) | ✅ (null) |
-| Resumo profissional escrito em português | ✅ (resumo[:120]="Desenvolvedora Backend Júnior com experiência em Node.js e PostgreSQL. Habilidade em trabalhar com API REST e Git, busca...") |
+| Check                                                              | Resultado                                                                                                                                       |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                                                | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (junior)                                              | ✅ (obtido=junior)                                                                                                                              |
+| Formato em hibrido                                                 | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                                             | ✅ (obtido=Joana Lima)                                                                                                                          |
+| Email do cadastro usado                                            | ✅ (obtido=joana.lima@email.com)                                                                                                                |
+| Habilidades mencionam "Node.js"                                    | ✅                                                                                                                                              |
+| Habilidades mencionam "PostgreSQL"                                 | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"                                     | ✅                                                                                                                                              |
+| Sem fantasia "Udemy"                                               | ✅                                                                                                                                              |
+| Sem fantasia "Coursera"                                            | ✅                                                                                                                                              |
+| Sem fantasia "Alura"                                               | ✅                                                                                                                                              |
+| Sem fantasia "2020"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2021"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2022"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2023"                                                | ✅                                                                                                                                              |
+| Campo nullable "experiencias[0].periodo" veio null (não inventado) | ✅ (null)                                                                                                                                       |
+| Campo nullable "formacao[0].instituicao" veio null (não inventado) | ✅ (null)                                                                                                                                       |
+| Campo nullable "formacao[0].periodo" veio null (não inventado)     | ✅ (null)                                                                                                                                       |
+| Resumo profissional escrito em português                           | ✅ (resumo[:120]="Desenvolvedora Backend Júnior com experiência em Node.js e PostgreSQL. Habilidade em trabalhar com API REST e Git, busca...") |
 
 <details><summary>JSON do currículo</summary>
 
@@ -1196,13 +1119,7 @@ Schema válido ✅
     }
   ],
   "projetos": [],
-  "habilidades": [
-    "Node.js",
-    "PostgreSQL",
-    "JavaScript",
-    "Git",
-    "API REST"
-  ],
+  "habilidades": ["Node.js", "PostgreSQL", "JavaScript", "Git", "API REST"],
   "idiomas": [
     {
       "idioma": "Português",
@@ -1221,27 +1138,27 @@ Schema válido ✅
 
 **Checks semânticos:**
 
-| Check | Resultado |
-|---|---|
-| Idioma bate (pt-BR) | ✅ (obtido=pt-BR) |
-| Persona bate (junior) | ✅ (obtido=junior) |
-| Formato em hibrido | ✅ (obtido=hibrido) |
-| Nome do cadastro usado | ✅ (obtido=Joana Lima) |
-| Email do cadastro usado | ✅ (obtido=joana.lima@email.com) |
-| Habilidades mencionam "Node.js" | ✅ |
-| Habilidades mencionam "PostgreSQL" | ✅ |
-| Sem fantasia "Empresa Exemplo" | ✅ |
-| Sem fantasia "Udemy" | ✅ |
-| Sem fantasia "Coursera" | ✅ |
-| Sem fantasia "Alura" | ✅ |
-| Sem fantasia "2020" | ✅ |
-| Sem fantasia "2021" | ✅ |
-| Sem fantasia "2022" | ✅ |
-| Sem fantasia "2023" | ✅ |
-| Campo nullable "experiencias[0].periodo" veio null (não inventado) | ✅ (null) |
-| Campo nullable "formacao[0].instituicao" veio null (não inventado) | ✅ (null) |
-| Campo nullable "formacao[0].periodo" veio null (não inventado) | ✅ (null) |
-| Resumo profissional escrito em português | ✅ (resumo[:120]="Desenvolvedora Backend Júnior com experiência em Node.js e PostgreSQL. Habilidade em trabalhar com API REST e versioname...") |
+| Check                                                              | Resultado                                                                                                                                       |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Idioma bate (pt-BR)                                                | ✅ (obtido=pt-BR)                                                                                                                               |
+| Persona bate (junior)                                              | ✅ (obtido=junior)                                                                                                                              |
+| Formato em hibrido                                                 | ✅ (obtido=hibrido)                                                                                                                             |
+| Nome do cadastro usado                                             | ✅ (obtido=Joana Lima)                                                                                                                          |
+| Email do cadastro usado                                            | ✅ (obtido=joana.lima@email.com)                                                                                                                |
+| Habilidades mencionam "Node.js"                                    | ✅                                                                                                                                              |
+| Habilidades mencionam "PostgreSQL"                                 | ✅                                                                                                                                              |
+| Sem fantasia "Empresa Exemplo"                                     | ✅                                                                                                                                              |
+| Sem fantasia "Udemy"                                               | ✅                                                                                                                                              |
+| Sem fantasia "Coursera"                                            | ✅                                                                                                                                              |
+| Sem fantasia "Alura"                                               | ✅                                                                                                                                              |
+| Sem fantasia "2020"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2021"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2022"                                                | ✅                                                                                                                                              |
+| Sem fantasia "2023"                                                | ✅                                                                                                                                              |
+| Campo nullable "experiencias[0].periodo" veio null (não inventado) | ✅ (null)                                                                                                                                       |
+| Campo nullable "formacao[0].instituicao" veio null (não inventado) | ✅ (null)                                                                                                                                       |
+| Campo nullable "formacao[0].periodo" veio null (não inventado)     | ✅ (null)                                                                                                                                       |
+| Resumo profissional escrito em português                           | ✅ (resumo[:120]="Desenvolvedora Backend Júnior com experiência em Node.js e PostgreSQL. Habilidade em trabalhar com API REST e versioname...") |
 
 <details><summary>JSON do currículo</summary>
 
@@ -1285,13 +1202,7 @@ Schema válido ✅
     }
   ],
   "projetos": [],
-  "habilidades": [
-    "Node.js",
-    "PostgreSQL",
-    "JavaScript",
-    "Git",
-    "API REST"
-  ],
+  "habilidades": ["Node.js", "PostgreSQL", "JavaScript", "Git", "API REST"],
   "idiomas": [
     {
       "idioma": "Português",

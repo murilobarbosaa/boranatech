@@ -9,7 +9,10 @@ interface LogoProps {
   showTagline?: boolean;
 }
 
-const SIZE_CLASSES: Record<LogoSize, { circle: string; icon: string; text: string; tagline: string; gap: string }> = {
+const SIZE_CLASSES: Record<
+  LogoSize,
+  { circle: string; icon: string; text: string; tagline: string; gap: string }
+> = {
   sm: {
     circle: "h-9 w-9",
     icon: "h-5 w-5",
@@ -26,7 +29,10 @@ const SIZE_CLASSES: Record<LogoSize, { circle: string; icon: string; text: strin
   },
 };
 
-const VARIANT_TEXT: Record<LogoVariant, { brand: string; bang: string; tagline: string }> = {
+const VARIANT_TEXT: Record<
+  LogoVariant,
+  { brand: string; bang: string; tagline: string }
+> = {
   light: {
     brand: "text-slate-900",
     bang: "text-slate-900",
@@ -39,7 +45,11 @@ const VARIANT_TEXT: Record<LogoVariant, { brand: string; bang: string; tagline: 
   },
 };
 
-export default function Logo({ variant = "light", size = "sm", showTagline = false }: LogoProps) {
+export default function Logo({
+  variant = "light",
+  size = "sm",
+  showTagline = false,
+}: LogoProps) {
   const sizes = SIZE_CLASSES[size];
   const colors = VARIANT_TEXT[variant];
 
@@ -50,10 +60,14 @@ export default function Logo({ variant = "light", size = "sm", showTagline = fal
       >
         <Compass className={`text-slate-950 ${sizes.icon}`} />
       </span>
-      <span className={`font-display font-black uppercase ${sizes.text} ${colors.brand}`}>
+      <span
+        className={`font-display font-black uppercase ${sizes.text} ${colors.brand}`}
+      >
         BORA NA TECH<span className={colors.bang}>?</span>
         {showTagline ? (
-          <span className={`block font-bold tracking-normal normal-case ${sizes.tagline} ${colors.tagline}`}>
+          <span
+            className={`block font-bold tracking-normal normal-case ${sizes.tagline} ${colors.tagline}`}
+          >
             Sua Bússola na TI
           </span>
         ) : null}

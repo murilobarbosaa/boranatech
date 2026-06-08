@@ -52,18 +52,35 @@ export function getUserInitials(name: string) {
     .join("");
 }
 
-export default function UserAvatar({ name, border, icon, bg, size = "md", className = "", loading = false }: UserAvatarProps) {
+export default function UserAvatar({
+  name,
+  border,
+  icon,
+  bg,
+  size = "md",
+  className = "",
+  loading = false,
+}: UserAvatarProps) {
   const borderOption = getAvatarBorderOption(border);
   const iconOption = getAvatarIconOption(icon);
   const bgOption = getAvatarBgOption(bg);
   const Icon = iconOption.Icon;
   const initials = getUserInitials(name) || "BT";
-  const rootClassName = ["relative inline-flex shrink-0", sizeClasses[size], className].join(" ");
+  const rootClassName = [
+    "relative inline-flex shrink-0",
+    sizeClasses[size],
+    className,
+  ].join(" ");
 
   if (loading) {
     return (
       <span className={rootClassName} aria-hidden="true">
-        <span className={["absolute inset-0 rounded-full bg-slate-300", offsetClasses[size]].join(" ")} />
+        <span
+          className={[
+            "absolute inset-0 rounded-full bg-slate-300",
+            offsetClasses[size],
+          ].join(" ")}
+        />
         <span className="relative z-10 h-full w-full animate-pulse rounded-full border-2 border-slate-300 bg-slate-100" />
       </span>
     );
@@ -85,7 +102,11 @@ export default function UserAvatar({ name, border, icon, bg, size = "md", classN
           bgOption.className,
         ].join(" ")}
       >
-        {Icon ? <Icon className={iconSizeClasses[size]} strokeWidth={3} /> : initials}
+        {Icon ? (
+          <Icon className={iconSizeClasses[size]} strokeWidth={3} />
+        ) : (
+          initials
+        )}
       </span>
     </span>
   );

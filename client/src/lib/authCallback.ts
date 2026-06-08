@@ -10,7 +10,8 @@ export function hasOAuthCallbackInUrl(): boolean {
     ? window.location.hash.slice(1)
     : window.location.hash;
   const hashParams = new URLSearchParams(rawHash);
-  const hasToken = hashParams.has("access_token") || hashParams.has("refresh_token");
+  const hasToken =
+    hashParams.has("access_token") || hashParams.has("refresh_token");
   return hasCode || hasToken;
 }
 

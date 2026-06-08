@@ -37,7 +37,11 @@ export function GenderSelect({
       </SelectTrigger>
       <SelectContent className="rounded-xl border-2 border-slate-300">
         {GENDER_OPTIONS.map((opt) => (
-          <SelectItem key={opt.value} value={opt.value} className="cursor-pointer text-sm font-medium">
+          <SelectItem
+            key={opt.value}
+            value={opt.value}
+            className="cursor-pointer text-sm font-medium"
+          >
             {opt.label}
           </SelectItem>
         ))}

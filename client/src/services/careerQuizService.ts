@@ -11,18 +11,26 @@ async function getAuthHeader(): Promise<Record<string, string> | null> {
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
-export async function getCareerQuizResult(answers: CareerQuizAnswer[]): Promise<CareerQuizResult> {
+export async function getCareerQuizResult(
+  answers: CareerQuizAnswer[],
+): Promise<CareerQuizResult> {
   const scores = answers.reduce<Record<string, number>>((acc, answer) => {
     acc[answer.area] = (acc[answer.area] || 0) + 1;
     return acc;
   }, {});
-  const [area = "Front-end", score = 0] = Object.entries(scores).sort((a, b) => b[1] - a[1])[0] || [];
+  const [area = "Front-end", score = 0] =
+    Object.entries(scores).sort((a, b) => b[1] - a[1])[0] || [];
 
   return {
     area,
     confidence: Math.round((score / Math.max(answers.length, 1)) * 100),
-    reason: "Resultado calculado localmente. O contrato já permite trocar por uma resposta de IA externa.",
-    nextSteps: ["Abrir roadmap da área", "Escolher um curso curto", "Criar um projeto publicável"],
+    reason:
+      "Resultado calculado localmente. O contrato já permite trocar por uma resposta de IA externa.",
+    nextSteps: [
+      "Abrir roadmap da área",
+      "Escolher um curso curto",
+      "Criar um projeto publicável",
+    ],
   };
 }
 

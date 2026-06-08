@@ -4,12 +4,23 @@
 */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, ExternalLink, Search, TrendingUp } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Search,
+  TrendingUp,
+} from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import NewsImagePlaceholder from "@/components/NewsImagePlaceholder";
 import SEO from "@/components/SEO";
-import { getNews, type NewsItem, type NewsLevel, type NewsResponse } from "@/services/contentService";
+import {
+  getNews,
+  type NewsItem,
+  type NewsLevel,
+  type NewsResponse,
+} from "@/services/contentService";
 
 const PAGE_SIZE = 21;
 
@@ -52,21 +63,33 @@ function NewsCard({ item }: { item: NewsItem }) {
       </div>
 
       <div className="flex items-start justify-between mb-3 gap-2">
-        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{item.categoria}</span>
+        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+          {item.categoria}
+        </span>
         <div className="flex items-center gap-3">
           {item.nivel && (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${LEVEL_BADGE[item.nivel]}`}>
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full font-semibold border ${LEVEL_BADGE[item.nivel]}`}
+            >
               {LEVEL_LABEL[item.nivel]}
             </span>
           )}
           <FavoriteButton
             compact
-            item={{ id: item.id, type: "noticia", title: item.titulo, subtitle: item.categoria, url: item.link }}
+            item={{
+              id: item.id,
+              type: "noticia",
+              title: item.titulo,
+              subtitle: item.categoria,
+              url: item.link,
+            }}
           />
         </div>
       </div>
 
-      <h3 className="font-display font-bold text-lg text-slate-900 mb-2 leading-snug">{item.titulo}</h3>
+      <h3 className="font-display font-bold text-lg text-slate-900 mb-2 leading-snug">
+        {item.titulo}
+      </h3>
       <p className="text-sm text-slate-600 mb-4 flex-1">{item.resumo}</p>
 
       {item.porQueImporta && (
@@ -77,7 +100,9 @@ function NewsCard({ item }: { item: NewsItem }) {
               <p className="text-[10px] font-black uppercase tracking-[0.15em] text-violet-700 mb-1">
                 Por que isso importa pra você?
               </p>
-              <p className="text-xs text-slate-700 leading-relaxed">{item.porQueImporta}</p>
+              <p className="text-xs text-slate-700 leading-relaxed">
+                {item.porQueImporta}
+              </p>
             </div>
           </div>
         </div>
@@ -143,7 +168,10 @@ function Pagination({
   const numbers = getPageNumbers(page, totalPages);
 
   return (
-    <nav className="mt-10 flex items-center justify-center gap-2 flex-wrap" aria-label="Paginação">
+    <nav
+      className="mt-10 flex items-center justify-center gap-2 flex-wrap"
+      aria-label="Paginação"
+    >
       <button
         type="button"
         onClick={() => onChange(page - 1)}
@@ -227,7 +255,9 @@ export default function Noticias() {
       .then((res) => {
         if (cancelled) return;
         if (!res) {
-          setError("Não foi possível carregar notícias agora. Tente novamente em alguns instantes.");
+          setError(
+            "Não foi possível carregar notícias agora. Tente novamente em alguns instantes.",
+          );
           setResponse(null);
         } else {
           setError("");
@@ -257,7 +287,13 @@ export default function Noticias() {
       <SEO
         title="Notícias Tech — Últimas novidades do mundo da tecnologia"
         description="Acompanhe notícias de tecnologia, inteligência artificial, mercado de TI e tendências importantes para quem está começando."
-        keywords={["notícias tecnologia", "novidades tech", "ia notícias", "mercado de ti", "tendências tecnologia"]}
+        keywords={[
+          "notícias tecnologia",
+          "novidades tech",
+          "ia notícias",
+          "mercado de ti",
+          "tendências tecnologia",
+        ]}
         url="/noticias"
         schemaType="CollectionPage"
       />
@@ -268,9 +304,12 @@ export default function Noticias() {
             <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-sky-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
               radar tech
             </p>
-            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">Notícias Tech</h1>
+            <h1 className="font-display font-bold text-4xl text-slate-950 mb-3">
+              Notícias Tech
+            </h1>
             <p className="text-slate-950 text-lg">
-              Fique por dentro do que está acontecendo na tecnologia — com foco no que importa para quem está começando.
+              Fique por dentro do que está acontecendo na tecnologia — com foco
+              no que importa para quem está começando.
             </p>
           </div>
         </div>
@@ -308,7 +347,9 @@ export default function Noticias() {
             </div>
 
             {pagination && !loading && (
-              <span className="text-xs font-semibold text-slate-500 md:ml-auto">{totalLabel}</span>
+              <span className="text-xs font-semibold text-slate-500 md:ml-auto">
+                {totalLabel}
+              </span>
             )}
           </div>
         </div>
@@ -331,7 +372,9 @@ export default function Noticias() {
           ) : items.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📰</p>
-              <p className="text-slate-600 font-medium">Nenhuma notícia encontrada com esses filtros.</p>
+              <p className="text-slate-600 font-medium">
+                Nenhuma notícia encontrada com esses filtros.
+              </p>
               <button
                 type="button"
                 onClick={() => {
@@ -351,19 +394,41 @@ export default function Noticias() {
                 ))}
               </div>
               {pagination && (
-                <Pagination page={pagination.page} totalPages={pagination.totalPages} onChange={setPage} />
+                <Pagination
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  onChange={setPage}
+                />
               )}
             </>
           )}
 
           <div className="mt-10 p-5 bg-slate-50 border-2 border-slate-200 rounded-xl">
-            <h3 className="font-display font-semibold text-slate-900 mb-2">Onde acompanhar notícias de tecnologia</h3>
+            <h3 className="font-display font-semibold text-slate-900 mb-2">
+              Onde acompanhar notícias de tecnologia
+            </h3>
             <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3 mt-3">
               {[
-                { nome: "TechCrunch", link: "https://techcrunch.com", desc: "Startups e inovação" },
-                { nome: "MIT Tech Review", link: "https://technologyreview.com", desc: "Ciência e tecnologia" },
-                { nome: "Dev.to", link: "https://dev.to", desc: "Comunidade de devs" },
-                { nome: "InfoQ Brasil", link: "https://www.infoq.com/br/", desc: "Desenvolvimento de software" },
+                {
+                  nome: "TechCrunch",
+                  link: "https://techcrunch.com",
+                  desc: "Startups e inovação",
+                },
+                {
+                  nome: "MIT Tech Review",
+                  link: "https://technologyreview.com",
+                  desc: "Ciência e tecnologia",
+                },
+                {
+                  nome: "Dev.to",
+                  link: "https://dev.to",
+                  desc: "Comunidade de devs",
+                },
+                {
+                  nome: "InfoQ Brasil",
+                  link: "https://www.infoq.com/br/",
+                  desc: "Desenvolvimento de software",
+                },
               ].map((item) => (
                 <a
                   key={item.nome}
@@ -372,7 +437,9 @@ export default function Noticias() {
                   rel="noopener noreferrer"
                   className="block p-3 bg-white border-2 border-slate-200 rounded-lg hover:border-slate-400 transition-colors"
                 >
-                  <p className="font-semibold text-sm text-slate-900 mb-1">{item.nome}</p>
+                  <p className="font-semibold text-sm text-slate-900 mb-1">
+                    {item.nome}
+                  </p>
                   <p className="text-xs text-slate-500">{item.desc}</p>
                 </a>
               ))}

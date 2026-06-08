@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
+import {
+  motion,
+  useInView,
+  useMotionValue,
+  useTransform,
+  animate,
+} from "framer-motion";
 import { LEVEL_QUESTION_COUNT } from "@/lib/platformData";
 
 // =========================================
@@ -128,14 +134,20 @@ function StatBlock({
         className={`font-display font-black leading-none ${colorClasses[stat.color]}`}
         style={{ fontSize: "clamp(64px, 9vw, 120px)" }}
       >
-        <AnimatedNumber value={stat.value} shouldAnimate={isCardInView} prefix={stat.prefix} />
+        <AnimatedNumber
+          value={stat.value}
+          shouldAnimate={isCardInView}
+          prefix={stat.prefix}
+        />
       </div>
 
       <p className="mt-4 font-display text-lg md:text-xl font-black text-white uppercase tracking-wider">
         {stat.label}
       </p>
 
-      <p className="mt-2 text-sm md:text-base font-medium text-slate-400">{stat.description}</p>
+      <p className="mt-2 text-sm md:text-base font-medium text-slate-400">
+        {stat.description}
+      </p>
 
       {/* Divisor vertical desktop only — gradient amber transparente nas pontas */}
       {!isLast && (
@@ -167,7 +179,8 @@ function BackgroundDecoration() {
           left: "-5%",
           width: "500px",
           height: "500px",
-          background: "radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, transparent 60%)",
+          background:
+            "radial-gradient(circle, rgba(251, 191, 36, 0.15) 0%, transparent 60%)",
           filter: "blur(60px)",
         }}
         animate={{
@@ -191,7 +204,8 @@ function BackgroundDecoration() {
           right: "-10%",
           width: "450px",
           height: "450px",
-          background: "radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 60%)",
+          background:
+            "radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 60%)",
           filter: "blur(60px)",
         }}
         animate={{
@@ -216,7 +230,8 @@ function BackgroundDecoration() {
           left: "30%",
           width: "550px",
           height: "550px",
-          background: "radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 60%)",
+          background:
+            "radial-gradient(circle, rgba(251, 191, 36, 0.1) 0%, transparent 60%)",
           filter: "blur(70px)",
         }}
         animate={{
