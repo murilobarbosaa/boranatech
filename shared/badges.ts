@@ -27,7 +27,8 @@ export const BADGE_CATALOG: BadgeDefinition[] = [
     id: "first-step",
     category: "estudo",
     name: "Primeiro passo",
-    description: "Você começou sua jornada criando a primeira entrada no diário.",
+    description:
+      "Você começou sua jornada criando a primeira entrada no diário.",
     iconName: "Footprints",
     unlockCriteria: "Crie 1 entrada no diário de estudos",
     checkType: "study_entries_count",

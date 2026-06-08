@@ -8,7 +8,12 @@ import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 
 const resetSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(160, "Use um e-mail mais curto."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Informe um e-mail válido.")
+    .max(160, "Use um e-mail mais curto."),
 });
 
 export default function RecuperarSenha() {
@@ -22,7 +27,9 @@ export default function RecuperarSenha() {
     const parsed = resetSchema.safeParse({ email });
 
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message ?? "Informe um e-mail válido.");
+      toast.error(
+        parsed.error.issues[0]?.message ?? "Informe um e-mail válido.",
+      );
       return;
     }
 
@@ -32,7 +39,9 @@ export default function RecuperarSenha() {
       await resetPassword(parsed.data.email);
       setSentTo(parsed.data.email);
     } catch {
-      toast.error("Não foi possível enviar o link agora. Tenta novamente em alguns instantes.");
+      toast.error(
+        "Não foi possível enviar o link agora. Tenta novamente em alguns instantes.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -45,7 +54,9 @@ export default function RecuperarSenha() {
       await resetPassword(sentTo);
       toast.success("Reenviamos o link. Confira a caixa de entrada e o spam.");
     } catch {
-      toast.error("Não foi possível reenviar agora. Tenta novamente em alguns instantes.");
+      toast.error(
+        "Não foi possível reenviar agora. Tenta novamente em alguns instantes.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -54,7 +65,11 @@ export default function RecuperarSenha() {
   if (sentTo) {
     return (
       <Layout>
-        <SEO title="Recuperar senha · Bora na Tech?" url="/recuperar-senha" noindex />
+        <SEO
+          title="Recuperar senha · Bora na Tech?"
+          url="/recuperar-senha"
+          noindex
+        />
         <section className="hero-pattern py-16">
           <div className="container">
             <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
@@ -64,13 +79,21 @@ export default function RecuperarSenha() {
               >
                 <MailCheck className="h-5 w-5" strokeWidth={2.5} />
               </span>
-              <h1 className="font-display text-3xl font-black text-slate-950">Link enviado.</h1>
+              <h1 className="font-display text-3xl font-black text-slate-950">
+                Link enviado.
+              </h1>
               <p className="mt-2 text-sm text-slate-950">
-                Se esse email tiver conta no BoraNaTech, você vai receber um link de recuperação em até 2 minutos. Confira também a pasta de spam.
+                Se esse email tiver conta no BoraNaTech, você vai receber um
+                link de recuperação em até 2 minutos. Confira também a pasta de
+                spam.
               </p>
               <div className="mt-4 rounded-xl border-2 border-slate-300 bg-[#faf8f4] px-4 py-3">
-                <span className="block text-xs font-black uppercase text-slate-600">Enviado para</span>
-                <span className="mt-0.5 block break-all text-sm font-bold text-slate-950">{sentTo}</span>
+                <span className="block text-xs font-black uppercase text-slate-600">
+                  Enviado para
+                </span>
+                <span className="mt-0.5 block break-all text-sm font-bold text-slate-950">
+                  {sentTo}
+                </span>
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
@@ -90,7 +113,10 @@ export default function RecuperarSenha() {
                   Usar outro email
                 </button>
               </div>
-              <Link href="/login" className="mt-4 inline-block text-sm font-bold text-violet-700 hover:underline">
+              <Link
+                href="/login"
+                className="mt-4 inline-block text-sm font-bold text-violet-700 hover:underline"
+              >
                 Voltar para o login
               </Link>
             </div>
@@ -102,18 +128,29 @@ export default function RecuperarSenha() {
 
   return (
     <Layout>
-      <SEO title="Recuperar senha · Bora na Tech?" url="/recuperar-senha" noindex />
+      <SEO
+        title="Recuperar senha · Bora na Tech?"
+        url="/recuperar-senha"
+        noindex
+      />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
-            <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">recuperar senha</p>
-            <h1 className="font-display text-3xl font-black text-slate-950">Receba um link seguro no seu e-mail.</h1>
+            <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">
+              recuperar senha
+            </p>
+            <h1 className="font-display text-3xl font-black text-slate-950">
+              Receba um link seguro no seu e-mail.
+            </h1>
             <p className="mt-2 text-sm text-slate-950">
-              Para proteger sua conta, a mensagem não confirma se o e-mail existe na plataforma.
+              Para proteger sua conta, a mensagem não confirma se o e-mail
+              existe na plataforma.
             </p>
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">E-mail</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  E-mail
+                </span>
                 <input
                   autoComplete="email"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -136,13 +173,19 @@ export default function RecuperarSenha() {
             <div className="mt-6 space-y-2 text-center text-sm text-slate-600">
               <p>
                 Lembrou a senha?{" "}
-                <Link href="/login" className="font-bold text-slate-700 hover:text-slate-950 hover:underline">
+                <Link
+                  href="/login"
+                  className="font-bold text-slate-700 hover:text-slate-950 hover:underline"
+                >
                   Entrar
                 </Link>
               </p>
               <p>
                 Não tem conta ainda?{" "}
-                <Link href="/cadastro" className="font-bold text-slate-700 hover:text-slate-950 hover:underline">
+                <Link
+                  href="/cadastro"
+                  className="font-bold text-slate-700 hover:text-slate-950 hover:underline"
+                >
                   Criar conta
                 </Link>
               </p>

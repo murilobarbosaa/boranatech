@@ -18,7 +18,10 @@ export function requiredLeaves(node: RoadmapSubtree): RoadmapNode[] {
   return (node.children ?? []).flatMap(requiredLeaves);
 }
 
-export function nodeProgress(node: RoadmapSubtree, done: Set<string>): { done: number; total: number } {
+export function nodeProgress(
+  node: RoadmapSubtree,
+  done: Set<string>,
+): { done: number; total: number } {
   const leaves = requiredLeaves(node);
   const completed = leaves.filter((leaf) => done.has(leaf.id)).length;
   return { done: completed, total: leaves.length };
@@ -50,7 +53,11 @@ export function isComplete(node: RoadmapSubtree, done: Set<string>): boolean {
   return total > 0 && completed === total;
 }
 
-export function isSectionUnlocked(index: number, sections: RoadmapSection[], done: Set<string>): boolean {
+export function isSectionUnlocked(
+  index: number,
+  sections: RoadmapSection[],
+  done: Set<string>,
+): boolean {
   if (index === 0) return true;
   const prev = sections[index - 1];
   return isComplete(prev, done) || nodeProgress(prev, done).total === 0;

@@ -1,6 +1,14 @@
 import { Link } from "wouter";
 import { Icon } from "@iconify/react";
-import { Bot, Compass, HeartHandshake, Map, Newspaper, Sparkles, Target } from "lucide-react";
+import {
+  Bot,
+  Compass,
+  HeartHandshake,
+  Map,
+  Newspaper,
+  Sparkles,
+  Target,
+} from "lucide-react";
 
 import Layout from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
@@ -69,14 +77,19 @@ export default function Sobre() {
                   A TI é enorme. A gente organiza para você.
                 </h1>
                 <p className="mt-6 max-w-3xl text-lg font-bold leading-relaxed text-slate-700 sm:text-xl">
-                  O Bora na Tech? nasceu para ser a bússola de quem está começando na tecnologia, sem jargão,
-                  sem enrolação, com direção.
+                  O Bora na Tech? nasceu para ser a bússola de quem está
+                  começando na tecnologia, sem jargão, sem enrolação, com
+                  direção.
                 </p>
               </div>
               <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
-                <Compass className="mb-5 h-12 w-12 text-[#FFB800]" strokeWidth={2.5} />
+                <Compass
+                  className="mb-5 h-12 w-12 text-[#FFB800]"
+                  strokeWidth={2.5}
+                />
                 <p className="text-lg font-black leading-snug">
-                  Direção clara para escolher uma área, estudar com foco e dar os primeiros passos na carreira.
+                  Direção clara para escolher uma área, estudar com foco e dar
+                  os primeiros passos na carreira.
                 </p>
               </div>
             </div>
@@ -111,9 +124,10 @@ export default function Sobre() {
                 Começamos porque sentimos na pele.
               </h2>
               <p className="mt-5 text-lg font-bold leading-relaxed text-slate-700">
-                A dificuldade de entender por onde começar na tecnologia é real. São dezenas de áreas, centenas de
-                cursos, mil opiniões diferentes, e nenhuma bússola. O Bora na Tech? é a plataforma que gostaríamos de
-                ter encontrado quando começamos.
+                A dificuldade de entender por onde começar na tecnologia é real.
+                São dezenas de áreas, centenas de cursos, mil opiniões
+                diferentes, e nenhuma bússola. O Bora na Tech? é a plataforma
+                que gostaríamos de ter encontrado quando começamos.
               </p>
             </div>
           </div>
@@ -136,8 +150,12 @@ export default function Sobre() {
                     <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-[#1a1a1a] bg-[#FFB800]">
                       <Icon className="h-6 w-6" strokeWidth={2.5} />
                     </div>
-                    <h3 className="font-display text-2xl font-black">{item.title}</h3>
-                    <p className="mt-3 font-bold leading-relaxed text-slate-700">{item.description}</p>
+                    <h3 className="font-display text-2xl font-black">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 font-bold leading-relaxed text-slate-700">
+                      {item.description}
+                    </p>
                   </div>
                 );
               })}
@@ -148,7 +166,9 @@ export default function Sobre() {
         <section className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <Eyebrow>QUEM FAZ</Eyebrow>
-            <h2 className="font-display text-4xl font-black leading-tight sm:text-5xl">Feito com propósito.</h2>
+            <h2 className="font-display text-4xl font-black leading-tight sm:text-5xl">
+              Feito com propósito.
+            </h2>
             <div className="mt-10 grid gap-5 md:grid-cols-2">
               {[
                 {
@@ -175,8 +195,12 @@ export default function Sobre() {
                       {person.initials}
                     </div>
                     <div>
-                      <h3 className="font-display text-2xl font-black">{person.name}</h3>
-                      <p className="mt-1 font-bold text-slate-600">{person.role}</p>
+                      <h3 className="font-display text-2xl font-black">
+                        {person.name}
+                      </h3>
+                      <p className="mt-1 font-bold text-slate-600">
+                        {person.role}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -187,7 +211,11 @@ export default function Sobre() {
                       aria-label={`LinkedIn da ${person.name}`}
                       className="inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#0A66C2] hover:text-white"
                     >
-                      <Icon icon="ph:linkedin-logo-bold" style={{ fontSize: "20px" }} aria-hidden="true" />
+                      <Icon
+                        icon="ph:linkedin-logo-bold"
+                        style={{ fontSize: "20px" }}
+                        aria-hidden="true"
+                      />
                     </a>
                     <a
                       href={person.instagram}
@@ -196,7 +224,11 @@ export default function Sobre() {
                       aria-label={`Instagram da ${person.name}`}
                       className="inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:bg-[image:linear-gradient(45deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5)] hover:text-white"
                     >
-                      <Icon icon="ph:instagram-logo-bold" style={{ fontSize: "20px" }} aria-hidden="true" />
+                      <Icon
+                        icon="ph:instagram-logo-bold"
+                        style={{ fontSize: "20px" }}
+                        aria-hidden="true"
+                      />
                     </a>
                   </div>
                 </div>
@@ -210,10 +242,17 @@ export default function Sobre() {
             <Eyebrow>NOSSOS PRINCÍPIOS</Eyebrow>
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
               {values.map((item) => (
-                <div key={item.title} className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]">
+                <div
+                  key={item.title}
+                  className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a]"
+                >
                   <HeartHandshake className="mb-5 h-8 w-8" strokeWidth={2.5} />
-                  <h3 className="font-display text-xl font-black leading-tight">{item.title}</h3>
-                  <p className="mt-3 font-bold leading-relaxed text-slate-700">{item.description}</p>
+                  <h3 className="font-display text-xl font-black leading-tight">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 font-bold leading-relaxed text-slate-700">
+                    {item.description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -231,7 +270,12 @@ export default function Sobre() {
               aria-hidden="true"
             />
             <div className="mx-auto flex max-w-2xl flex-col items-center">
-              <Icon icon="ph:rocket-launch-bold" className="mb-5 text-[#FFB800]" style={{ fontSize: "56px" }} aria-hidden="true" />
+              <Icon
+                icon="ph:rocket-launch-bold"
+                className="mb-5 text-[#FFB800]"
+                style={{ fontSize: "56px" }}
+                aria-hidden="true"
+              />
               <h2 className="font-display text-4xl font-black leading-tight sm:text-5xl">
                 {user ? "Pronto para continuar?" : "Pronto para começar?"}
               </h2>

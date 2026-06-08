@@ -30,7 +30,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "FileText",
     title: "Currículo",
     label: "Analisador de currículo com IA",
-    description: "Cola seu currículo, recebe feedback acionável em segundos. Cada bullet point reescrito.",
+    description:
+      "Cola seu currículo, recebe feedback acionável em segundos. Cada bullet point reescrito.",
     color: "violet",
     group: "main",
   },
@@ -40,7 +41,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "Map",
     title: "Roadmaps",
     label: "Roadmaps completos com IA",
-    description: "Pra cada área, o caminho exato do zero ao primeiro emprego. Gerados sob medida pra sua realidade.",
+    description:
+      "Pra cada área, o caminho exato do zero ao primeiro emprego. Gerados sob medida pra sua realidade.",
     color: "emerald",
     group: "main",
   },
@@ -50,7 +52,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "Mic",
     title: "Entrevistas",
     label: "Simulador de entrevistas com IA",
-    description: "Simulação por chat de entrevistas reais com feedback instantâneo. Treina antes de precisar.",
+    description:
+      "Simulação por chat de entrevistas reais com feedback instantâneo. Treina antes de precisar.",
     color: "amber",
     group: "main",
   },
@@ -60,7 +63,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "CalendarCheck",
     title: "Plano de estudos",
     label: "Plano de estudos personalizado",
-    description: "Sua semana planejada com base no seu tempo e nos seus objetivos. Sem improviso.",
+    description:
+      "Sua semana planejada com base no seu tempo e nos seus objetivos. Sem improviso.",
     color: "blue",
     group: "extra",
   },
@@ -70,7 +74,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "Linkedin",
     title: "LinkedIn",
     label: "Otimizador de LinkedIn com IA",
-    description: "Headline, sobre, experiências. Sua presença profissional traduzida pra linguagem de recrutador.",
+    description:
+      "Headline, sobre, experiências. Sua presença profissional traduzida pra linguagem de recrutador.",
     color: "sky",
     group: "extra",
   },
@@ -80,7 +85,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "Github",
     title: "Portfólio",
     label: "Analisador de portfólio (GitHub)",
-    description: "Manda seu GitHub. IA aponta o que tá faltando, o que tá bom, o que rouba pontos.",
+    description:
+      "Manda seu GitHub. IA aponta o que tá faltando, o que tá bom, o que rouba pontos.",
     color: "orange",
     group: "extra",
   },
@@ -90,7 +96,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "TrendingUp",
     title: "Empregabilidade",
     label: "Análise de empregabilidade com IA",
-    description: "Onde você tá hoje vs onde o mercado quer. Métricas reais, plano de ação.",
+    description:
+      "Onde você tá hoje vs onde o mercado quer. Métricas reais, plano de ação.",
     color: "fuchsia",
     group: "extra",
   },
@@ -100,7 +107,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "Send",
     title: "Networking",
     label: "Gerador de mensagens de networking",
-    description: "Mensagens personalizadas pra LinkedIn, eventos, processos seletivos.",
+    description:
+      "Mensagens personalizadas pra LinkedIn, eventos, processos seletivos.",
     color: "pink",
     group: "extra",
   },
@@ -110,7 +118,8 @@ export const PRO_FEATURES: ProFeature[] = [
     iconName: "Users",
     title: "Comunidade",
     label: "Comunidade exclusiva Pro",
-    description: "Discord só pra assinantes. Networking, dúvidas, conexões reais.",
+    description:
+      "Discord só pra assinantes. Networking, dúvidas, conexões reais.",
     color: "cyan",
     badge: "em breve",
     group: "extra",
@@ -118,5 +127,7 @@ export const PRO_FEATURES: ProFeature[] = [
 ];
 
 export function getProBenefitLabels(): string[] {
-  return PRO_FEATURES.map((f) => (f.badge ? `${f.label} (${f.badge})` : f.label));
+  return PRO_FEATURES.map((f) =>
+    f.badge ? `${f.label} (${f.badge})` : f.label,
+  );
 }

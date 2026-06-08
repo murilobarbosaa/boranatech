@@ -23,7 +23,9 @@ function MiniBadgeCard({ badge }: { badge: BadgeInfo }) {
         >
           {Icon ? <Icon className="h-5 w-5" strokeWidth={2.5} /> : null}
         </div>
-        <p className="truncate font-display text-xs font-black text-slate-950">{badge.name}</p>
+        <p className="truncate font-display text-xs font-black text-slate-950">
+          {badge.name}
+        </p>
       </div>
     );
   }
@@ -36,7 +38,9 @@ function MiniBadgeCard({ badge }: { badge: BadgeInfo }) {
           <Lock className="h-2 w-2" strokeWidth={3} />
         </span>
       </div>
-      <p className="truncate font-display text-xs font-black text-slate-500">{badge.name}</p>
+      <p className="truncate font-display text-xs font-black text-slate-500">
+        {badge.name}
+      </p>
     </div>
   );
 }
@@ -49,7 +53,9 @@ export function ConquistasPreview() {
       .filter((b) => b.isUnlocked)
       .sort((a, b) => {
         if (!a.unlockedAt || !b.unlockedAt) return 0;
-        return new Date(b.unlockedAt).getTime() - new Date(a.unlockedAt).getTime();
+        return (
+          new Date(b.unlockedAt).getTime() - new Date(a.unlockedAt).getTime()
+        );
       });
 
     const locked = badges
@@ -66,7 +72,9 @@ export function ConquistasPreview() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <p className="font-mono text-xs text-slate-500">Carregando conquistas...</p>
+        <p className="font-mono text-xs text-slate-500">
+          Carregando conquistas...
+        </p>
       </div>
     );
   }

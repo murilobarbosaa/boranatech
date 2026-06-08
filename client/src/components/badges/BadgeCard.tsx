@@ -47,8 +47,12 @@ export function BadgeCard({ badge, onClick }: BadgeCardProps) {
           {Icon ? <Icon className="h-7 w-7" strokeWidth={2.5} /> : null}
         </div>
 
-        <h3 className="mb-1 font-display text-lg font-black text-slate-950">{badge.name}</h3>
-        <p className="mb-3 text-sm font-semibold text-slate-600">{badge.description}</p>
+        <h3 className="mb-1 font-display text-lg font-black text-slate-950">
+          {badge.name}
+        </h3>
+        <p className="mb-3 text-sm font-semibold text-slate-600">
+          {badge.description}
+        </p>
 
         {badge.unlockedAt ? (
           <p className="font-mono text-[11px] text-slate-500">
@@ -87,13 +91,19 @@ export function BadgeCard({ badge, onClick }: BadgeCardProps) {
         </span>
       </div>
 
-      <h3 className="mb-1 font-display text-lg font-black text-slate-500">{badge.name}</h3>
-      <p className="mb-3 line-clamp-2 text-sm font-semibold text-slate-400">{badge.description}</p>
+      <h3 className="mb-1 font-display text-lg font-black text-slate-500">
+        {badge.name}
+      </h3>
+      <p className="mb-3 line-clamp-2 text-sm font-semibold text-slate-400">
+        {badge.description}
+      </p>
 
       {badge.progress ? (
         <div className="mt-3">
           <div className="mb-1 flex items-baseline justify-between">
-            <span className="font-mono text-[11px] text-slate-500">{formatProgress(badge)}</span>
+            <span className="font-mono text-[11px] text-slate-500">
+              {formatProgress(badge)}
+            </span>
             <span className="font-mono text-[11px] font-bold text-slate-600">
               {Math.round(progressPct)}%
             </span>

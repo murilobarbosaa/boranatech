@@ -159,7 +159,11 @@ interface FavoriteCardProps {
   onRemove: () => void;
 }
 
-export function FavoriteCard({ item, isRemoving = false, onRemove }: FavoriteCardProps) {
+export function FavoriteCard({
+  item,
+  isRemoving = false,
+  onRemove,
+}: FavoriteCardProps) {
   const meta = getFavoriteTypeMeta(item.type);
   const host = item.url ? externalHost(item.url) : null;
   const internal = item.url ? null : meta.internalPath(item);
@@ -195,7 +199,9 @@ export function FavoriteCard({ item, isRemoving = false, onRemove }: FavoriteCar
       </h3>
 
       {item.subtitle && (
-        <p className="mt-1 line-clamp-2 text-sm text-slate-500">{item.subtitle}</p>
+        <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+          {item.subtitle}
+        </p>
       )}
 
       {host && (

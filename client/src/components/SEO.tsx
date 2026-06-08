@@ -7,7 +7,13 @@ interface SEOProps {
   image?: string;
   url?: string;
   type?: "website" | "article" | "profile";
-  schemaType?: "WebPage" | "Article" | "CollectionPage" | "Course" | "FAQPage" | "Product";
+  schemaType?:
+    | "WebPage"
+    | "Article"
+    | "CollectionPage"
+    | "Course"
+    | "FAQPage"
+    | "Product";
   schemaData?: object;
   noindex?: boolean;
   publishedTime?: string;
@@ -58,7 +64,9 @@ export default function SEO({
   const fullTitle = formatTitle(title);
   const canonicalUrl = pageUrl(url);
   const imageUrl = absoluteUrl(image);
-  const robots = noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
+  const robots = noindex
+    ? "noindex, nofollow"
+    : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
   const schema = {
     "@context": "https://schema.org",
     "@type": schemaType,
@@ -95,7 +103,9 @@ export default function SEO({
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
-      {keywords.length > 0 ? <meta name="keywords" content={keywords.join(", ")} /> : null}
+      {keywords.length > 0 ? (
+        <meta name="keywords" content={keywords.join(", ")} />
+      ) : null}
       <meta name="author" content={author} />
       <meta name="robots" content={robots} />
       <link rel="canonical" href={canonicalUrl} />
@@ -110,8 +120,12 @@ export default function SEO({
       <meta property="og:type" content={type} />
       <meta property="og:site_name" content={siteName} />
       <meta property="og:locale" content={locale} />
-      {publishedTime ? <meta property="article:published_time" content={publishedTime} /> : null}
-      {modifiedTime ? <meta property="article:modified_time" content={modifiedTime} /> : null}
+      {publishedTime ? (
+        <meta property="article:published_time" content={publishedTime} />
+      ) : null}
+      {modifiedTime ? (
+        <meta property="article:modified_time" content={modifiedTime} />
+      ) : null}
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content={twitter} />

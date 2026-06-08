@@ -19,22 +19,28 @@ vi.mock("framer-motion", async () => {
 
   const fakeMotion = new Proxy({} as Record<string, unknown>, {
     get(_, tag: string) {
-      return React.forwardRef((props: Record<string, unknown>, ref: unknown) => {
-        const {
-          children,
-          animate: _a,
-          initial: _i,
-          transition: _t,
-          whileHover: _wh,
-          whileTap: _wt,
-          whileInView: _wv,
-          exit: _e,
-          variants: _v,
-          viewport: _vp,
-          ...rest
-        } = props as { children?: unknown } & Record<string, unknown>;
-        return React.createElement(tag, { ...rest, ref }, children as React.ReactNode);
-      });
+      return React.forwardRef(
+        (props: Record<string, unknown>, ref: unknown) => {
+          const {
+            children,
+            animate: _a,
+            initial: _i,
+            transition: _t,
+            whileHover: _wh,
+            whileTap: _wt,
+            whileInView: _wv,
+            exit: _e,
+            variants: _v,
+            viewport: _vp,
+            ...rest
+          } = props as { children?: unknown } & Record<string, unknown>;
+          return React.createElement(
+            tag,
+            { ...rest, ref },
+            children as React.ReactNode,
+          );
+        },
+      );
     },
   });
 
@@ -146,7 +152,9 @@ function bodyText(): string {
 
 function expectsPlaceholder() {
   const txt = bodyText();
-  expect(txt, `expected placeholder, got: ${txt.slice(0, 300)}`).toContain(PLACEHOLDER_TEXT);
+  expect(txt, `expected placeholder, got: ${txt.slice(0, 300)}`).toContain(
+    PLACEHOLDER_TEXT,
+  );
   // Invariante: jamais há "+N pessoas" no DOM no estado placeholder.
   expect(txt).not.toMatch(/\+\s*\d+\s*pessoas/);
   // Anti-regressão dura: nunca, em nenhum estado, deve aparecer "4800".
@@ -157,7 +165,10 @@ async function expectsNumber(expected: string) {
   await waitFor(() => {
     const txt = bodyText();
     const m = txt.match(/\+\s*([\d.]+)\s*pessoas já encontraram seu caminho/);
-    expect(m, `expected "+N pessoas..." in body, got: ${txt.slice(0, 300)}`).not.toBeNull();
+    expect(
+      m,
+      `expected "+N pessoas..." in body, got: ${txt.slice(0, 300)}`,
+    ).not.toBeNull();
     expect(m![1].replace(/[. ]/g, "")).toBe(expected);
   });
   // Em nenhum cenário deste teste o placeholder e o número coexistem.

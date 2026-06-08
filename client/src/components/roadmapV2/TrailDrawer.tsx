@@ -17,8 +17,15 @@ type TrailDrawerProps = {
   onClose: () => void;
 };
 
-export default function TrailDrawer({ section, done, onToggle, onClose }: TrailDrawerProps) {
-  const progress = section ? nodeProgress(section, done) : { done: 0, total: 0 };
+export default function TrailDrawer({
+  section,
+  done,
+  onToggle,
+  onClose,
+}: TrailDrawerProps) {
+  const progress = section
+    ? nodeProgress(section, done)
+    : { done: 0, total: 0 };
 
   return (
     <AnimatePresence>
@@ -67,7 +74,12 @@ export default function TrailDrawer({ section, done, onToggle, onClose }: TrailD
             </div>
             <div className="flex-1 overflow-y-auto px-7 pb-9 pt-3">
               {section.children.map((node) => (
-                <RoadmapNodeItem key={node.id} node={node} done={done} onToggle={onToggle} />
+                <RoadmapNodeItem
+                  key={node.id}
+                  node={node}
+                  done={done}
+                  onToggle={onToggle}
+                />
               ))}
             </div>
           </motion.div>

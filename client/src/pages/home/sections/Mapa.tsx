@@ -144,7 +144,9 @@ function CollapsedContent({ node }: { node: MapNode }) {
       transition={{ duration: 0.15 }}
       className="flex h-full flex-col items-center justify-between p-4"
     >
-      <span className={`font-display text-3xl font-black ${node.colors.accent}`}>
+      <span
+        className={`font-display text-3xl font-black ${node.colors.accent}`}
+      >
         {node.number}
       </span>
 
@@ -184,11 +186,15 @@ function PreviewContent({ node }: { node: MapNode }) {
       transition={{ duration: 0.2, delay: 0.05 }}
       className="flex h-full flex-col p-6"
     >
-      <span className={`font-display text-4xl font-black ${node.colors.accent}`}>
+      <span
+        className={`font-display text-4xl font-black ${node.colors.accent}`}
+      >
         {node.number}
       </span>
 
-      <h3 className={`mt-4 font-display text-2xl font-black ${node.colors.accent}`}>
+      <h3
+        className={`mt-4 font-display text-2xl font-black ${node.colors.accent}`}
+      >
         {node.title}
       </h3>
 
@@ -216,7 +222,9 @@ function OpenContent({ node }: { node: MapNode }) {
       className="flex h-full flex-col p-8"
     >
       <div className="flex items-start justify-between">
-        <span className={`font-display text-5xl font-black ${node.colors.accent}`}>
+        <span
+          className={`font-display text-5xl font-black ${node.colors.accent}`}
+        >
           {node.number}
         </span>
         <motion.div
@@ -227,7 +235,9 @@ function OpenContent({ node }: { node: MapNode }) {
         />
       </div>
 
-      <h3 className={`mt-4 font-display text-3xl font-black ${node.colors.accent}`}>
+      <h3
+        className={`mt-4 font-display text-3xl font-black ${node.colors.accent}`}
+      >
         {node.title}
       </h3>
 
@@ -252,7 +262,9 @@ function OpenContent({ node }: { node: MapNode }) {
                 size={18}
                 className={`shrink-0 transition-transform group-hover/link:translate-x-1 ${node.colors.accent}`}
               />
-              <span className={`truncate transition-colors ${node.colors.linkHover}`}>
+              <span
+                className={`truncate transition-colors ${node.colors.linkHover}`}
+              >
                 {tool.name}
               </span>
             </Link>
@@ -327,7 +339,9 @@ function Panel({
       }}
     >
       <AnimatePresence mode="wait">
-        {state === "collapsed" && <CollapsedContent key="collapsed" node={node} />}
+        {state === "collapsed" && (
+          <CollapsedContent key="collapsed" node={node} />
+        )}
         {state === "preview" && <PreviewContent key="preview" node={node} />}
         {state === "open" && <OpenContent key="open" node={node} />}
       </AnimatePresence>
@@ -361,10 +375,14 @@ function PanelMobile({
     >
       <div className="flex items-center justify-between p-5">
         <div className="flex items-center gap-4">
-          <span className={`font-display text-3xl font-black ${node.colors.accent}`}>
+          <span
+            className={`font-display text-3xl font-black ${node.colors.accent}`}
+          >
             {node.number}
           </span>
-          <h3 className={`font-display text-xl font-black ${node.colors.accent}`}>
+          <h3
+            className={`font-display text-xl font-black ${node.colors.accent}`}
+          >
             {node.title}
           </h3>
         </div>
@@ -386,7 +404,9 @@ function PanelMobile({
             className="overflow-hidden"
           >
             <div className="px-5 pb-5">
-              <p className="text-sm font-medium text-slate-700">{node.subtitle}</p>
+              <p className="text-sm font-medium text-slate-700">
+                {node.subtitle}
+              </p>
 
               <div
                 className={`mt-4 h-0.5 w-12 rounded-full ${node.colors.dot}`}
@@ -405,7 +425,9 @@ function PanelMobile({
                         size={18}
                         className={`shrink-0 transition-transform group-hover/link:translate-x-1 ${node.colors.accent}`}
                       />
-                      <span className={`transition-colors ${node.colors.linkHover}`}>
+                      <span
+                        className={`transition-colors ${node.colors.linkHover}`}
+                      >
                         {tool.name}
                       </span>
                     </Link>
@@ -417,7 +439,9 @@ function PanelMobile({
                 <div className="mt-4 border-t-2 border-dashed border-slate-300 pt-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     + {node.otherCount}{" "}
-                    {node.otherCount === 1 ? "outra ferramenta" : "outras ferramentas"}
+                    {node.otherCount === 1
+                      ? "outra ferramenta"
+                      : "outras ferramentas"}
                   </p>
                 </div>
               )}
@@ -468,7 +492,12 @@ function BackgroundDecoration() {
         viewBox="0 0 100 100"
         aria-hidden="true"
       >
-        <polygon points="50,15 90,85 10,85" fill="none" stroke="#fdba74" strokeWidth="3" />
+        <polygon
+          points="50,15 90,85 10,85"
+          fill="none"
+          stroke="#fdba74"
+          strokeWidth="3"
+        />
       </svg>
       <div
         className="absolute h-14 w-14 rotate-45 border-2 border-blue-300"

@@ -14,7 +14,13 @@ import PageHero from "@/components/shared/PageHero";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
-import { createStudyEntry, deleteStudyEntry, getStudyEntries, getStudyStats, type StudyStats } from "@/services/studyService";
+import {
+  createStudyEntry,
+  deleteStudyEntry,
+  getStudyEntries,
+  getStudyStats,
+  type StudyStats,
+} from "@/services/studyService";
 import { Link } from "wouter";
 
 const ac = getPageAccentUi("rose");
@@ -95,7 +101,9 @@ function last7DaysKeys(): string[] {
 
 function modeInsight(entries: StudyEntry[]): string {
   const weekStart = last7DaysKeys()[0];
-  const recent = entries.filter((e) => localDateKey(new Date(e.at)) >= weekStart);
+  const recent = entries.filter(
+    (e) => localDateKey(new Date(e.at)) >= weekStart,
+  );
   if (recent.length === 0) {
     return "Comece com registros curtos: mesmo 15 minutos válidos ajudam a ver padrões na próxima semana.";
   }
@@ -166,7 +174,10 @@ export default function EstudosDiario() {
     }
     return map;
   }, [entries, weekKeys]);
-  const weekTotalMin = useMemo(() => weekKeys.reduce((s, k) => s + (minutesByDay[k] || 0), 0), [minutesByDay, weekKeys]);
+  const weekTotalMin = useMemo(
+    () => weekKeys.reduce((s, k) => s + (minutesByDay[k] || 0), 0),
+    [minutesByDay, weekKeys],
+  );
   const maxDayMin = Math.max(1, ...weekKeys.map((k) => minutesByDay[k] || 0));
   const insight = useMemo(() => modeInsight(entries), [entries]);
 
@@ -238,19 +249,32 @@ export default function EstudosDiario() {
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
           <p className="mb-6 text-center text-sm font-semibold text-slate-600">
-            <Link href="/perfil" className="font-black text-violet-800 underline decoration-2 underline-offset-2 hover:text-violet-950">
+            <Link
+              href="/perfil"
+              className="font-black text-violet-800 underline decoration-2 underline-offset-2 hover:text-violet-950"
+            >
               Voltar ao perfil
             </Link>
           </p>
           {authLoading ? (
             <div className="card-brutal rounded-2xl bg-white p-6 text-center">
-              <p className="font-display text-2xl font-black text-slate-950">Carregando seu diário...</p>
+              <p className="font-display text-2xl font-black text-slate-950">
+                Carregando seu diário...
+              </p>
             </div>
           ) : !user ? (
             <div className="card-brutal rounded-2xl bg-white p-6 text-center">
-              <h2 className="font-display text-2xl font-black text-slate-950">Faça login para usar o diário</h2>
-              <p className="mt-2 text-sm font-medium text-slate-600">Seu histórico fica salvo na sua conta e sincroniza entre dispositivos.</p>
-              <Link href="/login" className="btn-brutal-accent mt-5 inline-flex rounded-full px-6 py-3 text-sm font-black">
+              <h2 className="font-display text-2xl font-black text-slate-950">
+                Faça login para usar o diário
+              </h2>
+              <p className="mt-2 text-sm font-medium text-slate-600">
+                Seu histórico fica salvo na sua conta e sincroniza entre
+                dispositivos.
+              </p>
+              <Link
+                href="/login"
+                className="btn-brutal-accent mt-5 inline-flex rounded-full px-6 py-3 text-sm font-black"
+              >
                 Entrar na conta
               </Link>
             </div>
@@ -260,9 +284,12 @@ export default function EstudosDiario() {
                 className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#0f172a] lg:col-span-2"
                 onSubmit={handleSubmit}
               >
-                <h2 className="font-display text-2xl font-black">Registrar sessão</h2>
+                <h2 className="font-display text-2xl font-black">
+                  Registrar sessão
+                </h2>
                 <p className="mt-2 text-sm font-medium text-slate-600">
-                  Descreva o foco principal e marque como a sessão se saiu. Isso guia ajustes reais de estudo.
+                  Descreva o foco principal e marque como a sessão se saiu. Isso
+                  guia ajustes reais de estudo.
                 </p>
 
                 <div className="mt-5">
@@ -279,7 +306,10 @@ export default function EstudosDiario() {
                         className={cn(
                           "rounded-full border-2 px-3 py-1.5 text-sm font-black transition-all",
                           minutes === m
-                            ? cn("border-slate-900 text-white shadow-[3px_3px_0_#0f172a]", ac.progressFill)
+                            ? cn(
+                                "border-slate-900 text-white shadow-[3px_3px_0_#0f172a]",
+                                ac.progressFill,
+                              )
                             : "border-slate-200 bg-white text-slate-700 hover:border-slate-400",
                         )}
                       >
@@ -292,31 +322,42 @@ export default function EstudosDiario() {
                     <input
                       type="number"
                       min={1}
-                      className={cn("mt-1 w-full rounded-xl border-2 p-3 text-base font-semibold", ac.input)}
+                      className={cn(
+                        "mt-1 w-full rounded-xl border-2 p-3 text-base font-semibold",
+                        ac.input,
+                      )}
                       value={minutes}
-                      onChange={(event) => setMinutes(Number(event.target.value))}
+                      onChange={(event) =>
+                        setMinutes(Number(event.target.value))
+                      }
                     />
                   </label>
                 </div>
 
                 <label className="mt-6 block font-black text-slate-950">
                   <span className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    O que você estudou ou praticou?
+                    <BookOpen className="h-4 w-4" />O que você estudou ou
+                    praticou?
                   </span>
                   <textarea
                     required
                     placeholder="Ex.: capítulo de async/await, 3 exercícios de SQL, revisão de anotações de rede..."
-                    className={cn("mt-2 min-h-28 w-full rounded-xl border-2 p-3 text-sm font-medium", ac.input)}
+                    className={cn(
+                      "mt-2 min-h-28 w-full rounded-xl border-2 p-3 text-sm font-medium",
+                      ac.input,
+                    )}
                     value={text}
                     onChange={(event) => setText(event.target.value)}
                   />
                 </label>
 
                 <div className="mt-6">
-                  <p className="font-black text-slate-950">Como foi a sessão?</p>
+                  <p className="font-black text-slate-950">
+                    Como foi a sessão?
+                  </p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Escolha o que melhor descreve a qualidade do estudo. Não é emoji, é diagnóstico para você.
+                    Escolha o que melhor descreve a qualidade do estudo. Não é
+                    emoji, é diagnóstico para você.
                   </p>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {SESSION_MODES.map((item) => {
@@ -328,7 +369,13 @@ export default function EstudosDiario() {
                           onClick={() => setMode(item.id)}
                           className={cn(
                             "flex gap-3 rounded-2xl border-2 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-[4px_4px_0_#0f172a]",
-                            isOn ? cn(item.activeRing, "border-slate-900", item.idleClass) : item.idleClass,
+                            isOn
+                              ? cn(
+                                  item.activeRing,
+                                  "border-slate-900",
+                                  item.idleClass,
+                                )
+                              : item.idleClass,
                           )}
                         >
                           <span
@@ -337,11 +384,18 @@ export default function EstudosDiario() {
                               isOn && "bg-amber-200",
                             )}
                           >
-                            <item.Icon className="h-5 w-5 text-slate-900" strokeWidth={2.25} />
+                            <item.Icon
+                              className="h-5 w-5 text-slate-900"
+                              strokeWidth={2.25}
+                            />
                           </span>
                           <span>
-                            <span className="block font-display text-base font-black text-slate-950">{item.label}</span>
-                            <span className="mt-1 block text-xs font-medium leading-snug text-slate-600">{item.hint}</span>
+                            <span className="block font-display text-base font-black text-slate-950">
+                              {item.label}
+                            </span>
+                            <span className="mt-1 block text-xs font-medium leading-snug text-slate-600">
+                              {item.hint}
+                            </span>
                           </span>
                         </button>
                       );
@@ -354,43 +408,65 @@ export default function EstudosDiario() {
                   className="btn-brutal-accent mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 font-black"
                   disabled={saving}
                 >
-                  {saving ? "Salvando..." : "Salvar no diário"} <ArrowRight className="h-4 w-4" />
+                  {saving ? "Salvando..." : "Salvar no diário"}{" "}
+                  <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
 
               <aside className="space-y-5">
-                <div className={cn("card-brutal rounded-2xl p-6 text-white shadow-[5px_5px_0_#0f172a]", ac.tableBanner)}>
-                  <p className={cn("text-sm font-bold", ac.tableBannerMuted)}>Sequência (dias com registro)</p>
+                <div
+                  className={cn(
+                    "card-brutal rounded-2xl p-6 text-white shadow-[5px_5px_0_#0f172a]",
+                    ac.tableBanner,
+                  )}
+                >
+                  <p className={cn("text-sm font-bold", ac.tableBannerMuted)}>
+                    Sequência (dias com registro)
+                  </p>
                   <p className="font-display text-5xl font-black">{streak}</p>
-                  <p className="text-sm font-medium opacity-90">Conta só se você registrou hoje ou ontem.</p>
+                  <p className="text-sm font-medium opacity-90">
+                    Conta só se você registrou hoje ou ontem.
+                  </p>
                 </div>
 
                 <div className="card-brutal rounded-2xl bg-white p-5 shadow-[5px_5px_0_#0f172a]">
-                  <h3 className="font-display text-xl font-black">Últimos 7 dias</h3>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">Altura = minutos estudados naquele dia</p>
+                  <h3 className="font-display text-xl font-black">
+                    Últimos 7 dias
+                  </h3>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Altura = minutos estudados naquele dia
+                  </p>
                   <div className="mt-4 flex h-28 items-end gap-1.5">
                     {weekKeys.map((k) => {
                       const min = minutesByDay[k] || 0;
                       const h = Math.max(8, (min / maxDayMin) * 100);
                       const isToday = k === localDateKey(new Date());
                       return (
-                        <div key={k} className="flex flex-1 flex-col items-center gap-1">
+                        <div
+                          key={k}
+                          className="flex flex-1 flex-col items-center gap-1"
+                        >
                           <div
                             className={cn(
                               "w-full max-w-[2.5rem] rounded-t-md border-2 border-slate-900 transition-all",
-                              min > 0 ? cn(ac.progressFill, "opacity-90") : "bg-slate-100",
+                              min > 0
+                                ? cn(ac.progressFill, "opacity-90")
+                                : "bg-slate-100",
                               isToday && "ring-2 ring-amber-400 ring-offset-1",
                             )}
                             style={{ height: `${h}%` }}
                             title={`${k}: ${min} min`}
                           />
-                          <span className="text-[10px] font-black text-slate-500">{k.slice(8)}</span>
+                          <span className="text-[10px] font-black text-slate-500">
+                            {k.slice(8)}
+                          </span>
                         </div>
                       );
                     })}
                   </div>
                   <p className="mt-3 text-sm font-bold text-slate-700">
-                    Total na semana: {(weekTotalMin / 60).toFixed(1)}h ({weekTotalMin} min)
+                    Total na semana: {(weekTotalMin / 60).toFixed(1)}h (
+                    {weekTotalMin} min)
                   </p>
                 </div>
               </aside>
@@ -398,15 +474,20 @@ export default function EstudosDiario() {
               <div className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#0f172a] lg:col-span-3">
                 <h2 className="font-display text-2xl font-black">Histórico</h2>
                 {loadingEntries ? (
-                  <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">Carregando histórico...</p>
+                  <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">
+                    Carregando histórico...
+                  </p>
                 ) : entries.length === 0 ? (
                   <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-600">
-                    Nenhum registro ainda. O primeiro já destrava o gráfico da semana.
+                    Nenhum registro ainda. O primeiro já destrava o gráfico da
+                    semana.
                   </p>
                 ) : (
                   <ul className="mt-4 space-y-3">
                     {entries.map((entry) => {
-                      const meta = SESSION_MODES.find((m) => m.id === entry.mode)!;
+                      const meta = SESSION_MODES.find(
+                        (m) => m.id === entry.mode,
+                      )!;
                       const when = new Date(entry.at);
                       return (
                         <li
@@ -418,11 +499,26 @@ export default function EstudosDiario() {
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="text-xs font-bold text-slate-500">
-                              {when.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short", timeZone: "America/Sao_Paulo" })} ·{" "}
-                              {when.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })} · {entry.minutes} min ·{" "}
-                              <span className="text-slate-800">{meta.label}</span>
+                              {when.toLocaleDateString("pt-BR", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                timeZone: "America/Sao_Paulo",
+                              })}{" "}
+                              ·{" "}
+                              {when.toLocaleTimeString("pt-BR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                timeZone: "America/Sao_Paulo",
+                              })}{" "}
+                              · {entry.minutes} min ·{" "}
+                              <span className="text-slate-800">
+                                {meta.label}
+                              </span>
                             </p>
-                            <p className="mt-1 text-sm font-semibold text-slate-800">{entry.text}</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {entry.text}
+                            </p>
                           </div>
                           <button
                             type="button"
@@ -437,12 +533,24 @@ export default function EstudosDiario() {
                     })}
                   </ul>
                 )}
-                <p className={cn("mt-5 rounded-xl p-4 text-sm font-bold leading-relaxed", ac.panelSoft, ac.tbodyAccent)}>
-                  <span className="font-display text-xs uppercase tracking-wide opacity-80">Resumo automático · </span>
+                <p
+                  className={cn(
+                    "mt-5 rounded-xl p-4 text-sm font-bold leading-relaxed",
+                    ac.panelSoft,
+                    ac.tbodyAccent,
+                  )}
+                >
+                  <span className="font-display text-xs uppercase tracking-wide opacity-80">
+                    Resumo automático ·{" "}
+                  </span>
                   {insight}
                 </p>
                 <p className="mt-3 text-xs font-semibold text-slate-500">
-                  Última escolha no formulário: <strong className="text-slate-800">{selectedMode.label}</strong>, {selectedMode.hint}
+                  Última escolha no formulário:{" "}
+                  <strong className="text-slate-800">
+                    {selectedMode.label}
+                  </strong>
+                  , {selectedMode.hint}
                 </p>
               </div>
             </div>

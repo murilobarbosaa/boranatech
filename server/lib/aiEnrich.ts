@@ -71,7 +71,10 @@ Retorne JSON conforme especificado.`;
 
     let level = parsed.level as Level;
     if (!VALID_LEVELS.includes(level)) {
-      console.warn("[aiEnrich] invalid level, defaulting to intermediario:", parsed.level);
+      console.warn(
+        "[aiEnrich] invalid level, defaulting to intermediario:",
+        parsed.level,
+      );
       level = "intermediario";
     }
 

@@ -27,7 +27,10 @@ const FEATURED_SLUGS = [
   "ciberseguranca",
 ] as const;
 
-const FEATURED_OVERRIDES: Record<(typeof FEATURED_SLUGS)[number], { bg: string; color: string; exemplos: string }> = {
+const FEATURED_OVERRIDES: Record<
+  (typeof FEATURED_SLUGS)[number],
+  { bg: string; color: string; exemplos: string }
+> = {
   frontend: { bg: "bg-violet-50", color: "#8b5cf6", exemplos: "React, Vue" },
   backend: { bg: "bg-emerald-50", color: "#10b981", exemplos: "Node, Python" },
   mobile: { bg: "bg-orange-50", color: "#f97316", exemplos: "iOS, Android" },
@@ -35,7 +38,11 @@ const FEATURED_OVERRIDES: Record<(typeof FEATURED_SLUGS)[number], { bg: string; 
   uxui: { bg: "bg-fuchsia-50", color: "#d946ef", exemplos: "Figma, Design" },
   cloud: { bg: "bg-cyan-50", color: "#06b6d4", exemplos: "AWS, GCP" },
   devops: { bg: "bg-amber-50", color: "#f59e0b", exemplos: "Docker, K8s" },
-  ciberseguranca: { bg: "bg-rose-50", color: "#f43f5e", exemplos: "Pentest, Hash" },
+  ciberseguranca: {
+    bg: "bg-rose-50",
+    color: "#f43f5e",
+    exemplos: "Pentest, Hash",
+  },
 };
 
 const FEATURED_AREAS = FEATURED_SLUGS.flatMap((slug) => {
@@ -64,7 +71,12 @@ const CARDINAL_NODES: CardinalNode[] = [
   { label: "N · Descobrir", color: "#7c3aed", top: "8%", left: SIDE_OFFSET },
   { label: "L · Estudar", color: "#059669", top: "35%", right: SIDE_OFFSET },
   { label: "S · Praticar", color: "#ea580c", bottom: "8%", right: SIDE_OFFSET },
-  { label: "O · Conseguir", color: "#2563eb", bottom: "35%", left: SIDE_OFFSET },
+  {
+    label: "O · Conseguir",
+    color: "#2563eb",
+    bottom: "35%",
+    left: SIDE_OFFSET,
+  },
 ];
 
 // =========================================
@@ -143,7 +155,10 @@ function AnimatedCounter({ value }: { value: number }) {
 
   useEffect(() => {
     if (isInView) {
-      const controls = animate(count, value, { duration: 1.2, ease: "easeOut" });
+      const controls = animate(count, value, {
+        duration: 1.2,
+        ease: "easeOut",
+      });
       return () => controls.stop();
     }
   }, [isInView, value, count]);
@@ -215,7 +230,10 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
   }, [sectionRef]);
 
   return (
-    <div className="absolute inset-0 z-0 pointer-events-none select-none" aria-hidden="true">
+    <div
+      className="absolute inset-0 z-0 pointer-events-none select-none"
+      aria-hidden="true"
+    >
       {/* CAMADA 1: Grid de coordenadas: latitudes principais (320px) + grid fino (80px) sobrepostos. */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -234,152 +252,158 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
           Coordenadas calculadas dinamicamente a partir da posição real
           dos dots cardinais (via ResizeObserver + getBoundingClientRect).
           Renderiza só quando todas as 4 posições estão medidas. */}
-      {dims && nodePositions.N && nodePositions.L && nodePositions.S && nodePositions.O && (
-        <svg
-          className="absolute inset-0 hidden h-full w-full xl:block pointer-events-none"
-          viewBox={`0 0 ${dims.w} ${dims.h}`}
-          preserveAspectRatio="none"
-        >
-          <defs>
-            {/* Gradient 1: violet-600 → emerald-600 (N→L) */}
-            <linearGradient
-              id="journey-gradient-1"
-              gradientUnits="userSpaceOnUse"
-              x1={nodePositions.N.x}
-              y1={nodePositions.N.y}
-              x2={nodePositions.L.x}
-              y2={nodePositions.L.y}
-            >
-              <stop offset="0%" stopColor="#7c3aed" />
-              <stop offset="100%" stopColor="#059669" />
-            </linearGradient>
-
-            {/* Gradient 2: emerald-600 → orange-600 (L→S) */}
-            <linearGradient
-              id="journey-gradient-2"
-              gradientUnits="userSpaceOnUse"
-              x1={nodePositions.L.x}
-              y1={nodePositions.L.y}
-              x2={nodePositions.S.x}
-              y2={nodePositions.S.y}
-            >
-              <stop offset="0%" stopColor="#059669" />
-              <stop offset="100%" stopColor="#ea580c" />
-            </linearGradient>
-
-            {/* Gradient 3: orange-600 → blue-600 (S→O) */}
-            <linearGradient
-              id="journey-gradient-3"
-              gradientUnits="userSpaceOnUse"
-              x1={nodePositions.S.x}
-              y1={nodePositions.S.y}
-              x2={nodePositions.O.x}
-              y2={nodePositions.O.y}
-            >
-              <stop offset="0%" stopColor="#ea580c" />
-              <stop offset="100%" stopColor="#2563eb" />
-            </linearGradient>
-          </defs>
-
-          {/* Linha 1: dot N → dot L */}
-          <path
-            d={generateSCurvePath(nodePositions.N, nodePositions.L)}
-            fill="none"
-            stroke="url(#journey-gradient-1)"
-            strokeWidth="0.7"
-            strokeDasharray="2 2.5"
-            strokeLinecap="round"
-            opacity="0.85"
-            vectorEffect="non-scaling-stroke"
+      {dims &&
+        nodePositions.N &&
+        nodePositions.L &&
+        nodePositions.S &&
+        nodePositions.O && (
+          <svg
+            className="absolute inset-0 hidden h-full w-full xl:block pointer-events-none"
+            viewBox={`0 0 ${dims.w} ${dims.h}`}
+            preserveAspectRatio="none"
           >
-            <animate
-              attributeName="stroke-dashoffset"
-              from="0"
-              to="-40"
-              dur="60s"
-              repeatCount="indefinite"
-            />
-          </path>
+            <defs>
+              {/* Gradient 1: violet-600 → emerald-600 (N→L) */}
+              <linearGradient
+                id="journey-gradient-1"
+                gradientUnits="userSpaceOnUse"
+                x1={nodePositions.N.x}
+                y1={nodePositions.N.y}
+                x2={nodePositions.L.x}
+                y2={nodePositions.L.y}
+              >
+                <stop offset="0%" stopColor="#7c3aed" />
+                <stop offset="100%" stopColor="#059669" />
+              </linearGradient>
 
-          {/* Linha 2: dot L → dot S */}
-          <path
-            d={generateSCurvePath(nodePositions.L, nodePositions.S)}
-            fill="none"
-            stroke="url(#journey-gradient-2)"
-            strokeWidth="0.7"
-            strokeDasharray="2 2.5"
-            strokeLinecap="round"
-            opacity="0.85"
-            vectorEffect="non-scaling-stroke"
-          >
-            <animate
-              attributeName="stroke-dashoffset"
-              from="0"
-              to="-40"
-              dur="60s"
-              repeatCount="indefinite"
-            />
-          </path>
+              {/* Gradient 2: emerald-600 → orange-600 (L→S) */}
+              <linearGradient
+                id="journey-gradient-2"
+                gradientUnits="userSpaceOnUse"
+                x1={nodePositions.L.x}
+                y1={nodePositions.L.y}
+                x2={nodePositions.S.x}
+                y2={nodePositions.S.y}
+              >
+                <stop offset="0%" stopColor="#059669" />
+                <stop offset="100%" stopColor="#ea580c" />
+              </linearGradient>
 
-          {/* Linha 3: dot S → dot O */}
-          <path
-            d={generateSCurvePath(nodePositions.S, nodePositions.O)}
-            fill="none"
-            stroke="url(#journey-gradient-3)"
-            strokeWidth="0.7"
-            strokeDasharray="2 2.5"
-            strokeLinecap="round"
-            opacity="0.85"
-            vectorEffect="non-scaling-stroke"
-          >
-            <animate
-              attributeName="stroke-dashoffset"
-              from="0"
-              to="-40"
-              dur="60s"
-              repeatCount="indefinite"
-            />
-          </path>
-        </svg>
-      )}
+              {/* Gradient 3: orange-600 → blue-600 (S→O) */}
+              <linearGradient
+                id="journey-gradient-3"
+                gradientUnits="userSpaceOnUse"
+                x1={nodePositions.S.x}
+                y1={nodePositions.S.y}
+                x2={nodePositions.O.x}
+                y2={nodePositions.O.y}
+              >
+                <stop offset="0%" stopColor="#ea580c" />
+                <stop offset="100%" stopColor="#2563eb" />
+              </linearGradient>
+            </defs>
+
+            {/* Linha 1: dot N → dot L */}
+            <path
+              d={generateSCurvePath(nodePositions.N, nodePositions.L)}
+              fill="none"
+              stroke="url(#journey-gradient-1)"
+              strokeWidth="0.7"
+              strokeDasharray="2 2.5"
+              strokeLinecap="round"
+              opacity="0.85"
+              vectorEffect="non-scaling-stroke"
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                from="0"
+                to="-40"
+                dur="60s"
+                repeatCount="indefinite"
+              />
+            </path>
+
+            {/* Linha 2: dot L → dot S */}
+            <path
+              d={generateSCurvePath(nodePositions.L, nodePositions.S)}
+              fill="none"
+              stroke="url(#journey-gradient-2)"
+              strokeWidth="0.7"
+              strokeDasharray="2 2.5"
+              strokeLinecap="round"
+              opacity="0.85"
+              vectorEffect="non-scaling-stroke"
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                from="0"
+                to="-40"
+                dur="60s"
+                repeatCount="indefinite"
+              />
+            </path>
+
+            {/* Linha 3: dot S → dot O */}
+            <path
+              d={generateSCurvePath(nodePositions.S, nodePositions.O)}
+              fill="none"
+              stroke="url(#journey-gradient-3)"
+              strokeWidth="0.7"
+              strokeDasharray="2 2.5"
+              strokeLinecap="round"
+              opacity="0.85"
+              vectorEffect="non-scaling-stroke"
+            >
+              <animate
+                attributeName="stroke-dashoffset"
+                from="0"
+                to="-40"
+                dur="60s"
+                repeatCount="indefinite"
+              />
+            </path>
+          </svg>
+        )}
 
       {/* CAMADA 3: 4 nós cardeais com pulse defasado entre si.
           Cada wrapper recebe ref via callback (chave N/L/S/O extraída do label)
           para que o useEffect acima meça a posição real do dot pulsante. */}
-      {CARDINAL_NODES.map(({ label, color, top, left, right, bottom }, index) => {
-        const key = label.split(" · ")[0] as NodeKey;
-        return (
-          <div
-            key={label}
-            ref={(el) => {
-              nodeRefs.current[key] = el;
-            }}
-            className="absolute hidden items-center gap-2 xl:flex"
-            style={{ top, left, right, bottom }}
-          >
-            <motion.div
-              data-dot
-              className="rounded-full"
-              style={{ width: 12, height: 12, backgroundColor: color }}
-              animate={{
-                scale: [1, 2, 1],
-                opacity: [0.7, 0.2, 0.7],
+      {CARDINAL_NODES.map(
+        ({ label, color, top, left, right, bottom }, index) => {
+          const key = label.split(" · ")[0] as NodeKey;
+          return (
+            <div
+              key={label}
+              ref={(el) => {
+                nodeRefs.current[key] = el;
               }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                delay: index * 0.4,
-              }}
-            />
-            <span
-              className="font-mono text-base font-semibold uppercase tracking-wider"
-              style={{ color, opacity: 0.7 }}
+              className="absolute hidden items-center gap-2 xl:flex"
+              style={{ top, left, right, bottom }}
             >
-              {label}
-            </span>
-          </div>
-        );
-      })}
+              <motion.div
+                data-dot
+                className="rounded-full"
+                style={{ width: 12, height: 12, backgroundColor: color }}
+                animate={{
+                  scale: [1, 2, 1],
+                  opacity: [0.7, 0.2, 0.7],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  delay: index * 0.4,
+                }}
+              />
+              <span
+                className="font-mono text-base font-semibold uppercase tracking-wider"
+                style={{ color, opacity: 0.7 }}
+              >
+                {label}
+              </span>
+            </div>
+          );
+        },
+      )}
     </div>
   );
 }
@@ -413,7 +437,9 @@ export default function Hero() {
   const [currentHighlight, setCurrentHighlight] = useState(0);
   // null = sem número confiável (primeira visita sem cache OU backend sem lkg).
   // Nunca usamos um default hardcoded; o placeholder do badge cobre o estado vazio.
-  const [usersCount, setUsersCount] = useState<number | null>(() => readCachedUsersCount());
+  const [usersCount, setUsersCount] = useState<number | null>(() =>
+    readCachedUsersCount(),
+  );
   const sectionRef = useRef<HTMLElement>(null);
 
   // Alterna o highlight do headline a cada 3s.
@@ -459,7 +485,8 @@ export default function Hero() {
           <span className="text-sm font-bold text-slate-950">
             {usersCount !== null ? (
               <>
-                +<AnimatedCounter value={usersCount} /> pessoas já encontraram seu caminho
+                +<AnimatedCounter value={usersCount} /> pessoas já encontraram
+                seu caminho
               </>
             ) : (
               "Já estão encontrando o caminho em tech"
@@ -520,8 +547,8 @@ export default function Hero() {
           transition={{ delay: 1.0, duration: 0.5 }}
           className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg"
         >
-          Áreas, roadmaps, cursos, projetos, IA, eventos e carreira organizados em uma jornada
-          clara, acessível e prática para quem está começando.
+          Áreas, roadmaps, cursos, projetos, IA, eventos e carreira organizados
+          em uma jornada clara, acessível e prática para quem está começando.
         </motion.p>
 
         {/* 5) CTAs */}
@@ -562,46 +589,54 @@ export default function Hero() {
           className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4"
           aria-label="Áreas da tecnologia"
         >
-          {FEATURED_AREAS.map(({ nome, slug, icon: Icon, bg, color, exemplos }) => (
-            <motion.li
-              key={slug}
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                show: { opacity: 1, y: 0 },
-              }}
-              className={`relative ${bg} rounded-2xl border-2 border-slate-950 text-left transition hover:-translate-y-1`}
-              style={{ boxShadow: `4px 4px 0 ${color}` }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = `6px 6px 0 ${color}`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = `4px 4px 0 ${color}`;
-              }}
-            >
-              <Link
-                href={`/areas/${slug}`}
-                aria-label={`Explorar área de ${nome}`}
-                className="block rounded-2xl p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-950"
+          {FEATURED_AREAS.map(
+            ({ nome, slug, icon: Icon, bg, color, exemplos }) => (
+              <motion.li
+                key={slug}
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  show: { opacity: 1, y: 0 },
+                }}
+                className={`relative ${bg} rounded-2xl border-2 border-slate-950 text-left transition hover:-translate-y-1`}
+                style={{ boxShadow: `4px 4px 0 ${color}` }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = `6px 6px 0 ${color}`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = `4px 4px 0 ${color}`;
+                }}
               >
-                <motion.div
-                  className="absolute right-3 top-3 rounded-full"
-                  style={{ width: 8, height: 8, backgroundColor: color }}
-                  animate={{
-                    scale: [1, 1.5, 1],
-                    opacity: [0.7, 0.3, 0.7],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  aria-hidden="true"
-                />
-                <Icon size={32} className="text-slate-950" aria-hidden="true" />
-                <h3 className="font-display mt-3 text-base font-black text-slate-950">{nome}</h3>
-                <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                  <span>▶</span>
-                  <span>{exemplos}</span>
-                </p>
-              </Link>
-            </motion.li>
-          ))}
+                <Link
+                  href={`/areas/${slug}`}
+                  aria-label={`Explorar área de ${nome}`}
+                  className="block rounded-2xl p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-950"
+                >
+                  <motion.div
+                    className="absolute right-3 top-3 rounded-full"
+                    style={{ width: 8, height: 8, backgroundColor: color }}
+                    animate={{
+                      scale: [1, 1.5, 1],
+                      opacity: [0.7, 0.3, 0.7],
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    aria-hidden="true"
+                  />
+                  <Icon
+                    size={32}
+                    className="text-slate-950"
+                    aria-hidden="true"
+                  />
+                  <h3 className="font-display mt-3 text-base font-black text-slate-950">
+                    {nome}
+                  </h3>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                    <span>▶</span>
+                    <span>{exemplos}</span>
+                  </p>
+                </Link>
+              </motion.li>
+            ),
+          )}
         </motion.ul>
       </div>
     </section>

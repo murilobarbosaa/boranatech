@@ -48,7 +48,10 @@ const HERO_BLOB: Record<PageHeroAccent, string> = {
 function AreaHeroDecor({ accent }: { accent: PageHeroAccent }) {
   const blob = HERO_BLOB[accent];
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
       <div
         className={cn(
           "absolute -right-12 -top-16 h-48 w-48 rounded-full opacity-40 blur-3xl animate-gentle-float",
@@ -86,14 +89,29 @@ function CompanyLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
           onError={() => setHasError(true)}
         />
       ) : (
-        <span className="font-display text-sm font-black text-slate-700">{name.charAt(0)}</span>
+        <span className="font-display text-sm font-black text-slate-700">
+          {name.charAt(0)}
+        </span>
       )}
     </span>
   );
 }
 
-function DifficultyDots({ level, fillClass }: { level: number; fillClass: string }) {
-  const labels = ["", "Muito fácil", "Fácil", "Médio", "Difícil", "Muito difícil"];
+function DifficultyDots({
+  level,
+  fillClass,
+}: {
+  level: number;
+  fillClass: string;
+}) {
+  const labels = [
+    "",
+    "Muito fácil",
+    "Fácil",
+    "Médio",
+    "Difícil",
+    "Muito difícil",
+  ];
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex gap-1">
@@ -112,11 +130,30 @@ function DifficultyDots({ level, fillClass }: { level: number; fillClass: string
   );
 }
 
-function GraduationChip({ value }: { value: NonNullable<AreaTI["requiresGraduation"]> }) {
-  const map: Record<NonNullable<AreaTI["requiresGraduation"]>, { bg: string; text: string; label: string }> = {
-    obrigatorio: { bg: "bg-rose-100 border-rose-300", text: "text-rose-800", label: "Costuma exigir graduação" },
-    recomendado: { bg: "bg-amber-100 border-amber-300", text: "text-amber-800", label: "Graduação ajuda bastante" },
-    opcional: { bg: "bg-emerald-100 border-emerald-300", text: "text-emerald-800", label: "Graduação opcional" },
+function GraduationChip({
+  value,
+}: {
+  value: NonNullable<AreaTI["requiresGraduation"]>;
+}) {
+  const map: Record<
+    NonNullable<AreaTI["requiresGraduation"]>,
+    { bg: string; text: string; label: string }
+  > = {
+    obrigatorio: {
+      bg: "bg-rose-100 border-rose-300",
+      text: "text-rose-800",
+      label: "Costuma exigir graduação",
+    },
+    recomendado: {
+      bg: "bg-amber-100 border-amber-300",
+      text: "text-amber-800",
+      label: "Graduação ajuda bastante",
+    },
+    opcional: {
+      bg: "bg-emerald-100 border-emerald-300",
+      text: "text-emerald-800",
+      label: "Graduação opcional",
+    },
   };
   const s = map[value];
   return (
@@ -127,20 +164,41 @@ function GraduationChip({ value }: { value: NonNullable<AreaTI["requiresGraduati
         s.text,
       )}
     >
-      <GraduationCap className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden /> {s.label}
+      <GraduationCap className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />{" "}
+      {s.label}
     </span>
   );
 }
 
-function CrescimentoBadge({ value }: { value: NonNullable<AreaTI["crescimentoMercado"]> }) {
+function CrescimentoBadge({
+  value,
+}: {
+  value: NonNullable<AreaTI["crescimentoMercado"]>;
+}) {
   const map: Record<
     NonNullable<AreaTI["crescimentoMercado"]>,
     { bg: string; text: string; label: string }
   > = {
-    alto: { bg: "bg-emerald-100 border-emerald-300", text: "text-emerald-800", label: "Em alta 📈" },
-    medio: { bg: "bg-amber-100 border-amber-300", text: "text-amber-800", label: "Estável ➡️" },
-    estavel: { bg: "bg-slate-100 border-slate-300", text: "text-slate-700", label: "Maduro" },
-    baixo: { bg: "bg-rose-100 border-rose-300", text: "text-rose-800", label: "Mercado em transição" },
+    alto: {
+      bg: "bg-emerald-100 border-emerald-300",
+      text: "text-emerald-800",
+      label: "Em alta 📈",
+    },
+    medio: {
+      bg: "bg-amber-100 border-amber-300",
+      text: "text-amber-800",
+      label: "Estável ➡️",
+    },
+    estavel: {
+      bg: "bg-slate-100 border-slate-300",
+      text: "text-slate-700",
+      label: "Maduro",
+    },
+    baixo: {
+      bg: "bg-rose-100 border-rose-300",
+      text: "text-rose-800",
+      label: "Mercado em transição",
+    },
   };
   const s = map[value];
   return (
@@ -151,7 +209,8 @@ function CrescimentoBadge({ value }: { value: NonNullable<AreaTI["crescimentoMer
         s.text,
       )}
     >
-      <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden /> {s.label}
+      <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />{" "}
+      {s.label}
     </span>
   );
 }
@@ -177,23 +236,44 @@ function AreaHeroStats({
     <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
       <div className="grid gap-6 md:grid-cols-3">
         <div>
-          <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
+          <p
+            className={cn(
+              "mb-2 text-xs font-black uppercase tracking-[0.18em]",
+              iconMutedClass,
+            )}
+          >
             Dificuldade
           </p>
           <DifficultyDots level={area.dificuldade} fillClass={fillClass} />
         </div>
         <div className="md:border-l-2 md:border-slate-100 md:pl-6">
-          <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
+          <p
+            className={cn(
+              "mb-2 text-xs font-black uppercase tracking-[0.18em]",
+              iconMutedClass,
+            )}
+          >
             Faixa salarial
           </p>
-          <p className="text-sm font-bold leading-snug text-slate-900">{faixaResumo}</p>
-          <p className="mt-0.5 text-xs font-medium text-slate-500">do estágio ao sênior</p>
+          <p className="text-sm font-bold leading-snug text-slate-900">
+            {faixaResumo}
+          </p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">
+            do estágio ao sênior
+          </p>
         </div>
         <div className="md:border-l-2 md:border-slate-100 md:pl-6">
-          <p className={cn("mb-2 text-xs font-black uppercase tracking-[0.18em]", iconMutedClass)}>
+          <p
+            className={cn(
+              "mb-2 text-xs font-black uppercase tracking-[0.18em]",
+              iconMutedClass,
+            )}
+          >
             Tempo até estar pronto
           </p>
-          <p className="text-sm font-bold leading-snug text-slate-900">{tempoLabel}</p>
+          <p className="text-sm font-bold leading-snug text-slate-900">
+            {tempoLabel}
+          </p>
         </div>
       </div>
     </div>
@@ -214,7 +294,11 @@ export default function AreaDetalhe() {
       .then((fetched) =>
         setArea(
           fetched
-            ? ({ ...(local ?? {}), ...fetched, roadmapStatus: localRoadmapStatus } as AreaTI)
+            ? ({
+                ...(local ?? {}),
+                ...fetched,
+                roadmapStatus: localRoadmapStatus,
+              } as AreaTI)
             : null,
         ),
       )
@@ -226,8 +310,12 @@ export default function AreaDetalhe() {
       <Layout>
         <div className="container py-20 text-center">
           <p className="mb-4 text-5xl">😕</p>
-          <h1 className="font-display mb-2 text-2xl font-bold text-slate-900">Área não encontrada</h1>
-          <p className="mb-6 text-slate-950">Essa área não existe ou foi removida.</p>
+          <h1 className="font-display mb-2 text-2xl font-bold text-slate-900">
+            Área não encontrada
+          </h1>
+          <p className="mb-6 text-slate-950">
+            Essa área não existe ou foi removida.
+          </p>
           <Link
             href="/areas"
             className="inline-flex items-center gap-2 font-medium text-violet-700 hover:underline"
@@ -243,7 +331,9 @@ export default function AreaDetalhe() {
   const ac = getPageAccentUi(accent);
   const comingSoon = area.roadmapStatus === "coming-soon";
 
-  const cursosDaArea = cursosGratuitos.filter((c) => c.areaSlug === area.slug).slice(0, 3);
+  const cursosDaArea = cursosGratuitos
+    .filter((c) => c.areaSlug === area.slug)
+    .slice(0, 3);
   const empresasDaArea = companies
     .filter((company) => company.areas.includes(area.slug))
     .slice(0, 4);
@@ -262,16 +352,27 @@ export default function AreaDetalhe() {
         topSlot={
           <Link
             href="/areas"
-            className={cn("inline-flex items-center gap-2 text-sm font-bold", ac.link, ac.linkHover)}
+            className={cn(
+              "inline-flex items-center gap-2 text-sm font-bold",
+              ac.link,
+              ac.linkHover,
+            )}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden /> Todas as áreas
           </Link>
         }
-        titlePrefix={<AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" />}
+        titlePrefix={
+          <AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" />
+        }
         actions={
           <FavoriteButton
             compact
-            item={{ id: area.id, type: "area", title: area.nome, subtitle: area.descricaoCurta }}
+            item={{
+              id: area.id,
+              type: "area",
+              title: area.nome,
+              subtitle: area.descricaoCurta,
+            }}
           />
         }
       />
@@ -283,7 +384,11 @@ export default function AreaDetalhe() {
             <div className="space-y-10">
               {/* ============ ZONA 1: Hero stats + CTAs ============ */}
               <div className="area-rise space-y-4">
-                <AreaHeroStats area={area} fillClass={ac.progressFill} iconMutedClass={ac.iconMuted} />
+                <AreaHeroStats
+                  area={area}
+                  fillClass={ac.progressFill}
+                  iconMutedClass={ac.iconMuted}
+                />
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {comingSoon ? (
@@ -291,14 +396,24 @@ export default function AreaDetalhe() {
                       aria-disabled
                       className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-400 bg-slate-50 px-4 py-3 text-sm font-black uppercase tracking-wider text-slate-500"
                     >
-                      <Clock className="h-4 w-4" strokeWidth={2.5} aria-hidden /> Em breve
+                      <Clock
+                        className="h-4 w-4"
+                        strokeWidth={2.5}
+                        aria-hidden
+                      />{" "}
+                      Em breve
                     </span>
                   ) : (
                     <Link
                       href={`/roadmaps?area=${area.slug}`}
                       className="flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-950 bg-violet-700 px-4 py-3 text-sm font-black uppercase tracking-wide text-white shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
                     >
-                      Ver roadmap <ArrowRight className="h-4 w-4" strokeWidth={3} aria-hidden />
+                      Ver roadmap{" "}
+                      <ArrowRight
+                        className="h-4 w-4"
+                        strokeWidth={3}
+                        aria-hidden
+                      />
                     </Link>
                   )}
 
@@ -306,7 +421,12 @@ export default function AreaDetalhe() {
                     href={`/cursos?area=${area.slug}`}
                     className="flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-950 bg-white px-4 py-3 text-sm font-black uppercase tracking-wide text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-[5px_5px_0_#0f172a]"
                   >
-                    Cursos grátis <ArrowRight className="h-4 w-4" strokeWidth={3} aria-hidden />
+                    Cursos grátis{" "}
+                    <ArrowRight
+                      className="h-4 w-4"
+                      strokeWidth={3}
+                      aria-hidden
+                    />
                   </Link>
                 </div>
 
@@ -318,31 +438,59 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 2: Entendimento ============ */}
-              <div className="area-rise space-y-5" style={{ animationDelay: "0.08s" }}>
-                <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
+              <div
+                className="area-rise space-y-5"
+                style={{ animationDelay: "0.08s" }}
+              >
+                <p
+                  className={cn(
+                    "text-xs font-black uppercase tracking-[0.22em]",
+                    ac.iconMuted,
+                  )}
+                >
                   Entendimento
                 </p>
 
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
                   <h2 className="font-display mb-3 text-xl font-bold text-slate-900">
                     O que é {area.nome}?
                   </h2>
-                  <p className="leading-relaxed text-slate-700">{area.descricaoCompleta}</p>
+                  <p className="leading-relaxed text-slate-700">
+                    {area.descricaoCompleta}
+                  </p>
                 </div>
 
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
                   <h2 className="font-display mb-3 text-xl font-bold text-slate-900">
                     O que faz na prática?
                   </h2>
-                  <p className="mb-4 leading-relaxed text-slate-700">{area.oQueFaz}</p>
+                  <p className="mb-4 leading-relaxed text-slate-700">
+                    {area.oQueFaz}
+                  </p>
                   <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-800">
                     Tarefas do dia a dia:
                   </h3>
                   <ul className="space-y-2">
                     {area.tarefasDiarias.map((t, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-sm text-slate-700"
+                      >
                         <CheckCircle
-                          className={cn("mt-0.5 h-4 w-4 shrink-0", ac.iconMuted)}
+                          className={cn(
+                            "mt-0.5 h-4 w-4 shrink-0",
+                            ac.iconMuted,
+                          )}
                           aria-hidden
                         />
                         {t}
@@ -351,7 +499,13 @@ export default function AreaDetalhe() {
                   </ul>
                 </div>
 
-                <div className={cn("card-brutal rounded-xl border-2 p-6", ac.panelBorder, ac.panelSoft)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl border-2 p-6",
+                    ac.panelBorder,
+                    ac.panelSoft,
+                  )}
+                >
                   <h2 className="font-display mb-3 text-xl font-bold text-slate-900">
                     Quem combina com essa área?
                   </h2>
@@ -360,13 +514,26 @@ export default function AreaDetalhe() {
               </div>
 
               {/* ============ ZONA 3: Como começar ============ */}
-              <div className="area-rise space-y-5" style={{ animationDelay: "0.16s" }}>
-                <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
+              <div
+                className="area-rise space-y-5"
+                style={{ animationDelay: "0.16s" }}
+              >
+                <p
+                  className={cn(
+                    "text-xs font-black uppercase tracking-[0.22em]",
+                    ac.iconMuted,
+                  )}
+                >
                   Como começar
                 </p>
 
                 {/* 3.1 Roadmap preview */}
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Roadmap inicial
                   </h2>
@@ -388,7 +555,12 @@ export default function AreaDetalhe() {
                   <div className="mt-4 border-t border-slate-100 pt-4">
                     {comingSoon ? (
                       <span className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500">
-                        <Clock className="h-4 w-4" strokeWidth={2.5} aria-hidden /> Roadmap em construção
+                        <Clock
+                          className="h-4 w-4"
+                          strokeWidth={2.5}
+                          aria-hidden
+                        />{" "}
+                        Roadmap em construção
                       </span>
                     ) : (
                       <Link
@@ -399,15 +571,23 @@ export default function AreaDetalhe() {
                           ac.linkHover,
                         )}
                       >
-                        Ver roadmap completo <ExternalLink className="h-3 w-3" aria-hidden />
+                        Ver roadmap completo{" "}
+                        <ExternalLink className="h-3 w-3" aria-hidden />
                       </Link>
                     )}
                   </div>
                 </div>
 
                 {/* 3.2 Cursos preview */}
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
-                  <h2 className="font-display mb-4 text-xl font-bold text-slate-900">Cursos grátis</h2>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
+                  <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
+                    Cursos grátis
+                  </h2>
                   {cursosDaArea.length > 0 ? (
                     <div className="space-y-3">
                       {cursosDaArea.map((curso) => (
@@ -425,13 +605,16 @@ export default function AreaDetalhe() {
                           <p className="font-display text-sm font-black text-slate-950">
                             {curso.titulo}
                           </p>
-                          <p className="mt-0.5 text-xs font-bold text-slate-600">{curso.canal}</p>
+                          <p className="mt-0.5 text-xs font-bold text-slate-600">
+                            {curso.canal}
+                          </p>
                         </a>
                       ))}
                     </div>
                   ) : (
                     <p className="text-sm text-slate-600">
-                      Estamos selecionando cursos pra essa área. Confira a curadoria completa.
+                      Estamos selecionando cursos pra essa área. Confira a
+                      curadoria completa.
                     </p>
                   )}
                   <div className="mt-4 border-t border-slate-100 pt-4">
@@ -443,14 +626,20 @@ export default function AreaDetalhe() {
                         ac.linkHover,
                       )}
                     >
-                      Ver todos os cursos de {area.nome} <ExternalLink className="h-3 w-3" aria-hidden />
+                      Ver todos os cursos de {area.nome}{" "}
+                      <ExternalLink className="h-3 w-3" aria-hidden />
                     </Link>
                   </div>
                 </div>
 
                 {/* 3.3 Faculdades (condicional) */}
                 {faculdadesEntries.length > 0 ? (
-                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                  <div
+                    className={cn(
+                      "card-brutal rounded-xl bg-white p-6",
+                      ac.liftShadow,
+                    )}
+                  >
                     <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                       Faculdades relacionadas
                     </h2>
@@ -464,7 +653,9 @@ export default function AreaDetalhe() {
                             ac.panelSoft,
                           )}
                         >
-                          <p className="font-display font-black text-slate-950">{f.nome}</p>
+                          <p className="font-display font-black text-slate-950">
+                            {f.nome}
+                          </p>
                           <p className="mt-0.5 text-xs font-bold text-slate-600">
                             {f.tipo} · {f.duracao}
                           </p>
@@ -480,14 +671,20 @@ export default function AreaDetalhe() {
                           ac.linkHover,
                         )}
                       >
-                        Ver todas as faculdades <ExternalLink className="h-3 w-3" aria-hidden />
+                        Ver todas as faculdades{" "}
+                        <ExternalLink className="h-3 w-3" aria-hidden />
                       </Link>
                     </div>
                   </div>
                 ) : null}
 
                 {/* 3.4 Projetos */}
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Projetos pra praticar
                   </h2>
@@ -514,40 +711,70 @@ export default function AreaDetalhe() {
                         ac.linkHover,
                       )}
                     >
-                      Ver mais projetos <ExternalLink className="h-3 w-3" aria-hidden />
+                      Ver mais projetos{" "}
+                      <ExternalLink className="h-3 w-3" aria-hidden />
                     </Link>
                   </div>
                 </div>
               </div>
 
               {/* ============ ZONA 4: Aprofundamento ============ */}
-              <div className="area-rise space-y-5" style={{ animationDelay: "0.24s" }}>
-                <p className={cn("text-xs font-black uppercase tracking-[0.22em]", ac.iconMuted)}>
+              <div
+                className="area-rise space-y-5"
+                style={{ animationDelay: "0.24s" }}
+              >
+                <p
+                  className={cn(
+                    "text-xs font-black uppercase tracking-[0.22em]",
+                    ac.iconMuted,
+                  )}
+                >
                   Aprofundamento
                 </p>
 
                 {/* 4.1 Influencer: placeholder enquanto curadoria não está pronta */}
-                <div className={cn("card-brutal rounded-xl border-2 border-dashed p-6 text-center", ac.panelBorder, ac.panelSoft)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl border-2 border-dashed p-6 text-center",
+                    ac.panelBorder,
+                    ac.panelSoft,
+                  )}
+                >
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Influenciadores da área
                   </h2>
-                  <div className={cn("mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-white", ac.iconMuted)}>
+                  <div
+                    className={cn(
+                      "mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-white",
+                      ac.iconMuted,
+                    )}
+                  >
                     <Sparkles className="h-6 w-6" aria-hidden />
                   </div>
-                  <p className="font-display font-black text-slate-950">Curadoria em breve</p>
+                  <p className="font-display font-black text-slate-950">
+                    Curadoria em breve
+                  </p>
                   <p className="mt-1 text-sm text-slate-700">
-                    Estamos selecionando criadores relevantes para esta área. Em breve trazemos recomendações reais aqui.
+                    Estamos selecionando criadores relevantes para esta área. Em
+                    breve trazemos recomendações reais aqui.
                   </p>
                 </div>
 
                 {/* 4.2 Tecnologias */}
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Tecnologias desta área
                   </h2>
                   <div className="flex flex-wrap gap-2">
                     {technologies
-                      .filter((technology) => technology.areas.includes(area.slug))
+                      .filter((technology) =>
+                        technology.areas.includes(area.slug),
+                      )
                       .slice(0, 12)
                       .map((technology) => (
                         <Link
@@ -575,7 +802,12 @@ export default function AreaDetalhe() {
 
                 {/* 4.3 Empresas */}
                 {empresasDaArea.length > 0 ? (
-                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                  <div
+                    className={cn(
+                      "card-brutal rounded-xl bg-white p-6",
+                      ac.liftShadow,
+                    )}
+                  >
                     <h2 className="font-display mb-1 text-xl font-bold text-slate-900">
                       Empresas de tecnologia no Brasil
                     </h2>
@@ -592,7 +824,10 @@ export default function AreaDetalhe() {
                             ac.cardHover,
                           )}
                         >
-                          <CompanyLogo name={company.name} logoUrl={company.logoUrl} />
+                          <CompanyLogo
+                            name={company.name}
+                            logoUrl={company.logoUrl}
+                          />
                           <span className="font-display font-black text-slate-950">
                             {company.name}
                           </span>
@@ -603,7 +838,12 @@ export default function AreaDetalhe() {
                 ) : null}
 
                 {/* 4.4 Termos */}
-                <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                     Termos essenciais
                   </h2>
@@ -630,7 +870,12 @@ export default function AreaDetalhe() {
 
                 {/* 4.5 Subáreas (condicional) */}
                 {area.subareas && area.subareas.length > 0 ? (
-                  <div className={cn("card-brutal rounded-xl bg-white p-6", ac.liftShadow)}>
+                  <div
+                    className={cn(
+                      "card-brutal rounded-xl bg-white p-6",
+                      ac.liftShadow,
+                    )}
+                  >
                     <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
                       Subáreas de {area.nome}
                     </h2>
@@ -654,7 +899,13 @@ export default function AreaDetalhe() {
                 ) : null}
 
                 {/* 4.6 Dica para começar */}
-                <div className={cn("card-brutal rounded-xl border-2 p-6", ac.panelBorder, ac.panelSoft)}>
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl border-2 p-6",
+                    ac.panelBorder,
+                    ac.panelSoft,
+                  )}
+                >
                   <div className="flex items-start gap-3">
                     <Lightbulb
                       className={cn("mt-0.5 h-5 w-5 shrink-0", ac.iconMuted)}
@@ -664,7 +915,9 @@ export default function AreaDetalhe() {
                       <h2 className="font-display mb-2 text-lg font-bold text-slate-900">
                         Dica para começar
                       </h2>
-                      <p className="text-sm text-slate-700">{area.dicasIniciais}</p>
+                      <p className="text-sm text-slate-700">
+                        {area.dicasIniciais}
+                      </p>
 
                       <div className="mt-4 grid gap-2 border-t border-slate-200/70 pt-4">
                         <Link
@@ -674,14 +927,26 @@ export default function AreaDetalhe() {
                             ac.liftShadow,
                           )}
                         >
-                          <GraduationCap className={cn("h-4 w-4 shrink-0", ac.iconMuted)} strokeWidth={2.5} aria-hidden />
+                          <GraduationCap
+                            className={cn("h-4 w-4 shrink-0", ac.iconMuted)}
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
                           Escolha um curso grátis pra ver se combina com você
-                          <ArrowRight className="ml-auto h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+                          <ArrowRight
+                            className="ml-auto h-4 w-4 shrink-0"
+                            strokeWidth={3}
+                            aria-hidden
+                          />
                         </Link>
 
                         {comingSoon ? (
                           <span className="flex items-center gap-2 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm font-bold text-slate-500">
-                            <Clock className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+                            <Clock
+                              className="h-4 w-4 shrink-0"
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
                             Roadmap em breve
                           </span>
                         ) : (
@@ -692,9 +957,17 @@ export default function AreaDetalhe() {
                               ac.liftShadow,
                             )}
                           >
-                            <Route className={cn("h-4 w-4 shrink-0", ac.iconMuted)} strokeWidth={2.5} aria-hidden />
+                            <Route
+                              className={cn("h-4 w-4 shrink-0", ac.iconMuted)}
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
                             Siga o roadmap passo a passo
-                            <ArrowRight className="ml-auto h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+                            <ArrowRight
+                              className="ml-auto h-4 w-4 shrink-0"
+                              strokeWidth={3}
+                              aria-hidden
+                            />
                           </Link>
                         )}
 
@@ -705,9 +978,17 @@ export default function AreaDetalhe() {
                             ac.liftShadow,
                           )}
                         >
-                          <Code2 className={cn("h-4 w-4 shrink-0", ac.iconMuted)} strokeWidth={2.5} aria-hidden />
+                          <Code2
+                            className={cn("h-4 w-4 shrink-0", ac.iconMuted)}
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
                           Pratique com um projeto real
-                          <ArrowRight className="ml-auto h-4 w-4 shrink-0" strokeWidth={3} aria-hidden />
+                          <ArrowRight
+                            className="ml-auto h-4 w-4 shrink-0"
+                            strokeWidth={3}
+                            aria-hidden
+                          />
                         </Link>
                       </div>
                     </div>
@@ -726,25 +1007,48 @@ export default function AreaDetalhe() {
                   ac.panelSoft,
                 )}
               >
-                <h3 className={cn("font-display mb-4 text-lg font-bold", ac.tbodyAccentBold)}>
+                <h3
+                  className={cn(
+                    "font-display mb-4 text-lg font-bold",
+                    ac.tbodyAccentBold,
+                  )}
+                >
                   Resumo rápido
                 </h3>
                 <div className="space-y-3 text-sm text-slate-900">
                   <div>
-                    <p className={cn("mb-1 text-xs uppercase tracking-wide", ac.iconMuted)}>
+                    <p
+                      className={cn(
+                        "mb-1 text-xs uppercase tracking-wide",
+                        ac.iconMuted,
+                      )}
+                    >
                       Dificuldade para iniciantes
                     </p>
-                    <DifficultyDots level={area.dificuldade} fillClass={ac.progressFill} />
+                    <DifficultyDots
+                      level={area.dificuldade}
+                      fillClass={ac.progressFill}
+                    />
                   </div>
                   <div>
-                    <p className={cn("mb-1.5 text-xs uppercase tracking-wide", ac.iconMuted)}>
+                    <p
+                      className={cn(
+                        "mb-1.5 text-xs uppercase tracking-wide",
+                        ac.iconMuted,
+                      )}
+                    >
                       Faixa salarial por nível
                     </p>
                     {area.salarios && area.salarios.length > 0 ? (
                       <dl className="space-y-1">
                         {area.salarios.map((s) => (
-                          <div key={s.nivel} className="flex items-baseline justify-between gap-3">
-                            <dt className="text-xs font-bold text-slate-600">{s.nivel}</dt>
+                          <div
+                            key={s.nivel}
+                            className="flex items-baseline justify-between gap-3"
+                          >
+                            <dt className="text-xs font-bold text-slate-600">
+                              {s.nivel}
+                            </dt>
                             <dd className="text-sm font-semibold tabular-nums text-slate-900">
                               {s.faixa}
                             </dd>
@@ -752,28 +1056,45 @@ export default function AreaDetalhe() {
                         ))}
                       </dl>
                     ) : (
-                      <p className="text-sm font-medium">{area.faixaSalarial}</p>
+                      <p className="text-sm font-medium">
+                        {area.faixaSalarial}
+                      </p>
                     )}
                   </div>
                   {area.tempoMedioFormacao ? (
                     <div>
-                      <p className={cn("mb-1 text-xs uppercase tracking-wide", ac.iconMuted)}>
+                      <p
+                        className={cn(
+                          "mb-1 text-xs uppercase tracking-wide",
+                          ac.iconMuted,
+                        )}
+                      >
                         Tempo médio até estar pronto
                       </p>
-                      <p className="text-sm font-medium">{area.tempoMedioFormacao}</p>
+                      <p className="text-sm font-medium">
+                        {area.tempoMedioFormacao}
+                      </p>
                     </div>
                   ) : null}
                 </div>
               </div>
 
               {/* Habilidades */}
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-6", ac.panelBorder)}>
+              <div
+                className={cn(
+                  "card-brutal rounded-xl border-2 bg-white p-6",
+                  ac.panelBorder,
+                )}
+              >
                 <h3 className="font-display mb-3 font-semibold text-slate-900">
                   Habilidades importantes
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {area.habilidades.map((h) => (
-                    <span key={h} className={cn("rounded-full px-2 py-1 text-xs", ac.tag)}>
+                    <span
+                      key={h}
+                      className={cn("rounded-full px-2 py-1 text-xs", ac.tag)}
+                    >
                       {h}
                     </span>
                   ))}
@@ -781,8 +1102,15 @@ export default function AreaDetalhe() {
               </div>
 
               {/* Ferramentas */}
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-6", ac.panelBorder)}>
-                <h3 className="font-display mb-3 font-semibold text-slate-900">Ferramentas comuns</h3>
+              <div
+                className={cn(
+                  "card-brutal rounded-xl border-2 bg-white p-6",
+                  ac.panelBorder,
+                )}
+              >
+                <h3 className="font-display mb-3 font-semibold text-slate-900">
+                  Ferramentas comuns
+                </h3>
                 <div className="flex flex-wrap gap-2">
                   {area.ferramentas.map((f) => (
                     <span
@@ -796,12 +1124,27 @@ export default function AreaDetalhe() {
               </div>
 
               {/* Cargos */}
-              <div className={cn("card-brutal rounded-xl border-2 bg-white p-6", ac.panelBorder)}>
-                <h3 className="font-display mb-3 font-semibold text-slate-900">Possíveis cargos</h3>
+              <div
+                className={cn(
+                  "card-brutal rounded-xl border-2 bg-white p-6",
+                  ac.panelBorder,
+                )}
+              >
+                <h3 className="font-display mb-3 font-semibold text-slate-900">
+                  Possíveis cargos
+                </h3>
                 <ul className="space-y-1.5">
                   {area.cargos.map((c) => (
-                    <li key={c} className="flex items-center gap-2 text-sm text-slate-700">
-                      <div className={cn("h-1.5 w-1.5 shrink-0 rounded-full", ac.progressFill)} />
+                    <li
+                      key={c}
+                      className="flex items-center gap-2 text-sm text-slate-700"
+                    >
+                      <div
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          ac.progressFill,
+                        )}
+                      />
                       {c}
                     </li>
                   ))}
@@ -817,7 +1160,11 @@ export default function AreaDetalhe() {
                   )}
                 >
                   <h3 className="font-display mb-3 flex items-center gap-2 font-semibold text-slate-900">
-                    <Sparkles className="h-4 w-4 text-slate-500" strokeWidth={2.5} aria-hidden />
+                    <Sparkles
+                      className="h-4 w-4 text-slate-500"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
                     Crescimento de mercado
                   </h3>
                   <CrescimentoBadge value={area.crescimentoMercado} />

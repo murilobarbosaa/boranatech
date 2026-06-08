@@ -48,7 +48,12 @@ export default function Auth({
 
     try {
       if (isSignup) {
-        const parsed = signupSchema.safeParse({ name, email, password, gender });
+        const parsed = signupSchema.safeParse({
+          name,
+          email,
+          password,
+          gender,
+        });
         if (!parsed.success) {
           toast.error(firstIssueMessage(parsed.error));
           return;
@@ -59,7 +64,9 @@ export default function Auth({
         getMyProfile().catch((triggerErr) => {
           console.warn("[Auth] failed to trigger welcome email:", triggerErr);
         });
-        toast.success(`Cadastro criado com segurança. ${greet(parsed.data.gender)} à plataforma!`);
+        toast.success(
+          `Cadastro criado com segurança. ${greet(parsed.data.gender)} à plataforma!`,
+        );
       } else {
         const parsed = loginSchema.safeParse({ email, password });
         if (!parsed.success) {
@@ -84,7 +91,11 @@ export default function Auth({
     <Layout>
       <SEO
         title={isSignup ? "Cadastro · Bora na Tech?" : "Login · Bora na Tech?"}
-        description={isSignup ? "Crie sua conta gratuita no Bora na Tech? e salve seus caminhos de carreira em tecnologia." : "Acesse sua conta no Bora na Tech?."}
+        description={
+          isSignup
+            ? "Crie sua conta gratuita no Bora na Tech? e salve seus caminhos de carreira em tecnologia."
+            : "Acesse sua conta no Bora na Tech?."
+        }
         url={isSignup ? "/cadastro" : "/login"}
         noindex={!isSignup}
       />
@@ -102,7 +113,9 @@ export default function Auth({
                 ? "Cadastre-se com validação segura e entre automaticamente na sua bússola."
                 : "Acesse sua conta para recuperar seus caminhos, cursos e favoritos."}
             </p>
-            {isSignup && signupBanner ? <div className="mt-5">{signupBanner}</div> : null}
+            {isSignup && signupBanner ? (
+              <div className="mt-5">{signupBanner}</div>
+            ) : null}
             <SocialAuthButtons mode={mode} />
             {error && (
               <div
@@ -114,7 +127,9 @@ export default function Auth({
                   <div className="flex-1">
                     <p className="font-black text-red-900">{error.message}</p>
                     {error.hint && (
-                      <p className="mt-1 font-bold text-red-700">{error.hint}</p>
+                      <p className="mt-1 font-bold text-red-700">
+                        {error.hint}
+                      </p>
                     )}
                   </div>
                   <button
@@ -131,7 +146,9 @@ export default function Auth({
             <form className="mt-6 space-y-3" onSubmit={handleSubmit}>
               {isSignup && (
                 <label className="block">
-                  <span className="mb-1 block text-xs font-black uppercase text-slate-600">Nome</span>
+                  <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                    Nome
+                  </span>
                   <input
                     autoComplete="name"
                     className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -144,7 +161,10 @@ export default function Auth({
               )}
               {isSignup && (
                 <div className="block">
-                  <label htmlFor="auth-gender" className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  <label
+                    htmlFor="auth-gender"
+                    className="mb-1 block text-xs font-black uppercase text-slate-600"
+                  >
                     Como você se identifica?
                   </label>
                   <GenderSelect
@@ -155,7 +175,9 @@ export default function Auth({
                 </div>
               )}
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">E-mail</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  E-mail
+                </span>
                 <input
                   autoComplete="email"
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -168,7 +190,9 @@ export default function Auth({
                 />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-black uppercase text-slate-600">Senha</span>
+                <span className="mb-1 block text-xs font-black uppercase text-slate-600">
+                  Senha
+                </span>
                 <PasswordInput
                   autoComplete={isSignup ? "new-password" : "current-password"}
                   className="w-full rounded-xl border-2 border-slate-300 p-3 text-sm"
@@ -179,21 +203,36 @@ export default function Auth({
                   value={password}
                 />
               </label>
-              {isSignup && <PasswordRequirements value={password} isFocused={passwordFocused} />}
+              {isSignup && (
+                <PasswordRequirements
+                  value={password}
+                  isFocused={passwordFocused}
+                />
+              )}
               <button
                 className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? "Processando..." : isSignup ? "Cadastrar e ver perfil" : "Entrar"}
+                {isSubmitting
+                  ? "Processando..."
+                  : isSignup
+                    ? "Cadastrar e ver perfil"
+                    : "Entrar"}
               </button>
             </form>
             {!isSignup && (
-              <Link href="/recuperar-senha" className="mt-3 block text-center text-sm font-bold text-slate-600">
+              <Link
+                href="/recuperar-senha"
+                className="mt-3 block text-center text-sm font-bold text-slate-600"
+              >
                 Esqueci minha senha
               </Link>
             )}
-            <Link href={isSignup ? "/login" : "/cadastro"} className="mt-4 block text-center text-sm font-bold text-violet-700">
+            <Link
+              href={isSignup ? "/login" : "/cadastro"}
+              className="mt-4 block text-center text-sm font-bold text-violet-700"
+            >
               {isSignup ? "Já tenho conta" : "Quero me cadastrar"}
             </Link>
           </div>

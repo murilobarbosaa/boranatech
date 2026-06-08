@@ -33,16 +33,29 @@ function requireCronSecret(req: Request, _res: Response, next: NextFunction) {
 }
 
 async function getSource(code: string) {
-  const { data } = await supabaseAdmin.from("content_sources").select("id").eq("code", code).maybeSingle();
+  const { data } = await supabaseAdmin
+    .from("content_sources")
+    .select("id")
+    .eq("code", code)
+    .maybeSingle();
   return data;
 }
 
-async function recordSync(code: string, startedAt: Date, result: SyncResult, errorMessage?: string) {
+async function recordSync(
+  code: string,
+  startedAt: Date,
+  result: SyncResult,
+  errorMessage?: string,
+) {
   try {
     const source = await getSource(code);
     if (!source) return;
 
-    const status = errorMessage ? "error" : result.failed > 0 ? "partial" : "success";
+    const status = errorMessage
+      ? "error"
+      : result.failed > 0
+        ? "partial"
+        : "success";
     await supabaseAdmin.from("content_sync_logs").insert({
       source_id: source.id,
       status,
@@ -64,7 +77,10 @@ async function recordSync(code: string, startedAt: Date, result: SyncResult, err
       })
       .eq("code", code);
   } catch (err) {
-    console.warn("[cron] Falha ao registrar log de sincronização:", err instanceof Error ? err.message : String(err));
+    console.warn(
+      "[cron] Falha ao registrar log de sincronização:",
+      err instanceof Error ? err.message : String(err),
+    );
   }
 }
 
@@ -85,7 +101,12 @@ router.post("/sync-news", async (_req, res, next) => {
     res.json({ data: result });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    await recordSync("currents", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, errorMessage);
+    await recordSync(
+      "currents",
+      startedAt,
+      { found: 0, created: 0, updated: 0, failed: 1 },
+      errorMessage,
+    );
     await recordCronRun({
       jobName: "sync-news",
       status: "error",
@@ -111,7 +132,12 @@ router.post("/sync-jobs", async (_req, res, next) => {
     res.json({ data: result });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    await recordSync("jooble", startedAt, { found: 0, created: 0, updated: 0, failed: 1 }, errorMessage);
+    await recordSync(
+      "jooble",
+      startedAt,
+      { found: 0, created: 0, updated: 0, failed: 1 },
+      errorMessage,
+    );
     await recordCronRun({
       jobName: "sync-jobs",
       status: "error",
@@ -148,7 +174,9 @@ router.post("/process-cancellations", async (_req, res, next) => {
         startedAt,
         errorMessage: dueError.message,
       });
-      return next(createError(500, "db_error", "Erro ao buscar cancelamentos pendentes."));
+      return next(
+        createError(500, "db_error", "Erro ao buscar cancelamentos pendentes."),
+      );
     }
 
     const subscriptions = due || [];
@@ -206,7 +234,11 @@ router.post("/process-cancellations", async (_req, res, next) => {
   }
 });
 
-const PAID_PAYMENT_STATUSES = new Set(["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"]);
+const PAID_PAYMENT_STATUSES = new Set([
+  "CONFIRMED",
+  "RECEIVED",
+  "RECEIVED_IN_CASH",
+]);
 
 type SubRow = {
   id: string;
@@ -223,13 +255,19 @@ function planCodeOf(sub: SubRow): string {
   return code || "pro_monthly";
 }
 
-function latestPaidPayment(payments: AsaasPayment[], after?: Date | null): AsaasPayment | null {
+function latestPaidPayment(
+  payments: AsaasPayment[],
+  after?: Date | null,
+): AsaasPayment | null {
   return (payments || [])
     .filter((p) => p?.dueDate && PAID_PAYMENT_STATUSES.has(String(p.status)))
     .filter((p) => !after || new Date(p.dueDate as string) > after)
     .reduce<AsaasPayment | null>(
       (latest, p) =>
-        !latest || new Date(p.dueDate as string) > new Date(latest.dueDate as string) ? p : latest,
+        !latest ||
+        new Date(p.dueDate as string) > new Date(latest.dueDate as string)
+          ? p
+          : latest,
       null,
     );
 }
@@ -246,7 +284,9 @@ async function reconcileIncompleteSubscriptions() {
     .from("subscriptions")
     .select("id, provider_subscription_id, plans(code)")
     .eq("status", "incomplete")
-    .or(`last_event_at.lte.${cutoff},and(last_event_at.is.null,created_at.lte.${cutoff})`)
+    .or(
+      `last_event_at.lte.${cutoff},and(last_event_at.is.null,created_at.lte.${cutoff})`,
+    )
     .limit(25);
 
   if (error) throw error;
@@ -260,13 +300,18 @@ async function reconcileIncompleteSubscriptions() {
     try {
       if (!sub.provider_subscription_id) continue;
 
-      const payments = await getAsaasSubscriptionPayments(sub.provider_subscription_id);
+      const payments = await getAsaasSubscriptionPayments(
+        sub.provider_subscription_id,
+      );
       const paid = latestPaidPayment((payments?.data as AsaasPayment[]) || []);
       if (!paid?.dueDate) continue; // sem pagamento pago: continua incomplete
 
       const planCode = planCodeOf(sub);
       const periodStart = new Date(paid.dueDate);
-      const periodEnd = addMonths(periodStart, PLAN_CYCLE_MONTHS[planCode] ?? 1);
+      const periodEnd = addMonths(
+        periodStart,
+        PLAN_CYCLE_MONTHS[planCode] ?? 1,
+      );
 
       const { error: updateError } = await supabaseAdmin
         .from("subscriptions")
@@ -286,7 +331,10 @@ async function reconcileIncompleteSubscriptions() {
       failed += 1;
       const reason = err instanceof Error ? err.message : String(err);
       failures.push({ subscription_id: sub.id, reason });
-      console.error(`[cron/reconcile-subscriptions] incomplete ${sub.id} falhou:`, err);
+      console.error(
+        `[cron/reconcile-subscriptions] incomplete ${sub.id} falhou:`,
+        err,
+      );
     }
   }
 
@@ -319,13 +367,23 @@ async function reconcileExpiredSubscriptions() {
     try {
       if (!sub.provider_subscription_id) continue;
 
-      const payments = await getAsaasSubscriptionPayments(sub.provider_subscription_id);
-      const periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : null;
-      const renewal = latestPaidPayment((payments?.data as AsaasPayment[]) || [], periodEnd);
+      const payments = await getAsaasSubscriptionPayments(
+        sub.provider_subscription_id,
+      );
+      const periodEnd = sub.current_period_end
+        ? new Date(sub.current_period_end)
+        : null;
+      const renewal = latestPaidPayment(
+        (payments?.data as AsaasPayment[]) || [],
+        periodEnd,
+      );
 
       if (renewal?.dueDate) {
         const planCode = planCodeOf(sub);
-        const newEnd = addMonths(new Date(renewal.dueDate), PLAN_CYCLE_MONTHS[planCode] ?? 1);
+        const newEnd = addMonths(
+          new Date(renewal.dueDate),
+          PLAN_CYCLE_MONTHS[planCode] ?? 1,
+        );
 
         const { error: updateError } = await supabaseAdmin
           .from("subscriptions")
@@ -342,7 +400,9 @@ async function reconcileExpiredSubscriptions() {
         // Observabilidade: registra o status real no Asaas (nao decide nada).
         let asaasStatus = "unknown";
         try {
-          const remote = await getAsaasSubscription(sub.provider_subscription_id);
+          const remote = await getAsaasSubscription(
+            sub.provider_subscription_id,
+          );
           asaasStatus = String(remote?.status || "unknown");
         } catch (err) {
           console.warn(
@@ -353,7 +413,10 @@ async function reconcileExpiredSubscriptions() {
 
         const { error: updateError } = await supabaseAdmin
           .from("subscriptions")
-          .update({ status: "past_due", last_event_at: new Date().toISOString() })
+          .update({
+            status: "past_due",
+            last_event_at: new Date().toISOString(),
+          })
           .eq("id", sub.id);
         if (updateError) throw updateError;
 
@@ -366,7 +429,10 @@ async function reconcileExpiredSubscriptions() {
       failed += 1;
       const reason = err instanceof Error ? err.message : String(err);
       failures.push({ subscription_id: sub.id, reason });
-      console.error(`[cron/reconcile-subscriptions] expired ${sub.id} falhou:`, err);
+      console.error(
+        `[cron/reconcile-subscriptions] expired ${sub.id} falhou:`,
+        err,
+      );
     }
   }
 
@@ -445,17 +511,25 @@ router.get("/status", async (_req, res, next) => {
       .select("id, code, name, type, status, last_sync_at")
       .order("code");
 
-    if (sourcesError) return next(createError(500, "db_error", "Erro ao buscar fontes."));
+    if (sourcesError)
+      return next(createError(500, "db_error", "Erro ao buscar fontes."));
 
     const { data: recentLogs, error: logsError } = await supabaseAdmin
       .from("content_sync_logs")
-      .select("source_id, status, items_found, items_created, items_updated, items_failed, finished_at, error_message")
+      .select(
+        "source_id, status, items_found, items_created, items_updated, items_failed, finished_at, error_message",
+      )
       .order("created_at", { ascending: false })
       .limit(10);
 
-    if (logsError) return next(createError(500, "db_error", "Erro ao buscar logs de sincronização."));
+    if (logsError)
+      return next(
+        createError(500, "db_error", "Erro ao buscar logs de sincronização."),
+      );
 
-    res.json({ data: { sources: sources || [], recent_logs: recentLogs || [] } });
+    res.json({
+      data: { sources: sources || [], recent_logs: recentLogs || [] },
+    });
   } catch (err) {
     next(err);
   }

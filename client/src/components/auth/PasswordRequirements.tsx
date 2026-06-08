@@ -20,9 +20,13 @@ const REQUIREMENTS: Requirement[] = [
   { label: "caractere especial", test: (pw) => /[^A-Za-z0-9]/.test(pw) },
 ];
 
-export function PasswordRequirements({ value, isFocused }: PasswordRequirementsProps) {
+export function PasswordRequirements({
+  value,
+  isFocused,
+}: PasswordRequirementsProps) {
   const checks = useMemo(
-    () => REQUIREMENTS.map((req) => ({ label: req.label, valid: req.test(value) })),
+    () =>
+      REQUIREMENTS.map((req) => ({ label: req.label, valid: req.test(value) })),
     [value],
   );
 
@@ -48,7 +52,9 @@ export function PasswordRequirements({ value, isFocused }: PasswordRequirementsP
                   key={check.label}
                   className={cn(
                     "rounded-full px-2 py-1 transition-colors",
-                    check.valid ? "bg-emerald-100 text-emerald-800" : "bg-white text-slate-500",
+                    check.valid
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-white text-slate-500",
                   )}
                 >
                   {check.label}

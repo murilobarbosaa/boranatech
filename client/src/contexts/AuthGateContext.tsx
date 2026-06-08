@@ -57,9 +57,9 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
 
   const [open, setOpen] = useState(false);
   const [copy, setCopy] = useState<GateModalCopy | undefined>(undefined);
-  const [intentForModal, setIntentForModal] = useState<PendingIntent | undefined>(
-    undefined,
-  );
+  const [intentForModal, setIntentForModal] = useState<
+    PendingIntent | undefined
+  >(undefined);
 
   const onAuthedRef = useRef<(() => void) | null>(null);
   const onDismissRef = useRef<(() => void) | null>(null);

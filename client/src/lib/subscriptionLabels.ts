@@ -1,11 +1,17 @@
-export type SubscriptionStatusVariant = "success" | "warning" | "danger" | "neutral";
+export type SubscriptionStatusVariant =
+  | "success"
+  | "warning"
+  | "danger"
+  | "neutral";
 
 export interface SubscriptionStatusInfo {
   label: string;
   variant: SubscriptionStatusVariant;
 }
 
-export function getStatusLabel(status: string | null | undefined): SubscriptionStatusInfo {
+export function getStatusLabel(
+  status: string | null | undefined,
+): SubscriptionStatusInfo {
   switch (status) {
     case "active":
       return { label: "Ativo", variant: "success" };

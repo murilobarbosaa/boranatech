@@ -6,13 +6,13 @@ Este relatório foi produzido executando 8 conversas simuladas contra o systemPr
 
 ## Verificações transversais
 
-| Verificação | Resultado |
-|---|---|
-| Turnos do Natechinho totais | 6 |
-| Turnos com travessão (—) ou quase-hífen (–) | 0 ✅ |
-| Turnos com problema de tom masculino | 0 ✅ |
-| Marcador [[CURRICULO_READY]] emitido prematuramente | 0 ✅ |
-| Variantes inválidas do marcador detectadas | 0 ✅ |
+| Verificação                                         | Resultado |
+| --------------------------------------------------- | --------- |
+| Turnos do Natechinho totais                         | 6         |
+| Turnos com travessão (—) ou quase-hífen (–)         | 0 ✅      |
+| Turnos com problema de tom masculino                | 0 ✅      |
+| Marcador [[CURRICULO_READY]] emitido prematuramente | 0 ✅      |
+| Variantes inválidas do marcador detectadas          | 0 ✅      |
 
 ---
 
@@ -112,9 +112,11 @@ Legal, então tu já tem uma experiência massa como desenvolvedor Java! Isso mu
 _Preenchido manualmente abaixo após inspeção das transcrições._
 
 ### Decisão
+
 - [ ] Prompt está pronto pra UI (Fase 2)
 - [ ] Prompt precisa ajustes pontuais (listar abaixo)
 - [ ] Prompt tem problema estrutural (rever roteiro)
 
 ### Sugestões de ajuste (se houver)
+
 - (nenhuma ainda)

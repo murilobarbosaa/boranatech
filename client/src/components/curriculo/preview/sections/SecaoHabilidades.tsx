@@ -11,13 +11,19 @@ interface SecaoHabilidadesProps {
  * variant="inline" (Harvard) usa texto corrido separado por · pra
  * economizar espaço vertical.
  */
-export default function SecaoHabilidades({ title, items, variant = "wrap" }: SecaoHabilidadesProps) {
+export default function SecaoHabilidades({
+  title,
+  items,
+  variant = "wrap",
+}: SecaoHabilidadesProps) {
   if (!items || items.length === 0) return null;
   return (
     <section className="mb-4 break-inside-avoid">
       <SectionHeading>{title}</SectionHeading>
       {variant === "inline" ? (
-        <p className="text-[11px] leading-[1.5] text-slate-800">{items.join(" · ")}</p>
+        <p className="text-[11px] leading-[1.5] text-slate-800">
+          {items.join(" · ")}
+        </p>
       ) : (
         <ul className="flex flex-wrap gap-1.5">
           {items.map((skill, idx) => (

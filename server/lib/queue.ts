@@ -58,7 +58,12 @@ async function sendDirect(data: EmailJobData) {
       await sendCancellationEmail(data.to, data.name, data.gender);
       break;
     case "cancellation_scheduled":
-      await sendCancellationScheduledEmail(data.to, data.name, data.effectiveAt, data.gender);
+      await sendCancellationScheduledEmail(
+        data.to,
+        data.name,
+        data.effectiveAt,
+        data.gender,
+      );
       break;
     case "payment_failed":
       await sendPaymentFailedEmail(data.to, data.name, data.gender);
@@ -90,7 +95,10 @@ export function createEmailWorker() {
   });
 
   worker.on("failed", (job, err) => {
-    console.error(`[queue] Job ${job?.id} (${job?.data?.type}) falhou:`, err.message);
+    console.error(
+      `[queue] Job ${job?.id} (${job?.data?.type}) falhou:`,
+      err.message,
+    );
   });
 
   worker.on("error", (err) => {
@@ -110,7 +118,10 @@ export async function enqueueEmail(data: EmailJobData) {
   try {
     await emailQueue.add(data.type, data);
   } catch (err) {
-    console.error("[queue] Erro ao enfileirar e-mail. Enviando diretamente.", err);
+    console.error(
+      "[queue] Erro ao enfileirar e-mail. Enviando diretamente.",
+      err,
+    );
     await sendDirect(data);
   }
 }

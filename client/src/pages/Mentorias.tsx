@@ -22,20 +22,32 @@ export default function Mentorias() {
             <p className="mb-4 inline-flex rounded-full border border-amber-400/90 bg-amber-100 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-amber-950">
               Em breve
             </p>
-            <h2 className="font-display text-2xl font-black text-slate-950">Estamos preparando algo especial</h2>
+            <h2 className="font-display text-2xl font-black text-slate-950">
+              Estamos preparando algo especial
+            </h2>
             <p className="mt-3 text-base font-medium leading-relaxed text-slate-700">
-              Em breve você poderá se conectar a mentorias alinhadas ao jeito BORA NA TECH?: linguagem acessível, foco em quem está
-              entrando na área e conversas que realmente destravam o próximo passo, sem promessa vazia.
+              Em breve você poderá se conectar a mentorias alinhadas ao jeito
+              BORA NA TECH?: linguagem acessível, foco em quem está entrando na
+              área e conversas que realmente destravam o próximo passo, sem
+              promessa vazia.
             </p>
-            <div className={cn("mt-6 rounded-2xl border-2 border-slate-200 p-5", ac.panelSoft)}>
+            <div
+              className={cn(
+                "mt-6 rounded-2xl border-2 border-slate-200 p-5",
+                ac.panelSoft,
+              )}
+            >
               <div className="flex gap-3">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
                   <Bell className="h-5 w-5 text-amber-900" />
                 </span>
                 <div>
-                  <p className="font-display font-black text-slate-950">Quer ser avisada?</p>
+                  <p className="font-display font-black text-slate-950">
+                    Quer ser avisada?
+                  </p>
                   <p className="mt-1 text-sm font-semibold text-slate-600">
-                    Fique de olho nas novidades da plataforma. Avisaremos por aqui quando as mentorias abrirem.
+                    Fique de olho nas novidades da plataforma. Avisaremos por
+                    aqui quando as mentorias abrirem.
                   </p>
                 </div>
               </div>

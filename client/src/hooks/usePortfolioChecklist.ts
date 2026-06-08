@@ -23,7 +23,9 @@ interface UsePortfolioChecklistResult {
 function toCheckedSet(entries: ProgressEntry[]): Set<string> {
   return new Set(
     entries
-      .filter((entry) => (entry.state as { checked?: boolean }).checked === true)
+      .filter(
+        (entry) => (entry.state as { checked?: boolean }).checked === true,
+      )
       .map((entry) => entry.itemKey),
   );
 }
@@ -33,7 +35,9 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
   const { registerResumeHandler } = useAuthGate();
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
-  const [pendingAuthItemId, setPendingAuthItemId] = useState<string | null>(null);
+  const [pendingAuthItemId, setPendingAuthItemId] = useState<string | null>(
+    null,
+  );
   const nextLoadMarkRef = useRef<string | null>(null);
   const checkedIdsRef = useRef<Set<string>>(checkedIds);
   const prevUserRef = useRef<string | null>(null);
@@ -66,7 +70,10 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
         if (!next.has(mark)) {
           next.add(mark);
           void upsertProgress(CONTEXT, mark, { checked: true }).catch((err) => {
-            console.error("[usePortfolioChecklist] queued mark upsert failed", err);
+            console.error(
+              "[usePortfolioChecklist] queued mark upsert failed",
+              err,
+            );
             setCheckedIds((prev) => {
               const reverted = new Set(prev);
               reverted.delete(mark);
@@ -140,7 +147,9 @@ export function usePortfolioChecklist(): UsePortfolioChecklistResult {
   );
 
   const toggle = useCallback(
-    async (itemId: string): Promise<{ ok: boolean; requiresAuth?: boolean }> => {
+    async (
+      itemId: string,
+    ): Promise<{ ok: boolean; requiresAuth?: boolean }> => {
       if (!user) {
         setPendingAuthItemId(itemId);
         return { ok: false, requiresAuth: true };

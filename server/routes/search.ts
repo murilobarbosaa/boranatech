@@ -9,10 +9,19 @@ router.get("/", async (req, res, next) => {
   try {
     const query = String(req.query.q || "").trim();
     const type = req.query.type as string | undefined;
-    const limit = Math.min(parseInt(String(req.query.limit || "20"), 10) || 20, 50);
+    const limit = Math.min(
+      parseInt(String(req.query.limit || "20"), 10) || 20,
+      50,
+    );
 
     if (!query || query.length < 2) {
-      return next(createError(400, "invalid_request", "q deve ter pelo menos 2 caracteres."));
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "q deve ter pelo menos 2 caracteres.",
+        ),
+      );
     }
 
     let dbQuery = supabaseAdmin
@@ -49,7 +58,10 @@ router.get("/", async (req, res, next) => {
         return next(createError(500, "db_error", "Erro ao realizar busca."));
       }
 
-      return res.json({ data: fallbackData || [], total: fallbackData?.length || 0 });
+      return res.json({
+        data: fallbackData || [],
+        total: fallbackData?.length || 0,
+      });
     }
 
     res.json({ data: data || [], total: data?.length || 0 });

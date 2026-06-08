@@ -31,7 +31,9 @@ async function parseAiResponse(response: Response): Promise<AiResponse> {
 
   if (response.status === 429) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(`RATE_LIMITED: ${data.error?.message || "Limite atingido"}`);
+    throw new Error(
+      `RATE_LIMITED: ${data.error?.message || "Limite atingido"}`,
+    );
   }
 
   if (!response.ok) {
@@ -42,11 +44,16 @@ async function parseAiResponse(response: Response): Promise<AiResponse> {
   const data = (await response.json()) as Partial<AiResponse>;
 
   return {
-    result: data.result || "OPENAI_API_KEY ainda não configurada no servidor. Configure a variável de ambiente para ativar esta ferramenta.",
+    result:
+      data.result ||
+      "OPENAI_API_KEY ainda não configurada no servidor. Configure a variável de ambiente para ativar esta ferramenta.",
   };
 }
 
-export async function callAiChat(endpoint: string, messages: AiChatMessage[]): Promise<AiResponse> {
+export async function callAiChat(
+  endpoint: string,
+  messages: AiChatMessage[],
+): Promise<AiResponse> {
   const authHeader = await getAuthHeader();
   const response = await fetch(apiUrl(`/api/ai/${endpoint}`), {
     method: "POST",
@@ -60,7 +67,10 @@ export async function callAiChat(endpoint: string, messages: AiChatMessage[]): P
   return parseAiResponse(response);
 }
 
-export async function callAiTool(endpoint: string, payload: Record<string, unknown>): Promise<AiResponse> {
+export async function callAiTool(
+  endpoint: string,
+  payload: Record<string, unknown>,
+): Promise<AiResponse> {
   const authHeader = await getAuthHeader();
   const response = await fetch(apiUrl(`/api/ai/${endpoint}`), {
     method: "POST",
@@ -104,7 +114,9 @@ export async function callAiChatStream(
   if (response.status === 403) throw new Error("PRO_REQUIRED");
   if (response.status === 429) {
     const errBody = await response.json().catch(() => ({}));
-    throw new Error(`RATE_LIMITED: ${errBody.error?.message || "Limite atingido"}`);
+    throw new Error(
+      `RATE_LIMITED: ${errBody.error?.message || "Limite atingido"}`,
+    );
   }
   if (!response.ok || !response.body) {
     const errBody = await response.json().catch(() => ({}));
@@ -176,11 +188,15 @@ export async function callAiStructured<T>(
   if (response.status === 403) throw new Error("PRO_REQUIRED");
   if (response.status === 429) {
     const errBody = await response.json().catch(() => ({}));
-    throw new Error(`RATE_LIMITED: ${errBody.error?.message || "Limite atingido"}`);
+    throw new Error(
+      `RATE_LIMITED: ${errBody.error?.message || "Limite atingido"}`,
+    );
   }
   if (!response.ok) {
     const errBody = await response.json().catch(() => ({}));
-    throw new Error(errBody.error?.message || "Erro ao gerar conteúdo estruturado.");
+    throw new Error(
+      errBody.error?.message || "Erro ao gerar conteúdo estruturado.",
+    );
   }
 
   const body = (await response.json()) as Partial<AiStructuredResponse<T>>;

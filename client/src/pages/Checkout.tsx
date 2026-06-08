@@ -98,20 +98,71 @@ const FREE_ITEMS: Array<{ icon: LucideIcon; text: string }> = [
   { icon: MessageSquare, text: "Banco de perguntas e desafios de entrevista" },
 ];
 
-const COLOR_TOKENS: Record<ProFeature["color"], { bgMockup: string; bgIcon: string; textIcon: string; number: string }> = {
-  emerald: { bgMockup: "bg-emerald-50", bgIcon: "bg-emerald-100", textIcon: "text-emerald-700", number: "text-emerald-500/40" },
-  blue: { bgMockup: "bg-blue-50", bgIcon: "bg-blue-100", textIcon: "text-blue-700", number: "text-blue-500/40" },
-  violet: { bgMockup: "bg-violet-50", bgIcon: "bg-violet-100", textIcon: "text-violet-700", number: "text-violet-500/40" },
-  sky: { bgMockup: "bg-sky-50", bgIcon: "bg-sky-100", textIcon: "text-sky-700", number: "text-sky-500/40" },
-  orange: { bgMockup: "bg-orange-50", bgIcon: "bg-orange-100", textIcon: "text-orange-700", number: "text-orange-500/40" },
-  amber: { bgMockup: "bg-amber-50", bgIcon: "bg-amber-100", textIcon: "text-amber-700", number: "text-amber-500/40" },
-  fuchsia: { bgMockup: "bg-fuchsia-50", bgIcon: "bg-fuchsia-100", textIcon: "text-fuchsia-700", number: "text-fuchsia-500/40" },
-  pink: { bgMockup: "bg-pink-50", bgIcon: "bg-pink-100", textIcon: "text-pink-700", number: "text-pink-500/40" },
-  cyan: { bgMockup: "bg-cyan-50", bgIcon: "bg-cyan-100", textIcon: "text-cyan-700", number: "text-cyan-500/40" },
+const COLOR_TOKENS: Record<
+  ProFeature["color"],
+  { bgMockup: string; bgIcon: string; textIcon: string; number: string }
+> = {
+  emerald: {
+    bgMockup: "bg-emerald-50",
+    bgIcon: "bg-emerald-100",
+    textIcon: "text-emerald-700",
+    number: "text-emerald-500/40",
+  },
+  blue: {
+    bgMockup: "bg-blue-50",
+    bgIcon: "bg-blue-100",
+    textIcon: "text-blue-700",
+    number: "text-blue-500/40",
+  },
+  violet: {
+    bgMockup: "bg-violet-50",
+    bgIcon: "bg-violet-100",
+    textIcon: "text-violet-700",
+    number: "text-violet-500/40",
+  },
+  sky: {
+    bgMockup: "bg-sky-50",
+    bgIcon: "bg-sky-100",
+    textIcon: "text-sky-700",
+    number: "text-sky-500/40",
+  },
+  orange: {
+    bgMockup: "bg-orange-50",
+    bgIcon: "bg-orange-100",
+    textIcon: "text-orange-700",
+    number: "text-orange-500/40",
+  },
+  amber: {
+    bgMockup: "bg-amber-50",
+    bgIcon: "bg-amber-100",
+    textIcon: "text-amber-700",
+    number: "text-amber-500/40",
+  },
+  fuchsia: {
+    bgMockup: "bg-fuchsia-50",
+    bgIcon: "bg-fuchsia-100",
+    textIcon: "text-fuchsia-700",
+    number: "text-fuchsia-500/40",
+  },
+  pink: {
+    bgMockup: "bg-pink-50",
+    bgIcon: "bg-pink-100",
+    textIcon: "text-pink-700",
+    number: "text-pink-500/40",
+  },
+  cyan: {
+    bgMockup: "bg-cyan-50",
+    bgIcon: "bg-cyan-100",
+    textIcon: "text-cyan-700",
+    number: "text-cyan-500/40",
+  },
 };
 
 function formatPrice(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 }
 
 function scrollToPlans() {
@@ -161,7 +212,12 @@ export default function Checkout() {
       <SEO
         title="Plano Pro · Bora na Tech?"
         description="Desbloqueie 8 ferramentas com IA pra entrar em TI: roadmaps, plano de estudos, análise de currículo, LinkedIn, portfólio, entrevista, empregabilidade e networking. A partir de R$ 14,99/mês no plano anual."
-        keywords={["plano pro bora na tech", "ia carreira ti", "analisador currículo ia", "otimizador linkedin"]}
+        keywords={[
+          "plano pro bora na tech",
+          "ia carreira ti",
+          "analisador currículo ia",
+          "otimizador linkedin",
+        ]}
         url="/planos"
         schemaType="Product"
         schemaData={{
@@ -176,9 +232,27 @@ export default function Checkout() {
             highPrice: "24.90",
             offerCount: 3,
             offers: [
-              { "@type": "Offer", name: "Mensal", price: "24.90", priceCurrency: "BRL", availability: "https://schema.org/InStock" },
-              { "@type": "Offer", name: "Semestral", price: "119.40", priceCurrency: "BRL", availability: "https://schema.org/InStock" },
-              { "@type": "Offer", name: "Anual", price: "179.90", priceCurrency: "BRL", availability: "https://schema.org/InStock" },
+              {
+                "@type": "Offer",
+                name: "Mensal",
+                price: "24.90",
+                priceCurrency: "BRL",
+                availability: "https://schema.org/InStock",
+              },
+              {
+                "@type": "Offer",
+                name: "Semestral",
+                price: "119.40",
+                priceCurrency: "BRL",
+                availability: "https://schema.org/InStock",
+              },
+              {
+                "@type": "Offer",
+                name: "Anual",
+                price: "179.90",
+                priceCurrency: "BRL",
+                availability: "https://schema.org/InStock",
+              },
             ],
           },
         }}
@@ -188,7 +262,8 @@ export default function Checkout() {
         <div className="border-b-2 border-slate-950 bg-[#FFB800]">
           <div className="container py-3 text-center">
             <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
-              Cupom {affiliateCode} aplicado, {discountPercent}% de desconto em qualquer plano
+              Cupom {affiliateCode} aplicado, {discountPercent}% de desconto em
+              qualquer plano
             </p>
           </div>
         </div>
@@ -259,7 +334,8 @@ function HeroSection() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mx-auto mt-4 max-w-2xl text-base md:text-lg font-medium leading-relaxed text-slate-300"
           >
-            8 ferramentas com IA pra sair da dúvida, construir seu portfólio e conseguir o primeiro emprego. Em uma assinatura única.
+            8 ferramentas com IA pra sair da dúvida, construir seu portfólio e
+            conseguir o primeiro emprego. Em uma assinatura única.
           </motion.p>
 
           <motion.p
@@ -268,7 +344,8 @@ function HeroSection() {
             transition={{ duration: 0.6, delay: 0.35 }}
             className="mt-8 text-sm font-medium text-slate-400"
           >
-            Sobre uma base sólida: +250 termos, +100 roadmaps, +60 tecnologias, +90 perguntas técnicas.
+            Sobre uma base sólida: +250 termos, +100 roadmaps, +60 tecnologias,
+            +90 perguntas técnicas.
           </motion.p>
 
           <motion.div
@@ -285,7 +362,10 @@ function HeroSection() {
             >
               <ProStarIcon />
               <span>Quero o Pro</span>
-              <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+              <ArrowRight
+                size={20}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </button>
             <p className="text-xs font-medium text-slate-400">
               A partir de R$ 14,99/mês no plano anual
@@ -326,7 +406,14 @@ function HeroBackground() {
         aria-hidden="true"
       >
         <defs>
-          <pattern id="checkout-stars" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse">
+          <pattern
+            id="checkout-stars"
+            x="0"
+            y="0"
+            width="120"
+            height="120"
+            patternUnits="userSpaceOnUse"
+          >
             <path
               d="M 30 14 L 32 22 L 40 22 L 33 28 L 35 36 L 30 31 L 25 36 L 27 28 L 20 22 L 28 22 Z"
               fill="#fbbf24"
@@ -346,15 +433,17 @@ function HeroBackground() {
           <span
             key={idx}
             className="animate-twinkle absolute rounded-full bg-amber-300"
-            style={{
-              top: s.top,
-              left: s.left,
-              width: s.size,
-              height: s.size,
-              boxShadow: `0 0 ${s.size * 3}px ${s.size * 1.2}px rgba(255, 184, 0, 0.7)`,
-              ["--twinkle-delay" as string]: `${s.delay}s`,
-              ["--twinkle-duration" as string]: `${s.duration}s`,
-            } as React.CSSProperties}
+            style={
+              {
+                top: s.top,
+                left: s.left,
+                width: s.size,
+                height: s.size,
+                boxShadow: `0 0 ${s.size * 3}px ${s.size * 1.2}px rgba(255, 184, 0, 0.7)`,
+                ["--twinkle-delay" as string]: `${s.delay}s`,
+                ["--twinkle-duration" as string]: `${s.duration}s`,
+              } as React.CSSProperties
+            }
           />
         ))}
       </div>
@@ -369,7 +458,9 @@ function MockupHeroSlot() {
         <p className="font-display text-2xl font-black text-slate-500">
           [Mockup animado do Analisador de Currículo]
         </p>
-        <p className="mt-2 text-sm text-slate-400">Será implementado no Passe 2</p>
+        <p className="mt-2 text-sm text-slate-400">
+          Será implementado no Passe 2
+        </p>
       </div>
     </section>
   );
@@ -391,13 +482,18 @@ function FeaturesZigZagSection() {
             className="mt-4 font-display font-black leading-[1.05] text-slate-950"
             style={{ fontSize: "clamp(32px, 5vw, 56px)" }}
           >
-            Cada uma resolve um <span className="text-amber-600">problema real</span>.
+            Cada uma resolve um{" "}
+            <span className="text-amber-600">problema real</span>.
           </h2>
         </div>
 
         <div className="mt-16 space-y-16 lg:space-y-20">
           {mainFeatures.map((feature, idx) => (
-            <ZigZagBlock key={feature.number} feature={feature} reverse={idx % 2 === 1} />
+            <ZigZagBlock
+              key={feature.number}
+              feature={feature}
+              reverse={idx % 2 === 1}
+            />
           ))}
         </div>
       </div>
@@ -405,7 +501,13 @@ function FeaturesZigZagSection() {
   );
 }
 
-function ZigZagBlock({ feature, reverse }: { feature: ProFeature; reverse: boolean }) {
+function ZigZagBlock({
+  feature,
+  reverse,
+}: {
+  feature: ProFeature;
+  reverse: boolean;
+}) {
   const tokens = COLOR_TOKENS[feature.color];
   const Icon = PRO_FEATURE_ICONS[feature.iconName];
 
@@ -426,11 +528,18 @@ function ZigZagBlock({ feature, reverse }: { feature: ProFeature; reverse: boole
           reverse ? "lg:items-end lg:text-right" : "lg:items-start lg:text-left"
         }`}
       >
-        <p className={`font-display text-6xl md:text-7xl font-black leading-none ${tokens.number}`}>
+        <p
+          className={`font-display text-6xl md:text-7xl font-black leading-none ${tokens.number}`}
+        >
           {feature.number}
         </p>
         <div className="mt-4 inline-flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_#0f172a]">
-          <Icon size={20} className={tokens.textIcon} strokeWidth={2.5} aria-hidden="true" />
+          <Icon
+            size={20}
+            className={tokens.textIcon}
+            strokeWidth={2.5}
+            aria-hidden="true"
+          />
         </div>
         <h3
           className="mt-4 font-display font-black text-slate-950"
@@ -474,7 +583,8 @@ function MockupContent({ feature }: { feature: ProFeature }) {
   }
 }
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const CURRICULO_DEPOIS =
   "“Desenvolvi 5 sites responsivos em React, reduzindo bounce rate em 30%”";
@@ -517,7 +627,8 @@ function MockupCurriculo() {
     };
   }, [isInView, reduce]);
 
-  const typing = stage === 3 && typed.length < CURRICULO_DEPOIS.length && !reduce;
+  const typing =
+    stage === 3 && typed.length < CURRICULO_DEPOIS.length && !reduce;
 
   return (
     <div ref={ref} className="flex h-full flex-col justify-center gap-2.5">
@@ -528,7 +639,11 @@ function MockupCurriculo() {
           transition={{ duration: 0.3 }}
           className="flex items-start gap-2 rounded-2xl border-2 border-slate-950 bg-violet-100 p-3 shadow-[2px_2px_0_#0f172a]"
         >
-          <Sparkles size={16} className="mt-0.5 shrink-0 text-violet-700" strokeWidth={2.5} />
+          <Sparkles
+            size={16}
+            className="mt-0.5 shrink-0 text-violet-700"
+            strokeWidth={2.5}
+          />
           <p className="text-xs md:text-sm font-bold leading-snug text-slate-900">
             Reescrevi seu currículo. Olha a diferença:
           </p>
@@ -664,7 +779,9 @@ function MockupRoadmap() {
           y2={150}
           x1={ROADMAP_NODES[i].x}
           initial={{ x2: ROADMAP_NODES[i].x }}
-          animate={{ x2: lineFilled[i] ? ROADMAP_NODES[i + 1].x : ROADMAP_NODES[i].x }}
+          animate={{
+            x2: lineFilled[i] ? ROADMAP_NODES[i + 1].x : ROADMAP_NODES[i].x,
+          }}
           transition={{ duration: 0.28, ease: "easeOut" }}
           stroke="#10b981"
           strokeWidth={4}
@@ -782,7 +899,10 @@ function MockupEntrevistas() {
           {phase === 3 ? (
             <TypingBubble side="right" />
           ) : (
-            <ChatBubble side="right" text="Fiz um TODO list em React seguindo tutorial..." />
+            <ChatBubble
+              side="right"
+              text="Fiz um TODO list em React seguindo tutorial..."
+            />
           )}
         </div>
       ) : null}
@@ -814,7 +934,9 @@ function ChatBubble({ side, text }: { side: "left" | "right"; text: string }) {
         isAI ? "bg-white" : "bg-amber-100"
       }`}
     >
-      <p className="text-xs md:text-sm font-bold leading-snug text-slate-900">{text}</p>
+      <p className="text-xs md:text-sm font-bold leading-snug text-slate-900">
+        {text}
+      </p>
     </motion.div>
   );
 }
@@ -858,7 +980,11 @@ function ExtraFeaturesSection() {
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 md:gap-6 lg:grid-cols-3">
           {extraFeatures.map((feature, idx) => (
-            <ExtraFeatureCard key={feature.number} feature={feature} index={idx} />
+            <ExtraFeatureCard
+              key={feature.number}
+              feature={feature}
+              index={idx}
+            />
           ))}
         </div>
       </div>
@@ -866,7 +992,13 @@ function ExtraFeaturesSection() {
   );
 }
 
-function ExtraFeatureCard({ feature, index }: { feature: ProFeature; index: number }) {
+function ExtraFeatureCard({
+  feature,
+  index,
+}: {
+  feature: ProFeature;
+  index: number;
+}) {
   const tokens = COLOR_TOKENS[feature.color];
   const Icon = PRO_FEATURE_ICONS[feature.iconName];
 
@@ -879,8 +1011,15 @@ function ExtraFeatureCard({ feature, index }: { feature: ProFeature; index: numb
       className="relative flex flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
     >
       <div className="flex items-center justify-between">
-        <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 ${tokens.bgIcon}`}>
-          <Icon size={20} className={tokens.textIcon} strokeWidth={2.5} aria-hidden="true" />
+        <div
+          className={`inline-flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 ${tokens.bgIcon}`}
+        >
+          <Icon
+            size={20}
+            className={tokens.textIcon}
+            strokeWidth={2.5}
+            aria-hidden="true"
+          />
         </div>
         {feature.badge ? (
           <span className="inline-flex items-center rounded-full border-2 border-slate-950 bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-950">
@@ -888,8 +1027,12 @@ function ExtraFeatureCard({ feature, index }: { feature: ProFeature; index: numb
           </span>
         ) : null}
       </div>
-      <h3 className="mt-4 font-display text-base font-black text-slate-950">{feature.title}</h3>
-      <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-slate-700">{feature.description}</p>
+      <h3 className="mt-4 font-display text-base font-black text-slate-950">
+        {feature.title}
+      </h3>
+      <p className="mt-1 line-clamp-2 text-sm font-medium leading-snug text-slate-700">
+        {feature.description}
+      </p>
     </motion.article>
   );
 }
@@ -926,7 +1069,8 @@ function FreeVsProSection() {
             className="mt-4 font-display font-black leading-[1.05] text-slate-950"
             style={{ fontSize: "clamp(32px, 5vw, 56px)" }}
           >
-            Você já tem muito <span className="text-violet-700">de graça</span> aqui.
+            Você já tem muito <span className="text-violet-700">de graça</span>{" "}
+            aqui.
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -958,7 +1102,10 @@ function FreeVsProSection() {
             className="bnt-pressable group inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-6 py-3 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
           >
             <span>Conhecer os planos</span>
-            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            <ArrowRight
+              size={16}
+              className="transition-transform group-hover:translate-x-1"
+            />
           </button>
         </div>
       </div>
@@ -966,7 +1113,13 @@ function FreeVsProSection() {
   );
 }
 
-function FreeItemRow({ item, index }: { item: { icon: LucideIcon; text: string }; index: number }) {
+function FreeItemRow({
+  item,
+  index,
+}: {
+  item: { icon: LucideIcon; text: string };
+  index: number;
+}) {
   const Icon = item.icon;
   return (
     <motion.li
@@ -977,7 +1130,12 @@ function FreeItemRow({ item, index }: { item: { icon: LucideIcon; text: string }
       className="flex items-center gap-3 rounded-2xl border-2 border-slate-950 bg-white px-4 py-3 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
     >
       <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-emerald-100">
-        <Icon size={16} className="text-emerald-700" strokeWidth={2.5} aria-hidden="true" />
+        <Icon
+          size={16}
+          className="text-emerald-700"
+          strokeWidth={2.5}
+          aria-hidden="true"
+        />
       </span>
       <span className="text-sm font-bold text-slate-900">{item.text}</span>
     </motion.li>
@@ -1023,7 +1181,8 @@ function PlansSection({
             className="mt-4 font-display font-black leading-[1.05] text-slate-950"
             style={{ fontSize: "clamp(32px, 5vw, 56px)" }}
           >
-            3 opções. <span className="text-amber-600">Mesmas ferramentas.</span>
+            3 opções.{" "}
+            <span className="text-amber-600">Mesmas ferramentas.</span>
           </h2>
         </div>
 
@@ -1031,7 +1190,8 @@ function PlansSection({
           <div className="mx-auto mt-8 inline-flex w-full max-w-xl items-center justify-center gap-2 rounded-full border-2 border-emerald-700 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800">
             <Check size={16} strokeWidth={3} aria-hidden="true" />
             <span>
-              Desconto de {discountPercent}% já aplicado nos preços abaixo · Cupom {affiliateCode}
+              Desconto de {discountPercent}% já aplicado nos preços abaixo ·
+              Cupom {affiliateCode}
             </span>
           </div>
         ) : null}
@@ -1057,24 +1217,40 @@ function PlansSection({
                 ) : null}
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="font-display text-3xl font-black text-slate-950">{plan.label}</h3>
-                    {plan.savings ? <p className="mt-1 text-sm font-black text-violet-800">{plan.savings}</p> : null}
+                    <h3 className="font-display text-3xl font-black text-slate-950">
+                      {plan.label}
+                    </h3>
+                    {plan.savings ? (
+                      <p className="mt-1 text-sm font-black text-violet-800">
+                        {plan.savings}
+                      </p>
+                    ) : null}
                   </div>
-                  {selected ? <Check className="h-7 w-7 text-slate-950" /> : null}
+                  {selected ? (
+                    <Check className="h-7 w-7 text-slate-950" />
+                  ) : null}
                 </div>
                 <div className="mt-6">
                   {discountPercent > 0 ? (
-                    <p className="text-sm font-black text-slate-500 line-through">{plan.priceLabel}</p>
+                    <p className="text-sm font-black text-slate-500 line-through">
+                      {plan.priceLabel}
+                    </p>
                   ) : null}
-                  <p className="font-display text-4xl font-black text-slate-950">{formatPrice(finalPrice)}</p>
-                  <p className="mt-1 text-sm font-bold text-slate-700">{plan.period}</p>
+                  <p className="font-display text-4xl font-black text-slate-950">
+                    {formatPrice(finalPrice)}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-slate-700">
+                    {plan.period}
+                  </p>
                   {"monthlyEquivalent" in plan && plan.monthlyEquivalent ? (
                     <p className="mt-2 inline-block rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-sm font-black text-slate-950">
                       equivalente a {plan.monthlyEquivalent}
                     </p>
                   ) : null}
                 </div>
-                <p className="mt-auto pt-6 text-sm font-bold text-slate-700">Todos os benefícios Pro incluídos.</p>
+                <p className="mt-auto pt-6 text-sm font-bold text-slate-700">
+                  Todos os benefícios Pro incluídos.
+                </p>
               </button>
             );
           })}
@@ -1091,7 +1267,8 @@ function PlansSection({
             {loading ? "Abrindo checkout..." : "Assinar agora"}
           </button>
           <p className="text-center text-sm font-bold text-slate-700">
-            Cancele quando quiser · Sem taxa de cancelamento · Suporte por e-mail
+            Cancele quando quiser · Sem taxa de cancelamento · Suporte por
+            e-mail
           </p>
         </div>
       </div>
@@ -1099,7 +1276,13 @@ function PlansSection({
   );
 }
 
-function FinalCTASection({ loading, onSubscribe }: { loading: boolean; onSubscribe: () => void }) {
+function FinalCTASection({
+  loading,
+  onSubscribe,
+}: {
+  loading: boolean;
+  onSubscribe: () => void;
+}) {
   const stars = [
     { top: "20%", left: "12%", size: 6, delay: 0, duration: 3 },
     { top: "15%", left: "85%", size: 5, delay: 0.6, duration: 2.8 },
@@ -1127,15 +1310,17 @@ function FinalCTASection({ loading, onSubscribe }: { loading: boolean; onSubscri
           <span
             key={idx}
             className="animate-twinkle absolute rounded-full bg-amber-300"
-            style={{
-              top: s.top,
-              left: s.left,
-              width: s.size,
-              height: s.size,
-              boxShadow: `0 0 ${s.size * 3}px ${s.size * 1.2}px rgba(255, 184, 0, 0.7)`,
-              ["--twinkle-delay" as string]: `${s.delay}s`,
-              ["--twinkle-duration" as string]: `${s.duration}s`,
-            } as React.CSSProperties}
+            style={
+              {
+                top: s.top,
+                left: s.left,
+                width: s.size,
+                height: s.size,
+                boxShadow: `0 0 ${s.size * 3}px ${s.size * 1.2}px rgba(255, 184, 0, 0.7)`,
+                ["--twinkle-delay" as string]: `${s.delay}s`,
+                ["--twinkle-duration" as string]: `${s.duration}s`,
+              } as React.CSSProperties
+            }
           />
         ))}
       </div>
@@ -1151,7 +1336,8 @@ function FinalCTASection({ loading, onSubscribe }: { loading: boolean; onSubscri
             className="font-display font-black leading-[1.05] text-white"
             style={{ fontSize: "clamp(3rem, 6vw, 5.5rem)" }}
           >
-            Pronto pra parar de <span className="text-amber-400">pesquisar</span>?
+            Pronto pra parar de{" "}
+            <span className="text-amber-400">pesquisar</span>?
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -1177,7 +1363,10 @@ function FinalCTASection({ loading, onSubscribe }: { loading: boolean; onSubscri
             >
               <ProStarIcon />
               <span>{loading ? "Abrindo checkout..." : "Quero o Pro"}</span>
-              <ArrowRight size={20} className="transition-transform group-hover:translate-x-1" />
+              <ArrowRight
+                size={20}
+                className="transition-transform group-hover:translate-x-1"
+              />
             </button>
             <p className="text-xs md:text-sm font-medium text-slate-400">
               Cancele quando quiser · Sem taxa · Suporte por e-mail

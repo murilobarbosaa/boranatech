@@ -31,13 +31,15 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
 
     const allowedLevels = ["iniciante", "intermediario", "avancado"];
     const normalizedLevel =
-      typeof level === "string" && allowedLevels.includes(level)
-        ? level
-        : null;
+      typeof level === "string" && allowedLevels.includes(level) ? level : null;
 
     if (!Array.isArray(answers) || answers.length === 0) {
       return next(
-        createError(400, "invalid_request", "answers deve ser um array não vazio."),
+        createError(
+          400,
+          "invalid_request",
+          "answers deve ser um array não vazio.",
+        ),
       );
     }
     if (typeof result_area !== "string" || !result_area.trim()) {
@@ -45,13 +47,13 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
         createError(400, "invalid_request", "result_area é obrigatório."),
       );
     }
-    if (
-      typeof confidence !== "number" ||
-      confidence < 0 ||
-      confidence > 100
-    ) {
+    if (typeof confidence !== "number" || confidence < 0 || confidence > 100) {
       return next(
-        createError(400, "invalid_request", "confidence deve ser número entre 0 e 100."),
+        createError(
+          400,
+          "invalid_request",
+          "confidence deve ser número entre 0 e 100.",
+        ),
       );
     }
 
@@ -111,9 +113,14 @@ router.post("/attempts/batch", requireAuth, async (req, res, next) => {
 
 router.post("/attempts", requireAuth, async (req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin.from("career_quiz_attempts").insert({ user_id: req.user!.id }).select().single();
+    const { data, error } = await supabaseAdmin
+      .from("career_quiz_attempts")
+      .insert({ user_id: req.user!.id })
+      .select()
+      .single();
 
-    if (error) return next(createError(500, "db_error", "Erro ao criar tentativa."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao criar tentativa."));
 
     res.status(201).json({ data });
   } catch (err) {
@@ -125,10 +132,18 @@ router.post("/attempts/:id/answers", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
     const attemptId = req.params.id;
-    const { answers } = req.body as { answers?: Array<Record<string, unknown>> };
+    const { answers } = req.body as {
+      answers?: Array<Record<string, unknown>>;
+    };
 
     if (!Array.isArray(answers) || answers.length === 0) {
-      return next(createError(400, "invalid_request", "answers deve ser um array não vazio."));
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "answers deve ser um array não vazio.",
+        ),
+      );
     }
 
     const { data: attempt } = await supabaseAdmin
@@ -138,20 +153,25 @@ router.post("/attempts/:id/answers", requireAuth, async (req, res, next) => {
       .eq("user_id", userId)
       .single();
 
-    if (!attempt) return next(createError(404, "not_found", "Tentativa não encontrada."));
+    if (!attempt)
+      return next(createError(404, "not_found", "Tentativa não encontrada."));
 
     const rows = answers.map((answer, index) => ({
       attempt_id: attemptId,
       question_id: String(answer.question_id),
       answer_id: answer.answer_id ? String(answer.answer_id) : null,
-      answer_text: typeof answer.answer_text === "string" ? answer.answer_text : null,
+      answer_text:
+        typeof answer.answer_text === "string" ? answer.answer_text : null,
       area: typeof answer.area === "string" ? answer.area : null,
       order_index: index,
     }));
 
-    const { error } = await supabaseAdmin.from("career_quiz_answers").insert(rows);
+    const { error } = await supabaseAdmin
+      .from("career_quiz_answers")
+      .insert(rows);
 
-    if (error) return next(createError(500, "db_error", "Erro ao salvar respostas."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao salvar respostas."));
 
     res.json({ data: { saved: rows.length } });
   } catch (err) {
@@ -163,10 +183,13 @@ router.post("/attempts/:id/complete", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
     const attemptId = req.params.id;
-    const { result_area, result_area_slug, confidence, result_json } = req.body as Record<string, unknown>;
+    const { result_area, result_area_slug, confidence, result_json } =
+      req.body as Record<string, unknown>;
 
     if (!result_area) {
-      return next(createError(400, "invalid_request", "result_area é obrigatório."));
+      return next(
+        createError(400, "invalid_request", "result_area é obrigatório."),
+      );
     }
 
     const { data, error } = await supabaseAdmin
@@ -183,7 +206,8 @@ router.post("/attempts/:id/complete", requireAuth, async (req, res, next) => {
       .select()
       .single();
 
-    if (error || !data) return next(createError(404, "not_found", "Tentativa não encontrada."));
+    if (error || !data)
+      return next(createError(404, "not_found", "Tentativa não encontrada."));
 
     res.json({ data });
   } catch (err) {
@@ -195,13 +219,16 @@ router.get("/history", requireAuth, async (req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("career_quiz_attempts")
-      .select("id, started_at, completed_at, result_area, result_area_slug, confidence, level, result_json")
+      .select(
+        "id, started_at, completed_at, result_area, result_area_slug, confidence, level, result_json",
+      )
       .eq("user_id", req.user!.id)
       .not("completed_at", "is", null)
       .order("completed_at", { ascending: false })
       .limit(10);
 
-    if (error) return next(createError(500, "db_error", "Erro ao buscar histórico."));
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar histórico."));
 
     res.json({ data: data || [] });
   } catch (err) {
