@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 
+import { resolveAreaSelection } from "../../shared/areas";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { analyzeGithub } from "../lib/githubAnalyze";
 import {
@@ -22,6 +23,7 @@ router.use(checkProStatus);
 const BodySchema = z.object({
   mode: z.enum(["perfil", "repo"]),
   input: z.string().min(1),
+  area: z.string().optional(),
 });
 
 router.post("/analyze", async (req: Request, res: Response, next: NextFunction) => {
@@ -37,6 +39,8 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
   }
 
   const { mode, input } = parsedBody.data;
+  // Area opcional: slug desconhecido ou ausente vira "geral". So afeta a prosa da IA.
+  const area = resolveAreaSelection(parsedBody.data.area);
 
   let parsed: { owner: string; repo: string } | { login: string } | null;
   if (mode === "repo") {
@@ -72,7 +76,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
   let aiUsed = false;
   let aiIo = { inputChars: 0, outputChars: 0 };
   try {
-    const data = await analyzeGithub(mode, parsed, (io) => {
+    const data = await analyzeGithub(mode, parsed, area, (io) => {
       aiUsed = true;
       aiIo = io;
     });

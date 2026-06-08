@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { AreaSelection } from "../areas";
+
 /**
  * Contrato do analisador de GitHub.
  *
@@ -380,6 +382,8 @@ export interface GithubAnalysisTarget {
 
 export interface GithubAnalysisResponse {
   mode: AnalysisMode;
+  /** Area alvo resolvida da analise (slug valido ou "geral"). Afeta so a prosa da IA. */
+  area: AreaSelection;
   target: GithubAnalysisTarget;
   deterministic: DeterministicResult;
   metadata: GithubAnalysisMetadata;

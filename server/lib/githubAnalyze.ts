@@ -3,6 +3,7 @@ import { fetchProfileData, fetchRepoData } from "./github";
 import { analyzeProfile, analyzeRepo } from "./githubChecks";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
+import { areaLabel, type AreaSelection } from "../../shared/areas";
 import {
   GithubQualitativeSchema,
   type AnalysisMode,
@@ -83,10 +84,22 @@ function selectTopRepos(data: GithubProfileData): ProfileTopRepo[] {
     }));
 }
 
-function buildRepoPrompt(data: GithubRepoData, deterministic: DeterministicResult): string {
+function buildRepoPrompt(
+  data: GithubRepoData,
+  deterministic: DeterministicResult,
+  label: string | null,
+): string {
   const languages = Object.keys(data.languages);
+  const areaLines = label
+    ? [
+        `Area alvo: ${label}.`,
+        `Enquadre a leitura e os proximos passos pensando em quem quer trabalhar com ${label}, citando o que importa pra esse papel quando fizer sentido. Nao invente que o repo e dessa area se os dados nao mostrarem isso.`,
+        "",
+      ]
+    : [];
   return [
     "Modo: repositorio",
+    ...areaLines,
     `Repositorio: ${data.fullName}`,
     `URL: ${data.htmlUrl}`,
     `Linguagem principal: ${data.primaryLanguage ?? "nao informada"}`,
@@ -111,6 +124,7 @@ function buildProfilePrompt(
   data: GithubProfileData,
   deterministic: DeterministicResult,
   topRepos: ProfileTopRepo[],
+  label: string | null,
 ): string {
   const links: string[] = [];
   if (data.blog) links.push(`site ${data.blog}`);
@@ -127,8 +141,16 @@ function buildProfilePrompt(
           .join("\n")
       : "(nenhum repositorio proprio em destaque)";
 
+  const areaLines = label
+    ? [
+        `Area alvo: ${label}.`,
+        `Enquadre a leitura e os proximos passos pensando em quem quer trabalhar com ${label}, citando o que importa pra esse papel quando fizer sentido. Nao invente que a pessoa e dessa area se os dados nao mostrarem isso.`,
+        "",
+      ]
+    : [];
   return [
     "Modo: perfil",
+    ...areaLines,
     `Usuario: ${data.login}`,
     `URL: ${data.htmlUrl}`,
     `Nome: ${data.name ?? "nao informado"}`,
@@ -284,8 +306,11 @@ function emptyRepoQualitative(): GithubQualitative {
 export async function analyzeGithub(
   mode: AnalysisMode,
   parsed: ParsedRepo | ParsedProfile,
+  area: AreaSelection,
   onAiIo?: (io: AnalyzeAiIo) => void,
 ): Promise<GithubAnalysisResponse> {
+  const label = areaLabel(area);
+
   if (mode === "repo") {
     const { owner, repo } = parsed as ParsedRepo;
     const data = await fetchRepoData(owner, repo);
@@ -294,10 +319,11 @@ export async function analyzeGithub(
     const isEmptyRepo = deterministic.suficiencia === "baixa";
     const qualitative = isEmptyRepo
       ? emptyRepoQualitative()
-      : await runQualitative(buildRepoPrompt(data, deterministic), onAiIo);
+      : await runQualitative(buildRepoPrompt(data, deterministic, label), onAiIo);
 
     return {
       mode: "repo",
+      area,
       target: {
         kind: "repo",
         login: data.owner,
@@ -324,11 +350,12 @@ export async function analyzeGithub(
   // Perfil sem nenhum repo autoral (zero repos ou so forks): atalho caloroso, sem IA.
   const hasAuthoredRepo = data.repos.some((repo) => !repo.fork);
   const qualitative = hasAuthoredRepo
-    ? await runQualitative(buildProfilePrompt(data, deterministic, topRepos), onAiIo)
+    ? await runQualitative(buildProfilePrompt(data, deterministic, topRepos, label), onAiIo)
     : emptyProfileQualitative();
 
   return {
     mode: "perfil",
+    area,
     target: {
       kind: "perfil",
       login: data.login,
