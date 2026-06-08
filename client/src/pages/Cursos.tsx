@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? (Cursos Page)
+  BORA NA TECH? — Cursos Page
   Style: Neo-Brutalism Suavizado
   - Grid of free and paid courses with filters
 */
@@ -98,7 +98,7 @@ export default function Cursos() {
   return (
     <Layout>
       <SEO
-        title="Cursos de TI · Curadoria de cursos online gratuitos e pagos"
+        title="Cursos de TI — Curadoria de cursos online gratuitos e pagos"
         description="Cursos curados de programação, dados, design, IA e tecnologia. Conteúdo organizado por área e nível para iniciantes."
         keywords={[
           "cursos de ti gratuitos",
@@ -132,66 +132,119 @@ export default function Cursos() {
       {/* Filters */}
       <section className="bg-amber-50 border-b-2 border-amber-200 py-4 sticky top-16 z-40">
         <div className="container">
-          <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:flex-wrap">
             {/* Search */}
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar curso..."
-                className="w-full pl-9 pr-4 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
-              />
+            <div className="flex max-w-sm flex-1 flex-col gap-1">
+              <label
+                htmlFor="cursos-busca"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Buscar
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  id="cursos-busca"
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Nome do curso ou canal"
+                  className="w-full pl-9 pr-4 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
             </div>
             {/* Area */}
-            <select
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {areaSlugOptions.map((slug) => {
-                const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
-                const key = slug ?? "__null__";
-                const label =
-                  slug === AREA_ALL ? AREA_ALL : labelForAreaSlug(slug);
-                return (
-                  <option key={key} value={value}>
-                    {label}
-                  </option>
-                );
-              })}
-            </select>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-area"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Área
+              </label>
+              <select
+                id="cursos-area"
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {areaSlugOptions.map((slug) => {
+                  const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
+                  const key = slug ?? "__null__";
+                  const label =
+                    slug === AREA_ALL
+                      ? "Todas as áreas"
+                      : labelForAreaSlug(slug);
+                  return (
+                    <option key={key} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
             {/* Nivel */}
-            <select
-              value={nivel}
-              onChange={(e) => setNivel(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {nivelOptions.map((o) => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-nivel"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Nível
+              </label>
+              <select
+                id="cursos-nivel"
+                value={nivel}
+                onChange={(e) => setNivel(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {nivelOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o === "Todos" ? "Todos os níveis" : o}
+                  </option>
+                ))}
+              </select>
+            </div>
             {/* Idioma */}
-            <select
-              value={idioma}
-              onChange={(e) => setIdioma(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {idiomaOptions.map((o) => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
-            {/* Tipo */}
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value)}
-              className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
-            >
-              {tipoOptions.map((o) => (
-                <option key={o}>{o === "Todos" ? "Todos os tipos" : o}</option>
-              ))}
-            </select>
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-idioma"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Idioma
+              </label>
+              <select
+                id="cursos-idioma"
+                value={idioma}
+                onChange={(e) => setIdioma(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {idiomaOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o === "Todos" ? "Todos os idiomas" : o}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {/* Preço */}
+            <div className="flex flex-col gap-1">
+              <label
+                htmlFor="cursos-preco"
+                className="text-[11px] font-black uppercase tracking-wide text-amber-800"
+              >
+                Preço
+              </label>
+              <select
+                id="cursos-preco"
+                value={tipo}
+                onChange={(e) => setTipo(e.target.value)}
+                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+              >
+                {tipoOptions.map((o) => (
+                  <option key={o} value={o}>
+                    {o === "Todos" ? "Todos os preços" : o}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </section>

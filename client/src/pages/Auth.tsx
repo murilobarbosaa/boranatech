@@ -90,7 +90,7 @@ export default function Auth({
   return (
     <Layout>
       <SEO
-        title={isSignup ? "Cadastro · Bora na Tech?" : "Login · Bora na Tech?"}
+        title={isSignup ? "Cadastro — Bora na Tech?" : "Login — Bora na Tech?"}
         description={
           isSignup
             ? "Crie sua conta gratuita no Bora na Tech? e salve seus caminhos de carreira em tecnologia."

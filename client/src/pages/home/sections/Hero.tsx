@@ -93,9 +93,9 @@ type MapBackgroundProps = {
 
 // Gera um path SVG de curva em S entre dois pontos. Os pontos de
 // controle são deslocados perpendicularmente à reta start→end com sinais
-// opostos, é o que produz a inflexão característica do S. Trabalha em
+// opostos — é o que produz a inflexão característica do S. Trabalha em
 // coordenadas de pixel reais (viewBox = dimensões da seção), por isso
-// `curvatureRatio` é fração do comprimento do segmento, mantém a curva
+// `curvatureRatio` é fração do comprimento do segmento — mantém a curva
 // proporcional e SEM distorção em qualquer proporção de tela. `offsetPx`
 // recua start e end ao longo da reta (gap respiratório dos dots).
 function generateSCurvePath(
@@ -167,7 +167,7 @@ function AnimatedCounter({ value }: { value: number }) {
 }
 
 // =========================================
-// FUNDO DE MAPA: 4 camadas decorativas
+// FUNDO DE MAPA — 4 camadas decorativas
 // =========================================
 
 function MapBackground({ sectionRef }: MapBackgroundProps) {
@@ -234,7 +234,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
       className="absolute inset-0 z-0 pointer-events-none select-none"
       aria-hidden="true"
     >
-      {/* CAMADA 1: Grid de coordenadas: latitudes principais (320px) + grid fino (80px) sobrepostos. */}
+      {/* CAMADA 1 — Grid de coordenadas: latitudes principais (320px) + grid fino (80px) sobrepostos. */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -248,7 +248,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
         }}
       />
 
-      {/* CAMADA 4: Jornada do usuário em 3 curvas em S independentes.
+      {/* CAMADA 4 — Jornada do usuário em 3 curvas em S independentes.
           Coordenadas calculadas dinamicamente a partir da posição real
           dos dots cardinais (via ResizeObserver + getBoundingClientRect).
           Renderiza só quando todas as 4 posições estão medidas. */}
@@ -365,7 +365,7 @@ function MapBackground({ sectionRef }: MapBackgroundProps) {
           </svg>
         )}
 
-      {/* CAMADA 3: 4 nós cardeais com pulse defasado entre si.
+      {/* CAMADA 3 — 4 nós cardeais com pulse defasado entre si.
           Cada wrapper recebe ref via callback (chave N/L/S/O extraída do label)
           para que o useEffect acima meça a posição real do dot pulsante. */}
       {CARDINAL_NODES.map(
@@ -560,7 +560,7 @@ export default function Hero() {
         >
           <Link
             href="/areas"
-            aria-label="Explorar a plataforma, ir para áreas da TI"
+            aria-label="Explorar a plataforma — ir para áreas da TI"
             className="font-display inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] active:translate-y-0 active:shadow-[2px_2px_0_#0f172a]"
           >
             Explorar a plataforma
@@ -575,7 +575,7 @@ export default function Hero() {
           </Link>
         </motion.div>
 
-        {/* 6) Grid de áreas: stagger interno + pulse no ponto colorido. */}
+        {/* 6) Grid de áreas — stagger interno + pulse no ponto colorido. */}
         <motion.ul
           initial="hidden"
           animate="show"

@@ -58,7 +58,7 @@ export function useRecoveryFlow(): RecoveryFlowState {
 
       // Sem sessão ainda.
       if (recovery) {
-        // Evento de recovery já visto; a sessão deve chegar, aguarda.
+        // Evento de recovery já visto; a sessão deve chegar — aguarda.
         expiryTimer = window.setTimeout(
           () => finish("expired"),
           RECOVERY_TIMEOUT_MS,

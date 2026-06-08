@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? (Area Detail Page)
+  BORA NA TECH? — Area Detail Page
   Style: Neo-Brutalism Suavizado
   Estrutura em 4 zonas: Hero+Stats, Entendimento, Como começar, Aprofundamento + sidebar sticky.
 */
@@ -23,9 +23,12 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
+import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
+import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
+import { careerInstitutes } from "@/lib/platformData";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { technologies } from "@/lib/technologyData";
@@ -340,6 +343,9 @@ export default function AreaDetalhe() {
   const faculdadesEntries = (area.faculdadesRelacionadas ?? [])
     .map((nome) => faculdades.cursos.find((c) => c.nome === nome))
     .filter((c): c is (typeof faculdades.cursos)[number] => Boolean(c));
+  const institutosDaArea = careerInstitutes.filter((inst) =>
+    inst.areas?.includes(area.slug),
+  );
 
   return (
     <Layout>
@@ -382,7 +388,38 @@ export default function AreaDetalhe() {
           <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
             {/* ======================= MAIN ======================= */}
             <div className="space-y-10">
-              {/* ============ ZONA 1: Hero stats + CTAs ============ */}
+              {area.slug === "mainframe" ? (
+                <div
+                  className={cn(
+                    "card-brutal rounded-2xl bg-white p-6",
+                    ac.liftShadow,
+                  )}
+                >
+                  <EmbaixadoraBadge />
+                  <h2 className="mt-3 font-display text-2xl font-black text-slate-950">
+                    Comece no IBM Z Xplore
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Ambiente real e gratuito da IBM para aprender mainframe com
+                    desafios práticos.
+                  </p>
+                  <p className="mt-2 text-sm font-bold text-slate-800">
+                    Ao se cadastrar no IBM Z Xplore, informe Ana Julia Moura
+                    como sua embaixadora (referral).
+                  </p>
+                  <a
+                    href="https://ibm.com/products/z/resources/zxplore"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+                  >
+                    Comece no IBM Z Xplore
+                    <ExternalLink className="h-4 w-4" aria-hidden />
+                  </a>
+                </div>
+              ) : null}
+
+              {/* ============ ZONA 1 — Hero stats + CTAs ============ */}
               <div className="area-rise space-y-4">
                 <AreaHeroStats
                   area={area}
@@ -437,7 +474,7 @@ export default function AreaDetalhe() {
                 ) : null}
               </div>
 
-              {/* ============ ZONA 2: Entendimento ============ */}
+              {/* ============ ZONA 2 — Entendimento ============ */}
               <div
                 className="area-rise space-y-5"
                 style={{ animationDelay: "0.08s" }}
@@ -513,7 +550,7 @@ export default function AreaDetalhe() {
                 </div>
               </div>
 
-              {/* ============ ZONA 3: Como começar ============ */}
+              {/* ============ ZONA 3 — Como começar ============ */}
               <div
                 className="area-rise space-y-5"
                 style={{ animationDelay: "0.16s" }}
@@ -716,9 +753,17 @@ export default function AreaDetalhe() {
                     </Link>
                   </div>
                 </div>
+
+                {area.livros && area.livros.length > 0 ? (
+                  <LivrosRecomendados
+                    titulo="Livros recomendados"
+                    livros={area.livros}
+                    ac={ac}
+                  />
+                ) : null}
               </div>
 
-              {/* ============ ZONA 4: Aprofundamento ============ */}
+              {/* ============ ZONA 4 — Aprofundamento ============ */}
               <div
                 className="area-rise space-y-5"
                 style={{ animationDelay: "0.24s" }}
@@ -732,7 +777,7 @@ export default function AreaDetalhe() {
                   Aprofundamento
                 </p>
 
-                {/* 4.1 Influencer: placeholder enquanto curadoria não está pronta */}
+                {/* 4.1 Influencer — placeholder enquanto curadoria não está pronta */}
                 <div
                   className={cn(
                     "card-brutal rounded-xl border-2 border-dashed p-6 text-center",
@@ -799,6 +844,50 @@ export default function AreaDetalhe() {
                       ))}
                   </div>
                 </div>
+
+                {institutosDaArea.length > 0 ? (
+                  <div
+                    className={cn(
+                      "card-brutal rounded-xl bg-white p-6",
+                      ac.liftShadow,
+                    )}
+                  >
+                    <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
+                      Institutos e certificações
+                    </h2>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {institutosDaArea.map((inst) => (
+                        <a
+                          key={inst.name}
+                          href={inst.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "rounded-lg border-2 p-4 transition-transform hover:-translate-y-0.5",
+                            ac.panelBorder,
+                            ac.panelSoft,
+                          )}
+                        >
+                          <h3 className="font-display text-lg font-black text-slate-950">
+                            {inst.name}
+                          </h3>
+                          <p className="mt-1 text-sm text-slate-600">
+                            {inst.desc}
+                          </p>
+                          <span
+                            className={cn(
+                              "mt-3 inline-flex items-center gap-1 text-xs font-black uppercase",
+                              ac.link,
+                            )}
+                          >
+                            Site oficial{" "}
+                            <ExternalLink className="h-3 w-3" aria-hidden />
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* 4.3 Empresas */}
                 {empresasDaArea.length > 0 ? (
@@ -999,7 +1088,7 @@ export default function AreaDetalhe() {
 
             {/* ======================= SIDEBAR ======================= */}
             <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
-              {/* Resumo rápido: apenas desktop (stats já estão na Zona 1 no mobile) */}
+              {/* Resumo rápido — apenas desktop (stats já estão na Zona 1 no mobile) */}
               <div
                 className={cn(
                   "card-brutal hidden rounded-xl border-2 bg-white p-6 lg:block",
@@ -1151,7 +1240,7 @@ export default function AreaDetalhe() {
                 </ul>
               </div>
 
-              {/* Crescimento de mercado: apenas desktop, conforme regra mobile */}
+              {/* Crescimento de mercado — apenas desktop, conforme regra mobile */}
               {area.crescimentoMercado ? (
                 <div
                   className={cn(

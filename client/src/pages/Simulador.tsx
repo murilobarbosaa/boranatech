@@ -105,6 +105,7 @@ const areaComplexity: Record<string, number> = {
   "QA / Testes de Software": 9,
   "Desenvolvimento Mobile": 13,
   DevOps: 16,
+  Mainframe: 14,
 };
 
 export default function Simulador() {
@@ -277,7 +278,7 @@ export default function Simulador() {
       <p className="mx-auto mt-3 max-w-xl text-xs font-medium text-slate-500">
         O indicador{" "}
         <strong className="font-bold text-slate-700">Prontidão</strong> resume
-        quanto você já traz de rotina, portfólio, candidatura e rede. Não mede
+        quanto você já traz de rotina, portfólio, candidatura e rede — não mede
         seu talento.
       </p>
 
@@ -366,7 +367,7 @@ export default function Simulador() {
         title={showResults ? "Seu cenário estimado" : "Simulador de Carreira"}
         subtitle={
           showResults
-            ? "Um prazo orientativo e as alavancas que mais mexem no seu caso, para planejar sem achismo."
+            ? "Um prazo orientativo e as alavancas que mais mexem no seu caso — para planejar sem achismo."
             : "Responda o diagnóstico passo a passo. Na última tela você escolhe a meta e só então vê o prazo estimado."
         }
       />

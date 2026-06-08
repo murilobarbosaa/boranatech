@@ -2383,7 +2383,7 @@ export const LEVEL_META: Record<QuizLevel, LevelMeta> = {
   iniciante: {
     label: "Iniciante",
     emoji: "🌱",
-    tagline: "Você está começando agora, e esse é o melhor lugar pra começar.",
+    tagline: "Você está começando agora — e esse é o melhor lugar pra começar.",
     doing: [
       "As próximas 15 perguntas vêm em linguagem simples, sem jargão técnico.",
       "Cruzamos suas respostas com as áreas de tech pra achar a que mais combina com você.",
@@ -3783,11 +3783,131 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
     },
   };
 
-export const careerInstitutes = [
+export const careerInstitutes: {
+  name: string;
+  desc: string;
+  url: string;
+  areas?: string[];
+}[] = [
   {
     name: "PMI",
-    desc: "Comunidade para gestão de projetos e certificações.",
+    desc: "Certificações de gestão de projetos PMP e CAPM.",
     url: "https://www.pmi.org",
+    areas: ["gestao"],
+  },
+  {
+    name: "Scrum.org",
+    desc: "Certificação PSM (Professional Scrum Master) e trilhas ágeis.",
+    url: "https://www.scrum.org",
+    areas: ["gestao"],
+  },
+  {
+    name: "Axelos",
+    desc: "ITIL, certificação de gestão de serviços de TI.",
+    url: "https://www.axelos.com",
+    areas: ["gestao"],
+  },
+  {
+    name: "ISTQB",
+    desc: "Certificação CTFL, padrão internacional de testes de software.",
+    url: "https://www.istqb.org",
+    areas: ["qa"],
+  },
+  {
+    name: "BSTQB",
+    desc: "Board brasileiro do ISTQB, com o CTFL em português.",
+    url: "https://www.bstqb.org.br",
+    areas: ["qa"],
+  },
+  {
+    name: "(ISC)2",
+    desc: "Certificação CISSP, referência em segurança da informação.",
+    url: "https://www.isc2.org",
+    areas: ["ciberseguranca"],
+  },
+  {
+    name: "ISACA",
+    desc: "Certificações CISA e CISM de auditoria e gestão de segurança.",
+    url: "https://www.isaca.org",
+    areas: ["ciberseguranca"],
+  },
+  {
+    name: "EC-Council",
+    desc: "Certificação CEH (Certified Ethical Hacker).",
+    url: "https://www.eccouncil.org",
+    areas: ["ciberseguranca"],
+  },
+  {
+    name: "CompTIA",
+    desc: "Certificações neutras de fornecedor: A+, Network+ e Security+.",
+    url: "https://www.comptia.org",
+    areas: ["ciberseguranca", "infraestrutura"],
+  },
+  {
+    name: "Cisco",
+    desc: "Certificação CCNA de redes.",
+    url: "https://learningnetwork.cisco.com",
+    areas: ["infraestrutura"],
+  },
+  {
+    name: "CNCF",
+    desc: "Certificações de Kubernetes CKA e CKAD.",
+    url: "https://www.cncf.io",
+    areas: ["cloud", "devops", "sre"],
+  },
+  {
+    name: "Linux Foundation",
+    desc: "Certificações de Linux e tecnologias cloud native.",
+    url: "https://www.linuxfoundation.org",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "AWS",
+    desc: "Certificações de fornecedor como Cloud Practitioner e Solutions Architect.",
+    url: "https://aws.amazon.com/certification/",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "Microsoft Azure",
+    desc: "Certificações de fornecedor como Azure Fundamentals e Administrator.",
+    url: "https://learn.microsoft.com/credentials/",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "Google Cloud",
+    desc: "Certificações de fornecedor nos níveis Associate e Professional.",
+    url: "https://cloud.google.com/learn/certification",
+    areas: ["cloud", "devops"],
+  },
+  {
+    name: "Nielsen Norman Group",
+    desc: "NN/g UX Certification, referência em usabilidade e pesquisa.",
+    url: "https://www.nngroup.com",
+    areas: ["uxui"],
+  },
+  {
+    name: "Interaction Design Foundation",
+    desc: "Cursos e certificados de UX e design de interação.",
+    url: "https://www.interaction-design.org",
+    areas: ["uxui"],
+  },
+  {
+    name: "DAMA International",
+    desc: "Certificação CDMP de gestão de dados.",
+    url: "https://www.dama.org",
+    areas: ["dados", "engenharia-dados"],
+  },
+  {
+    name: "IBM Training",
+    desc: "Certificações e treinamentos de mainframe IBM Z e z/OS.",
+    url: "https://www.ibm.com/training/",
+    areas: ["mainframe"],
+  },
+  {
+    name: "Open Mainframe Project",
+    desc: "Projeto da Linux Foundation com cursos e comunidade de mainframe.",
+    url: "https://www.openmainframeproject.org",
+    areas: ["mainframe"],
   },
   {
     name: "SBC",
@@ -3795,9 +3915,14 @@ export const careerInstitutes = [
     url: "https://www.sbc.org.br",
   },
   {
-    name: "Interaction Design Foundation",
-    desc: "Comunidade e estudos para UX/Product Design.",
-    url: "https://www.interaction-design.org",
+    name: "IEEE",
+    desc: "Maior organização técnica do mundo, com padrões e publicações.",
+    url: "https://www.ieee.org",
+  },
+  {
+    name: "ACM",
+    desc: "Association for Computing Machinery, publicações e eventos.",
+    url: "https://www.acm.org",
   },
 ];
 
@@ -3905,7 +4030,7 @@ export const collegeSuggestions: CollegeSuggestion[] = [
 ];
 
 /* ===========================================================================
- * QUIZ: Objetivos, cores por área e quiz de tecnologia
+ * QUIZ — Objetivos, cores por área e quiz de tecnologia
  * ======================================================================== */
 
 /**
@@ -3954,7 +4079,7 @@ export const objectiveTracks: ObjectiveTrack[] = [
     label: "Começar do zero",
     description: "Nunca mexi com tecnologia e quero saber por onde começar.",
     accent: "#15803d",
-    introHeadline: "Todo mundo começa em algum lugar. Bora achar o seu",
+    introHeadline: "Todo mundo começa em algum lugar — bora achar o seu",
     introSub:
       "Sem termo técnico e sem pressão. A gente parte do zero e te mostra a área e os primeiros passos que mais fazem sentido pra você.",
     suggestedLevel: "iniciante",
@@ -4036,7 +4161,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "🎨",
     accent: "#7c3aed",
     tagline: "A porta de entrada mais rápida pro desenvolvimento web.",
-    why: "Você curte ver o resultado na tela, na hora, e quer entrar logo no mercado web. JavaScript roda em todo navegador e o React é o framework mais pedido em vagas de front-end.",
+    why: "Você curte ver o resultado na tela, na hora, e quer entrar logo no mercado web — JavaScript roda em todo navegador e o React é o framework mais pedido em vagas de front-end.",
     startHere: [
       "HTML e CSS pra estruturar e estilizar páginas",
       "JavaScript do zero (lógica, DOM, eventos)",
@@ -4050,7 +4175,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "🐍",
     accent: "#15803d",
     tagline: "A linguagem mais versátil pra quem quer manter portas abertas.",
-    why: "Você quer uma primeira linguagem fácil de ler e que sirva pra muita coisa. Python é ótimo pra back-end, automação, dados e IA, então te dá liberdade pra migrar de foco depois.",
+    why: "Você quer uma primeira linguagem fácil de ler e que sirva pra muita coisa — Python é ótimo pra back-end, automação, dados e IA, então te dá liberdade pra migrar de foco depois.",
     startHere: [
       "Lógica de programação com Python",
       "Manipular dados e arquivos",
@@ -4064,7 +4189,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "📊",
     accent: "#d97706",
     tagline: "A base de quem trabalha perto de números e decisões.",
-    why: "Você gosta de achar padrões e gerar insights. SQL é a habilidade número um pra trabalhar com dados, e com ela você já constrói relatórios e dashboards que apoiam decisões.",
+    why: "Você gosta de achar padrões e gerar insights — SQL é a habilidade número um pra trabalhar com dados, e com ela você já constrói relatórios e dashboards que apoiam decisões.",
     startHere: [
       "SQL (SELECT, JOIN, agregações)",
       "Planilhas e fundamentos de análise",
@@ -4078,7 +4203,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "⚙️",
     accent: "#166534",
     tagline: "Back-end em JavaScript, do mesmo idioma do front.",
-    why: "Você curte construir a lógica e as regras por trás dos sistemas e quer aproveitar o JavaScript dos dois lados. Com Node você cria APIs e serviços usando a mesma linguagem do front-end.",
+    why: "Você curte construir a lógica e as regras por trás dos sistemas e quer aproveitar o JavaScript dos dois lados — com Node você cria APIs e serviços usando a mesma linguagem do front-end.",
     startHere: [
       "JavaScript sólido (assíncrono, módulos)",
       "Node.js + Express pra criar APIs",
@@ -4092,7 +4217,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "📱",
     accent: "#ea580c",
     tagline: "Pra quem quer focar em apps de celular desde já.",
-    why: "Seu foco é o celular. Com Flutter ou React Native você cria apps que rodam em Android e iOS a partir de uma base de código só, indo direto pro que te empolga.",
+    why: "Seu foco é o celular — com Flutter ou React Native você cria apps que rodam em Android e iOS a partir de uma base de código só, indo direto pro que te empolga.",
     startHere: [
       "Lógica de programação (Dart pra Flutter ou JS pra RN)",
       "Layout e navegação de telas",
@@ -4106,7 +4231,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "☁️",
     accent: "#0e7490",
     tagline: "Pra quem curte automação, infraestrutura e escala.",
-    why: "Você gosta de manter as coisas no ar, automatizar e mexer com servidores. Dominar Linux, Docker e uma nuvem abre as portas de Cloud e DevOps.",
+    why: "Você gosta de manter as coisas no ar, automatizar e mexer com servidores — dominar Linux, Docker e uma nuvem abre as portas de Cloud e DevOps.",
     startHere: [
       "Linux e linha de comando",
       "Docker pra empacotar aplicações",
@@ -4125,7 +4250,7 @@ export function getTechRecommendation(key: string): TechRecommendation {
 /**
  * Quiz de tecnologia (objetivo "escolher-tecnologia"). Reaproveita o shape de
  * QuizOption: `area` guarda a chave da tecnologia e `scores` aponta para as
- * chaves de techRecommendations. Sem nível, fluxo direto e curto.
+ * chaves de techRecommendations. Sem nível — fluxo direto e curto.
  */
 export const TECH_QUESTION_COUNT = 7;
 
@@ -4217,7 +4342,7 @@ export const techQuiz: QuizQuestion[] = [
     question: "Quanto de matemática e estatística te anima?",
     options: [
       {
-        label: "Bastante, curto números e padrões",
+        label: "Bastante — curto números e padrões",
         area: "SQL e Dados",
         scores: { "SQL e Dados": 4, Python: 3 },
       },

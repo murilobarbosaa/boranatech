@@ -140,10 +140,10 @@ Tipografia de seção: `font-display font-black` para headings; labels de seçã
 
 ## Deploy
 
-| Alvo    | Config                                                           |
-| ------- | ---------------------------------------------------------------- |
-| Vercel  | Só frontend, catch-all rewrite `/(.*) → /index.html`             |
-| Railway | Fullstack, nixpacks,`npm run build`, start: `node dist/index.js` |
+| Alvo    | Config                                                            |
+| ------- | ----------------------------------------------------------------- |
+| Vercel  | Só frontend, catch-all rewrite `/(.*) → /index.html`              |
+| Railway | Fullstack, nixpacks, `npm run build`, start: `node dist/index.js` |
 
 ## Arquivos Importantes
 

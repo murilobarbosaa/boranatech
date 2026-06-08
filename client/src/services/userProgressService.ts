@@ -1,4 +1,5 @@
-import { assertSupabaseConfigured } from "@/lib/supabase";
+import { apiUrl } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 export type ProgressContext =
   | "portfolio_checklist"
@@ -12,25 +13,40 @@ export interface ProgressEntry {
   updatedAt: string;
 }
 
+async function authHeader(): Promise<Record<string, string>> {
+  const {
+    data: { session },
+  } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+
+  if (!session?.access_token) return {};
+  return { Authorization: `Bearer ${session.access_token}` };
+}
+
+async function request(path: string, options?: RequestInit) {
+  const header = await authHeader();
+
+  return fetch(apiUrl(`/api/progress${path}`), {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...header,
+      ...(options?.headers || {}),
+    },
+  });
+}
+
 export async function listProgress(
   context: ProgressContext,
 ): Promise<ProgressEntry[]> {
-  const client = assertSupabaseConfigured();
-  const { data, error } = await client
-    .from("user_progress")
-    .select("item_key, state, updated_at")
-    .eq("context", context);
-
-  if (error) {
-    console.error("[userProgress] listProgress error:", error);
+  try {
+    const res = await request(`/${encodeURIComponent(context)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = (await res.json()) as { data?: ProgressEntry[] };
+    return json.data ?? [];
+  } catch (err) {
+    console.error("[userProgress] listProgress error:", err);
     return [];
   }
-
-  return (data ?? []).map((row) => ({
-    itemKey: row.item_key,
-    state: (row.state ?? {}) as Record<string, unknown>,
-    updatedAt: row.updated_at,
-  }));
 }
 
 export async function upsertProgress(
@@ -38,27 +54,17 @@ export async function upsertProgress(
   itemKey: string,
   state: Record<string, unknown>,
 ): Promise<void> {
-  const client = assertSupabaseConfigured();
-  const {
-    data: { user },
-  } = await client.auth.getUser();
-  if (!user) {
-    throw new Error("UNAUTHENTICATED");
-  }
-
-  const { error } = await client.from("user_progress").upsert(
+  const res = await request(
+    `/${encodeURIComponent(context)}/${encodeURIComponent(itemKey)}`,
     {
-      user_id: user.id,
-      context,
-      item_key: itemKey,
-      state,
+      method: "PUT",
+      body: JSON.stringify({ state }),
     },
-    { onConflict: "user_id,context,item_key" },
   );
 
-  if (error) {
-    console.error("[userProgress] upsertProgress error:", error);
-    throw error;
+  if (!res.ok) {
+    console.error("[userProgress] upsertProgress error:", res.status);
+    throw new Error(`Erro ao salvar progresso (HTTP ${res.status}).`);
   }
 }
 
@@ -66,15 +72,13 @@ export async function deleteProgress(
   context: ProgressContext,
   itemKey: string,
 ): Promise<void> {
-  const client = assertSupabaseConfigured();
-  const { error } = await client
-    .from("user_progress")
-    .delete()
-    .eq("context", context)
-    .eq("item_key", itemKey);
+  const res = await request(
+    `/${encodeURIComponent(context)}/${encodeURIComponent(itemKey)}`,
+    { method: "DELETE" },
+  );
 
-  if (error) {
-    console.error("[userProgress] deleteProgress error:", error);
-    throw error;
+  if (!res.ok) {
+    console.error("[userProgress] deleteProgress error:", res.status);
+    throw new Error(`Erro ao remover progresso (HTTP ${res.status}).`);
   }
 }
