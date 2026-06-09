@@ -112,11 +112,6 @@ export const womenArea = {
       desc: "Programa global do Google com eventos, histórias e recursos para mulheres em tecnologia.",
       url: "https://www.womentechmakers.com",
     },
-    {
-      name: "AfroPython",
-      desc: "Coletivo que promove a inclusão de pessoas negras na tecnologia, com oficinas gratuitas de programação.",
-      url: "https://afropython.org/",
-    },
   ],
   creators: [
     {
