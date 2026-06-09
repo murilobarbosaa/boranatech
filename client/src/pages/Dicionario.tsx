@@ -1,12 +1,19 @@
 import { useState } from "react";
+import { useSearch } from "wouter";
 import { Search } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { dictionaryTerms } from "@/lib/platformData";
+import { getGlossaryTerm } from "@/lib/glossary";
 
 export default function Dicionario() {
-  const [query, setQuery] = useState("");
+  const search = useSearch();
+  const termoParam = new URLSearchParams(search).get("termo");
+  const initialQuery = termoParam
+    ? (getGlossaryTerm(termoParam)?.term ?? "")
+    : "";
+  const [query, setQuery] = useState(initialQuery);
   const [tag, setTag] = useState("Todas");
   const tags = [
     "Todas",
