@@ -175,6 +175,56 @@ export default function Mulheres() {
               </div>
             </div>
           </div>
+
+          {womenArea.support.channels.length > 0 && (
+            <div className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[8px_8px_0_#f9a8d4]">
+              <div className="mb-2 flex items-center gap-2">
+                <HeartHandshake className="h-5 w-5 text-pink-700" />
+                <h2 className="font-display text-2xl font-black text-slate-950">
+                  Sofreu assédio ou discriminação? Você pode buscar apoio
+                </h2>
+              </div>
+              <p className="mb-5 max-w-3xl text-sm font-semibold text-slate-600">
+                {womenArea.support.intro}
+              </p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {womenArea.support.channels.map((channel) => (
+                  <div
+                    key={channel.label}
+                    className="rounded-2xl border-2 border-slate-900 bg-pink-50 p-4 shadow-[4px_4px_0_#db2777]"
+                  >
+                    <p className="text-xs font-black uppercase tracking-wide text-pink-800">
+                      {channel.label}
+                    </p>
+                    {channel.tel ? (
+                      <a
+                        href={`tel:${channel.tel}`}
+                        className="font-display text-3xl font-black text-slate-950 hover:text-pink-700"
+                      >
+                        {channel.value}
+                      </a>
+                    ) : (
+                      <p className="font-display text-3xl font-black text-slate-950">
+                        {channel.value}
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-600">
+                      {channel.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <a
+                href={womenArea.support.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700 hover:text-pink-800"
+              >
+                {womenArea.support.sourceLabel}{" "}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
         </div>
       </section>
     </Layout>

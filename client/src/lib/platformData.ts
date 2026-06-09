@@ -245,6 +245,32 @@ export const womenArea = {
     "Iniciantes são acolhidas sem piadas ou respostas agressivas.",
     "A comunidade compartilha oportunidades, referências e apoio prático.",
   ],
+  support: {
+    intro:
+      "Se você passar por assédio, machismo ou discriminação por ser uma das poucas mulheres na área, saiba que pode buscar apoio e denunciar. Os canais abaixo são oficiais e gratuitos.",
+    sourceLabel: "Fonte oficial: gov.br/mulheres",
+    sourceUrl: "https://www.gov.br/mulheres/pt-br/ligue180",
+    channels: [
+      {
+        label: "Ligue 180",
+        value: "180",
+        desc: "Central de Atendimento à Mulher. Funciona 24 horas, todos os dias.",
+        tel: "180",
+      },
+      {
+        label: "WhatsApp do Ligue 180",
+        value: "(61) 9610-0180",
+        desc: "O mesmo atendimento, por mensagem.",
+        tel: "",
+      },
+      {
+        label: "Emergência",
+        value: "190",
+        desc: "Polícia Militar, em caso de risco imediato.",
+        tel: "190",
+      },
+    ],
+  },
 };
 
 export const dictionaryTerms = [
