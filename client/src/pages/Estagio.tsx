@@ -286,7 +286,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                     className="card-brutal bg-white rounded-xl p-5 flex flex-col group"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-display font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
+                      <h3 className="font-display font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
                         {plat.nome}
                       </h3>
                       <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-amber-500 transition-colors" />

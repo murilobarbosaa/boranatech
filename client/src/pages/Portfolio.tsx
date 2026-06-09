@@ -404,7 +404,7 @@ export default function Portfolio() {
         title={
           <>
             Faça login pra salvar seu{" "}
-            <span className="text-[#FFB800]">Progresso</span>
+            <span className="text-amber-700">Progresso</span>
           </>
         }
         description="Seu progresso fica salvo na sua conta."
