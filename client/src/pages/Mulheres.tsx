@@ -5,6 +5,7 @@ import {
   Flower2,
   Heart,
   HeartHandshake,
+  Mic,
   PlayCircle,
   ShieldCheck,
   Sparkles,
@@ -140,12 +141,18 @@ export default function Mulheres() {
             items={womenArea.communities}
           />
           <CreatorsSection creators={womenArea.creators} />
+          <Section title="Leituras e listas" items={womenArea.articles} />
 
           <div className="grid gap-5 md:grid-cols-2">
             <ListCard
               title="Vídeos para começar"
               icon={<PlayCircle className="h-5 w-5 text-pink-700" />}
               items={womenArea.videos}
+            />
+            <ListCard
+              title="Podcasts de mulheres em tech"
+              icon={<Mic className="h-5 w-5 text-pink-700" />}
+              items={womenArea.podcasts}
             />
             <ListCard
               title="Vagas afirmativas"

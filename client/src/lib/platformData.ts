@@ -112,6 +112,11 @@ export const womenArea = {
       desc: "Programa global do Google com eventos, histórias e recursos para mulheres em tecnologia.",
       url: "https://www.womentechmakers.com",
     },
+    {
+      name: "AfroPython",
+      desc: "Coletivo que promove a inclusão de pessoas negras na tecnologia, com oficinas gratuitas de programação.",
+      url: "https://afropython.org/",
+    },
   ],
   creators: [
     {
@@ -244,6 +249,43 @@ export const womenArea = {
     "Há moderação ativa e canal para reportar problemas.",
     "Iniciantes são acolhidas sem piadas ou respostas agressivas.",
     "A comunidade compartilha oportunidades, referências e apoio prático.",
+  ],
+  podcasts: [
+    {
+      title: "Emílias Podcast (Mulheres na Computação)",
+      url: "https://open.spotify.com/show/1Pm95WtrS8ZqBqRCUprQDq",
+    },
+    {
+      title: "Elas Programam",
+      url: "https://open.spotify.com/show/1Ay5y5TFWQPq3Pw2Xy209U",
+    },
+  ],
+  articles: [
+    {
+      name: "Mulheres em TI no Brasil: crescimento e desafios (Serasa Experian)",
+      desc: "Reportagem sobre a evolução da presença feminina em tecnologia no país.",
+      url: "https://www.serasaexperian.com.br/sala-de-imprensa/rh/numero-de-mulheres-em-ti-cresce-46-em-um-ano-revela-serasa-experian/",
+    },
+    {
+      name: "Bolsas para mulheres em programação e dados (Agência Brasil)",
+      desc: "Iniciativa pública que oferece bolsas de estudo para mulheres na área.",
+      url: "https://agenciabrasil.ebc.com.br/economia/noticia/2025-03/iniciativa-oferece-31-mil-bolsas-para-mulheres-em-programacao-e-dados",
+    },
+    {
+      name: "Mulheres na tecnologia em 2025 (Olhar Digital)",
+      desc: "Coluna panorâmica sobre representatividade feminina na tecnologia.",
+      url: "https://olhardigital.com.br/2025/03/22/colunistas/mulheres-na-tecnologia-em-2025-sera-que-avancamos/",
+    },
+    {
+      name: "Lista: comunidades e recursos para mulheres devs (GitHub)",
+      desc: "Coletânea colaborativa de comunidades, eventos e materiais.",
+      url: "https://github.com/FreeCodeCampSp/mulheresprogramam",
+    },
+    {
+      name: "Lista: canais e cursos de tech feitos por mulheres (GitHub)",
+      desc: "Coletânea de criadoras e cursos de tecnologia feitos por mulheres.",
+      url: "https://github.com/ComunidadeCafeina/women-teaching-tech",
+    },
   ],
   support: {
     intro:
