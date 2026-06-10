@@ -68,40 +68,47 @@ export default function Mulheres() {
 
       <section className="bg-gradient-to-b from-pink-50 via-white to-rose-50 py-12">
         <div className="container space-y-8">
-          <div className="rounded-3xl border-2 border-slate-900 bg-pink-200 p-6 shadow-[8px_8px_0_#0f172a]">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              {womenArea.founder.photoUrl && (
+          <div className="max-w-2xl rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[5px_5px_0_#db2777] sm:p-5">
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              {womenArea.founder.photoUrl ? (
                 <img
                   src={womenArea.founder.photoUrl}
                   alt={`Foto de ${womenArea.founder.name}`}
-                  className="h-20 w-20 shrink-0 rounded-2xl border-2 border-slate-900 object-cover shadow-[4px_4px_0_#db2777]"
+                  className="h-16 w-16 shrink-0 rounded-full border-2 border-slate-900 object-cover"
                 />
+              ) : (
+                <span
+                  aria-hidden
+                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-pink-300 font-display text-2xl font-black text-slate-950"
+                >
+                  {womenArea.founder.name.charAt(0)}
+                </span>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-pink-900">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-pink-700">
                   Fundadora
                 </p>
-                <h2 className="font-display text-2xl font-black text-slate-950">
+                <h2 className="font-display text-xl font-black text-slate-950">
                   {womenArea.founder.name}
                 </h2>
-                <p className="mt-1 text-sm font-bold text-slate-800">
+                <p className="text-sm font-bold text-slate-700">
                   {womenArea.founder.role}
                 </p>
                 {womenArea.founder.message && (
-                  <p className="mt-3 max-w-2xl text-sm font-semibold text-slate-800">
+                  <p className="mt-2 text-sm font-semibold text-slate-700">
                     {womenArea.founder.message}
                   </p>
                 )}
-                <a
-                  href={womenArea.founder.instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
-                >
-                  <Instagram className="h-4 w-4" />
-                  Seguir no Instagram {womenArea.founder.handle}
-                </a>
               </div>
+              <a
+                href={womenArea.founder.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+              >
+                <Instagram className="h-4 w-4" />
+                Seguir no Instagram {womenArea.founder.handle}
+              </a>
             </div>
           </div>
 
