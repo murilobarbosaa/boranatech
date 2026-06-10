@@ -49,14 +49,14 @@ export default function Mulheres() {
         viewport: { once: true, margin: "-80px" },
         variants: {
           hidden: {},
-          show: { transition: { staggerChildren: 0.08 } },
+          show: { transition: { staggerChildren: 0.1 } },
         },
       };
   const stepItem = reduce
     ? {}
     : {
         variants: {
-          hidden: { opacity: 0, y: 12 },
+          hidden: { opacity: 0, y: 16 },
           show: { opacity: 1, y: 0 },
         },
       };
@@ -77,11 +77,52 @@ export default function Mulheres() {
       />
       <section className="relative overflow-hidden border-b-2 border-slate-900 bg-pink-100 py-12">
         <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#db2777_1px,transparent_1px)] [background-size:18px_18px]" />
-        <Flower2 className="pointer-events-none absolute right-10 top-8 hidden h-20 w-20 rotate-12 text-pink-300 md:block" />
-        <Flower2 className="pointer-events-none absolute bottom-8 left-10 hidden h-14 w-14 -rotate-12 text-rose-300 md:block" />
-        <Heart className="pointer-events-none absolute bottom-10 right-32 hidden h-10 w-10 text-pink-400 md:block" />
+        <Flower2
+          aria-hidden
+          className="animate-gentle-float pointer-events-none absolute right-10 top-8 hidden h-20 w-20 rotate-12 text-pink-300 md:block"
+          style={{ animationDelay: "0s" }}
+        />
+        <Flower2
+          aria-hidden
+          className="animate-gentle-float pointer-events-none absolute bottom-8 left-10 hidden h-14 w-14 -rotate-12 text-rose-300 md:block"
+          style={{ animationDelay: "1.2s" }}
+        />
+        <Heart
+          aria-hidden
+          className="animate-gentle-float pointer-events-none absolute bottom-10 right-32 hidden h-10 w-10 text-pink-400 md:block"
+          style={{ animationDelay: "0.6s" }}
+        />
+        <a
+          href="https://www.instagram.com/ana.natech/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute right-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white/90 px-3 py-1.5 text-xs font-black text-pink-800 shadow-[3px_3px_0_#0f172a] backdrop-blur transition-transform hover:scale-105 hover:brightness-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2 sm:right-6 sm:top-6"
+        >
+          <Instagram className="h-3.5 w-3.5" />
+          @ana.natech
+          <Sparkles
+            aria-hidden
+            className="animate-twinkle h-3 w-3 text-pink-500"
+            style={{ animationDelay: "0.4s", animationDuration: "2.2s" }}
+          />
+        </a>
         <div className="container">
           <motion.div {...reveal} className="relative max-w-3xl">
+            <Sparkles
+              aria-hidden
+              className="animate-twinkle pointer-events-none absolute right-2 top-10 hidden h-5 w-5 text-pink-400 sm:block"
+              style={{ animationDelay: "0s", animationDuration: "2.6s" }}
+            />
+            <Sparkles
+              aria-hidden
+              className="animate-twinkle pointer-events-none absolute left-1/2 top-1 hidden h-4 w-4 text-rose-400 md:block"
+              style={{ animationDelay: "0.7s", animationDuration: "3s" }}
+            />
+            <Sparkles
+              aria-hidden
+              className="animate-twinkle pointer-events-none absolute right-24 bottom-6 hidden h-4 w-4 text-pink-300 lg:block"
+              style={{ animationDelay: "1.2s", animationDuration: "2.2s" }}
+            />
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-pink-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
               <Flower2 className="h-3.5 w-3.5" />
               área de mulheres
@@ -114,8 +155,13 @@ export default function Mulheres() {
         <div className="container space-y-8">
           <motion.div
             {...reveal}
-            className="max-w-2xl rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[5px_5px_0_#db2777] sm:p-5"
+            className="relative max-w-2xl rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[5px_5px_0_#db2777] sm:p-5"
           >
+            <Sparkles
+              aria-hidden
+              className="animate-twinkle pointer-events-none absolute right-3 top-3 h-4 w-4 text-pink-400"
+              style={{ animationDelay: "0.3s", animationDuration: "2.4s" }}
+            />
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               {womenArea.founder.photoUrl ? (
                 <img
@@ -151,7 +197,7 @@ export default function Mulheres() {
                 href={womenArea.founder.instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+                className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:scale-105 hover:brightness-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
               >
                 <Instagram className="h-4 w-4" />
                 Seguir no Instagram {womenArea.founder.handle}
@@ -225,14 +271,14 @@ export default function Mulheres() {
                 href={womenArea.reassurance.readingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
               >
                 {womenArea.reassurance.readingLabel}{" "}
                 <ExternalLink className="h-3 w-3" />
               </a>
               <a
                 href="#comunidades"
-                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
               >
                 Ver comunidades
               </a>
@@ -244,7 +290,11 @@ export default function Mulheres() {
             className="rounded-3xl border-2 border-slate-900 bg-pink-100 p-6 shadow-[8px_8px_0_#0f172a]"
           >
             <div className="mb-5 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-pink-800" />
+              <Sparkles
+                aria-hidden
+                className="animate-twinkle h-5 w-5 text-pink-800"
+                style={{ animationDelay: "0.2s", animationDuration: "2.4s" }}
+              />
               <h2 className="font-display text-2xl font-black text-slate-950">
                 Trilha da iniciante
               </h2>
@@ -256,7 +306,7 @@ export default function Mulheres() {
                   key={step.title}
                   className="group flex items-start gap-3 rounded-xl p-2 transition-colors hover:bg-pink-50"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-pink-300 text-xs font-black text-slate-950 transition-transform group-hover:-translate-y-0.5">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-pink-300 text-xs font-black text-slate-950 transition-transform group-hover:-translate-y-0.5 group-hover:scale-110">
                     {index + 1}
                   </span>
                   <div>
