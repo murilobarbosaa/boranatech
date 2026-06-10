@@ -23,10 +23,13 @@ import {
   bibliotecaFilmes,
   bibliotecaLivros,
   bibliotecaPodcasts,
+  bibliotecaReferencia,
+  bibliotecaSeries,
   bibliotecaVideos,
   carreiraTemas,
   type CarreiraTema,
   type DicaArtigo,
+  type Filme,
 } from "@/lib/dicasData";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { getFaviconUrl, hideBrokenImage } from "@/lib/utils";
@@ -173,9 +176,11 @@ export default function Dicas() {
                 {(
                   [
                     { value: "filmes", label: "Filmes e documentários" },
+                    { value: "series", label: "Séries" },
                     { value: "videos", label: "Vídeos e canais" },
                     { value: "livros", label: "Livros" },
                     { value: "podcasts", label: "Podcasts" },
+                    { value: "referencia", label: "Referência rápida" },
                   ] as const
                 ).map((sub) => (
                   <TabsTrigger
@@ -188,7 +193,10 @@ export default function Dicas() {
                 ))}
               </TabsList>
               <TabsContent value="filmes">
-                <FilmesGrid />
+                <FilmesGrid itens={bibliotecaFilmes} />
+              </TabsContent>
+              <TabsContent value="series">
+                <FilmesGrid itens={bibliotecaSeries} />
               </TabsContent>
               <TabsContent value="videos">
                 <LinksGrid itens={bibliotecaVideos} />
@@ -198,6 +206,9 @@ export default function Dicas() {
               </TabsContent>
               <TabsContent value="podcasts">
                 <LinksGrid itens={bibliotecaPodcasts} />
+              </TabsContent>
+              <TabsContent value="referencia">
+                <LinksGrid itens={bibliotecaReferencia} />
               </TabsContent>
             </Tabs>
           </div>
@@ -460,7 +471,15 @@ function getStagger(reduce: boolean | null) {
   return { container, item };
 }
 
-function LinkExterno({ title, url }: { title: string; url: string }) {
+function LinkExterno({
+  title,
+  url,
+  desc,
+}: {
+  title: string;
+  url: string;
+  desc?: string;
+}) {
   const favicon = getFaviconUrl(url);
   return (
     <a
@@ -477,7 +496,14 @@ function LinkExterno({ title, url }: { title: string; url: string }) {
           className="h-5 w-5 shrink-0 rounded border border-slate-300"
         />
       ) : null}
-      <span className="flex-1 text-sm font-bold text-slate-800">{title}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold text-slate-800">{title}</span>
+        {desc ? (
+          <span className="mt-0.5 block text-xs font-medium text-slate-500">
+            {desc}
+          </span>
+        ) : null}
+      </span>
       <ExternalLink className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
     </a>
   );
@@ -517,6 +543,7 @@ function CarreiraConteudo({ tema }: { tema: CarreiraTema }) {
                 key={artigo.url}
                 title={artigo.title}
                 url={artigo.url}
+                desc={artigo.desc}
               />
             ))}
           </div>
@@ -534,14 +561,14 @@ function LinksGrid({ itens }: { itens: DicaArtigo[] }) {
     <motion.ul {...container} className="grid gap-3 sm:grid-cols-2">
       {itens.map((it) => (
         <motion.li {...item} key={it.url}>
-          <LinkExterno title={it.title} url={it.url} />
+          <LinkExterno title={it.title} url={it.url} desc={it.desc} />
         </motion.li>
       ))}
     </motion.ul>
   );
 }
 
-function FilmesGrid() {
+function FilmesGrid({ itens }: { itens: Filme[] }) {
   const reduce = useReducedMotion();
   const { container, item } = getStagger(reduce);
 
@@ -550,7 +577,7 @@ function FilmesGrid() {
       {...container}
       className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
     >
-      {bibliotecaFilmes.map((filme) => (
+      {itens.map((filme) => (
         <motion.li
           {...item}
           key={filme.titulo}

@@ -1,6 +1,7 @@
 export interface DicaArtigo {
   title: string;
   url: string;
+  desc?: string;
 }
 
 export interface CarreiraTema {
@@ -251,6 +252,56 @@ export const bibliotecaFilmes: Filme[] = [
     ano: "2013",
     porque: "Começar do zero, leve.",
   },
+  {
+    titulo: "Jogos de Guerra",
+    ano: "1983",
+    porque:
+      "Um jovem invade um sistema militar, clássico sobre hacking e ética.",
+  },
+  {
+    titulo: "AlphaGo",
+    ano: "2017",
+    porque: "A IA da DeepMind enfrenta o campeão mundial de Go.",
+  },
+  {
+    titulo: "Codificando Preconceitos (Coded Bias)",
+    ano: "2020",
+    porque:
+      "Viés em reconhecimento facial, pesquisa de Joy Buolamwini no MIT.",
+  },
+  {
+    titulo: "O Menino da Internet (The Internet's Own Boy)",
+    ano: "2014",
+    porque: "A vida de Aaron Swartz e o acesso livre ao conhecimento.",
+  },
+  {
+    titulo: "Lo and Behold",
+    ano: "2016",
+    porque: "Werner Herzog sobre o passado e futuro da internet.",
+  },
+];
+
+export const bibliotecaSeries: Filme[] = [
+  {
+    titulo: "Mr. Robot",
+    ano: "2015",
+    porque: "Hacker e segurança, retrato cru da cultura cyber.",
+  },
+  {
+    titulo: "Silicon Valley",
+    ano: "2014",
+    porque: "Comédia sobre uma startup tentando crescer no Vale.",
+  },
+  {
+    titulo: "Halt and Catch Fire",
+    ano: "2014",
+    porque: "O boom do PC e da internet nos anos 80 e 90.",
+  },
+  {
+    titulo: "Black Mirror",
+    ano: "2011",
+    porque: "Antologia sobre os efeitos da tecnologia na sociedade.",
+  },
 ];
 
 export const bibliotecaLivros: Livro[] = [
@@ -276,32 +327,63 @@ export const bibliotecaLivros: Livro[] = [
     titulo: "O Programador Pragmático",
     autor: "Hunt e Thomas",
   },
+  {
+    titulo: "Pro Git (em português)",
+    autor: "Scott Chacon e Ben Straub",
+    url: "https://git-scm.com/book/pt-br/v2",
+  },
 ];
 
 export const bibliotecaVideos: DicaArtigo[] = [
   {
     title: "Curso em Vídeo (Gustavo Guanabara)",
     url: "https://www.youtube.com/channel/UCrWvhVmt0Qac3HgsjQK62FQ",
+    desc: "Cursos gratuitos de lógica, HTML, CSS, Python e Git.",
   },
   {
     title: "Rocketseat",
     url: "https://www.youtube.com/channel/UCSfwM5u0Kce6Cce8_S72olg",
+    desc: "Front, back e carreira para iniciantes.",
   },
   {
     title: "Filipe Deschamps",
     url: "https://www.youtube.com/@FilipeDeschamps",
+    desc: "Conceitos de programação e código limpo de forma didática.",
+  },
+  {
+    title: "Código Fonte TV",
+    url: "https://www.youtube.com/@codigofontetv",
+    desc: "Novidades e fundamentos de tecnologia.",
+  },
+  {
+    title: "Attekita Dev",
+    url: "https://www.youtube.com/@attekitadev",
+    desc: "Conteúdo acessível para quem está começando.",
+  },
+  {
+    title: "Akitando (Fabio Akita)",
+    url: "https://www.youtube.com/@Akitando",
+    desc: "Panoramas profundos sobre carreira e tecnologia.",
+  },
+  {
+    title: "Programação Dinâmica",
+    url: "https://www.youtube.com/channel/UC70mr11REaCqgKke7DPJoLg",
+    desc: "Ciência da computação e dados de forma visual.",
   },
   {
     title: "freeCodeCamp",
     url: "https://www.youtube.com/@freecodecamp",
+    desc: "Conteúdo em inglês, legendável.",
   },
   {
     title: "Fireship",
     url: "https://www.youtube.com/@Fireship",
+    desc: "Vídeos rápidos em inglês, legendável.",
   },
   {
     title: "CS50 (Harvard)",
     url: "https://www.youtube.com/@cs50",
+    desc: "Ciência da computação de Harvard, em inglês.",
   },
 ];
 
@@ -309,5 +391,29 @@ export const bibliotecaPodcasts: DicaArtigo[] = [
   {
     title: "Hipsters Ponto Tech",
     url: "https://www.hipsters.tech/",
+    desc: "Papos sobre desenvolvimento, carreira e tendências.",
+  },
+  {
+    title: "Dev Sem Fronteiras",
+    url: "https://www.devsemfronteiras.tech/",
+    desc: "Brasileiros que foram trabalhar com tech fora do país.",
+  },
+];
+
+export const bibliotecaReferencia: DicaArtigo[] = [
+  {
+    title: "The Odin Project",
+    url: "https://www.theodinproject.com",
+    desc: "Currículo gratuito e open source de desenvolvimento web.",
+  },
+  {
+    title: "roadmap.sh",
+    url: "https://roadmap.sh",
+    desc: "Trilhas visuais de aprendizado por área.",
+  },
+  {
+    title: "MDN Web Docs (PT)",
+    url: "https://developer.mozilla.org/pt-BR/",
+    desc: "Documentação de HTML, CSS, JavaScript e Web APIs.",
   },
 ];
