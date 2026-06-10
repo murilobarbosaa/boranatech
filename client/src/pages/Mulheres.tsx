@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, type SyntheticEvent } from "react";
 import {
   CheckCircle,
   ExternalLink,
@@ -16,6 +16,20 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { womenArea } from "@/lib/platformData";
+
+function getFaviconUrl(url: string): string | null {
+  try {
+    const { hostname } = new URL(url);
+    if (!hostname) return null;
+    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`;
+  } catch {
+    return null;
+  }
+}
+
+function hideBrokenImage(event: SyntheticEvent<HTMLImageElement>) {
+  event.currentTarget.style.display = "none";
+}
 
 export default function Mulheres() {
   const reduce = useReducedMotion();
@@ -445,37 +459,48 @@ function CreatorsSection({
         Criadoras para acompanhar
       </h2>
       <div className="grid gap-4 md:grid-cols-3">
-        {creators.map((creator) => (
-          <a
-            key={creator.name}
-            href={creator.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card-invite flex gap-4 rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
-          >
-            <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#f472b6]">
-              <AvatarImage
-                src={creator.avatarUrl}
-                alt={`Foto de perfil de ${creator.name}`}
-              />
-              <AvatarFallback className="border-2 border-pink-200 bg-pink-100 text-xs font-black text-pink-900">
-                {initials(creator.name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <h3 className="font-display font-black text-slate-950">
-                {creator.name}
-              </h3>
-              <p className="text-xs font-semibold text-pink-700">
-                {creator.handle}
-              </p>
-              <p className="mt-2 text-sm text-slate-600">{creator.topic}</p>
-              <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
-                Conhecer <ExternalLink className="h-3 w-3" />
-              </span>
-            </div>
-          </a>
-        ))}
+        {creators.map((creator) => {
+          const favicon = getFaviconUrl(creator.url);
+          return (
+            <a
+              key={creator.name}
+              href={creator.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="card-invite flex gap-4 rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+            >
+              <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#f472b6]">
+                <AvatarImage
+                  src={creator.avatarUrl}
+                  alt={`Foto de perfil de ${creator.name}`}
+                />
+                <AvatarFallback className="border-2 border-pink-200 bg-pink-100 text-xs font-black text-pink-900">
+                  {initials(creator.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display font-black text-slate-950">
+                  {creator.name}
+                </h3>
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-pink-700">
+                  {favicon && (
+                    <img
+                      src={favicon}
+                      alt=""
+                      onError={hideBrokenImage}
+                      className="h-4 w-4 shrink-0 rounded border border-slate-300"
+                    />
+                  )}
+                  {creator.handle}
+                </p>
+                <p className="mt-2 text-sm text-slate-600">{creator.topic}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
+                  Conhecer <ExternalLink className="h-3 w-3" />
+                </span>
+              </div>
+            </a>
+          );
+        })}
       </div>
     </div>
   );
@@ -494,23 +519,36 @@ function Section({
         {title}
       </h2>
       <div className="grid gap-4 md:grid-cols-3">
-        {items.map((item) => (
-          <a
-            key={item.name}
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card-invite rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
-          >
-            <h3 className="font-display font-black text-slate-950">
-              {item.name}
-            </h3>
-            <p className="mt-2 text-sm text-slate-600">{item.desc}</p>
-            <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
-              Conhecer <ExternalLink className="h-3 w-3" />
-            </span>
-          </a>
-        ))}
+        {items.map((item) => {
+          const favicon = getFaviconUrl(item.url);
+          return (
+            <a
+              key={item.name}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="card-invite rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+            >
+              <div className="flex items-center gap-2">
+                {favicon && (
+                  <img
+                    src={favicon}
+                    alt=""
+                    onError={hideBrokenImage}
+                    className="h-5 w-5 shrink-0 rounded border border-slate-300"
+                  />
+                )}
+                <h3 className="font-display font-black text-slate-950">
+                  {item.name}
+                </h3>
+              </div>
+              <p className="mt-2 text-sm text-slate-600">{item.desc}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
+                Conhecer <ExternalLink className="h-3 w-3" />
+              </span>
+            </a>
+          );
+        })}
       </div>
     </div>
   );
@@ -532,17 +570,28 @@ function ListCard({
         {title}
       </h2>
       <div className="space-y-3">
-        {items.map((item) => (
-          <a
-            key={item.title || item.name}
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-xl border-2 border-pink-100 bg-pink-50 p-3 text-sm font-bold text-slate-800 transition-transform hover:border-pink-400 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
-          >
-            {item.title || item.name}
-          </a>
-        ))}
+        {items.map((item) => {
+          const favicon = getFaviconUrl(item.url);
+          return (
+            <a
+              key={item.title || item.name}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-xl border-2 border-pink-100 bg-pink-50 p-3 text-sm font-bold text-slate-800 transition-transform hover:border-pink-400 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+            >
+              {favicon && (
+                <img
+                  src={favicon}
+                  alt=""
+                  onError={hideBrokenImage}
+                  className="h-5 w-5 shrink-0 rounded border border-slate-300"
+                />
+              )}
+              <span>{item.title || item.name}</span>
+            </a>
+          );
+        })}
       </div>
     </div>
   );
