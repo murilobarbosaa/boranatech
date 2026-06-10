@@ -71,7 +71,11 @@ export default function Dicionario() {
               />
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div
+              className="flex flex-wrap gap-2"
+              role="group"
+              aria-label="Filtrar por tag"
+            >
               {tags.map((item) => (
                 <button
                   key={item}
@@ -82,7 +86,7 @@ export default function Dicionario() {
                       : "border-cyan-200 bg-white hover:bg-cyan-100"
                   }`}
                 >
-                  {item}
+                  {item === "Todas" ? "Todas as tags" : item}
                 </button>
               ))}
             </div>

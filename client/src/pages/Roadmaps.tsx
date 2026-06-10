@@ -142,7 +142,7 @@ export default function Roadmaps() {
                 filter === slug ||
                 (slug === FILTER_ALL && filter === FILTER_ALL);
               const label =
-                slug === FILTER_ALL ? "Todos" : labelForAreaSlug(slug);
+                slug === FILTER_ALL ? "Todas as áreas" : labelForAreaSlug(slug);
               return (
                 <button
                   key={key}

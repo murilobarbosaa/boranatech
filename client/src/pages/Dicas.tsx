@@ -131,7 +131,11 @@ export default function Dicas() {
       {tab === "dicas" && (
         <section className="bg-[#fff9e7] py-12">
           <div className="container">
-            <div className="mb-8 flex flex-wrap gap-2">
+            <div
+              className="mb-8 flex flex-wrap gap-2"
+              role="group"
+              aria-label="Filtrar dicas por categoria"
+            >
               {["Todas", ...tipCategories].map((item) => (
                 <button
                   key={item}
@@ -142,7 +146,7 @@ export default function Dicas() {
                       : "border-amber-200 bg-white hover:bg-amber-100"
                   }`}
                 >
-                  {item}
+                  {item === "Todas" ? "Todas as categorias" : item}
                 </button>
               ))}
             </div>

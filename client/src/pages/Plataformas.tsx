@@ -194,7 +194,7 @@ export default function Plataformas() {
                         : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
                     }`}
                   >
-                    {t}
+                    {t === "Todos" ? "Todos os tipos" : t}
                   </button>
                 ))}
               </div>
@@ -237,7 +237,7 @@ export default function Plataformas() {
                         : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
                     }`}
                   >
-                    {option}
+                    {option === "Todos" ? "Com e sem certificado" : option}
                   </button>
                 ))}
               </div>

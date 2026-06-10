@@ -93,7 +93,7 @@ export default function Tecnologias() {
             options={technologyCategories}
             value={category}
             onChange={setCategory}
-            labels={technologyCategoryLabels}
+            labels={{ ...technologyCategoryLabels, Todas: "Todas as categorias" }}
           />
           <div className="relative max-w-xl">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />

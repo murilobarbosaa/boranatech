@@ -101,7 +101,7 @@ export default function Faculdades() {
                       : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
                   }`}
                 >
-                  {t}
+                  {t === "Todos" ? "Todos os tipos" : t}
                 </button>
               ))}
             </div>
