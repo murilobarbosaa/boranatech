@@ -11,12 +11,42 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { womenArea } from "@/lib/platformData";
 
 export default function Mulheres() {
+  const reduce = useReducedMotion();
+  const reveal = reduce
+    ? {}
+    : {
+        initial: { opacity: 0, y: 20 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, margin: "-80px" },
+        transition: { duration: 0.5, ease: "easeOut" as const },
+      };
+  const stepList = reduce
+    ? {}
+    : {
+        initial: "hidden",
+        whileInView: "show",
+        viewport: { once: true, margin: "-80px" },
+        variants: {
+          hidden: {},
+          show: { transition: { staggerChildren: 0.08 } },
+        },
+      };
+  const stepItem = reduce
+    ? {}
+    : {
+        variants: {
+          hidden: { opacity: 0, y: 12 },
+          show: { opacity: 1, y: 0 },
+        },
+      };
+
   return (
     <Layout>
       <SEO
@@ -37,7 +67,7 @@ export default function Mulheres() {
         <Flower2 className="pointer-events-none absolute bottom-8 left-10 hidden h-14 w-14 -rotate-12 text-rose-300 md:block" />
         <Heart className="pointer-events-none absolute bottom-10 right-32 hidden h-10 w-10 text-pink-400 md:block" />
         <div className="container">
-          <div className="relative max-w-3xl">
+          <motion.div {...reveal} className="relative max-w-3xl">
             <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-pink-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
               <Flower2 className="h-3.5 w-3.5" />
               área de mulheres
@@ -62,13 +92,16 @@ export default function Mulheres() {
                 ),
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <section className="bg-gradient-to-b from-pink-50 via-white to-rose-50 py-12">
         <div className="container space-y-8">
-          <div className="max-w-2xl rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[5px_5px_0_#db2777] sm:p-5">
+          <motion.div
+            {...reveal}
+            className="max-w-2xl rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[5px_5px_0_#db2777] sm:p-5"
+          >
             <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               {womenArea.founder.photoUrl ? (
                 <img
@@ -110,9 +143,9 @@ export default function Mulheres() {
                 Seguir no Instagram {womenArea.founder.handle}
               </a>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <motion.div {...reveal} className="grid gap-4 md:grid-cols-3">
             {[
               {
                 icon: <Flower2 className="h-6 w-6 text-pink-700" />,
@@ -143,9 +176,12 @@ export default function Mulheres() {
                 </p>
               </div>
             ))}
-          </div>
+          </motion.div>
 
-          <div className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[8px_8px_0_#f9a8d4]">
+          <motion.div
+            {...reveal}
+            className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[8px_8px_0_#f9a8d4]"
+          >
             <div className="mb-2 flex items-center gap-2">
               <Heart className="h-5 w-5 text-rose-700" />
               <h2 className="font-display text-2xl font-black text-slate-950">
@@ -187,35 +223,42 @@ export default function Mulheres() {
                 Ver comunidades
               </a>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="rounded-3xl border-2 border-slate-900 bg-pink-100 p-6 shadow-[8px_8px_0_#0f172a]">
+          <motion.div
+            {...reveal}
+            className="rounded-3xl border-2 border-slate-900 bg-pink-100 p-6 shadow-[8px_8px_0_#0f172a]"
+          >
             <div className="mb-5 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-pink-800" />
               <h2 className="font-display text-2xl font-black text-slate-950">
                 Trilha da iniciante
               </h2>
             </div>
-            <ol className="space-y-3">
+            <motion.ol {...stepList} className="space-y-1">
               {womenArea.starterPath.map((step, index) => (
-                <li key={step.title} className="flex items-start gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-pink-300 text-xs font-black text-slate-950">
+                <motion.li
+                  {...stepItem}
+                  key={step.title}
+                  className="group flex items-start gap-3 rounded-xl p-2 transition-colors hover:bg-pink-50"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-pink-300 text-xs font-black text-slate-950 transition-transform group-hover:-translate-y-0.5">
                     {index + 1}
                   </span>
                   <div>
-                    <h3 className="font-display font-black text-slate-950">
+                    <h3 className="font-display font-black text-slate-950 transition-colors group-hover:text-pink-800">
                       {step.title}
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-700">
                       {step.desc}
                     </p>
                   </div>
-                </li>
+                </motion.li>
               ))}
-            </ol>
-          </div>
+            </motion.ol>
+          </motion.div>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <motion.div {...reveal} className="grid gap-4 md:grid-cols-3">
             {womenArea.tips.map((tip) => (
               <div
                 key={tip}
@@ -225,9 +268,12 @@ export default function Mulheres() {
                 <p className="text-sm font-semibold text-slate-800">{tip}</p>
               </div>
             ))}
-          </div>
+          </motion.div>
 
-          <div className="rounded-3xl border-2 border-slate-900 bg-pink-200 p-6 shadow-[8px_8px_0_#0f172a]">
+          <motion.div
+            {...reveal}
+            className="rounded-3xl border-2 border-slate-900 bg-pink-200 p-6 shadow-[8px_8px_0_#0f172a]"
+          >
             <div className="mb-5 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-pink-800" />
               <h2 className="font-display text-2xl font-black text-slate-950">
@@ -249,26 +295,34 @@ export default function Mulheres() {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          <div id="comunidades">
+          <motion.div {...reveal} id="comunidades">
             <Section
               title="Comunidades indicadas"
               items={womenArea.communities}
             />
-          </div>
-          <Section
-            title="Cursos e formações gratuitas"
-            items={womenArea.courses}
-          />
-          <Section
-            title="Mentoria e acompanhamento"
-            items={womenArea.mentorship}
-          />
-          <CreatorsSection creators={womenArea.creators} />
-          <Section title="Leituras e listas" items={womenArea.articles} />
+          </motion.div>
+          <motion.div {...reveal}>
+            <Section
+              title="Cursos e formações gratuitas"
+              items={womenArea.courses}
+            />
+          </motion.div>
+          <motion.div {...reveal}>
+            <Section
+              title="Mentoria e acompanhamento"
+              items={womenArea.mentorship}
+            />
+          </motion.div>
+          <motion.div {...reveal}>
+            <CreatorsSection creators={womenArea.creators} />
+          </motion.div>
+          <motion.div {...reveal}>
+            <Section title="Leituras e listas" items={womenArea.articles} />
+          </motion.div>
 
-          <div className="grid gap-5 md:grid-cols-2">
+          <motion.div {...reveal} className="grid gap-5 md:grid-cols-2">
             <ListCard
               title="Vídeos para começar"
               icon={<PlayCircle className="h-5 w-5 text-pink-700" />}
@@ -306,10 +360,13 @@ export default function Mulheres() {
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {womenArea.support.channels.length > 0 && (
-            <div className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[8px_8px_0_#f9a8d4]">
+            <motion.div
+              {...reveal}
+              className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[8px_8px_0_#f9a8d4]"
+            >
               <div className="mb-2 flex items-center gap-2">
                 <HeartHandshake className="h-5 w-5 text-pink-700" />
                 <h2 className="font-display text-2xl font-black text-slate-950">
@@ -355,7 +412,7 @@ export default function Mulheres() {
                 {womenArea.support.sourceLabel}{" "}
                 <ExternalLink className="h-3 w-3" />
               </a>
-            </div>
+            </motion.div>
           )}
         </div>
       </section>
@@ -394,7 +451,7 @@ function CreatorsSection({
             href={creator.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="card-invite flex gap-4 rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50"
+            className="card-invite flex gap-4 rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
           >
             <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#f472b6]">
               <AvatarImage
@@ -443,7 +500,7 @@ function Section({
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="card-invite rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50"
+            className="card-invite rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
           >
             <h3 className="font-display font-black text-slate-950">
               {item.name}
@@ -481,7 +538,7 @@ function ListCard({
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block rounded-xl border-2 border-pink-100 bg-pink-50 p-3 text-sm font-bold text-slate-800 hover:border-pink-400"
+            className="block rounded-xl border-2 border-pink-100 bg-pink-50 p-3 text-sm font-bold text-slate-800 transition-transform hover:border-pink-400 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
           >
             {item.title || item.name}
           </a>
