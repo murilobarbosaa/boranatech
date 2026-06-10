@@ -342,6 +342,49 @@ export const womenArea = {
       url: "https://blog.techforhumans.com.br/post/mulheres-na-tecnologia-uma-analise-global-e-brasileira-da-representatividade-e-desafios",
     },
   ],
+  reassurance: {
+    intro:
+      "Sentir que você é a única na sala ou duvidar se pertence à área é mais comum do que parece. Esses sentimentos não dizem nada sobre a sua capacidade.",
+    readingLabel: "Leitura: mulheres na tecnologia, representatividade e desafios",
+    readingUrl:
+      "https://blog.techforhumans.com.br/post/mulheres-na-tecnologia-uma-analise-global-e-brasileira-da-representatividade-e-desafios",
+    fears: [
+      {
+        title: "Síndrome de impostora",
+        desc: "Achar que ainda não sabe o suficiente acontece com muita gente, inclusive com quem já está há anos na área.",
+      },
+      {
+        title: "Ser a única mulher na sala",
+        desc: "Procurar comunidades de mulheres ajuda a encontrar apoio, referências e gente passando pelo mesmo.",
+      },
+      {
+        title: "Medo de começar",
+        desc: "Você não precisa estar pronta para dar o primeiro passo. Comece pequeno e siga a trilha no seu ritmo.",
+      },
+    ],
+  },
+  starterPath: [
+    {
+      title: "Entre numa comunidade",
+      desc: "Escolha um grupo com moderação ativa e canal para iniciantes, e se apresente sem medo.",
+    },
+    {
+      title: "Faça uma oficina ou curso gratuito",
+      desc: "Comece por uma formação introdutória, como as oficinas das comunidades e os cursos gratuitos listados aqui.",
+    },
+    {
+      title: "Pratique e registre",
+      desc: "Construa projetos pequenos e guarde tudo: posts, prints e repositórios viram o seu portfólio.",
+    },
+    {
+      title: "Procure uma mentora",
+      desc: "Use os programas de mentoria e a rede da comunidade para pedir revisão, tirar dúvidas e conseguir indicações.",
+    },
+    {
+      title: "Conheça os canais de apoio",
+      desc: "Saiba para onde recorrer se precisar: os canais oficiais estão no fim desta página.",
+    },
+  ],
   support: {
     intro:
       "Se você passar por assédio, machismo ou discriminação por ser uma das poucas mulheres na área, saiba que pode buscar apoio e denunciar. Os canais abaixo são oficiais e gratuitos.",

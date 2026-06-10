@@ -100,6 +100,76 @@ export default function Mulheres() {
             ))}
           </div>
 
+          <div className="rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[8px_8px_0_#f9a8d4]">
+            <div className="mb-2 flex items-center gap-2">
+              <Heart className="h-5 w-5 text-rose-700" />
+              <h2 className="font-display text-2xl font-black text-slate-950">
+                Você não está sozinha
+              </h2>
+            </div>
+            <p className="mb-5 max-w-3xl text-sm font-semibold text-slate-600">
+              {womenArea.reassurance.intro}
+            </p>
+            <div className="grid gap-4 md:grid-cols-3">
+              {womenArea.reassurance.fears.map((fear) => (
+                <div
+                  key={fear.title}
+                  className="rounded-2xl border-2 border-slate-900 bg-rose-50 p-4 shadow-[4px_4px_0_#fb7185]"
+                >
+                  <h3 className="font-display font-black text-slate-950">
+                    {fear.title}
+                  </h3>
+                  <p className="mt-2 text-xs font-semibold leading-relaxed text-slate-600">
+                    {fear.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href={womenArea.reassurance.readingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-pink-300 px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+              >
+                {womenArea.reassurance.readingLabel}{" "}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+              <a
+                href="#comunidades"
+                className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+              >
+                Ver comunidades
+              </a>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border-2 border-slate-900 bg-pink-100 p-6 shadow-[8px_8px_0_#0f172a]">
+            <div className="mb-5 flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-pink-800" />
+              <h2 className="font-display text-2xl font-black text-slate-950">
+                Trilha da iniciante
+              </h2>
+            </div>
+            <ol className="space-y-3">
+              {womenArea.starterPath.map((step, index) => (
+                <li key={step.title} className="flex items-start gap-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-pink-300 text-xs font-black text-slate-950">
+                    {index + 1}
+                  </span>
+                  <div>
+                    <h3 className="font-display font-black text-slate-950">
+                      {step.title}
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-700">
+                      {step.desc}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-3">
             {womenArea.tips.map((tip) => (
               <div
@@ -136,10 +206,12 @@ export default function Mulheres() {
             </div>
           </div>
 
-          <Section
-            title="Comunidades indicadas"
-            items={womenArea.communities}
-          />
+          <div id="comunidades">
+            <Section
+              title="Comunidades indicadas"
+              items={womenArea.communities}
+            />
+          </div>
           <Section
             title="Cursos e formações gratuitas"
             items={womenArea.courses}
