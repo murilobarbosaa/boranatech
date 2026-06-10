@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useInView,
+  useReducedMotion,
+} from "framer-motion";
 import {
   BookOpen,
   Cloud,
@@ -8,6 +14,8 @@ import {
   Film,
   Laptop,
   Lightbulb,
+  Search,
+  Shuffle,
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
@@ -121,6 +129,8 @@ export default function Dicas() {
         </div>
       </section>
 
+      <Marquee />
+
       <section className="sticky top-16 z-40 border-b-2 border-amber-200 bg-amber-50 py-4">
         <div className="container flex flex-wrap gap-2">
           {(
@@ -171,57 +181,7 @@ export default function Dicas() {
         </section>
       )}
 
-      {tab === "aprender" && (
-        <section className="bg-[#fff9e7] py-12">
-          <div className="container">
-            <Tabs defaultValue="filmes" className="gap-6">
-              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-none bg-transparent p-0">
-                {(
-                  [
-                    { value: "filmes", label: "Filmes e documentários" },
-                    { value: "series", label: "Séries" },
-                    { value: "videos", label: "Vídeos e canais" },
-                    { value: "livros", label: "Livros" },
-                    { value: "podcasts", label: "Podcasts" },
-                    { value: "referencia", label: "Referência rápida" },
-                  ] as const
-                ).map((sub) => (
-                  <TabsTrigger
-                    key={sub.value}
-                    value={sub.value}
-                    className="h-auto flex-none rounded-full border-2 border-amber-200 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-all data-[state=active]:border-slate-900 data-[state=active]:bg-amber-300 data-[state=active]:text-slate-950 data-[state=active]:shadow-[2px_2px_0_#0f172a]"
-                  >
-                    {sub.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <TabsContent value="filmes">
-                <FilmesGrid itens={bibliotecaFilmes} />
-              </TabsContent>
-              <TabsContent value="series">
-                <FilmesGrid itens={bibliotecaSeries} />
-              </TabsContent>
-              <TabsContent value="videos">
-                <LinksGrid itens={bibliotecaVideos} />
-              </TabsContent>
-              <TabsContent value="livros">
-                <LivrosGrid />
-              </TabsContent>
-              <TabsContent value="podcasts">
-                <LinksGrid itens={bibliotecaPodcasts} />
-              </TabsContent>
-              <TabsContent value="referencia">
-                <LinksGrid itens={bibliotecaReferencia} />
-              </TabsContent>
-            </Tabs>
-            <p className="mt-8 max-w-3xl text-xs leading-relaxed text-slate-500">
-              Capas de filmes e séries via TMDB. Este produto usa a API do TMDB,
-              mas não é endossado nem certificado pelo TMDB. Capas de livros via
-              Open Library.
-            </p>
-          </div>
-        </section>
-      )}
+      {tab === "aprender" && <AprenderSection />}
 
       {tab === "livros" && (
         <section className="bg-[#fff9e7] py-12">
@@ -561,137 +521,537 @@ function CarreiraConteudo({ tema }: { tema: CarreiraTema }) {
   );
 }
 
-function LinksGrid({ itens }: { itens: DicaArtigo[] }) {
-  const reduce = useReducedMotion();
-  const { container, item } = getStagger(reduce);
-
-  return (
-    <motion.ul {...container} className="grid gap-3 sm:grid-cols-2">
-      {itens.map((it) => (
-        <motion.li {...item} key={it.url}>
-          <LinkExterno title={it.title} url={it.url} desc={it.desc} />
-        </motion.li>
-      ))}
-    </motion.ul>
-  );
-}
-
 function justWatchUrl(titulo: string) {
   return `https://www.justwatch.com/br/busca?q=${encodeURIComponent(titulo)}`;
 }
 
-function FilmesGrid({ itens }: { itens: Filme[] }) {
-  const reduce = useReducedMotion();
-  const { container, item } = getStagger(reduce);
+const temasMarquee = [
+  "primeiro emprego",
+  "currículo",
+  "entrevista técnica",
+  "portfólio",
+  "GitHub",
+  "soft skills",
+  "transição de carreira",
+  "estágio",
+  "LinkedIn",
+  "comunidade",
+];
 
+const aprenderSubs = [
+  { value: "filmes", label: "Filmes e documentários" },
+  { value: "series", label: "Séries" },
+  { value: "videos", label: "Vídeos e canais" },
+  { value: "livros", label: "Livros" },
+  { value: "podcasts", label: "Podcasts" },
+  { value: "referencia", label: "Referência rápida" },
+] as const;
+
+type AprenderTab = (typeof aprenderSubs)[number]["value"];
+
+function dicaCardId(key: string) {
+  return "dica-" + key.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase();
+}
+
+function screenMatches(f: Filme, q: string) {
+  return q === "" || `${f.titulo} ${f.porque}`.toLowerCase().includes(q);
+}
+
+function linkMatches(d: DicaArtigo, q: string) {
+  return q === "" || `${d.title} ${d.desc ?? ""}`.toLowerCase().includes(q);
+}
+
+function livroMatches(livro: { titulo: string; autor: string }, q: string) {
+  return q === "" || `${livro.titulo} ${livro.autor}`.toLowerCase().includes(q);
+}
+
+function activeKeys(tab: AprenderTab, q: string): string[] {
+  switch (tab) {
+    case "filmes":
+      return bibliotecaFilmes
+        .filter((f) => screenMatches(f, q))
+        .map((f) => f.titulo);
+    case "series":
+      return bibliotecaSeries
+        .filter((f) => screenMatches(f, q))
+        .map((f) => f.titulo);
+    case "videos":
+      return bibliotecaVideos
+        .filter((d) => linkMatches(d, q))
+        .map((d) => d.url);
+    case "livros":
+      return bibliotecaLivros
+        .filter((l) => livroMatches(l, q))
+        .map((l) => l.titulo);
+    case "podcasts":
+      return bibliotecaPodcasts
+        .filter((d) => linkMatches(d, q))
+        .map((d) => d.url);
+    case "referencia":
+      return bibliotecaReferencia
+        .filter((d) => linkMatches(d, q))
+        .map((d) => d.url);
+  }
+}
+
+function Marquee() {
   return (
-    <motion.ul
-      {...container}
-      className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+    <div
+      className="overflow-hidden border-b-2 border-slate-900 bg-[#FFB800] py-2"
+      aria-hidden
     >
-      {itens.map((filme) => {
-        const poster = filme.posterPath ?? generatedPosters[filme.titulo];
-        return (
-        <motion.li
-          {...item}
-          key={filme.titulo}
-          className="group card-invite flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
-        >
-          <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-amber-100">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Film className="h-12 w-12 text-amber-500" aria-hidden />
-            </div>
-            {poster ? (
-              <img
-                src={`https://image.tmdb.org/t/p/w500${poster}`}
-                alt={`Pôster de ${filme.titulo}`}
-                loading="lazy"
-                onError={hideBrokenImage}
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-            ) : null}
-          </div>
-          <div className="flex flex-1 flex-col p-4">
-            <h3 className="font-display text-sm font-black leading-snug text-slate-950">
-              {filme.titulo}{" "}
-              <span className="text-amber-700">({filme.ano})</span>
-            </h3>
-            <p className="mt-2 flex-1 text-xs leading-relaxed text-slate-600">
-              {filme.porque}
-            </p>
-            <a
-              href={justWatchUrl(filme.titulo)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Onde assistir ${filme.titulo}`}
-              className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-            >
-              Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
-            </a>
-          </div>
-        </motion.li>
-        );
-      })}
-    </motion.ul>
+      <div className="flex w-max animate-marquee-left gap-8 whitespace-nowrap pr-8 hover:[animation-play-state:paused] motion-reduce:animate-none">
+        {[...temasMarquee, ...temasMarquee].map((tema, index) => (
+          <span
+            key={`${tema}-${index}`}
+            className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-950"
+          >
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            {tema}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
-function LivrosGrid() {
-  const reduce = useReducedMotion();
-  const { container, item } = getStagger(reduce);
+function CountUp({
+  value,
+  label,
+  reduce,
+}: {
+  value: number;
+  label: string;
+  reduce: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const [n, setN] = useState(reduce ? value : 0);
+
+  useEffect(() => {
+    if (reduce || !inView) return;
+    const controls = animate(0, value, {
+      duration: 1,
+      ease: "easeOut" as const,
+      onUpdate: (v) => setN(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [inView, reduce, value]);
 
   return (
-    <motion.ul
-      {...container}
-      className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+    <div
+      ref={ref}
+      className="rounded-2xl border-2 border-slate-900 bg-white px-3 py-3 text-center shadow-[3px_3px_0_#10b981]"
     >
-      {bibliotecaLivros.map((livro) => {
-        const onde = livro.url
-          ? livro.url
-          : livro.isbn
-            ? `https://openlibrary.org/isbn/${livro.isbn}`
-            : `https://openlibrary.org/search?q=${encodeURIComponent(livro.titulo)}`;
-        return (
-          <motion.li
-            {...item}
-            key={livro.titulo}
-            className="group card-invite flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
+      <span className="block font-display text-2xl font-black text-slate-950">
+        {reduce ? value : n}
+      </span>
+      <span className="mt-0.5 block text-[0.7rem] font-black uppercase leading-tight tracking-wide text-slate-600">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function BuscaVazia() {
+  return (
+    <p className="rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 px-4 py-6 text-center text-sm font-bold text-slate-500">
+      Nada encontrado para essa busca. Tente outro termo.
+    </p>
+  );
+}
+
+function AprenderSection() {
+  const reduce = useReducedMotion() ?? false;
+  const [aprenderTab, setAprenderTab] = useState<AprenderTab>("filmes");
+  const [query, setQuery] = useState("");
+  const [highlightKey, setHighlightKey] = useState<string | null>(null);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  const q = query.trim().toLowerCase();
+
+  useEffect(() => {
+    if (highlightKey === null) return;
+    const t = setTimeout(() => setHighlightKey(null), 1300);
+    return () => clearTimeout(t);
+  }, [highlightKey]);
+
+  const onToggle = (key: string) =>
+    setExpandedKey((cur) => (cur === key ? null : key));
+
+  const surpreenda = () => {
+    const keys = activeKeys(aprenderTab, q);
+    if (keys.length === 0) return;
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    setHighlightKey(key);
+    const el = document.getElementById(dicaCardId(key));
+    if (el) {
+      el.scrollIntoView({
+        behavior: reduce ? "auto" : "smooth",
+        block: "center",
+      });
+    }
+  };
+
+  const stats = [
+    { value: bibliotecaFilmes.length, label: "filmes e docs" },
+    { value: bibliotecaSeries.length, label: "séries" },
+    { value: bibliotecaVideos.length, label: "vídeos e canais" },
+    { value: bibliotecaLivros.length, label: "livros" },
+    { value: bibliotecaPodcasts.length, label: "podcasts" },
+    { value: bibliotecaReferencia.length, label: "referências" },
+  ];
+
+  return (
+    <section className="bg-[#fff9e7] py-12">
+      <div className="container space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="relative w-full max-w-md">
+            <label htmlFor="dicas-busca" className="sr-only">
+              Buscar nas indicações
+            </label>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600"
+              aria-hidden
+            />
+            <input
+              id="dicas-busca"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar por título ou tema..."
+              className="w-full rounded-full border-2 border-slate-900 bg-white py-2 pl-9 pr-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a] placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={surpreenda}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-400 px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
           >
-            <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-emerald-100">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <BookOpen className="h-12 w-12 text-emerald-600" aria-hidden />
-              </div>
-              {livro.isbn ? (
-                <img
-                  src={`https://covers.openlibrary.org/b/isbn/${livro.isbn}-L.jpg?default=false`}
-                  alt={`Capa de ${livro.titulo}`}
-                  loading="lazy"
-                  onError={hideBrokenImage}
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              ) : null}
-            </div>
-            <div className="flex flex-1 flex-col p-4">
-              <h3 className="font-display text-sm font-black leading-snug text-slate-950">
-                {livro.titulo}
-              </h3>
-              <p className="mt-1 flex-1 text-xs font-bold text-slate-600">
-                {livro.autor}
-              </p>
-              <a
-                href={onde}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Onde encontrar ${livro.titulo}`}
-                className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            <Shuffle className="h-4 w-4" aria-hidden />
+            Surpreenda-me
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {stats.map((s) => (
+            <CountUp
+              key={s.label}
+              value={s.value}
+              label={s.label}
+              reduce={reduce}
+            />
+          ))}
+        </div>
+
+        <Tabs
+          value={aprenderTab}
+          onValueChange={(v) => setAprenderTab(v as AprenderTab)}
+          className="gap-6"
+        >
+          <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-none bg-transparent p-0">
+            {aprenderSubs.map((sub) => (
+              <TabsTrigger
+                key={sub.value}
+                value={sub.value}
+                className="relative h-auto flex-none rounded-full border-2 border-amber-200 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-colors data-[state=active]:border-transparent data-[state=active]:bg-transparent data-[state=active]:text-slate-950"
               >
-                {livro.url ? "Ler grátis" : "Onde encontrar"}{" "}
-                <ExternalLink className="h-3 w-3" aria-hidden />
-              </a>
-            </div>
-          </motion.li>
-        );
-      })}
-    </motion.ul>
+                {aprenderTab === sub.value ? (
+                  <motion.span
+                    layoutId="aprenderIndicator"
+                    className="absolute inset-0 rounded-full border-2 border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                    transition={{ duration: reduce ? 0 : 0.3 }}
+                  />
+                ) : null}
+                <span className="relative z-10">{sub.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          <TabsContent value="filmes">
+            <FilmesGrid
+              itens={bibliotecaFilmes}
+              query={q}
+              highlightKey={highlightKey}
+              expandedKey={expandedKey}
+              onToggle={onToggle}
+              reduce={reduce}
+            />
+          </TabsContent>
+          <TabsContent value="series">
+            <FilmesGrid
+              itens={bibliotecaSeries}
+              query={q}
+              highlightKey={highlightKey}
+              expandedKey={expandedKey}
+              onToggle={onToggle}
+              reduce={reduce}
+            />
+          </TabsContent>
+          <TabsContent value="videos">
+            <LinksGrid
+              itens={bibliotecaVideos}
+              query={q}
+              highlightKey={highlightKey}
+              reduce={reduce}
+            />
+          </TabsContent>
+          <TabsContent value="livros">
+            <LivrosGrid query={q} highlightKey={highlightKey} reduce={reduce} />
+          </TabsContent>
+          <TabsContent value="podcasts">
+            <LinksGrid
+              itens={bibliotecaPodcasts}
+              query={q}
+              highlightKey={highlightKey}
+              reduce={reduce}
+            />
+          </TabsContent>
+          <TabsContent value="referencia">
+            <LinksGrid
+              itens={bibliotecaReferencia}
+              query={q}
+              highlightKey={highlightKey}
+              reduce={reduce}
+            />
+          </TabsContent>
+        </Tabs>
+        <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-500">
+          Capas de filmes e séries via TMDB. Este produto usa a API do TMDB, mas
+          não é endossado nem certificado pelo TMDB. Capas de livros via Open
+          Library.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function LinksGrid({
+  itens,
+  query,
+  highlightKey,
+  reduce,
+}: {
+  itens: DicaArtigo[];
+  query: string;
+  highlightKey: string | null;
+  reduce: boolean;
+}) {
+  const filtered = itens.filter((it) => linkMatches(it, query));
+
+  return (
+    <>
+      <motion.ul layout className="grid gap-3 sm:grid-cols-2">
+        <AnimatePresence mode="popLayout">
+          {filtered.map((it, index) => {
+            const high = highlightKey === it.url;
+            return (
+              <motion.li
+                layout
+                key={it.url}
+                id={dicaCardId(it.url)}
+                initial={reduce ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
+                transition={{
+                  duration: reduce ? 0 : 0.25,
+                  delay: reduce ? 0 : Math.min(index * 0.03, 0.3),
+                }}
+                className="relative"
+              >
+                {high ? (
+                  <span className="pointer-events-none absolute inset-0 z-10 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
+                ) : null}
+                <LinkExterno title={it.title} url={it.url} desc={it.desc} />
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
+      </motion.ul>
+      {filtered.length === 0 ? <BuscaVazia /> : null}
+    </>
+  );
+}
+
+function FilmesGrid({
+  itens,
+  query,
+  highlightKey,
+  expandedKey,
+  onToggle,
+  reduce,
+}: {
+  itens: Filme[];
+  query: string;
+  highlightKey: string | null;
+  expandedKey: string | null;
+  onToggle: (key: string) => void;
+  reduce: boolean;
+}) {
+  const filtered = itens.filter((f) => screenMatches(f, query));
+
+  return (
+    <>
+      <motion.ul layout className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <AnimatePresence mode="popLayout">
+          {filtered.map((filme, index) => {
+            const poster = filme.posterPath ?? generatedPosters[filme.titulo];
+            const high = highlightKey === filme.titulo;
+            const expanded = expandedKey === filme.titulo;
+            return (
+              <motion.li
+                layout
+                key={filme.titulo}
+                id={dicaCardId(filme.titulo)}
+                initial={reduce ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
+                transition={{
+                  duration: reduce ? 0 : 0.25,
+                  delay: reduce ? 0 : Math.min(index * 0.03, 0.3),
+                }}
+                className="group card-invite relative flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
+              >
+                {high ? (
+                  <span className="pointer-events-none absolute inset-0 z-20 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
+                ) : null}
+                <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-amber-100">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Film className="h-12 w-12 text-amber-500" aria-hidden />
+                  </div>
+                  {poster ? (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w500${poster}`}
+                      alt={`Pôster de ${filme.titulo}`}
+                      loading="lazy"
+                      onError={hideBrokenImage}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : null}
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <h3 className="font-display text-sm font-black leading-snug text-slate-950">
+                    {filme.titulo}{" "}
+                    <span className="text-amber-700">({filme.ano})</span>
+                  </h3>
+                  <p
+                    className={`mt-2 flex-1 text-xs leading-relaxed text-slate-600 ${
+                      expanded ? "" : "line-clamp-2"
+                    }`}
+                  >
+                    {filme.porque}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <a
+                      href={justWatchUrl(filme.titulo)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Onde assistir ${filme.titulo}`}
+                      className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                    >
+                      Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => onToggle(filme.titulo)}
+                      aria-expanded={expanded}
+                      aria-label={
+                        expanded
+                          ? `Recolher ${filme.titulo}`
+                          : `Ver mais sobre ${filme.titulo}`
+                      }
+                      className="inline-flex items-center gap-1 rounded-full border-2 border-amber-300 bg-white px-3 py-1 text-xs font-black text-amber-800 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                    >
+                      {expanded ? "Recolher" : "Detalhes"}
+                    </button>
+                  </div>
+                </div>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
+      </motion.ul>
+      {filtered.length === 0 ? <BuscaVazia /> : null}
+    </>
+  );
+}
+
+function LivrosGrid({
+  query,
+  highlightKey,
+  reduce,
+}: {
+  query: string;
+  highlightKey: string | null;
+  reduce: boolean;
+}) {
+  const filtered = bibliotecaLivros.filter((l) => livroMatches(l, query));
+
+  return (
+    <>
+      <motion.ul layout className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <AnimatePresence mode="popLayout">
+          {filtered.map((livro, index) => {
+            const onde = livro.url
+              ? livro.url
+              : livro.isbn
+                ? `https://openlibrary.org/isbn/${livro.isbn}`
+                : `https://openlibrary.org/search?q=${encodeURIComponent(livro.titulo)}`;
+            const high = highlightKey === livro.titulo;
+            return (
+              <motion.li
+                layout
+                key={livro.titulo}
+                id={dicaCardId(livro.titulo)}
+                initial={reduce ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
+                transition={{
+                  duration: reduce ? 0 : 0.25,
+                  delay: reduce ? 0 : Math.min(index * 0.03, 0.3),
+                }}
+                className="group card-invite relative flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
+              >
+                {high ? (
+                  <span className="pointer-events-none absolute inset-0 z-20 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
+                ) : null}
+                <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-emerald-100">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <BookOpen className="h-12 w-12 text-emerald-600" aria-hidden />
+                  </div>
+                  {livro.isbn ? (
+                    <img
+                      src={`https://covers.openlibrary.org/b/isbn/${livro.isbn}-L.jpg?default=false`}
+                      alt={`Capa de ${livro.titulo}`}
+                      loading="lazy"
+                      onError={hideBrokenImage}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : null}
+                </div>
+                <div className="flex flex-1 flex-col p-4">
+                  <h3 className="font-display text-sm font-black leading-snug text-slate-950">
+                    {livro.titulo}
+                  </h3>
+                  <p className="mt-1 flex-1 text-xs font-bold text-slate-600">
+                    {livro.autor}
+                  </p>
+                  <a
+                    href={onde}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Onde encontrar ${livro.titulo}`}
+                    className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                  >
+                    {livro.url ? "Ler grátis" : "Onde encontrar"}{" "}
+                    <ExternalLink className="h-3 w-3" aria-hidden />
+                  </a>
+                </div>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
+      </motion.ul>
+      {filtered.length === 0 ? <BuscaVazia /> : null}
+    </>
   );
 }
