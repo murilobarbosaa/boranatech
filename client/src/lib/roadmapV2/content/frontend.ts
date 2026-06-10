@@ -1,4 +1,4 @@
-import type { RoadmapV2 } from "./types";
+import type { RoadmapV2 } from "../types";
 
 export const frontend: RoadmapV2 = {
   slug: "frontend",
