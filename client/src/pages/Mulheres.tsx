@@ -5,6 +5,7 @@ import {
   Flower2,
   Heart,
   HeartHandshake,
+  Instagram,
   Mic,
   PlayCircle,
   ShieldCheck,
@@ -67,6 +68,43 @@ export default function Mulheres() {
 
       <section className="bg-gradient-to-b from-pink-50 via-white to-rose-50 py-12">
         <div className="container space-y-8">
+          <div className="rounded-3xl border-2 border-slate-900 bg-pink-200 p-6 shadow-[8px_8px_0_#0f172a]">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+              {womenArea.founder.photoUrl && (
+                <img
+                  src={womenArea.founder.photoUrl}
+                  alt={`Foto de ${womenArea.founder.name}`}
+                  className="h-20 w-20 shrink-0 rounded-2xl border-2 border-slate-900 object-cover shadow-[4px_4px_0_#db2777]"
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-pink-900">
+                  Fundadora
+                </p>
+                <h2 className="font-display text-2xl font-black text-slate-950">
+                  {womenArea.founder.name}
+                </h2>
+                <p className="mt-1 text-sm font-bold text-slate-800">
+                  {womenArea.founder.role}
+                </p>
+                {womenArea.founder.message && (
+                  <p className="mt-3 max-w-2xl text-sm font-semibold text-slate-800">
+                    {womenArea.founder.message}
+                  </p>
+                )}
+                <a
+                  href={womenArea.founder.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:-translate-y-0.5"
+                >
+                  <Instagram className="h-4 w-4" />
+                  Seguir no Instagram {womenArea.founder.handle}
+                </a>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-3">
             {[
               {

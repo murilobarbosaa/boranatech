@@ -73,6 +73,14 @@ export const tipsArticles = [
 ];
 
 export const womenArea = {
+  founder: {
+    name: "Ana",
+    role: "CEO e Cofundadora da Bora na Tech",
+    handle: "@ana.natech",
+    instagramUrl: "https://www.instagram.com/ana.natech/",
+    message: "",
+    photoUrl: "",
+  },
   tips: [
     "Procure comunidades com moderação ativa e canais para iniciantes.",
     "Monte uma rede pequena de apoio: uma pessoa para tirar dúvidas, uma para revisar currículo e uma para compartilhar vagas.",
