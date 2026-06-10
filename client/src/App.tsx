@@ -129,6 +129,7 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/roadmaps" component={Roadmaps} />
       <Route path="/roadmaps-novo" component={RoadmapsV2} />
+      <Route path="/roadmaps-novo/:slug" component={RoadmapsV2} />
       <Route path="/cursos" component={Cursos} />
       <Route path="/plataformas" component={Plataformas} />
       <Route path="/faculdades/:slug" component={FaculdadeDetalhe} />
