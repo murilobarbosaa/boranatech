@@ -10,6 +10,7 @@ import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { frontend, roadmapsV2 } from "@/lib/roadmapV2/content";
 import { isComplete, nodeProgress, toggle } from "@/lib/roadmapV2/progress";
 import { loadProgress, saveProgress } from "@/lib/roadmapV2/progressStorage";
+import { loadLanguage, saveLanguage } from "@/lib/roadmapV2/languageStorage";
 
 // Beats of the section-complete sequence, with soft pauses between each step:
 // a) station turns green (immediate, derived from `done`)
@@ -31,9 +32,22 @@ export default function RoadmapsV2() {
   const [done, setDone] = useState<Set<string>>(() => loadProgress(slug));
   const [openSectionId, setOpenSectionId] = useState<string | null>(null);
 
+  const languages = roadmap.languages;
+  const [languageId, setLanguageId] = useState<string | null>(() => {
+    if (!languages || languages.length === 0) return null;
+    const saved = loadLanguage(slug);
+    if (saved && languages.some((lang) => lang.id === saved)) return saved;
+    return languages[0].id;
+  });
+  const selectedLanguage = languages?.find((lang) => lang.id === languageId);
+
   useEffect(() => {
     saveProgress(slug, done);
   }, [slug, done]);
+
+  useEffect(() => {
+    if (languageId) saveLanguage(slug, languageId);
+  }, [slug, languageId]);
 
   const trailRef = useRef<TrailHandle>(null);
   const prevCompleted = useRef<boolean[]>(roadmap.sections.map(() => false));
@@ -136,6 +150,31 @@ export default function RoadmapsV2() {
               <span className="mt-4 inline-block rounded-[10px] border-[2.5px] border-slate-900 bg-emerald-100 px-3 py-1.5 text-sm font-extrabold text-emerald-800 shadow-[3px_3px_0_#0f172a]">
                 {overall.done} de {overall.total} tópicos · {overallPct}%
               </span>
+              {languages && languages.length > 0 && (
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                    Linguagem
+                  </span>
+                  {languages.map((lang) => {
+                    const active = lang.id === languageId;
+                    return (
+                      <button
+                        key={lang.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setLanguageId(lang.id)}
+                        className={`rounded-[10px] border-[2.5px] border-slate-900 px-3 py-1.5 text-sm font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] ${
+                          active
+                            ? "bg-[#FFB800] text-slate-950"
+                            : "bg-white text-slate-600"
+                        }`}
+                      >
+                        {lang.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <FavoriteButton
               item={{
@@ -160,6 +199,7 @@ export default function RoadmapsV2() {
       <TrailDrawer
         section={openSection}
         done={done}
+        language={selectedLanguage}
         onToggle={onToggle}
         onClose={() => setOpenSectionId(null)}
       />

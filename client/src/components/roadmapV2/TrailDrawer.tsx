@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import type { RoadmapSection } from "@/lib/roadmapV2/types";
+import type { RoadmapLanguage, RoadmapSection } from "@/lib/roadmapV2/types";
 import { nodeProgress } from "@/lib/roadmapV2/progress";
 import RoadmapNodeItem from "./RoadmapNodeItem";
 
@@ -13,6 +13,7 @@ const LEVEL_LABELS: Record<NonNullable<RoadmapSection["level"]>, string> = {
 type TrailDrawerProps = {
   section: RoadmapSection | null;
   done: Set<string>;
+  language?: RoadmapLanguage;
   onToggle: (id: string) => void;
   onClose: () => void;
 };
@@ -20,6 +21,7 @@ type TrailDrawerProps = {
 export default function TrailDrawer({
   section,
   done,
+  language,
   onToggle,
   onClose,
 }: TrailDrawerProps) {
@@ -78,6 +80,7 @@ export default function TrailDrawer({
                   key={node.id}
                   node={node}
                   done={done}
+                  language={language}
                   onToggle={onToggle}
                 />
               ))}

@@ -2,12 +2,17 @@ import { useState } from "react";
 import { Check, ChevronRight, Minus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
-import type { RoadmapNode } from "@/lib/roadmapV2/types";
+import type {
+  RoadmapLanguage,
+  RoadmapNode,
+  RoadmapResource,
+} from "@/lib/roadmapV2/types";
 import { displayProgress } from "@/lib/roadmapV2/progress";
 
 type RoadmapNodeItemProps = {
   node: RoadmapNode;
   done: Set<string>;
+  language?: RoadmapLanguage;
   onToggle: (id: string) => void;
 };
 
@@ -50,6 +55,24 @@ function NodeContent({ content }: { content: string }) {
   );
 }
 
+function ResourceChips({ resources }: { resources: RoadmapResource[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {resources.map((resource) => (
+        <a
+          key={`${resource.label}-${resource.url}`}
+          href={resource.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
+        >
+          {resource.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function OptionalBadge() {
   return (
     <span className="rounded-md border-2 border-sky-700 bg-sky-100 px-1.5 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-sky-800">
@@ -58,7 +81,7 @@ function OptionalBadge() {
   );
 }
 
-function GroupItem({ node, done, onToggle }: RoadmapNodeItemProps) {
+function GroupItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
   const [open, setOpen] = useState(false);
   const progress = displayProgress(node, done);
   const complete = progress.total > 0 && progress.done === progress.total;
@@ -125,6 +148,7 @@ function GroupItem({ node, done, onToggle }: RoadmapNodeItemProps) {
                 key={child.id}
                 node={child}
                 done={done}
+                language={language}
                 onToggle={onToggle}
               />
             ))}
@@ -135,12 +159,20 @@ function GroupItem({ node, done, onToggle }: RoadmapNodeItemProps) {
   );
 }
 
-function LeafItem({ node, done, onToggle }: RoadmapNodeItemProps) {
+function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
   const [bodyOpen, setBodyOpen] = useState(false);
   const checked = done.has(node.id);
   const optional = node.optional === true;
+  const langContent = language ? node.byLanguage?.[language.id] : undefined;
   const hasResources = Boolean(node.resources && node.resources.length > 0);
-  const hasBody = Boolean(node.content) || hasResources;
+  const hasLangResources = Boolean(
+    langContent?.resources && langContent.resources.length > 0,
+  );
+  const hasBody =
+    Boolean(node.content) ||
+    Boolean(langContent?.content) ||
+    hasResources ||
+    hasLangResources;
 
   return (
     <div className="flex items-start gap-3">
@@ -196,19 +228,20 @@ function LeafItem({ node, done, onToggle }: RoadmapNodeItemProps) {
           >
             <div className="overflow-hidden px-1 pt-1">
               {node.content && <NodeContent content={node.content} />}
+              {langContent?.content && (
+                <NodeContent content={langContent.content} />
+              )}
               {hasResources && (
-                <div className="flex flex-wrap gap-2 pb-2.5">
-                  {node.resources?.map((resource) => (
-                    <a
-                      key={`${resource.label}-${resource.url}`}
-                      href={resource.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
-                    >
-                      {resource.label}
-                    </a>
-                  ))}
+                <div className="pb-2.5">
+                  <ResourceChips resources={node.resources ?? []} />
+                </div>
+              )}
+              {language && hasLangResources && (
+                <div className="pb-2.5">
+                  <p className="mb-1.5 text-[0.7rem] font-black uppercase tracking-[0.16em] text-slate-400">
+                    Recursos para {language.label}
+                  </p>
+                  <ResourceChips resources={langContent?.resources ?? []} />
                 </div>
               )}
             </div>
@@ -222,12 +255,13 @@ function LeafItem({ node, done, onToggle }: RoadmapNodeItemProps) {
 export default function RoadmapNodeItem({
   node,
   done,
+  language,
   onToggle,
 }: RoadmapNodeItemProps) {
   const isGroup = Boolean(node.children && node.children.length > 0);
   return isGroup ? (
-    <GroupItem node={node} done={done} onToggle={onToggle} />
+    <GroupItem node={node} done={done} language={language} onToggle={onToggle} />
   ) : (
-    <LeafItem node={node} done={done} onToggle={onToggle} />
+    <LeafItem node={node} done={done} language={language} onToggle={onToggle} />
   );
 }
