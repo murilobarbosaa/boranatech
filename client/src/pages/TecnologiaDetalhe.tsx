@@ -8,9 +8,11 @@ import TechnologyLogo from "@/components/TechnologyLogo";
 import { areasTI } from "@/lib/data";
 import { accentForTechnology } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { technologies, resolveTool } from "@/lib/technologyData";
+import { technologies, resolveTool, slugify } from "@/lib/technologyData";
 import { cn } from "@/lib/utils";
 import { getTechnology } from "@/services/contentService";
+
+const technologySlugs = new Set(technologies.map((item) => item.slug));
 
 export default function TecnologiaDetalhe() {
   const params = useParams<{ slug: string }>();
@@ -290,8 +292,12 @@ export default function TecnologiaDetalhe() {
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {technology.tools.map((tool) => {
                     const resolved = resolveTool(tool);
-                    return (
-                      <li key={tool} className="flex items-center gap-2">
+                    const toolSlug = slugify(tool);
+                    const internal =
+                      toolSlug !== technology.slug &&
+                      technologySlugs.has(toolSlug);
+                    const inner = (
+                      <>
                         <TechnologyLogo
                           name={resolved.name}
                           icon={resolved.icon}
@@ -299,9 +305,23 @@ export default function TecnologiaDetalhe() {
                           className="h-7 w-7 shrink-0"
                           imageClassName="h-4 w-4"
                         />
-                        <span className="font-medium text-slate-800">
+                        <span className="font-medium text-slate-800 transition-colors group-hover:text-violet-700 group-hover:underline">
                           {resolved.name}
                         </span>
+                      </>
+                    );
+                    return (
+                      <li key={tool}>
+                        {internal ? (
+                          <Link
+                            href={`/tecnologias/${toolSlug}`}
+                            className="group flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+                          >
+                            {inner}
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-2">{inner}</div>
+                        )}
                       </li>
                     );
                   })}
