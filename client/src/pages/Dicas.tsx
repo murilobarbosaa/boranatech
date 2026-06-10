@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   Cloud,
   Cpu,
+  ExternalLink,
   Laptop,
   Lightbulb,
   ShoppingBag,
@@ -18,8 +19,9 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { areasTI, livrosFundamentos, livrosPorArea } from "@/lib/data";
-import { dicasPraticas } from "@/lib/dicasData";
+import { dicasPraticas, type DicaTema } from "@/lib/dicasData";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { getFaviconUrl, hideBrokenImage } from "@/lib/utils";
 import {
   notebookByGoal,
   notebookBuyingTips,
@@ -144,7 +146,7 @@ export default function Dicas() {
               </TabsList>
               {dicasPraticas.map((tema) => (
                 <TabsContent key={tema.key} value={tema.key}>
-                  <DicaList dicas={tema.dicas} />
+                  <DicaList tema={tema} />
                 </TabsContent>
               ))}
             </Tabs>
@@ -386,7 +388,7 @@ export default function Dicas() {
   );
 }
 
-function DicaList({ dicas }: { dicas: string[] }) {
+function DicaList({ tema }: { tema: DicaTema }) {
   const reduce = useReducedMotion();
   const container = reduce
     ? {}
@@ -408,20 +410,63 @@ function DicaList({ dicas }: { dicas: string[] }) {
       };
 
   return (
-    <motion.ul {...container} className="grid gap-4 md:grid-cols-2">
-      {dicas.map((dica) => (
-        <motion.li
-          {...item}
-          key={dica}
-          className="card-invite flex gap-3 rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
-        >
-          <Lightbulb
-            className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
-            aria-hidden
-          />
-          <span className="text-sm font-semibold text-slate-800">{dica}</span>
-        </motion.li>
-      ))}
-    </motion.ul>
+    <div className="space-y-6">
+      {tema.intro ? (
+        <p className="max-w-3xl text-sm font-semibold text-slate-700">
+          {tema.intro}
+        </p>
+      ) : null}
+      <motion.ol {...container} className="grid gap-4 md:grid-cols-2">
+        {tema.passos.map((passo, index) => (
+          <motion.li
+            {...item}
+            key={passo}
+            className="card-invite flex gap-3 rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
+          >
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 text-xs font-black text-slate-950">
+              {index + 1}
+            </span>
+            <span className="text-sm font-semibold text-slate-800">{passo}</span>
+          </motion.li>
+        ))}
+      </motion.ol>
+      {tema.artigos.length > 0 ? (
+        <div>
+          <h3 className="font-display text-sm font-black uppercase tracking-wide text-amber-800">
+            Para ler
+          </h3>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            {tema.artigos.map((artigo) => {
+              const favicon = getFaviconUrl(artigo.url);
+              return (
+                <a
+                  key={artigo.url}
+                  href={artigo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="card-invite flex items-center gap-3 rounded-2xl border-amber-200 bg-white p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                >
+                  {favicon ? (
+                    <img
+                      src={favicon}
+                      alt=""
+                      onError={hideBrokenImage}
+                      className="h-5 w-5 shrink-0 rounded border border-slate-300"
+                    />
+                  ) : null}
+                  <span className="flex-1 text-sm font-bold text-slate-800">
+                    {artigo.title}
+                  </span>
+                  <ExternalLink
+                    className="h-4 w-4 shrink-0 text-amber-700"
+                    aria-hidden
+                  />
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
