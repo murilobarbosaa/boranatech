@@ -13,6 +13,7 @@ import {
   Globe,
   PlayCircle,
   Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -298,6 +299,16 @@ export default function Cursos() {
                       >
                         {curso.tipo || "Gratuito"}
                       </span>
+                      {curso.certificate === "sim" ? (
+                        <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800">
+                          <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+                          Com certificado
+                        </span>
+                      ) : curso.certificate === "nao" ? (
+                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                          Sem certificado
+                        </span>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <span

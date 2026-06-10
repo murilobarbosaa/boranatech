@@ -6084,6 +6084,7 @@ export const roadmaps = [
 export const cursosGratuitos = [
   {
     id: "curso-html-css-cv",
+    certificate: "nao_informado",
     titulo: "HTML, CSS e JavaScript",
     canal: "Curso em Vídeo",
     plataforma: "YouTube",
@@ -6106,6 +6107,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-freecodecamp",
+    certificate: "sim",
     titulo: "Responsive Web Design",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6124,6 +6126,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-rocketseat-discover",
+    certificate: "nao_informado",
     titulo: "Discover — Fundamentos Web",
     canal: "Rocketseat",
     plataforma: "Rocketseat",
@@ -6141,6 +6144,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-python-cv",
+    certificate: "nao_informado",
     titulo: "Curso de Python",
     canal: "Curso em Vídeo",
     plataforma: "YouTube",
@@ -6163,6 +6167,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-figma-oficial",
+    certificate: "nao_informado",
     titulo: "Figma for Beginners",
     canal: "Figma",
     plataforma: "YouTube / Figma",
@@ -6184,6 +6189,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-dio-java",
+    certificate: "sim",
     titulo: "Java Básico",
     canal: "DIO",
     plataforma: "DIO",
@@ -6206,6 +6212,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-kaggle-python",
+    certificate: "sim",
     titulo: "Python for Data Science",
     canal: "Kaggle",
     plataforma: "Kaggle",
@@ -6228,6 +6235,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-aws-free",
+    certificate: "nao_informado",
     titulo: "AWS Cloud Practitioner Essentials",
     canal: "AWS",
     plataforma: "AWS Skill Builder",
@@ -6250,6 +6258,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-tryhackme",
+    certificate: "nao_informado",
     titulo: "Pre-Security Path",
     canal: "TryHackMe",
     plataforma: "TryHackMe",
@@ -6272,6 +6281,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-microsoft-learn",
+    certificate: "nao_informado",
     titulo: "Fundamentos do Azure",
     canal: "Microsoft",
     plataforma: "Microsoft Learn",
@@ -6294,6 +6304,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-origamid-front-end",
+    certificate: "nao_informado",
     titulo: "Front-end completo",
     canal: "Origamid",
     plataforma: "Origamid",
@@ -6313,6 +6324,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-alura-front-end",
+    certificate: "nao_informado",
     titulo: "Formação Front-end",
     canal: "Alura",
     plataforma: "Alura",
@@ -6332,6 +6344,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-alura-dados",
+    certificate: "nao_informado",
     titulo: "Formação Data Science",
     canal: "Alura",
     plataforma: "Alura",
@@ -6351,6 +6364,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-udemy-react",
+    certificate: "nao_informado",
     titulo: "React do Zero à Maestria",
     canal: "Udemy",
     plataforma: "Udemy",
@@ -6370,6 +6384,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-rocketseat-one",
+    certificate: "nao_informado",
     titulo: "Rocketseat One",
     canal: "Rocketseat",
     plataforma: "Rocketseat",
@@ -6389,6 +6404,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fullcycle",
+    certificate: "nao_informado",
     titulo: "Full Cycle",
     canal: "Full Cycle",
     plataforma: "Full Cycle",
@@ -6408,6 +6424,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-curso.dev",
+    certificate: "nao_informado",
     titulo: "curso.dev",
     canal: "Filipe Deschamps",
     plataforma: "curso.dev",
@@ -6427,6 +6444,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-awari-ux",
+    certificate: "nao_informado",
     titulo: "UX/UI Design",
     canal: "Awari",
     plataforma: "Awari",
@@ -6446,6 +6464,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-pm3-produto",
+    certificate: "nao_informado",
     titulo: "Product Management",
     canal: "PM3",
     plataforma: "PM3",
@@ -6465,6 +6484,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-ebac-qa",
+    certificate: "nao_informado",
     titulo: "Engenheiro de Qualidade de Software",
     canal: "EBAC",
     plataforma: "EBAC",
@@ -6489,6 +6509,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-cs50x",
+    certificate: "sim",
     titulo: "CS50x: Introdução à Ciência da Computação",
     canal: "Harvard / CS50",
     plataforma: "edX",
@@ -6511,6 +6532,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-odin-project",
+    certificate: "nao",
     titulo: "The Odin Project — Full Stack",
     canal: "The Odin Project",
     plataforma: "The Odin Project",
@@ -6533,6 +6555,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fcc-javascript",
+    certificate: "sim",
     titulo: "JavaScript Algorithms and Data Structures",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6555,6 +6578,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fcc-python",
+    certificate: "sim",
     titulo: "Scientific Computing with Python",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6577,6 +6601,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fcc-sql",
+    certificate: "sim",
     titulo: "Relational Database (SQL)",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6599,6 +6624,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fcc-react",
+    certificate: "sim",
     titulo: "Front End Development Libraries (React)",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6616,6 +6642,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-google-ux",
+    certificate: "nao_informado",
     titulo: "Google UX Design (Certificado Profissional)",
     canal: "Google",
     plataforma: "Coursera",
@@ -6638,6 +6665,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-elements-of-ai",
+    certificate: "nao_informado",
     titulo: "Elements of AI",
     canal: "University of Helsinki",
     plataforma: "Elements of AI",
@@ -6660,6 +6688,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-aws-cloud-practitioner",
+    certificate: "nao_informado",
     titulo: "AWS Cloud Practitioner Essentials",
     canal: "Amazon Web Services",
     plataforma: "AWS Skill Builder",
@@ -6682,6 +6711,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-flutter-codelab",
+    certificate: "nao_informado",
     titulo: "Flutter: primeiro app (codelab oficial)",
     canal: "Google",
     plataforma: "Flutter",
@@ -6704,6 +6734,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fcc-backend",
+    certificate: "sim",
     titulo: "Back End Development and APIs",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6721,6 +6752,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fcc-data-analysis",
+    certificate: "sim",
     titulo: "Data Analysis with Python",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6738,6 +6770,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fcc-infosec",
+    certificate: "sim",
     titulo: "Information Security",
     canal: "freeCodeCamp",
     plataforma: "freeCodeCamp",
@@ -6760,6 +6793,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-ms-csharp",
+    certificate: "nao_informado",
     titulo: "Primeiros passos com C#",
     canal: "Microsoft",
     plataforma: "Microsoft Learn",
@@ -6782,6 +6816,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-android-compose",
+    certificate: "nao_informado",
     titulo: "Android Basics with Compose",
     canal: "Google",
     plataforma: "Android Developers",
@@ -6799,6 +6834,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-kaggle-ml",
+    certificate: "sim",
     titulo: "Intro to Machine Learning",
     canal: "Kaggle",
     plataforma: "Kaggle",
@@ -6821,6 +6857,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-google-data-analytics",
+    certificate: "nao_informado",
     titulo: "Google Data Analytics (Certificado Profissional)",
     canal: "Google",
     plataforma: "Coursera",
@@ -6843,6 +6880,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-ms-azure-fundamentals",
+    certificate: "nao_informado",
     titulo: "Microsoft Azure Fundamentals (AZ-900)",
     canal: "Microsoft",
     plataforma: "Microsoft Learn",
@@ -6865,6 +6903,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-full-stack-open",
+    certificate: "sim",
     titulo: "Full Stack Open",
     canal: "University of Helsinki",
     plataforma: "Full Stack Open",
@@ -6887,6 +6926,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-cs50-web",
+    certificate: "sim",
     titulo: "CS50 Web Programming com Python e JavaScript",
     canal: "Harvard / CS50",
     plataforma: "edX",
@@ -6904,6 +6944,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-javascript-info",
+    certificate: "nao_informado",
     titulo: "JavaScript Moderno (javascript.info)",
     canal: "javascript.info",
     plataforma: "The Modern JavaScript Tutorial",
@@ -6926,6 +6967,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-javascript30",
+    certificate: "nao_informado",
     titulo: "JavaScript30",
     canal: "Wes Bos",
     plataforma: "JavaScript30",
@@ -6948,6 +6990,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-typescript-handbook",
+    certificate: "nao_informado",
     titulo: "TypeScript Handbook (oficial)",
     canal: "Microsoft",
     plataforma: "TypeScript",
@@ -6970,6 +7013,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-webdev-learn",
+    certificate: "nao_informado",
     titulo: "web.dev Learn",
     canal: "Google",
     plataforma: "web.dev",
@@ -6987,6 +7031,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-spring-guides",
+    certificate: "nao_informado",
     titulo: "Spring Guides (oficial)",
     canal: "Spring",
     plataforma: "Spring",
@@ -7009,6 +7054,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-nodejs-learn",
+    certificate: "nao_informado",
     titulo: "Node.js Guides (oficial)",
     canal: "Node.js",
     plataforma: "Node.js",
@@ -7026,6 +7072,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-django-tutorial",
+    certificate: "nao_informado",
     titulo: "Tutorial oficial do Django",
     canal: "Django Software Foundation",
     plataforma: "Django",
@@ -7043,6 +7090,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-kaggle-pandas",
+    certificate: "sim",
     titulo: "Pandas",
     canal: "Kaggle",
     plataforma: "Kaggle",
@@ -7060,6 +7108,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-kaggle-dataviz",
+    certificate: "sim",
     titulo: "Data Visualization",
     canal: "Kaggle",
     plataforma: "Kaggle",
@@ -7082,6 +7131,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-kaggle-advanced-sql",
+    certificate: "sim",
     titulo: "Advanced SQL",
     canal: "Kaggle",
     plataforma: "Kaggle",
@@ -7104,6 +7154,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-powerbi-pl300",
+    certificate: "nao_informado",
     titulo: "Análise de dados com Power BI (PL-300)",
     canal: "Microsoft",
     plataforma: "Microsoft Learn",
@@ -7121,6 +7172,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-ml-specialization",
+    certificate: "nao_informado",
     titulo: "Machine Learning Specialization",
     canal: "DeepLearning.AI / Andrew Ng",
     plataforma: "Coursera",
@@ -7143,6 +7195,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-deep-learning-spec",
+    certificate: "nao_informado",
     titulo: "Deep Learning Specialization",
     canal: "DeepLearning.AI",
     plataforma: "Coursera",
@@ -7165,6 +7218,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-fastai",
+    certificate: "nao_informado",
     titulo: "Practical Deep Learning for Coders",
     canal: "fast.ai",
     plataforma: "fast.ai",
@@ -7187,6 +7241,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-hf-nlp",
+    certificate: "nao_informado",
     titulo: "Hugging Face LLM / NLP Course",
     canal: "Hugging Face",
     plataforma: "Hugging Face",
@@ -7209,6 +7264,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-kaggle-deep-learning",
+    certificate: "sim",
     titulo: "Intro to Deep Learning",
     canal: "Kaggle",
     plataforma: "Kaggle",
@@ -7226,6 +7282,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-aws-saa",
+    certificate: "nao_informado",
     titulo: "AWS Solutions Architect Associate",
     canal: "Amazon Web Services",
     plataforma: "AWS",
@@ -7248,6 +7305,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-gcp-skills-boost",
+    certificate: "nao_informado",
     titulo: "Google Cloud Skills Boost",
     canal: "Google Cloud",
     plataforma: "Google Cloud Skills Boost",
@@ -7270,6 +7328,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-k8s-basics",
+    certificate: "nao_informado",
     titulo: "Kubernetes Basics (oficial)",
     canal: "Kubernetes",
     plataforma: "Kubernetes",
@@ -7292,6 +7351,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-docker-get-started",
+    certificate: "nao_informado",
     titulo: "Docker Get Started (oficial)",
     canal: "Docker",
     plataforma: "Docker",
@@ -7314,6 +7374,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-terraform-tutorials",
+    certificate: "nao_informado",
     titulo: "Terraform Tutorials (HashiCorp)",
     canal: "HashiCorp",
     plataforma: "HashiCorp Developer",
@@ -7336,6 +7397,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-portswigger",
+    certificate: "nao_informado",
     titulo: "Web Security Academy",
     canal: "PortSwigger",
     plataforma: "PortSwigger",
@@ -7353,6 +7415,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-tryhackme",
+    certificate: "nao_informado",
     titulo: "TryHackMe",
     canal: "TryHackMe",
     plataforma: "TryHackMe",
@@ -7370,6 +7433,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-htb-academy",
+    certificate: "nao_informado",
     titulo: "Hack The Box Academy",
     canal: "Hack The Box",
     plataforma: "HTB Academy",
@@ -7392,6 +7456,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-test-automation-u",
+    certificate: "nao_informado",
     titulo: "Test Automation University",
     canal: "Applitools",
     plataforma: "Test Automation University",
@@ -7414,6 +7479,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-cypress-learn",
+    certificate: "nao_informado",
     titulo: "Real World Testing com Cypress",
     canal: "Cypress",
     plataforma: "Cypress",
@@ -7431,6 +7497,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-100-swiftui",
+    certificate: "nao_informado",
     titulo: "100 Days of SwiftUI",
     canal: "Hacking with Swift",
     plataforma: "Hacking with Swift",
@@ -7448,6 +7515,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-react-native-docs",
+    certificate: "nao_informado",
     titulo: "React Native (documentação oficial)",
     canal: "Meta",
     plataforma: "React Native",
@@ -7465,6 +7533,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-calarts-uiux",
+    certificate: "nao_informado",
     titulo: "UI / UX Design Specialization",
     canal: "CalArts",
     plataforma: "Coursera",
@@ -7487,6 +7556,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-scrum-open",
+    certificate: "nao_informado",
     titulo: "Scrum Open Assessments",
     canal: "Scrum.org",
     plataforma: "Scrum.org",
@@ -7504,6 +7574,7 @@ export const cursosGratuitos = [
   },
   {
     id: "curso-uva-product",
+    certificate: "nao_informado",
     titulo: "Digital Product Management",
     canal: "University of Virginia",
     plataforma: "Coursera",
