@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { Check, ChevronRight, Minus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
@@ -8,6 +9,7 @@ import type {
   RoadmapResource,
 } from "@/lib/roadmapV2/types";
 import { displayProgress } from "@/lib/roadmapV2/progress";
+import { projetos } from "@/lib/data";
 
 type RoadmapNodeItemProps = {
   node: RoadmapNode;
@@ -51,6 +53,61 @@ function NodeContent({ content }: { content: string }) {
   return (
     <div className="pb-3">
       <ReactMarkdown components={MARKDOWN_COMPONENTS}>{content}</ReactMarkdown>
+    </div>
+  );
+}
+
+type Projeto = (typeof projetos)[number];
+
+function ProjectCard({
+  project,
+  checked,
+  onToggleDone,
+}: {
+  project: Projeto;
+  checked: boolean;
+  onToggleDone: () => void;
+}) {
+  const href = project.areaSlug
+    ? `/projetos?area=${project.areaSlug}`
+    : "/projetos";
+  return (
+    <div className="mb-3 rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-4 shadow-[4px_4px_0_#0f172a]">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="rounded-md border-2 border-slate-900 bg-[#FFB800] px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-950">
+          Projeto
+        </span>
+        <span className="rounded-md border-2 border-slate-900 bg-white px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-700">
+          {project.nivel}
+        </span>
+      </div>
+      <h4 className="text-[1.05rem] font-black leading-tight text-slate-900">
+        {project.nome}
+      </h4>
+      <p className="mt-1 text-[0.86rem] font-medium leading-snug text-slate-600">
+        {project.objetivo}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={checked}
+          onClick={onToggleDone}
+          className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3 py-1.5 text-[0.8rem] font-extrabold shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] ${
+            checked
+              ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
+              : "bg-white text-slate-900"
+          }`}
+        >
+          {checked && <Check className="h-3.5 w-3.5" strokeWidth={4} />}
+          {checked ? "Concluído" : "Marcar como concluído"}
+        </button>
+        <Link
+          href={href}
+          className="rounded-[9px] border-[2.5px] border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.8rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
+        >
+          Ver projeto
+        </Link>
+      </div>
     </div>
   );
 }
@@ -164,6 +221,9 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
   const checked = done.has(node.id);
   const optional = node.optional === true;
   const langContent = language ? node.byLanguage?.[language.id] : undefined;
+  const project = node.project
+    ? projetos.find((p) => p.id === node.project)
+    : undefined;
   const hasResources = Boolean(node.resources && node.resources.length > 0);
   const hasLangResources = Boolean(
     langContent?.resources && langContent.resources.length > 0,
@@ -171,6 +231,7 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
   const hasBody =
     Boolean(node.content) ||
     Boolean(langContent?.content) ||
+    Boolean(project) ||
     hasResources ||
     hasLangResources;
 
@@ -230,6 +291,13 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
               {node.content && <NodeContent content={node.content} />}
               {langContent?.content && (
                 <NodeContent content={langContent.content} />
+              )}
+              {project && (
+                <ProjectCard
+                  project={project}
+                  checked={checked}
+                  onToggleDone={() => onToggle(node.id)}
+                />
               )}
               {hasResources && (
                 <div className="pb-2.5">
