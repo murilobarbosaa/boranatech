@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
+  BookOpen,
   Cloud,
   Cpu,
   ExternalLink,
+  Film,
   Laptop,
   Lightbulb,
   ShoppingBag,
@@ -31,6 +33,7 @@ import {
   type DicaArtigo,
   type Filme,
 } from "@/lib/dicasData";
+import { generatedPosters } from "@/lib/dicasPosters.generated";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { getFaviconUrl, hideBrokenImage } from "@/lib/utils";
 import {
@@ -211,6 +214,11 @@ export default function Dicas() {
                 <LinksGrid itens={bibliotecaReferencia} />
               </TabsContent>
             </Tabs>
+            <p className="mt-8 max-w-3xl text-xs leading-relaxed text-slate-500">
+              Capas de filmes e séries via TMDB. Este produto usa a API do TMDB,
+              mas não é endossado nem certificado pelo TMDB. Capas de livros via
+              Open Library.
+            </p>
           </div>
         </section>
       )}
@@ -568,6 +576,10 @@ function LinksGrid({ itens }: { itens: DicaArtigo[] }) {
   );
 }
 
+function justWatchUrl(titulo: string) {
+  return `https://www.justwatch.com/br/busca?q=${encodeURIComponent(titulo)}`;
+}
+
 function FilmesGrid({ itens }: { itens: Filme[] }) {
   const reduce = useReducedMotion();
   const { container, item } = getStagger(reduce);
@@ -575,21 +587,51 @@ function FilmesGrid({ itens }: { itens: Filme[] }) {
   return (
     <motion.ul
       {...container}
-      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+      className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
     >
-      {itens.map((filme) => (
+      {itens.map((filme) => {
+        const poster = filme.posterPath ?? generatedPosters[filme.titulo];
+        return (
         <motion.li
           {...item}
           key={filme.titulo}
-          className="card-invite rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
+          className="group card-invite flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
         >
-          <h3 className="font-display text-base font-black text-slate-950">
-            {filme.titulo}{" "}
-            <span className="text-amber-700">({filme.ano})</span>
-          </h3>
-          <p className="mt-2 text-sm text-slate-600">{filme.porque}</p>
+          <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-amber-100">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Film className="h-12 w-12 text-amber-500" aria-hidden />
+            </div>
+            {poster ? (
+              <img
+                src={`https://image.tmdb.org/t/p/w500${poster}`}
+                alt={`Pôster de ${filme.titulo}`}
+                loading="lazy"
+                onError={hideBrokenImage}
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : null}
+          </div>
+          <div className="flex flex-1 flex-col p-4">
+            <h3 className="font-display text-sm font-black leading-snug text-slate-950">
+              {filme.titulo}{" "}
+              <span className="text-amber-700">({filme.ano})</span>
+            </h3>
+            <p className="mt-2 flex-1 text-xs leading-relaxed text-slate-600">
+              {filme.porque}
+            </p>
+            <a
+              href={justWatchUrl(filme.titulo)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Onde assistir ${filme.titulo}`}
+              className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            >
+              Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
+            </a>
+          </div>
         </motion.li>
-      ))}
+        );
+      })}
     </motion.ul>
   );
 }
@@ -601,30 +643,55 @@ function LivrosGrid() {
   return (
     <motion.ul
       {...container}
-      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+      className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
     >
-      {bibliotecaLivros.map((livro) => (
-        <motion.li
-          {...item}
-          key={livro.titulo}
-          className="card-invite flex flex-col rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
-        >
-          <h3 className="font-display text-base font-black text-slate-950">
-            {livro.titulo}
-          </h3>
-          <p className="mt-1 text-xs font-bold text-slate-600">{livro.autor}</p>
-          {livro.url ? (
-            <a
-              href={livro.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-black text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-            >
-              Ler grátis <ExternalLink className="h-3 w-3" aria-hidden />
-            </a>
-          ) : null}
-        </motion.li>
-      ))}
+      {bibliotecaLivros.map((livro) => {
+        const onde = livro.url
+          ? livro.url
+          : livro.isbn
+            ? `https://openlibrary.org/isbn/${livro.isbn}`
+            : `https://openlibrary.org/search?q=${encodeURIComponent(livro.titulo)}`;
+        return (
+          <motion.li
+            {...item}
+            key={livro.titulo}
+            className="group card-invite flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
+          >
+            <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-emerald-100">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <BookOpen className="h-12 w-12 text-emerald-600" aria-hidden />
+              </div>
+              {livro.isbn ? (
+                <img
+                  src={`https://covers.openlibrary.org/b/isbn/${livro.isbn}-L.jpg?default=false`}
+                  alt={`Capa de ${livro.titulo}`}
+                  loading="lazy"
+                  onError={hideBrokenImage}
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : null}
+            </div>
+            <div className="flex flex-1 flex-col p-4">
+              <h3 className="font-display text-sm font-black leading-snug text-slate-950">
+                {livro.titulo}
+              </h3>
+              <p className="mt-1 flex-1 text-xs font-bold text-slate-600">
+                {livro.autor}
+              </p>
+              <a
+                href={onde}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Onde encontrar ${livro.titulo}`}
+                className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+              >
+                {livro.url ? "Ler grátis" : "Onde encontrar"}{" "}
+                <ExternalLink className="h-3 w-3" aria-hidden />
+              </a>
+            </div>
+          </motion.li>
+        );
+      })}
     </motion.ul>
   );
 }

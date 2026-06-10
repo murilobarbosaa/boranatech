@@ -16,12 +16,16 @@ export interface Filme {
   titulo: string;
   ano: string;
   porque: string;
+  tmdbType?: "movie" | "tv";
+  tmdbId?: number;
+  posterPath?: string;
 }
 
 export interface Livro {
   titulo: string;
   autor: string;
   url?: string;
+  isbn?: string;
 }
 
 export const carreiraTemas: CarreiraTema[] = [
@@ -279,6 +283,119 @@ export const bibliotecaFilmes: Filme[] = [
     ano: "2016",
     porque: "Werner Herzog sobre o passado e futuro da internet.",
   },
+  {
+    titulo: "Jobs",
+    ano: "2013",
+    porque: "Cinebiografia dos primeiros anos de Steve Jobs e da Apple.",
+  },
+  {
+    titulo: "O Quinto Poder",
+    ano: "2013",
+    porque: "A criação do WikiLeaks e o vazamento de documentos secretos.",
+  },
+  {
+    titulo: "Matrix",
+    ano: "1999",
+    porque:
+      "Simulação, realidade e escolha em um marco da ficção científica.",
+  },
+  {
+    titulo: "Tron",
+    ano: "1982",
+    porque: "Um programador é puxado para dentro de um mundo digital.",
+  },
+  {
+    titulo: "Tron: O Legado",
+    ano: "2010",
+    porque: "Continuação visual do universo digital de Tron.",
+  },
+  {
+    titulo: "Blade Runner",
+    ano: "1982",
+    porque: "Replicantes e o que significa ser humano.",
+  },
+  {
+    titulo: "Blade Runner 2049",
+    ano: "2017",
+    porque: "Continuação que aprofunda IA, memória e identidade.",
+  },
+  {
+    titulo: "Hackers",
+    ano: "1995",
+    porque: "Jovens hackers dos anos 90 enfrentam uma conspiração.",
+  },
+  {
+    titulo: "A Rede",
+    ano: "1995",
+    porque: "Uma analista de sistemas tem a identidade apagada online.",
+  },
+  {
+    titulo: "Jogador Nº 1 (Ready Player One)",
+    ano: "2018",
+    porque: "Caça ao tesouro dentro de um mundo de realidade virtual.",
+  },
+  {
+    titulo: "Free Guy",
+    ano: "2021",
+    porque: "Um personagem de videogame descobre que vive em um jogo.",
+  },
+  {
+    titulo: "Antitrust",
+    ano: "2001",
+    porque: "Thriller sobre uma gigante de software e código roubado.",
+  },
+  {
+    titulo: "O Círculo",
+    ano: "2017",
+    porque: "Privacidade e vigilância dentro de uma big tech.",
+  },
+  {
+    titulo: "Eu, Robô",
+    ano: "2004",
+    porque: "IA, robôs e as leis da robótica de Asimov.",
+  },
+  {
+    titulo: "General Magic",
+    ano: "2018",
+    porque: "Documentário sobre a startup dos anos 90 que previu o smartphone.",
+  },
+  {
+    titulo: "Privacidade Hackeada (The Great Hack)",
+    ano: "2019",
+    porque:
+      "Documentário sobre o escândalo da Cambridge Analytica e os dados pessoais.",
+  },
+  {
+    titulo: "Citizenfour",
+    ano: "2014",
+    porque: "Documentário sobre o encontro com Snowden e os documentos da NSA.",
+  },
+  {
+    titulo: "Print the Legend",
+    ano: "2014",
+    porque: "Documentário sobre a corrida da impressão 3D e suas startups.",
+  },
+  {
+    titulo: "Indie Game: The Movie",
+    ano: "2012",
+    porque:
+      "Documentário sobre os bastidores de desenvolvedores independentes de jogos.",
+  },
+  {
+    titulo: "Steve Jobs: O Homem na Máquina",
+    ano: "2015",
+    porque: "Documentário com um retrato crítico do legado de Steve Jobs.",
+  },
+  {
+    titulo: "TPB AFK: The Pirate Bay",
+    ano: "2013",
+    porque: "Documentário sobre os fundadores do Pirate Bay e a pirataria.",
+  },
+  {
+    titulo: "We Are Legion",
+    ano: "2012",
+    porque: "Documentário sobre o coletivo hacktivista Anonymous.",
+  },
 ];
 
 export const bibliotecaSeries: Filme[] = [
@@ -302,6 +419,56 @@ export const bibliotecaSeries: Filme[] = [
     ano: "2011",
     porque: "Antologia sobre os efeitos da tecnologia na sociedade.",
   },
+  {
+    titulo: "Devs",
+    ano: "2020",
+    porque: "Thriller sobre uma empresa de tech e computação quântica.",
+  },
+  {
+    titulo: "Pessoa de Interesse",
+    ano: "2011",
+    porque: "Uma IA prevê crimes a partir da vigilância em massa.",
+  },
+  {
+    titulo: "The IT Crowd",
+    ano: "2006",
+    porque: "Comédia sobre um time de suporte de TI.",
+  },
+  {
+    titulo: "Mythic Quest",
+    ano: "2020",
+    porque: "Comédia nos bastidores de um estúdio de games.",
+  },
+  {
+    titulo: "StartUp",
+    ano: "2016",
+    porque: "Drama sobre o nascimento de uma startup de criptomoeda.",
+  },
+  {
+    titulo: "Westworld",
+    ano: "2016",
+    porque: "Androides, consciência e ética em um parque temático.",
+  },
+  {
+    titulo: "Valley of the Boom",
+    ano: "2019",
+    porque: "Docudrama sobre a bolha das pontocom dos anos 90.",
+  },
+  {
+    titulo: "The Billion Dollar Code",
+    ano: "2021",
+    porque: "Disputa real sobre a origem de um mapa digital.",
+  },
+  {
+    titulo: "Maniac",
+    ano: "2018",
+    porque: "Um experimento farmacêutico e os limites da mente humana.",
+  },
+  {
+    titulo: "Years and Years",
+    ano: "2019",
+    porque: "Uma família e o futuro próximo moldado pela tecnologia.",
+  },
 ];
 
 export const bibliotecaLivros: Livro[] = [
@@ -318,19 +485,42 @@ export const bibliotecaLivros: Livro[] = [
   {
     titulo: "Entendendo Algoritmos",
     autor: "Aditya Bhargava",
+    isbn: "9781617292231",
   },
   {
     titulo: "Código Limpo (Clean Code)",
     autor: "Robert C. Martin",
+    isbn: "9780132350884",
   },
   {
     titulo: "O Programador Pragmático",
     autor: "Hunt e Thomas",
+    isbn: "9780135956915",
   },
   {
     titulo: "Pro Git (em português)",
     autor: "Scott Chacon e Ben Straub",
     url: "https://git-scm.com/book/pt-br/v2",
+  },
+  {
+    titulo: "Refatoração",
+    autor: "Martin Fowler",
+    isbn: "9780201485677",
+  },
+  {
+    titulo: "Arquitetura Limpa",
+    autor: "Robert C. Martin",
+    isbn: "9780134494326",
+  },
+  {
+    titulo: "A Startup Enxuta",
+    autor: "Eric Ries",
+    isbn: "9780670921621",
+  },
+  {
+    titulo: "Cracking the Coding Interview",
+    autor: "Gayle Laakmann McDowell",
+    isbn: "9780984782802",
   },
 ];
 
