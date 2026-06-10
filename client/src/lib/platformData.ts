@@ -112,6 +112,50 @@ export const womenArea = {
       desc: "Programa global do Google com eventos, histórias e recursos para mulheres em tecnologia.",
       url: "https://www.womentechmakers.com",
     },
+    {
+      name: "Django Girls",
+      desc: "Workshops gratuitos que apresentam mulheres ao desenvolvimento web com Python e Django.",
+      url: "https://djangogirls.org",
+    },
+    {
+      name: "Rails Girls",
+      desc: "Comunidade global com eventos gratuitos para mulheres conhecerem tecnologia e tirarem ideias do papel.",
+      url: "https://railsgirls.com",
+    },
+    {
+      name: "Meninas Programadoras (USP)",
+      desc: "Projeto da USP que ensina programação com Python e Scratch de graça para meninas do ensino médio.",
+      url: "https://meninasprogramadoras.icmc.usp.br",
+    },
+  ],
+  courses: [
+    {
+      name: "Cisco Girls in ICT e Women Rock-IT",
+      desc: "Cursos gratuitos de redes e cibersegurança da Cisco voltados para meninas e mulheres.",
+      url: "https://www.netacad.com/girls-in-ict",
+    },
+    {
+      name: "WOMCY (Women in Cybersecurity LATAM)",
+      desc: "Organização que forma e conecta mulheres na área de cibersegurança na América Latina.",
+      url: "https://womcy.org",
+    },
+  ],
+  mentorship: [
+    {
+      name: "WoMakersCode",
+      desc: "Capacitação, eventos e rede de apoio para mulheres em tecnologia.",
+      url: "https://womakerscode.org",
+    },
+    {
+      name: "{reprograma}",
+      desc: "Formação para mulheres iniciantes, com comunidade e acompanhamento.",
+      url: "https://reprograma.com.br",
+    },
+    {
+      name: "MariaLab",
+      desc: "Coletivo com oficinas e rede de apoio para mulheres na tecnologia.",
+      url: "https://marialab.org",
+    },
   ],
   creators: [
     {
@@ -162,6 +206,13 @@ export const womenArea = {
       topic: "Produto, carreira e bastidores de tecnologia",
       url: "https://www.linkedin.com/search/results/content/?keywords=Leticia%20Caires%20produto%20tech",
       avatarUrl: "https://unavatar.io/linkedin/leticiascaires",
+    },
+    {
+      name: "Attekita Dev",
+      handle: "@attekitadev",
+      topic: "Desenvolvimento de apps, games e carreira em tecnologia",
+      url: "https://www.youtube.com/@attekitadev",
+      avatarUrl: "https://unavatar.io/youtube/attekitadev",
     },
   ],
   videos: [
@@ -254,6 +305,10 @@ export const womenArea = {
       title: "Elas Programam",
       url: "https://open.spotify.com/show/1Ay5y5TFWQPq3Pw2Xy209U",
     },
+    {
+      title: "Start Coding",
+      url: "https://open.spotify.com/show/0dTUNs8tpqAC5d71m8SGU0",
+    },
   ],
   articles: [
     {
@@ -280,6 +335,11 @@ export const womenArea = {
       name: "Lista: canais e cursos de tech feitos por mulheres (GitHub)",
       desc: "Coletânea de criadoras e cursos de tecnologia feitos por mulheres.",
       url: "https://github.com/ComunidadeCafeina/women-teaching-tech",
+    },
+    {
+      name: "Mulheres na tecnologia: representatividade e desafios (Tech4Humans)",
+      desc: "Análise sobre a presença feminina na tecnologia no Brasil e no mundo.",
+      url: "https://blog.techforhumans.com.br/post/mulheres-na-tecnologia-uma-analise-global-e-brasileira-da-representatividade-e-desafios",
     },
   ],
   support: {

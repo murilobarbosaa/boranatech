@@ -140,6 +140,14 @@ export default function Mulheres() {
             title="Comunidades indicadas"
             items={womenArea.communities}
           />
+          <Section
+            title="Cursos e formações gratuitas"
+            items={womenArea.courses}
+          />
+          <Section
+            title="Mentoria e acompanhamento"
+            items={womenArea.mentorship}
+          />
           <CreatorsSection creators={womenArea.creators} />
           <Section title="Leituras e listas" items={womenArea.articles} />
 
