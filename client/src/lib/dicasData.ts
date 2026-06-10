@@ -3,21 +3,33 @@ export interface DicaArtigo {
   url: string;
 }
 
-export interface DicaTema {
+export interface CarreiraTema {
   key: string;
   label: string;
-  intro?: string;
-  passos: string[];
+  texto: string;
+  pontos: string[];
   artigos: DicaArtigo[];
 }
 
-export const dicasPraticas: DicaTema[] = [
+export interface Filme {
+  titulo: string;
+  ano: string;
+  porque: string;
+}
+
+export interface Livro {
+  titulo: string;
+  autor: string;
+  url?: string;
+}
+
+export const carreiraTemas: CarreiraTema[] = [
   {
     key: "estagio",
     label: "Estágio",
-    intro:
-      "A porta de entrada mais comum. Não pesa saber tudo, pesa mostrar que você aprende e já fez coisas.",
-    passos: [
+    texto:
+      "Empresas de estágio não esperam que você saiba tudo, esperam evidência de que você aprende sozinha e já colocou a mão na massa. Por isso 2 a 3 projetos no GitHub que você saiba explicar de ponta a ponta valem mais que cursos não terminados. Trate cada processo como treino: a maioria recebe vários nãos antes do sim. Candidate-se mesmo sem cumprir todos os requisitos (são lista de desejos, não eliminatórios).",
+    pontos: [
       "Monte 2 a 3 projetos no GitHub e saiba explicar um de ponta a ponta.",
       "Currículo de 1 página com tecnologias e links dos projetos.",
       "LinkedIn completo, conecte com gente da área e poste o que aprende.",
@@ -40,9 +52,9 @@ export const dicasPraticas: DicaTema[] = [
   {
     key: "curriculo",
     label: "Currículo e LinkedIn",
-    intro:
-      "Currículo de dev é curto e mostra o que você fez, não uma lista de tarefas.",
-    passos: [
+    texto:
+      "Currículo de dev é curto e mostra o que você fez, não tarefas genéricas. Muitos passam por filtro ATS, então adapte a cada vaga com termos da descrição. Resultados concretos e links de projetos valem mais que adjetivos.",
+    pontos: [
       "1 página objetiva, com tecnologias e projetos com links.",
       "Adapte pra cada vaga usando termos da descrição (filtro ATS).",
       "Corte o óbvio (pacote Office, Windows).",
@@ -65,12 +77,12 @@ export const dicasPraticas: DicaTema[] = [
   {
     key: "entrevistas",
     label: "Entrevistas",
-    intro:
-      "O processo costuma ter etapas (triagem, técnico, comportamental); preparar cada uma muda o jogo.",
-    passos: [
+    texto:
+      "O processo costuma ter etapas (triagem, técnico, comportamental). No técnico, importa explicar o raciocínio em voz alta, não só acertar. No comportamental, tenha exemplos reais (situação, ação, resultado). Não saber algo é normal; mostre como você buscaria a resposta.",
+    pontos: [
       "Revise lógica e o básico da stack da vaga.",
       "Pratique resolver problema explicando o raciocínio em voz alta.",
-      "Tenha exemplos reais pra perguntas comportamentais (situação, o que fez, resultado).",
+      "Tenha exemplos reais pra perguntas comportamentais (situação, ação, resultado).",
       "Estude a empresa e leve perguntas.",
       "Não saber algo é normal; mostre como buscaria a resposta.",
     ],
@@ -89,8 +101,9 @@ export const dicasPraticas: DicaTema[] = [
   {
     key: "portfolio",
     label: "Portfólio e GitHub",
-    intro: "Seu GitHub é a prova prática do que você sabe.",
-    passos: [
+    texto:
+      "O GitHub é a prova prática do que você sabe. Projetos que resolvem algo real superam clones de tutorial, e um README claro (o que é, como rodar, print ou deploy) muda como o recrutador te vê. 2 a 3 bem-feitos superam 10 pela metade; faça deploy de pelo menos um.",
+    pontos: [
       "Projetos que resolvem algo real superam clones de tutorial.",
       "README claro em cada um (o que é, como rodar, print ou deploy).",
       "2 a 3 bem-feitos superam 10 pela metade.",
@@ -112,8 +125,9 @@ export const dicasPraticas: DicaTema[] = [
   {
     key: "estudar",
     label: "Como estudar",
-    intro: "Constância e prática batem maratona e teoria solta.",
-    passos: [
+    texto:
+      "Constância e prática batem maratona e teoria solta. Aprenda fazendo, cada conceito vira um mini-projeto; siga uma trilha por vez; reconstrua do zero pra fixar; documente o que aprende.",
+    pontos: [
       "Aprenda fazendo: cada conceito vira um mini-projeto.",
       "Uma trilha por vez, evite pular de tecnologia.",
       "Reconstrua do zero pra fixar.",
@@ -134,8 +148,9 @@ export const dicasPraticas: DicaTema[] = [
   {
     key: "softskills",
     label: "Soft skills",
-    intro: "O que destrava a carreira tanto quanto o código.",
-    passos: [
+    texto:
+      "O que destrava a carreira tanto quanto o código. Saber comunicar, fazer boas perguntas (com contexto e o que já tentou), receber feedback sem levar pro pessoal e ler inglês técnico abrem mais portas que mais um framework.",
+    pontos: [
       "Comunique com clareza e saiba explicar o que fez.",
       "Faça boas perguntas (contexto e o que já tentou).",
       "Code review com humildade.",
@@ -156,23 +171,143 @@ export const dicasPraticas: DicaTema[] = [
   {
     key: "carreira",
     label: "Carreira e mercado",
-    intro: "Como sair do júnior e crescer.",
-    passos: [
+    texto:
+      "Pra sair do júnior, foque em fundamentos (não só na ferramenta da moda), construa networking real em comunidades e eventos, e peça feedback pra mostrar evolução. Ajudar outras pessoas acelera seu próprio aprendizado.",
+    pontos: [
       "Foque em fundamentos, não só na ferramenta da moda.",
       "Networking: comunidades e eventos abrem portas reais.",
       "Peça feedback e mostre evolução pra crescer de júnior pra pleno.",
       "Ajudar outras pessoas também acelera seu aprendizado.",
     ],
-    artigos: [],
+    artigos: [
+      {
+        title:
+          "DIO: Próximo passo na carreira, como evoluir de júnior para sênior",
+        url: "https://www.dio.me/articles/proximo-passo-na-carreira-de-desenvolvedor-de-software-como-evoluir-de-junior-para-senior-e-conquistar-melhores-oportunidades",
+      },
+      {
+        title: "Alura: Carreira de desenvolvedor júnior, o mercado em 2026",
+        url: "https://www.alura.com.br/artigos/desenvolvedor-junior",
+      },
+    ],
+  },
+];
+
+export const bibliotecaFilmes: Filme[] = [
+  {
+    titulo: "O Jogo da Imitação",
+    ano: "2014",
+    porque: "Alan Turing e as origens da computação.",
   },
   {
-    key: "bemestar",
-    label: "Bem-estar",
-    passos: [
-      "Ritmo sustentável; aprender cansa e descansar faz parte.",
-      "Comparação é armadilha; cada trajetória é uma.",
-      "Pedir ajuda é maturidade, não fraqueza.",
-    ],
-    artigos: [],
+    titulo: "A Rede Social",
+    ano: "2010",
+    porque:
+      "Empreendedorismo e o lado complexo de criar uma grande empresa de tech.",
+  },
+  {
+    titulo: "Piratas do Vale do Silício",
+    ano: "1999",
+    porque: "Origens de Apple e Microsoft.",
+  },
+  {
+    titulo: "Steve Jobs",
+    ano: "2015",
+    porque: "Visão e criatividade.",
+  },
+  {
+    titulo: "Ex Machina",
+    ano: "2015",
+    porque: "IA e ética.",
+  },
+  {
+    titulo: "Ela",
+    ano: "2013",
+    porque: "IA e relações humanas.",
+  },
+  {
+    titulo: "O Dilema das Redes",
+    ano: "2020",
+    porque: "Documentário sobre algoritmos e impacto social.",
+  },
+  {
+    titulo: "Revolution OS",
+    ano: "2001",
+    porque:
+      "Documentário sobre software livre e Linux (grátis no YouTube).",
+  },
+  {
+    titulo: "Estrelas Além do Tempo",
+    ano: "2016",
+    porque: "Mulheres na computação da NASA.",
+  },
+  {
+    titulo: "Snowden",
+    ano: "2016",
+    porque: "Vigilância e privacidade.",
+  },
+  {
+    titulo: "Os Estagiários",
+    ano: "2013",
+    porque: "Começar do zero, leve.",
+  },
+];
+
+export const bibliotecaLivros: Livro[] = [
+  {
+    titulo: "Eloquent JavaScript",
+    autor: "Marijn Haverbeke",
+    url: "https://eloquentjavascript.net",
+  },
+  {
+    titulo: "You Don't Know JS",
+    autor: "Kyle Simpson",
+    url: "https://github.com/getify/You-Dont-Know-JS",
+  },
+  {
+    titulo: "Entendendo Algoritmos",
+    autor: "Aditya Bhargava",
+  },
+  {
+    titulo: "Código Limpo (Clean Code)",
+    autor: "Robert C. Martin",
+  },
+  {
+    titulo: "O Programador Pragmático",
+    autor: "Hunt e Thomas",
+  },
+];
+
+export const bibliotecaVideos: DicaArtigo[] = [
+  {
+    title: "Curso em Vídeo (Gustavo Guanabara)",
+    url: "https://www.youtube.com/channel/UCrWvhVmt0Qac3HgsjQK62FQ",
+  },
+  {
+    title: "Rocketseat",
+    url: "https://www.youtube.com/channel/UCSfwM5u0Kce6Cce8_S72olg",
+  },
+  {
+    title: "Filipe Deschamps",
+    url: "https://www.youtube.com/@FilipeDeschamps",
+  },
+  {
+    title: "freeCodeCamp",
+    url: "https://www.youtube.com/@freecodecamp",
+  },
+  {
+    title: "Fireship",
+    url: "https://www.youtube.com/@Fireship",
+  },
+  {
+    title: "CS50 (Harvard)",
+    url: "https://www.youtube.com/@cs50",
+  },
+];
+
+export const bibliotecaPodcasts: DicaArtigo[] = [
+  {
+    title: "Hipsters Ponto Tech",
+    url: "https://www.hipsters.tech/",
   },
 ];

@@ -19,7 +19,15 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { areasTI, livrosFundamentos, livrosPorArea } from "@/lib/data";
-import { dicasPraticas, type DicaTema } from "@/lib/dicasData";
+import {
+  bibliotecaFilmes,
+  bibliotecaLivros,
+  bibliotecaPodcasts,
+  bibliotecaVideos,
+  carreiraTemas,
+  type CarreiraTema,
+  type DicaArtigo,
+} from "@/lib/dicasData";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { getFaviconUrl, hideBrokenImage } from "@/lib/utils";
 import {
@@ -46,7 +54,9 @@ const areaFiltros = [
 ];
 
 export default function Dicas() {
-  const [tab, setTab] = useState<"dicas" | "livros" | "notebooks">("dicas");
+  const [tab, setTab] = useState<
+    "carreira" | "aprender" | "livros" | "notebooks"
+  >("carreira");
   const [areaFiltro, setAreaFiltro] = useState("todas");
 
   const mostrarFundamentos =
@@ -109,8 +119,9 @@ export default function Dicas() {
         <div className="container flex flex-wrap gap-2">
           {(
             [
-              { key: "dicas", label: "Dicas" },
-              { key: "livros", label: "Livros" },
+              { key: "carreira", label: "Carreira" },
+              { key: "aprender", label: "Aprender e se inspirar" },
+              { key: "livros", label: "Livros por área" },
               { key: "notebooks", label: "Notebooks" },
             ] as const
           ).map((item) => (
@@ -129,12 +140,12 @@ export default function Dicas() {
         </div>
       </section>
 
-      {tab === "dicas" && (
+      {tab === "carreira" && (
         <section className="bg-[#fff9e7] py-12">
           <div className="container">
             <Tabs defaultValue="estagio" className="gap-6">
               <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-none bg-transparent p-0">
-                {dicasPraticas.map((tema) => (
+                {carreiraTemas.map((tema) => (
                   <TabsTrigger
                     key={tema.key}
                     value={tema.key}
@@ -144,11 +155,50 @@ export default function Dicas() {
                   </TabsTrigger>
                 ))}
               </TabsList>
-              {dicasPraticas.map((tema) => (
+              {carreiraTemas.map((tema) => (
                 <TabsContent key={tema.key} value={tema.key}>
-                  <DicaList tema={tema} />
+                  <CarreiraConteudo tema={tema} />
                 </TabsContent>
               ))}
+            </Tabs>
+          </div>
+        </section>
+      )}
+
+      {tab === "aprender" && (
+        <section className="bg-[#fff9e7] py-12">
+          <div className="container">
+            <Tabs defaultValue="filmes" className="gap-6">
+              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-none bg-transparent p-0">
+                {(
+                  [
+                    { value: "filmes", label: "Filmes e documentários" },
+                    { value: "videos", label: "Vídeos e canais" },
+                    { value: "livros", label: "Livros" },
+                    { value: "podcasts", label: "Podcasts" },
+                  ] as const
+                ).map((sub) => (
+                  <TabsTrigger
+                    key={sub.value}
+                    value={sub.value}
+                    className="h-auto flex-none rounded-full border-2 border-amber-200 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-all data-[state=active]:border-slate-900 data-[state=active]:bg-amber-300 data-[state=active]:text-slate-950 data-[state=active]:shadow-[2px_2px_0_#0f172a]"
+                  >
+                    {sub.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <TabsContent value="filmes">
+                <FilmesGrid />
+              </TabsContent>
+              <TabsContent value="videos">
+                <LinksGrid itens={bibliotecaVideos} />
+              </TabsContent>
+              <TabsContent value="livros">
+                <LivrosGrid />
+              </TabsContent>
+              <TabsContent value="podcasts">
+                <LinksGrid itens={bibliotecaPodcasts} />
+              </TabsContent>
             </Tabs>
           </div>
         </section>
@@ -388,8 +438,7 @@ export default function Dicas() {
   );
 }
 
-function DicaList({ tema }: { tema: DicaTema }) {
-  const reduce = useReducedMotion();
+function getStagger(reduce: boolean | null) {
   const container = reduce
     ? {}
     : {
@@ -408,25 +457,52 @@ function DicaList({ tema }: { tema: DicaTema }) {
           show: { opacity: 1, y: 0 },
         },
       };
+  return { container, item };
+}
+
+function LinkExterno({ title, url }: { title: string; url: string }) {
+  const favicon = getFaviconUrl(url);
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="card-invite flex items-center gap-3 rounded-2xl border-amber-200 bg-white p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+    >
+      {favicon ? (
+        <img
+          src={favicon}
+          alt=""
+          onError={hideBrokenImage}
+          className="h-5 w-5 shrink-0 rounded border border-slate-300"
+        />
+      ) : null}
+      <span className="flex-1 text-sm font-bold text-slate-800">{title}</span>
+      <ExternalLink className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
+    </a>
+  );
+}
+
+function CarreiraConteudo({ tema }: { tema: CarreiraTema }) {
+  const reduce = useReducedMotion();
+  const { container, item } = getStagger(reduce);
 
   return (
     <div className="space-y-6">
-      {tema.intro ? (
-        <p className="max-w-3xl text-sm font-semibold text-slate-700">
-          {tema.intro}
-        </p>
-      ) : null}
+      <p className="max-w-3xl text-sm font-semibold leading-relaxed text-slate-700">
+        {tema.texto}
+      </p>
       <motion.ol {...container} className="grid gap-4 md:grid-cols-2">
-        {tema.passos.map((passo, index) => (
+        {tema.pontos.map((ponto, index) => (
           <motion.li
             {...item}
-            key={passo}
+            key={ponto}
             className="card-invite flex gap-3 rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 text-xs font-black text-slate-950">
               {index + 1}
             </span>
-            <span className="text-sm font-semibold text-slate-800">{passo}</span>
+            <span className="text-sm font-semibold text-slate-800">{ponto}</span>
           </motion.li>
         ))}
       </motion.ol>
@@ -436,37 +512,92 @@ function DicaList({ tema }: { tema: DicaTema }) {
             Para ler
           </h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {tema.artigos.map((artigo) => {
-              const favicon = getFaviconUrl(artigo.url);
-              return (
-                <a
-                  key={artigo.url}
-                  href={artigo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="card-invite flex items-center gap-3 rounded-2xl border-amber-200 bg-white p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-                >
-                  {favicon ? (
-                    <img
-                      src={favicon}
-                      alt=""
-                      onError={hideBrokenImage}
-                      className="h-5 w-5 shrink-0 rounded border border-slate-300"
-                    />
-                  ) : null}
-                  <span className="flex-1 text-sm font-bold text-slate-800">
-                    {artigo.title}
-                  </span>
-                  <ExternalLink
-                    className="h-4 w-4 shrink-0 text-amber-700"
-                    aria-hidden
-                  />
-                </a>
-              );
-            })}
+            {tema.artigos.map((artigo) => (
+              <LinkExterno
+                key={artigo.url}
+                title={artigo.title}
+                url={artigo.url}
+              />
+            ))}
           </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function LinksGrid({ itens }: { itens: DicaArtigo[] }) {
+  const reduce = useReducedMotion();
+  const { container, item } = getStagger(reduce);
+
+  return (
+    <motion.ul {...container} className="grid gap-3 sm:grid-cols-2">
+      {itens.map((it) => (
+        <motion.li {...item} key={it.url}>
+          <LinkExterno title={it.title} url={it.url} />
+        </motion.li>
+      ))}
+    </motion.ul>
+  );
+}
+
+function FilmesGrid() {
+  const reduce = useReducedMotion();
+  const { container, item } = getStagger(reduce);
+
+  return (
+    <motion.ul
+      {...container}
+      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+    >
+      {bibliotecaFilmes.map((filme) => (
+        <motion.li
+          {...item}
+          key={filme.titulo}
+          className="card-invite rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
+        >
+          <h3 className="font-display text-base font-black text-slate-950">
+            {filme.titulo}{" "}
+            <span className="text-amber-700">({filme.ano})</span>
+          </h3>
+          <p className="mt-2 text-sm text-slate-600">{filme.porque}</p>
+        </motion.li>
+      ))}
+    </motion.ul>
+  );
+}
+
+function LivrosGrid() {
+  const reduce = useReducedMotion();
+  const { container, item } = getStagger(reduce);
+
+  return (
+    <motion.ul
+      {...container}
+      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+    >
+      {bibliotecaLivros.map((livro) => (
+        <motion.li
+          {...item}
+          key={livro.titulo}
+          className="card-invite flex flex-col rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
+        >
+          <h3 className="font-display text-base font-black text-slate-950">
+            {livro.titulo}
+          </h3>
+          <p className="mt-1 text-xs font-bold text-slate-600">{livro.autor}</p>
+          {livro.url ? (
+            <a
+              href={livro.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex w-fit items-center gap-1 text-xs font-black text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            >
+              Ler grátis <ExternalLink className="h-3 w-3" aria-hidden />
+            </a>
+          ) : null}
+        </motion.li>
+      ))}
+    </motion.ul>
   );
 }
