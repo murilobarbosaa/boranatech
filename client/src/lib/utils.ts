@@ -1,8 +1,23 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { SyntheticEvent } from "react";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function getFaviconUrl(url: string): string | null {
+  try {
+    const { hostname } = new URL(url);
+    if (!hostname) return null;
+    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`;
+  } catch {
+    return null;
+  }
+}
+
+export function hideBrokenImage(event: SyntheticEvent<HTMLImageElement>) {
+  event.currentTarget.style.display = "none";
 }
 
 /**

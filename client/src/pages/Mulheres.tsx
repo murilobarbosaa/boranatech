@@ -1,4 +1,4 @@
-import { type ReactNode, type SyntheticEvent } from "react";
+import { type ReactNode } from "react";
 import {
   CheckCircle,
   ExternalLink,
@@ -16,20 +16,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { womenArea } from "@/lib/platformData";
-
-function getFaviconUrl(url: string): string | null {
-  try {
-    const { hostname } = new URL(url);
-    if (!hostname) return null;
-    return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`;
-  } catch {
-    return null;
-  }
-}
-
-function hideBrokenImage(event: SyntheticEvent<HTMLImageElement>) {
-  event.currentTarget.style.display = "none";
-}
+import { getFaviconUrl, hideBrokenImage } from "@/lib/utils";
 
 export default function Mulheres() {
   const reduce = useReducedMotion();
