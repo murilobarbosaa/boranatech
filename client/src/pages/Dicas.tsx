@@ -1,21 +1,25 @@
 import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Cloud,
   Cpu,
-  ExternalLink,
   Laptop,
   Lightbulb,
-  PlayCircle,
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
-import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import SEO from "@/components/SEO";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { areasTI, livrosFundamentos, livrosPorArea } from "@/lib/data";
+import { dicasPraticas } from "@/lib/dicasData";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { tipCategories, tipsArticles } from "@/lib/platformData";
 import {
   notebookByGoal,
   notebookBuyingTips,
@@ -41,13 +45,7 @@ const areaFiltros = [
 
 export default function Dicas() {
   const [tab, setTab] = useState<"dicas" | "livros" | "notebooks">("dicas");
-  const [category, setCategory] = useState("Todas");
   const [areaFiltro, setAreaFiltro] = useState("todas");
-
-  const articles =
-    category === "Todas"
-      ? tipsArticles
-      : tipsArticles.filter((tip) => tip.category === category);
 
   const mostrarFundamentos =
     areaFiltro === "todas" || areaFiltro === "fundamentos";
@@ -83,8 +81,9 @@ export default function Dicas() {
             Dicas para sair do “não sei por onde começar”.
           </h1>
           <p className="mt-3 max-w-2xl text-slate-950">
-            Artigos curados, créditos de autoria e vídeos para transformar
-            dúvida em próximo clique, mais um catálogo de livros por área.
+            Conselhos práticos por tema para estágio, currículo, entrevistas,
+            portfólio e mais, com um catálogo de livros por área e um guia de
+            notebook.
           </p>
           <div className="mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
             {[
@@ -131,70 +130,24 @@ export default function Dicas() {
       {tab === "dicas" && (
         <section className="bg-[#fff9e7] py-12">
           <div className="container">
-            <div
-              className="mb-8 flex flex-wrap gap-2"
-              role="group"
-              aria-label="Filtrar dicas por categoria"
-            >
-              {["Todas", ...tipCategories].map((item) => (
-                <button
-                  key={item}
-                  onClick={() => setCategory(item)}
-                  className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
-                    category === item
-                      ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
-                      : "border-amber-200 bg-white hover:bg-amber-100"
-                  }`}
-                >
-                  {item === "Todas" ? "Todas as categorias" : item}
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {articles.map((article) => (
-                <article
-                  key={article.id}
-                  className="card-invite flex flex-col rounded-2xl border-amber-200 bg-white p-6 shadow-[5px_5px_0_#fbbf24]"
-                >
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-amber-200 px-3 py-1 text-xs font-black text-slate-900">
-                      <Lightbulb className="h-3 w-3" />
-                      {article.category}
-                    </span>
-                    <FavoriteButton
-                      compact
-                      item={{
-                        id: article.id,
-                        type: "dica",
-                        title: article.title,
-                        subtitle: article.category,
-                        url: article.url,
-                      }}
-                    />
-                  </div>
-                  <h2 className="font-display text-xl font-black text-slate-950">
-                    {article.title}
-                  </h2>
-                  <p className="mt-2 flex-1 text-sm text-slate-600">
-                    {article.summary}
-                  </p>
-                  <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-slate-600">
-                    Crédito: <strong>{article.author}</strong> ·{" "}
-                    {article.credit}
-                  </p>
-                  <a
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-black text-amber-700"
+            <Tabs defaultValue="estagio" className="gap-6">
+              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-none bg-transparent p-0">
+                {dicasPraticas.map((tema) => (
+                  <TabsTrigger
+                    key={tema.key}
+                    value={tema.key}
+                    className="h-auto flex-none rounded-full border-2 border-amber-200 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-all data-[state=active]:border-slate-900 data-[state=active]:bg-amber-300 data-[state=active]:text-slate-950 data-[state=active]:shadow-[2px_2px_0_#0f172a]"
                   >
-                    <PlayCircle className="h-4 w-4" />
-                    {article.youtube}
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                </article>
+                    {tema.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {dicasPraticas.map((tema) => (
+                <TabsContent key={tema.key} value={tema.key}>
+                  <DicaList dicas={tema.dicas} />
+                </TabsContent>
               ))}
-            </div>
+            </Tabs>
           </div>
         </section>
       )}
@@ -430,5 +383,45 @@ export default function Dicas() {
         </section>
       )}
     </Layout>
+  );
+}
+
+function DicaList({ dicas }: { dicas: string[] }) {
+  const reduce = useReducedMotion();
+  const container = reduce
+    ? {}
+    : {
+        initial: "hidden",
+        animate: "show",
+        variants: {
+          hidden: {},
+          show: { transition: { staggerChildren: 0.05 } },
+        },
+      };
+  const item = reduce
+    ? {}
+    : {
+        variants: {
+          hidden: { opacity: 0, y: 12 },
+          show: { opacity: 1, y: 0 },
+        },
+      };
+
+  return (
+    <motion.ul {...container} className="grid gap-4 md:grid-cols-2">
+      {dicas.map((dica) => (
+        <motion.li
+          {...item}
+          key={dica}
+          className="card-invite flex gap-3 rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
+        >
+          <Lightbulb
+            className="mt-0.5 h-5 w-5 shrink-0 text-amber-600"
+            aria-hidden
+          />
+          <span className="text-sm font-semibold text-slate-800">{dica}</span>
+        </motion.li>
+      ))}
+    </motion.ul>
   );
 }
