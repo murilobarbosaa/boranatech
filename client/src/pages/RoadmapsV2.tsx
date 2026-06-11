@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "wouter";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -8,8 +8,8 @@ import RoadmapTrail, {
 } from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { frontend, roadmapsV2 } from "@/lib/roadmapV2/content";
-import { isComplete, nodeProgress, toggle } from "@/lib/roadmapV2/progress";
-import { loadProgress, saveProgress } from "@/lib/roadmapV2/progressStorage";
+import { isComplete, nodeProgress } from "@/lib/roadmapV2/progress";
+import { useRoadmapProgress } from "@/hooks/useRoadmapProgress";
 import { loadLanguage, saveLanguage } from "@/lib/roadmapV2/languageStorage";
 
 // Beats of the section-complete sequence, with soft pauses between each step:
@@ -29,7 +29,7 @@ export default function RoadmapsV2() {
   const areaLabel = roadmap.title.includes("Front")
     ? "Front-end"
     : roadmap.area;
-  const [done, setDone] = useState<Set<string>>(() => loadProgress(slug));
+  const { done, toggle: onToggle, ready } = useRoadmapProgress(slug);
   const [openSectionId, setOpenSectionId] = useState<string | null>(null);
 
   const languages = roadmap.languages;
@@ -42,29 +42,22 @@ export default function RoadmapsV2() {
   const selectedLanguage = languages?.find((lang) => lang.id === languageId);
 
   useEffect(() => {
-    saveProgress(slug, done);
-  }, [slug, done]);
-
-  useEffect(() => {
     if (languageId) saveLanguage(slug, languageId);
   }, [slug, languageId]);
 
   const trailRef = useRef<TrailHandle>(null);
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const onToggle = useCallback((id: string) => {
-    setDone((prev) => toggle(id, prev));
-  }, []);
-
   const completed = useMemo(
     () => roadmap.sections.map((section) => isComplete(section, done)),
     [roadmap, done],
   );
 
-  // Seed with the restored completion state so a reload does not replay the
-  // confetti + line-walk for sections that were already complete; only a new
-  // in-session completion (now true, was false) fires the celebration.
-  const prevCompleted = useRef<boolean[]>(completed);
+  // Seeded on the first settled (ready) render with the loaded completion, so a
+  // reload never replays the confetti + line-walk for already-complete sections.
+  // Starts null because the logged-in `done` arrives async: seeding eagerly with
+  // the empty first render would make the celebration fire when the data lands.
+  const prevCompleted = useRef<boolean[] | null>(null);
 
   const overall = useMemo(() => {
     return roadmap.sections.reduce(
@@ -83,7 +76,22 @@ export default function RoadmapsV2() {
     overall.total > 0 ? Math.round((overall.done / overall.total) * 100) : 0;
 
   useEffect(() => {
+    // Wait until the progress is settled (anon: immediate; logged-in: after the
+    // server load). The first settled render seeds prevCompleted with the loaded
+    // completion and animates nothing, so only new in-session changes celebrate.
+    // Resetting to null on every unsettled cycle (initial load, in-place login,
+    // logout) forces a fresh re-seed when ready returns, so a server delta (e.g.
+    // progress from another device) does not replay through this parent effect,
+    // which (unlike the trail) is not remounted by the ready gate.
+    if (!ready) {
+      prevCompleted.current = null;
+      return;
+    }
     const prev = prevCompleted.current;
+    if (prev === null) {
+      prevCompleted.current = completed;
+      return;
+    }
     roadmap.sections.forEach((section, i) => {
       const wasComplete = prev[i] ?? false;
       const nowComplete = completed[i];
@@ -115,7 +123,7 @@ export default function RoadmapsV2() {
       }
     });
     prevCompleted.current = completed;
-  }, [completed, openSectionId]);
+  }, [completed, openSectionId, ready]);
 
   useEffect(() => {
     const pending = timeouts.current;
@@ -193,12 +201,18 @@ export default function RoadmapsV2() {
             />
           </div>
 
-          <RoadmapTrail
-            ref={trailRef}
-            sections={roadmap.sections}
-            done={done}
-            onOpenSection={setOpenSectionId}
-          />
+          {ready ? (
+            <RoadmapTrail
+              ref={trailRef}
+              sections={roadmap.sections}
+              done={done}
+              onOpenSection={setOpenSectionId}
+            />
+          ) : (
+            <div className="mt-10 flex justify-center py-16">
+              <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-300 border-t-slate-900" />
+            </div>
+          )}
         </div>
       </section>
 

@@ -30,3 +30,14 @@ export function saveProgress(slug: string, ids: Set<string>): void {
     // no-op: persistir progresso e best-effort.
   }
 }
+
+// Remove o progresso local de um slug. Usado apos a migracao do local para o
+// server no login, pra nao deixar copia stale que reapareceria no logout.
+export function clearProgress(slug: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(keyFor(slug));
+  } catch {
+    // no-op: best-effort.
+  }
+}
