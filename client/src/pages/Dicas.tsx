@@ -988,7 +988,7 @@ function FilmesGrid({
     <>
       <motion.ul
         layout
-        className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
       >
         <AnimatePresence mode="popLayout">
           {filtered.map((filme, index) => {
@@ -1088,7 +1088,7 @@ function LivrosGrid({
     <>
       <motion.ul
         layout
-        className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+        className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
       >
         <AnimatePresence mode="popLayout">
           {filtered.map((livro, index) => {
