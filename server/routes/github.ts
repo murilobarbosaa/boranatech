@@ -63,6 +63,16 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
 
   const usage = await checkAiDailyLimit(userId, !!req.isPro, "[github]");
   if (!usage.allowed) {
+    if (usage.verificationFailed) {
+      await logAiUsage({ userId, tool, requestId, status: "error", errorMessage: "rate limit check failed" });
+      return next(
+        createError(
+          503,
+          "rate_check_failed",
+          "Não foi possível verificar seu limite de uso agora. Tente novamente em instantes.",
+        ),
+      );
+    }
     await logAiUsage({ userId, tool, requestId, status: "rate_limited" });
     return next(
       createError(

@@ -32,6 +32,16 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
 
   const usage = await checkAiDailyLimit(userId, !!req.isPro);
   if (!usage.allowed) {
+    if (usage.verificationFailed) {
+      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });
+      return next(
+        createError(
+          503,
+          "rate_check_failed",
+          "Não foi possível verificar seu limite de uso agora. Tente novamente em instantes.",
+        ),
+      );
+    }
     await logAiUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
     return next(
       createError(
@@ -248,6 +258,16 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
 
   const usage = await checkAiDailyLimit(userId, !!req.isPro, "[ai/stream]");
   if (!usage.allowed) {
+    if (usage.verificationFailed) {
+      await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "rate limit check failed", model: toolConfig.model });
+      return next(
+        createError(
+          503,
+          "rate_check_failed",
+          "Não foi possível verificar seu limite de uso agora. Tente novamente em instantes.",
+        ),
+      );
+    }
     await logAiUsage({ userId, tool: toolKey, requestId, status: "rate_limited", model: toolConfig.model });
     return next(
       createError(
