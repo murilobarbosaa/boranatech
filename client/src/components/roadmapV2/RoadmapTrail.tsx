@@ -92,16 +92,37 @@ type RoadmapTrailProps = {
   onOpenSection: (id: string) => void;
 };
 
+// Segments already earned by restored progress: every section i (except the
+// last, which has no outgoing segment) that is already complete. walk(i) lights
+// segment i then marks it arrived, so seeding lit + arrived with these indices
+// makes a reload render the conquered line gold and keep the unlocked stations
+// open WITHOUT replaying the walk. New in-session completions still call walk().
+function seedReached(
+  sections: RoadmapSection[],
+  done: Set<string>,
+): Set<number> {
+  const reached = new Set<number>();
+  for (let i = 0; i < sections.length - 1; i++) {
+    if (isComplete(sections[i], done)) reached.add(i);
+  }
+  return reached;
+}
+
 const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
   function RoadmapTrail({ sections, done, onOpenSection }, ref) {
     const layout = useMemo(
       () => buildLayout(sections.length),
       [sections.length],
     );
-    const [lit, setLit] = useState<Set<number>>(new Set());
+    const [lit, setLit] = useState<Set<number>>(() =>
+      seedReached(sections, done),
+    );
     // Segments whose dot-walk has finished arriving. Gates the next station's
     // unlock + pulse, so "you are here" only lights up once the dots reach it.
-    const [arrived, setArrived] = useState<Set<number>>(new Set());
+    // Seeded from restored progress so already-earned unlocks are open at mount.
+    const [arrived, setArrived] = useState<Set<number>>(() =>
+      seedReached(sections, done),
+    );
     const burstedRef = useRef<Set<number>>(new Set());
     const stationRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const arrivalTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(

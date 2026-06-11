@@ -50,7 +50,6 @@ export default function RoadmapsV2() {
   }, [slug, languageId]);
 
   const trailRef = useRef<TrailHandle>(null);
-  const prevCompleted = useRef<boolean[]>(roadmap.sections.map(() => false));
   const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const onToggle = useCallback((id: string) => {
@@ -61,6 +60,11 @@ export default function RoadmapsV2() {
     () => roadmap.sections.map((section) => isComplete(section, done)),
     [roadmap, done],
   );
+
+  // Seed with the restored completion state so a reload does not replay the
+  // confetti + line-walk for sections that were already complete; only a new
+  // in-session completion (now true, was false) fires the celebration.
+  const prevCompleted = useRef<boolean[]>(completed);
 
   const overall = useMemo(() => {
     return roadmap.sections.reduce(
