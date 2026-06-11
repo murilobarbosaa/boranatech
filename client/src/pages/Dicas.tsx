@@ -8,6 +8,7 @@ import {
 } from "framer-motion";
 import {
   BookOpen,
+  Clapperboard,
   Cloud,
   Cpu,
   ExternalLink,
@@ -19,6 +20,7 @@ import {
   ShoppingBag,
   Sparkles,
   Star,
+  Tv,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
@@ -857,6 +859,7 @@ function AprenderSection() {
               expandedKey={expandedKey}
               onToggle={onToggle}
               reduce={reduce}
+              kind="filme"
             />
           </TabsContent>
           <TabsContent value="series">
@@ -867,6 +870,7 @@ function AprenderSection() {
               expandedKey={expandedKey}
               onToggle={onToggle}
               reduce={reduce}
+              kind="serie"
             />
           </TabsContent>
           <TabsContent value="videos">
@@ -967,6 +971,61 @@ function LinksGrid({
   );
 }
 
+type ScreenKind = "filme" | "serie";
+
+function screenCategoria(filme: Filme, kind: ScreenKind) {
+  if (kind === "serie") {
+    return {
+      label: "Série",
+      bg: "bg-violet-300",
+      chip: "bg-white text-violet-900",
+      Icon: Tv,
+    };
+  }
+  if (/document[aá]rio/i.test(filme.porque)) {
+    return {
+      label: "Documentário",
+      bg: "bg-emerald-300",
+      chip: "bg-white text-emerald-900",
+      Icon: Clapperboard,
+    };
+  }
+  return {
+    label: "Filme",
+    bg: "bg-amber-300",
+    chip: "bg-white text-amber-900",
+    Icon: Film,
+  };
+}
+
+function PosterTipografico({ filme, kind }: { filme: Filme; kind: ScreenKind }) {
+  const cat = screenCategoria(filme, kind);
+  const Icon = cat.Icon;
+  return (
+    <div
+      className={`relative flex h-full w-full flex-col justify-between overflow-hidden p-3 transition-transform duration-300 group-hover:scale-105 ${cat.bg}`}
+    >
+      <Icon
+        className="pointer-events-none absolute -bottom-5 -right-4 h-32 w-32 text-slate-950 opacity-10"
+        aria-hidden
+      />
+      <span
+        className={`relative z-10 inline-flex w-fit rounded-full border-2 border-slate-900 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${cat.chip}`}
+      >
+        {cat.label}
+      </span>
+      <div className="relative z-10">
+        <p className="line-clamp-5 font-display text-base font-black leading-tight text-slate-950">
+          {filme.titulo}
+        </p>
+        <p className="mt-1 font-display text-sm font-black text-slate-900/70">
+          {filme.ano}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function FilmesGrid({
   itens,
   query,
@@ -974,6 +1033,7 @@ function FilmesGrid({
   expandedKey,
   onToggle,
   reduce,
+  kind,
 }: {
   itens: Filme[];
   query: string;
@@ -981,6 +1041,7 @@ function FilmesGrid({
   expandedKey: string | null;
   onToggle: (key: string) => void;
   reduce: boolean;
+  kind: ScreenKind;
 }) {
   const filtered = itens.filter((f) => screenMatches(f, query));
 
@@ -1012,19 +1073,23 @@ function FilmesGrid({
                 {high ? (
                   <span className="pointer-events-none absolute inset-0 z-20 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
                 ) : null}
-                <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-amber-100">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Film className="h-12 w-12 text-amber-500" aria-hidden />
-                  </div>
+                <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-slate-900">
                   {poster ? (
-                    <img
-                      src={`https://image.tmdb.org/t/p/w500${poster}`}
-                      alt={`Pôster de ${filme.titulo}`}
-                      loading="lazy"
-                      onError={hideBrokenImage}
-                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : null}
+                    <>
+                      <div className="absolute inset-0 flex items-center justify-center bg-amber-100">
+                        <Film className="h-12 w-12 text-amber-500" aria-hidden />
+                      </div>
+                      <img
+                        src={`https://image.tmdb.org/t/p/w500${poster}`}
+                        alt={`Pôster de ${filme.titulo}`}
+                        loading="lazy"
+                        onError={hideBrokenImage}
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </>
+                  ) : (
+                    <PosterTipografico filme={filme} kind={kind} />
+                  )}
                 </div>
                 <div className="flex flex-1 flex-col p-3">
                   <h3 className="font-display text-sm font-black leading-snug text-slate-950">
