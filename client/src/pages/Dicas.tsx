@@ -400,10 +400,12 @@ function LinkExterno({
   title,
   url,
   desc,
+  carreira,
 }: {
   title: string;
   url: string;
   desc?: string;
+  carreira?: boolean;
 }) {
   const favicon = getFaviconUrl(url);
   return (
@@ -422,7 +424,14 @@ function LinkExterno({
         />
       ) : null}
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-bold text-slate-800">{title}</span>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-bold text-slate-800">{title}</span>
+          {carreira ? (
+            <span className="inline-flex rounded-full border border-violet-300 bg-violet-100 px-1.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide text-violet-800">
+              carreira
+            </span>
+          ) : null}
+        </span>
         {desc ? (
           <span className="mt-0.5 block text-xs font-medium text-slate-500">
             {desc}
@@ -942,7 +951,12 @@ function LinksGrid({
                 {high ? (
                   <span className="pointer-events-none absolute inset-0 z-10 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
                 ) : null}
-                <LinkExterno title={it.title} url={it.url} desc={it.desc} />
+                <LinkExterno
+                  title={it.title}
+                  url={it.url}
+                  desc={it.desc}
+                  carreira={it.carreira}
+                />
               </motion.li>
             );
           })}

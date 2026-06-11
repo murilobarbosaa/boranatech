@@ -2,6 +2,7 @@ export interface DicaArtigo {
   title: string;
   url: string;
   desc?: string;
+  carreira?: boolean;
 }
 
 export interface Dica {
@@ -38,11 +39,6 @@ export const carreiraArtigos: DicaArtigo[] = [
     desc: "Passos práticos para o primeiro estágio.",
   },
   {
-    title: "Indeed Brasil: Currículo para programador (com dicas)",
-    url: "https://br.indeed.com/conselho-de-carreira/curriculos-cartas-apresentacao/curriculo-programador",
-    desc: "Como montar um currículo de dev do zero.",
-  },
-  {
     title:
       "DevMedia: Como criar um currículo de programador mesmo sem experiência",
     url: "https://www.devmedia.com.br/como-criar-um-curriculo-de-programador-mesmo-sem-experiencia/44190",
@@ -53,11 +49,6 @@ export const carreiraArtigos: DicaArtigo[] = [
       "Coodesh: Entrevista técnica para desenvolvedores, veja como se sair bem",
     url: "https://coodesh.com/blog/candidates/dicas/entrevista-tecnica-para-desenvolvedores/",
     desc: "Como se preparar e se sair bem no técnico.",
-  },
-  {
-    title: "Revelo: Entrevista com desenvolvedor, 12 perguntas frequentes",
-    url: "https://blog.revelo.com.br/entrevista-com-desenvolvedor/",
-    desc: "Perguntas comuns e como responder.",
   },
   {
     title:
@@ -647,6 +638,70 @@ export const bibliotecaVideos: DicaArtigo[] = [
     url: "https://www.youtube.com/@cs50",
     desc: "Ciência da computação de Harvard, em inglês.",
   },
+  {
+    title: "Fabiano Goes (eprogramar)",
+    url: "https://www.youtube.com/@eprogramar",
+    desc: "Carreira, mercado de tecnologia e produtividade para devs.",
+    carreira: true,
+  },
+  {
+    title: "Augusto Galego (Guto Galego)",
+    url: "https://www.youtube.com/@GutoGalego",
+    desc: "Algoritmos, LeetCode e carreira internacional em tech.",
+    carreira: true,
+  },
+  {
+    title: "Lucas Montano",
+    url: "https://www.youtube.com/@LucasMontano",
+    desc: "Tecnologia, carreira e bastidores da vida de dev.",
+  },
+  {
+    title: "Mayk Brito",
+    url: "https://www.youtube.com/@maykbrito",
+    desc: "Lógica, JavaScript e fundamentos para iniciantes.",
+  },
+  {
+    title: "DevSuperior (Nélio Alves)",
+    url: "https://www.youtube.com/@DevSuperior",
+    desc: "Java, Spring e preparação para a primeira vaga.",
+    carreira: true,
+  },
+  {
+    title: "Cod3r Cursos",
+    url: "https://www.youtube.com/@Cod3r",
+    desc: "Desenvolvimento web moderno, JavaScript e Flutter.",
+  },
+  {
+    title: "Hora de Codar",
+    url: "https://www.youtube.com/@horadecodar",
+    desc: "Desenvolvimento web com JavaScript, PHP e React.",
+  },
+  {
+    title: "Sujeito Programador",
+    url: "https://www.youtube.com/@SujeitoProgramador",
+    desc: "Lógica, PHP e desenvolvimento web do zero.",
+  },
+  {
+    title: "Bóson Treinamentos",
+    url: "https://www.youtube.com/@bosontreinamentos",
+    desc: "Redes, Linux, banco de dados e programação.",
+  },
+  {
+    title: "Programador BR",
+    url: "https://www.youtube.com/@ProgramadorBR",
+    desc: "Programação, carreira e empreendedorismo em tech.",
+    carreira: true,
+  },
+  {
+    title: "Traversy Media",
+    url: "https://www.youtube.com/@TraversyMedia",
+    desc: "Tutoriais de desenvolvimento web, em inglês.",
+  },
+  {
+    title: "The Net Ninja",
+    url: "https://www.youtube.com/@NetNinja",
+    desc: "Séries de tutoriais web em inglês, do básico ao avançado.",
+  },
 ];
 
 export const bibliotecaPodcasts: DicaArtigo[] = [
@@ -659,6 +714,26 @@ export const bibliotecaPodcasts: DicaArtigo[] = [
     title: "Dev Sem Fronteiras",
     url: "https://www.devsemfronteiras.tech/",
     desc: "Brasileiros que foram trabalhar com tech fora do país.",
+  },
+  {
+    title: "Pizza de Dados",
+    url: "https://pizzadedados.com/",
+    desc: "Ciência de dados e machine learning com convidados da área.",
+  },
+  {
+    title: "Cabeça de Lab",
+    url: "https://www.cabecadelab.com.br/",
+    desc: "Podcast de tecnologia do LuizaLabs (Magalu), com carreira e inovação.",
+  },
+  {
+    title: "Like a Boss",
+    url: "https://www.likeaboss.com.br/",
+    desc: "Conversas com líderes e fundadores sobre carreira e empreendedorismo.",
+  },
+  {
+    title: "Vida de Programador",
+    url: "https://open.spotify.com/show/3xWjAw6QebhWfOcgyxTEnX",
+    desc: "Histórias e bastidores do dia a dia de quem programa, com André Noel.",
   },
 ];
 
