@@ -76,7 +76,10 @@ export async function createAsaasCheckout(params: {
     callback: params.successUrl ? { successUrl: params.successUrl } : undefined,
   });
 
-  console.log("[asaas] response:", JSON.stringify(data));
+  console.log(
+    "[asaas] subscription created:",
+    JSON.stringify({ id: data?.id, status: data?.status, value: data?.value }),
+  );
   return data;
 }
 
