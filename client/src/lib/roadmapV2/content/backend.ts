@@ -10,7 +10,7 @@ export const backend: RoadmapV2 = {
   languages: [
     { id: "node", label: "Node.js" },
     { id: "python", label: "Python" },
-    { id: "java", label: "Java (Spring Boot)" },
+    { id: "java", label: "Java" },
     { id: "go", label: "Go" },
   ],
   sections: [

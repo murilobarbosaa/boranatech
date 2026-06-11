@@ -151,28 +151,30 @@ export default function RoadmapsV2() {
                 {overall.done} de {overall.total} tópicos · {overallPct}%
               </span>
               {languages && languages.length > 0 && (
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                <div className="mt-5">
+                  <span className="mb-2 block text-xs font-black uppercase tracking-[0.16em] text-slate-500">
                     Linguagem
                   </span>
-                  {languages.map((lang) => {
-                    const active = lang.id === languageId;
-                    return (
-                      <button
-                        key={lang.id}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => setLanguageId(lang.id)}
-                        className={`rounded-[10px] border-[2.5px] border-slate-900 px-3 py-1.5 text-sm font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] ${
-                          active
-                            ? "bg-[#FFB800] text-slate-950"
-                            : "bg-white text-slate-600"
-                        }`}
-                      >
-                        {lang.label}
-                      </button>
-                    );
-                  })}
+                  <div className="flex flex-wrap gap-2.5">
+                    {languages.map((lang) => {
+                      const active = lang.id === languageId;
+                      return (
+                        <button
+                          key={lang.id}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setLanguageId(lang.id)}
+                          className={`min-w-[6rem] rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-center text-[0.9rem] font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] ${
+                            active
+                              ? "bg-[#FFB800] text-slate-950"
+                              : "bg-white text-slate-600"
+                          }`}
+                        >
+                          {lang.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
