@@ -4,12 +4,9 @@ export interface DicaArtigo {
   desc?: string;
 }
 
-export interface CarreiraTema {
-  key: string;
-  label: string;
+export interface Dica {
+  categoria: string;
   texto: string;
-  pontos: string[];
-  artigos: DicaArtigo[];
 }
 
 export interface Filme {
@@ -28,173 +25,246 @@ export interface Livro {
   isbn?: string;
 }
 
-export const carreiraTemas: CarreiraTema[] = [
+export const carreiraArtigos: DicaArtigo[] = [
   {
-    key: "estagio",
-    label: "Estágio",
-    texto:
-      "Empresas de estágio não esperam que você saiba tudo, esperam evidência de que você aprende sozinha e já colocou a mão na massa. Por isso 2 a 3 projetos no GitHub que você saiba explicar de ponta a ponta valem mais que cursos não terminados. Trate cada processo como treino: a maioria recebe vários nãos antes do sim. Candidate-se mesmo sem cumprir todos os requisitos (são lista de desejos, não eliminatórios).",
-    pontos: [
-      "Monte 2 a 3 projetos no GitHub e saiba explicar um de ponta a ponta.",
-      "Currículo de 1 página com tecnologias e links dos projetos.",
-      "LinkedIn completo, conecte com gente da área e poste o que aprende.",
-      "Procure em LinkedIn (aba Vagas) e em job boards como DIO, GeekHunter e Coodesh, além dos programas de estágio das empresas.",
-      "Candidate-se a muitas vagas, mesmo sem cumprir 100% dos requisitos.",
-      "Espere nãos; cada processo é treino.",
-    ],
-    artigos: [
-      {
-        title: "DIO: Como consegui meu estágio em TI",
-        url: "https://www.dio.me/articles/como-consegui-meu-estagio-em-ti-e-como-voce-pode-conquistar-o-seu-tambem-ba2d1efe0e77",
-      },
-      {
-        title:
-          "dev.to: 8 dicas para conseguir o seu primeiro estágio como desenvolvedor(a)",
-        url: "https://dev.to/dellamora/8-dicas-para-conseguir-o-seu-primeiro-estagio-como-desenvolvedor-a-4345",
-      },
-    ],
+    title: "DIO: Como consegui meu estágio em TI",
+    url: "https://www.dio.me/articles/como-consegui-meu-estagio-em-ti-e-como-voce-pode-conquistar-o-seu-tambem-ba2d1efe0e77",
+    desc: "Relato real de quem conquistou o primeiro estágio.",
   },
   {
-    key: "curriculo",
-    label: "Currículo e LinkedIn",
-    texto:
-      "Currículo de dev é curto e mostra o que você fez, não tarefas genéricas. Muitos passam por filtro ATS, então adapte a cada vaga com termos da descrição. Resultados concretos e links de projetos valem mais que adjetivos.",
-    pontos: [
-      "1 página objetiva, com tecnologias e projetos com links.",
-      "Adapte pra cada vaga usando termos da descrição (filtro ATS).",
-      "Corte o óbvio (pacote Office, Windows).",
-      "Use verbos de ação e resultados quando tiver.",
-      "LinkedIn com foto, headline clara e projetos fixados.",
-      "Peça pra alguém da área revisar.",
-    ],
-    artigos: [
-      {
-        title: "Indeed Brasil: Currículo para programador (com dicas)",
-        url: "https://br.indeed.com/conselho-de-carreira/curriculos-cartas-apresentacao/curriculo-programador",
-      },
-      {
-        title:
-          "DevMedia: Como criar um currículo de programador mesmo sem experiência",
-        url: "https://www.devmedia.com.br/como-criar-um-curriculo-de-programador-mesmo-sem-experiencia/44190",
-      },
-    ],
+    title:
+      "dev.to: 8 dicas para conseguir o seu primeiro estágio como desenvolvedor(a)",
+    url: "https://dev.to/dellamora/8-dicas-para-conseguir-o-seu-primeiro-estagio-como-desenvolvedor-a-4345",
+    desc: "Passos práticos para o primeiro estágio.",
   },
   {
-    key: "entrevistas",
-    label: "Entrevistas",
-    texto:
-      "O processo costuma ter etapas (triagem, técnico, comportamental). No técnico, importa explicar o raciocínio em voz alta, não só acertar. No comportamental, tenha exemplos reais (situação, ação, resultado). Não saber algo é normal; mostre como você buscaria a resposta.",
-    pontos: [
-      "Revise lógica e o básico da stack da vaga.",
-      "Pratique resolver problema explicando o raciocínio em voz alta.",
-      "Tenha exemplos reais pra perguntas comportamentais (situação, ação, resultado).",
-      "Estude a empresa e leve perguntas.",
-      "Não saber algo é normal; mostre como buscaria a resposta.",
-    ],
-    artigos: [
-      {
-        title:
-          "Coodesh: Entrevista técnica para desenvolvedores, veja como se sair bem",
-        url: "https://coodesh.com/blog/candidates/dicas/entrevista-tecnica-para-desenvolvedores/",
-      },
-      {
-        title: "Revelo: Entrevista com desenvolvedor, 12 perguntas frequentes",
-        url: "https://blog.revelo.com.br/entrevista-com-desenvolvedor/",
-      },
-    ],
+    title: "Indeed Brasil: Currículo para programador (com dicas)",
+    url: "https://br.indeed.com/conselho-de-carreira/curriculos-cartas-apresentacao/curriculo-programador",
+    desc: "Como montar um currículo de dev do zero.",
   },
   {
-    key: "portfolio",
-    label: "Portfólio e GitHub",
-    texto:
-      "O GitHub é a prova prática do que você sabe. Projetos que resolvem algo real superam clones de tutorial, e um README claro (o que é, como rodar, print ou deploy) muda como o recrutador te vê. 2 a 3 bem-feitos superam 10 pela metade; faça deploy de pelo menos um.",
-    pontos: [
-      "Projetos que resolvem algo real superam clones de tutorial.",
-      "README claro em cada um (o que é, como rodar, print ou deploy).",
-      "2 a 3 bem-feitos superam 10 pela metade.",
-      "Commits frequentes e descritivos, perfil organizado.",
-      "Faça deploy de pelo menos um (Vercel ou Netlify) pra ter link ao vivo.",
-    ],
-    artigos: [
-      {
-        title:
-          "DIO: Como construir um portfólio profissional no GitHub mesmo sendo iniciante",
-        url: "https://www.dio.me/articles/como-construir-um-portfolio-profissional-no-github-mesmo-sendo-iniciante-fb2b377ae094",
-      },
-      {
-        title: "dev.to: Dicas para usar o GitHub como portfólio",
-        url: "https://dev.to/github/dicas-para-usar-o-github-como-portfolio-2ab8",
-      },
-    ],
+    title:
+      "DevMedia: Como criar um currículo de programador mesmo sem experiência",
+    url: "https://www.devmedia.com.br/como-criar-um-curriculo-de-programador-mesmo-sem-experiencia/44190",
+    desc: "Currículo sem experiência prévia.",
   },
   {
-    key: "estudar",
-    label: "Como estudar",
-    texto:
-      "Constância e prática batem maratona e teoria solta. Aprenda fazendo, cada conceito vira um mini-projeto; siga uma trilha por vez; reconstrua do zero pra fixar; documente o que aprende.",
-    pontos: [
-      "Aprenda fazendo: cada conceito vira um mini-projeto.",
-      "Uma trilha por vez, evite pular de tecnologia.",
-      "Reconstrua do zero pra fixar.",
-      "Documente o que estuda.",
-      "Pratique resolução de problemas com regularidade.",
-    ],
-    artigos: [
-      {
-        title: "roadmap.sh: trilhas de aprendizado por área",
-        url: "https://roadmap.sh",
-      },
-      {
-        title: "Alura: Como começar a programar do zero, guia completo",
-        url: "https://www.alura.com.br/artigos/como-comecar-programar",
-      },
-    ],
+    title:
+      "Coodesh: Entrevista técnica para desenvolvedores, veja como se sair bem",
+    url: "https://coodesh.com/blog/candidates/dicas/entrevista-tecnica-para-desenvolvedores/",
+    desc: "Como se preparar e se sair bem no técnico.",
   },
   {
-    key: "softskills",
-    label: "Soft skills",
-    texto:
-      "O que destrava a carreira tanto quanto o código. Saber comunicar, fazer boas perguntas (com contexto e o que já tentou), receber feedback sem levar pro pessoal e ler inglês técnico abrem mais portas que mais um framework.",
-    pontos: [
-      "Comunique com clareza e saiba explicar o que fez.",
-      "Faça boas perguntas (contexto e o que já tentou).",
-      "Code review com humildade.",
-      "Dê e receba feedback sem levar pro pessoal.",
-      "Inglês técnico destrava documentação.",
-    ],
-    artigos: [
-      {
-        title: "Alura: Soft skills para desenvolvedores, o guia completo",
-        url: "https://www.alura.com.br/artigos/soft-skills-para-devs",
-      },
-      {
-        title: "DIO: A importância das soft skills no mundo da programação",
-        url: "https://www.dio.me/articles/a-importancia-das-soft-skills-no-mundo-da-programacao",
-      },
-    ],
+    title: "Revelo: Entrevista com desenvolvedor, 12 perguntas frequentes",
+    url: "https://blog.revelo.com.br/entrevista-com-desenvolvedor/",
+    desc: "Perguntas comuns e como responder.",
   },
   {
-    key: "carreira",
-    label: "Carreira e mercado",
+    title:
+      "DIO: Como construir um portfólio profissional no GitHub mesmo sendo iniciante",
+    url: "https://www.dio.me/articles/como-construir-um-portfolio-profissional-no-github-mesmo-sendo-iniciante-fb2b377ae094",
+    desc: "Portfólio no GitHub para iniciantes.",
+  },
+  {
+    title: "dev.to: Dicas para usar o GitHub como portfólio",
+    url: "https://dev.to/github/dicas-para-usar-o-github-como-portfolio-2ab8",
+    desc: "Organize seu GitHub como vitrine.",
+  },
+  {
+    title: "Alura: Como começar a programar do zero, guia completo",
+    url: "https://www.alura.com.br/artigos/como-comecar-programar",
+    desc: "Guia completo para quem começa.",
+  },
+  {
+    title: "Alura: Soft skills para desenvolvedores, o guia completo",
+    url: "https://www.alura.com.br/artigos/soft-skills-para-devs",
+    desc: "As soft skills que mais importam na área.",
+  },
+  {
+    title: "DIO: A importância das soft skills no mundo da programação",
+    url: "https://www.dio.me/articles/a-importancia-das-soft-skills-no-mundo-da-programacao",
+    desc: "Por que soft skills destravam a carreira.",
+  },
+  {
+    title:
+      "DIO: Próximo passo na carreira, como evoluir de júnior para sênior",
+    url: "https://www.dio.me/articles/proximo-passo-na-carreira-de-desenvolvedor-de-software-como-evoluir-de-junior-para-senior-e-conquistar-melhores-oportunidades",
+    desc: "Como crescer de júnior para sênior.",
+  },
+  {
+    title: "Alura: Carreira de desenvolvedor júnior, o mercado em 2026",
+    url: "https://www.alura.com.br/artigos/desenvolvedor-junior",
+    desc: "Panorama do mercado júnior.",
+  },
+];
+
+export const dicasCategorias = [
+  "Como estudar",
+  "Primeiro emprego",
+  "Código no dia a dia",
+  "Mentalidade e comunidade",
+] as const;
+
+export const dicas: Dica[] = [
+  {
+    categoria: "Como estudar",
     texto:
-      "Pra sair do júnior, foque em fundamentos (não só na ferramenta da moda), construa networking real em comunidades e eventos, e peça feedback pra mostrar evolução. Ajudar outras pessoas acelera seu próprio aprendizado.",
-    pontos: [
-      "Foque em fundamentos, não só na ferramenta da moda.",
-      "Networking: comunidades e eventos abrem portas reais.",
-      "Peça feedback e mostre evolução pra crescer de júnior pra pleno.",
-      "Ajudar outras pessoas também acelera seu aprendizado.",
-    ],
-    artigos: [
-      {
-        title:
-          "DIO: Próximo passo na carreira, como evoluir de júnior para sênior",
-        url: "https://www.dio.me/articles/proximo-passo-na-carreira-de-desenvolvedor-de-software-como-evoluir-de-junior-para-senior-e-conquistar-melhores-oportunidades",
-      },
-      {
-        title: "Alura: Carreira de desenvolvedor júnior, o mercado em 2026",
-        url: "https://www.alura.com.br/artigos/desenvolvedor-junior",
-      },
-    ],
+      "Constância ganha de maratona: 30 minutos todo dia rendem mais que um fim de semana inteiro de vez em quando.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Aprenda fazendo: a cada conceito novo, escreva código. Tutorial assistido sem praticar evapora.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Saia do tutorial hell: refaça o projeto do zero sem olhar o vídeo. É ali que você vê o que aprendeu mesmo.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Leia a mensagem de erro inteira e com calma. A maioria dos bugs de iniciante está escrita ali.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Aprenda a pesquisar: jogue o erro entre aspas no Google e leia a primeira resposta do Stack Overflow até o fim.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Entenda a lógica, não decore a sintaxe. Sintaxe você consulta, lógica você carrega.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Pato de borracha: explique seu código em voz alta pra um objeto. Metade dos bugs aparece sozinha.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Domine o básico antes do framework. HTML, CSS e JS sólidos valem mais que React mal entendido.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Aprenda Git cedo, mesmo estudando sozinha. Versionar projeto é hábito profissional desde o primeiro dia.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Use Pomodoro: 25 minutos de foco, 5 de pausa. Evita travar horas no mesmo problema.",
+  },
+  {
+    categoria: "Como estudar",
+    texto:
+      "Inglês destrava a área. Mesmo básico, treine ler documentação em inglês desde o começo.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Aplique mesmo sem cumprir 100% dos requisitos. A descrição da vaga é lista de desejos, não eliminatória.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "No começo é jogo de números: candidate-se em volume e não leve a rejeição pro pessoal.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Personalize o currículo pra cada vaga, citando as tecnologias do anúncio. Recrutador e sistema buscam por palavra.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Tenha 2 ou 3 projetos no GitHub que você sabe explicar linha por linha. Vale mais que 20 repos de tutorial.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "No LinkedIn, escreva o que você faz e o que busca, não só “estudante”. É assim que recrutador te acha.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Pratique falar dos seus projetos em voz alta. Entrevista técnica também é comunicação.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Pensar alto na entrevista vale mais que acertar de primeira. Mostra como você raciocina.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Não sabe a resposta? Diga como investigaria. “Não sei, mas procuraria por X” é uma resposta forte.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Pergunte sobre o dia a dia do time na entrevista. Você também está avaliando a empresa.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Indicação consegue mais vaga que portal. Avise sua rede que você está procurando.",
+  },
+  {
+    categoria: "Código no dia a dia",
+    texto:
+      "Commit pequeno e frequente, com mensagem clara. Seu eu do futuro agradece.",
+  },
+  {
+    categoria: "Código no dia a dia",
+    texto:
+      "Código legível ganha de código esperto. Você lê muito mais código do que escreve.",
+  },
+  {
+    categoria: "Código no dia a dia",
+    texto:
+      "Aprenda a usar o debugger, não só o console.log. Economiza horas.",
+  },
+  {
+    categoria: "Código no dia a dia",
+    texto:
+      "Leia código dos outros em projetos open source. Aprende-se a escrever lendo, como em qualquer língua.",
+  },
+  {
+    categoria: "Código no dia a dia",
+    texto:
+      "Travou por mais de 30 minutos? Peça ajuda ou pause. Insistir cansada raramente resolve.",
+  },
+  {
+    categoria: "Mentalidade e comunidade",
+    texto:
+      "Síndrome do impostor é quase universal na área. Sentir que não sabe o bastante não significa que você não saiba.",
+  },
+  {
+    categoria: "Mentalidade e comunidade",
+    texto:
+      "Não compare seu capítulo 1 com o capítulo 20 de outra pessoa. Compare com você de um mês atrás.",
+  },
+  {
+    categoria: "Mentalidade e comunidade",
+    texto:
+      "Aprenda em público: poste o que estudou. Ensina, fixa o aprendizado e vira portfólio sem querer.",
+  },
+  {
+    categoria: "Mentalidade e comunidade",
+    texto:
+      "Entre numa comunidade (Discord, grupo, evento). Estudar acompanhada segura mais que sozinha.",
+  },
+  {
+    categoria: "Mentalidade e comunidade",
+    texto:
+      "Faça boas perguntas: diga o contexto, o que já tentou e o erro exato. Pergunta boa atrai ajuda boa.",
+  },
+  {
+    categoria: "Mentalidade e comunidade",
+    texto:
+      "Descanso faz parte do aprendizado. O cérebro consolida no intervalo, não só no esforço.",
   },
 ];
 
@@ -476,6 +546,7 @@ export const bibliotecaLivros: Livro[] = [
     titulo: "Eloquent JavaScript",
     autor: "Marijn Haverbeke",
     url: "https://eloquentjavascript.net",
+    isbn: "9781593279509",
   },
   {
     titulo: "You Don't Know JS",
@@ -495,12 +566,13 @@ export const bibliotecaLivros: Livro[] = [
   {
     titulo: "O Programador Pragmático",
     autor: "Hunt e Thomas",
-    isbn: "9780135956915",
+    isbn: "9780135957059",
   },
   {
     titulo: "Pro Git (em português)",
     autor: "Scott Chacon e Ben Straub",
     url: "https://git-scm.com/book/pt-br/v2",
+    isbn: "9781484200773",
   },
   {
     titulo: "Refatoração",
@@ -515,7 +587,7 @@ export const bibliotecaLivros: Livro[] = [
   {
     titulo: "A Startup Enxuta",
     autor: "Eric Ries",
-    isbn: "9780670921621",
+    isbn: "9780307887894",
   },
   {
     titulo: "Cracking the Coding Interview",

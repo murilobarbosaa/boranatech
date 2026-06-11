@@ -18,6 +18,7 @@ import {
   Shuffle,
   ShoppingBag,
   Sparkles,
+  Star,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
@@ -36,8 +37,10 @@ import {
   bibliotecaReferencia,
   bibliotecaSeries,
   bibliotecaVideos,
-  carreiraTemas,
-  type CarreiraTema,
+  carreiraArtigos,
+  dicas,
+  dicasCategorias,
+  type Dica,
   type DicaArtigo,
   type Filme,
 } from "@/lib/dicasData";
@@ -68,9 +71,9 @@ const areaFiltros = [
 ];
 
 export default function Dicas() {
-  const [tab, setTab] = useState<
-    "carreira" | "aprender" | "livros" | "notebooks"
-  >("carreira");
+  const [tab, setTab] = useState<"aprender" | "livros" | "notebooks">(
+    "aprender",
+  );
   const [areaFiltro, setAreaFiltro] = useState("todas");
 
   const mostrarFundamentos =
@@ -131,11 +134,12 @@ export default function Dicas() {
 
       <Marquee />
 
+      <DicasDestaque />
+
       <section className="sticky top-16 z-40 border-b-2 border-amber-200 bg-amber-50 py-4">
         <div className="container flex flex-wrap gap-2">
           {(
             [
-              { key: "carreira", label: "Carreira" },
               { key: "aprender", label: "Aprender e se inspirar" },
               { key: "livros", label: "Livros por área" },
               { key: "notebooks", label: "Notebooks" },
@@ -155,31 +159,6 @@ export default function Dicas() {
           ))}
         </div>
       </section>
-
-      {tab === "carreira" && (
-        <section className="bg-[#fff9e7] py-12">
-          <div className="container">
-            <Tabs defaultValue="estagio" className="gap-6">
-              <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 rounded-none bg-transparent p-0">
-                {carreiraTemas.map((tema) => (
-                  <TabsTrigger
-                    key={tema.key}
-                    value={tema.key}
-                    className="h-auto flex-none rounded-full border-2 border-amber-200 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-all data-[state=active]:border-slate-900 data-[state=active]:bg-amber-300 data-[state=active]:text-slate-950 data-[state=active]:shadow-[2px_2px_0_#0f172a]"
-                  >
-                    {tema.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              {carreiraTemas.map((tema) => (
-                <TabsContent key={tema.key} value={tema.key}>
-                  <CarreiraConteudo tema={tema} />
-                </TabsContent>
-              ))}
-            </Tabs>
-          </div>
-        </section>
-      )}
 
       {tab === "aprender" && <AprenderSection />}
 
@@ -417,28 +396,6 @@ export default function Dicas() {
   );
 }
 
-function getStagger(reduce: boolean | null) {
-  const container = reduce
-    ? {}
-    : {
-        initial: "hidden",
-        animate: "show",
-        variants: {
-          hidden: {},
-          show: { transition: { staggerChildren: 0.05 } },
-        },
-      };
-  const item = reduce
-    ? {}
-    : {
-        variants: {
-          hidden: { opacity: 0, y: 12 },
-          show: { opacity: 1, y: 0 },
-        },
-      };
-  return { container, item };
-}
-
 function LinkExterno({
   title,
   url,
@@ -477,47 +434,158 @@ function LinkExterno({
   );
 }
 
-function CarreiraConteudo({ tema }: { tema: CarreiraTema }) {
-  const reduce = useReducedMotion();
-  const { container, item } = getStagger(reduce);
+const dicaCores: Record<string, { chip: string; shadow: string }> = {
+  "Como estudar": {
+    chip: "bg-amber-300 text-slate-950",
+    shadow: "shadow-[5px_5px_0_#FFB800]",
+  },
+  "Primeiro emprego": {
+    chip: "bg-emerald-300 text-slate-950",
+    shadow: "shadow-[5px_5px_0_#10b981]",
+  },
+  "Código no dia a dia": {
+    chip: "bg-violet-300 text-slate-950",
+    shadow: "shadow-[5px_5px_0_#7c3aed]",
+  },
+  "Mentalidade e comunidade": {
+    chip: "bg-rose-300 text-slate-950",
+    shadow: "shadow-[5px_5px_0_#f43f5e]",
+  },
+};
+
+function dicaCor(categoria: string) {
+  return (
+    dicaCores[categoria] ?? {
+      chip: "bg-amber-300 text-slate-950",
+      shadow: "shadow-[5px_5px_0_#FFB800]",
+    }
+  );
+}
+
+function DicasDestaque() {
+  const reduce = useReducedMotion() ?? false;
+  const [categoria, setCategoria] = useState<string>("Todas");
+  const [gold, setGold] = useState<{ dica: Dica; nonce: number } | null>(null);
+  const goldRef = useRef<HTMLDivElement>(null);
+
+  const filtros = ["Todas", ...dicasCategorias];
+  const visiveis =
+    categoria === "Todas"
+      ? dicas
+      : dicas.filter((d) => d.categoria === categoria);
+
+  const sortear = () => {
+    const escolhida = dicas[Math.floor(Math.random() * dicas.length)];
+    setGold((cur) => ({ dica: escolhida, nonce: (cur?.nonce ?? 0) + 1 }));
+  };
+
+  useEffect(() => {
+    if (gold && goldRef.current) goldRef.current.focus();
+  }, [gold]);
 
   return (
-    <div className="space-y-6">
-      <p className="max-w-3xl text-sm font-semibold leading-relaxed text-slate-700">
-        {tema.texto}
-      </p>
-      <motion.ol {...container} className="grid gap-4 md:grid-cols-2">
-        {tema.pontos.map((ponto, index) => (
-          <motion.li
-            {...item}
-            key={ponto}
-            className="card-invite flex gap-3 rounded-2xl border-amber-200 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 text-xs font-black text-slate-950">
-              {index + 1}
-            </span>
-            <span className="text-sm font-semibold text-slate-800">{ponto}</span>
-          </motion.li>
-        ))}
-      </motion.ol>
-      {tema.artigos.length > 0 ? (
-        <div>
-          <h3 className="font-display text-sm font-black uppercase tracking-wide text-amber-800">
-            Para ler
-          </h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {tema.artigos.map((artigo) => (
-              <LinkExterno
-                key={artigo.url}
-                title={artigo.title}
-                url={artigo.url}
-                desc={artigo.desc}
-              />
-            ))}
+    <section className="border-b-2 border-slate-900 bg-[#fffdf5] py-12">
+      <div className="container space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+              conselhos reais
+            </p>
+            <h2 className="font-display text-3xl font-black text-slate-950">
+              Dicas que a gente queria ter ouvido no começo
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-700">
+              Conselhos diretos pra estudar, conseguir o primeiro emprego e se
+              manter firme. Sem enrolação.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={sortear}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-5 py-2.5 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          >
+            <Star className="h-4 w-4" aria-hidden />
+            Me dá uma dica de ouro
+          </button>
         </div>
-      ) : null}
-    </div>
+
+        <div role="status" aria-live="polite">
+          <AnimatePresence mode="wait">
+            {gold ? (
+              <motion.div
+                key={gold.nonce}
+                ref={goldRef}
+                tabIndex={-1}
+                initial={reduce ? false : { opacity: 0, y: 16, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={reduce ? undefined : { opacity: 0, y: -10 }}
+                transition={{ duration: reduce ? 0 : 0.35 }}
+                className="rounded-[1.2rem] border-2 border-slate-900 bg-amber-100 p-6 shadow-[8px_8px_0_#FFB800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+              >
+                <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950">
+                  <Star className="h-3.5 w-3.5 text-amber-500" aria-hidden />
+                  dica de ouro
+                </p>
+                <p className="font-display text-xl font-black leading-snug text-slate-950 sm:text-2xl">
+                  {gold.dica.texto}
+                </p>
+                <p className="mt-3 text-xs font-black uppercase tracking-wide text-amber-800">
+                  {gold.dica.categoria}
+                </p>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {filtros.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setCategoria(f)}
+              className={`rounded-full border-2 px-3 py-1.5 text-xs font-black ${
+                categoria === f
+                  ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+                  : "border-amber-200 bg-white hover:bg-amber-100"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        <motion.ul layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <AnimatePresence mode="popLayout">
+            {visiveis.map((d, index) => {
+              const cor = dicaCor(d.categoria);
+              return (
+                <motion.li
+                  layout
+                  key={d.texto}
+                  initial={reduce ? false : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduce ? undefined : { opacity: 0, scale: 0.95 }}
+                  transition={{
+                    duration: reduce ? 0 : 0.25,
+                    delay: reduce ? 0 : Math.min(index * 0.02, 0.25),
+                  }}
+                  className={`flex flex-col gap-2 rounded-[1.2rem] border-2 border-slate-950 bg-white p-4 transition-transform hover:-translate-y-1 ${cor.shadow}`}
+                >
+                  <span
+                    className={`inline-flex w-fit rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-[0.65rem] font-black uppercase ${cor.chip}`}
+                  >
+                    {d.categoria}
+                  </span>
+                  <p className="text-sm font-semibold leading-relaxed text-slate-800">
+                    {d.texto}
+                  </p>
+                </motion.li>
+              );
+            })}
+          </AnimatePresence>
+        </motion.ul>
+      </div>
+    </section>
   );
 }
 
@@ -545,6 +613,7 @@ const aprenderSubs = [
   { value: "livros", label: "Livros" },
   { value: "podcasts", label: "Podcasts" },
   { value: "referencia", label: "Referência rápida" },
+  { value: "artigos", label: "Artigos" },
 ] as const;
 
 type AprenderTab = (typeof aprenderSubs)[number]["value"];
@@ -589,6 +658,10 @@ function activeKeys(tab: AprenderTab, q: string): string[] {
         .map((d) => d.url);
     case "referencia":
       return bibliotecaReferencia
+        .filter((d) => linkMatches(d, q))
+        .map((d) => d.url);
+    case "artigos":
+      return carreiraArtigos
         .filter((d) => linkMatches(d, q))
         .map((d) => d.url);
   }
@@ -814,6 +887,14 @@ function AprenderSection() {
               reduce={reduce}
             />
           </TabsContent>
+          <TabsContent value="artigos">
+            <LinksGrid
+              itens={carreiraArtigos}
+              query={q}
+              highlightKey={highlightKey}
+              reduce={reduce}
+            />
+          </TabsContent>
         </Tabs>
         <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-500">
           Capas de filmes e séries via TMDB. Este produto usa a API do TMDB, mas
@@ -891,7 +972,10 @@ function FilmesGrid({
 
   return (
     <>
-      <motion.ul layout className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <motion.ul
+        layout
+        className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+      >
         <AnimatePresence mode="popLayout">
           {filtered.map((filme, index) => {
             const poster = filme.posterPath ?? generatedPosters[filme.titulo];
@@ -928,7 +1012,7 @@ function FilmesGrid({
                     />
                   ) : null}
                 </div>
-                <div className="flex flex-1 flex-col p-4">
+                <div className="flex flex-1 flex-col p-3">
                   <h3 className="font-display text-sm font-black leading-snug text-slate-950">
                     {filme.titulo}{" "}
                     <span className="text-amber-700">({filme.ano})</span>
@@ -988,7 +1072,10 @@ function LivrosGrid({
 
   return (
     <>
-      <motion.ul layout className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <motion.ul
+        layout
+        className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+      >
         <AnimatePresence mode="popLayout">
           {filtered.map((livro, index) => {
             const onde = livro.url
@@ -1028,7 +1115,7 @@ function LivrosGrid({
                     />
                   ) : null}
                 </div>
-                <div className="flex flex-1 flex-col p-4">
+                <div className="flex flex-1 flex-col p-3">
                   <h3 className="font-display text-sm font-black leading-snug text-slate-950">
                     {livro.titulo}
                   </h3>
