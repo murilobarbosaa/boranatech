@@ -78,4 +78,10 @@ export const env = {
   redisUrl: process.env.REDIS_URL || "",
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",
+  // Allowlist dev-only de user ids que enxergam como Pro fora de producao.
+  // Ignorada quando NODE_ENV === "production". Nunca prefixar com VITE_.
+  devProUserIds: (process.env.DEV_PRO_USER_IDS || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
 };
