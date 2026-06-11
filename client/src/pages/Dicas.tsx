@@ -975,55 +975,12 @@ type ScreenKind = "filme" | "serie";
 
 function screenCategoria(filme: Filme, kind: ScreenKind) {
   if (kind === "serie") {
-    return {
-      label: "Série",
-      bg: "bg-violet-300",
-      chip: "bg-white text-violet-900",
-      Icon: Tv,
-    };
+    return { label: "Série", bg: "bg-violet-300", Icon: Tv };
   }
   if (/document[aá]rio/i.test(filme.porque)) {
-    return {
-      label: "Documentário",
-      bg: "bg-emerald-300",
-      chip: "bg-white text-emerald-900",
-      Icon: Clapperboard,
-    };
+    return { label: "Documentário", bg: "bg-emerald-300", Icon: Clapperboard };
   }
-  return {
-    label: "Filme",
-    bg: "bg-amber-300",
-    chip: "bg-white text-amber-900",
-    Icon: Film,
-  };
-}
-
-function PosterTipografico({ filme, kind }: { filme: Filme; kind: ScreenKind }) {
-  const cat = screenCategoria(filme, kind);
-  const Icon = cat.Icon;
-  return (
-    <div
-      className={`relative flex h-full w-full flex-col justify-between overflow-hidden p-3 transition-transform duration-300 group-hover:scale-105 ${cat.bg}`}
-    >
-      <Icon
-        className="pointer-events-none absolute -bottom-5 -right-4 h-32 w-32 text-slate-950 opacity-10"
-        aria-hidden
-      />
-      <span
-        className={`relative z-10 inline-flex w-fit rounded-full border-2 border-slate-900 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${cat.chip}`}
-      >
-        {cat.label}
-      </span>
-      <div className="relative z-10">
-        <p className="line-clamp-5 font-display text-base font-black leading-tight text-slate-950">
-          {filme.titulo}
-        </p>
-        <p className="mt-1 font-display text-sm font-black text-slate-900/70">
-          {filme.ano}
-        </p>
-      </div>
-    </div>
-  );
+  return { label: "Filme", bg: "bg-amber-300", Icon: Film };
 }
 
 function FilmesGrid({
@@ -1056,6 +1013,8 @@ function FilmesGrid({
             const poster = filme.posterPath ?? generatedPosters[filme.titulo];
             const high = highlightKey === filme.titulo;
             const expanded = expandedKey === filme.titulo;
+            const cat = screenCategoria(filme, kind);
+            const Icon = cat.Icon;
             return (
               <motion.li
                 layout
@@ -1064,40 +1023,65 @@ function FilmesGrid({
                 initial={reduce ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
+                whileHover={
+                  reduce
+                    ? undefined
+                    : { y: -3, rotate: -0.5, transition: { duration: 0.15 } }
+                }
                 transition={{
                   duration: reduce ? 0 : 0.25,
                   delay: reduce ? 0 : Math.min(index * 0.03, 0.3),
                 }}
-                className="group card-invite relative flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
+                className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow duration-200 hover:shadow-[7px_7px_0_#0f172a]"
               >
                 {high ? (
                   <span className="pointer-events-none absolute inset-0 z-20 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
                 ) : null}
-                <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-slate-900">
-                  {poster ? (
-                    <>
-                      <div className="absolute inset-0 flex items-center justify-center bg-amber-100">
-                        <Film className="h-12 w-12 text-amber-500" aria-hidden />
-                      </div>
-                      <img
-                        src={`https://image.tmdb.org/t/p/w500${poster}`}
-                        alt={`Pôster de ${filme.titulo}`}
-                        loading="lazy"
-                        onError={hideBrokenImage}
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    </>
-                  ) : (
-                    <PosterTipografico filme={filme} kind={kind} />
-                  )}
-                </div>
+                {poster ? (
+                  <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-slate-900">
+                    <img
+                      src={`https://image.tmdb.org/t/p/w500${poster}`}
+                      alt={`Pôster de ${filme.titulo}`}
+                      loading="lazy"
+                      onError={hideBrokenImage}
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={`relative flex items-center gap-1.5 overflow-hidden border-b-2 border-slate-900 px-3 py-1.5 ${cat.bg}`}
+                  >
+                    <span
+                      className="pointer-events-none absolute inset-y-0 left-0 w-1/2 -translate-x-[200%] -skew-x-12 bg-white/30 transition-transform duration-700 ease-out group-hover:translate-x-[260%] motion-reduce:hidden"
+                      aria-hidden
+                    />
+                    <motion.span
+                      className="relative z-10 flex"
+                      animate={reduce ? undefined : { y: [0, -2, 0] }}
+                      transition={
+                        reduce
+                          ? undefined
+                          : {
+                              duration: 2.4,
+                              repeat: Infinity,
+                              ease: "easeInOut" as const,
+                            }
+                      }
+                    >
+                      <Icon className="h-4 w-4 text-slate-950" aria-hidden />
+                    </motion.span>
+                    <span className="relative z-10 text-[0.65rem] font-black uppercase tracking-wide text-slate-950">
+                      {cat.label}
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-1 flex-col p-3">
                   <h3 className="font-display text-sm font-black leading-snug text-slate-950">
                     {filme.titulo}{" "}
-                    <span className="text-amber-700">({filme.ano})</span>
+                    <span className="text-slate-500">({filme.ano})</span>
                   </h3>
                   <p
-                    className={`mt-2 flex-1 text-xs leading-relaxed text-slate-600 ${
+                    className={`mt-1 flex-1 text-xs leading-relaxed text-slate-600 ${
                       expanded ? "" : "line-clamp-2"
                     }`}
                   >
@@ -1122,7 +1106,7 @@ function FilmesGrid({
                           ? `Recolher ${filme.titulo}`
                           : `Ver mais sobre ${filme.titulo}`
                       }
-                      className="inline-flex items-center gap-1 rounded-full border-2 border-amber-300 bg-white px-3 py-1 text-xs font-black text-amber-800 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                      className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-800 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                     >
                       {expanded ? "Recolher" : "Detalhes"}
                     </button>
