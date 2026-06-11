@@ -8,18 +8,26 @@ import {
 } from "framer-motion";
 import {
   BookOpen,
+  Braces,
+  Bug,
   Clapperboard,
   Cloud,
+  Coffee,
   Cpu,
   ExternalLink,
   Film,
+  GitBranch,
+  GraduationCap,
   Laptop,
   Lightbulb,
+  MessageCircle,
+  Rocket,
   Search,
   Shuffle,
   ShoppingBag,
   Sparkles,
   Star,
+  Target,
   Tv,
 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -165,7 +173,7 @@ export default function Dicas() {
       {tab === "aprender" && <AprenderSection />}
 
       {tab === "livros" && (
-        <section className="bg-[#fff9e7] py-12">
+        <section className="bg-[#faf8f4] py-12">
           <div className="container">
             <div className="mb-8 flex flex-wrap gap-2">
               {areaFiltros.map((item) => (
@@ -204,7 +212,7 @@ export default function Dicas() {
       )}
 
       {tab === "notebooks" && (
-        <section className="bg-[#fff9e7] py-12">
+        <section className="bg-[#faf8f4] py-12">
           <div className="container space-y-10">
             <div className="card-brutal rounded-2xl border-amber-200 bg-amber-100 p-6">
               <div className="mb-3 flex items-center gap-2">
@@ -473,11 +481,105 @@ function dicaCor(categoria: string) {
   );
 }
 
+function dicaFiltroBg(f: string) {
+  switch (f) {
+    case "Primeiro emprego":
+      return "bg-emerald-300";
+    case "Código no dia a dia":
+      return "bg-violet-300";
+    case "Mentalidade e comunidade":
+      return "bg-rose-300";
+    default:
+      return "bg-amber-300";
+  }
+}
+
+const dicasDoodles = [
+  { Icon: Lightbulb, cls: "left-[4%] top-[14%] text-amber-500 opacity-[0.16]", size: "h-12 w-12", dur: 6, rot: 6, delay: 0 },
+  { Icon: Rocket, cls: "right-[6%] top-[10%] text-violet-500 opacity-[0.15]", size: "h-14 w-14", dur: 7, rot: -8, delay: 0.6 },
+  { Icon: Braces, cls: "left-[15%] top-[62%] text-emerald-500 opacity-[0.16]", size: "h-10 w-10", dur: 5.5, rot: 5, delay: 1.1 },
+  { Icon: BookOpen, cls: "right-[11%] top-[60%] text-rose-500 opacity-[0.15]", size: "h-12 w-12", dur: 6.5, rot: -6, delay: 0.3 },
+  { Icon: GraduationCap, cls: "left-[43%] top-[8%] text-sky-500 opacity-[0.14]", size: "h-12 w-12", dur: 7.5, rot: 7, delay: 1.4 },
+  { Icon: Target, cls: "right-[28%] top-[80%] text-amber-600 opacity-[0.15]", size: "h-11 w-11", dur: 6, rot: -5, delay: 0.9 },
+  { Icon: Star, cls: "left-[31%] top-[40%] text-violet-400 opacity-[0.16]", size: "h-9 w-9", dur: 5, rot: 10, delay: 0.2 },
+  { Icon: GitBranch, cls: "right-[3%] top-[44%] text-emerald-600 opacity-[0.15]", size: "h-12 w-12", dur: 7, rot: -7, delay: 1.7 },
+  { Icon: Bug, cls: "left-[7%] top-[84%] text-rose-600 opacity-[0.15]", size: "h-10 w-10", dur: 5.5, rot: 6, delay: 0.5 },
+  { Icon: Coffee, cls: "right-[20%] top-[22%] text-amber-700 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -6, delay: 1.2 },
+  { Icon: MessageCircle, cls: "left-[58%] top-[72%] text-sky-600 opacity-[0.15]", size: "h-11 w-11", dur: 6, rot: 8, delay: 0.8 },
+  { Icon: Sparkles, cls: "right-[44%] top-[6%] text-amber-400 opacity-[0.16]", size: "h-9 w-9", dur: 5, rot: -10, delay: 1.5 },
+];
+
+function DicasDoodles({ reduce }: { reduce: boolean }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      {dicasDoodles.map((d, i) => {
+        const Icon = d.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute ${d.cls}`}
+            animate={reduce ? undefined : { y: [0, -10, 0], rotate: [0, d.rot, 0] }}
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: d.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut" as const,
+                    delay: d.delay,
+                  }
+            }
+          >
+            <Icon className={d.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
+const sparkleSpots = [
+  { cls: "left-3 top-3", size: 18, delay: 0 },
+  { cls: "right-4 top-2", size: 14, delay: 0.05 },
+  { cls: "right-8 bottom-4", size: 22, delay: 0.1 },
+  { cls: "left-6 bottom-3", size: 13, delay: 0.08 },
+  { cls: "left-1/2 -top-2", size: 16, delay: 0.13 },
+  { cls: "right-1/3 -bottom-2", size: 15, delay: 0.16 },
+];
+
+function SparkleBurst() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10" aria-hidden>
+      {sparkleSpots.map((s, i) => (
+        <motion.svg
+          key={i}
+          className={`absolute ${s.cls} text-amber-400`}
+          width={s.size}
+          height={s.size}
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [0, 1, 0], opacity: [0, 1, 0], rotate: [0, 90] }}
+          transition={{ duration: 0.7, delay: s.delay, ease: "easeOut" as const }}
+        >
+          <path d="M12 0 L14.5 9.5 L24 12 L14.5 14.5 L12 24 L9.5 14.5 L0 12 L9.5 9.5 Z" />
+        </motion.svg>
+      ))}
+    </div>
+  );
+}
+
 function DicasDestaque() {
   const reduce = useReducedMotion() ?? false;
   const [categoria, setCategoria] = useState<string>("Todas");
   const [gold, setGold] = useState<{ dica: Dica; nonce: number } | null>(null);
+  const [shuffling, setShuffling] = useState(false);
+  const [sparkle, setSparkle] = useState(0);
   const goldRef = useRef<HTMLDivElement>(null);
+  const runRef = useRef(0);
 
   const filtros = ["Todas", ...dicasCategorias];
   const visiveis =
@@ -485,9 +587,33 @@ function DicasDestaque() {
       ? dicas
       : dicas.filter((d) => d.categoria === categoria);
 
+  const pick = () => dicas[Math.floor(Math.random() * dicas.length)];
+
   const sortear = () => {
-    const escolhida = dicas[Math.floor(Math.random() * dicas.length)];
-    setGold((cur) => ({ dica: escolhida, nonce: (cur?.nonce ?? 0) + 1 }));
+    const escolhida = pick();
+    if (reduce) {
+      setShuffling(false);
+      setSparkle(0);
+      setGold((cur) => ({ dica: escolhida, nonce: (cur?.nonce ?? 0) + 1 }));
+      return;
+    }
+    const runId = ++runRef.current;
+    setShuffling(true);
+    setGold((cur) => ({ dica: pick(), nonce: (cur?.nonce ?? 0) + 1 }));
+    let i = 0;
+    const step = () => {
+      if (runRef.current !== runId) return;
+      if (i < 3) {
+        setGold((cur) => (cur ? { ...cur, dica: pick() } : cur));
+        i += 1;
+        setTimeout(step, 110);
+      } else {
+        setGold((cur) => (cur ? { ...cur, dica: escolhida } : cur));
+        setShuffling(false);
+        setSparkle((s) => s + 1);
+      }
+    };
+    setTimeout(step, 120);
   };
 
   useEffect(() => {
@@ -495,8 +621,9 @@ function DicasDestaque() {
   }, [gold]);
 
   return (
-    <section className="border-b-2 border-slate-900 bg-[#fffdf5] py-12">
-      <div className="container space-y-6">
+    <section className="relative overflow-hidden border-b-2 border-slate-900 bg-[#f6f6fb] py-12">
+      <DicasDoodles reduce={reduce} />
+      <div className="container relative z-10 space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
@@ -527,17 +654,26 @@ function DicasDestaque() {
                 key={gold.nonce}
                 ref={goldRef}
                 tabIndex={-1}
-                initial={reduce ? false : { opacity: 0, y: 16, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={reduce ? undefined : { opacity: 0, y: -10 }}
-                transition={{ duration: reduce ? 0 : 0.35 }}
-                className="rounded-[1.2rem] border-2 border-slate-900 bg-amber-100 p-6 shadow-[8px_8px_0_#FFB800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                transition={
+                  reduce
+                    ? { duration: 0.2 }
+                    : { type: "spring", stiffness: 460, damping: 15 }
+                }
+                className="relative rounded-[1.2rem] border-2 border-slate-900 bg-amber-100 p-6 shadow-[8px_8px_0_#FFB800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
               >
+                {sparkle > 0 && !reduce ? <SparkleBurst key={sparkle} /> : null}
                 <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-950">
                   <Star className="h-3.5 w-3.5 text-amber-500" aria-hidden />
                   dica de ouro
                 </p>
-                <p className="font-display text-xl font-black leading-snug text-slate-950 sm:text-2xl">
+                <p
+                  className={`font-display text-xl font-black leading-snug text-slate-950 transition-opacity duration-100 sm:text-2xl ${
+                    shuffling ? "opacity-60" : "opacity-100"
+                  }`}
+                >
                   {gold.dica.texto}
                 </p>
                 <p className="mt-3 text-xs font-black uppercase tracking-wide text-amber-800">
@@ -554,10 +690,10 @@ function DicasDestaque() {
               key={f}
               type="button"
               onClick={() => setCategoria(f)}
-              className={`rounded-full border-2 px-3 py-1.5 text-xs font-black ${
+              className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform hover:-translate-y-0.5 ${
                 categoria === f
-                  ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
-                  : "border-amber-200 bg-white hover:bg-amber-100"
+                  ? `border-slate-900 ${dicaFiltroBg(f)} shadow-[2px_2px_0_#0f172a]`
+                  : "border-slate-300 bg-white hover:bg-slate-100"
               }`}
             >
               {f}
@@ -751,6 +887,7 @@ function AprenderSection() {
   const [query, setQuery] = useState("");
   const [highlightKey, setHighlightKey] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const surpriseRef = useRef(0);
 
   const q = query.trim().toLowerCase();
 
@@ -766,15 +903,35 @@ function AprenderSection() {
   const surpreenda = () => {
     const keys = activeKeys(aprenderTab, q);
     if (keys.length === 0) return;
-    const key = keys[Math.floor(Math.random() * keys.length)];
-    setHighlightKey(key);
-    const el = document.getElementById(dicaCardId(key));
-    if (el) {
-      el.scrollIntoView({
-        behavior: reduce ? "auto" : "smooth",
-        block: "center",
-      });
+    const finalKey = keys[Math.floor(Math.random() * keys.length)];
+    const irPara = (k: string, suave: boolean) => {
+      setHighlightKey(k);
+      const el = document.getElementById(dicaCardId(k));
+      if (el) {
+        el.scrollIntoView({
+          behavior: suave ? "smooth" : "auto",
+          block: "center",
+        });
+      }
+    };
+    if (reduce) {
+      irPara(finalKey, false);
+      return;
     }
+    const runId = ++surpriseRef.current;
+    const flashes = Math.min(5, keys.length);
+    let i = 0;
+    const step = () => {
+      if (surpriseRef.current !== runId) return;
+      if (i < flashes) {
+        setHighlightKey(keys[Math.floor(Math.random() * keys.length)]);
+        i += 1;
+        setTimeout(step, 90);
+      } else {
+        irPara(finalKey, true);
+      }
+    };
+    step();
   };
 
   const stats = [
@@ -787,7 +944,7 @@ function AprenderSection() {
   ];
 
   return (
-    <section className="bg-[#fff9e7] py-12">
+    <section className="bg-[#faf8f4] py-12">
       <div className="container space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="relative w-full max-w-md">
