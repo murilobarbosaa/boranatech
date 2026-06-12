@@ -108,10 +108,9 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {projects.map((project) => (
-              <Link
+              <div
                 key={project.id}
-                href={`/projetos?area=${area}`}
-                className="card-brutal block rounded-2xl border-slate-950 bg-white p-4"
+                className="card-brutal rounded-2xl border-slate-950 bg-white p-4"
               >
                 <p className="font-display text-base font-black text-slate-950">
                   {project.nome}
@@ -122,7 +121,7 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
                 <p className="mt-2 line-clamp-2 text-sm text-slate-700">
                   {project.objetivo}
                 </p>
-              </Link>
+              </div>
             ))}
           </div>
         </div>
