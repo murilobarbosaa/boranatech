@@ -1,5 +1,13 @@
 import type { ComponentType } from "react";
-import { CalendarClock, CircleDot, Code2, FolderGit2, GitFork, Star, Users } from "lucide-react";
+import {
+  CalendarClock,
+  CircleDot,
+  Code2,
+  FolderGit2,
+  GitFork,
+  Star,
+  Users,
+} from "lucide-react";
 import type {
   GithubAnalysisResponse,
   ProfileMetadata,
@@ -13,7 +21,13 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString("pt-BR");
 }
 
-function Chip({ icon: Icon, children }: { icon: ComponentType<{ className?: string }>; children: React.ReactNode }) {
+function Chip({
+  icon: Icon,
+  children,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]">
       <Icon className="h-3.5 w-3.5 text-slate-600" />
@@ -32,11 +46,15 @@ export function MetadataChips({ response }: MetadataProps) {
     const m = response.metadata as RepoMetadata;
     return (
       <div className="flex flex-wrap gap-2">
-        <Chip icon={Code2}>{m.primaryLanguage ?? "linguagem nao informada"}</Chip>
+        <Chip icon={Code2}>
+          {m.primaryLanguage ?? "linguagem nao informada"}
+        </Chip>
         <Chip icon={Star}>{m.stars} estrelas</Chip>
         <Chip icon={GitFork}>{m.forks} forks</Chip>
         <Chip icon={CircleDot}>{m.openIssues} issues abertas</Chip>
-        <Chip icon={CalendarClock}>último push em {formatDate(m.pushedAt)}</Chip>
+        <Chip icon={CalendarClock}>
+          último push em {formatDate(m.pushedAt)}
+        </Chip>
       </div>
     );
   }
@@ -64,9 +82,14 @@ export function TopRepos({ response }: MetadataProps) {
       </p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {m.topRepos.map((repo) => (
-          <div key={repo.name} className="card-brutal rounded-2xl border-slate-950 bg-white p-4">
+          <div
+            key={repo.name}
+            className="card-brutal rounded-2xl border-slate-950 bg-white p-4"
+          >
             <div className="flex items-center justify-between gap-2">
-              <p className="truncate font-display text-base font-black text-slate-950">{repo.name}</p>
+              <p className="truncate font-display text-base font-black text-slate-950">
+                {repo.name}
+              </p>
               <span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-slate-600">
                 <Star className="h-3.5 w-3.5" />
                 {repo.stars}
@@ -75,7 +98,9 @@ export function TopRepos({ response }: MetadataProps) {
             <p className="mt-1 text-xs font-bold text-slate-500">
               {repo.primaryLanguage ?? "linguagem nao informada"}
             </p>
-            <p className="mt-2 text-sm text-slate-700">{repo.description ?? "Sem descrição."}</p>
+            <p className="mt-2 text-sm text-slate-700">
+              {repo.description ?? "Sem descrição."}
+            </p>
           </div>
         ))}
       </div>

@@ -1,4 +1,10 @@
-import { AlertTriangle, ChevronDown, FileCode2, Sparkles, ThumbsUp } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  FileCode2,
+  Sparkles,
+  ThumbsUp,
+} from "lucide-react";
 import CopyButton from "@/components/shared/CopyButton";
 import { cn } from "@/lib/utils";
 import type { GithubMelhoria, Prioridade } from "@shared/github/schema";
@@ -19,7 +25,9 @@ export function AiSummary({ resumo }: { resumo: string }) {
         <Sparkles className="h-3.5 w-3.5" />
         análise da IA
       </span>
-      <p className="mt-4 text-lg font-medium leading-relaxed text-slate-900">{resumo}</p>
+      <p className="mt-4 text-lg font-medium leading-relaxed text-slate-900">
+        {resumo}
+      </p>
     </div>
   );
 }
@@ -41,14 +49,19 @@ export function StrengthsWeaknesses({
         {pontosFortes.length > 0 ? (
           <ul className="space-y-2">
             {pontosFortes.map((item, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm text-slate-700">
+              <li
+                key={index}
+                className="flex items-start gap-2 text-sm text-slate-700"
+              >
                 <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
                 {item}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-slate-500">Nenhum ponto forte destacado.</p>
+          <p className="text-sm text-slate-500">
+            Nenhum ponto forte destacado.
+          </p>
         )}
       </div>
 
@@ -60,7 +73,10 @@ export function StrengthsWeaknesses({
         {pontosFracos.length > 0 ? (
           <ul className="space-y-2">
             {pontosFracos.map((item, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm text-slate-700">
+              <li
+                key={index}
+                className="flex items-start gap-2 text-sm text-slate-700"
+              >
                 <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
                 {item}
               </li>
@@ -87,7 +103,10 @@ export function Improvements({ melhorias }: { melhorias: GithubMelhoria[] }) {
         {melhorias.map((item, index) => {
           const p = PRIORITY[item.prioridade];
           return (
-            <div key={index} className="card-brutal rounded-2xl border-slate-950 bg-white p-5">
+            <div
+              key={index}
+              className="card-brutal rounded-2xl border-slate-950 bg-white p-5"
+            >
               <div className="flex flex-wrap items-center gap-3">
                 <span
                   className={cn(
@@ -97,9 +116,13 @@ export function Improvements({ melhorias }: { melhorias: GithubMelhoria[] }) {
                 >
                   {p.label}
                 </span>
-                <h4 className="font-display text-base font-black text-slate-950">{item.titulo}</h4>
+                <h4 className="font-display text-base font-black text-slate-950">
+                  {item.titulo}
+                </h4>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">{item.comoFazer}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                {item.comoFazer}
+              </p>
             </div>
           );
         })}
@@ -122,7 +145,9 @@ export function ReadmeSuggestion({ markdown }: { markdown: string | null }) {
       </summary>
       <div className="mt-4">
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-600">Copie e cole no README, depois ajuste com seus dados reais.</p>
+          <p className="text-sm text-slate-600">
+            Copie e cole no README, depois ajuste com seus dados reais.
+          </p>
           <CopyButton text={markdown} />
         </div>
         <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl border-2 border-slate-900 bg-slate-950 p-4 text-xs leading-relaxed text-white">

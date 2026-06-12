@@ -28,11 +28,21 @@ export const CHECK_TIERS = ["essencial", "importante", "opcional"] as const;
 export const CheckTierSchema = z.enum(CHECK_TIERS);
 export type CheckTier = (typeof CHECK_TIERS)[number];
 
-export const CHECK_CATEGORIES = ["essenciais", "profissionalismo", "saude", "perfil"] as const;
+export const CHECK_CATEGORIES = [
+  "essenciais",
+  "profissionalismo",
+  "saude",
+  "perfil",
+] as const;
 export const CheckCategorySchema = z.enum(CHECK_CATEGORIES);
 export type CheckCategory = (typeof CHECK_CATEGORIES)[number];
 
-export const SCORE_BANDS = ["comecando", "evoluindo", "bom", "destaque"] as const;
+export const SCORE_BANDS = [
+  "comecando",
+  "evoluindo",
+  "bom",
+  "destaque",
+] as const;
 export const ScoreBandSchema = z.enum(SCORE_BANDS);
 export type ScoreBand = (typeof SCORE_BANDS)[number];
 
@@ -337,26 +347,38 @@ export const PrioridadeSchema = z.enum(PRIORIDADES);
 export type Prioridade = (typeof PRIORIDADES)[number];
 
 export const GithubMelhoriaSchema = z.object({
-  prioridade: PrioridadeSchema.describe("Prioridade da melhoria: alta, media ou baixa."),
+  prioridade: PrioridadeSchema.describe(
+    "Prioridade da melhoria: alta, media ou baixa.",
+  ),
   titulo: z.string().describe("Título curto e direto da melhoria sugerida."),
-  comoFazer: z.string().describe("Passo prático e acionável de como aplicar a melhoria."),
+  comoFazer: z
+    .string()
+    .describe("Passo prático e acionável de como aplicar a melhoria."),
 });
 
 export const GithubQualitativeSchema = z.object({
   resumo: z
     .string()
-    .describe("Resumo geral em uma ou duas frases sobre o estado do perfil ou repositório."),
-  pontosFortes: z.array(z.string()).describe("Pontos fortes observados no perfil ou repositório."),
+    .describe(
+      "Resumo geral em uma ou duas frases sobre o estado do perfil ou repositório.",
+    ),
+  pontosFortes: z
+    .array(z.string())
+    .describe("Pontos fortes observados no perfil ou repositório."),
   pontosFracos: z
     .array(z.string())
     .describe("Pontos fracos ou lacunas observadas no perfil ou repositório."),
   melhorias: z
     .array(GithubMelhoriaSchema)
-    .describe("Melhorias priorizadas e acionáveis, da mais alta para a mais baixa prioridade."),
+    .describe(
+      "Melhorias priorizadas e acionáveis, da mais alta para a mais baixa prioridade.",
+    ),
   readmeSugestao: z
     .string()
     .nullable()
-    .describe("Sugestão de README em markdown quando fizer sentido, ou null se não se aplica."),
+    .describe(
+      "Sugestão de README em markdown quando fizer sentido, ou null se não se aplica.",
+    ),
 });
 
 export type GithubMelhoria = z.infer<typeof GithubMelhoriaSchema>;

@@ -55,7 +55,9 @@ export class GithubFetchError extends Error {
 
 // Parsers puros (exportados, testados sem rede)
 
-export function parseRepoInput(input: string): { owner: string; repo: string } | null {
+export function parseRepoInput(
+  input: string,
+): { owner: string; repo: string } | null {
   if (typeof input !== "string") return null;
   const trimmed = input.trim();
   if (!trimmed) return null;
@@ -145,7 +147,9 @@ function buildHeaders(): Record<string, string> {
   return headers;
 }
 
-async function withTimeout<T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+async function withTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -183,7 +187,10 @@ async function apiGet<T>(path: string): Promise<T | null> {
     if (response.status === 404) return null;
     if (isRateLimited(response)) throw new GithubRateLimitError();
     if (!response.ok) {
-      throw new GithubFetchError(response.status, `GitHub respondeu ${response.status}.`);
+      throw new GithubFetchError(
+        response.status,
+        `GitHub respondeu ${response.status}.`,
+      );
     }
     return (await response.json()) as T;
   });
@@ -193,15 +200,26 @@ async function apiGet<T>(path: string): Promise<T | null> {
  * Busca um arquivo cru. Fora da API, nao conta no rate limit dela.
  * 200 devolve texto, 404 devolve null.
  */
-async function rawGet(owner: string, repo: string, branch: string, path: string): Promise<string | null> {
+async function rawGet(
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+): Promise<string | null> {
   return withTimeout(async (signal) => {
-    const response = await fetch(`${RAW_BASE}/${owner}/${repo}/${branch}/${path}`, {
-      method: "GET",
-      signal,
-    });
+    const response = await fetch(
+      `${RAW_BASE}/${owner}/${repo}/${branch}/${path}`,
+      {
+        method: "GET",
+        signal,
+      },
+    );
     if (response.status === 404) return null;
     if (!response.ok) {
-      throw new GithubFetchError(response.status, `Arquivo cru respondeu ${response.status}.`);
+      throw new GithubFetchError(
+        response.status,
+        `Arquivo cru respondeu ${response.status}.`,
+      );
     }
     return await response.text();
   });
@@ -266,18 +284,24 @@ const DOC_DIRS = ["", ".github", "docs"] as const;
 
 function pickLicense(license: GithubApiRepo["license"]): string | null {
   if (!license) return null;
-  if (license.spdx_id && license.spdx_id !== "NOASSERTION") return license.spdx_id;
+  if (license.spdx_id && license.spdx_id !== "NOASSERTION")
+    return license.spdx_id;
   return license.name ?? null;
 }
 
-export async function fetchRepoData(owner: string, repo: string): Promise<GithubRepoData> {
+export async function fetchRepoData(
+  owner: string,
+  repo: string,
+): Promise<GithubRepoData> {
   if (!isValidOwner(owner) || !isValidRepo(repo)) {
     throw new GithubFetchError(0, "owner ou repo em formato invalido.");
   }
 
   const meta = await apiGet<GithubApiRepo>(`/repos/${owner}/${repo}`);
   if (!meta) {
-    throw new GithubNotFoundError("Repositorio nao encontrado ou nao e publico.");
+    throw new GithubNotFoundError(
+      "Repositorio nao encontrado ou nao e publico.",
+    );
   }
 
   const [languages, readme, rootContents] = await Promise.all([
@@ -289,7 +313,9 @@ export async function fetchRepoData(owner: string, repo: string): Promise<Github
   const root = Array.isArray(rootContents) ? rootContents : [];
   const rootEntries = root.map((entry) => entry.name);
   const rootDirNames = root.filter((e) => e.type === "dir").map((e) => e.name);
-  const rootFiles = new Set(root.filter((e) => e.type === "file").map((e) => e.name.toLowerCase()));
+  const rootFiles = new Set(
+    root.filter((e) => e.type === "file").map((e) => e.name.toLowerCase()),
+  );
   const rootDirs = new Set(rootDirNames.map((name) => name.toLowerCase()));
 
   // Doc files (SECURITY, CONTRIBUTING, CODE_OF_CONDUCT) podem viver em /, /.github ou /docs.
@@ -302,16 +328,21 @@ export async function fetchRepoData(owner: string, repo: string): Promise<Github
     dirsToScan
       .filter((dir) => dir !== "")
       .map(async (dir) => {
-        const listing = await apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents/${dir}`);
+        const listing = await apiGet<GithubApiContentEntry[]>(
+          `/repos/${owner}/${repo}/contents/${dir}`,
+        );
         const names = Array.isArray(listing)
-          ? listing.filter((e) => e.type === "file").map((e) => e.name.toLowerCase())
+          ? listing
+              .filter((e) => e.type === "file")
+              .map((e) => e.name.toLowerCase())
           : [];
         return new Set(names);
       }),
   );
 
   const fileSets = [rootFiles, ...extraDirFiles];
-  const hasDocFile = (target: string) => fileSets.some((set) => set.has(target));
+  const hasDocFile = (target: string) =>
+    fileSets.some((set) => set.has(target));
 
   // CI: existe .github/workflows com pelo menos um arquivo.
   let ci = false;
@@ -332,7 +363,9 @@ export async function fetchRepoData(owner: string, repo: string): Promise<Github
   };
 
   const readmeText =
-    readme && readme.content && readme.encoding === "base64" ? decodeBase64(readme.content) : null;
+    readme && readme.content && readme.encoding === "base64"
+      ? decodeBase64(readme.content)
+      : null;
 
   return {
     owner,
@@ -375,7 +408,9 @@ interface ProfileRepoSignals {
 }
 
 function detectReadme(entries: GithubApiContentEntry[]): boolean {
-  return entries.some((e) => e.type === "file" && e.name.toLowerCase().startsWith("readme"));
+  return entries.some(
+    (e) => e.type === "file" && e.name.toLowerCase().startsWith("readme"),
+  );
 }
 
 function detectTests(entries: GithubApiContentEntry[]): boolean {
@@ -395,14 +430,19 @@ function detectDeployFiles(entries: GithubApiContentEntry[]): boolean {
  * fetchRepoData (meta, /contents e .github/workflows pra CI). README e detectado
  * pelo nome na raiz pra evitar uma chamada extra por repo.
  */
-async function fetchProfileRepoSignals(owner: string, repo: string): Promise<ProfileRepoSignals> {
+async function fetchProfileRepoSignals(
+  owner: string,
+  repo: string,
+): Promise<ProfileRepoSignals> {
   const [meta, contents] = await Promise.all([
     apiGet<GithubApiRepo>(`/repos/${owner}/${repo}`),
     apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents`),
   ]);
 
   const entries = Array.isArray(contents) ? contents : [];
-  const rootDirs = new Set(entries.filter((e) => e.type === "dir").map((e) => e.name.toLowerCase()));
+  const rootDirs = new Set(
+    entries.filter((e) => e.type === "dir").map((e) => e.name.toLowerCase()),
+  );
 
   // CI: mesma logica do fetchRepoData (workflows com pelo menos um arquivo).
   let hasCI = false;
@@ -410,12 +450,14 @@ async function fetchProfileRepoSignals(owner: string, repo: string): Promise<Pro
     const workflows = await apiGet<GithubApiContentEntry[]>(
       `/repos/${owner}/${repo}/contents/.github/workflows`,
     );
-    hasCI = Array.isArray(workflows) && workflows.some((e) => e.type === "file");
+    hasCI =
+      Array.isArray(workflows) && workflows.some((e) => e.type === "file");
   }
 
   const homepage = meta?.homepage ?? null;
   const hasDeploy =
-    (typeof homepage === "string" && homepage.trim() !== "") || detectDeployFiles(entries);
+    (typeof homepage === "string" && homepage.trim() !== "") ||
+    detectDeployFiles(entries);
 
   return {
     hasReadme: detectReadme(entries),
@@ -441,7 +483,10 @@ async function aggregateDeepSignals(
     ownRepos.map((repo) => fetchProfileRepoSignals(login, repo.name)),
   );
   const ok = settled
-    .filter((r): r is PromiseFulfilledResult<ProfileRepoSignals> => r.status === "fulfilled")
+    .filter(
+      (r): r is PromiseFulfilledResult<ProfileRepoSignals> =>
+        r.status === "fulfilled",
+    )
     .map((r) => r.value);
 
   const topics = new Set<string>();
@@ -461,7 +506,9 @@ async function aggregateDeepSignals(
 
 // Busca de perfil
 
-export async function fetchProfileData(login: string): Promise<GithubProfileData> {
+export async function fetchProfileData(
+  login: string,
+): Promise<GithubProfileData> {
   if (!isValidOwner(login)) {
     throw new GithubFetchError(0, "login em formato invalido.");
   }
@@ -473,16 +520,22 @@ export async function fetchProfileData(login: string): Promise<GithubProfileData
 
   const [readme, repos] = await Promise.all([
     apiGet<GithubApiReadme>(`/repos/${login}/${login}/readme`),
-    apiGet<GithubApiUserRepo[]>(`/users/${login}/repos?per_page=100&sort=pushed&type=owner`),
+    apiGet<GithubApiUserRepo[]>(
+      `/users/${login}/repos?per_page=100&sort=pushed&type=owner`,
+    ),
   ]);
 
   const profileReadme =
-    readme && readme.content && readme.encoding === "base64" ? decodeBase64(readme.content) : null;
+    readme && readme.content && readme.encoding === "base64"
+      ? decodeBase64(readme.content)
+      : null;
 
   const repoList = Array.isArray(repos) ? repos : [];
 
   // Leitura funda: top repos proprios (lista ja ordenada por push), sem forks.
-  const topOwnRepos = repoList.filter((repo) => !repo.fork).slice(0, PROFILE_DEEP_REPOS);
+  const topOwnRepos = repoList
+    .filter((repo) => !repo.fork)
+    .slice(0, PROFILE_DEEP_REPOS);
   const deepSignals = await aggregateDeepSignals(login, topOwnRepos);
 
   return {

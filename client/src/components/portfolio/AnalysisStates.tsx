@@ -46,8 +46,10 @@ function resolveError(error: string): string {
   if (error === "NOT_FOUND") {
     return "Repositório ou perfil não encontrado, ou é privado. Deixe público e tente de novo.";
   }
-  if (error === "GITHUB_BUSY") return "O GitHub está limitando as requisições agora. Tente em instantes.";
-  if (error === "ANALYSIS_FAILED") return "Não consegui completar a análise agora. Tente de novo.";
+  if (error === "GITHUB_BUSY")
+    return "O GitHub está limitando as requisições agora. Tente em instantes.";
+  if (error === "ANALYSIS_FAILED")
+    return "Não consegui completar a análise agora. Tente de novo.";
   return error || "Não consegui completar a análise agora. Tente de novo.";
 }
 
@@ -68,7 +70,9 @@ export function AnalysisError({ error, onRetry }: AnalysisErrorProps) {
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
         <AlertCircle className="h-7 w-7 text-red-600" />
       </div>
-      <p className="mx-auto max-w-2xl text-base font-bold text-slate-800">{resolveError(error)}</p>
+      <p className="mx-auto max-w-2xl text-base font-bold text-slate-800">
+        {resolveError(error)}
+      </p>
       {onRetry ? (
         <button
           type="button"

@@ -184,7 +184,9 @@ function buildProfilePrompt(
     ...deepBlock,
     "",
     "README de perfil (texto cru, pode estar truncado):",
-    data.profileReadme ? truncate(data.profileReadme, README_LIMIT) : "(sem README de perfil)",
+    data.profileReadme
+      ? truncate(data.profileReadme, README_LIMIT)
+      : "(sem README de perfil)",
   ].join("\n");
 }
 
@@ -215,7 +217,9 @@ async function runQualitativeOnce(
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`);
+    throw new Error(
+      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
+    );
   }
 
   const payload = (await response.json()) as {
@@ -231,13 +235,17 @@ async function runQualitativeOnce(
     parsed = JSON.parse(content);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
-    throw new Error(`Resposta da IA nao veio em JSON valido: ${detail}. Trecho: ${content.slice(0, 200)}`);
+    throw new Error(
+      `Resposta da IA nao veio em JSON valido: ${detail}. Trecho: ${content.slice(0, 200)}`,
+    );
   }
 
   const validation = GithubQualitativeSchema.safeParse(parsed);
   if (!validation.success) {
     const issues = JSON.stringify(validation.error.issues).slice(0, 300);
-    throw new Error(`Resposta da IA nao bateu com o schema esperado: ${issues}`);
+    throw new Error(
+      `Resposta da IA nao bateu com o schema esperado: ${issues}`,
+    );
   }
 
   onAiIo?.({ inputChars: userText.length, outputChars: content.length });
@@ -259,14 +267,18 @@ async function runQualitative(
     } catch (err) {
       lastError = err;
       const detail = err instanceof Error ? err.message : String(err);
-      console.error(`[github-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`);
+      console.error(
+        `[github-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
+      );
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Falha ao gerar a analise da IA.");
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Falha ao gerar a analise da IA.");
 }
 
 /**
@@ -334,7 +346,10 @@ export async function analyzeGithub(
     const isEmptyRepo = deterministic.suficiencia === "baixa";
     const qualitative = isEmptyRepo
       ? emptyRepoQualitative()
-      : await runQualitative(buildRepoPrompt(data, deterministic, label), onAiIo);
+      : await runQualitative(
+          buildRepoPrompt(data, deterministic, label),
+          onAiIo,
+        );
 
     return {
       mode: "repo",
@@ -365,7 +380,10 @@ export async function analyzeGithub(
   // Perfil sem nenhum repo autoral (zero repos ou so forks): atalho caloroso, sem IA.
   const hasAuthoredRepo = data.repos.some((repo) => !repo.fork);
   const qualitative = hasAuthoredRepo
-    ? await runQualitative(buildProfilePrompt(data, deterministic, topRepos, label), onAiIo)
+    ? await runQualitative(
+        buildProfilePrompt(data, deterministic, topRepos, label),
+        onAiIo,
+      )
     : emptyProfileQualitative();
 
   return {

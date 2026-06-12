@@ -43,8 +43,12 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
     ])
       .then(([proj, crs]) => {
         if (!alive) return;
-        const p = (proj as ProjectCard[]).filter((x) => x.areaSlug === area).slice(0, MAX_ITEMS);
-        const c = (crs as CourseCard[]).filter((x) => x.areaSlug === area).slice(0, MAX_ITEMS);
+        const p = (proj as ProjectCard[])
+          .filter((x) => x.areaSlug === area)
+          .slice(0, MAX_ITEMS);
+        const c = (crs as CourseCard[])
+          .filter((x) => x.areaSlug === area)
+          .slice(0, MAX_ITEMS);
         setProjects(p);
         setCourses(c);
         setLoading(false);
@@ -61,7 +65,8 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
   if (isGeneral) {
     return (
       <p className="text-sm font-medium text-slate-500">
-        Escolha uma área alvo no topo pra ver projetos e cursos recomendados pra ela.
+        Escolha uma área alvo no topo pra ver projetos e cursos recomendados pra
+        ela.
       </p>
     );
   }
@@ -108,9 +113,15 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
                 href={`/projetos?area=${area}`}
                 className="card-brutal block rounded-2xl border-slate-950 bg-white p-4"
               >
-                <p className="font-display text-base font-black text-slate-950">{project.nome}</p>
-                <p className="mt-1 text-xs font-bold text-slate-500">{project.nivel}</p>
-                <p className="mt-2 line-clamp-2 text-sm text-slate-700">{project.objetivo}</p>
+                <p className="font-display text-base font-black text-slate-950">
+                  {project.nome}
+                </p>
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  {project.nivel}
+                </p>
+                <p className="mt-2 line-clamp-2 text-sm text-slate-700">
+                  {project.objetivo}
+                </p>
               </Link>
             ))}
           </div>
@@ -142,7 +153,9 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
                 className="card-brutal block rounded-2xl border-slate-950 bg-white p-4"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-display text-base font-black text-slate-950">{course.titulo}</p>
+                  <p className="font-display text-base font-black text-slate-950">
+                    {course.titulo}
+                  </p>
                   <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-500" />
                 </div>
                 <p className="mt-1 text-xs font-bold text-slate-500">

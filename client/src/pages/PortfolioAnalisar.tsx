@@ -4,7 +4,10 @@ import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import PageHero from "@/components/shared/PageHero";
 import { Spinner } from "@/components/ui/spinner";
-import { AnalysisError, AnalysisSkeleton } from "@/components/portfolio/AnalysisStates";
+import {
+  AnalysisError,
+  AnalysisSkeleton,
+} from "@/components/portfolio/AnalysisStates";
 import { HowItWorks, WhatYouGet } from "@/components/portfolio/AnalyzerIntro";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
@@ -23,7 +26,10 @@ import { analyzeGithub } from "@/lib/githubClient";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { GENERAL_AREA, isAreaSlug, type AreaSelection } from "@shared/areas";
-import type { AnalysisMode, GithubAnalysisResponse } from "@shared/github/schema";
+import type {
+  AnalysisMode,
+  GithubAnalysisResponse,
+} from "@shared/github/schema";
 
 const ac = getPageAccentUi("violet");
 
@@ -33,7 +39,8 @@ const PLACEHOLDER: Record<AnalysisMode, string> = {
 };
 
 const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
-  perfil: "Analisa seu README de perfil, bio, links de contato, repositórios e atividade.",
+  perfil:
+    "Analisa seu README de perfil, bio, links de contato, repositórios e atividade.",
   repo: "Analisa README, descrição, licença, topics, arquivos de segurança e a organização do projeto.",
 };
 
@@ -81,7 +88,11 @@ function loadState(): StoredState {
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return { slots: emptySlots(), area: null };
-    const parsed = JSON.parse(raw) as { perfil?: unknown; repo?: unknown; area?: unknown };
+    const parsed = JSON.parse(raw) as {
+      perfil?: unknown;
+      repo?: unknown;
+      area?: unknown;
+    };
     return {
       slots: {
         perfil: coerceSlot(parsed.perfil),
@@ -97,7 +108,9 @@ function loadState(): StoredState {
 function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
   const { target, deterministic } = response;
   const display =
-    target.kind === "repo" ? `${target.login}/${target.repo}` : `@${target.login}`;
+    target.kind === "repo"
+      ? `${target.login}/${target.repo}`
+      : `@${target.login}`;
 
   return (
     <div className="card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white">
@@ -112,7 +125,9 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
                   {target.kind === "repo" ? "Repositório" : "Perfil"}
                 </p>
-                <p className="truncate font-display text-2xl font-black text-slate-950">{display}</p>
+                <p className="truncate font-display text-2xl font-black text-slate-950">
+                  {display}
+                </p>
               </div>
             </div>
             <a
@@ -130,7 +145,11 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
           </div>
         </div>
         <div className="border-t-2 border-slate-950 md:w-56 md:border-l-2 md:border-t-0">
-          <ScoreCard score={deterministic.score} band={deterministic.band} variant="panel" />
+          <ScoreCard
+            score={deterministic.score}
+            band={deterministic.band}
+            variant="panel"
+          />
         </div>
       </div>
     </div>
@@ -145,7 +164,9 @@ export default function PortfolioAnalisar() {
   const [mode, setMode] = useState<AnalysisMode>("perfil");
   const [slots, setSlots] = useState<ModeSlots>(bootstrap.slots);
   // Area e selecao global (vale pros dois modos), nao por modo.
-  const [area, setArea] = useState<AreaSelection>(bootstrap.area ?? GENERAL_AREA);
+  const [area, setArea] = useState<AreaSelection>(
+    bootstrap.area ?? GENERAL_AREA,
+  );
   // Se ja havia area salva, ou o usuario escolher, nao adotamos o default do perfil.
   const areaTouched = useRef(bootstrap.area !== null);
   const [loading, setLoading] = useState(false);
@@ -166,7 +187,10 @@ export default function PortfolioAnalisar() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ ...slots, area }));
+      window.sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ ...slots, area }),
+      );
     } catch {
       // storage cheio ou indisponivel: ignora, segue so em memoria.
     }
@@ -200,7 +224,10 @@ export default function PortfolioAnalisar() {
 
     try {
       const data = await analyzeGithub(activeMode, trimmed, area);
-      setSlots((prev) => ({ ...prev, [activeMode]: { ...prev[activeMode], result: data } }));
+      setSlots((prev) => ({
+        ...prev,
+        [activeMode]: { ...prev[activeMode], result: data },
+      }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "ANALYSIS_FAILED");
     } finally {
@@ -235,7 +262,9 @@ export default function PortfolioAnalisar() {
                       onClick={() => changeMode("perfil")}
                       className={cn(
                         "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                        mode === "perfil" ? "bg-amber-300 text-slate-950" : "text-slate-600 hover:text-slate-900",
+                        mode === "perfil"
+                          ? "bg-amber-300 text-slate-950"
+                          : "text-slate-600 hover:text-slate-900",
                       )}
                     >
                       Perfil
@@ -245,7 +274,9 @@ export default function PortfolioAnalisar() {
                       onClick={() => changeMode("repo")}
                       className={cn(
                         "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                        mode === "repo" ? "bg-amber-300 text-slate-950" : "text-slate-600 hover:text-slate-900",
+                        mode === "repo"
+                          ? "bg-amber-300 text-slate-950"
+                          : "text-slate-600 hover:text-slate-900",
                       )}
                     >
                       Repositório
@@ -256,7 +287,9 @@ export default function PortfolioAnalisar() {
                     <span className="hidden sm:inline">Área alvo</span>
                     <select
                       value={area}
-                      onChange={(event) => changeArea(event.target.value as AreaSelection)}
+                      onChange={(event) =>
+                        changeArea(event.target.value as AreaSelection)
+                      }
                       className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-violet-200"
                     >
                       <option value={GENERAL_AREA}>Geral</option>
@@ -269,9 +302,14 @@ export default function PortfolioAnalisar() {
                   </label>
                 </div>
 
-                <p className="mt-4 text-sm font-medium text-slate-600">{MODE_DESCRIPTION[mode]}</p>
+                <p className="mt-4 text-sm font-medium text-slate-600">
+                  {MODE_DESCRIPTION[mode]}
+                </p>
 
-                <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <form
+                  onSubmit={handleSubmit}
+                  className="mt-4 flex flex-col gap-3 sm:flex-row"
+                >
                   <input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
@@ -283,14 +321,18 @@ export default function PortfolioAnalisar() {
                     disabled={loading || !input.trim()}
                     className="btn-brutal-accent inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {loading ? <Spinner className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                    {loading ? (
+                      <Spinner className="h-4 w-4" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
                     {loading ? "Analisando..." : "Analisar"}
                   </button>
                 </form>
                 {mode === "repo" ? (
                   <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                    <Globe className="h-3.5 w-3.5 text-slate-400" />
-                    O repositório precisa ser público.
+                    <Globe className="h-3.5 w-3.5 text-slate-400" />O
+                    repositório precisa ser público.
                   </p>
                 ) : null}
               </div>
@@ -298,7 +340,10 @@ export default function PortfolioAnalisar() {
               {loading ? <AnalysisSkeleton /> : null}
 
               {!loading && error ? (
-                <AnalysisError error={error} onRetry={input.trim() ? () => void runAnalysis() : undefined} />
+                <AnalysisError
+                  error={error}
+                  onRetry={input.trim() ? () => void runAnalysis() : undefined}
+                />
               ) : null}
 
               {!loading && !result ? (
@@ -332,7 +377,9 @@ export default function PortfolioAnalisar() {
 
                   <Improvements melhorias={result.qualitative.melhorias} />
 
-                  <ReadmeSuggestion markdown={result.qualitative.readmeSugestao} />
+                  <ReadmeSuggestion
+                    markdown={result.qualitative.readmeSugestao}
+                  />
 
                   <NextStepsByArea area={result.area} />
                 </div>
