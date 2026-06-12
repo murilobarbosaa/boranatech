@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import {
   AnimatePresence,
   animate,
@@ -30,6 +30,7 @@ import {
   Star,
   Target,
   Tv,
+  X,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
@@ -936,6 +937,89 @@ function CuriosidadesSection() {
   );
 }
 
+function TelaRevealCard({
+  f,
+  kind,
+  reduce,
+  cardRef,
+  onOutro,
+  onLimpar,
+  rechamada,
+}: {
+  f: Filme;
+  kind: ScreenKind;
+  reduce: boolean;
+  cardRef: RefObject<HTMLDivElement | null>;
+  onOutro: () => void;
+  onLimpar: () => void;
+  rechamada: string;
+}) {
+  const cat = screenCategoria(f, kind);
+  const Icon = cat.Icon;
+  return (
+    <motion.div
+      ref={cardRef}
+      tabIndex={-1}
+      initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={
+        reduce
+          ? { duration: 0.2 }
+          : { type: "spring", stiffness: 460, damping: 16 }
+      }
+      className="relative overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+    >
+      <Icon
+        className="pointer-events-none absolute -bottom-3 -right-2 h-24 w-24 text-slate-950 opacity-[0.06]"
+        aria-hidden
+      />
+      <div className="relative z-10 flex items-center gap-2">
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 border-slate-900 ${cat.bg}`}
+        >
+          <Icon className="h-4 w-4 text-slate-950" aria-hidden />
+        </span>
+        <span className="text-[0.65rem] font-black uppercase tracking-wide text-slate-950">
+          {cat.label}
+        </span>
+      </div>
+      <h3 className="relative z-10 mt-3 font-display text-lg font-black leading-snug text-slate-950">
+        {f.titulo} <span className="text-slate-500">({f.ano})</span>
+      </h3>
+      <p className="relative z-10 mt-2 text-sm leading-relaxed text-slate-600">
+        {f.porque}
+      </p>
+      <div className="relative z-10 mt-4 flex flex-wrap items-center gap-2">
+        <a
+          href={justWatchUrl(f.titulo)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Onde assistir ${f.titulo}`}
+          className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+        >
+          Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
+        </a>
+        <button
+          type="button"
+          onClick={onOutro}
+          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+        >
+          <Shuffle className="h-3.5 w-3.5" aria-hidden />
+          {rechamada}
+        </button>
+        <button
+          type="button"
+          onClick={onLimpar}
+          aria-label="Limpar indicação"
+          className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-full border-2 border-slate-300 text-slate-400 transition-colors hover:border-slate-900 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 function TelasTab({
   itens,
   kind,
@@ -976,68 +1060,37 @@ function TelasTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col items-center gap-4 rounded-[1.2rem] border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]">
-        <div role="status" aria-live="polite" className="w-full">
-          {pick ? (
-              <motion.div
-                key={pick.nonce}
-                ref={cardRef}
-                tabIndex={-1}
-                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={
-                  reduce
-                    ? { opacity: 0, transition: { duration: 0.15 } }
-                    : { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
-                }
-                transition={
-                  reduce
-                    ? { duration: 0.2 }
-                    : { type: "spring", stiffness: 460, damping: 16 }
-                }
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
-              >
-                <span
-                  className={`mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide text-slate-950 ${screenCategoria(pick.f, kind).bg}`}
-                >
-                  {screenCategoria(pick.f, kind).label}
-                </span>
-                <h3 className="font-display text-lg font-black leading-snug text-slate-950">
-                  {pick.f.titulo}{" "}
-                  <span className="text-slate-500">({pick.f.ano})</span>
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  {pick.f.porque}
-                </p>
-                <a
-                  href={justWatchUrl(pick.f.titulo)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Onde assistir ${pick.f.titulo}`}
-                  className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-                >
-                  Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
-                </a>
-              </motion.div>
-            ) : (
-              <motion.p
-                key="vazio"
-                initial={reduce ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="py-4 text-center text-sm font-bold text-slate-500"
-              >
-                Toque no botão e receba uma indicação pra assistir.
-              </motion.p>
-            )}
-        </div>
-        <button
-          type="button"
-          onClick={proxima}
-          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
-        >
-          <Shuffle className="h-4 w-4" aria-hidden />
-          {pick ? rechamada : chamada}
-        </button>
+      <div
+        role="status"
+        aria-live="polite"
+        className="max-w-2xl rounded-[1.2rem] border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]"
+      >
+        {pick ? (
+          <TelaRevealCard
+            key={pick.nonce}
+            f={pick.f}
+            kind={kind}
+            reduce={reduce}
+            cardRef={cardRef}
+            onOutro={proxima}
+            onLimpar={() => setPick(null)}
+            rechamada={rechamada}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-2 text-center">
+            <p className="text-sm font-bold text-slate-500">
+              Toque no botão e receba uma indicação pra assistir.
+            </p>
+            <button
+              type="button"
+              onClick={proxima}
+              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+            >
+              <Shuffle className="h-4 w-4" aria-hidden />
+              {chamada}
+            </button>
+          </div>
+        )}
       </div>
       <div className="border-t-2 border-dashed border-slate-300 pt-6">
         <button
