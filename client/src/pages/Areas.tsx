@@ -37,7 +37,6 @@ import {
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
-import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import CountUp from "@/components/reactbits/CountUp";
@@ -100,51 +99,87 @@ const perfilMap: Record<string, string[]> = {
   ],
 };
 
-const GRUPOS: Record<
-  string,
-  { label: string; shadow: string; chip: string; icon: string; spotlight: string }
-> = {
+interface Grupo {
+  label: string;
+  band: string;
+  bandIcon: string;
+  badge: string;
+  explore: string;
+  exploreBorder: string;
+  spotlight: string;
+  tint: string;
+}
+
+const GRUPOS: Record<string, Grupo> = {
   dev: {
     label: "Desenvolvimento",
-    shadow: "shadow-[5px_5px_0_#FFB800]",
-    chip: "border-amber-300 bg-amber-100 text-amber-900",
-    icon: "text-amber-600",
-    spotlight: "rgba(255, 184, 0, 0.15)",
+    band: "bg-violet-600",
+    bandIcon: "text-white",
+    badge: "text-violet-700",
+    explore: "text-violet-700",
+    exploreBorder: "border-violet-200",
+    spotlight: "rgba(124, 58, 237, 0.16)",
+    tint: "text-violet-500",
   },
   dados: {
-    label: "Dados",
-    shadow: "shadow-[5px_5px_0_#10b981]",
-    chip: "border-emerald-300 bg-emerald-100 text-emerald-900",
-    icon: "text-emerald-600",
-    spotlight: "rgba(16, 185, 129, 0.15)",
+    label: "Dados e IA",
+    band: "bg-blue-600",
+    bandIcon: "text-white",
+    badge: "text-blue-700",
+    explore: "text-blue-700",
+    exploreBorder: "border-blue-200",
+    spotlight: "rgba(37, 99, 235, 0.16)",
+    tint: "text-blue-500",
   },
   infra: {
-    label: "Infraestrutura",
-    shadow: "shadow-[5px_5px_0_#334155]",
-    chip: "border-slate-300 bg-slate-100 text-slate-800",
-    icon: "text-slate-700",
-    spotlight: "rgba(51, 65, 85, 0.12)",
+    label: "Infra e Cloud",
+    band: "bg-teal-600",
+    bandIcon: "text-white",
+    badge: "text-teal-700",
+    explore: "text-teal-700",
+    exploreBorder: "border-teal-200",
+    spotlight: "rgba(13, 148, 136, 0.15)",
+    tint: "text-teal-500",
   },
   seguranca: {
     label: "Segurança",
-    shadow: "shadow-[5px_5px_0_#5b21b6]",
-    chip: "border-violet-300 bg-violet-100 text-violet-900",
-    icon: "text-violet-800",
-    spotlight: "rgba(91, 33, 182, 0.15)",
+    band: "bg-rose-600",
+    bandIcon: "text-white",
+    badge: "text-rose-700",
+    explore: "text-rose-700",
+    exploreBorder: "border-rose-200",
+    spotlight: "rgba(225, 29, 72, 0.15)",
+    tint: "text-rose-500",
   },
   design: {
     label: "Design",
-    shadow: "shadow-[5px_5px_0_#7c3aed]",
-    chip: "border-violet-300 bg-violet-50 text-violet-800",
-    icon: "text-violet-600",
-    spotlight: "rgba(124, 58, 237, 0.15)",
+    band: "bg-fuchsia-600",
+    bandIcon: "text-white",
+    badge: "text-fuchsia-700",
+    explore: "text-fuchsia-700",
+    exploreBorder: "border-fuchsia-200",
+    spotlight: "rgba(192, 38, 211, 0.15)",
+    tint: "text-fuchsia-500",
   },
   gestao: {
     label: "Gestão",
-    shadow: "shadow-[5px_5px_0_#d97706]",
-    chip: "border-amber-400 bg-amber-50 text-amber-900",
-    icon: "text-amber-700",
-    spotlight: "rgba(217, 119, 6, 0.15)",
+    band: "bg-amber-400",
+    bandIcon: "text-slate-950",
+    badge: "text-amber-800",
+    explore: "text-amber-800",
+    exploreBorder: "border-amber-300",
+    spotlight: "rgba(255, 184, 0, 0.18)",
+    tint: "text-amber-500",
+  },
+  qa: {
+    label: "QA e Suporte",
+    band: "bg-emerald-600",
+    bandIcon: "text-white",
+    badge: "text-emerald-700",
+    explore: "text-emerald-700",
+    exploreBorder: "border-emerald-200",
+    spotlight: "rgba(16, 185, 129, 0.15)",
+    tint: "text-emerald-500",
   },
 };
 
@@ -171,7 +206,7 @@ const SLUG_GRUPO: Record<string, string> = {
   gestao: "gestao",
   produto: "gestao",
   "analise-sistemas": "gestao",
-  qa: "gestao",
+  qa: "qa",
 };
 
 function grupoDoSlug(slug: string) {
@@ -183,18 +218,18 @@ function grupoPorChave(chave: string) {
 }
 
 const areasDoodles = [
-  { Icon: Code2, cls: "left-[3%] top-[7%] text-amber-500 opacity-[0.12]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
-  { Icon: Database, cls: "right-[5%] top-[5%] text-emerald-500 opacity-[0.12]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
-  { Icon: Cloud, cls: "left-[8%] top-[40%] text-violet-500 opacity-[0.12]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
-  { Icon: Lock, cls: "right-[3%] top-[36%] text-amber-600 opacity-[0.12]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
-  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-violet-600 opacity-[0.12]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
-  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-emerald-600 opacity-[0.12]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
-  { Icon: Settings, cls: "left-[15%] top-[20%] text-slate-500 opacity-[0.10]", size: "h-9 w-9", dur: 8, rot: 12, delay: 0.2 },
-  { Icon: Cpu, cls: "right-[14%] top-[18%] text-amber-600 opacity-[0.11]", size: "h-10 w-10", dur: 6.5, rot: -8, delay: 1.6 },
-  { Icon: GitBranch, cls: "left-[11%] top-[88%] text-emerald-600 opacity-[0.11]", size: "h-9 w-9", dur: 5.5, rot: 6, delay: 0.6 },
-  { Icon: Terminal, cls: "right-[12%] top-[88%] text-violet-500 opacity-[0.11]", size: "h-10 w-10", dur: 7, rot: -6, delay: 1.2 },
-  { Icon: Braces, cls: "left-[46%] top-[3%] text-violet-400 opacity-[0.10]", size: "h-9 w-9", dur: 6, rot: 9, delay: 0.9 },
-  { Icon: Bug, cls: "right-[44%] top-[93%] text-amber-500 opacity-[0.10]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
+  { Icon: Code2, cls: "left-[3%] top-[7%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
+  { Icon: Database, cls: "right-[5%] top-[5%] text-blue-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
+  { Icon: Cloud, cls: "left-[8%] top-[40%] text-teal-500 opacity-[0.15]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
+  { Icon: Lock, cls: "right-[3%] top-[36%] text-rose-500 opacity-[0.15]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
+  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-fuchsia-500 opacity-[0.15]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
+  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-blue-600 opacity-[0.15]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
+  { Icon: Settings, cls: "left-[15%] top-[20%] text-amber-500 opacity-[0.14]", size: "h-9 w-9", dur: 8, rot: 12, delay: 0.2 },
+  { Icon: Cpu, cls: "right-[14%] top-[18%] text-teal-600 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -8, delay: 1.6 },
+  { Icon: GitBranch, cls: "left-[11%] top-[88%] text-emerald-600 opacity-[0.14]", size: "h-9 w-9", dur: 5.5, rot: 6, delay: 0.6 },
+  { Icon: Terminal, cls: "right-[12%] top-[88%] text-violet-500 opacity-[0.14]", size: "h-10 w-10", dur: 7, rot: -6, delay: 1.2 },
+  { Icon: Braces, cls: "left-[46%] top-[3%] text-fuchsia-400 opacity-[0.13]", size: "h-9 w-9", dur: 6, rot: 9, delay: 0.9 },
+  { Icon: Bug, cls: "right-[44%] top-[93%] text-rose-400 opacity-[0.13]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
 ];
 
 function AreasDoodles({ reduce }: { reduce: boolean }) {
@@ -344,15 +379,21 @@ export default function Areas() {
         <AreasDoodles reduce={reduce} />
         <div className="container relative z-10">
           {!isLoading ? (
-            <div className="mb-6 flex items-center gap-2">
-              <LayoutGrid className="h-6 w-6 text-violet-700" aria-hidden />
-              <p className="font-display text-lg font-black text-slate-900">
-                {reduce ? (
-                  areas?.length ?? 0
-                ) : (
-                  <CountUp to={areas?.length ?? 0} duration={1.2} />
-                )}{" "}
-                áreas pra você explorar
+            <div className="mb-6">
+              <p className="flex items-center gap-2 font-display text-xl font-black text-slate-900">
+                <Compass className="h-6 w-6 text-violet-700" aria-hidden />
+                <span>
+                  {reduce ? (
+                    areas?.length ?? 0
+                  ) : (
+                    <CountUp to={areas?.length ?? 0} duration={1.2} />
+                  )}{" "}
+                  caminhos pra você explorar
+                </span>
+              </p>
+              <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-600">
+                Cada área é um jeito de trabalhar com tecnologia. Toca nas que te
+                dão curiosidade e descobre no seu ritmo. Não tem ordem certa.
               </p>
             </div>
           ) : null}
@@ -373,10 +414,10 @@ export default function Areas() {
                 aria-hidden
               />
               <p className="text-slate-600 font-medium">
-                Nenhuma área encontrada.
+                Não achamos essa área por aqui.
               </p>
               <p className="text-slate-400 text-sm mt-1">
-                Tente outro termo ou remova os filtros.
+                Tenta outro termo ou tira os filtros pra ver todos os caminhos.
               </p>
               <button
                 onClick={() => {
@@ -392,6 +433,7 @@ export default function Areas() {
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               {filtered.map((area, index) => {
                 const grupo = grupoDoSlug(area.slug);
+                const Icon = area.icon;
                 return (
                   <AnimatedContent
                     key={area.id}
@@ -406,7 +448,7 @@ export default function Areas() {
                     >
                       <FavoriteButton
                         compact
-                        className="absolute right-4 top-4 z-20"
+                        className="absolute right-3 top-3 z-30"
                         item={{
                           id: area.id,
                           type: "area",
@@ -416,44 +458,56 @@ export default function Areas() {
                       />
                       <Link
                         href={`/areas/${area.slug}`}
-                        className={`group flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-all duration-200 ${grupo.shadow} hover:-translate-y-1 hover:shadow-[8px_8px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2`}
+                        className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] transition-all duration-200 hover:shadow-[8px_8px_0_#FFB800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:-rotate-1"
                       >
-                        {area.slug === "mainframe" ? (
-                          <EmbaixadoraBadge className="mb-3" />
-                        ) : null}
-                        <AreaIconBox
-                          icon={area.icon}
-                          areaSlug={area.slug}
-                          size="md"
-                        />
-                        <span
-                          className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
+                        <div
+                          className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
                         >
-                          {grupo.label}
-                        </span>
-                        <h3 className="mt-2 font-display text-xl font-bold text-slate-900 transition-colors group-hover:text-violet-700">
-                          {area.nome}
-                        </h3>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                          {area.descricaoCurta}
-                        </p>
-                        <div className="mt-3 flex flex-wrap justify-center gap-1">
-                          {area.habilidades.slice(0, 3).map((h) => (
-                            <span
-                              key={h}
-                              className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-                            >
-                              {h}
-                            </span>
-                          ))}
-                        </div>
-                        <span className="mt-auto flex items-center gap-1 pt-4 text-sm font-medium text-violet-700 transition-all group-hover:gap-2">
-                          Explorar{" "}
-                          <ArrowRight
-                            className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                          <Icon
+                            className={`h-10 w-10 transition-transform duration-300 ${grupo.bandIcon} motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:rotate-6`}
+                            strokeWidth={2.5}
                             aria-hidden
                           />
-                        </span>
+                          <span
+                            className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
+                          >
+                            {grupo.label}
+                          </span>
+                        </div>
+                        <div className="relative flex flex-1 flex-col items-center px-5 py-4 text-center">
+                          <Icon
+                            className={`pointer-events-none absolute -bottom-1 -right-1 h-16 w-16 opacity-[0.08] ${grupo.tint}`}
+                            aria-hidden
+                          />
+                          {area.slug === "mainframe" ? (
+                            <EmbaixadoraBadge className="relative z-10 mb-2" />
+                          ) : null}
+                          <h3 className="relative z-10 font-display text-lg font-bold text-slate-900">
+                            {area.nome}
+                          </h3>
+                          <p className="relative z-10 mt-1.5 text-sm leading-relaxed text-slate-600">
+                            {area.descricaoCurta}
+                          </p>
+                          <div className="relative z-10 mt-3 flex flex-wrap justify-center gap-1">
+                            {area.habilidades.slice(0, 3).map((h) => (
+                              <span
+                                key={h}
+                                className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                              >
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div
+                          className={`flex items-center justify-center gap-1 border-t-2 px-4 py-3 text-sm font-black ${grupo.exploreBorder} ${grupo.explore}`}
+                        >
+                          Explorar{" "}
+                          <ArrowRight
+                            className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-1"
+                            aria-hidden
+                          />
+                        </div>
                       </Link>
                     </SpotlightCard>
                   </AnimatedContent>
@@ -487,28 +541,39 @@ export default function Areas() {
                   >
                     <SpotlightCard
                       spotlightColor={reduce ? "transparent" : grupo.spotlight}
-                      className={`flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-all duration-200 ${grupo.shadow} hover:-translate-y-1 hover:shadow-[8px_8px_0_#0f172a]`}
+                      className="h-full rounded-2xl"
                     >
-                      <span
-                        className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_currentColor] ${grupo.icon}`}
-                        aria-hidden
-                      >
-                        <Icon className="h-7 w-7" strokeWidth={2.5} />
-                      </span>
-                      <span
-                        className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
-                      >
-                        {grupo.label}
-                      </span>
-                      <h3 className="mt-2 font-display text-xl font-bold text-slate-900">
-                        {area.nome}
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                        {area.descricao}
-                      </p>
-                      <span className="mt-auto inline-flex w-fit rounded-full border-2 border-violet-200 bg-violet-50 px-2.5 py-1 text-[0.6rem] font-black uppercase text-violet-700">
-                        trilha em breve
-                      </span>
+                      <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] transition-all duration-200 hover:shadow-[8px_8px_0_#FFB800] motion-safe:hover:-translate-y-1">
+                        <div
+                          className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
+                        >
+                          <Icon
+                            className={`h-10 w-10 transition-transform duration-300 ${grupo.bandIcon} motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:rotate-6`}
+                            strokeWidth={2.5}
+                            aria-hidden
+                          />
+                          <span
+                            className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
+                          >
+                            {grupo.label}
+                          </span>
+                        </div>
+                        <div className="relative flex flex-1 flex-col items-center px-5 py-4 text-center">
+                          <Icon
+                            className={`pointer-events-none absolute -bottom-1 -right-1 h-16 w-16 opacity-[0.08] ${grupo.tint}`}
+                            aria-hidden
+                          />
+                          <h3 className="relative z-10 font-display text-lg font-bold text-slate-900">
+                            {area.nome}
+                          </h3>
+                          <p className="relative z-10 mt-1.5 text-sm leading-relaxed text-slate-600">
+                            {area.descricao}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-center border-t-2 border-slate-200 px-4 py-3 text-[0.65rem] font-black uppercase tracking-wide text-slate-400">
+                          trilha em breve
+                        </div>
+                      </div>
                     </SpotlightCard>
                   </AnimatedContent>
                 );

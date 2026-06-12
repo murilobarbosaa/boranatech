@@ -5055,7 +5055,7 @@ export const areasComplementares: {
     descricao:
       "Atendimento e resolução de problemas de usuários e equipamentos. Porta de entrada comum na TI.",
     icon: Headphones,
-    grupo: "infra",
+    grupo: "qa",
   },
   {
     nome: "Arquitetura de Software e Tech Lead",
