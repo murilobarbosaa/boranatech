@@ -57,6 +57,20 @@ export default function TecnologiaDetalhe() {
   const accent = accentForTechnology(technology);
   const ac = getPageAccentUi(accent);
 
+  const courseSearchUrl = (course: string): string => {
+    const term =
+      course === "Documentação oficial"
+        ? `${technology.name} documentação oficial`
+        : course === "YouTube"
+          ? `${technology.name} curso`
+          : `${course} ${technology.name}`;
+    const base =
+      course === "Documentação oficial"
+        ? "https://www.google.com/search?q="
+        : "https://www.youtube.com/results?search_query=";
+    return base + encodeURIComponent(term);
+  };
+
   const combinedTechnologies = technology.combinesWith
     .map((slug) => technologies.find((candidate) => candidate.slug === slug))
     .filter((item): item is (typeof technologies)[number] => Boolean(item));
@@ -333,7 +347,17 @@ export default function TecnologiaDetalhe() {
                 </h3>
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {technology.courses.map((course) => (
-                    <li key={course}>{course}</li>
+                    <li key={course}>
+                      <a
+                        href={courseSearchUrl(course)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 hover:underline"
+                      >
+                        {course}
+                        <ExternalLink className="h-3 w-3" aria-hidden />
+                      </a>
+                    </li>
                   ))}
                 </ul>
                 <Link
