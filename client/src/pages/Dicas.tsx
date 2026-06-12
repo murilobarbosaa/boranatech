@@ -940,7 +940,6 @@ function TelasTab({
   itens,
   kind,
   query,
-  highlightKey,
   expandedKey,
   onToggle,
   reduce,
@@ -948,12 +947,12 @@ function TelasTab({
   itens: Filme[];
   kind: ScreenKind;
   query: string;
-  highlightKey: string | null;
   expandedKey: string | null;
   onToggle: (key: string) => void;
   reduce: boolean;
 }) {
   const [pick, setPick] = useState<{ f: Filme; nonce: number } | null>(null);
+  const [verTodos, setVerTodos] = useState(false);
   const deckRef = useRef<Filme[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -970,6 +969,10 @@ function TelasTab({
 
   const chamada = kind === "serie" ? "Me indica uma série" : "Me indica um filme";
   const rechamada = kind === "serie" ? "Outra série" : "Outro filme";
+  const verLabel =
+    kind === "serie"
+      ? `Ver todas as ${itens.length} séries`
+      : `Ver todos os ${itens.length} filmes`;
 
   return (
     <div className="space-y-6">
@@ -1036,15 +1039,32 @@ function TelasTab({
           {pick ? rechamada : chamada}
         </button>
       </div>
-      <FilmesGrid
-        itens={itens}
-        kind={kind}
-        query={query}
-        highlightKey={highlightKey}
-        expandedKey={expandedKey}
-        onToggle={onToggle}
-        reduce={reduce}
-      />
+      <div className="border-t-2 border-dashed border-slate-300 pt-6">
+        <button
+          type="button"
+          onClick={() => setVerTodos((v) => !v)}
+          aria-expanded={verTodos}
+          className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+        >
+          {verTodos ? "Esconder a lista" : verLabel}
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${verTodos ? "rotate-180" : ""}`}
+            aria-hidden
+          />
+        </button>
+        {verTodos ? (
+          <div className="mt-4">
+            <FilmesGrid
+              itens={itens}
+              kind={kind}
+              query={query}
+              expandedKey={expandedKey}
+              onToggle={onToggle}
+              reduce={reduce}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -1078,10 +1098,6 @@ const aprenderSubs = [
 
 type AprenderTab = (typeof aprenderSubs)[number]["value"];
 
-function dicaCardId(key: string) {
-  return "dica-" + key.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase();
-}
-
 function screenMatches(f: Filme, q: string) {
   return q === "" || `${f.titulo} ${f.porque}`.toLowerCase().includes(q);
 }
@@ -1092,39 +1108,6 @@ function linkMatches(d: DicaArtigo, q: string) {
 
 function livroMatches(livro: { titulo: string; autor: string }, q: string) {
   return q === "" || `${livro.titulo} ${livro.autor}`.toLowerCase().includes(q);
-}
-
-function activeKeys(tab: AprenderTab, q: string): string[] {
-  switch (tab) {
-    case "filmes":
-      return bibliotecaFilmes
-        .filter((f) => screenMatches(f, q))
-        .map((f) => f.titulo);
-    case "series":
-      return bibliotecaSeries
-        .filter((f) => screenMatches(f, q))
-        .map((f) => f.titulo);
-    case "videos":
-      return bibliotecaVideos
-        .filter((d) => linkMatches(d, q))
-        .map((d) => d.url);
-    case "livros":
-      return bibliotecaLivros
-        .filter((l) => livroMatches(l, q))
-        .map((l) => l.titulo);
-    case "podcasts":
-      return bibliotecaPodcasts
-        .filter((d) => linkMatches(d, q))
-        .map((d) => d.url);
-    case "referencia":
-      return bibliotecaReferencia
-        .filter((d) => linkMatches(d, q))
-        .map((d) => d.url);
-    case "artigos":
-      return carreiraArtigos
-        .filter((d) => linkMatches(d, q))
-        .map((d) => d.url);
-  }
 }
 
 function Marquee() {
@@ -1198,54 +1181,12 @@ function AprenderSection() {
   const reduce = useReducedMotion() ?? false;
   const [aprenderTab, setAprenderTab] = useState<AprenderTab>("filmes");
   const [query, setQuery] = useState("");
-  const [highlightKey, setHighlightKey] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const surpriseRef = useRef(0);
 
   const q = query.trim().toLowerCase();
 
-  useEffect(() => {
-    if (highlightKey === null) return;
-    const t = setTimeout(() => setHighlightKey(null), 1300);
-    return () => clearTimeout(t);
-  }, [highlightKey]);
-
   const onToggle = (key: string) =>
     setExpandedKey((cur) => (cur === key ? null : key));
-
-  const surpreenda = () => {
-    const keys = activeKeys(aprenderTab, q);
-    if (keys.length === 0) return;
-    const finalKey = keys[Math.floor(Math.random() * keys.length)];
-    const irPara = (k: string, suave: boolean) => {
-      setHighlightKey(k);
-      const el = document.getElementById(dicaCardId(k));
-      if (el) {
-        el.scrollIntoView({
-          behavior: suave ? "smooth" : "auto",
-          block: "center",
-        });
-      }
-    };
-    if (reduce) {
-      irPara(finalKey, false);
-      return;
-    }
-    const runId = ++surpriseRef.current;
-    const flashes = Math.min(5, keys.length);
-    let i = 0;
-    const step = () => {
-      if (surpriseRef.current !== runId) return;
-      if (i < flashes) {
-        setHighlightKey(keys[Math.floor(Math.random() * keys.length)]);
-        i += 1;
-        setTimeout(step, 90);
-      } else {
-        irPara(finalKey, true);
-      }
-    };
-    step();
-  };
 
   const stats = [
     { value: bibliotecaFilmes.length, label: "filmes e docs" },
@@ -1259,32 +1200,22 @@ function AprenderSection() {
   return (
     <section className="bg-[#faf8f4] py-12">
       <div className="container space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="relative w-full max-w-md">
-            <label htmlFor="dicas-busca" className="sr-only">
-              Buscar nas indicações
-            </label>
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600"
-              aria-hidden
-            />
-            <input
-              id="dicas-busca"
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar por título ou tema..."
-              className="w-full rounded-full border-2 border-slate-900 bg-white py-2 pl-9 pr-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a] placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={surpreenda}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-400 px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
-          >
-            <Shuffle className="h-4 w-4" aria-hidden />
-            Surpreenda-me
-          </button>
+        <div className="relative w-full max-w-md">
+          <label htmlFor="dicas-busca" className="sr-only">
+            Buscar nas indicações
+          </label>
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-600"
+            aria-hidden
+          />
+          <input
+            id="dicas-busca"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por título ou tema..."
+            className="w-full rounded-full border-2 border-slate-900 bg-white py-2 pl-9 pr-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a] placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -1325,7 +1256,6 @@ function AprenderSection() {
             <TelasTab
               itens={bibliotecaFilmes}
               query={q}
-              highlightKey={highlightKey}
               expandedKey={expandedKey}
               onToggle={onToggle}
               reduce={reduce}
@@ -1336,7 +1266,6 @@ function AprenderSection() {
             <TelasTab
               itens={bibliotecaSeries}
               query={q}
-              highlightKey={highlightKey}
               expandedKey={expandedKey}
               onToggle={onToggle}
               reduce={reduce}
@@ -1347,18 +1276,16 @@ function AprenderSection() {
             <LinksGrid
               itens={bibliotecaVideos}
               query={q}
-              highlightKey={highlightKey}
               reduce={reduce}
             />
           </TabsContent>
           <TabsContent value="livros">
-            <LivrosGrid query={q} highlightKey={highlightKey} reduce={reduce} />
+            <LivrosGrid query={q} reduce={reduce} />
           </TabsContent>
           <TabsContent value="podcasts">
             <LinksGrid
               itens={bibliotecaPodcasts}
               query={q}
-              highlightKey={highlightKey}
               reduce={reduce}
             />
           </TabsContent>
@@ -1366,7 +1293,6 @@ function AprenderSection() {
             <LinksGrid
               itens={bibliotecaReferencia}
               query={q}
-              highlightKey={highlightKey}
               reduce={reduce}
             />
           </TabsContent>
@@ -1374,7 +1300,6 @@ function AprenderSection() {
             <LinksGrid
               itens={carreiraArtigos}
               query={q}
-              highlightKey={highlightKey}
               reduce={reduce}
             />
           </TabsContent>
@@ -1392,12 +1317,10 @@ function AprenderSection() {
 function LinksGrid({
   itens,
   query,
-  highlightKey,
   reduce,
 }: {
   itens: DicaArtigo[];
   query: string;
-  highlightKey: string | null;
   reduce: boolean;
 }) {
   const filtered = itens.filter((it) => linkMatches(it, query));
@@ -1407,12 +1330,10 @@ function LinksGrid({
       <motion.ul layout className="grid gap-3 sm:grid-cols-2">
         <AnimatePresence mode="popLayout">
           {filtered.map((it, index) => {
-            const high = highlightKey === it.url;
             return (
               <motion.li
                 layout
                 key={it.url}
-                id={dicaCardId(it.url)}
                 initial={reduce ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
@@ -1420,11 +1341,7 @@ function LinksGrid({
                   duration: reduce ? 0 : 0.25,
                   delay: reduce ? 0 : Math.min(index * 0.03, 0.3),
                 }}
-                className="relative"
               >
-                {high ? (
-                  <span className="pointer-events-none absolute inset-0 z-10 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
-                ) : null}
                 <LinkExterno
                   title={it.title}
                   url={it.url}
@@ -1456,7 +1373,6 @@ function screenCategoria(filme: Filme, kind: ScreenKind) {
 function FilmesGrid({
   itens,
   query,
-  highlightKey,
   expandedKey,
   onToggle,
   reduce,
@@ -1464,7 +1380,6 @@ function FilmesGrid({
 }: {
   itens: Filme[];
   query: string;
-  highlightKey: string | null;
   expandedKey: string | null;
   onToggle: (key: string) => void;
   reduce: boolean;
@@ -1481,7 +1396,6 @@ function FilmesGrid({
         <AnimatePresence mode="popLayout">
           {filtered.map((filme, index) => {
             const poster = filme.posterPath ?? generatedPosters[filme.titulo];
-            const high = highlightKey === filme.titulo;
             const expanded = expandedKey === filme.titulo;
             const cat = screenCategoria(filme, kind);
             const Icon = cat.Icon;
@@ -1489,7 +1403,6 @@ function FilmesGrid({
               <motion.li
                 layout
                 key={filme.titulo}
-                id={dicaCardId(filme.titulo)}
                 initial={reduce ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
@@ -1504,9 +1417,6 @@ function FilmesGrid({
                 }}
                 className="group relative flex flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow duration-200 hover:shadow-[7px_7px_0_#0f172a]"
               >
-                {high ? (
-                  <span className="pointer-events-none absolute inset-0 z-20 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
-                ) : null}
                 {poster ? (
                   <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-slate-900">
                     <img
@@ -1596,11 +1506,9 @@ function FilmesGrid({
 
 function LivrosGrid({
   query,
-  highlightKey,
   reduce,
 }: {
   query: string;
-  highlightKey: string | null;
   reduce: boolean;
 }) {
   const filtered = bibliotecaLivros.filter((l) => livroMatches(l, query));
@@ -1618,12 +1526,10 @@ function LivrosGrid({
               : livro.isbn
                 ? `https://openlibrary.org/isbn/${livro.isbn}`
                 : `https://openlibrary.org/search?q=${encodeURIComponent(livro.titulo)}`;
-            const high = highlightKey === livro.titulo;
             return (
               <motion.li
                 layout
                 key={livro.titulo}
-                id={dicaCardId(livro.titulo)}
                 initial={reduce ? false : { opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? undefined : { opacity: 0, scale: 0.9 }}
@@ -1633,9 +1539,6 @@ function LivrosGrid({
                 }}
                 className="group card-invite relative flex flex-col overflow-hidden rounded-2xl border-amber-200 bg-white shadow-[5px_5px_0_#fbbf24]"
               >
-                {high ? (
-                  <span className="pointer-events-none absolute inset-0 z-20 rounded-2xl ring-4 ring-inset ring-amber-500 motion-safe:animate-pulse" />
-                ) : null}
                 <div className="relative aspect-[2/3] w-full overflow-hidden border-b-2 border-amber-200 bg-emerald-100">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <BookOpen className="h-12 w-12 text-emerald-600" aria-hidden />
