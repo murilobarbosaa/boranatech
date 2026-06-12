@@ -357,7 +357,7 @@ export default function PortfolioAnalisar() {
                 <div className="space-y-8">
                   <ResultHeader response={result} />
 
-                  {result.deterministic.suficiencia !== "alta" ? (
+                  {result.deterministic.suficienciaRazao?.trim() ? (
                     <div className="flex items-start gap-2 rounded-2xl border-2 border-sky-300 bg-sky-50 p-4 text-sm font-medium text-sky-900">
                       <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
                       <span>{result.deterministic.suficienciaRazao}</span>
