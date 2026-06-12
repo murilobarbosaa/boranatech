@@ -15,7 +15,9 @@ import {
   Sparkles,
   BadgeCheck,
   Award,
+  ChevronDown,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -64,6 +66,7 @@ export default function Cursos() {
   const [nivel, setNivel] = useState("Todos");
   const [idioma, setIdioma] = useState("Todos");
   const [tipo, setTipo] = useState("Todos");
+  const [aberto, setAberto] = useState(false);
   const areaSlugOptions = useMemo<(string | null)[]>(
     () => [AREA_ALL, ...Array.from(new Set(courses.map((c) => c.areaSlug)))],
     [courses],
@@ -131,54 +134,88 @@ export default function Cursos() {
         </div>
       </section>
 
-      <section className="bg-amber-50 border-b-2 border-amber-200 py-12">
+      <section className="bg-amber-50 border-b-2 border-amber-200 py-6">
         <div className="container">
-          <h2 className="font-display font-black text-2xl text-slate-950 mb-6">
-            Certificado x certificação: a diferença
-          </h2>
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#fbbf24]">
-              <div className="mb-3 flex items-center gap-2">
-                <BadgeCheck className="h-5 w-5 text-amber-600" aria-hidden />
-                <h3 className="font-display font-black text-lg text-slate-950">
-                  Certificado
-                </h3>
-              </div>
-              <p className="text-sm leading-relaxed text-slate-600">
-                Comprova que você concluiu um curso ou treinamento. Quem emite é
-                a própria plataforma ou escola (Udemy, Alura, Coursera,
-                bootcamps). Mostra dedicação e carga horária, mas não passa por
-                avaliação de um órgão externo.
-              </p>
-              <p className="mt-3 text-sm font-black text-slate-950">
-                Em resumo: prova que você fez o curso.
-              </p>
-            </div>
-            <div className="rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#fbbf24]">
-              <div className="mb-3 flex items-center gap-2">
-                <Award className="h-5 w-5 text-amber-600" aria-hidden />
-                <h3 className="font-display font-black text-lg text-slate-950">
-                  Certificação
-                </h3>
-              </div>
-              <p className="text-sm leading-relaxed text-slate-600">
-                É uma credencial reconhecida no mercado, emitida por uma entidade
-                ou fornecedor oficial (AWS, Google Cloud, Microsoft, Scrum,
-                CompTIA). Em geral exige passar numa prova e pode ter prazo de
-                validade.
-              </p>
-              <p className="mt-3 text-sm font-black text-slate-950">
-                Em resumo: prova que você sabe, validado por uma entidade.
-              </p>
-            </div>
-          </div>
-          <div className="mt-5 rounded-2xl border-2 border-slate-900 bg-amber-100 p-5 shadow-[5px_5px_0_#fbbf24]">
-            <p className="text-sm leading-relaxed text-slate-950">
-              No começo, certificados de bons cursos já ajudam a montar base e
-              portfólio. Certificações pesam mais quando você foca numa área ou
-              tecnologia e a vaga pede.
-            </p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+          >
+            <button
+              type="button"
+              onClick={() => setAberto((v) => !v)}
+              aria-expanded={aberto}
+              className="flex w-full items-center gap-3 rounded-2xl border-2 border-slate-900 bg-amber-200 px-4 py-3 shadow-[4px_4px_0_#fbbf24] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#fbbf24]"
+            >
+              <Award className="h-5 w-5 shrink-0 text-slate-950" aria-hidden />
+              <span className="flex-1 text-left font-display font-black text-base text-slate-950">
+                Certificado x certificação: a diferença
+              </span>
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-slate-950 transition-transform duration-300 ${aberto ? "rotate-180" : ""}`}
+                aria-hidden
+              />
+            </button>
+            <AnimatePresence initial={false}>
+              {aberto ? (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.28 }}
+                  className="overflow-hidden"
+                >
+                  <div className="grid gap-3 pt-4 md:grid-cols-2">
+                    <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#fbbf24]">
+                      <div className="mb-2 flex items-center gap-2">
+                        <BadgeCheck
+                          className="h-4 w-4 text-amber-600"
+                          aria-hidden
+                        />
+                        <h3 className="font-display font-black text-sm text-slate-950">
+                          Certificado
+                        </h3>
+                      </div>
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        Comprova que você concluiu um curso ou treinamento. Quem
+                        emite é a própria plataforma ou escola (Udemy, Alura,
+                        Coursera, bootcamps). Mostra dedicação e carga horária,
+                        mas não passa por avaliação de um órgão externo.
+                      </p>
+                      <p className="mt-2 text-xs font-black text-slate-950">
+                        Em resumo: prova que você fez o curso.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#fbbf24]">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Award className="h-4 w-4 text-amber-600" aria-hidden />
+                        <h3 className="font-display font-black text-sm text-slate-950">
+                          Certificação
+                        </h3>
+                      </div>
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        É uma credencial reconhecida no mercado, emitida por uma
+                        entidade ou fornecedor oficial (AWS, Google Cloud,
+                        Microsoft, Scrum, CompTIA). Em geral exige passar numa
+                        prova e pode ter prazo de validade.
+                      </p>
+                      <p className="mt-2 text-xs font-black text-slate-950">
+                        Em resumo: prova que você sabe, validado por uma
+                        entidade.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 rounded-2xl border-2 border-slate-900 bg-amber-100 p-4 shadow-[4px_4px_0_#fbbf24]">
+                    <p className="text-xs leading-relaxed text-slate-950">
+                      No começo, certificados de bons cursos já ajudam a montar
+                      base e portfólio. Certificações pesam mais quando você foca
+                      numa área ou tecnologia e a vaga pede.
+                    </p>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </motion.div>
         </div>
       </section>
 
