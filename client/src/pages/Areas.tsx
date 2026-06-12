@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { animate, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -39,6 +39,9 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
+import AnimatedContent from "@/components/reactbits/AnimatedContent";
+import CountUp from "@/components/reactbits/CountUp";
+import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import {
   areasComplementares,
   areasPoucoConhecidas,
@@ -99,43 +102,49 @@ const perfilMap: Record<string, string[]> = {
 
 const GRUPOS: Record<
   string,
-  { label: string; shadow: string; chip: string; icon: string }
+  { label: string; shadow: string; chip: string; icon: string; spotlight: string }
 > = {
   dev: {
     label: "Desenvolvimento",
     shadow: "shadow-[5px_5px_0_#FFB800]",
     chip: "border-amber-300 bg-amber-100 text-amber-900",
     icon: "text-amber-600",
+    spotlight: "rgba(255, 184, 0, 0.15)",
   },
   dados: {
     label: "Dados",
     shadow: "shadow-[5px_5px_0_#10b981]",
     chip: "border-emerald-300 bg-emerald-100 text-emerald-900",
     icon: "text-emerald-600",
+    spotlight: "rgba(16, 185, 129, 0.15)",
   },
   infra: {
     label: "Infraestrutura",
     shadow: "shadow-[5px_5px_0_#334155]",
     chip: "border-slate-300 bg-slate-100 text-slate-800",
     icon: "text-slate-700",
+    spotlight: "rgba(51, 65, 85, 0.12)",
   },
   seguranca: {
     label: "Segurança",
     shadow: "shadow-[5px_5px_0_#5b21b6]",
     chip: "border-violet-300 bg-violet-100 text-violet-900",
     icon: "text-violet-800",
+    spotlight: "rgba(91, 33, 182, 0.15)",
   },
   design: {
     label: "Design",
     shadow: "shadow-[5px_5px_0_#7c3aed]",
     chip: "border-violet-300 bg-violet-50 text-violet-800",
     icon: "text-violet-600",
+    spotlight: "rgba(124, 58, 237, 0.15)",
   },
   gestao: {
     label: "Gestão",
     shadow: "shadow-[5px_5px_0_#d97706]",
     chip: "border-amber-400 bg-amber-50 text-amber-900",
     icon: "text-amber-700",
+    spotlight: "rgba(217, 119, 6, 0.15)",
   },
 };
 
@@ -220,28 +229,6 @@ function AreasDoodles({ reduce }: { reduce: boolean }) {
   );
 }
 
-function AreaCountUp({ value, reduce }: { value: number; reduce: boolean }) {
-  const [n, setN] = useState(reduce ? value : 0);
-
-  useEffect(() => {
-    if (reduce || value === 0) {
-      setN(value);
-      return;
-    }
-    const controls = animate(0, value, {
-      duration: 1,
-      ease: "easeOut" as const,
-      onUpdate: (v) => setN(Math.round(v)),
-    });
-    const fallback = setTimeout(() => setN(value), 1100);
-    return () => {
-      controls.stop();
-      clearTimeout(fallback);
-    };
-  }, [reduce, value]);
-
-  return <span>{n}</span>;
-}
 
 function SkeletonAreaCard() {
   return (
@@ -358,22 +345,14 @@ export default function Areas() {
         <div className="container relative z-10">
           {!isLoading ? (
             <div className="mb-6 flex items-center gap-2">
-              <motion.span
-                className="inline-flex text-violet-700"
-                animate={
-                  reduce ? undefined : { y: [0, -3, 0], rotate: [0, -8, 0] }
-                }
-                transition={
-                  reduce
-                    ? undefined
-                    : { duration: 3, repeat: Infinity, ease: "easeInOut" }
-                }
-              >
-                <LayoutGrid className="h-6 w-6" aria-hidden />
-              </motion.span>
+              <LayoutGrid className="h-6 w-6 text-violet-700" aria-hidden />
               <p className="font-display text-lg font-black text-slate-900">
-                <AreaCountUp value={areas?.length ?? 0} reduce={reduce} /> áreas
-                pra você explorar
+                {reduce ? (
+                  areas?.length ?? 0
+                ) : (
+                  <CountUp to={areas?.length ?? 0} duration={1.2} />
+                )}{" "}
+                áreas pra você explorar
               </p>
             </div>
           ) : null}
@@ -414,31 +393,16 @@ export default function Areas() {
               {filtered.map((area, index) => {
                 const grupo = grupoDoSlug(area.slug);
                 return (
-                  <motion.div
+                  <AnimatedContent
                     key={area.id}
-                    initial={reduce ? false : { opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{
-                      duration: reduce ? 0 : 0.35,
-                      delay: reduce ? 0 : Math.min(index * 0.05, 0.5),
-                    }}
-                    whileHover={reduce ? undefined : { y: -5, rotate: -0.5 }}
+                    distance={16}
+                    duration={0.4}
+                    delay={Math.min(index * 0.05, 0.5)}
                     className="h-full"
                   >
-                    <motion.div
-                      animate={reduce ? undefined : { y: [0, -5, 0] }}
-                      transition={
-                        reduce
-                          ? undefined
-                          : {
-                              duration: 3.4 + (index % 4) * 0.5,
-                              repeat: Infinity,
-                              ease: "easeInOut",
-                              delay: (index % 5) * 0.4,
-                            }
-                      }
-                      className="relative h-full"
+                    <SpotlightCard
+                      spotlightColor={reduce ? "transparent" : grupo.spotlight}
+                      className="h-full rounded-2xl"
                     >
                       <FavoriteButton
                         compact
@@ -452,31 +416,16 @@ export default function Areas() {
                       />
                       <Link
                         href={`/areas/${area.slug}`}
-                        className={`group flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-shadow duration-200 ${grupo.shadow} hover:shadow-[8px_8px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2`}
+                        className={`group flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-all duration-200 ${grupo.shadow} hover:-translate-y-1 hover:shadow-[8px_8px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2`}
                       >
                         {area.slug === "mainframe" ? (
                           <EmbaixadoraBadge className="mb-3" />
                         ) : null}
-                        <motion.span
-                          className="inline-flex"
-                          animate={reduce ? undefined : { y: [0, -3, 0] }}
-                          transition={
-                            reduce
-                              ? undefined
-                              : {
-                                  duration: 2.6,
-                                  repeat: Infinity,
-                                  ease: "easeInOut",
-                                  delay: (index % 3) * 0.3,
-                                }
-                          }
-                        >
-                          <AreaIconBox
-                            icon={area.icon}
-                            areaSlug={area.slug}
-                            size="md"
-                          />
-                        </motion.span>
+                        <AreaIconBox
+                          icon={area.icon}
+                          areaSlug={area.slug}
+                          size="md"
+                        />
                         <span
                           className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
                         >
@@ -506,8 +455,8 @@ export default function Areas() {
                           />
                         </span>
                       </Link>
-                    </motion.div>
-                  </motion.div>
+                    </SpotlightCard>
+                  </AnimatedContent>
                 );
               })}
             </div>
@@ -529,39 +478,39 @@ export default function Areas() {
                 const grupo = grupoPorChave(area.grupo);
                 const Icon = area.icon;
                 return (
-                  <motion.div
+                  <AnimatedContent
                     key={area.nome}
-                    initial={reduce ? false : { opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-40px" }}
-                    transition={{
-                      duration: reduce ? 0 : 0.3,
-                      delay: reduce ? 0 : Math.min(index * 0.05, 0.3),
-                    }}
-                    whileHover={reduce ? undefined : { y: -4 }}
-                    className={`flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-shadow duration-200 ${grupo.shadow} hover:shadow-[8px_8px_0_#0f172a]`}
+                    distance={16}
+                    duration={0.4}
+                    delay={Math.min(index * 0.05, 0.3)}
+                    className="h-full"
                   >
-                    <span
-                      className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_currentColor] ${grupo.icon}`}
-                      aria-hidden
+                    <SpotlightCard
+                      spotlightColor={reduce ? "transparent" : grupo.spotlight}
+                      className={`flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-all duration-200 ${grupo.shadow} hover:-translate-y-1 hover:shadow-[8px_8px_0_#0f172a]`}
                     >
-                      <Icon className="h-7 w-7" strokeWidth={2.5} />
-                    </span>
-                    <span
-                      className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
-                    >
-                      {grupo.label}
-                    </span>
-                    <h3 className="mt-2 font-display text-xl font-bold text-slate-900">
-                      {area.nome}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                      {area.descricao}
-                    </p>
-                    <span className="mt-auto inline-flex w-fit rounded-full border-2 border-violet-200 bg-violet-50 px-2.5 py-1 text-[0.6rem] font-black uppercase text-violet-700">
-                      trilha em breve
-                    </span>
-                  </motion.div>
+                      <span
+                        className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_currentColor] ${grupo.icon}`}
+                        aria-hidden
+                      >
+                        <Icon className="h-7 w-7" strokeWidth={2.5} />
+                      </span>
+                      <span
+                        className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
+                      >
+                        {grupo.label}
+                      </span>
+                      <h3 className="mt-2 font-display text-xl font-bold text-slate-900">
+                        {area.nome}
+                      </h3>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                        {area.descricao}
+                      </p>
+                      <span className="mt-auto inline-flex w-fit rounded-full border-2 border-violet-200 bg-violet-50 px-2.5 py-1 text-[0.6rem] font-black uppercase text-violet-700">
+                        trilha em breve
+                      </span>
+                    </SpotlightCard>
+                  </AnimatedContent>
                 );
               })}
             </div>
