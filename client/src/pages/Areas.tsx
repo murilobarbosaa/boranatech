@@ -6,9 +6,9 @@
   - Filter by profile
 */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { animate, motion, useInView, useReducedMotion } from "framer-motion";
+import { animate, motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
@@ -115,27 +115,27 @@ const GRUPOS: Record<
   },
   infra: {
     label: "Infraestrutura",
-    shadow: "shadow-[5px_5px_0_#0284c7]",
-    chip: "border-sky-300 bg-sky-100 text-sky-900",
-    icon: "text-sky-600",
+    shadow: "shadow-[5px_5px_0_#334155]",
+    chip: "border-slate-300 bg-slate-100 text-slate-800",
+    icon: "text-slate-700",
   },
   seguranca: {
     label: "Segurança",
-    shadow: "shadow-[5px_5px_0_#e11d48]",
-    chip: "border-rose-300 bg-rose-100 text-rose-900",
-    icon: "text-rose-600",
+    shadow: "shadow-[5px_5px_0_#5b21b6]",
+    chip: "border-violet-300 bg-violet-100 text-violet-900",
+    icon: "text-violet-800",
   },
   design: {
     label: "Design",
     shadow: "shadow-[5px_5px_0_#7c3aed]",
-    chip: "border-violet-300 bg-violet-100 text-violet-900",
+    chip: "border-violet-300 bg-violet-50 text-violet-800",
     icon: "text-violet-600",
   },
   gestao: {
     label: "Gestão",
-    shadow: "shadow-[5px_5px_0_#ea580c]",
-    chip: "border-orange-300 bg-orange-100 text-orange-900",
-    icon: "text-orange-600",
+    shadow: "shadow-[5px_5px_0_#d97706]",
+    chip: "border-amber-400 bg-amber-50 text-amber-900",
+    icon: "text-amber-700",
   },
 };
 
@@ -176,16 +176,16 @@ function grupoPorChave(chave: string) {
 const areasDoodles = [
   { Icon: Code2, cls: "left-[3%] top-[7%] text-amber-500 opacity-[0.12]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
   { Icon: Database, cls: "right-[5%] top-[5%] text-emerald-500 opacity-[0.12]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
-  { Icon: Cloud, cls: "left-[8%] top-[40%] text-sky-500 opacity-[0.11]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
-  { Icon: Lock, cls: "right-[3%] top-[36%] text-rose-500 opacity-[0.12]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
-  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-violet-500 opacity-[0.12]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
-  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-orange-500 opacity-[0.12]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
+  { Icon: Cloud, cls: "left-[8%] top-[40%] text-violet-500 opacity-[0.12]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
+  { Icon: Lock, cls: "right-[3%] top-[36%] text-amber-600 opacity-[0.12]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
+  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-violet-600 opacity-[0.12]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
+  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-emerald-600 opacity-[0.12]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
   { Icon: Settings, cls: "left-[15%] top-[20%] text-slate-500 opacity-[0.10]", size: "h-9 w-9", dur: 8, rot: 12, delay: 0.2 },
   { Icon: Cpu, cls: "right-[14%] top-[18%] text-amber-600 opacity-[0.11]", size: "h-10 w-10", dur: 6.5, rot: -8, delay: 1.6 },
   { Icon: GitBranch, cls: "left-[11%] top-[88%] text-emerald-600 opacity-[0.11]", size: "h-9 w-9", dur: 5.5, rot: 6, delay: 0.6 },
-  { Icon: Terminal, cls: "right-[12%] top-[88%] text-sky-600 opacity-[0.11]", size: "h-10 w-10", dur: 7, rot: -6, delay: 1.2 },
+  { Icon: Terminal, cls: "right-[12%] top-[88%] text-violet-500 opacity-[0.11]", size: "h-10 w-10", dur: 7, rot: -6, delay: 1.2 },
   { Icon: Braces, cls: "left-[46%] top-[3%] text-violet-400 opacity-[0.10]", size: "h-9 w-9", dur: 6, rot: 9, delay: 0.9 },
-  { Icon: Bug, cls: "right-[44%] top-[93%] text-rose-400 opacity-[0.10]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
+  { Icon: Bug, cls: "right-[44%] top-[93%] text-amber-500 opacity-[0.10]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
 ];
 
 function AreasDoodles({ reduce }: { reduce: boolean }) {
@@ -221,21 +221,26 @@ function AreasDoodles({ reduce }: { reduce: boolean }) {
 }
 
 function AreaCountUp({ value, reduce }: { value: number; reduce: boolean }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
   const [n, setN] = useState(reduce ? value : 0);
 
   useEffect(() => {
-    if (reduce || !inView) return;
+    if (reduce || value === 0) {
+      setN(value);
+      return;
+    }
     const controls = animate(0, value, {
       duration: 1,
       ease: "easeOut" as const,
       onUpdate: (v) => setN(Math.round(v)),
     });
-    return () => controls.stop();
-  }, [inView, reduce, value]);
+    const fallback = setTimeout(() => setN(value), 1100);
+    return () => {
+      controls.stop();
+      clearTimeout(fallback);
+    };
+  }, [reduce, value]);
 
-  return <span ref={ref}>{reduce ? value : n}</span>;
+  return <span>{n}</span>;
 }
 
 function SkeletonAreaCard() {
@@ -353,7 +358,19 @@ export default function Areas() {
         <div className="container relative z-10">
           {!isLoading ? (
             <div className="mb-6 flex items-center gap-2">
-              <LayoutGrid className="h-6 w-6 text-violet-700" aria-hidden />
+              <motion.span
+                className="inline-flex text-violet-700"
+                animate={
+                  reduce ? undefined : { y: [0, -3, 0], rotate: [0, -8, 0] }
+                }
+                transition={
+                  reduce
+                    ? undefined
+                    : { duration: 3, repeat: Infinity, ease: "easeInOut" }
+                }
+              >
+                <LayoutGrid className="h-6 w-6" aria-hidden />
+              </motion.span>
               <p className="font-display text-lg font-black text-slate-900">
                 <AreaCountUp value={areas?.length ?? 0} reduce={reduce} /> áreas
                 pra você explorar
@@ -399,62 +416,97 @@ export default function Areas() {
                 return (
                   <motion.div
                     key={area.id}
-                    initial={reduce ? false : { opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={reduce ? false : { opacity: 0, y: 16 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
                     transition={{
-                      duration: reduce ? 0 : 0.3,
-                      delay: reduce ? 0 : Math.min(index * 0.04, 0.4),
+                      duration: reduce ? 0 : 0.35,
+                      delay: reduce ? 0 : Math.min(index * 0.05, 0.5),
                     }}
-                    whileHover={reduce ? undefined : { y: -4 }}
-                    className="relative h-full"
+                    whileHover={reduce ? undefined : { y: -5, rotate: -0.5 }}
+                    className="h-full"
                   >
-                    <FavoriteButton
-                      compact
-                      className="absolute right-4 top-4 z-20"
-                      item={{
-                        id: area.id,
-                        type: "area",
-                        title: area.nome,
-                        subtitle: area.descricaoCurta,
-                      }}
-                    />
-                    <Link
-                      href={`/areas/${area.slug}`}
-                      className={`group flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-shadow duration-200 ${grupo.shadow} hover:shadow-[8px_8px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2`}
+                    <motion.div
+                      animate={reduce ? undefined : { y: [0, -5, 0] }}
+                      transition={
+                        reduce
+                          ? undefined
+                          : {
+                              duration: 3.4 + (index % 4) * 0.5,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              delay: (index % 5) * 0.4,
+                            }
+                      }
+                      className="relative h-full"
                     >
-                      {area.slug === "mainframe" ? (
-                        <EmbaixadoraBadge className="mb-3" />
-                      ) : null}
-                      <AreaIconBox
-                        icon={area.icon}
-                        areaSlug={area.slug}
-                        size="md"
+                      <FavoriteButton
+                        compact
+                        className="absolute right-4 top-4 z-20"
+                        item={{
+                          id: area.id,
+                          type: "area",
+                          title: area.nome,
+                          subtitle: area.descricaoCurta,
+                        }}
                       />
-                      <span
-                        className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
+                      <Link
+                        href={`/areas/${area.slug}`}
+                        className={`group flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-shadow duration-200 ${grupo.shadow} hover:shadow-[8px_8px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2`}
                       >
-                        {grupo.label}
-                      </span>
-                      <h3 className="mt-2 font-display text-xl font-bold text-slate-900 transition-colors group-hover:text-violet-700">
-                        {area.nome}
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                        {area.descricaoCurta}
-                      </p>
-                      <div className="mt-3 flex flex-wrap justify-center gap-1">
-                        {area.habilidades.slice(0, 3).map((h) => (
-                          <span
-                            key={h}
-                            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
-                          >
-                            {h}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="mt-auto flex items-center gap-1 pt-4 text-sm font-medium text-violet-700 transition-all group-hover:gap-2">
-                        Explorar <ArrowRight className="h-4 w-4" aria-hidden />
-                      </span>
-                    </Link>
+                        {area.slug === "mainframe" ? (
+                          <EmbaixadoraBadge className="mb-3" />
+                        ) : null}
+                        <motion.span
+                          className="inline-flex"
+                          animate={reduce ? undefined : { y: [0, -3, 0] }}
+                          transition={
+                            reduce
+                              ? undefined
+                              : {
+                                  duration: 2.6,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                  delay: (index % 3) * 0.3,
+                                }
+                          }
+                        >
+                          <AreaIconBox
+                            icon={area.icon}
+                            areaSlug={area.slug}
+                            size="md"
+                          />
+                        </motion.span>
+                        <span
+                          className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
+                        >
+                          {grupo.label}
+                        </span>
+                        <h3 className="mt-2 font-display text-xl font-bold text-slate-900 transition-colors group-hover:text-violet-700">
+                          {area.nome}
+                        </h3>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                          {area.descricaoCurta}
+                        </p>
+                        <div className="mt-3 flex flex-wrap justify-center gap-1">
+                          {area.habilidades.slice(0, 3).map((h) => (
+                            <span
+                              key={h}
+                              className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                            >
+                              {h}
+                            </span>
+                          ))}
+                        </div>
+                        <span className="mt-auto flex items-center gap-1 pt-4 text-sm font-medium text-violet-700 transition-all group-hover:gap-2">
+                          Explorar{" "}
+                          <ArrowRight
+                            className="h-4 w-4 transition-transform group-hover:translate-x-1"
+                            aria-hidden
+                          />
+                        </span>
+                      </Link>
+                    </motion.div>
                   </motion.div>
                 );
               })}
