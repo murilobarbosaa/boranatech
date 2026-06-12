@@ -27,6 +27,68 @@ const progColor: Record<string, string> = {
   "Médio-Alto": "bg-blue-100 text-blue-700",
 };
 
+const criteriosFaculdade = [
+  {
+    titulo: "Reconhecimento no MEC",
+    desc: "Confira se o curso é reconhecido e veja a nota dele no e-MEC antes de se inscrever.",
+  },
+  {
+    titulo: "Modalidade que cabe na rotina",
+    desc: "Presencial, EAD ou híbrido. Pense no tempo de deslocamento e na disciplina pra estudar por conta própria.",
+  },
+  {
+    titulo: "Matriz curricular atualizada",
+    desc: "Veja se as disciplinas acompanham o mercado, com projetos práticos, dados e nuvem.",
+  },
+  {
+    titulo: "Corpo docente",
+    desc: "Professores com experiência de mercado e boa titulação fazem diferença no aprendizado.",
+  },
+  {
+    titulo: "Estágio e contato com empresas",
+    desc: "Parcerias, feiras e apoio de carreira ajudam você a entrar mais rápido na área.",
+  },
+  {
+    titulo: "Infraestrutura e prática",
+    desc: "Laboratórios, projetos reais e atividades extras como ligas e hackathons valem mais que só teoria.",
+  },
+  {
+    titulo: "Custo e formas de pagar",
+    desc: "Compare mensalidade, bolsas e financiamento como ProUni, FIES, SISU e UAB antes de decidir.",
+  },
+  {
+    titulo: "Localização e flexibilidade",
+    desc: "Turno noturno, polo perto de casa ou EAD podem ser decisivos pra conciliar trabalho e estudo.",
+  },
+  {
+    titulo: "Reputação e egressos",
+    desc: "Converse com quem já estudou lá e veja onde os formados estão trabalhando hoje.",
+  },
+];
+
+const caminhosFormacao = [
+  {
+    titulo: "Graduação",
+    quando: "Base sólida e diploma reconhecido, bom pra crescimento de longo prazo e vagas que pedem diploma.",
+    atencao: "Leva mais tempo que as outras opções.",
+  },
+  {
+    titulo: "Curso técnico",
+    quando: "Formação curta e prática, dá pra fazer junto ou logo após o ensino médio.",
+    atencao: "Boa porta de entrada, mas costuma ir menos a fundo que a graduação.",
+  },
+  {
+    titulo: "Bootcamp",
+    quando: "Intensivo e focado em te colocar no mercado rápido.",
+    atencao: "Exige dedicação alta em pouco tempo e a qualidade varia bastante.",
+  },
+  {
+    titulo: "Cursos livres e estudo por conta",
+    quando: "Flexível e barato, às vezes de graça, com um bom roadmap pra te guiar.",
+    atencao: "Pede disciplina e um portfólio pra provar o que você sabe.",
+  },
+];
+
 function slugifyCourse(value: string) {
   return value
     .toLowerCase()
@@ -341,6 +403,38 @@ export default function Faculdades() {
             </div>
           )}
 
+          <div className="mt-10 rounded-xl border-2 border-violet-200 bg-white p-6">
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Como escolher uma boa faculdade
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Não existe faculdade perfeita pra todo mundo. Veja os pontos que
+              mais importam na hora de comparar e decidir.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {criteriosFaculdade.map((item) => (
+                <div
+                  key={item.titulo}
+                  className="rounded-xl border-2 border-slate-200 bg-violet-50/60 p-4"
+                >
+                  <div className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {item.titulo}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">{item.desc}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-sm text-slate-600">
+              Liste o que é inegociável pra você e use esses pontos pra comparar
+              cada opção antes de bater o martelo.
+            </p>
+          </div>
+
           {/* Dica importante */}
           <div className="mt-10 p-5 bg-violet-50 border-2 border-violet-200 rounded-xl">
             <div className="flex items-start gap-3">
@@ -357,6 +451,38 @@ export default function Faculdades() {
                   prazo, considere a graduação.
                 </p>
               </div>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-xl border-2 border-violet-200 bg-white p-6">
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Outros caminhos de formação
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              A graduação é um caminho, não o único. Conheça as opções e veja
+              qual combina com o seu momento. Dá pra misturar mais de uma.
+            </p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {caminhosFormacao.map((item) => (
+                <div
+                  key={item.titulo}
+                  className="rounded-xl border-2 border-slate-200 bg-violet-50/60 p-4"
+                >
+                  <p className="font-display font-bold text-slate-900">
+                    {item.titulo}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-600">
+                    <strong className="text-slate-900">
+                      Quando faz sentido:
+                    </strong>{" "}
+                    {item.quando}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    <strong className="text-slate-900">Fique de olho:</strong>{" "}
+                    {item.atencao}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
