@@ -6,20 +6,32 @@
   - Filter by profile
 */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { animate, motion, useInView, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   BarChart3,
+  Braces,
   Brain,
+  Bug,
   ClipboardList,
+  Cloud,
+  Code2,
   Compass,
+  Cpu,
+  Database,
+  GitBranch,
   LayoutGrid,
   Lock,
   Paintbrush,
   Search,
   SearchX,
+  Settings,
+  Smartphone,
+  Sparkles,
+  Terminal,
   Users,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -27,7 +39,12 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
-import { areasPoucoConhecidas, areasTI, type AreaTI } from "@/lib/data";
+import {
+  areasComplementares,
+  areasPoucoConhecidas,
+  areasTI,
+  type AreaTI,
+} from "@/lib/data";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
 
@@ -80,6 +97,147 @@ const perfilMap: Record<string, string[]> = {
   ],
 };
 
+const GRUPOS: Record<
+  string,
+  { label: string; shadow: string; chip: string; icon: string }
+> = {
+  dev: {
+    label: "Desenvolvimento",
+    shadow: "shadow-[5px_5px_0_#FFB800]",
+    chip: "border-amber-300 bg-amber-100 text-amber-900",
+    icon: "text-amber-600",
+  },
+  dados: {
+    label: "Dados",
+    shadow: "shadow-[5px_5px_0_#10b981]",
+    chip: "border-emerald-300 bg-emerald-100 text-emerald-900",
+    icon: "text-emerald-600",
+  },
+  infra: {
+    label: "Infraestrutura",
+    shadow: "shadow-[5px_5px_0_#0284c7]",
+    chip: "border-sky-300 bg-sky-100 text-sky-900",
+    icon: "text-sky-600",
+  },
+  seguranca: {
+    label: "Segurança",
+    shadow: "shadow-[5px_5px_0_#e11d48]",
+    chip: "border-rose-300 bg-rose-100 text-rose-900",
+    icon: "text-rose-600",
+  },
+  design: {
+    label: "Design",
+    shadow: "shadow-[5px_5px_0_#7c3aed]",
+    chip: "border-violet-300 bg-violet-100 text-violet-900",
+    icon: "text-violet-600",
+  },
+  gestao: {
+    label: "Gestão",
+    shadow: "shadow-[5px_5px_0_#ea580c]",
+    chip: "border-orange-300 bg-orange-100 text-orange-900",
+    icon: "text-orange-600",
+  },
+};
+
+const SLUG_GRUPO: Record<string, string> = {
+  frontend: "dev",
+  backend: "dev",
+  fullstack: "dev",
+  mobile: "dev",
+  gamedev: "dev",
+  dados: "dados",
+  ia: "dados",
+  "analise-dados": "dados",
+  "engenharia-dados": "dados",
+  "banco-de-dados": "dados",
+  devops: "infra",
+  cloud: "infra",
+  sre: "infra",
+  infraestrutura: "infra",
+  mainframe: "infra",
+  iot: "infra",
+  ciberseguranca: "seguranca",
+  blockchain: "seguranca",
+  uxui: "design",
+  gestao: "gestao",
+  produto: "gestao",
+  "analise-sistemas": "gestao",
+  qa: "gestao",
+};
+
+function grupoDoSlug(slug: string) {
+  return GRUPOS[SLUG_GRUPO[slug] ?? "dev"];
+}
+
+function grupoPorChave(chave: string) {
+  return GRUPOS[chave] ?? GRUPOS.dev;
+}
+
+const areasDoodles = [
+  { Icon: Code2, cls: "left-[3%] top-[7%] text-amber-500 opacity-[0.12]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
+  { Icon: Database, cls: "right-[5%] top-[5%] text-emerald-500 opacity-[0.12]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
+  { Icon: Cloud, cls: "left-[8%] top-[40%] text-sky-500 opacity-[0.11]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
+  { Icon: Lock, cls: "right-[3%] top-[36%] text-rose-500 opacity-[0.12]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
+  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-violet-500 opacity-[0.12]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
+  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-orange-500 opacity-[0.12]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
+  { Icon: Settings, cls: "left-[15%] top-[20%] text-slate-500 opacity-[0.10]", size: "h-9 w-9", dur: 8, rot: 12, delay: 0.2 },
+  { Icon: Cpu, cls: "right-[14%] top-[18%] text-amber-600 opacity-[0.11]", size: "h-10 w-10", dur: 6.5, rot: -8, delay: 1.6 },
+  { Icon: GitBranch, cls: "left-[11%] top-[88%] text-emerald-600 opacity-[0.11]", size: "h-9 w-9", dur: 5.5, rot: 6, delay: 0.6 },
+  { Icon: Terminal, cls: "right-[12%] top-[88%] text-sky-600 opacity-[0.11]", size: "h-10 w-10", dur: 7, rot: -6, delay: 1.2 },
+  { Icon: Braces, cls: "left-[46%] top-[3%] text-violet-400 opacity-[0.10]", size: "h-9 w-9", dur: 6, rot: 9, delay: 0.9 },
+  { Icon: Bug, cls: "right-[44%] top-[93%] text-rose-400 opacity-[0.10]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
+];
+
+function AreasDoodles({ reduce }: { reduce: boolean }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      {areasDoodles.map((d, i) => {
+        const Icon = d.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute ${d.cls}`}
+            animate={reduce ? undefined : { y: [0, -10, 0], rotate: [0, d.rot, 0] }}
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: d.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut" as const,
+                    delay: d.delay,
+                  }
+            }
+          >
+            <Icon className={d.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
+function AreaCountUp({ value, reduce }: { value: number; reduce: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  const [n, setN] = useState(reduce ? value : 0);
+
+  useEffect(() => {
+    if (reduce || !inView) return;
+    const controls = animate(0, value, {
+      duration: 1,
+      ease: "easeOut" as const,
+      onUpdate: (v) => setN(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [inView, reduce, value]);
+
+  return <span ref={ref}>{reduce ? value : n}</span>;
+}
+
 function SkeletonAreaCard() {
   return (
     <div className="card-brutal bg-white rounded-xl p-6 flex flex-col h-full animate-pulse">
@@ -107,6 +265,7 @@ function SkeletonAreaCard() {
 // trocava pra 14. Agora começamos vazio e só renderizamos quando a fonte certa
 // chega; fallback fica reservado pro catch (erro de rede).
 export default function Areas() {
+  const reduce = useReducedMotion() ?? false;
   const [areas, setAreas] = useState<AreaTI[] | null>(null);
   const [search, setSearch] = useState("");
   const [perfil, setPerfil] = useState("todos");
@@ -189,12 +348,18 @@ export default function Areas() {
         </div>
       </section>
 
-      {/* Grid */}
-      <section className="bg-violet-50 py-12">
-        <div className="container">
-          <div className="mb-6 flex justify-end">
-            <EmbaixadoraBadge />
-          </div>
+      <section className="relative overflow-hidden bg-violet-50 py-12">
+        <AreasDoodles reduce={reduce} />
+        <div className="container relative z-10">
+          {!isLoading ? (
+            <div className="mb-6 flex items-center gap-2">
+              <LayoutGrid className="h-6 w-6 text-violet-700" aria-hidden />
+              <p className="font-display text-lg font-black text-slate-900">
+                <AreaCountUp value={areas?.length ?? 0} reduce={reduce} /> áreas
+                pra você explorar
+              </p>
+            </div>
+          ) : null}
           {isLoading ? (
             <div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
@@ -228,67 +393,127 @@ export default function Areas() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map((area) => (
-                <div key={area.id} className="relative h-full">
-                  <FavoriteButton
-                    compact
-                    className="absolute right-4 top-4 z-10"
-                    item={{
-                      id: area.id,
-                      type: "area",
-                      title: area.nome,
-                      subtitle: area.descricaoCurta,
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((area, index) => {
+                const grupo = grupoDoSlug(area.slug);
+                return (
+                  <motion.div
+                    key={area.id}
+                    initial={reduce ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: reduce ? 0 : 0.3,
+                      delay: reduce ? 0 : Math.min(index * 0.04, 0.4),
                     }}
-                  />
-                  <Link
-                    href={`/areas/${area.slug}`}
-                    className="card-brutal bg-white rounded-xl p-6 flex flex-col group h-full"
+                    whileHover={reduce ? undefined : { y: -4 }}
+                    className="relative h-full"
                   >
-                    <div className="mb-4 pr-12">
+                    <FavoriteButton
+                      compact
+                      className="absolute right-4 top-4 z-20"
+                      item={{
+                        id: area.id,
+                        type: "area",
+                        title: area.nome,
+                        subtitle: area.descricaoCurta,
+                      }}
+                    />
+                    <Link
+                      href={`/areas/${area.slug}`}
+                      className={`group flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-shadow duration-200 ${grupo.shadow} hover:shadow-[8px_8px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2`}
+                    >
+                      {area.slug === "mainframe" ? (
+                        <EmbaixadoraBadge className="mb-3" />
+                      ) : null}
                       <AreaIconBox
                         icon={area.icon}
                         areaSlug={area.slug}
                         size="md"
                       />
-                    </div>
-                    <h3 className="font-display font-bold text-xl text-slate-900 mb-2 group-hover:text-violet-700 transition-colors">
-                      {area.nome}
-                    </h3>
-                    <p className="text-sm text-slate-600 mb-4 line-clamp-2">
-                      {area.descricaoCurta}
-                    </p>
-                    <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
-                      <p className="text-xs font-black uppercase text-violet-800">
-                        Perfil que combina
-                      </p>
-                      <p className="mt-1 text-xs text-slate-800 line-clamp-3">
-                        {area.perfilIndicado}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
-                      {area.habilidades.slice(0, 3).map((h) => (
-                        <span
-                          key={h}
-                          className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full"
-                        >
-                          {h}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
-                      <span className="text-xs text-slate-600">
-                        {area.cargos[0]}
+                      <span
+                        className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
+                      >
+                        {grupo.label}
                       </span>
-                      <span className="flex items-center gap-1 text-violet-700 text-sm font-medium group-hover:gap-2 transition-all">
-                        Explorar <ArrowRight className="w-4 h-4" />
+                      <h3 className="mt-2 font-display text-xl font-bold text-slate-900 transition-colors group-hover:text-violet-700">
+                        {area.nome}
+                      </h3>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                        {area.descricaoCurta}
+                      </p>
+                      <div className="mt-3 flex flex-wrap justify-center gap-1">
+                        {area.habilidades.slice(0, 3).map((h) => (
+                          <span
+                            key={h}
+                            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                          >
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="mt-auto flex items-center gap-1 pt-4 text-sm font-medium text-violet-700 transition-all group-hover:gap-2">
+                        Explorar <ArrowRight className="h-4 w-4" aria-hidden />
                       </span>
-                    </div>
-                  </Link>
-                </div>
-              ))}
+                    </Link>
+                  </motion.div>
+                );
+              })}
             </div>
           )}
+
+          <div className="mt-14">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="h-6 w-6 text-violet-700" aria-hidden />
+              <h2 className="font-display text-3xl font-black text-slate-900">
+                Mais áreas pra conhecer
+              </h2>
+            </div>
+            <p className="mb-6 max-w-2xl text-sm text-slate-600">
+              Caminhos que também fazem parte da TI. A trilha completa de cada
+              uma chega em breve.
+            </p>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {areasComplementares.map((area, index) => {
+                const grupo = grupoPorChave(area.grupo);
+                const Icon = area.icon;
+                return (
+                  <motion.div
+                    key={area.nome}
+                    initial={reduce ? false : { opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{
+                      duration: reduce ? 0 : 0.3,
+                      delay: reduce ? 0 : Math.min(index * 0.05, 0.3),
+                    }}
+                    whileHover={reduce ? undefined : { y: -4 }}
+                    className={`flex h-full flex-col items-center rounded-2xl border-2 border-slate-950 bg-white p-6 text-center transition-shadow duration-200 ${grupo.shadow} hover:shadow-[8px_8px_0_#0f172a]`}
+                  >
+                    <span
+                      className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_currentColor] ${grupo.icon}`}
+                      aria-hidden
+                    >
+                      <Icon className="h-7 w-7" strokeWidth={2.5} />
+                    </span>
+                    <span
+                      className={`mt-3 inline-flex rounded-full border-2 px-2.5 py-0.5 text-[0.6rem] font-black uppercase ${grupo.chip}`}
+                    >
+                      {grupo.label}
+                    </span>
+                    <h3 className="mt-2 font-display text-xl font-bold text-slate-900">
+                      {area.nome}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                      {area.descricao}
+                    </p>
+                    <span className="mt-auto inline-flex w-fit rounded-full border-2 border-violet-200 bg-violet-50 px-2.5 py-1 text-[0.6rem] font-black uppercase text-violet-700">
+                      trilha em breve
+                    </span>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="mt-14">
             <div className="mb-2 flex items-center gap-2">

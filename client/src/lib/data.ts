@@ -27,6 +27,8 @@ import {
   Blocks,
   Cpu,
   HardDrive,
+  Headphones,
+  Bot,
 } from "lucide-react";
 
 export interface SubArea {
@@ -5041,6 +5043,41 @@ export const areasTI: AreaTI[] = baseAreasTI.map((area) => ({
   salarios: area.salarios ?? buildSalarios(areaSalarios[area.slug]),
   livros: area.livros ?? livrosPorArea[area.slug],
 }));
+
+export const areasComplementares: {
+  nome: string;
+  descricao: string;
+  icon: LucideIcon;
+  grupo: string;
+}[] = [
+  {
+    nome: "Suporte e Helpdesk",
+    descricao:
+      "Atendimento e resolução de problemas de usuários e equipamentos. Porta de entrada comum na TI.",
+    icon: Headphones,
+    grupo: "infra",
+  },
+  {
+    nome: "Arquitetura de Software e Tech Lead",
+    descricao:
+      "Desenho técnico dos sistemas e liderança de um time de desenvolvimento.",
+    icon: Network,
+    grupo: "dev",
+  },
+  {
+    nome: "Agilidade e Scrum Master",
+    descricao: "Facilita times ágeis e cuida dos processos de entrega.",
+    icon: Workflow,
+    grupo: "gestao",
+  },
+  {
+    nome: "Automação e RPA",
+    descricao:
+      "Automatiza tarefas e processos repetitivos com scripts e bots.",
+    icon: Bot,
+    grupo: "gestao",
+  },
+];
 
 export const areasPoucoConhecidas: {
   nome: string;
