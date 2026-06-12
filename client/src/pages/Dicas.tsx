@@ -587,6 +587,7 @@ function DicasDestaque() {
   const [gold, setGold] = useState<{ dica: Dica; nonce: number } | null>(null);
   const [shuffling, setShuffling] = useState(false);
   const [sparkle, setSparkle] = useState(0);
+  const [verTodas, setVerTodas] = useState(false);
   const goldRef = useRef<HTMLDivElement>(null);
   const runRef = useRef(0);
 
@@ -695,53 +696,74 @@ function DicasDestaque() {
             ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {filtros.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setCategoria(f)}
-              className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform hover:-translate-y-0.5 ${
-                categoria === f
-                  ? `border-slate-900 ${dicaFiltroBg(f)} shadow-[2px_2px_0_#0f172a]`
-                  : "border-slate-300 bg-white hover:bg-slate-100"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        <motion.ul layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence mode="popLayout">
-            {visiveis.map((d, index) => {
-              const cor = dicaCor(d.categoria);
-              return (
-                <motion.li
-                  layout
-                  key={d.texto}
-                  initial={reduce ? false : { opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={reduce ? undefined : { opacity: 0, scale: 0.95 }}
-                  transition={{
-                    duration: reduce ? 0 : 0.25,
-                    delay: reduce ? 0 : Math.min(index * 0.02, 0.25),
-                  }}
-                  className={`flex flex-col gap-2 rounded-[1.2rem] border-2 border-slate-950 bg-white p-4 transition-transform hover:-translate-y-1 ${cor.shadow}`}
-                >
-                  <span
-                    className={`inline-flex w-fit rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-[0.65rem] font-black uppercase ${cor.chip}`}
+        <div className="border-t-2 border-dashed border-slate-300 pt-6">
+          <button
+            type="button"
+            onClick={() => setVerTodas((v) => !v)}
+            aria-expanded={verTodas}
+            className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+          >
+            {verTodas ? "Esconder a lista" : `Ver todas as ${dicas.length} dicas`}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${verTodas ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          {verTodas ? (
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {filtros.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setCategoria(f)}
+                    className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform hover:-translate-y-0.5 ${
+                      categoria === f
+                        ? `border-slate-900 ${dicaFiltroBg(f)} shadow-[2px_2px_0_#0f172a]`
+                        : "border-slate-300 bg-white hover:bg-slate-100"
+                    }`}
                   >
-                    {d.categoria}
-                  </span>
-                  <p className="text-sm font-semibold leading-relaxed text-slate-800">
-                    {d.texto}
-                  </p>
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-        </motion.ul>
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              <motion.ul
+                layout
+                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                <AnimatePresence mode="popLayout">
+                  {visiveis.map((d, index) => {
+                    const cor = dicaCor(d.categoria);
+                    return (
+                      <motion.li
+                        layout
+                        key={d.texto}
+                        initial={reduce ? false : { opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={reduce ? undefined : { opacity: 0, scale: 0.95 }}
+                        transition={{
+                          duration: reduce ? 0 : 0.25,
+                          delay: reduce ? 0 : Math.min(index * 0.02, 0.25),
+                        }}
+                        className={`flex flex-col gap-2 rounded-[1.2rem] border-2 border-slate-950 bg-white p-4 transition-transform hover:-translate-y-1 ${cor.shadow}`}
+                      >
+                        <span
+                          className={`inline-flex w-fit rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-[0.65rem] font-black uppercase ${cor.chip}`}
+                        >
+                          {d.categoria}
+                        </span>
+                        <p className="text-sm font-semibold leading-relaxed text-slate-800">
+                          {d.texto}
+                        </p>
+                      </motion.li>
+                    );
+                  })}
+                </AnimatePresence>
+              </motion.ul>
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   );
