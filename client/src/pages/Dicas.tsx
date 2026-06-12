@@ -937,6 +937,51 @@ function CuriosidadesSection() {
   );
 }
 
+const telaDoodles = [
+  { Icon: Clapperboard, cls: "left-[2%] top-[12%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
+  { Icon: Lightbulb, cls: "left-[7%] top-[55%] text-amber-500 opacity-[0.15]", size: "h-10 w-10", dur: 6, rot: 6, delay: 0.7 },
+  { Icon: Star, cls: "left-[3%] top-[82%] text-emerald-500 opacity-[0.13]", size: "h-8 w-8", dur: 5, rot: 10, delay: 1.2 },
+  { Icon: MessageCircle, cls: "left-[12%] top-[28%] text-sky-500 opacity-[0.12]", size: "h-9 w-9", dur: 7, rot: -6, delay: 0.4 },
+  { Icon: Braces, cls: "left-[1%] top-[44%] text-rose-500 opacity-[0.14]", size: "h-10 w-10", dur: 5.5, rot: 5, delay: 1.5 },
+  { Icon: Rocket, cls: "right-[2%] top-[14%] text-amber-600 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.2 },
+  { Icon: Sparkles, cls: "right-[8%] top-[58%] text-violet-400 opacity-[0.15]", size: "h-9 w-9", dur: 5, rot: -10, delay: 0.9 },
+  { Icon: GraduationCap, cls: "right-[3%] top-[82%] text-sky-600 opacity-[0.13]", size: "h-11 w-11", dur: 7.5, rot: 7, delay: 1.3 },
+  { Icon: Star, cls: "right-[12%] top-[32%] text-emerald-600 opacity-[0.12]", size: "h-8 w-8", dur: 5.5, rot: 9, delay: 0.6 },
+  { Icon: Braces, cls: "right-[1%] top-[46%] text-rose-400 opacity-[0.14]", size: "h-10 w-10", dur: 6, rot: -5, delay: 1.6 },
+];
+
+function TelaDoodles({ reduce }: { reduce: boolean }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      {telaDoodles.map((d, i) => {
+        const Icon = d.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute ${d.cls}`}
+            animate={reduce ? undefined : { y: [0, -10, 0], rotate: [0, d.rot, 0] }}
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: d.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut" as const,
+                    delay: d.delay,
+                  }
+            }
+          >
+            <Icon className={d.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
 function TelaRevealCard({
   f,
   kind,
@@ -1060,11 +1105,13 @@ function TelasTab({
 
   return (
     <div className="space-y-6">
-      <div
-        role="status"
-        aria-live="polite"
-        className="max-w-2xl rounded-[1.2rem] border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]"
-      >
+      <div className="relative overflow-hidden px-2 py-6">
+        <TelaDoodles reduce={reduce} />
+        <div
+          role="status"
+          aria-live="polite"
+          className="relative z-10 mx-auto max-w-2xl rounded-[1.2rem] border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]"
+        >
         {pick ? (
           <TelaRevealCard
             key={pick.nonce}
@@ -1091,6 +1138,7 @@ function TelasTab({
             </button>
           </div>
         )}
+        </div>
       </div>
       <div className="border-t-2 border-dashed border-slate-300 pt-6">
         <button
