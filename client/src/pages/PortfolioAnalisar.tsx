@@ -45,6 +45,11 @@ const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
 };
 
 const STORAGE_KEY = "boranatech:portfolio-analyzer";
+// Versao da forma do payload persistido. Bump sempre que a forma da resposta
+// (GithubAnalysisResponse) mudar. No restore, slots de versao diferente sao
+// descartados, pra nunca reusar um result de shape antigo (ex sem suficiencia
+// ou sem deepSignals). A versao 2 marca o shape com suficiencia e deepSignals.
+const STORAGE_SHAPE_VERSION = 2;
 
 interface ModeSlot {
   input: string;
@@ -92,12 +97,20 @@ function loadState(): StoredState {
       perfil?: unknown;
       repo?: unknown;
       area?: unknown;
+      version?: unknown;
     };
+    // So restaura os slots (com result) se a versao de shape bater com a atual.
+    // Payload de build antigo (sem version ou com version diferente) cai pra
+    // vazio, evitando reusar um result de forma velha. A area nao depende da
+    // forma da resposta, entao e restaurada de qualquer jeito.
+    const slotsOk = parsed.version === STORAGE_SHAPE_VERSION;
     return {
-      slots: {
-        perfil: coerceSlot(parsed.perfil),
-        repo: coerceSlot(parsed.repo),
-      },
+      slots: slotsOk
+        ? {
+            perfil: coerceSlot(parsed.perfil),
+            repo: coerceSlot(parsed.repo),
+          }
+        : emptySlots(),
       area: coerceArea(parsed.area),
     };
   } catch {
@@ -189,7 +202,7 @@ export default function PortfolioAnalisar() {
     try {
       window.sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ ...slots, area }),
+        JSON.stringify({ ...slots, area, version: STORAGE_SHAPE_VERSION }),
       );
     } catch {
       // storage cheio ou indisponivel: ignora, segue so em memoria.
