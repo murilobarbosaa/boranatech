@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   Lock,
   Paintbrush,
+  Rocket,
   Search,
   SearchX,
   Settings,
@@ -39,8 +40,11 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
+import CircularText from "@/components/reactbits/CircularText";
 import CountUp from "@/components/reactbits/CountUp";
+import CurvedLoop from "@/components/reactbits/CurvedLoop";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
+import SplitText from "@/components/reactbits/SplitText";
 import {
   areasComplementares,
   areasPoucoConhecidas,
@@ -232,13 +236,29 @@ const areasDoodles = [
   { Icon: Bug, cls: "right-[44%] top-[93%] text-rose-400 opacity-[0.13]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
 ];
 
-function AreasDoodles({ reduce }: { reduce: boolean }) {
+const headerDoodles = [
+  { Icon: Compass, cls: "left-[2%] top-[18%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: -8, delay: 0 },
+  { Icon: Sparkles, cls: "left-[24%] top-[8%] text-amber-500 opacity-[0.15]", size: "h-9 w-9", dur: 6, rot: 10, delay: 0.6 },
+  { Icon: Rocket, cls: "right-[28%] top-[12%] text-blue-500 opacity-[0.15]", size: "h-11 w-11", dur: 7.5, rot: 7, delay: 1.1 },
+  { Icon: Code2, cls: "left-[10%] top-[68%] text-fuchsia-500 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -6, delay: 0.3 },
+  { Icon: Database, cls: "right-[6%] top-[64%] text-teal-500 opacity-[0.14]", size: "h-10 w-10", dur: 6, rot: 6, delay: 1.4 },
+  { Icon: Cpu, cls: "right-[16%] top-[74%] text-emerald-500 opacity-[0.13]", size: "h-9 w-9", dur: 7, rot: -9, delay: 0.9 },
+  { Icon: Braces, cls: "left-[40%] top-[80%] text-rose-400 opacity-[0.13]", size: "h-8 w-8", dur: 5.5, rot: 9, delay: 1.7 },
+];
+
+function Doodles({
+  reduce,
+  items,
+}: {
+  reduce: boolean;
+  items: typeof areasDoodles;
+}) {
   return (
     <div
       className="pointer-events-none absolute inset-0 overflow-hidden"
       aria-hidden
     >
-      {areasDoodles.map((d, i) => {
+      {items.map((d, i) => {
         const Icon = d.Icon;
         return (
           <motion.span
@@ -332,9 +352,37 @@ export default function Areas() {
         accent="violet"
         pattern="dots"
         eyebrow="mapa de possibilidades"
-        title="Áreas da TI"
+        backgroundSlot={<Doodles reduce={reduce} items={headerDoodles} />}
+        title={
+          <SplitText
+            text="Áreas da TI"
+            className="font-display text-4xl font-bold leading-tight text-slate-950"
+          />
+        }
         subtitle="Cada área é um caminho dentro da TI, com funções e habilidades próprias. Descubra qual combina com você."
+        actions={
+          <div className="relative mx-auto flex h-28 w-28 items-center justify-center text-violet-700">
+            <CircularText
+              text="BORA NA TECH • SUA BÚSSOLA NA TI • "
+              className="absolute inset-0"
+              duration={24}
+              radius={46}
+            />
+            <Compass className="h-9 w-9" aria-hidden />
+          </div>
+        }
       />
+
+      <section
+        aria-hidden
+        className="relative overflow-hidden border-y-2 border-slate-900 bg-violet-600"
+      >
+        <CurvedLoop
+          items={areasTI.map((a) => a.nome)}
+          className="fill-violet-100 font-display text-[30px] font-black uppercase"
+          speed={0.5}
+        />
+      </section>
 
       {/* Filters */}
       <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
@@ -376,7 +424,7 @@ export default function Areas() {
       </section>
 
       <section className="relative overflow-hidden bg-violet-50 py-12">
-        <AreasDoodles reduce={reduce} />
+        <Doodles reduce={reduce} items={areasDoodles} />
         <div className="container relative z-10">
           {!isLoading ? (
             <div className="mb-6">
@@ -388,7 +436,7 @@ export default function Areas() {
                   ) : (
                     <CountUp to={areas?.length ?? 0} duration={1.2} />
                   )}{" "}
-                  caminhos pra você explorar
+                  <SplitText text="caminhos pra você explorar" delay={35} />
                 </span>
               </p>
               <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-600">
