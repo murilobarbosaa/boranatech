@@ -148,6 +148,20 @@ function buildProfilePrompt(
         "",
       ]
     : [];
+
+  // Sinais lidos dos arquivos dos top repos proprios. Sao fatos, como as
+  // checagens: a IA usa pra deixar a prosa concreta, mas nao inventa nada alem.
+  const ds = data.deepSignals;
+  const deepBlock =
+    ds && ds.reposAnalisados > 0
+      ? [
+          "",
+          "Leitura dos arquivos dos repositorios proprios em destaque (sao fatos, use so o que esta aqui, nao extrapole):",
+          `- Repos proprios analisados: ${ds.reposAnalisados}`,
+          `- Com README: ${ds.comReadme} | Com CI: ${ds.comCI} | Com testes: ${ds.comTestes} | No ar (deploy): ${ds.comDeploy}`,
+          `- Topics usados nesses repos: ${ds.topics.length > 0 ? ds.topics.join(", ") : "nenhum"}`,
+        ]
+      : [];
   return [
     "Modo: perfil",
     ...areaLines,
@@ -167,6 +181,7 @@ function buildProfilePrompt(
     "",
     "Repositorios em destaque (ate 8):",
     topReposBlock,
+    ...deepBlock,
     "",
     "README de perfil (texto cru, pode estar truncado):",
     data.profileReadme ? truncate(data.profileReadme, README_LIMIT) : "(sem README de perfil)",

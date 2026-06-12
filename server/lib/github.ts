@@ -1,5 +1,9 @@
 import { env } from "./env";
-import type { GithubProfileData, GithubRepoData } from "../../shared/github/schema";
+import type {
+  GithubDeepSignals,
+  GithubProfileData,
+  GithubRepoData,
+} from "../../shared/github/schema";
 
 /**
  * Camada de busca do analisador de GitHub.
@@ -213,6 +217,7 @@ function decodeBase64(content: string): string {
 interface GithubApiRepo {
   description: string | null;
   topics?: string[];
+  homepage?: string | null;
   default_branch: string;
   language: string | null;
   stargazers_count: number;
@@ -351,6 +356,109 @@ export async function fetchRepoData(owner: string, repo: string): Promise<Github
   };
 }
 
+// Leitura funda dos top repos proprios (perfil)
+
+// Quantos repos proprios (nao-fork) inspecionar a fundo por analise de perfil.
+const PROFILE_DEEP_REPOS = 6;
+
+// Pastas que indicam testes na raiz.
+const TEST_DIR_NAMES = new Set(["test", "tests", "__tests__"]);
+// Arquivos na raiz que indicam deploy estatico.
+const DEPLOY_FILE_NAMES = new Set(["vercel.json", "netlify.toml", "gh-pages"]);
+
+interface ProfileRepoSignals {
+  hasReadme: boolean;
+  hasCI: boolean;
+  hasTests: boolean;
+  hasDeploy: boolean;
+  topics: string[];
+}
+
+function detectReadme(entries: GithubApiContentEntry[]): boolean {
+  return entries.some((e) => e.type === "file" && e.name.toLowerCase().startsWith("readme"));
+}
+
+function detectTests(entries: GithubApiContentEntry[]): boolean {
+  return entries.some((e) => {
+    const lower = e.name.toLowerCase();
+    if (e.type === "dir") return TEST_DIR_NAMES.has(lower);
+    return lower.startsWith("vitest.config") || lower.startsWith("jest.config");
+  });
+}
+
+function detectDeployFiles(entries: GithubApiContentEntry[]): boolean {
+  return entries.some((e) => DEPLOY_FILE_NAMES.has(e.name.toLowerCase()));
+}
+
+/**
+ * Le os sinais-chave de um repo proprio, reusando os mesmos endpoints do
+ * fetchRepoData (meta, /contents e .github/workflows pra CI). README e detectado
+ * pelo nome na raiz pra evitar uma chamada extra por repo.
+ */
+async function fetchProfileRepoSignals(owner: string, repo: string): Promise<ProfileRepoSignals> {
+  const [meta, contents] = await Promise.all([
+    apiGet<GithubApiRepo>(`/repos/${owner}/${repo}`),
+    apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents`),
+  ]);
+
+  const entries = Array.isArray(contents) ? contents : [];
+  const rootDirs = new Set(entries.filter((e) => e.type === "dir").map((e) => e.name.toLowerCase()));
+
+  // CI: mesma logica do fetchRepoData (workflows com pelo menos um arquivo).
+  let hasCI = false;
+  if (rootDirs.has(".github")) {
+    const workflows = await apiGet<GithubApiContentEntry[]>(
+      `/repos/${owner}/${repo}/contents/.github/workflows`,
+    );
+    hasCI = Array.isArray(workflows) && workflows.some((e) => e.type === "file");
+  }
+
+  const homepage = meta?.homepage ?? null;
+  const hasDeploy =
+    (typeof homepage === "string" && homepage.trim() !== "") || detectDeployFiles(entries);
+
+  return {
+    hasReadme: detectReadme(entries),
+    hasCI,
+    hasTests: detectTests(entries),
+    hasDeploy,
+    topics: meta && Array.isArray(meta.topics) ? meta.topics : [],
+  };
+}
+
+/**
+ * Agrega os sinais dos top repos proprios. Faz as leituras em paralelo e
+ * tolera falha por repo (allSettled): um repo que falha sai da conta, nao
+ * derruba a analise. Devolve undefined quando nao ha repo proprio.
+ */
+async function aggregateDeepSignals(
+  login: string,
+  ownRepos: GithubApiUserRepo[],
+): Promise<GithubDeepSignals | undefined> {
+  if (ownRepos.length === 0) return undefined;
+
+  const settled = await Promise.allSettled(
+    ownRepos.map((repo) => fetchProfileRepoSignals(login, repo.name)),
+  );
+  const ok = settled
+    .filter((r): r is PromiseFulfilledResult<ProfileRepoSignals> => r.status === "fulfilled")
+    .map((r) => r.value);
+
+  const topics = new Set<string>();
+  for (const signals of ok) {
+    for (const topic of signals.topics) topics.add(topic);
+  }
+
+  return {
+    reposAnalisados: ok.length,
+    comReadme: ok.filter((s) => s.hasReadme).length,
+    comCI: ok.filter((s) => s.hasCI).length,
+    comTestes: ok.filter((s) => s.hasTests).length,
+    comDeploy: ok.filter((s) => s.hasDeploy).length,
+    topics: Array.from(topics),
+  };
+}
+
 // Busca de perfil
 
 export async function fetchProfileData(login: string): Promise<GithubProfileData> {
@@ -373,6 +481,10 @@ export async function fetchProfileData(login: string): Promise<GithubProfileData
 
   const repoList = Array.isArray(repos) ? repos : [];
 
+  // Leitura funda: top repos proprios (lista ja ordenada por push), sem forks.
+  const topOwnRepos = repoList.filter((repo) => !repo.fork).slice(0, PROFILE_DEEP_REPOS);
+  const deepSignals = await aggregateDeepSignals(login, topOwnRepos);
+
   return {
     login: user.login,
     htmlUrl: user.html_url,
@@ -394,5 +506,6 @@ export async function fetchProfileData(login: string): Promise<GithubProfileData
       pushedAt: repo.pushed_at,
       fork: repo.fork,
     })),
+    deepSignals,
   };
 }

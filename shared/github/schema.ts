@@ -89,6 +89,20 @@ export interface GithubProfileRepo {
   fork: boolean;
 }
 
+/**
+ * Sinais agregados da leitura funda dos top repos proprios (perfil).
+ * Contagens sobre os repos analisados; topics e a uniao deduplicada.
+ * Campo aditivo: alimenta so a prosa da IA, nao entra na nota deterministica.
+ */
+export interface GithubDeepSignals {
+  reposAnalisados: number;
+  comReadme: number;
+  comCI: number;
+  comTestes: number;
+  comDeploy: number;
+  topics: string[];
+}
+
 export interface GithubProfileData {
   login: string;
   htmlUrl: string;
@@ -103,6 +117,7 @@ export interface GithubProfileData {
   followers: number;
   profileReadme: string | null;
   repos: GithubProfileRepo[];
+  deepSignals?: GithubDeepSignals;
 }
 
 // Catálogo de checks. Fonte única de rótulos para servidor e front.
