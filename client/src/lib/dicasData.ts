@@ -10,6 +10,11 @@ export interface Dica {
   texto: string;
 }
 
+export interface Curiosidade {
+  categoria: string;
+  texto: string;
+}
+
 export interface Filme {
   titulo: string;
   ano: string;
@@ -43,12 +48,6 @@ export const carreiraArtigos: DicaArtigo[] = [
       "DevMedia: Como criar um currículo de programador mesmo sem experiência",
     url: "https://www.devmedia.com.br/como-criar-um-curriculo-de-programador-mesmo-sem-experiencia/44190",
     desc: "Currículo sem experiência prévia.",
-  },
-  {
-    title:
-      "Coodesh: Entrevista técnica para desenvolvedores, veja como se sair bem",
-    url: "https://coodesh.com/blog/candidates/dicas/entrevista-tecnica-para-desenvolvedores/",
-    desc: "Como se preparar e se sair bem no técnico.",
   },
   {
     title:
@@ -176,26 +175,6 @@ export const dicas: Dica[] = [
     categoria: "Primeiro emprego",
     texto:
       "No LinkedIn, escreva o que você faz e o que busca, não só “estudante”. É assim que recrutador te acha.",
-  },
-  {
-    categoria: "Primeiro emprego",
-    texto:
-      "Pratique falar dos seus projetos em voz alta. Entrevista técnica também é comunicação.",
-  },
-  {
-    categoria: "Primeiro emprego",
-    texto:
-      "Pensar alto na entrevista vale mais que acertar de primeira. Mostra como você raciocina.",
-  },
-  {
-    categoria: "Primeiro emprego",
-    texto:
-      "Não sabe a resposta? Diga como investigaria. “Não sei, mas procuraria por X” é uma resposta forte.",
-  },
-  {
-    categoria: "Primeiro emprego",
-    texto:
-      "Pergunte sobre o dia a dia do time na entrevista. Você também está avaliando a empresa.",
   },
   {
     categoria: "Primeiro emprego",
@@ -752,5 +731,230 @@ export const bibliotecaReferencia: DicaArtigo[] = [
     title: "MDN Web Docs (PT)",
     url: "https://developer.mozilla.org/pt-BR/",
     desc: "Documentação de HTML, CSS, JavaScript e Web APIs.",
+  },
+];
+
+export const curiosidadesCategorias = [
+  "Jogos",
+  "História e pessoas",
+  "Linguagens",
+  "Internet e web",
+  "Hardware e cultura",
+] as const;
+
+export const curiosidades: Curiosidade[] = [
+  {
+    categoria: "Jogos",
+    texto:
+      "Minecraft (versão Java) foi feito em Java pelo sueco Markus “Notch” Persson.",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "RollerCoaster Tycoon foi escrito quase todo em Assembly x86 por uma única pessoa, Chris Sawyer (só cerca de 1% em C).",
+  },
+  {
+    categoria: "Jogos",
+    texto: "Doom (1993) foi escrito em C; o Doom 3 já usou C++.",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "A maioria dos jogos AAA é feita em C++, com motores como a Unreal Engine.",
+  },
+  {
+    categoria: "Jogos",
+    texto: "Cuphead foi desenvolvido em C# usando a Unity.",
+  },
+  {
+    categoria: "Jogos",
+    texto: "EVE Online roda em Python (a variante Stackless Python).",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "Pac-Man trava num “kill screen” na fase 256 por um estouro de 8 bits.",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "O Mario apareceu primeiro como “Jumpman” no jogo Donkey Kong, em 1981.",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "Tetris foi criado por Alexey Pajitnov, na União Soviética, em 1984.",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "Pong (1972), da Atari, foi um dos primeiros jogos de sucesso comercial.",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "O primeiro easter egg famoso de videogame está no Adventure do Atari 2600, com o nome escondido do programador.",
+  },
+  {
+    categoria: "Jogos",
+    texto:
+      "O “Konami Code” é um cheat clássico que aparece em vários jogos.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "Ada Lovelace é considerada a primeira pessoa programadora, em 1843, antes de existir computador moderno.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "O termo “bug” ficou famoso com uma mariposa presa num computador em 1947 (equipe de Grace Hopper); a palavra já existia antes, o episódio popularizou.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "Grace Hopper ajudou a criar o COBOL e a ideia de linguagem legível por humanos.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "Margaret Hamilton liderou o software de voo da Apollo 11 e ajudou a popularizar o termo “engenharia de software”.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "Katherine Johnson fez cálculos de trajetória pra NASA (a história de Estrelas Além do Tempo).",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "Hedy Lamarr, atriz, coinventou uma técnica de salto de frequência que influenciou tecnologias sem fio.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto: "O ENIAC (1945) era enorme e pesava dezenas de toneladas.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "O primeiro disco rígido comercial da IBM (1956) guardava poucos megabytes e era gigante.",
+  },
+  {
+    categoria: "História e pessoas",
+    texto:
+      "Alan Turing propôs a “máquina de Turing” em 1936, base da computação teórica.",
+  },
+  {
+    categoria: "Linguagens",
+    texto:
+      "Python tem esse nome por causa do grupo de humor Monty Python, não da cobra.",
+  },
+  {
+    categoria: "Linguagens",
+    texto: "Java quase se chamou “Oak”.",
+  },
+  {
+    categoria: "Linguagens",
+    texto:
+      "JavaScript foi criado em cerca de 10 dias por Brendan Eich, em 1995.",
+  },
+  {
+    categoria: "Linguagens",
+    texto:
+      "JavaScript não tem relação técnica com Java; o nome foi marketing da época.",
+  },
+  {
+    categoria: "Linguagens",
+    texto:
+      "A linguagem C foi criada por Dennis Ritchie nos anos 70 e é base de muita coisa até hoje.",
+  },
+  {
+    categoria: "Linguagens",
+    texto:
+      "Ruby foi criada por Yukihiro Matsumoto (Matz), pensando na felicidade de quem programa.",
+  },
+  {
+    categoria: "Linguagens",
+    texto: "COBOL, dos anos 50 e 60, ainda roda em muitos sistemas de banco.",
+  },
+  {
+    categoria: "Linguagens",
+    texto:
+      "O clássico “Hello, World!” virou tradição por causa do livro de C de Kernighan e Ritchie.",
+  },
+  {
+    categoria: "Linguagens",
+    texto:
+      "A “guerra de editores” entre fãs de Vim e Emacs é uma piada antiga entre devs.",
+  },
+  {
+    categoria: "Internet e web",
+    texto: "O primeiro site da web ainda está no ar: info.cern.ch.",
+  },
+  {
+    categoria: "Internet e web",
+    texto:
+      "A web foi inventada por Tim Berners-Lee no CERN, por volta de 1989 a 1991.",
+  },
+  {
+    categoria: "Internet e web",
+    texto:
+      "O símbolo @ nos emails foi escolha de Ray Tomlinson, nos anos 70.",
+  },
+  {
+    categoria: "Internet e web",
+    texto: "O primeiro nome de domínio registrado foi symbolics.com, em 1985.",
+  },
+  {
+    categoria: "Internet e web",
+    texto:
+      "O Git foi criado por Linus Torvalds em 2005 pra versionar o kernel do Linux.",
+  },
+  {
+    categoria: "Internet e web",
+    texto:
+      "O Linux começou em 1991 como projeto de estudante do Linus Torvalds.",
+  },
+  {
+    categoria: "Internet e web",
+    texto: "O primeiro vídeo do YouTube, “Me at the zoo”, é de 2005.",
+  },
+  {
+    categoria: "Internet e web",
+    texto: "O primeiro tweet foi de Jack Dorsey, em 2006.",
+  },
+  {
+    categoria: "Internet e web",
+    texto:
+      "A palavra “spam” pra mensagem indesejada vem de um quadro do Monty Python.",
+  },
+  {
+    categoria: "Hardware e cultura",
+    texto:
+      "A Lei de Moore, de Gordon Moore, descreve que o número de transistores num chip dobra a cada cerca de dois anos.",
+  },
+  {
+    categoria: "Hardware e cultura",
+    texto:
+      "O mouse foi demonstrado por Douglas Engelbart em 1968, na “Mãe de Todas as Demos”.",
+  },
+  {
+    categoria: "Hardware e cultura",
+    texto:
+      "O primeiro conjunto de emoji moderno foi criado por Shigetaka Kurita no Japão, em 1999.",
+  },
+  {
+    categoria: "Hardware e cultura",
+    texto:
+      "“Foo” e “bar” são nomes genéricos clássicos em exemplos de código.",
+  },
+  {
+    categoria: "Hardware e cultura",
+    texto: "O Stack Overflow, onde devs tiram dúvidas, nasceu em 2008.",
+  },
+  {
+    categoria: "Hardware e cultura",
+    texto:
+      "O ícone de “salvar” é um disquete, objeto que muita gente nova nunca usou.",
   },
 ];

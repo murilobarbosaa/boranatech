@@ -10,6 +10,7 @@ import {
   BookOpen,
   Braces,
   Bug,
+  ChevronDown,
   Clapperboard,
   Cloud,
   Coffee,
@@ -48,8 +49,11 @@ import {
   bibliotecaSeries,
   bibliotecaVideos,
   carreiraArtigos,
+  curiosidades,
+  curiosidadesCategorias,
   dicas,
   dicasCategorias,
+  type Curiosidade,
   type Dica,
   type DicaArtigo,
   type Filme,
@@ -81,9 +85,9 @@ const areaFiltros = [
 ];
 
 export default function Dicas() {
-  const [tab, setTab] = useState<"aprender" | "livros" | "notebooks">(
-    "aprender",
-  );
+  const [tab, setTab] = useState<
+    "aprender" | "curiosidades" | "livros" | "notebooks"
+  >("aprender");
   const [areaFiltro, setAreaFiltro] = useState("todas");
 
   const mostrarFundamentos =
@@ -114,15 +118,16 @@ export default function Dicas() {
         <div className="container relative">
           <p className="mb-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
             <Lightbulb className="h-3.5 w-3.5" />
-            dicas e livros
+            dicas, recursos e curiosidades
           </p>
           <h1 className="font-display text-4xl font-black text-slate-950">
-            Dicas para sair do “não sei por onde começar”.
+            Dicas, recursos e curiosidades pra sua jornada em tech
           </h1>
           <p className="mt-3 max-w-2xl text-slate-950">
-            Conselhos práticos por tema para estágio, currículo, entrevistas,
-            portfólio e mais, com um catálogo de livros por área e um guia de
-            notebook.
+            Conselhos práticos, filmes e documentários, séries, canais no
+            YouTube, podcasts, livros (vários gratuitos), referências rápidas,
+            notebooks pra praticar e curiosidades do mundo da programação. Tudo
+            selecionado a dedo e de graça.
           </p>
           <div className="mt-6 grid max-w-3xl gap-3 sm:grid-cols-3">
             {[
@@ -151,6 +156,7 @@ export default function Dicas() {
           {(
             [
               { key: "aprender", label: "Aprender e se inspirar" },
+              { key: "curiosidades", label: "Curiosidades" },
               { key: "livros", label: "Livros por área" },
               { key: "notebooks", label: "Notebooks" },
             ] as const
@@ -171,6 +177,8 @@ export default function Dicas() {
       </section>
 
       {tab === "aprender" && <AprenderSection />}
+
+      {tab === "curiosidades" && <CuriosidadesSection />}
 
       {tab === "livros" && (
         <section className="bg-[#faf8f4] py-12">
@@ -648,15 +656,18 @@ function DicasDestaque() {
         </div>
 
         <div role="status" aria-live="polite">
-          <AnimatePresence mode="wait">
-            {gold ? (
+          {gold ? (
               <motion.div
                 key={gold.nonce}
                 ref={goldRef}
                 tabIndex={-1}
                 initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+                exit={
+                  reduce
+                    ? { opacity: 0, transition: { duration: 0.15 } }
+                    : { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
+                }
                 transition={
                   reduce
                     ? { duration: 0.2 }
@@ -681,7 +692,6 @@ function DicasDestaque() {
                 </p>
               </motion.div>
             ) : null}
-          </AnimatePresence>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -733,6 +743,309 @@ function DicasDestaque() {
         </motion.ul>
       </div>
     </section>
+  );
+}
+
+function embaralhar<T>(arr: readonly T[]): T[] {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = a[i];
+    a[i] = a[j];
+    a[j] = tmp;
+  }
+  return a;
+}
+
+const curiosidadeCores: Record<
+  string,
+  { bg: string; chip: string; shadow: string; shadowSm: string }
+> = {
+  Jogos: {
+    bg: "bg-violet-100",
+    chip: "bg-violet-300",
+    shadow: "shadow-[8px_8px_0_#7c3aed]",
+    shadowSm: "shadow-[3px_3px_0_#7c3aed]",
+  },
+  "História e pessoas": {
+    bg: "bg-amber-100",
+    chip: "bg-amber-300",
+    shadow: "shadow-[8px_8px_0_#FFB800]",
+    shadowSm: "shadow-[3px_3px_0_#FFB800]",
+  },
+  Linguagens: {
+    bg: "bg-emerald-100",
+    chip: "bg-emerald-300",
+    shadow: "shadow-[8px_8px_0_#10b981]",
+    shadowSm: "shadow-[3px_3px_0_#10b981]",
+  },
+  "Internet e web": {
+    bg: "bg-sky-100",
+    chip: "bg-sky-300",
+    shadow: "shadow-[8px_8px_0_#0284c7]",
+    shadowSm: "shadow-[3px_3px_0_#0284c7]",
+  },
+  "Hardware e cultura": {
+    bg: "bg-rose-100",
+    chip: "bg-rose-300",
+    shadow: "shadow-[8px_8px_0_#f43f5e]",
+    shadowSm: "shadow-[3px_3px_0_#f43f5e]",
+  },
+};
+
+function curiosidadeCor(categoria: string) {
+  return curiosidadeCores[categoria] ?? curiosidadeCores.Jogos;
+}
+
+function CuriosidadesSection() {
+  const reduce = useReducedMotion() ?? false;
+  const [atual, setAtual] = useState<{ c: Curiosidade; nonce: number } | null>(
+    null,
+  );
+  const [verTodas, setVerTodas] = useState(false);
+  const deckRef = useRef<Curiosidade[]>([]);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const proxima = () => {
+    if (deckRef.current.length === 0) deckRef.current = embaralhar(curiosidades);
+    const c = deckRef.current.shift();
+    if (!c) return;
+    setAtual((cur) => ({ c, nonce: (cur?.nonce ?? 0) + 1 }));
+  };
+
+  useEffect(() => {
+    if (atual && cardRef.current) cardRef.current.focus();
+  }, [atual]);
+
+  return (
+    <section className="relative overflow-hidden border-b-2 border-slate-900 bg-[#f6f6fb] py-12">
+      <DicasDoodles reduce={reduce} />
+      <div className="container relative z-10 space-y-8">
+        <div className="max-w-2xl">
+          <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+            curiosidades de tech
+          </p>
+          <h2 className="font-display text-3xl font-black text-slate-950">
+            Curiosidades do mundo da programação
+          </h2>
+          <p className="mt-2 text-sm font-semibold text-slate-700">
+            Fatos sobre jogos, linguagens, internet e a história da computação.
+            Uma de cada vez, pra você descobrir aos poucos.
+          </p>
+        </div>
+
+        <div className="flex flex-col items-center gap-5">
+          <div role="status" aria-live="polite" className="w-full max-w-2xl">
+            {atual ? (
+                <motion.div
+                  key={atual.nonce}
+                  ref={cardRef}
+                  tabIndex={-1}
+                  initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={
+                  reduce
+                    ? { opacity: 0, transition: { duration: 0.15 } }
+                    : { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
+                }
+                  transition={
+                    reduce
+                      ? { duration: 0.2 }
+                      : { type: "spring", stiffness: 460, damping: 16 }
+                  }
+                  className={`rounded-[1.2rem] border-2 border-slate-900 p-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 ${curiosidadeCor(atual.c.categoria).bg} ${curiosidadeCor(atual.c.categoria).shadow}`}
+                >
+                  <span
+                    className={`mb-3 inline-flex w-fit rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-950 ${curiosidadeCor(atual.c.categoria).chip}`}
+                  >
+                    {atual.c.categoria}
+                  </span>
+                  <p className="font-display text-lg font-black leading-snug text-slate-950 sm:text-xl">
+                    {atual.c.texto}
+                  </p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="vazio"
+                  initial={reduce ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="rounded-[1.2rem] border-2 border-dashed border-slate-400 bg-white/70 p-8 text-center text-sm font-bold text-slate-500"
+                >
+                  Clique no botão e descubra uma curiosidade aleatória.
+                </motion.div>
+              )}
+          </div>
+          <button
+            type="button"
+            onClick={proxima}
+            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 text-sm font-black uppercase text-slate-950 shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            {atual ? "Outra curiosidade" : "Me dê uma curiosidade"}
+          </button>
+        </div>
+
+        <div className="border-t-2 border-dashed border-slate-300 pt-6">
+          <button
+            type="button"
+            onClick={() => setVerTodas((v) => !v)}
+            aria-expanded={verTodas}
+            className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wide text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+          >
+            {verTodas
+              ? "Esconder a lista"
+              : `Ver todas as ${curiosidades.length} curiosidades`}
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${verTodas ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          <AnimatePresence initial={false}>
+            {verTodas ? (
+              <motion.ul
+                initial={reduce ? false : { opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                transition={{ duration: reduce ? 0 : 0.3 }}
+                className="mt-4 grid gap-3 overflow-hidden sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {curiosidades.map((c, i) => {
+                  const cor = curiosidadeCor(c.categoria);
+                  return (
+                    <li
+                      key={i}
+                      className={`rounded-2xl border-2 border-slate-900 bg-white p-3 ${cor.shadowSm}`}
+                    >
+                      <span
+                        className={`inline-flex w-fit rounded-full border border-slate-900 px-2 py-0.5 text-[0.6rem] font-black uppercase text-slate-950 ${cor.chip}`}
+                      >
+                        {c.categoria}
+                      </span>
+                      <p className="mt-1.5 text-xs font-semibold leading-relaxed text-slate-700">
+                        {c.texto}
+                      </p>
+                    </li>
+                  );
+                })}
+              </motion.ul>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TelasTab({
+  itens,
+  kind,
+  query,
+  highlightKey,
+  expandedKey,
+  onToggle,
+  reduce,
+}: {
+  itens: Filme[];
+  kind: ScreenKind;
+  query: string;
+  highlightKey: string | null;
+  expandedKey: string | null;
+  onToggle: (key: string) => void;
+  reduce: boolean;
+}) {
+  const [pick, setPick] = useState<{ f: Filme; nonce: number } | null>(null);
+  const deckRef = useRef<Filme[]>([]);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const proxima = () => {
+    if (deckRef.current.length === 0) deckRef.current = embaralhar(itens);
+    const f = deckRef.current.shift();
+    if (!f) return;
+    setPick((cur) => ({ f, nonce: (cur?.nonce ?? 0) + 1 }));
+  };
+
+  useEffect(() => {
+    if (pick && cardRef.current) cardRef.current.focus();
+  }, [pick]);
+
+  const chamada = kind === "serie" ? "Me indica uma série" : "Me indica um filme";
+  const rechamada = kind === "serie" ? "Outra série" : "Outro filme";
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col items-center gap-4 rounded-[1.2rem] border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#0f172a]">
+        <div role="status" aria-live="polite" className="w-full">
+          {pick ? (
+              <motion.div
+                key={pick.nonce}
+                ref={cardRef}
+                tabIndex={-1}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={
+                  reduce
+                    ? { opacity: 0, transition: { duration: 0.15 } }
+                    : { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }
+                }
+                transition={
+                  reduce
+                    ? { duration: 0.2 }
+                    : { type: "spring", stiffness: 460, damping: 16 }
+                }
+                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+              >
+                <span
+                  className={`mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide text-slate-950 ${screenCategoria(pick.f, kind).bg}`}
+                >
+                  {screenCategoria(pick.f, kind).label}
+                </span>
+                <h3 className="font-display text-lg font-black leading-snug text-slate-950">
+                  {pick.f.titulo}{" "}
+                  <span className="text-slate-500">({pick.f.ano})</span>
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  {pick.f.porque}
+                </p>
+                <a
+                  href={justWatchUrl(pick.f.titulo)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Onde assistir ${pick.f.titulo}`}
+                  className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                >
+                  Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
+                </a>
+              </motion.div>
+            ) : (
+              <motion.p
+                key="vazio"
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-4 text-center text-sm font-bold text-slate-500"
+              >
+                Toque no botão e receba uma indicação pra assistir.
+              </motion.p>
+            )}
+        </div>
+        <button
+          type="button"
+          onClick={proxima}
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2"
+        >
+          <Shuffle className="h-4 w-4" aria-hidden />
+          {pick ? rechamada : chamada}
+        </button>
+      </div>
+      <FilmesGrid
+        itens={itens}
+        kind={kind}
+        query={query}
+        highlightKey={highlightKey}
+        expandedKey={expandedKey}
+        onToggle={onToggle}
+        reduce={reduce}
+      />
+    </div>
   );
 }
 
@@ -1009,7 +1322,7 @@ function AprenderSection() {
             ))}
           </TabsList>
           <TabsContent value="filmes">
-            <FilmesGrid
+            <TelasTab
               itens={bibliotecaFilmes}
               query={q}
               highlightKey={highlightKey}
@@ -1020,7 +1333,7 @@ function AprenderSection() {
             />
           </TabsContent>
           <TabsContent value="series">
-            <FilmesGrid
+            <TelasTab
               itens={bibliotecaSeries}
               query={q}
               highlightKey={highlightKey}
@@ -1237,37 +1550,39 @@ function FilmesGrid({
                     {filme.titulo}{" "}
                     <span className="text-slate-500">({filme.ano})</span>
                   </h3>
-                  <p
-                    className={`mt-1 flex-1 text-xs leading-relaxed text-slate-600 ${
-                      expanded ? "" : "line-clamp-2"
-                    }`}
+                  {expanded ? (
+                    <motion.div
+                      initial={reduce ? false : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="mt-2"
+                    >
+                      <p className="text-xs leading-relaxed text-slate-600">
+                        {filme.porque}
+                      </p>
+                      <a
+                        href={justWatchUrl(filme.titulo)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Onde assistir ${filme.titulo}`}
+                        className="mt-3 inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+                      >
+                        Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
+                      </a>
+                    </motion.div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => onToggle(filme.titulo)}
+                    aria-expanded={expanded}
+                    aria-label={
+                      expanded
+                        ? `Recolher ${filme.titulo}`
+                        : `Ver mais sobre ${filme.titulo}`
+                    }
+                    className="mt-3 inline-flex w-fit items-center gap-1 self-start rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-800 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
                   >
-                    {filme.porque}
-                  </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <a
-                      href={justWatchUrl(filme.titulo)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`Onde assistir ${filme.titulo}`}
-                      className="inline-flex w-fit items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-                    >
-                      Onde encontrar <ExternalLink className="h-3 w-3" aria-hidden />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => onToggle(filme.titulo)}
-                      aria-expanded={expanded}
-                      aria-label={
-                        expanded
-                          ? `Recolher ${filme.titulo}`
-                          : `Ver mais sobre ${filme.titulo}`
-                      }
-                      className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-800 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-                    >
-                      {expanded ? "Recolher" : "Detalhes"}
-                    </button>
-                  </div>
+                    {expanded ? "Menos" : "Detalhes"}
+                  </button>
                 </div>
               </motion.li>
             );
