@@ -1,0 +1,713 @@
+import { useEffect, useRef, useState } from "react";
+import { FileUp, Linkedin, Lightbulb, Shield, Sparkles } from "lucide-react";
+import Layout from "@/components/Layout";
+import ProGate from "@/components/pro/ProGate";
+import PageHero from "@/components/shared/PageHero";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  AiSummary,
+  Improvements,
+  StrengthsWeaknesses,
+} from "@/components/portfolio/QualitativePanels";
+import { HowItWorks, WhatYouGet } from "@/components/linkedin/LinkedinIntro";
+import LinkedinChecklist from "@/components/linkedin/LinkedinChecklist";
+import LinkedinHistory from "@/components/linkedin/LinkedinHistory";
+import LinkedinScoreCard from "@/components/linkedin/LinkedinScoreCard";
+import {
+  LinkedinError,
+  LinkedinSkeleton,
+} from "@/components/linkedin/LinkedinStates";
+import ReadyTexts from "@/components/linkedin/ReadyTexts";
+import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import {
+  analyzeLinkedin,
+  getLinkedinAnalysis,
+  listLinkedinAnalyses,
+} from "@/lib/linkedinClient";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
+import { cn } from "@/lib/utils";
+import {
+  AREA_LABELS,
+  AREA_SLUGS,
+  isAreaSlug,
+  type AreaSlug,
+} from "@shared/areas";
+import {
+  ATIVIDADE,
+  CONEXOES,
+  LINKEDIN_LEVELS,
+  LINKEDIN_LEVEL_LABELS,
+  MERCADOS,
+  MERCADO_LABELS,
+  type Atividade,
+  type Conexoes,
+  type LinkedinAnalysisResponse,
+  type LinkedinAnalysisSummary,
+  type LinkedinLevel,
+  type Mercado,
+  type OpenToWork,
+  type SimNao,
+} from "@shared/linkedin/schema";
+
+const ac = getPageAccentUi("sky");
+
+const STORAGE_KEY = "boranatech:linkedin-analyzer";
+const STORAGE_SHAPE_VERSION = 1;
+
+const LEVEL_LABEL = LINKEDIN_LEVEL_LABELS;
+
+const CONEXOES_LABEL: Record<Conexoes, string> = {
+  "ate-50": "Até 50",
+  "50-100": "50 a 100",
+  "100-500": "100 a 500",
+  "500-mais": "500 ou mais",
+};
+
+const ATIVIDADE_LABEL: Record<Atividade, string> = {
+  nunca: "Nunca",
+  raramente: "Raramente",
+  semanal: "Toda semana",
+  diaria: "Todo dia",
+};
+
+const SIM_NAO_LABEL: Record<SimNao, string> = {
+  sim: "Sim",
+  nao: "Não",
+};
+
+const OPEN_TO_WORK_LABEL: Record<OpenToWork, string> = {
+  sim: "Sim, configurado",
+  nao: "Não",
+  "nao-sei": "Não sei",
+};
+
+interface FormState {
+  profileText: string;
+  area: AreaSlug;
+  level: LinkedinLevel;
+  mercado: Mercado;
+  skills: string;
+  foto: SimNao;
+  banner: SimNao;
+  openToWork: OpenToWork;
+  conexoes: Conexoes;
+  atividade: Atividade;
+  objetivo: string;
+}
+
+function emptyForm(): FormState {
+  return {
+    profileText: "",
+    area: "frontend",
+    level: "junior",
+    mercado: "brasil",
+    skills: "",
+    foto: "nao",
+    banner: "nao",
+    openToWork: "nao-sei",
+    conexoes: "ate-50",
+    atividade: "raramente",
+    objetivo: "",
+  };
+}
+
+interface StoredState {
+  form: FormState;
+  result: LinkedinAnalysisResponse | null;
+}
+
+function coerceForm(value: unknown): FormState {
+  const base = emptyForm();
+  if (!value || typeof value !== "object") return base;
+  const v = value as Partial<FormState>;
+  return {
+    profileText: typeof v.profileText === "string" ? v.profileText : "",
+    area: isAreaSlug(v.area) ? v.area : base.area,
+    level: LINKEDIN_LEVELS.includes(v.level as LinkedinLevel)
+      ? (v.level as LinkedinLevel)
+      : base.level,
+    mercado: MERCADOS.includes(v.mercado as Mercado)
+      ? (v.mercado as Mercado)
+      : base.mercado,
+    skills: typeof v.skills === "string" ? v.skills : "",
+    foto: v.foto === "sim" ? "sim" : "nao",
+    banner: v.banner === "sim" ? "sim" : "nao",
+    openToWork:
+      v.openToWork === "sim" || v.openToWork === "nao"
+        ? v.openToWork
+        : "nao-sei",
+    conexoes: CONEXOES.includes(v.conexoes as Conexoes)
+      ? (v.conexoes as Conexoes)
+      : base.conexoes,
+    atividade: ATIVIDADE.includes(v.atividade as Atividade)
+      ? (v.atividade as Atividade)
+      : base.atividade,
+    objetivo: typeof v.objetivo === "string" ? v.objetivo : "",
+  };
+}
+
+function loadState(): StoredState {
+  if (typeof window === "undefined") return { form: emptyForm(), result: null };
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return { form: emptyForm(), result: null };
+    const parsed = JSON.parse(raw) as {
+      form?: unknown;
+      result?: unknown;
+      version?: unknown;
+    };
+    const form = coerceForm(parsed.form);
+    const result =
+      parsed.version === STORAGE_SHAPE_VERSION &&
+      parsed.result &&
+      typeof parsed.result === "object"
+        ? (parsed.result as LinkedinAnalysisResponse)
+        : null;
+    return { form, result };
+  } catch {
+    return { form: emptyForm(), result: null };
+  }
+}
+
+function Field({
+  label,
+  children,
+  hint,
+}: {
+  label: string;
+  children: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-black text-slate-800">
+        {label}
+      </span>
+      {children}
+      {hint ? (
+        <span className="mt-1 block text-xs text-slate-500">{hint}</span>
+      ) : null}
+    </label>
+  );
+}
+
+const selectClass =
+  "w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-sky-200";
+const inputClass =
+  "w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-sky-200";
+
+function ResultHeader({ response }: { response: LinkedinAnalysisResponse }) {
+  return (
+    <div className="card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white">
+      <div className="flex flex-col md:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col p-6">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-600 text-white shadow-[3px_3px_0_#0f172a]">
+              <Linkedin className="h-6 w-6" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                Análise do perfil
+              </p>
+              <p className="truncate font-display text-2xl font-black text-slate-950">
+                {AREA_LABELS[response.area]}
+              </p>
+            </div>
+          </div>
+          <div className="mt-auto flex flex-wrap gap-2 pt-6">
+            <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-700">
+              {LEVEL_LABEL[response.level]}
+            </span>
+            <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-700">
+              {MERCADO_LABELS[response.mercado]}
+            </span>
+          </div>
+        </div>
+        <div className="border-t-2 border-slate-950 md:w-56 md:border-l-2 md:border-t-0">
+          <LinkedinScoreCard
+            score={response.deterministic.score}
+            faixa={response.deterministic.faixa}
+            variant="panel"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkillsSuggested({ skills }: { skills: string[] }) {
+  if (skills.length === 0) return null;
+  return (
+    <div className="card-brutal rounded-2xl border-slate-950 bg-white p-5">
+      <h3 className="mb-2 flex items-center gap-2 font-display text-lg font-black text-slate-950">
+        <Lightbulb className="h-5 w-5 text-amber-500" />
+        Skills para adicionar
+      </h3>
+      <p className="mb-3 text-sm text-slate-600">
+        Sugestões a partir do que falta no seu perfil. Adicione só o que você
+        realmente sabe, mesmo que no básico.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {skills.map((skill) => (
+          <span
+            key={skill}
+            className="inline-flex rounded-full border-2 border-amber-400 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800"
+          >
+            {skill}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function LinkedinAnalisar() {
+  const { isPro } = useSubscription();
+  const { profile } = useAuth();
+
+  const [bootstrap] = useState(loadState);
+  const [form, setForm] = useState<FormState>(bootstrap.form);
+  const [result, setResult] = useState<LinkedinAnalysisResponse | null>(
+    bootstrap.result,
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [pdfStatus, setPdfStatus] = useState("");
+  const [pdfError, setPdfError] = useState("");
+  const [extracting, setExtracting] = useState(false);
+  const [analyses, setAnalyses] = useState<LinkedinAnalysisSummary[]>([]);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const areaTouched = useRef(false);
+
+  useEffect(() => {
+    if (areaTouched.current) return;
+    const fromProfile = profile?.area_interesse;
+    if (fromProfile && isAreaSlug(fromProfile)) {
+      setForm((prev) => ({ ...prev, area: fromProfile }));
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ form, result, version: STORAGE_SHAPE_VERSION }),
+      );
+    } catch {
+      // storage cheio ou indisponivel: segue so em memoria.
+    }
+  }, [form, result]);
+
+  useEffect(() => {
+    if (!isPro) return;
+    let active = true;
+    void listLinkedinAnalyses().then((data) => {
+      if (active) setAnalyses(data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isPro]);
+
+  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
+    if (key === "area") areaTouched.current = true;
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    setPdfError("");
+    setPdfStatus("");
+    setExtracting(true);
+    try {
+      const text = await extractLinkedinPdf(file);
+      setForm((prev) => ({ ...prev, profileText: text }));
+      setPdfStatus(
+        `PDF lido (${text.length.toLocaleString("pt-BR")} caracteres).`,
+      );
+    } catch (err) {
+      if (err instanceof PdfExtractError) {
+        setPdfError(err.message);
+      } else {
+        setPdfError(
+          "Não consegui ler o PDF. Cole o texto do perfil manualmente.",
+        );
+      }
+    } finally {
+      setExtracting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function runAnalysis() {
+    if (loading) return;
+    if (form.profileText.trim().length < 200) {
+      setError("INVALID_REQUEST");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const data = await analyzeLinkedin({
+        profileText: form.profileText.trim(),
+        area: form.area,
+        level: form.level,
+        mercado: form.mercado,
+        skills: form.skills,
+        foto: form.foto,
+        banner: form.banner,
+        openToWork: form.openToWork,
+        conexoes: form.conexoes,
+        atividade: form.atividade,
+        objetivo: form.objetivo.trim() || undefined,
+      });
+      setResult(data);
+      const fresh = await listLinkedinAnalyses();
+      setAnalyses(fresh);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "ANALYSIS_FAILED");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function openHistory(id: string) {
+    if (openingId) return;
+    setOpeningId(id);
+    try {
+      const record = await getLinkedinAnalysis(id);
+      if (record) {
+        setResult(record.result);
+        setError("");
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void runAnalysis();
+  }
+
+  const canSubmit = form.profileText.trim().length >= 200 && !loading;
+
+  return (
+    <Layout>
+      <PageHero
+        accent="sky"
+        eyebrow="revisão com IA"
+        title="Analisador de LinkedIn"
+        subtitle="Veja como recrutadores encontram (ou não encontram) seu perfil e receba os textos prontos para colar: headline, Sobre, experiências e mensagem."
+      />
+      <section className={cn(ac.contentBg, "py-12")}>
+        <div className="container">
+          {!isPro ? (
+            <ProGate description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno." />
+          ) : (
+            <div className="space-y-8">
+              <form
+                onSubmit={handleSubmit}
+                className="card-brutal space-y-6 rounded-2xl border-slate-950 bg-white p-6"
+              >
+                <div>
+                  <h2 className="font-display text-2xl font-black text-slate-950">
+                    Seu perfil
+                  </h2>
+                  <p className="mt-1 text-sm font-medium text-slate-600">
+                    Envie o PDF do seu perfil ou cole o texto. Depois preencha
+                    os campos abaixo.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={(event) =>
+                      void handleFile(event.target.files?.[0])
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={extracting}
+                    className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-sky-100 px-4 py-2 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-colors hover:bg-sky-200 disabled:opacity-60"
+                  >
+                    {extracting ? (
+                      <Spinner className="h-4 w-4" />
+                    ) : (
+                      <FileUp className="h-4 w-4" />
+                    )}
+                    {extracting ? "Lendo PDF..." : "Enviar PDF do LinkedIn"}
+                  </button>
+                  {pdfStatus ? (
+                    <span className="text-xs font-bold text-emerald-700">
+                      {pdfStatus}
+                    </span>
+                  ) : null}
+                  {pdfError ? (
+                    <span className="text-xs font-bold text-red-700">
+                      {pdfError}
+                    </span>
+                  ) : null}
+                </div>
+
+                <Field
+                  label="Ou cole o texto do seu perfil"
+                  hint="Headline, Sobre, experiências e formação. Mínimo de 200 caracteres."
+                >
+                  <textarea
+                    value={form.profileText}
+                    onChange={(event) =>
+                      update("profileText", event.target.value)
+                    }
+                    placeholder="Cole aqui o texto do seu perfil do LinkedIn (headline, Sobre, experiências...)."
+                    className={cn(inputClass, "min-h-36")}
+                  />
+                </Field>
+
+                <div className="flex items-start gap-2 rounded-xl border-2 border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-900">
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                  <span>
+                    Seu PDF é lido no seu navegador e não é enviado aos nossos
+                    servidores. Enviamos apenas o texto do perfil para a
+                    análise.
+                  </span>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field label="Área de interesse">
+                    <select
+                      value={form.area}
+                      onChange={(event) =>
+                        update("area", event.target.value as AreaSlug)
+                      }
+                      className={selectClass}
+                    >
+                      {AREA_SLUGS.map((slug) => (
+                        <option key={slug} value={slug}>
+                          {AREA_LABELS[slug]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Nível">
+                    <select
+                      value={form.level}
+                      onChange={(event) =>
+                        update("level", event.target.value as LinkedinLevel)
+                      }
+                      className={selectClass}
+                    >
+                      {LINKEDIN_LEVELS.map((level) => (
+                        <option key={level} value={level}>
+                          {LEVEL_LABEL[level]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Onde você quer trabalhar?">
+                    <select
+                      value={form.mercado}
+                      onChange={(event) =>
+                        update("mercado", event.target.value as Mercado)
+                      }
+                      className={selectClass}
+                    >
+                      {MERCADOS.map((mercado) => (
+                        <option key={mercado} value={mercado}>
+                          {MERCADO_LABELS[mercado]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+
+                <Field
+                  label="Cole suas competências (skills) do LinkedIn"
+                  hint="Separadas por vírgula. Copie da seção Competências do seu perfil."
+                >
+                  <textarea
+                    value={form.skills}
+                    onChange={(event) => update("skills", event.target.value)}
+                    placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
+                    className={cn(inputClass, "min-h-20")}
+                  />
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field label="Tem foto profissional?">
+                    <select
+                      value={form.foto}
+                      onChange={(event) =>
+                        update("foto", event.target.value as SimNao)
+                      }
+                      className={selectClass}
+                    >
+                      {(["sim", "nao"] as SimNao[]).map((value) => (
+                        <option key={value} value={value}>
+                          {SIM_NAO_LABEL[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Tem banner personalizado?">
+                    <select
+                      value={form.banner}
+                      onChange={(event) =>
+                        update("banner", event.target.value as SimNao)
+                      }
+                      className={selectClass}
+                    >
+                      {(["sim", "nao"] as SimNao[]).map((value) => (
+                        <option key={value} value={value}>
+                          {SIM_NAO_LABEL[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Open to Work para recrutadores?">
+                    <select
+                      value={form.openToWork}
+                      onChange={(event) =>
+                        update("openToWork", event.target.value as OpenToWork)
+                      }
+                      className={selectClass}
+                    >
+                      {(["sim", "nao", "nao-sei"] as OpenToWork[]).map(
+                        (value) => (
+                          <option key={value} value={value}>
+                            {OPEN_TO_WORK_LABEL[value]}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </Field>
+
+                  <Field label="Quantas conexões?">
+                    <select
+                      value={form.conexoes}
+                      onChange={(event) =>
+                        update("conexoes", event.target.value as Conexoes)
+                      }
+                      className={selectClass}
+                    >
+                      {CONEXOES.map((value) => (
+                        <option key={value} value={value}>
+                          {CONEXOES_LABEL[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Com que frequência posta ou comenta?">
+                    <select
+                      value={form.atividade}
+                      onChange={(event) =>
+                        update("atividade", event.target.value as Atividade)
+                      }
+                      className={selectClass}
+                    >
+                      {ATIVIDADE.map((value) => (
+                        <option key={value} value={value}>
+                          {ATIVIDADE_LABEL[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label="Objetivo (opcional)">
+                    <input
+                      value={form.objetivo}
+                      onChange={(event) =>
+                        update("objetivo", event.target.value)
+                      }
+                      placeholder="Ex: estágio remoto em front-end"
+                      maxLength={300}
+                      className={inputClass}
+                    />
+                  </Field>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {loading ? (
+                    <Spinner className="h-4 w-4" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {loading ? "Analisando..." : "Analisar meu LinkedIn"}
+                </button>
+              </form>
+
+              {loading ? <LinkedinSkeleton /> : null}
+
+              {!loading && error ? (
+                <LinkedinError
+                  error={error}
+                  onRetry={
+                    form.profileText.trim().length >= 200
+                      ? () => void runAnalysis()
+                      : undefined
+                  }
+                />
+              ) : null}
+
+              {!loading && !result && !error ? (
+                <div className="space-y-8">
+                  <HowItWorks />
+                  <WhatYouGet />
+                </div>
+              ) : null}
+
+              {!loading && result ? (
+                <div className="space-y-8">
+                  <ResultHeader response={result} />
+                  <RecruiterFinder
+                    deterministic={result.deterministic}
+                    mercado={result.mercado}
+                  />
+                  <AiSummary resumo={result.qualitative.resumo} />
+                  <LinkedinChecklist checks={result.deterministic.checks} />
+                  <StrengthsWeaknesses
+                    pontosFortes={result.qualitative.pontosFortes}
+                    pontosFracos={result.qualitative.pontosFracos}
+                  />
+                  <Improvements melhorias={result.qualitative.melhorias} />
+                  <ReadyTexts qualitative={result.qualitative} />
+                  <SkillsSuggested
+                    skills={result.qualitative.skillsSugeridas}
+                  />
+                </div>
+              ) : null}
+
+              <LinkedinHistory
+                analyses={analyses}
+                onOpen={(id) => void openHistory(id)}
+                loadingId={openingId}
+              />
+            </div>
+          )}
+        </div>
+      </section>
+    </Layout>
+  );
+}

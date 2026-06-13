@@ -58,6 +58,7 @@ import Curriculo from "./pages/Curriculo";
 import CurriculoAnalisar from "./pages/CurriculoAnalisar";
 import CurriculoGerar from "./pages/CurriculoGerar";
 import CurriculoLinkedin from "./pages/CurriculoLinkedin";
+import LinkedinAnalisar from "./pages/LinkedinAnalisar";
 import Estudos from "./pages/Estudos";
 import EstudosDiario from "./pages/EstudosDiario";
 import Empregabilidade from "./pages/Empregabilidade";
@@ -108,6 +109,7 @@ function Router() {
       <Route path="/curriculo/analisar" component={CurriculoAnalisar} />
       <Route path="/curriculo/gerar" component={CurriculoGerar} />
       <Route path="/curriculo/linkedin" component={CurriculoLinkedin} />
+      <Route path="/linkedin/analisar" component={LinkedinAnalisar} />
       <Route path="/estudos" component={Estudos} />
       <Route path="/estudos/diario" component={EstudosDiario} />
       <Route path="/empregabilidade" component={Empregabilidade} />
