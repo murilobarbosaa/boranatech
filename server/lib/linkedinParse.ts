@@ -174,11 +174,15 @@ function isHeadlineCandidate(line: string): boolean {
   return true;
 }
 
+/**
+ * Sinal real de headline: barra de cargo, palavra de papel ou clichê de
+ * perfil. Comprimento sozinho NÃO conta: uma linha longa qualquer (nome
+ * composto, texto de corpo, lixo de PDF) não vira headline. Assim a headline
+ * escolhida é sempre uma linha com cara de headline, não a última linha longa.
+ */
 function hasHeadlineSignal(line: string): boolean {
-  const l = stripAccentsLower(line);
   if (line.includes("|")) return true;
-  if (line.trim().length > 40) return true;
-  return HEADLINE_SIGNAL_RE.test(l);
+  return HEADLINE_SIGNAL_RE.test(stripAccentsLower(line));
 }
 
 function clip(value: string, max: number): string {
@@ -317,9 +321,22 @@ export function parseLinkedinText(text: string): LinkedinParsed {
 
   const skillsPdf = parseSkills(sectionLines(lines, hits, "skills"));
 
-  const usable = Boolean(
-    headline || sobre || experiencias.length > 0 || skillsPdf.length > 0,
-  );
+  // Sinal real de headline: barra de cargo, palavra de papel ou clichê de
+  // perfil, nao so comprimento. Uma linha longa qualquer (lixo de PDF que nao
+  // e um perfil) nao conta como aproveitavel, e a rota devolve 422.
+  const headlineWordSignal =
+    headline !== null &&
+    (headline.includes("|") ||
+      HEADLINE_SIGNAL_RE.test(stripAccentsLower(headline)));
+
+  // Aproveitavel quando ha qualquer seção reconhecida ou um sinal real de
+  // perfil. Pura repetição ou simbolos, sem nada disso, cai no 422.
+  const usable =
+    hits.length > 0 ||
+    headlineWordSignal ||
+    sobre !== null ||
+    experiencias.length > 0 ||
+    skillsPdf.length > 0;
 
   return { headline, sobre, experiencias, skillsPdf, usable };
 }
