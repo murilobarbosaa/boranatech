@@ -86,7 +86,8 @@ function checksBlock(deterministic: LinkedinDeterministicResult): string {
 }
 
 function experienciasBlock(parsed: LinkedinParsed): string {
-  if (parsed.experiencias.length === 0) return "(nenhuma experiência detectada)";
+  if (parsed.experiencias.length === 0)
+    return "(nenhuma experiência detectada)";
   const text = parsed.experiencias
     .map((exp, index) => {
       const titulo = exp.titulo || "(sem título)";
@@ -182,7 +183,9 @@ async function runQualitativeOnce(
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`);
+    throw new Error(
+      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
+    );
   }
 
   const payload = (await response.json()) as {
@@ -204,7 +207,9 @@ async function runQualitativeOnce(
   const validation = LinkedinQualitativeSchema.safeParse(parsed);
   if (!validation.success) {
     const issues = JSON.stringify(validation.error.issues).slice(0, 300);
-    throw new Error(`Resposta da IA não bateu com o schema esperado: ${issues}`);
+    throw new Error(
+      `Resposta da IA não bateu com o schema esperado: ${issues}`,
+    );
   }
 
   onAiIo?.({ inputChars: userText.length, outputChars: content.length });

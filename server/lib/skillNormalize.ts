@@ -69,7 +69,10 @@ function escapeRegExp(value: string): string {
  * estiver colado a outro caractere alfanumerico (ou a # e + no fim, pra
  * proteger linguagens como C de casar em C# ou C++).
  */
-export function containsTerm(textNormalized: string, termNormalized: string): boolean {
+export function containsTerm(
+  textNormalized: string,
+  termNormalized: string,
+): boolean {
   if (!termNormalized) return false;
   const re = new RegExp(
     `(?<![a-z0-9])${escapeRegExp(termNormalized)}(?![a-z0-9#+])`,
@@ -105,7 +108,10 @@ export interface TechMatchResult {
  * faltantes usando normalização, aliases e fronteiras de palavra. Preserva a
  * ordem da lista de entrada.
  */
-export function matchTechnologies(text: string, techs: string[]): TechMatchResult {
+export function matchTechnologies(
+  text: string,
+  techs: string[],
+): TechMatchResult {
   const haystack = normalize(text);
   const encontradas: string[] = [];
   const faltantes: string[] = [];

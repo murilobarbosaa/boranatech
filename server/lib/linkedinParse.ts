@@ -42,11 +42,7 @@ interface SectionHeaderHit {
 }
 
 function stripAccentsLower(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .trim();
+  return value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
 }
 
 // Cabeçalhos de seção, já em forma sem acento e minúscula.
@@ -190,7 +186,10 @@ function clip(value: string, max: number): string {
   return trimmed.length <= max ? trimmed : trimmed.slice(0, max).trim();
 }
 
-function detectHeadline(lines: string[], firstMainIndex: number): string | null {
+function detectHeadline(
+  lines: string[],
+  firstMainIndex: number,
+): string | null {
   const preamble =
     firstMainIndex >= 0 ? lines.slice(0, firstMainIndex) : lines.slice(0, 20);
   const candidates = preamble.filter(isHeadlineCandidate);

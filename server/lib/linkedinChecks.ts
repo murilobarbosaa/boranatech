@@ -394,8 +394,7 @@ export function runLinkedinChecks(
       };
     },
     atividade: () => {
-      const ok =
-        input.atividade === "semanal" || input.atividade === "diaria";
+      const ok = input.atividade === "semanal" || input.atividade === "diaria";
       return {
         aprovado: ok,
         detail: ok
