@@ -43,7 +43,6 @@ import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import CircularText from "@/components/reactbits/CircularText";
 import CountUp from "@/components/reactbits/CountUp";
 import CurvedLoop from "@/components/reactbits/CurvedLoop";
-import SpotlightCard from "@/components/reactbits/SpotlightCard";
 import SplitText from "@/components/reactbits/SplitText";
 import {
   areasComplementares,
@@ -361,14 +360,17 @@ export default function Areas() {
         }
         subtitle="Cada área é um caminho dentro da TI, com funções e habilidades próprias. Descubra qual combina com você."
         actions={
-          <div className="relative mx-auto flex h-28 w-28 items-center justify-center text-violet-700">
+          <div className="relative mx-auto h-28 w-28 text-violet-700">
             <CircularText
               text="BORA NA TECH • SUA BÚSSOLA NA TI • "
-              className="absolute inset-0"
+              className="h-full w-full"
               duration={24}
               radius={46}
             />
-            <Compass className="h-9 w-9" aria-hidden />
+            <Compass
+              className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2"
+              aria-hidden
+            />
           </div>
         }
       />
@@ -379,9 +381,36 @@ export default function Areas() {
       >
         <CurvedLoop
           items={areasTI.map((a) => a.nome)}
-          className="fill-violet-100 font-display text-[30px] font-black uppercase"
+          className="fill-violet-100 font-display text-[44px] font-black uppercase"
           speed={0.5}
+          curveAmount={50}
         />
+      </section>
+
+      <section className="border-b-2 border-slate-900 bg-amber-300">
+        <div className="container flex flex-wrap items-center justify-center gap-x-3 gap-y-2 py-4 text-center">
+          <p className="font-display text-base font-black text-slate-950">
+            Não sabe por onde começar?
+          </p>
+          <motion.div
+            className="inline-flex"
+            animate={reduce ? undefined : { scale: [1, 1.04, 1] }}
+            transition={
+              reduce
+                ? undefined
+                : { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
+            }
+          >
+            <Link
+              href="/quiz-carreira"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black uppercase text-white shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+            >
+              <Sparkles className="h-4 w-4" aria-hidden />
+              Faça o quiz e descubra sua área
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </motion.div>
+        </div>
       </section>
 
       {/* Filters */}
@@ -490,10 +519,7 @@ export default function Areas() {
                     delay={Math.min(index * 0.05, 0.5)}
                     className="h-full"
                   >
-                    <SpotlightCard
-                      spotlightColor={reduce ? "transparent" : grupo.spotlight}
-                      className="h-full rounded-2xl"
-                    >
+                    <div className="relative h-full">
                       <FavoriteButton
                         compact
                         className="absolute right-3 top-3 z-30"
@@ -506,16 +532,27 @@ export default function Areas() {
                       />
                       <Link
                         href={`/areas/${area.slug}`}
-                        className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] transition-all duration-200 hover:shadow-[8px_8px_0_#FFB800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:-rotate-1"
+                        className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
                       >
                         <div
                           className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
                         >
-                          <Icon
-                            className={`h-10 w-10 transition-transform duration-300 ${grupo.bandIcon} motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:rotate-6`}
-                            strokeWidth={2.5}
-                            aria-hidden
-                          />
+                          <motion.span
+                            className={grupo.bandIcon}
+                            animate={reduce ? undefined : { y: [0, -3, 0] }}
+                            transition={
+                              reduce
+                                ? undefined
+                                : {
+                                    duration: 2.6 + (index % 3) * 0.4,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                    delay: (index % 4) * 0.3,
+                                  }
+                            }
+                          >
+                            <Icon className="h-10 w-10" strokeWidth={2.5} aria-hidden />
+                          </motion.span>
                           <span
                             className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
                           >
@@ -550,14 +587,10 @@ export default function Areas() {
                         <div
                           className={`flex items-center justify-center gap-1 border-t-2 px-4 py-3 text-sm font-black ${grupo.exploreBorder} ${grupo.explore}`}
                         >
-                          Explorar{" "}
-                          <ArrowRight
-                            className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-1"
-                            aria-hidden
-                          />
+                          Explorar <ArrowRight className="h-4 w-4" aria-hidden />
                         </div>
                       </Link>
-                    </SpotlightCard>
+                    </div>
                   </AnimatedContent>
                 );
               })}
@@ -587,42 +620,48 @@ export default function Areas() {
                     delay={Math.min(index * 0.05, 0.3)}
                     className="h-full"
                   >
-                    <SpotlightCard
-                      spotlightColor={reduce ? "transparent" : grupo.spotlight}
-                      className="h-full rounded-2xl"
-                    >
-                      <div className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] transition-all duration-200 hover:shadow-[8px_8px_0_#FFB800] motion-safe:hover:-translate-y-1">
-                        <div
-                          className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
+                    <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800]">
+                      <div
+                        className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
+                      >
+                        <motion.span
+                          className={grupo.bandIcon}
+                          animate={reduce ? undefined : { y: [0, -3, 0] }}
+                          transition={
+                            reduce
+                              ? undefined
+                              : {
+                                  duration: 2.8 + (index % 3) * 0.4,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                  delay: (index % 4) * 0.3,
+                                }
+                          }
                         >
-                          <Icon
-                            className={`h-10 w-10 transition-transform duration-300 ${grupo.bandIcon} motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:rotate-6`}
-                            strokeWidth={2.5}
-                            aria-hidden
-                          />
-                          <span
-                            className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
-                          >
-                            {grupo.label}
-                          </span>
-                        </div>
-                        <div className="relative flex flex-1 flex-col items-center px-5 py-4 text-center">
-                          <Icon
-                            className={`pointer-events-none absolute -bottom-1 -right-1 h-16 w-16 opacity-[0.08] ${grupo.tint}`}
-                            aria-hidden
-                          />
-                          <h3 className="relative z-10 font-display text-lg font-bold text-slate-900">
-                            {area.nome}
-                          </h3>
-                          <p className="relative z-10 mt-1.5 text-sm leading-relaxed text-slate-600">
-                            {area.descricao}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-center border-t-2 border-slate-200 px-4 py-3 text-[0.65rem] font-black uppercase tracking-wide text-slate-400">
-                          trilha em breve
-                        </div>
+                          <Icon className="h-10 w-10" strokeWidth={2.5} aria-hidden />
+                        </motion.span>
+                        <span
+                          className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
+                        >
+                          {grupo.label}
+                        </span>
                       </div>
-                    </SpotlightCard>
+                      <div className="relative flex flex-1 flex-col items-center px-5 py-4 text-center">
+                        <Icon
+                          className={`pointer-events-none absolute -bottom-1 -right-1 h-16 w-16 opacity-[0.08] ${grupo.tint}`}
+                          aria-hidden
+                        />
+                        <h3 className="relative z-10 font-display text-lg font-bold text-slate-900">
+                          {area.nome}
+                        </h3>
+                        <p className="relative z-10 mt-1.5 text-sm leading-relaxed text-slate-600">
+                          {area.descricao}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center border-t-2 border-slate-200 px-4 py-3 text-[0.65rem] font-black uppercase tracking-wide text-slate-400">
+                        trilha em breve
+                      </div>
+                    </div>
                   </AnimatedContent>
                 );
               })}

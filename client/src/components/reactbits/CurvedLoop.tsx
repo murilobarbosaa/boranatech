@@ -14,7 +14,7 @@ export default function CurvedLoop({
   separator = "  •  ",
   speed = 0.5,
   className,
-  curveAmount = 24,
+  curveAmount = 48,
 }: CurvedLoopProps) {
   const reduce = useReducedMotion();
   const rawId = useId();
@@ -48,14 +48,14 @@ export default function CurvedLoop({
     return () => cancelAnimationFrame(raf);
   }, [reduce, blockLen, speed]);
 
-  const path = `M -200 60 Q 300 ${60 - curveAmount} 600 60 T 1400 60`;
+  const path = `M 0 95 Q 800 ${95 - curveAmount} 1600 95`;
 
   return (
     <div className="pointer-events-none w-full overflow-hidden" aria-hidden>
       <svg
-        viewBox="0 0 1200 95"
-        className="block h-20 w-full"
-        preserveAspectRatio="none"
+        viewBox="0 0 1600 120"
+        className="block h-24 w-full"
+        preserveAspectRatio="xMidYMid meet"
       >
         <defs>
           <path id={pathId} d={path} fill="none" />
