@@ -1,9 +1,15 @@
 import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
-import { LinkedinAnalyzeRequestSchema } from "../../shared/linkedin/schema";
+import {
+  LinkedinAnalyzeRequestSchema,
+  type LinkedinAnalysisResponse,
+  type LinkedinAnalyzeRequest,
+} from "../../shared/linkedin/schema";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { analyzeLinkedin, LinkedinUnreadableError } from "../lib/linkedinAnalyze";
+import type { LinkedinParsed } from "../lib/linkedinParse";
+import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
@@ -13,6 +19,63 @@ router.use(requireAuth);
 router.use(checkProStatus);
 
 const TOOL = "linkedin-analyzer";
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Persistência fail-soft: nunca derruba a análise e nunca é confundida com
+ * sucesso, falha vira um console.error claro no servidor. O input jsonb guarda
+ * o formulário e um resumo do parse (sem o texto cru gigante do perfil).
+ */
+async function persistAnalysis(
+  userId: string,
+  request: LinkedinAnalyzeRequest,
+  response: LinkedinAnalysisResponse,
+  parsed: LinkedinParsed,
+): Promise<void> {
+  try {
+    const input = {
+      area: request.area,
+      level: request.level,
+      mercado: request.mercado,
+      skills: request.skills.slice(0, 2000),
+      foto: request.foto,
+      banner: request.banner,
+      openToWork: request.openToWork,
+      conexoes: request.conexoes,
+      atividade: request.atividade,
+      objetivo: request.objetivo ?? null,
+      parseResumo: {
+        headline: parsed.headline,
+        sobreTamanho: response.deterministic.sobreTamanho,
+        experienciasContagem: response.deterministic.experienciasContagem,
+        skillsPdf: parsed.skillsPdf,
+      },
+    };
+
+    const { error } = await supabaseAdmin.from("linkedin_analyses").insert({
+      user_id: userId,
+      area: request.area,
+      level: request.level,
+      score: response.deterministic.score,
+      faixa: response.deterministic.faixa,
+      input,
+      result: response,
+    });
+
+    if (error) {
+      console.error(
+        "[linkedin] Falha ao persistir analise (fail-soft):",
+        error.message,
+      );
+    }
+  } catch (err) {
+    console.error(
+      "[linkedin] Erro inesperado ao persistir analise (fail-soft):",
+      err,
+    );
+  }
+}
 
 router.post("/analyze", async (req: Request, res: Response, next: NextFunction) => {
   if (!req.isPro) {
@@ -47,7 +110,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
   let aiUsed = false;
   let aiIo = { inputChars: 0, outputChars: 0 };
   try {
-    const { response } = await analyzeLinkedin(request, (io) => {
+    const { response, parsed } = await analyzeLinkedin(request, (io) => {
       aiUsed = true;
       aiIo = io;
     });
@@ -62,6 +125,9 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
       inputChars: aiIo.inputChars,
       outputChars,
     });
+
+    await persistAnalysis(userId, request, response, parsed);
+
     res.json({ data: response });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
@@ -79,6 +145,49 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
     return next(
       createError(502, "upstream_error", "Não foi possível concluir a análise agora. Tente de novo."),
     );
+  }
+});
+
+router.get("/analyses", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("linkedin_analyses")
+      .select("id, area, level, score, faixa, created_at")
+      .eq("user_id", req.user!.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      return next(createError(500, "db_error", "Erro ao buscar suas análises."));
+    }
+    res.json({ data: data ?? [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/analyses/:id", async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  if (!UUID_RE.test(id)) {
+    return next(createError(404, "not_found", "Análise não encontrada."));
+  }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("linkedin_analyses")
+      .select("id, area, level, score, faixa, created_at, result")
+      .eq("user_id", req.user!.id)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      return next(createError(500, "db_error", "Erro ao buscar a análise."));
+    }
+    if (!data) {
+      return next(createError(404, "not_found", "Análise não encontrada."));
+    }
+    res.json({ data });
+  } catch (err) {
+    next(err);
   }
 });
 
