@@ -180,6 +180,28 @@ Inicio: 2026-06-14 (madrugada).
 - Itens reais: 23 recursos verificados + quiz com 12 combinacoes validas.
 - Commit: (abaixo)
 
+### Rodada de correcao (selos por card, visual, motion, ranking) - CONCLUIDO
+- Areas: removida a tira "Programas que a Ana representa"; selo pequeno por card (Cloud = "Ana e
+  Embaixadora AWS" com slot de link; Mainframe = IBM Z Xplore por nome); selo Claude pronto no
+  componente porem nao renderizado (oculto). Corpo do card ganhou cor da categoria + chips coloridos.
+- Tecnologias: marquee virou so logos (devicon), maiores (56px), fundo transparente, sem pill/nome;
+  subtitle menor (16px) e slate-900 (contraste forte).
+- Mapa de tecnologias: adicionado botao "Ver roadmap de <area>" por card (23 botoes, rotas reais).
+- Ranking: HTML e CSS agora aparecem como "Marcação" (nao linguagem); scope "Linguagens" virou
+  "Linguagens e marcação"; subtitle deixa claro que e ranking de tecnologias no geral. Sem numero novo.
+- Dicionario: secoes de nivel embrulhadas em container com key={level} -> remonta e reanima ao trocar
+  de nivel (sem reanimar a cada tecla na busca).
+
+## BLOQUEIOS desta rodada (precisam da Ana / dados)
+- SELO ElevenLabs (Tecnologias): o card so renderiza se "ElevenLabs" estiver na lista. ElevenLabs
+  NAO esta em `technologyData` nem (aparentemente) na API de technologies, entao o selo esta cabeado
+  (`technology.name === "ElevenLabs"`) mas nao aparece. Pra mostrar: adicionar ElevenLabs aos dados
+  (estatico/Supabase). Const de link `ELEVENLABS_EMBAIXADORA_URL` pronta (vazia).
+- SELO IBM/Mainframe (Areas): o card do Mainframe nao esta na lista de areas que renderiza ao vivo
+  (a fonte de areas em uso exclui Mainframe; a Cloud aparece e mostra o selo AWS). O selo IBM esta
+  cabeado por slug "mainframe" e aparece assim que o card do Mainframe entrar na lista renderizada.
+- LINK AWS Embaixadora: `AWS_EMBAIXADORA_URL` em Areas.tsx esta vazio (slot pronto).
+
 ## Pendencias que precisam da Ana (links)
 - DECISAO CURSOS: importar os 38 cursos novos (em `cursosGratuitos`, data.ts) pro banco Supabase,
   OU autorizar editar `Cursos.tsx` pra mesclar API + estatico (hoje a API sobrescreve). Sem isso,
