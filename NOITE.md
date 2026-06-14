@@ -140,7 +140,29 @@ Inicio: 2026-06-14 (madrugada).
 - Itens reais: 58 jogos verificados.
 - Commit: (abaixo)
 
+### 8. CURSOS: adicionar cursos reais - PARCIAL (dado pronto, visibilidade bloqueada)
+- 38 cursos REAIS verificados adicionados ao catalogo estatico `cursosGratuitos` em
+  `client/src/lib/data.ts` (71 -> 109). Cada URL aberta e confirmada por 3 subagents (WebFetch).
+  Fontes: freeCodeCamp (certs), Coursera (Google/Meta/Michigan/AWS), edX (CS50 x3), Codecademy,
+  Khan Academy, DIO, Fundacao Bradesco, Curso em Video (site, topicos novos: Algoritmos, MySQL,
+  Git, Linux, Seguranca, IA), Flutterando (Flutter), Programacao Dinamica (ML), Programador BR.
+  34 gratuitos + 4 pagos, 11 areas. Dedupe: contra os 71 existentes (titulo/link) e entre si;
+  removidas as versoes YouTube do Guanabara que duplicavam as do site. 0 travessao.
+- BLOQUEIO de visibilidade: a pagina Cursos usa `getCourses()` (API/DB) que SOBRESCREVE o catalogo
+  estatico no mount. Confirmei no preview: os cursos novos so aparecem quando a API esta fora (o
+  estatico e o fallback). Pra aparecerem ao vivo seria preciso (a) importar pro banco (Supabase),
+  que eu nao mexo (fora de escopo, nao verificavel), ou (b) editar `Cursos.tsx` pra mesclar
+  estatico + API, mas esse arquivo e da sessao concorrente (limite respeitado, regra 2).
+- O que fica pronto: os 38 cursos verificados servem de fonte para a Ana importar no banco, e ja
+  enriquecem o fallback estatico (usado quando a API cai / dev local).
+- Teste: pnpm check EXIT 0. Pagina sobe sem erro.
+- Itens reais: 38 cursos verificados (adicionados ao dado; visibilidade ao vivo pendente da Ana).
+- Commit: (abaixo)
+
 ## Pendencias que precisam da Ana (links)
+- DECISAO CURSOS: importar os 38 cursos novos (em `cursosGratuitos`, data.ts) pro banco Supabase,
+  OU autorizar editar `Cursos.tsx` pra mesclar API + estatico (hoje a API sobrescreve). Sem isso,
+  os 38 cursos ficam so no fallback.
 - LINK Claude Embaixadora: `CLAUDE_EMBAIXADORA_URL` em `client/src/pages/Areas.tsx` esta `undefined`.
   Assim que a Ana der o link publico do programa Claude, basta preencher essa const e o selo vira
   link automaticamente. (regra 5: sem link, fica TODO)
