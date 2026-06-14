@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useSearch } from "wouter";
-import { ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { Link, useSearch } from "wouter";
+import { ChevronDown, ChevronUp, Filter, Map } from "lucide-react";
 import Layout from "@/components/Layout";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import PageHero from "@/components/shared/PageHero";
@@ -14,6 +14,27 @@ import { technologies } from "@/lib/technologyData";
 
 const ac = getPageAccentUi("teal");
 const PREVIEW_LOGO_COUNT = 9;
+
+const ROADMAP_AREA_SLUGS = new Set([
+  "backend",
+  "carreira",
+  "ciberseguranca",
+  "cloud",
+  "dados",
+  "devops",
+  "frontend",
+  "fullstack",
+  "gestao",
+  "ia",
+  "mobile",
+  "produto",
+  "qa",
+  "uxui",
+]);
+
+function roadmapHref(slug: string): string {
+  return ROADMAP_AREA_SLUGS.has(slug) ? `/roadmaps?area=${slug}` : "/roadmaps";
+}
 
 export default function TecnologiaMapa() {
   const search = useSearch();
@@ -228,6 +249,14 @@ export default function TecnologiaMapa() {
                         aria-hidden
                       />
                     </button>
+
+                    <Link
+                      href={roadmapHref(slug)}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-violet-600 px-4 py-2.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+                    >
+                      <Map className="h-4 w-4 shrink-0" aria-hidden />
+                      Ver roadmap de {area.nome.replace(/-/g, "")}
+                    </Link>
 
                     {techPanelOpen ? (
                       <div
