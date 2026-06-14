@@ -120,6 +120,26 @@ Inicio: 2026-06-14 (madrugada).
 - Itens reais: n/a (reestilizacao de dados existentes).
 - Commit: (abaixo)
 
+### 7. TECNOLOGIAS > subarea JOGOS - CONCLUIDO
+- Nova pagina `/tecnologias/jogos` (`TecnologiaJogos.tsx`) + rota no App.tsx (antes do
+  `/tecnologias/:slug` pra nao ser engolida pelo catch-all) + botao "Como os jogos foram feitos"
+  na pagina Tecnologias.
+- Conteudo: 58 jogos famosos com engine + linguagem VERIFICADAS (3 subagents, cada fato confirmado
+  em fonte que carrega: Wikipedia do jogo/engine, dev blogs, GDC, repo n64decomp). Salvo em
+  `client/src/lib/gamesTech.ts` (game, engine, language, made, source, year?). Dedupe por nome:
+  63 brutos -> 58 unicos. Linguagens: C#, C++, C, Java, Lua, Haxe, GML, JavaScript, Assembly.
+  Ex: Doom (1993, id Tech 1, C); Minecraft Java (Java); Fortnite (Unreal 4, C++); Undertale
+  (GameMaker, GML); Factorio (engine propria, C++); RollerCoaster Tycoon (Assembly).
+- Cada card: explicacao curta (minha/Ana, em PT) de como foi feito + link "fonte" (a fonte real
+  verificada). Logo de jogo = card TIPOGRAFICO (iniciais do jogo em tile colorido), conforme regra.
+- Pagina muito animada e colorida: header de card com cor vibrante ciclica (10 cores, texto branco
+  AA), entrada animada (AnimatedContent), hover limpo (motion-safe -translate-y-1), doodles
+  (gamepad/sparkles, gentle-float gated), busca + filtro por linguagem. Sem scroll horizontal.
+- Teste: pnpm check EXIT 0. Preview: 58 cards, 9 linguagens no filtro, 58 explicacoes, 62 links de
+  fonte, sem scroll horizontal (desktop e mobile 375).
+- Itens reais: 58 jogos verificados.
+- Commit: (abaixo)
+
 ## Pendencias que precisam da Ana (links)
 - LINK Claude Embaixadora: `CLAUDE_EMBAIXADORA_URL` em `client/src/pages/Areas.tsx` esta `undefined`.
   Assim que a Ana der o link publico do programa Claude, basta preencher essa const e o selo vira

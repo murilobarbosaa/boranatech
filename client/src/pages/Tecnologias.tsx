@@ -212,6 +212,12 @@ export default function Tecnologias() {
             >
               Ranking de demanda
             </Link>
+            <Link
+              href="/tecnologias/jogos"
+              className="btn-brutal-primary rounded-full bg-fuchsia-300 px-4 py-2 text-sm font-black"
+            >
+              🎮 Como os jogos foram feitos
+            </Link>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">

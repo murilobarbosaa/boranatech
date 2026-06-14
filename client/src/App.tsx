@@ -45,6 +45,7 @@ import TecnologiaDetalhe from "./pages/TecnologiaDetalhe";
 import TecnologiaComparador from "./pages/TecnologiaComparador";
 import TecnologiaMapa from "./pages/TecnologiaMapa";
 import TecnologiaRanking from "./pages/TecnologiaRanking";
+import TecnologiaJogos from "./pages/TecnologiaJogos";
 import Empresas from "./pages/Empresas";
 import EmpresaDetalhe from "./pages/EmpresaDetalhe";
 import EmpresaRankingJunior from "./pages/EmpresaRankingJunior";
@@ -94,6 +95,7 @@ function Router() {
         {() => <Redirect to="/tecnologias/por-area" />}
       </Route>
       <Route path="/tecnologias/ranking" component={TecnologiaRanking} />
+      <Route path="/tecnologias/jogos" component={TecnologiaJogos} />
       <Route path="/tecnologias/:slug" component={TecnologiaDetalhe} />
       <Route path="/empresas" component={Empresas} />
       <Route path="/empresas/ranking-junior" component={EmpresaRankingJunior} />
