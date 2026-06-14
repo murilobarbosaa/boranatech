@@ -4,7 +4,7 @@
 */
 
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   ChevronDown,
@@ -454,10 +454,34 @@ function DesktopMenuItem({
   const isActive = isDropdownActive(menu, location);
   const activeItemPath = getActiveDropdownItemPath(menu, location);
   const hasGroupedColumns = menu.columns.some((column) => column.groupLabel);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [shift, setShift] = useState(0);
   const cssVars = {
     "--menu-accent": menu.accentColor,
     "--menu-hover": hexToRgba(menu.accentColor, 0.08),
   } as CSSProperties;
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+
+    function reposition() {
+      const wrapper = wrapperRef.current;
+      const panel = panelRef.current;
+      if (!wrapper || !panel) return;
+
+      const margin = 16;
+      const naturalLeft = wrapper.getBoundingClientRect().left;
+      const naturalRight = naturalLeft + panel.offsetWidth;
+      const overflow = naturalRight - (window.innerWidth - margin);
+      const maxShift = Math.max(0, naturalLeft - margin);
+      setShift(overflow > 0 ? Math.min(overflow, maxShift) : 0);
+    }
+
+    reposition();
+    window.addEventListener("resize", reposition);
+    return () => window.removeEventListener("resize", reposition);
+  }, [isOpen]);
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     if (event.key === "Escape") {
@@ -467,6 +491,7 @@ function DesktopMenuItem({
 
   return (
     <div
+      ref={wrapperRef}
       className="relative"
       style={cssVars}
       onMouseEnter={() => setOpenMenu(menu.id)}
@@ -494,16 +519,19 @@ function DesktopMenuItem({
 
       <div
         id={`menu-panel-${menu.id}`}
+        ref={panelRef}
         onMouseEnter={() => setOpenMenu(menu.id)}
-        className={`fixed left-0 right-0 top-16 z-[1001] transition-all duration-150 ${
+        style={{
+          transform: `translateX(${-shift}px) translateY(${isOpen ? "0" : "-0.375rem"})`,
+        }}
+        className={`absolute left-0 top-full z-[1001] w-[min(42rem,calc(100vw-2rem))] pt-2 transition-all duration-150 ${
           isOpen
-            ? "visible translate-y-0 opacity-100"
-            : "invisible -translate-y-1.5 opacity-0 pointer-events-none"
+            ? "visible opacity-100"
+            : "invisible opacity-0 pointer-events-none"
         }`}
       >
-        <div className="mx-auto w-full px-4 pt-2 sm:px-6 lg:max-w-[1280px] lg:px-8 2xl:max-w-[1440px]">
         <div
-          className={`w-full max-w-[42rem] overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
+          className={`overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
         >
           <div className="mb-4">
             <p className="text-[13px] font-black text-slate-900">
@@ -577,7 +605,6 @@ function DesktopMenuItem({
               funcionalidade Pro
             </span>
           </div>
-        </div>
         </div>
       </div>
     </div>
