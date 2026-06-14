@@ -222,27 +222,29 @@ function grupoPorChave(chave: string) {
 
 const areasDoodles = [
   { Icon: Code2, cls: "left-[3%] top-[7%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
-  { Icon: Database, cls: "right-[5%] top-[5%] text-blue-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
-  { Icon: Cloud, cls: "left-[8%] top-[40%] text-teal-500 opacity-[0.15]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
-  { Icon: Lock, cls: "right-[3%] top-[36%] text-rose-500 opacity-[0.15]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
-  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-fuchsia-500 opacity-[0.15]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
-  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-blue-600 opacity-[0.15]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
-  { Icon: Settings, cls: "left-[15%] top-[20%] text-amber-500 opacity-[0.14]", size: "h-9 w-9", dur: 8, rot: 12, delay: 0.2 },
-  { Icon: Cpu, cls: "right-[14%] top-[18%] text-teal-600 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -8, delay: 1.6 },
-  { Icon: GitBranch, cls: "left-[11%] top-[88%] text-emerald-600 opacity-[0.14]", size: "h-9 w-9", dur: 5.5, rot: 6, delay: 0.6 },
+  { Icon: Database, cls: "right-[5%] top-[5%] text-purple-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
+  { Icon: Cloud, cls: "left-[8%] top-[40%] text-violet-600 opacity-[0.15]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
+  { Icon: Lock, cls: "right-[3%] top-[36%] text-purple-400 opacity-[0.15]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
+  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-violet-400 opacity-[0.15]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
+  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-purple-600 opacity-[0.15]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
+  { Icon: Settings, cls: "left-[15%] top-[20%] text-violet-500 opacity-[0.14]", size: "h-9 w-9", dur: 8, rot: 12, delay: 0.2 },
+  { Icon: Cpu, cls: "right-[14%] top-[18%] text-purple-500 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -8, delay: 1.6 },
+  { Icon: GitBranch, cls: "left-[11%] top-[88%] text-violet-600 opacity-[0.14]", size: "h-9 w-9", dur: 5.5, rot: 6, delay: 0.6 },
   { Icon: Terminal, cls: "right-[12%] top-[88%] text-violet-500 opacity-[0.14]", size: "h-10 w-10", dur: 7, rot: -6, delay: 1.2 },
-  { Icon: Braces, cls: "left-[46%] top-[3%] text-fuchsia-400 opacity-[0.13]", size: "h-9 w-9", dur: 6, rot: 9, delay: 0.9 },
-  { Icon: Bug, cls: "right-[44%] top-[93%] text-rose-400 opacity-[0.13]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
+  { Icon: Braces, cls: "left-[46%] top-[3%] text-purple-400 opacity-[0.13]", size: "h-9 w-9", dur: 6, rot: 9, delay: 0.9 },
+  { Icon: Bug, cls: "right-[44%] top-[93%] text-violet-400 opacity-[0.13]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
 ];
 
 const headerDoodles = [
   { Icon: Compass, cls: "left-[2%] top-[18%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: -8, delay: 0 },
-  { Icon: Sparkles, cls: "left-[24%] top-[8%] text-amber-500 opacity-[0.15]", size: "h-9 w-9", dur: 6, rot: 10, delay: 0.6 },
-  { Icon: Rocket, cls: "right-[28%] top-[12%] text-blue-500 opacity-[0.15]", size: "h-11 w-11", dur: 7.5, rot: 7, delay: 1.1 },
-  { Icon: Code2, cls: "left-[10%] top-[68%] text-fuchsia-500 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -6, delay: 0.3 },
-  { Icon: Database, cls: "right-[6%] top-[64%] text-teal-500 opacity-[0.14]", size: "h-10 w-10", dur: 6, rot: 6, delay: 1.4 },
-  { Icon: Cpu, cls: "right-[16%] top-[74%] text-emerald-500 opacity-[0.13]", size: "h-9 w-9", dur: 7, rot: -9, delay: 0.9 },
-  { Icon: Braces, cls: "left-[40%] top-[80%] text-rose-400 opacity-[0.13]", size: "h-8 w-8", dur: 5.5, rot: 9, delay: 1.7 },
+  { Icon: Sparkles, cls: "left-[24%] top-[8%] text-purple-500 opacity-[0.15]", size: "h-9 w-9", dur: 6, rot: 10, delay: 0.6 },
+  { Icon: Rocket, cls: "right-[28%] top-[12%] text-violet-600 opacity-[0.15]", size: "h-11 w-11", dur: 7.5, rot: 7, delay: 1.1 },
+  { Icon: Code2, cls: "left-[10%] top-[68%] text-purple-400 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -6, delay: 0.3 },
+  { Icon: Database, cls: "right-[6%] top-[64%] text-violet-500 opacity-[0.14]", size: "h-10 w-10", dur: 6, rot: 6, delay: 1.4 },
+  { Icon: Cpu, cls: "right-[16%] top-[74%] text-purple-600 opacity-[0.13]", size: "h-9 w-9", dur: 7, rot: -9, delay: 0.9 },
+  { Icon: Braces, cls: "left-[40%] top-[82%] text-violet-400 opacity-[0.13]", size: "h-8 w-8", dur: 5.5, rot: 9, delay: 1.7 },
+  { Icon: GitBranch, cls: "left-[6%] top-[44%] text-violet-500 opacity-[0.14]", size: "h-9 w-9", dur: 6.5, rot: 8, delay: 0.4 },
+  { Icon: Terminal, cls: "right-[36%] top-[80%] text-purple-500 opacity-[0.13]", size: "h-10 w-10", dur: 7, rot: -7, delay: 1.2 },
 ];
 
 function Doodles({
@@ -360,57 +362,53 @@ export default function Areas() {
         }
         subtitle="Cada área é um caminho dentro da TI, com funções e habilidades próprias. Descubra qual combina com você."
         actions={
-          <div className="relative mx-auto h-28 w-28 text-violet-700">
-            <CircularText
-              text="BORA NA TECH • SUA BÚSSOLA NA TI • "
-              className="h-full w-full"
-              duration={24}
-              radius={46}
-            />
-            <Compass
-              className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2"
-              aria-hidden
-            />
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative h-28 w-28 text-violet-700">
+              <CircularText
+                text="BORA NA TECH • SUA BÚSSOLA NA TI • "
+                className="h-full w-full"
+                duration={24}
+                radius={46}
+              />
+              <Compass
+                className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2"
+                aria-hidden
+              />
+            </div>
+            <motion.div
+              className="w-full"
+              animate={reduce ? undefined : { scale: [1, 1.03, 1] }}
+              transition={
+                reduce
+                  ? undefined
+                  : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+              }
+            >
+              <Link
+                href="/quiz-carreira"
+                className="flex flex-col items-center gap-1 rounded-2xl border-2 border-slate-900 bg-amber-300 px-4 py-3 text-center shadow-[4px_4px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+              >
+                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-950">
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  Não sabe por onde começar?
+                </span>
+                <span className="flex items-center gap-1 font-display text-sm font-black text-violet-800">
+                  Faça o quiz e descubra sua área
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </Link>
+            </motion.div>
           </div>
         }
       />
 
-      <section
-        aria-hidden
-        className="relative overflow-hidden border-y-2 border-slate-900 bg-violet-600"
-      >
+      <section aria-hidden className="relative overflow-hidden bg-violet-50 py-1">
         <CurvedLoop
           items={areasTI.map((a) => a.nome)}
-          className="fill-violet-100 font-display text-[44px] font-black uppercase"
+          className="fill-violet-400 font-display text-[44px] font-black uppercase"
           speed={0.5}
           curveAmount={50}
         />
-      </section>
-
-      <section className="border-b-2 border-slate-900 bg-amber-300">
-        <div className="container flex flex-wrap items-center justify-center gap-x-3 gap-y-2 py-4 text-center">
-          <p className="font-display text-base font-black text-slate-950">
-            Não sabe por onde começar?
-          </p>
-          <motion.div
-            className="inline-flex"
-            animate={reduce ? undefined : { scale: [1, 1.04, 1] }}
-            transition={
-              reduce
-                ? undefined
-                : { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
-            }
-          >
-            <Link
-              href="/quiz-carreira"
-              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black uppercase text-white shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
-            >
-              <Sparkles className="h-4 w-4" aria-hidden />
-              Faça o quiz e descubra sua área
-              <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          </motion.div>
-        </div>
       </section>
 
       {/* Filters */}
