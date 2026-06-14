@@ -33,8 +33,27 @@ Inicio: 2026-06-14 (madrugada).
 - Pendencias: nenhuma.
 - Commit: 86c30fa
 
+### 2. AREAS DA TI: texto mais rapido + selos de Embaixadora - CONCLUIDO
+- Texto que passa: CurvedLoop speed 0.5 -> 0.8 (um pouco mais rapido). curveAmount segue 0 (reto).
+- `EmbaixadoraBadge` generalizado: props `program` (default "IBM Z Xplore") e `href` opcional
+  (slot de link). Sem href -> <span> (sem link). Com href -> <a target=_blank rel=noopener> com
+  icone de link externo, foco visivel. Texto agora "Ana e Embaixadora {program}" (mostra que e a
+  Ana pelo nome). Backward compatible: AreaDetalhe e Plataformas usam o default (IBM).
+- Selos na pagina Areas: nova faixa "Programas que a Ana representa" logo apos o loop, com dois
+  selos: IBM Z Xplore (por nome, SEM link, regra 5) e Claude (com slot de link PRONTO). O card de
+  area Mainframe mantem seu selo IBM contextual.
+- Decisao: nao existe "area de TI" chamada Claude e inventar uma viola a regra 1. Entao o "card
+  Claude com selo" foi realizado como selo de Embaixadora na faixa (honesto, sem inventar area).
+- Teste: pnpm check EXIT 0. Preview /areas: faixa presente, dois selos com texto correto, Claude
+  como slot pronto (vira <a> assim que a URL for setada), sem scroll horizontal.
+- Itens reais: n/a (estrutura/selos).
+- Commit: (abaixo)
+
 ## Pendencias que precisam da Ana (links)
-- (a preencher conforme as subtarefas de conteudo)
+- LINK Claude Embaixadora: `CLAUDE_EMBAIXADORA_URL` em `client/src/pages/Areas.tsx` esta `undefined`.
+  Assim que a Ana der o link publico do programa Claude, basta preencher essa const e o selo vira
+  link automaticamente. (regra 5: sem link, fica TODO)
+- LINK Alura Embaixadora e AWS SkillBuilder: slots a preparar nas subtarefas 9 (Plataformas).
 
 ## Lista de commits
 - 86c30fa fix(favorites): share favorites via provider with sync cache hydration for instant liked state

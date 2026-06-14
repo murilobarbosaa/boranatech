@@ -220,6 +220,8 @@ function grupoPorChave(chave: string) {
   return GRUPOS[chave] ?? GRUPOS.dev;
 }
 
+const CLAUDE_EMBAIXADORA_URL: string | undefined = undefined;
+
 const areasDoodles = [
   { Icon: Code2, cls: "left-[3%] top-[7%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
   { Icon: Database, cls: "right-[5%] top-[5%] text-purple-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
@@ -406,9 +408,27 @@ export default function Areas() {
         <CurvedLoop
           items={areasTI.map((a) => a.nome)}
           className="fill-violet-700 font-display text-[44px] font-black uppercase"
-          speed={0.5}
+          speed={0.8}
           curveAmount={0}
         />
+      </section>
+
+      <section
+        aria-labelledby="embaixadora-areas"
+        className="border-b-2 border-slate-900 bg-amber-50"
+      >
+        <div className="container flex flex-col items-center gap-3 py-5 text-center">
+          <h2
+            id="embaixadora-areas"
+            className="font-display text-sm font-black uppercase tracking-[0.2em] text-amber-700"
+          >
+            Programas que a Ana representa
+          </h2>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <EmbaixadoraBadge program="IBM Z Xplore" />
+            <EmbaixadoraBadge program="Claude" href={CLAUDE_EMBAIXADORA_URL} />
+          </div>
+        </div>
       </section>
 
       {/* Filters */}
