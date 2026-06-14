@@ -111,6 +111,8 @@ interface Grupo {
   exploreBorder: string;
   spotlight: string;
   tint: string;
+  soft: string;
+  chip: string;
 }
 
 const GRUPOS: Record<string, Grupo> = {
@@ -123,6 +125,8 @@ const GRUPOS: Record<string, Grupo> = {
     exploreBorder: "border-violet-200",
     spotlight: "rgba(124, 58, 237, 0.16)",
     tint: "text-violet-500",
+    soft: "bg-violet-50",
+    chip: "bg-violet-100 text-violet-800",
   },
   dados: {
     label: "Dados e IA",
@@ -133,6 +137,8 @@ const GRUPOS: Record<string, Grupo> = {
     exploreBorder: "border-blue-200",
     spotlight: "rgba(37, 99, 235, 0.16)",
     tint: "text-blue-500",
+    soft: "bg-blue-50",
+    chip: "bg-blue-100 text-blue-800",
   },
   infra: {
     label: "Infra e Cloud",
@@ -143,6 +149,8 @@ const GRUPOS: Record<string, Grupo> = {
     exploreBorder: "border-teal-200",
     spotlight: "rgba(13, 148, 136, 0.15)",
     tint: "text-teal-500",
+    soft: "bg-teal-50",
+    chip: "bg-teal-100 text-teal-800",
   },
   seguranca: {
     label: "Segurança",
@@ -153,6 +161,8 @@ const GRUPOS: Record<string, Grupo> = {
     exploreBorder: "border-rose-200",
     spotlight: "rgba(225, 29, 72, 0.15)",
     tint: "text-rose-500",
+    soft: "bg-rose-50",
+    chip: "bg-rose-100 text-rose-800",
   },
   design: {
     label: "Design",
@@ -163,6 +173,8 @@ const GRUPOS: Record<string, Grupo> = {
     exploreBorder: "border-fuchsia-200",
     spotlight: "rgba(192, 38, 211, 0.15)",
     tint: "text-fuchsia-500",
+    soft: "bg-fuchsia-50",
+    chip: "bg-fuchsia-100 text-fuchsia-800",
   },
   gestao: {
     label: "Gestão",
@@ -173,6 +185,8 @@ const GRUPOS: Record<string, Grupo> = {
     exploreBorder: "border-amber-300",
     spotlight: "rgba(255, 184, 0, 0.18)",
     tint: "text-amber-500",
+    soft: "bg-amber-50",
+    chip: "bg-amber-100 text-amber-900",
   },
   qa: {
     label: "QA e Suporte",
@@ -183,6 +197,8 @@ const GRUPOS: Record<string, Grupo> = {
     exploreBorder: "border-emerald-200",
     spotlight: "rgba(16, 185, 129, 0.15)",
     tint: "text-emerald-500",
+    soft: "bg-emerald-50",
+    chip: "bg-emerald-100 text-emerald-800",
   },
 };
 
@@ -220,7 +236,7 @@ function grupoPorChave(chave: string) {
   return GRUPOS[chave] ?? GRUPOS.dev;
 }
 
-const CLAUDE_EMBAIXADORA_URL: string | undefined = undefined;
+const AWS_EMBAIXADORA_URL: string | undefined = undefined;
 
 const areasDoodles = [
   { Icon: Code2, cls: "left-[3%] top-[7%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
@@ -413,24 +429,6 @@ export default function Areas() {
         />
       </section>
 
-      <section
-        aria-labelledby="embaixadora-areas"
-        className="border-b-2 border-slate-900 bg-amber-50"
-      >
-        <div className="container flex flex-col items-center gap-3 py-5 text-center">
-          <h2
-            id="embaixadora-areas"
-            className="font-display text-sm font-black uppercase tracking-[0.2em] text-amber-700"
-          >
-            Programas que a Ana representa
-          </h2>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <EmbaixadoraBadge program="IBM Z Xplore" />
-            <EmbaixadoraBadge program="Claude" href={CLAUDE_EMBAIXADORA_URL} />
-          </div>
-        </div>
-      </section>
-
       {/* Filters */}
       <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
         <div className="container">
@@ -581,13 +579,24 @@ export default function Areas() {
                             {grupo.label}
                           </span>
                         </div>
-                        <div className="relative flex flex-1 flex-col items-center px-5 py-4 text-center">
+                        <div
+                          className={`relative flex flex-1 flex-col items-center px-5 py-4 text-center ${grupo.soft}`}
+                        >
                           <Icon
                             className={`pointer-events-none absolute -bottom-1 -right-1 h-16 w-16 opacity-[0.08] ${grupo.tint}`}
                             aria-hidden
                           />
-                          {area.slug === "mainframe" ? (
-                            <EmbaixadoraBadge className="relative z-10 mb-2" />
+                          {area.slug === "cloud" ? (
+                            <EmbaixadoraBadge
+                              program="AWS"
+                              href={AWS_EMBAIXADORA_URL}
+                              className="relative z-10 mb-2"
+                            />
+                          ) : area.slug === "mainframe" ? (
+                            <EmbaixadoraBadge
+                              program="IBM Z Xplore"
+                              className="relative z-10 mb-2"
+                            />
                           ) : null}
                           <h3 className="relative z-10 font-display text-lg font-bold text-slate-900">
                             {area.nome}
@@ -599,7 +608,7 @@ export default function Areas() {
                             {area.habilidades.slice(0, 3).map((h) => (
                               <span
                                 key={h}
-                                className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
+                                className={`rounded-full px-2 py-0.5 text-xs font-bold ${grupo.chip}`}
                               >
                                 {h}
                               </span>
