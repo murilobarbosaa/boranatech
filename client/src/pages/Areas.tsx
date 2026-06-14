@@ -371,7 +371,7 @@ export default function Areas() {
                 radius={46}
               />
               <Compass
-                className="absolute left-1/2 top-1/2 h-9 w-9 -translate-x-1/2 -translate-y-1/2"
+                className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2"
                 aria-hidden
               />
             </div>
@@ -405,9 +405,9 @@ export default function Areas() {
       <section aria-hidden className="relative overflow-hidden bg-violet-50 py-1">
         <CurvedLoop
           items={areasTI.map((a) => a.nome)}
-          className="fill-violet-400 font-display text-[44px] font-black uppercase"
+          className="fill-violet-700 font-display text-[44px] font-black uppercase"
           speed={0.5}
-          curveAmount={50}
+          curveAmount={0}
         />
       </section>
 
