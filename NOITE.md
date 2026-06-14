@@ -49,6 +49,26 @@ Inicio: 2026-06-14 (madrugada).
 - Itens reais: n/a (estrutura/selos).
 - Commit: (abaixo)
 
+### 3. DICIONARIO: niveis + exemplos - CONCLUIDO
+- 283 termos existentes em `dictionaryTerms` (platformData.ts) foram enriquecidos com `level`
+  (Iniciante/Basico/Avancado) e `example` (exemplo real de uso, divertido). Para nao arriscar
+  corromper o array de 283 entradas (usado tambem pelo glossario), criei um modulo separado
+  `client/src/lib/dictionaryEnrichment.ts` (mapa term -> {level, example}). Cobertura: 283/283,
+  0 backfill, 0 travessao, 0 nivel invalido. Distribuicao: Iniciante 34, Basico 167, Avancado 82.
+- Geracao: 6 subagents em paralelo escreveram os exemplos/niveis; merge validado por script
+  (matching exato + fallback sem acento pra recuperar 4 termos acentuados). Scripts temporarios
+  removidos (nao commitados).
+- Pagina `Dicionario.tsx` reescrita: filtro por nivel (Todos + 3 niveis com contagem), secoes
+  separadas por nivel com emoji+blurb, cada card mostra nivel (badge colorido) + caixa "exemplo de
+  uso" (italico). Entrada animada (AnimatedContent, respeita reduced-motion), hover limpo
+  (motion-safe:hover -translate-y-1, sem tilt). Busca agora inclui o exemplo. Cores vivas por nivel
+  (emerald/sky/violet) com contraste AA.
+- Teste: pnpm check EXIT 0. Preview /dicionario: 4 botoes de nivel com contagem correta
+  (283/34/167/82), 3 secoes, 283 caixas de exemplo (cada termo tem exemplo), sem scroll horizontal.
+- Aceite: cada termo tem nivel + exemplo. OK.
+- Itens reais: 283 termos enriquecidos (nivel + exemplo).
+- Commit: (abaixo)
+
 ## Pendencias que precisam da Ana (links)
 - LINK Claude Embaixadora: `CLAUDE_EMBAIXADORA_URL` em `client/src/pages/Areas.tsx` esta `undefined`.
   Assim que a Ana der o link publico do programa Claude, basta preencher essa const e o selo vira
