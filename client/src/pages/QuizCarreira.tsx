@@ -791,12 +791,6 @@ function ObjectiveScreen({
                   {ROLE_BY_AREA[areaAtual] ?? areaAtual}
                 </motion.span>
               </AnimatePresence>
-              <span
-                className="font-display font-black leading-none text-slate-950"
-                style={{ fontSize: "clamp(1.75rem, 4vw, 3rem)" }}
-              >
-                !
-              </span>
             </div>
           </motion.div>
         </div>
