@@ -594,6 +594,22 @@ export default function QuizCarreira() {
   );
 }
 
+const AREA_ICON_POSITIONS = [
+  "left-[3%] top-[12%]",
+  "left-[16%] top-[72%]",
+  "left-[8%] top-[40%]",
+  "left-[28%] top-[20%]",
+  "left-[44%] top-[82%]",
+  "left-[58%] top-[14%]",
+  "left-[72%] top-[68%]",
+  "left-[86%] top-[24%]",
+  "left-[92%] top-[56%]",
+  "left-[38%] top-[50%]",
+  "left-[66%] top-[40%]",
+  "left-[22%] top-[90%]",
+  "left-[80%] top-[88%]",
+];
+
 function ObjectiveScreen({
   onSelect,
   onResume,
@@ -601,6 +617,18 @@ function ObjectiveScreen({
   onSelect: (id: QuizObjective) => void;
   onResume?: () => void;
 }) {
+  const areaNames = Object.keys(AREA_ACCENT);
+  const [areaIdx, setAreaIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setAreaIdx((i) => (i + 1) % areaNames.length);
+    }, 2000);
+    return () => clearInterval(id);
+  }, [areaNames.length]);
+  const areaAtual = areaNames[areaIdx];
+  const areaAccent = getAreaAccent(areaAtual);
+  const AreaIcon = areasTI.find((a) => a.nome === areaAtual)?.icon;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -609,18 +637,29 @@ function ObjectiveScreen({
       transition={{ duration: 0.4 }}
       className="container relative max-w-5xl overflow-hidden py-10 md:py-14"
     >
-      <motion.span
-        aria-hidden
-        className="pointer-events-none absolute left-2 top-8 h-16 w-16 rounded-full border-2 border-slate-900 bg-violet-300"
-        animate={{ y: [0, -12, 0], rotate: [0, 8, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.span
-        aria-hidden
-        className="pointer-events-none absolute right-4 top-16 h-12 w-12 rotate-12 border-2 border-slate-900 bg-cyan-300"
-        animate={{ y: [0, 10, 0], rotate: [12, -6, 12] }}
-        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-      />
+      {areaNames.map((nome, i) => {
+        const meta = areasTI.find((a) => a.nome === nome);
+        const Icon = meta?.icon;
+        if (!Icon) return null;
+        const accent = getAreaAccent(nome);
+        return (
+          <motion.span
+            key={nome}
+            aria-hidden
+            className={`pointer-events-none absolute ${AREA_ICON_POSITIONS[i % AREA_ICON_POSITIONS.length]}`}
+            style={{ color: accent, opacity: 0.1 }}
+            animate={{ y: [0, -10, 0], rotate: [0, 6, 0] }}
+            transition={{
+              duration: 7 + (i % 5),
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.2,
+            }}
+          >
+            <Icon className="h-8 w-8" strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
       <motion.span
         aria-hidden
         className="pointer-events-none absolute bottom-28 left-6 text-slate-900"
@@ -708,13 +747,41 @@ function ObjectiveScreen({
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.15 }}
+            className="flex flex-col items-center gap-3 lg:items-start"
           >
-            <motion.div
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <AreaPreview />
-            </motion.div>
+            <span className="font-display text-2xl font-black uppercase tracking-[0.15em] text-slate-500">
+              Eu sou
+            </span>
+            <div className="flex min-h-[5rem] items-center justify-center gap-3 lg:justify-start">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={areaAtual}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="inline-flex items-center gap-2 font-display font-black leading-none"
+                  style={{
+                    color: areaAccent,
+                    fontSize: "clamp(1.75rem, 4vw, 3rem)",
+                  }}
+                >
+                  {AreaIcon && (
+                    <AreaIcon
+                      className="h-8 w-8 shrink-0 md:h-10 md:w-10"
+                      strokeWidth={2.5}
+                    />
+                  )}
+                  {areaAtual}
+                </motion.span>
+              </AnimatePresence>
+              <span
+                className="font-display font-black leading-none text-slate-950"
+                style={{ fontSize: "clamp(1.75rem, 4vw, 3rem)" }}
+              >
+                !
+              </span>
+            </div>
           </motion.div>
         </div>
 
