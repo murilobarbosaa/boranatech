@@ -106,6 +106,20 @@ Inicio: 2026-06-14 (madrugada).
 - Itens reais: 38 curiosidades de linguagens verificadas (Wikipedia).
 - Commit: (abaixo)
 
+### 6. RANKING DE TECNOLOGIAS: cara de ranking - CONCLUIDO
+- So reestilizacao, ZERO numero novo. Barras usam o `usagePercent` que ja existia; quando a tech
+  nao tem percentual, a barra simplesmente nao aparece (sem inventar).
+- Adicionado: podio top-3 (medalhas, logo, label, barra), barras de uso na tabela e nos cards
+  mobile, rotulo "Dados 2025 a 2026, sempre atualizado" (badge com icone refresh), doodles animados
+  no hero (trofeu/sparkles, animate-gentle-float ja gated por reduced-motion, aria-hidden), e varios
+  CTAs reais: Comparar, Por area, Ver roadmaps (/roadmaps), Fazer o quiz (/quiz-carreira).
+- Acessibilidade: barra com role=img + aria-label "Uso aproximado de N%"; CTAs com hover motion-safe;
+  contraste AA (branco em violet-600, slate-950 em amber/white).
+- Teste: pnpm check EXIT 0. Preview: rotulo de ano presente, 67 barras, 6 medalhas (podio+tabela),
+  4 CTAs com rotas reais, sem scroll horizontal.
+- Itens reais: n/a (reestilizacao de dados existentes).
+- Commit: (abaixo)
+
 ## Pendencias que precisam da Ana (links)
 - LINK Claude Embaixadora: `CLAUDE_EMBAIXADORA_URL` em `client/src/pages/Areas.tsx` esta `undefined`.
   Assim que a Ana der o link publico do programa Claude, basta preencher essa const e o selo vira

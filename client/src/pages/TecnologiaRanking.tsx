@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useSearch } from "wouter";
-import { ExternalLink, Trophy } from "lucide-react";
+import {
+  ExternalLink,
+  Trophy,
+  RefreshCw,
+  Sparkles,
+  Map,
+  ArrowRight,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import TechnologyLogo from "@/components/TechnologyLogo";
@@ -29,6 +36,52 @@ function podiumEmoji(position: number) {
   return null;
 }
 
+function UsageBar({ percent }: { percent?: number }) {
+  if (percent == null) return null;
+  const width = Math.max(0, Math.min(100, percent));
+  return (
+    <div
+      className="mt-2 h-2.5 w-full overflow-hidden rounded-full border border-slate-300 bg-slate-100"
+      role="img"
+      aria-label={`Uso aproximado de ${Math.round(width)}%`}
+    >
+      <div
+        className="h-full rounded-full bg-amber-500"
+        style={{ width: `${width}%` }}
+      />
+    </div>
+  );
+}
+
+const RANKING_DOODLES = [
+  { Icon: Trophy, cls: "left-[4%] top-[18%] text-amber-500", size: "h-12 w-12" },
+  { Icon: Sparkles, cls: "right-[8%] top-[14%] text-amber-400", size: "h-10 w-10" },
+  { Icon: Trophy, cls: "right-[22%] top-[64%] text-orange-400", size: "h-9 w-9" },
+  { Icon: Sparkles, cls: "left-[16%] top-[70%] text-yellow-500", size: "h-8 w-8" },
+];
+
+function RankingDoodles() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      {RANKING_DOODLES.map((doodle, index) => {
+        const Icon = doodle.Icon;
+        return (
+          <span
+            key={index}
+            className={`animate-gentle-float absolute opacity-[0.18] ${doodle.cls}`}
+            style={{ animationDelay: `${index * 0.6}s` }}
+          >
+            <Icon className={doodle.size} aria-hidden />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TecnologiaRanking() {
   const search = useSearch();
   const fromTech = new URLSearchParams(search).get("from") === "tecnologias";
@@ -54,7 +107,46 @@ export default function TecnologiaRanking() {
         title="🏆 Ranking de Tecnologias"
         subtitle="Visualize popularidade com contexto: percentuais do Stack Overflow quando existem, e curadoria honesta quando o dado não é comparável, tudo com logos e links."
         topSlot={fromTech ? <BackToTechnologies accent="amber" /> : undefined}
+        backgroundSlot={<RankingDoodles />}
       />
+
+      <section className="border-b-2 border-slate-900 bg-amber-100 py-4">
+        <div className="container flex flex-wrap items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+            <RefreshCw className="h-3.5 w-3.5 text-amber-600" aria-hidden />
+            Dados 2025 a 2026, sempre atualizado
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/tecnologias/comparar?from=tecnologias"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+            >
+              Comparar
+            </Link>
+            <Link
+              href="/tecnologias/por-area?from=tecnologias"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+            >
+              Por área
+            </Link>
+            <Link
+              href="/roadmaps"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-3 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+            >
+              <Map className="h-3.5 w-3.5" aria-hidden />
+              Ver roadmaps
+            </Link>
+            <Link
+              href="/quiz-carreira"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+            >
+              Fazer o quiz
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
           <div
@@ -123,6 +215,44 @@ export default function TecnologiaRanking() {
             </div>
           ) : (
             <>
+              <div className="mb-8 grid gap-4 sm:grid-cols-3">
+                {scoped.slice(0, 3).map((technology, index) => {
+                  const position = index + 1;
+                  return (
+                    <div
+                      key={technology.slug}
+                      className={cn(
+                        "flex flex-col items-center gap-2 rounded-2xl border-2 border-slate-900 bg-white p-5 text-center shadow-[4px_4px_0_#0f172a]",
+                        position === 1 && "sm:-translate-y-2 sm:ring-4 sm:ring-amber-300",
+                      )}
+                    >
+                      <span className="text-4xl" aria-hidden>
+                        {podiumEmoji(position)}
+                      </span>
+                      <TechnologyLogo
+                        name={technology.name}
+                        icon={technology.icon}
+                        logoUrl={technology.logoUrl}
+                        className="h-12 w-12"
+                        imageClassName="h-8 w-8"
+                      />
+                      <Link
+                        href={`/tecnologias/${technology.slug}`}
+                        className="font-display text-lg font-black text-violet-900 underline-offset-4 hover:underline"
+                      >
+                        {technology.name}
+                      </Link>
+                      <span className="text-sm font-bold text-slate-700">
+                        {technology.usageLabel || "Curadoria Bora na Tech"}
+                      </span>
+                      <div className="w-full">
+                        <UsageBar percent={technology.usagePercent} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="hidden overflow-hidden rounded-2xl border-2 border-slate-900 bg-white md:block md:shadow-[4px_4px_0_#0f172a]">
                 <table className="w-full min-w-[720px] border-collapse text-sm">
                   <thead className={cn(ac.tableBanner)}>
@@ -192,6 +322,7 @@ export default function TecnologiaRanking() {
                               {technology.usageLabel ||
                                 "Sem percentual comparável"}
                             </span>
+                            <UsageBar percent={technology.usagePercent} />
                             {technology.sourceNote ? (
                               <span className="mt-1 block text-xs text-slate-500">
                                 {technology.sourceNote}
@@ -272,6 +403,7 @@ export default function TecnologiaRanking() {
                             {technology.usageLabel ||
                               "Sem percentual comparável"}
                           </p>
+                          <UsageBar percent={technology.usagePercent} />
                           {technology.sourceNote ? (
                             <p className="mt-1 text-xs text-slate-500">
                               {technology.sourceNote}
