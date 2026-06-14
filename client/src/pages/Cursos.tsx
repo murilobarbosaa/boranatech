@@ -369,7 +369,7 @@ export default function Cursos() {
               {filtered.map((curso) => (
                 <div
                   key={curso.id}
-                  className="card-brutal group flex flex-col rounded-2xl bg-white p-6 shadow-[5px_5px_0_#fbbf24] transition-all duration-200 hover:-translate-y-1 hover:shadow-[8px_8px_0_#fbbf24]"
+                  className="group flex flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#fbbf24] transition-all duration-200"
                 >
                   {/* Tags */}
                   <div className="mb-4 flex items-start justify-between gap-3">
