@@ -210,6 +210,7 @@ export default function Dicionario() {
             {totalVisible !== 1 ? "s" : ""}
           </p>
 
+          <div key={`niveis-${level}`}>
           {visibleLevels.map((lvl) => {
             const items = matchesFilters.filter((item) => item.level === lvl);
             if (items.length === 0) return null;
@@ -299,6 +300,7 @@ export default function Dicionario() {
               </div>
             );
           })}
+          </div>
 
           {totalVisible === 0 && (
             <div className="py-16 text-center">
