@@ -6,6 +6,7 @@ import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
+import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -61,16 +62,7 @@ const CATEGORY_TAG: Record<string, string> = {
   Gestão: "bg-amber-500 text-slate-950",
 };
 
-const MARQUEE_TEXT = [
-  "text-violet-700",
-  "text-blue-700",
-  "text-emerald-700",
-  "text-rose-700",
-  "text-fuchsia-700",
-  "text-cyan-700",
-  "text-orange-700",
-  "text-indigo-700",
-];
+const ELEVENLABS_EMBAIXADORA_URL: string | undefined = undefined;
 
 const ROADMAP_AREA_SLUGS = new Set([
   "backend",
@@ -94,7 +86,9 @@ function roadmapHref(areas: string[]): string {
   return match ? `/roadmaps?area=${match}` : "/roadmaps";
 }
 
-const marqueeItems = technologyRanking.slice(0, 24);
+const marqueeLogos = technologyRanking
+  .filter((technology) => technology.logoUrl)
+  .slice(0, 28);
 
 export default function Tecnologias() {
   const [technologyItems, setTechnologyItems] = useState(technologies);
@@ -127,37 +121,25 @@ export default function Tecnologias() {
         eyebrow="stack e mercado"
         title="Tecnologias e Linguagens"
         subtitle={
-          <span key={category} className="animate-fade-slide-up inline-block">
+          <span
+            key={category}
+            className="animate-fade-slide-up inline-block text-sm font-medium text-slate-900 md:text-base"
+          >
             {CATEGORY_SUBTITLES[category] ?? GENERAL_SUBTITLE}
           </span>
         }
       />
 
-      <section
-        aria-hidden
-        className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-50 py-4"
-      >
-        <div className="flex w-max animate-marquee-left gap-3 motion-reduce:animate-none">
-          {[...marqueeItems, ...marqueeItems].map((technology, index) => (
-            <span
+      <section aria-hidden className="relative overflow-hidden py-6">
+        <div className="flex w-max animate-marquee-left items-center gap-10 motion-reduce:animate-none">
+          {[...marqueeLogos, ...marqueeLogos].map((technology, index) => (
+            <img
               key={`${technology.slug}-${index}`}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 shadow-[3px_3px_0_#0f172a]"
-            >
-              <TechnologyLogo
-                name={technology.name}
-                icon={technology.icon}
-                logoUrl={technology.logoUrl}
-                className="h-6 w-6"
-              />
-              <span
-                className={cn(
-                  "font-display text-sm font-black",
-                  MARQUEE_TEXT[index % MARQUEE_TEXT.length],
-                )}
-              >
-                {technology.name}
-              </span>
-            </span>
+              src={technology.logoUrl}
+              alt={technology.name}
+              loading="lazy"
+              className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
+            />
           ))}
         </div>
       </section>
@@ -232,6 +214,13 @@ export default function Tecnologias() {
                   className="h-full"
                 >
                   <div className="card-brutal flex h-full flex-col rounded-2xl bg-white p-5 text-left">
+                    {technology.name === "ElevenLabs" ? (
+                      <EmbaixadoraBadge
+                        program="ElevenLabs"
+                        href={ELEVENLABS_EMBAIXADORA_URL}
+                        className="mb-3 self-start"
+                      />
+                    ) : null}
                     <Link
                       href={`/tecnologias/${technology.slug}`}
                       className="group block flex-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-300"
