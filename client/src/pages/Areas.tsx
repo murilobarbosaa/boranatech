@@ -530,7 +530,7 @@ export default function Areas() {
                       />
                       <Link
                         href={`/areas/${area.slug}`}
-                        className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+                        className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[8px_8px_0_#FFB800] motion-safe:focus-visible:-translate-y-1 motion-safe:focus-visible:shadow-[8px_8px_0_#FFB800]"
                       >
                         <div
                           className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
@@ -549,7 +549,11 @@ export default function Areas() {
                                   }
                             }
                           >
-                            <Icon className="h-10 w-10" strokeWidth={2.5} aria-hidden />
+                            <Icon
+                              className="h-10 w-10 transition-transform duration-200 motion-safe:group-hover:scale-110 motion-safe:group-focus-visible:scale-110"
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
                           </motion.span>
                           <span
                             className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
@@ -585,7 +589,11 @@ export default function Areas() {
                         <div
                           className={`flex items-center justify-center gap-1 border-t-2 px-4 py-3 text-sm font-black ${grupo.exploreBorder} ${grupo.explore}`}
                         >
-                          Explorar <ArrowRight className="h-4 w-4" aria-hidden />
+                          Explorar{" "}
+                          <ArrowRight
+                            className="h-4 w-4 transition-transform duration-200 motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+                            aria-hidden
+                          />
                         </div>
                       </Link>
                     </div>
