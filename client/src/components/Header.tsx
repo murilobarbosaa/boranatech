@@ -495,15 +495,15 @@ function DesktopMenuItem({
       <div
         id={`menu-panel-${menu.id}`}
         onMouseEnter={() => setOpenMenu(menu.id)}
-        style={{ minWidth: `${menu.columns.length * 240}px` }}
-        className={`absolute left-0 top-full z-[1001] max-w-[calc(100vw-2rem)] pt-3 transition-all duration-150 ${
+        className={`fixed left-0 right-0 top-16 z-[1001] transition-all duration-150 ${
           isOpen
             ? "visible translate-y-0 opacity-100"
             : "invisible -translate-y-1.5 opacity-0 pointer-events-none"
         }`}
       >
+        <div className="mx-auto w-full px-4 pt-2 sm:px-6 lg:max-w-[1280px] lg:px-8 2xl:max-w-[1440px]">
         <div
-          className={`overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
+          className={`w-full max-w-[42rem] overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#0f172a]`}
         >
           <div className="mb-4">
             <p className="text-[13px] font-black text-slate-900">
@@ -517,9 +517,7 @@ function DesktopMenuItem({
 
           <div
             className="grid gap-4"
-            style={{
-              gridTemplateColumns: `repeat(${menu.columns.length}, minmax(0, 1fr))`,
-            }}
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))" }}
           >
             {menu.columns.map((column, columnIndex) => (
               <div
@@ -579,6 +577,7 @@ function DesktopMenuItem({
               funcionalidade Pro
             </span>
           </div>
+        </div>
         </div>
       </div>
     </div>
