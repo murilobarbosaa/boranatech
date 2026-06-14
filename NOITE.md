@@ -69,6 +69,17 @@ Inicio: 2026-06-14 (madrugada).
 - Itens reais: 283 termos enriquecidos (nivel + exemplo).
 - Commit: (abaixo)
 
+### 4. QUIZ DE CARREIRA - PULADO (bloqueio: sessao concorrente ativa)
+- `client/src/pages/QuizCarreira.tsx` esta sob trabalho ATIVO da outra sessao agora. Historico
+  recente (ultimos ~12 min) mostra varios commits dela exatamente nessa pagina e exatamente nesse
+  espirito: "redesign objective screen with bolder cta, color and motion", "animated role text",
+  "tela de nivel entre triagem e perguntas", "da mais vida as opcoes e a barra de progresso".
+  Ultimo commit do arquivo: 35e95cb, 12 min atras.
+- Regra 2 + limite de sessao concorrente: nao toco no arquivo pra nao colidir/sobrescrever o
+  trabalho dela. A subtarefa 4 ja esta sendo feita pela outra sessao.
+- Acao: PULADO. Se ao final a outra sessao tiver parado e o arquivo estiver estavel, posso revisitar.
+- Itens reais: n/a.
+
 ## Pendencias que precisam da Ana (links)
 - LINK Claude Embaixadora: `CLAUDE_EMBAIXADORA_URL` em `client/src/pages/Areas.tsx` esta `undefined`.
   Assim que a Ana der o link publico do programa Claude, basta preencher essa const e o selo vira
