@@ -159,6 +159,27 @@ Inicio: 2026-06-14 (madrugada).
 - Itens reais: 38 cursos verificados (adicionados ao dado; visibilidade ao vivo pendente da Ana).
 - Commit: (abaixo)
 
+### 12. INGLES: mini-quiz de nivel + objetivo -> trilha personalizada - CONCLUIDO
+- 23 recursos de ingles VERIFICADOS (1 subagent, cada URL confirmada por WebFetch/WebSearch; todos
+  os itens "(confirmar)" da curadoria foram confirmados: FutureLearn, ESOL Courses, Busuu, Cambly,
+  Tandem, HelloTalk). Salvo em `client/src/lib/inglesRecursos.ts` com subarea, nivel, objetivo[],
+  gratuito, desc (minhas palavras).
+- Mini-quiz novo (`components/ingles/InglesTrilhaQuiz.tsx`): 2 toques (nivel: Comecando/
+  Intermediario/Avancado + objetivo: Conversar/Ler documentacao e codigo/Entrevista internacional/
+  Passar num exame) -> monta trilha personalizada de 3 a 5 itens REAIS, ranqueados por nivel.
+  Validei TODAS as combinacoes no preview: cada uma retorna 3 a 5 (Entrevista=4, resto=5), com
+  links reais (Duolingo, BBC, British Council, italki, MDN, Cambridge Dictionary, etc.).
+- Organizado por subarea (cada card mostra a subarea), cor (tiles tipograficos coloridos), animacao
+  (reveal com framer + reduced-motion, hover motion-safe), badge gratis/pago. aria-live na trilha.
+  Logos: tipografico (nao bundlei logo de terceiro). Sem scroll horizontal.
+- Integrado na pagina `/ingles` logo apos a subnav. As subpaginas de ingles que ja existiam
+  continuam organizando recursos por tema.
+- Nota BBC: o site bloqueia o crawler; os 2 podcasts (6 Minute English, The English We Speak) e a
+  BBC Learning English foram confirmados por busca, usando as URLs canonicas conhecidas.
+- Teste: pnpm check EXIT 0. Preview: quiz funciona, 3 a 5 itens por combinacao, links reais.
+- Itens reais: 23 recursos verificados + quiz com 12 combinacoes validas.
+- Commit: (abaixo)
+
 ## Pendencias que precisam da Ana (links)
 - DECISAO CURSOS: importar os 38 cursos novos (em `cursosGratuitos`, data.ts) pro banco Supabase,
   OU autorizar editar `Cursos.tsx` pra mesclar API + estatico (hoje a API sobrescreve). Sem isso,
