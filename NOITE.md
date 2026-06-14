@@ -80,6 +80,32 @@ Inicio: 2026-06-14 (madrugada).
 - Acao: PULADO. Se ao final a outra sessao tiver parado e o arquivo estiver estavel, posso revisitar.
 - Itens reais: n/a.
 
+### 5. ABA TECNOLOGIAS: cor, vida, marquee, curiosidades, roadmaps - CONCLUIDO
+- Curiosidades VERIFICADAS: 38 linguagens pesquisadas por 3 subagents, cada fato confirmado na
+  Wikipedia (URL aberta via WebFetch). Salvo em `client/src/lib/technologyCuriosities.ts`
+  (name -> {curiosity, source}). Ex: JavaScript nasceu como LiveScript (Brendan Eich, 1995);
+  Python vem do Monty Python; Lua nasceu na PUC-Rio; Java comecou como Oak; Elixir e do brasileiro
+  Jose Valim; Ada homenageia Ada Lovelace.
+- Na pagina, todo card de linguagem mostra a curiosidade (caixa ambar com lampada). A fonte do dado
+  esta no arquivo (source). A base ao vivo (API getTechnologies) traz 14 linguagens e TODAS as 14
+  mostram curiosidade (cobertura 100% do que aparece); as outras 24 ja estao prontas no dado caso
+  entrem na base.
+- Linha de tecnologias passando (marquee): 24 techs (top ranking) em pills brancas com logo seguro
+  (TechnologyLogo, tipografico no fallback) e nome em cor vibrante ciclica. Duplicada pra loop
+  continuo. Reduced-motion para a animacao (add `.animate-marquee-left` no bloco reduced-motion do
+  index.css + motion-reduce:animate-none). aria-hidden, dentro de overflow-hidden (sem scroll H).
+- Cores fortes: tag de categoria agora colorida por categoria (violet/blue/emerald/sky/orange/
+  fuchsia/rose/teal/pink/amber), texto sempre AA (branco em 600/700, slate-950 no amber).
+- Botoes pra roadmaps REAIS: cada card tem botao "Ver roadmap" -> `/roadmaps?area=<slug>` quando a
+  area da tech existe como areaSlug real dos roadmaps (frontend, backend, dados, devops, mobile,
+  qa, gestao); senao cai em `/roadmaps` (pagina real, sempre populada). Validei o vocabulario de
+  slugs (nenhum link cai em filtro vazio). 63 botoes, hrefs reais conferidos no preview.
+- Entrada animada: AnimatedContent (respeita reduced-motion). Hover limpo via card-brutal.
+- Teste: pnpm check EXIT 0. Preview: marquee 48 itens, 63 botoes roadmap reais, 14/14 linguagens
+  com curiosidade, sem scroll horizontal (desktop e mobile 375).
+- Itens reais: 38 curiosidades de linguagens verificadas (Wikipedia).
+- Commit: (abaixo)
+
 ## Pendencias que precisam da Ana (links)
 - LINK Claude Embaixadora: `CLAUDE_EMBAIXADORA_URL` em `client/src/pages/Areas.tsx` esta `undefined`.
   Assim que a Ana der o link publico do programa Claude, basta preencher essa const e o selo vira

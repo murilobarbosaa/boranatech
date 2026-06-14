@@ -542,6 +542,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .animate-gentle-float,
+  .animate-marquee-left,
   .bnt-hero-social {
     animation: none;
   }

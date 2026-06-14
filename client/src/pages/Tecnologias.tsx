@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight, Lightbulb, Map } from "lucide-react";
 import Layout from "@/components/Layout";
 import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
 import TechnologyLogo from "@/components/TechnologyLogo";
+import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
   technologies,
   technologyCategories,
   technologyCategoryLabels,
+  technologyRanking,
 } from "@/lib/technologyData";
+import { technologyCuriosities } from "@/lib/technologyCuriosities";
 import { getTechnologies } from "@/services/contentService";
 
 const ac = getPageAccentUi("violet");
@@ -43,6 +46,55 @@ const CATEGORY_SUBTITLES: Record<string, string> = {
   Gestão:
     "Ferramentas para organizar tarefas, documentar e tocar projetos com o time.",
 };
+
+const CATEGORY_TAG: Record<string, string> = {
+  Linguagens: "bg-violet-600 text-white",
+  Frameworks: "bg-blue-600 text-white",
+  "Banco de Dados": "bg-emerald-700 text-white",
+  Ferramentas: "bg-slate-700 text-white",
+  Cloud: "bg-sky-600 text-white",
+  DevOps: "bg-orange-600 text-white",
+  "Dados e IA": "bg-fuchsia-700 text-white",
+  Segurança: "bg-rose-700 text-white",
+  Testes: "bg-teal-700 text-white",
+  Design: "bg-pink-600 text-white",
+  Gestão: "bg-amber-500 text-slate-950",
+};
+
+const MARQUEE_TEXT = [
+  "text-violet-700",
+  "text-blue-700",
+  "text-emerald-700",
+  "text-rose-700",
+  "text-fuchsia-700",
+  "text-cyan-700",
+  "text-orange-700",
+  "text-indigo-700",
+];
+
+const ROADMAP_AREA_SLUGS = new Set([
+  "backend",
+  "carreira",
+  "ciberseguranca",
+  "cloud",
+  "dados",
+  "devops",
+  "frontend",
+  "fullstack",
+  "gestao",
+  "ia",
+  "mobile",
+  "produto",
+  "qa",
+  "uxui",
+]);
+
+function roadmapHref(areas: string[]): string {
+  const match = areas.find((area) => ROADMAP_AREA_SLUGS.has(area));
+  return match ? `/roadmaps?area=${match}` : "/roadmaps";
+}
+
+const marqueeItems = technologyRanking.slice(0, 24);
 
 export default function Tecnologias() {
   const [technologyItems, setTechnologyItems] = useState(technologies);
@@ -80,6 +132,35 @@ export default function Tecnologias() {
           </span>
         }
       />
+
+      <section
+        aria-hidden
+        className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-50 py-4"
+      >
+        <div className="flex w-max animate-marquee-left gap-3 motion-reduce:animate-none">
+          {[...marqueeItems, ...marqueeItems].map((technology, index) => (
+            <span
+              key={`${technology.slug}-${index}`}
+              className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 shadow-[3px_3px_0_#0f172a]"
+            >
+              <TechnologyLogo
+                name={technology.name}
+                icon={technology.icon}
+                logoUrl={technology.logoUrl}
+                className="h-6 w-6"
+              />
+              <span
+                className={cn(
+                  "font-display text-sm font-black",
+                  MARQUEE_TEXT[index % MARQUEE_TEXT.length],
+                )}
+              >
+                {technology.name}
+              </span>
+            </span>
+          ))}
+        </div>
+      </section>
 
       <section
         className={cn(
@@ -134,81 +215,114 @@ export default function Tecnologias() {
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((technology) => (
-              <Link
-                key={technology.slug}
-                href={`/tecnologias/${technology.slug}`}
-                className={cn(
-                  "group card-brutal block h-full rounded-2xl bg-white p-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-4",
-                  ac.cardHover,
-                  ac.cardFocusRing,
-                )}
-              >
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <TechnologyLogo
-                    name={technology.name}
-                    icon={technology.icon}
-                    logoUrl={technology.logoUrl}
-                    className={cn("h-12 w-12", ac.logoTint)}
-                  />
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-1 text-xs font-black",
-                      ac.tag,
-                    )}
-                  >
-                    {technologyCategoryLabels[technology.category] ??
-                      technology.category}
-                  </span>
-                </div>
-                <h2 className="font-display text-xl font-black text-slate-950">
-                  {technology.name}
-                </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                  {technology.description}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
-                    {technology.difficulty}
-                  </span>
-                </div>
-                <div className="mt-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-500">
-                    {technology.games?.length
-                      ? "Empresas e jogos"
-                      : "Empresas/produtos que usam"}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {[
-                      ...technology.companies.slice(0, 2),
-                      ...(technology.games || []).slice(0, 1),
-                    ].map((example) => (
+            {filtered.map((technology, index) => {
+              const curiosity = technologyCuriosities[technology.name];
+              return (
+                <AnimatedContent
+                  key={technology.slug}
+                  distance={14}
+                  duration={0.4}
+                  delay={Math.min(index * 0.03, 0.3)}
+                  className="h-full"
+                >
+                  <div className="card-brutal flex h-full flex-col rounded-2xl bg-white p-5 text-left">
+                    <Link
+                      href={`/tecnologias/${technology.slug}`}
+                      className="group block flex-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-300"
+                    >
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <TechnologyLogo
+                          name={technology.name}
+                          icon={technology.icon}
+                          logoUrl={technology.logoUrl}
+                          className={cn("h-12 w-12", ac.logoTint)}
+                        />
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-1 text-xs font-black",
+                            CATEGORY_TAG[technology.category] ?? ac.tag,
+                          )}
+                        >
+                          {technologyCategoryLabels[technology.category] ??
+                            technology.category}
+                        </span>
+                      </div>
+                      <h2 className="font-display text-xl font-black text-slate-950">
+                        {technology.name}
+                      </h2>
+                      <p className="mt-2 text-sm text-slate-600">
+                        {technology.description}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
+                          {technology.difficulty}
+                        </span>
+                      </div>
+                      <div className="mt-4">
+                        <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                          {technology.games?.length
+                            ? "Empresas e jogos"
+                            : "Empresas/produtos que usam"}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {[
+                            ...technology.companies.slice(0, 2),
+                            ...(technology.games || []).slice(0, 1),
+                          ].map((example) => (
+                            <span
+                              key={example}
+                              className={cn(
+                                "rounded-full px-2 py-1 text-xs font-bold",
+                                ac.tag,
+                              )}
+                            >
+                              {example}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                       <span
-                        key={example}
                         className={cn(
-                          "rounded-full px-2 py-1 text-xs font-bold",
-                          ac.tag,
+                          "mt-5 inline-flex items-center gap-2 text-sm font-black group-hover:underline",
+                          ac.link,
                         )}
                       >
-                        {example}
+                        Ver detalhes{" "}
+                        <ArrowRight
+                          className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                          aria-hidden
+                        />
                       </span>
-                    ))}
+                    </Link>
+
+                    {curiosity ? (
+                      <div className="mt-4 flex gap-2 rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
+                        <Lightbulb
+                          className="h-4 w-4 shrink-0 text-amber-600"
+                          aria-hidden
+                        />
+                        <div>
+                          <p className="text-[0.7rem] font-black uppercase tracking-wide text-amber-700">
+                            Curiosidade
+                          </p>
+                          <p className="mt-0.5 text-sm text-slate-700">
+                            {curiosity.curiosity}
+                          </p>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <Link
+                      href={roadmapHref(technology.areas)}
+                      className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5"
+                    >
+                      <Map className="h-4 w-4" aria-hidden />
+                      Ver roadmap
+                    </Link>
                   </div>
-                </div>
-                <span
-                  className={cn(
-                    "mt-5 inline-flex items-center gap-2 text-sm font-black group-hover:underline",
-                    ac.link,
-                  )}
-                >
-                  Ver detalhes{" "}
-                  <ArrowRight
-                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </span>
-              </Link>
-            ))}
+                </AnimatedContent>
+              );
+            })}
           </div>
         </div>
       </section>
