@@ -29,6 +29,18 @@ const RANKING_SCOPES = [
   ...technologyCategories.filter((category) => category !== "Todas"),
 ];
 
+const MARKUP_SLUGS = new Set(["html", "css"]);
+
+const SCOPE_LABELS: Record<string, string> = {
+  ...technologyCategoryLabels,
+  Linguagens: "Linguagens e marcação",
+};
+
+function categoriaLabel(technology: { slug: string; category: string }): string {
+  if (MARKUP_SLUGS.has(technology.slug)) return "Marcação";
+  return technology.category;
+}
+
 function podiumEmoji(position: number) {
   if (position === 1) return "🥇";
   if (position === 2) return "🥈";
@@ -105,7 +117,7 @@ export default function TecnologiaRanking() {
         accent="amber"
         eyebrow="dados públicos 📊"
         title="🏆 Ranking de Tecnologias"
-        subtitle="Visualize popularidade com contexto: percentuais do Stack Overflow quando existem, e curadoria honesta quando o dado não é comparável, tudo com logos e links."
+        subtitle="Um ranking de tecnologias no geral: linguagens, marcação (HTML e CSS), frameworks e ferramentas. Mostra popularidade com contexto, com percentuais do Stack Overflow quando existem e curadoria honesta quando o dado não é comparável."
         topSlot={fromTech ? <BackToTechnologies accent="amber" /> : undefined}
         backgroundSlot={<RankingDoodles />}
       />
@@ -198,7 +210,7 @@ export default function TecnologiaRanking() {
                     scope === option ? ac.filterActive : ac.filterInactive,
                   )}
                 >
-                  {technologyCategoryLabels[option] ?? option}
+                  {SCOPE_LABELS[option] ?? option}
                 </button>
               ))}
             </div>
@@ -311,7 +323,7 @@ export default function TecnologiaRanking() {
                                 </Link>
                                 <div className="mt-1 flex flex-wrap gap-1">
                                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-800 ring-1 ring-slate-300">
-                                    {technology.category}
+                                    {categoriaLabel(technology)}
                                   </span>
                                 </div>
                               </div>
@@ -396,7 +408,7 @@ export default function TecnologiaRanking() {
                           </Link>
                           <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide">
                             <span className="rounded-full bg-slate-100 px-2 py-1 ring-1 ring-slate-300">
-                              {technology.category}
+                              {categoriaLabel(technology)}
                             </span>
                           </div>
                           <p className="mt-3 text-sm font-bold text-slate-900">
