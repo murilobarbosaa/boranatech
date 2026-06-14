@@ -610,6 +610,22 @@ const AREA_ICON_POSITIONS = [
   "left-[80%] top-[88%]",
 ];
 
+const ROLE_BY_AREA: Record<string, string> = {
+  "Front-end": "Dev Front-end",
+  "Back-end": "Dev Back-end",
+  "Full-stack": "Dev Full-stack",
+  "Ciência de Dados": "Cientista de Dados",
+  "UX/UI Design": "UX/UI Designer",
+  "Inteligência Artificial": "Especialista em IA",
+  "Produto Digital": "Product Manager",
+  Cibersegurança: "Analista de Cibersegurança",
+  "Cloud Computing": "Especialista em Cloud",
+  "Gestão de Projetos Tech": "Gerente de Projetos",
+  "QA / Testes de Software": "Analista de QA",
+  "Desenvolvimento Mobile": "Dev Mobile",
+  DevOps: "Especialista em DevOps",
+};
+
 function ObjectiveScreen({
   onSelect,
   onResume,
@@ -772,7 +788,7 @@ function ObjectiveScreen({
                       strokeWidth={2.5}
                     />
                   )}
-                  {areaAtual}
+                  {ROLE_BY_AREA[areaAtual] ?? areaAtual}
                 </motion.span>
               </AnimatePresence>
               <span
