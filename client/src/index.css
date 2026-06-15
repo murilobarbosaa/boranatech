@@ -987,3 +987,26 @@
     -webkit-print-color-adjust: exact;
   }
 }
+
+@keyframes bnt-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.bnt-marquee-track {
+  animation: bnt-marquee 36s linear infinite;
+}
+
+.bnt-marquee:hover .bnt-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bnt-marquee-track {
+    animation: none;
+  }
+}

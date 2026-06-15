@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Search, ArrowRight, Lightbulb, Map } from "lucide-react";
+import {
+  Search,
+  ArrowRight,
+  Lightbulb,
+  Map,
+  Code,
+  Terminal,
+  Braces,
+  Hash,
+} from "lucide-react";
+import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
 import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
@@ -13,40 +23,11 @@ import {
   technologies,
   technologyCategories,
   technologyCategoryLabels,
-  technologyRanking,
 } from "@/lib/technologyData";
 import { technologyCuriosities } from "@/lib/technologyCuriosities";
 import { getTechnologies } from "@/services/contentService";
 
 const ac = getPageAccentUi("violet");
-
-const GENERAL_SUBTITLE =
-  "Tecnologia é toda ferramenta que ajuda a construir software: linguagens (o idioma em que você escreve o código), frameworks (kits prontos que aceleram o trabalho) e ferramentas de apoio. Aqui você vê o que cada uma faz, onde é usada e quanto custa começar.";
-
-const CATEGORY_SUBTITLES: Record<string, string> = {
-  Linguagens:
-    "O idioma em que o código é escrito. Cada linguagem tem seu jeito e suas forças: algumas são ótimas pra web, outras pra dados, apps ou jogos.",
-  Frameworks:
-    "Kits prontos que poupam trabalho. Em vez de começar do zero, você usa uma base já estruturada pra construir mais rápido e com menos erro.",
-  "Banco de Dados":
-    "Onde a informação fica guardada e organizada. É o que permite um sistema lembrar cadastros, pedidos, mensagens e tudo que precisa ser salvo.",
-  Ferramentas:
-    "Programas de apoio do dia a dia: versionar código, desenhar telas, criar gráficos, testar e organizar as tarefas do time.",
-  Cloud:
-    "Servidores de empresas como Amazon, Google e Microsoft que você aluga pela internet, sem precisar manter máquinas próprias.",
-  DevOps:
-    "Práticas e ferramentas pra colocar software no ar de forma automática, confiável e monitorada, do código até o usuário final.",
-  "Dados e IA":
-    "Bibliotecas e plataformas para analisar dados, treinar modelos e construir soluções de inteligência artificial.",
-  Segurança:
-    "Ferramentas para testar, proteger e investigar sistemas, redes e aplicações.",
-  Testes:
-    "Ferramentas para testar software de forma automática e garantir qualidade antes de ir pro ar.",
-  Design:
-    "Ferramentas para desenhar telas, protótipos e interfaces antes de virar código.",
-  Gestão:
-    "Ferramentas para organizar tarefas, documentar e tocar projetos com o time.",
-};
 
 const CATEGORY_TAG: Record<string, string> = {
   Linguagens: "bg-violet-600 text-white",
@@ -86,9 +67,42 @@ function roadmapHref(areas: string[]): string {
   return match ? `/roadmaps?area=${match}` : "/roadmaps";
 }
 
-const marqueeLogos = technologyRanking
-  .filter((technology) => technology.logoUrl)
-  .slice(0, 28);
+const DOODLES = [
+  { Icon: Code, pos: "left-[4%] top-[18%]", size: "h-10 w-10", color: "#7c3aed", rot: 6, dur: 7 },
+  { Icon: Terminal, pos: "left-[14%] top-[68%]", size: "h-8 w-8", color: "#6d28d9", rot: -5, dur: 8 },
+  { Icon: Braces, pos: "left-[30%] top-[30%]", size: "h-9 w-9", color: "#8b5cf6", rot: 4, dur: 9 },
+  { Icon: Hash, pos: "left-[48%] top-[74%]", size: "h-8 w-8", color: "#7c3aed", rot: -6, dur: 7.5 },
+  { Icon: Code, pos: "left-[64%] top-[22%]", size: "h-9 w-9", color: "#6d28d9", rot: 5, dur: 8.5 },
+  { Icon: Terminal, pos: "left-[80%] top-[60%]", size: "h-10 w-10", color: "#8b5cf6", rot: -4, dur: 9.5 },
+  { Icon: Braces, pos: "left-[90%] top-[28%]", size: "h-8 w-8", color: "#7c3aed", rot: 6, dur: 7 },
+  { Icon: Hash, pos: "left-[22%] top-[88%]", size: "h-8 w-8", color: "#6d28d9", rot: -5, dur: 8 },
+];
+
+function BackgroundDoodles() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {DOODLES.map((doodle) => {
+        const Icon = doodle.Icon;
+        return (
+          <motion.span
+            key={doodle.pos}
+            aria-hidden
+            className={cn("absolute", doodle.pos)}
+            style={{ color: doodle.color, opacity: 0.1 }}
+            animate={{ y: [0, -10, 0], rotate: [0, doodle.rot, 0] }}
+            transition={{
+              duration: doodle.dur,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <Icon className={doodle.size} strokeWidth={2} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Tecnologias() {
   const [technologyItems, setTechnologyItems] = useState(technologies);
@@ -114,34 +128,56 @@ export default function Tecnologias() {
     [category, query, technologyItems],
   );
 
+  const marqueeItems = useMemo(
+    () => technologyItems.filter((technology) => technology.logoUrl).slice(0, 28),
+    [technologyItems],
+  );
+
   return (
     <Layout>
-      <PageHero
-        accent="violet"
-        eyebrow="stack e mercado"
-        title="Tecnologias e Linguagens"
-        subtitle={
-          <span
-            key={category}
-            className="animate-fade-slide-up inline-block text-sm font-medium text-slate-900 md:text-base"
-          >
-            {CATEGORY_SUBTITLES[category] ?? GENERAL_SUBTITLE}
-          </span>
-        }
-      />
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        <PageHero
+          accent="violet"
+          eyebrow="stack e mercado"
+          title="Conheça as tecnologias da área"
+          subtitle="Linguagens, frameworks, bancos, cloud, ferramentas e mais. Clica em qualquer uma pra ver o que é, pra que serve e por onde começar."
+          backgroundSlot={<BackgroundDoodles />}
+        />
+      </motion.div>
 
-      <section aria-hidden className="relative overflow-hidden py-6">
-        <div className="flex w-max animate-marquee-left items-center gap-10 motion-reduce:animate-none">
-          {[...marqueeLogos, ...marqueeLogos].map((technology, index) => (
-            <img
-              key={`${technology.slug}-${index}`}
-              src={technology.logoUrl}
-              alt={technology.name}
-              loading="lazy"
-              className="h-12 w-12 shrink-0 object-contain sm:h-14 sm:w-14"
-            />
-          ))}
-        </div>
+      <section className="relative overflow-hidden py-8">
+        <BackgroundDoodles />
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+          className="bnt-marquee relative z-10"
+        >
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#faf8f4] to-transparent sm:w-24" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#faf8f4] to-transparent sm:w-24" />
+          <div className="bnt-marquee-track flex w-max items-center gap-8 motion-reduce:animate-none">
+            {[...marqueeItems, ...marqueeItems].map((technology, index) => (
+              <Link
+                key={`${technology.slug}-${index}`}
+                href={`/tecnologias/${technology.slug}`}
+                aria-label={technology.name}
+                className="group shrink-0"
+              >
+                <TechnologyLogo
+                  name={technology.name}
+                  icon={technology.icon}
+                  logoUrl={technology.logoUrl}
+                  className="h-14 w-14 opacity-70 grayscale transition-all duration-200 group-hover:scale-110 group-hover:opacity-100 group-hover:grayscale-0"
+                  imageClassName="h-9 w-9"
+                />
+              </Link>
+            ))}
+          </div>
+        </motion.div>
       </section>
 
       <section
