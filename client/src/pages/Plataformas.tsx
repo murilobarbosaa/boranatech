@@ -13,7 +13,11 @@ import {
   Award,
   RotateCcw,
   SlidersHorizontal,
+  Gamepad2,
+  Code,
+  Braces,
 } from "lucide-react";
+import { motion, type Variants } from "framer-motion";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -23,6 +27,57 @@ import { plataformas } from "@/lib/data";
 import { technologies } from "@/lib/technologyData";
 
 const techBySlug = new Map(technologies.map((t) => [t.slug, t]));
+
+const gameCardMotion: Variants = {
+  rest: {},
+  hover: { scale: 1.02 },
+};
+
+const gameIconMotion: Variants = {
+  rest: { rotate: 0 },
+  hover: { rotate: [0, -10, 10, -5, 0] },
+};
+
+const GAME_DOODLES = [
+  { Icon: Gamepad2, pos: "left-[6%] top-[18%]", size: "h-10 w-10", rot: 8, dur: 7 },
+  { Icon: Code, pos: "right-[8%] top-[14%]", size: "h-9 w-9", rot: -6, dur: 8 },
+  { Icon: Braces, pos: "right-[22%] bottom-[12%]", size: "h-8 w-8", rot: 6, dur: 9 },
+];
+
+function PlatformLogo({
+  nome,
+  logoUrl,
+  isGame,
+}: {
+  nome: string;
+  logoUrl: string;
+  isGame: boolean;
+}) {
+  const [errored, setErrored] = useState(false);
+
+  if (!logoUrl || errored) {
+    return isGame ? (
+      <Gamepad2 className="h-7 w-7 text-violet-700" strokeWidth={2.5} aria-hidden />
+    ) : (
+      <span className="font-display text-lg font-black text-emerald-700">
+        {nome.charAt(0).toUpperCase()}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={logoUrl}
+      alt={`Logo ${nome}`}
+      className="h-9 w-9 object-contain"
+      loading="lazy"
+      onError={() => setErrored(true)}
+      onLoad={(event) => {
+        if (event.currentTarget.naturalWidth === 0) setErrored(true);
+      }}
+    />
+  );
+}
 
 export default function Plataformas() {
   const platformItems = plataformas;
@@ -286,27 +341,83 @@ export default function Plataformas() {
               Visitar <ExternalLink className="w-3 h-3" />
             </a>
           </div>
+          {categoriaFilter === "Jogo" ? (
+            <div className="relative mb-6 overflow-hidden rounded-2xl border-2 border-slate-900 bg-violet-100 p-6 shadow-[5px_5px_0_#c4b5fd]">
+              {GAME_DOODLES.map((doodle) => {
+                const Icon = doodle.Icon;
+                return (
+                  <motion.span
+                    key={doodle.pos}
+                    aria-hidden
+                    className={`pointer-events-none absolute ${doodle.pos}`}
+                    style={{ color: "#7c3aed", opacity: 0.1 }}
+                    animate={{ y: [0, -8, 0], rotate: [0, doodle.rot, 0] }}
+                    transition={{
+                      duration: doodle.dur,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  >
+                    <Icon className={doodle.size} strokeWidth={2} />
+                  </motion.span>
+                );
+              })}
+              <div className="relative z-10">
+                <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
+                  <Gamepad2 className="h-6 w-6 text-violet-700" aria-hidden />
+                  Aprenda brincando
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-700">
+                  Joguinhos rápidos pra treinar lógica, CSS, SQL e regex direto
+                  no navegador. Abre, joga e aprende.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((plat) => (
-              <div
+              <motion.div
                 key={plat.id}
                 className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#6ee7b7]"
+                {...(plat.categoria === "Jogo"
+                  ? {
+                      initial: "rest",
+                      animate: "rest",
+                      whileHover: "hover",
+                      variants: gameCardMotion,
+                      transition: { duration: 0.2 },
+                    }
+                  : {})}
               >
                 {/* Header */}
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white p-2 shadow-[3px_3px_0_#0f172a]">
-                      <img
-                        src={plat.logoUrl}
-                        alt={`Logo ${plat.nome}`}
-                        className="h-9 w-9 object-contain"
-                        loading="lazy"
+                    <motion.div
+                      variants={gameIconMotion}
+                      transition={{ duration: 0.5 }}
+                      className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 p-2 shadow-[3px_3px_0_#0f172a] ${
+                        plat.categoria === "Jogo"
+                          ? "bg-gradient-to-br from-violet-200 to-emerald-200"
+                          : "bg-white"
+                      }`}
+                    >
+                      <PlatformLogo
+                        nome={plat.nome}
+                        logoUrl={plat.logoUrl}
+                        isGame={plat.categoria === "Jogo"}
                       />
-                    </div>
+                    </motion.div>
                     <div className="min-w-0">
                       <h3 className="font-display font-bold text-xl text-slate-900">
                         {plat.nome}
                       </h3>
+                      {plat.categoria === "Jogo" ? (
+                        <span className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full border-2 border-violet-300 bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-700">
+                          <Gamepad2 className="h-3 w-3" />
+                          Jogo
+                        </span>
+                      ) : null}
                       <span
                         className={`mt-1 inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-[11px] font-black ${
                           plat.certificado
@@ -464,10 +575,11 @@ export default function Plataformas() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
                   >
-                    Visitar <ExternalLink className="w-3 h-3" />
+                    {plat.categoria === "Jogo" ? "Jogar agora" : "Visitar"}{" "}
+                    <ExternalLink className="w-3 h-3" />
                   </a>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
 
