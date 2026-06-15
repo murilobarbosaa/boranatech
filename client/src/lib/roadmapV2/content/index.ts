@@ -9,6 +9,7 @@ import { produto } from "./produto";
 import { ciberseguranca } from "./ciberseguranca";
 import { cloud } from "./cloud";
 import { gestao } from "./gestao";
+import { qa } from "./qa";
 
 export {
   frontend,
@@ -21,6 +22,7 @@ export {
   ciberseguranca,
   cloud,
   gestao,
+  qa,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -33,4 +35,5 @@ export const roadmapsV2: RoadmapV2[] = [
   ciberseguranca,
   cloud,
   gestao,
+  qa,
 ];
