@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearch } from "wouter";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   ExternalLink,
   Trophy,
@@ -11,6 +12,8 @@ import {
 import Layout from "@/components/Layout";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import TechnologyLogo from "@/components/TechnologyLogo";
+import CountUp from "@/components/reactbits/CountUp";
+import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -29,16 +32,41 @@ const RANKING_SCOPES = [
   ...technologyCategories.filter((category) => category !== "Todas"),
 ];
 
-const MARKUP_SLUGS = new Set(["html", "css"]);
-
 const SCOPE_LABELS: Record<string, string> = {
   ...technologyCategoryLabels,
   Linguagens: "Linguagens e marcação",
 };
 
-function categoriaLabel(technology: { slug: string; category: string }): string {
-  if (MARKUP_SLUGS.has(technology.slug)) return "Marcação";
-  return technology.category;
+interface TipoTag {
+  label: string;
+  cls: string;
+}
+
+const TIPO_POR_CATEGORIA: Record<string, TipoTag> = {
+  Linguagens: { label: "linguagem", cls: "bg-violet-100 text-violet-800" },
+  Frameworks: { label: "framework", cls: "bg-blue-100 text-blue-800" },
+  "Banco de Dados": { label: "banco", cls: "bg-emerald-100 text-emerald-800" },
+  Ferramentas: { label: "ferramenta", cls: "bg-slate-200 text-slate-800" },
+  Cloud: { label: "cloud", cls: "bg-sky-100 text-sky-800" },
+  DevOps: { label: "devops", cls: "bg-orange-100 text-orange-900" },
+  "Dados e IA": { label: "dados e IA", cls: "bg-fuchsia-100 text-fuchsia-800" },
+  Segurança: { label: "segurança", cls: "bg-rose-100 text-rose-800" },
+  Testes: { label: "testes", cls: "bg-teal-100 text-teal-800" },
+  Design: { label: "design", cls: "bg-pink-100 text-pink-800" },
+  Gestão: { label: "gestão", cls: "bg-amber-100 text-amber-900" },
+};
+
+const TIPO_FALLBACK: TipoTag = {
+  label: "tecnologia",
+  cls: "bg-slate-100 text-slate-700",
+};
+
+function tipoTag(technology: { slug: string; category: string }): TipoTag {
+  if (technology.slug === "html")
+    return { label: "markup", cls: "bg-orange-100 text-orange-900" };
+  if (technology.slug === "css")
+    return { label: "estilo", cls: "bg-cyan-100 text-cyan-900" };
+  return TIPO_POR_CATEGORIA[technology.category] ?? TIPO_FALLBACK;
 }
 
 function podiumEmoji(position: number) {
@@ -49,17 +77,30 @@ function podiumEmoji(position: number) {
 }
 
 function UsageBar({ percent }: { percent?: number }) {
-  if (percent == null) return null;
-  const width = Math.max(0, Math.min(100, percent));
+  const reduce = useReducedMotion();
+  const width = percent == null ? null : Math.max(0, Math.min(100, percent));
+  const [shown, setShown] = useState(reduce ? (width ?? 0) : 0);
+
+  useEffect(() => {
+    if (width == null) return;
+    if (reduce) {
+      setShown(width);
+      return;
+    }
+    const id = setTimeout(() => setShown(width), 80);
+    return () => clearTimeout(id);
+  }, [width, reduce]);
+
+  if (width == null) return null;
   return (
     <div
-      className="mt-2 h-2.5 w-full overflow-hidden rounded-full border border-slate-300 bg-slate-100"
+      className="mt-2 h-2.5 w-full overflow-hidden rounded-full border border-slate-300 bg-slate-100 transition-[height] duration-200 ease-out motion-safe:group-hover:h-3.5"
       role="img"
       aria-label={`Uso aproximado de ${Math.round(width)}%`}
     >
       <div
-        className="h-full rounded-full bg-amber-500"
-        style={{ width: `${width}%` }}
+        className="h-full rounded-full bg-amber-500 transition-[width] duration-700 ease-out"
+        style={{ width: `${shown}%` }}
       />
     </div>
   );
@@ -99,6 +140,7 @@ export default function TecnologiaRanking() {
   const fromTech = new URLSearchParams(search).get("from") === "tecnologias";
   const [ranking, setRanking] = useState(technologyRanking);
   const [scope, setScope] = useState("Geral");
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     getTechnologyRanking()
@@ -116,8 +158,8 @@ export default function TecnologiaRanking() {
       <PageHero
         accent="amber"
         eyebrow="dados públicos 📊"
-        title="🏆 Ranking de Tecnologias"
-        subtitle="Um ranking de tecnologias no geral: linguagens, marcação (HTML e CSS), frameworks e ferramentas. Mostra popularidade com contexto, com percentuais do Stack Overflow quando existem e curadoria honesta quando o dado não é comparável."
+        title="🏆 Tecnologias mais usadas"
+        subtitle="A lista mistura linguagem, marcação (HTML), estilo (CSS), frameworks, bancos e ferramentas. Por isso falamos em tecnologias, não só linguagens. Mostra popularidade com contexto, com percentuais do Stack Overflow quando existem e curadoria honesta quando o dado não é comparável."
         topSlot={fromTech ? <BackToTechnologies accent="amber" /> : undefined}
         backgroundSlot={<RankingDoodles />}
       />
@@ -230,37 +272,73 @@ export default function TecnologiaRanking() {
               <div className="mb-8 grid gap-4 sm:grid-cols-3">
                 {scoped.slice(0, 3).map((technology, index) => {
                   const position = index + 1;
+                  const isFirst = position === 1;
+                  const tipo = tipoTag(technology);
                   return (
-                    <div
+                    <AnimatedContent
                       key={technology.slug}
-                      className={cn(
-                        "flex flex-col items-center gap-2 rounded-2xl border-2 border-slate-900 bg-white p-5 text-center shadow-[4px_4px_0_#0f172a]",
-                        position === 1 && "sm:-translate-y-2 sm:ring-4 sm:ring-amber-300",
-                      )}
+                      distance={18}
+                      duration={0.45}
+                      delay={index * 0.12}
                     >
-                      <span className="text-4xl" aria-hidden>
-                        {podiumEmoji(position)}
-                      </span>
-                      <TechnologyLogo
-                        name={technology.name}
-                        icon={technology.icon}
-                        logoUrl={technology.logoUrl}
-                        className="h-12 w-12"
-                        imageClassName="h-8 w-8"
-                      />
-                      <Link
-                        href={`/tecnologias/${technology.slug}`}
-                        className="font-display text-lg font-black text-violet-900 underline-offset-4 hover:underline"
+                      <motion.div
+                        animate={
+                          !reduce && isFirst
+                            ? {
+                                boxShadow: [
+                                  "0 0 0 0 rgba(251, 191, 36, 0.55)",
+                                  "0 0 0 10px rgba(251, 191, 36, 0)",
+                                ],
+                              }
+                            : undefined
+                        }
+                        transition={
+                          !reduce && isFirst
+                            ? { duration: 2.2, repeat: Infinity, ease: "easeOut" }
+                            : undefined
+                        }
+                        className={cn(
+                          "group flex h-full flex-col items-center gap-2 rounded-2xl border-2 border-slate-900 bg-white p-5 text-center shadow-[4px_4px_0_#0f172a] transition-transform duration-200 ease-out motion-safe:hover:-translate-y-1",
+                          isFirst && "ring-4 ring-amber-300",
+                        )}
                       >
-                        {technology.name}
-                      </Link>
-                      <span className="text-sm font-bold text-slate-700">
-                        {technology.usageLabel || "Curadoria Bora na Tech"}
-                      </span>
-                      <div className="w-full">
-                        <UsageBar percent={technology.usagePercent} />
-                      </div>
-                    </div>
+                        <span className="text-4xl" aria-hidden>
+                          {podiumEmoji(position)}
+                        </span>
+                        <TechnologyLogo
+                          name={technology.name}
+                          icon={technology.icon}
+                          logoUrl={technology.logoUrl}
+                          className="h-12 w-12"
+                          imageClassName="h-8 w-8"
+                        />
+                        <Link
+                          href={`/tecnologias/${technology.slug}`}
+                          className="font-display text-lg font-black text-violet-900 underline-offset-4 hover:underline"
+                        >
+                          {technology.name}
+                        </Link>
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide",
+                            tipo.cls,
+                          )}
+                        >
+                          {tipo.label}
+                        </span>
+                        {technology.usagePercent != null ? (
+                          <span className="font-display text-2xl font-black text-amber-700">
+                            <CountUp to={Math.round(technology.usagePercent)} />%
+                          </span>
+                        ) : null}
+                        <span className="text-sm font-bold text-slate-700">
+                          {technology.usageLabel || "Curadoria Bora na Tech"}
+                        </span>
+                        <div className="w-full">
+                          <UsageBar percent={technology.usagePercent} />
+                        </div>
+                      </motion.div>
+                    </AnimatedContent>
                   );
                 })}
               </div>
@@ -279,6 +357,7 @@ export default function TecnologiaRanking() {
                     {scoped.map((technology, index) => {
                       const position = index + 1;
                       const podium = podiumEmoji(position);
+                      const tipo = tipoTag(technology);
                       return (
                         <tr
                           key={technology.slug}
@@ -286,7 +365,7 @@ export default function TecnologiaRanking() {
                             animationDelay: `${Math.min(index * 22, 640)}ms`,
                           }}
                           className={cn(
-                            "tech-ranking-row group border-t-2 border-slate-100 transition-colors hover:bg-amber-50/60",
+                            "tech-ranking-row group border-t-2 border-slate-100 transition-colors hover:bg-amber-100/70",
                           )}
                         >
                           <td className="p-4">
@@ -322,18 +401,39 @@ export default function TecnologiaRanking() {
                                   {technology.name}
                                 </Link>
                                 <div className="mt-1 flex flex-wrap gap-1">
-                                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black text-slate-800 ring-1 ring-slate-300">
-                                    {categoriaLabel(technology)}
+                                  <span
+                                    className={cn(
+                                      "rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide",
+                                      tipo.cls,
+                                    )}
+                                  >
+                                    {tipo.label}
                                   </span>
                                 </div>
                               </div>
                             </div>
                           </td>
                           <td className="p-4">
-                            <span className="font-black text-slate-950">
-                              {technology.usageLabel ||
-                                "Sem percentual comparável"}
-                            </span>
+                            {technology.usagePercent != null ? (
+                              <span className="flex items-baseline gap-2">
+                                <span className="font-display text-lg font-black text-amber-700">
+                                  <CountUp
+                                    to={Math.round(technology.usagePercent)}
+                                  />
+                                  %
+                                </span>
+                                {technology.usageLabel ? (
+                                  <span className="text-xs font-medium text-slate-500">
+                                    {technology.usageLabel}
+                                  </span>
+                                ) : null}
+                              </span>
+                            ) : (
+                              <span className="font-black text-slate-950">
+                                {technology.usageLabel ||
+                                  "Sem percentual comparável"}
+                              </span>
+                            )}
                             <UsageBar percent={technology.usagePercent} />
                             {technology.sourceNote ? (
                               <span className="mt-1 block text-xs text-slate-500">
@@ -375,13 +475,14 @@ export default function TecnologiaRanking() {
                 {scoped.map((technology, index) => {
                   const position = index + 1;
                   const podium = podiumEmoji(position);
+                  const tipo = tipoTag(technology);
                   return (
                     <article
                       key={technology.slug}
                       style={{
                         animationDelay: `${Math.min(index * 42, 600)}ms`,
                       }}
-                      className="tech-ranking-card tech-ranking-card--mobile rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                      className="tech-ranking-card tech-ranking-card--mobile group rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-transform duration-200 ease-out motion-safe:hover:-translate-y-1"
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex flex-col items-center gap-1">
@@ -407,14 +508,35 @@ export default function TecnologiaRanking() {
                             {technology.name}
                           </Link>
                           <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-wide">
-                            <span className="rounded-full bg-slate-100 px-2 py-1 ring-1 ring-slate-300">
-                              {categoriaLabel(technology)}
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-1",
+                                tipo.cls,
+                              )}
+                            >
+                              {tipo.label}
                             </span>
                           </div>
-                          <p className="mt-3 text-sm font-bold text-slate-900">
-                            {technology.usageLabel ||
-                              "Sem percentual comparável"}
-                          </p>
+                          {technology.usagePercent != null ? (
+                            <p className="mt-3 flex items-baseline gap-2">
+                              <span className="font-display text-xl font-black text-amber-700">
+                                <CountUp
+                                  to={Math.round(technology.usagePercent)}
+                                />
+                                %
+                              </span>
+                              {technology.usageLabel ? (
+                                <span className="text-xs font-medium text-slate-500">
+                                  {technology.usageLabel}
+                                </span>
+                              ) : null}
+                            </p>
+                          ) : (
+                            <p className="mt-3 text-sm font-bold text-slate-900">
+                              {technology.usageLabel ||
+                                "Sem percentual comparável"}
+                            </p>
+                          )}
                           <UsageBar percent={technology.usagePercent} />
                           {technology.sourceNote ? (
                             <p className="mt-1 text-xs text-slate-500">
