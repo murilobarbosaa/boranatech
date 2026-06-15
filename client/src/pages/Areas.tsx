@@ -118,8 +118,8 @@ interface Grupo {
 const GRUPOS: Record<string, Grupo> = {
   dev: {
     label: "Desenvolvimento",
-    band: "bg-violet-600",
-    bandIcon: "text-white",
+    band: "bg-violet-100",
+    bandIcon: "text-violet-700",
     badge: "text-violet-700",
     explore: "text-violet-700",
     exploreBorder: "border-violet-200",
@@ -130,8 +130,8 @@ const GRUPOS: Record<string, Grupo> = {
   },
   dados: {
     label: "Dados e IA",
-    band: "bg-blue-600",
-    bandIcon: "text-white",
+    band: "bg-blue-100",
+    bandIcon: "text-blue-700",
     badge: "text-blue-700",
     explore: "text-blue-700",
     exploreBorder: "border-blue-200",
@@ -142,8 +142,8 @@ const GRUPOS: Record<string, Grupo> = {
   },
   infra: {
     label: "Infra e Cloud",
-    band: "bg-teal-600",
-    bandIcon: "text-white",
+    band: "bg-teal-100",
+    bandIcon: "text-teal-700",
     badge: "text-teal-700",
     explore: "text-teal-700",
     exploreBorder: "border-teal-200",
@@ -154,8 +154,8 @@ const GRUPOS: Record<string, Grupo> = {
   },
   seguranca: {
     label: "Segurança",
-    band: "bg-rose-600",
-    bandIcon: "text-white",
+    band: "bg-rose-100",
+    bandIcon: "text-rose-700",
     badge: "text-rose-700",
     explore: "text-rose-700",
     exploreBorder: "border-rose-200",
@@ -166,8 +166,8 @@ const GRUPOS: Record<string, Grupo> = {
   },
   design: {
     label: "Design",
-    band: "bg-fuchsia-600",
-    bandIcon: "text-white",
+    band: "bg-fuchsia-100",
+    bandIcon: "text-fuchsia-700",
     badge: "text-fuchsia-700",
     explore: "text-fuchsia-700",
     exploreBorder: "border-fuchsia-200",
@@ -178,8 +178,8 @@ const GRUPOS: Record<string, Grupo> = {
   },
   gestao: {
     label: "Gestão",
-    band: "bg-amber-400",
-    bandIcon: "text-slate-950",
+    band: "bg-amber-100",
+    bandIcon: "text-amber-800",
     badge: "text-amber-800",
     explore: "text-amber-800",
     exploreBorder: "border-amber-300",
@@ -190,8 +190,8 @@ const GRUPOS: Record<string, Grupo> = {
   },
   qa: {
     label: "QA e Suporte",
-    band: "bg-emerald-600",
-    bandIcon: "text-white",
+    band: "bg-emerald-100",
+    bandIcon: "text-emerald-700",
     badge: "text-emerald-700",
     explore: "text-emerald-700",
     exploreBorder: "border-emerald-200",
@@ -548,7 +548,7 @@ export default function Areas() {
                       />
                       <Link
                         href={`/areas/${area.slug}`}
-                        className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[8px_8px_0_#FFB800] motion-safe:focus-visible:-translate-y-1 motion-safe:focus-visible:shadow-[8px_8px_0_#FFB800]"
+                        className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#fbbf24] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#fbbf24] motion-safe:focus-visible:-translate-y-1 motion-safe:focus-visible:shadow-[6px_6px_0_#fbbf24]"
                       >
                         <div
                           className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
@@ -574,7 +574,7 @@ export default function Areas() {
                             />
                           </motion.span>
                           <span
-                            className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
+                            className={`inline-flex rounded-full bg-white px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
                           >
                             {grupo.label}
                           </span>
@@ -655,7 +655,7 @@ export default function Areas() {
                     delay={Math.min(index * 0.05, 0.3)}
                     className="h-full"
                   >
-                    <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#FFB800]">
+                    <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#fbbf24]">
                       <div
                         className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
                       >
@@ -676,7 +676,7 @@ export default function Areas() {
                           <Icon className="h-10 w-10" strokeWidth={2.5} aria-hidden />
                         </motion.span>
                         <span
-                          className={`inline-flex rounded-full bg-white/95 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
+                          className={`inline-flex rounded-full bg-white px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
                         >
                           {grupo.label}
                         </span>
