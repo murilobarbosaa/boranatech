@@ -15,6 +15,7 @@ import { devops } from "./devops";
 import { gamedev } from "./gamedev";
 import { analiseDados } from "./analise-dados";
 import { engenhariaDados } from "./engenharia-dados";
+import { bancoDeDados } from "./banco-de-dados";
 
 export {
   frontend,
@@ -33,6 +34,7 @@ export {
   gamedev,
   analiseDados,
   engenhariaDados,
+  bancoDeDados,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -51,4 +53,5 @@ export const roadmapsV2: RoadmapV2[] = [
   gamedev,
   analiseDados,
   engenhariaDados,
+  bancoDeDados,
 ];
