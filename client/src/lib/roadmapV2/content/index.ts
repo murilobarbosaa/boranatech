@@ -5,8 +5,9 @@ import { fullstack } from "./fullstack";
 import { dados } from "./dados";
 import { uxui } from "./uxui";
 import { ia } from "./ia";
+import { produto } from "./produto";
 
-export { frontend, backend, fullstack, dados, uxui, ia };
+export { frontend, backend, fullstack, dados, uxui, ia, produto };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
   backend,
@@ -14,4 +15,5 @@ export const roadmapsV2: RoadmapV2[] = [
   dados,
   uxui,
   ia,
+  produto,
 ];
