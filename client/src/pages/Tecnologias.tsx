@@ -149,7 +149,7 @@ export default function Tecnologias() {
         />
       </motion.div>
 
-      <section className="relative overflow-hidden py-8">
+      <section className="relative overflow-hidden bg-[#faf8f4] py-8">
         <BackgroundDoodles />
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -171,7 +171,7 @@ export default function Tecnologias() {
                   name={technology.name}
                   icon={technology.icon}
                   logoUrl={technology.logoUrl}
-                  className="h-14 w-14 opacity-70 grayscale transition-all duration-200 group-hover:scale-110 group-hover:opacity-100 group-hover:grayscale-0"
+                  className="h-14 w-14 border-0 bg-transparent shadow-none brightness-0 transition-all duration-300 group-hover:scale-110 group-hover:brightness-100"
                   imageClassName="h-9 w-9"
                 />
               </Link>
