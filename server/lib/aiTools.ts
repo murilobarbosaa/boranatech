@@ -43,18 +43,6 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     systemPrompt:
       "Você é uma entrevistadora tech brasileira. Gere perguntas, feedback e próximos passos com linguagem objetiva.",
   },
-  "github-review": {
-    key: "github-review",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 12_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Análise de perfil GitHub",
-    systemPrompt:
-      "Você é uma recrutadora técnica. Analise perfil GitHub, frequência, READMEs, tecnologias e prontidão para vagas.",
-  },
   "resume-review": {
     key: "resume-review",
     requiresPro: true,
