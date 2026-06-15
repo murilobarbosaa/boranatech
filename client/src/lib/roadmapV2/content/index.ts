@@ -13,6 +13,7 @@ import { qa } from "./qa";
 import { mobile } from "./mobile";
 import { devops } from "./devops";
 import { gamedev } from "./gamedev";
+import { analiseDados } from "./analise-dados";
 
 export {
   frontend,
@@ -29,6 +30,7 @@ export {
   mobile,
   devops,
   gamedev,
+  analiseDados,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -45,4 +47,5 @@ export const roadmapsV2: RoadmapV2[] = [
   mobile,
   devops,
   gamedev,
+  analiseDados,
 ];
