@@ -10,6 +10,7 @@ import { ciberseguranca } from "./ciberseguranca";
 import { cloud } from "./cloud";
 import { gestao } from "./gestao";
 import { qa } from "./qa";
+import { mobile } from "./mobile";
 
 export {
   frontend,
@@ -23,6 +24,7 @@ export {
   cloud,
   gestao,
   qa,
+  mobile,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -36,4 +38,5 @@ export const roadmapsV2: RoadmapV2[] = [
   cloud,
   gestao,
   qa,
+  mobile,
 ];
