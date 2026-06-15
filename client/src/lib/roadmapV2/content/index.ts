@@ -17,6 +17,7 @@ import { analiseDados } from "./analise-dados";
 import { engenhariaDados } from "./engenharia-dados";
 import { bancoDeDados } from "./banco-de-dados";
 import { sre } from "./sre";
+import { infraestrutura } from "./infraestrutura";
 
 export {
   frontend,
@@ -37,6 +38,7 @@ export {
   engenhariaDados,
   bancoDeDados,
   sre,
+  infraestrutura,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -57,4 +59,5 @@ export const roadmapsV2: RoadmapV2[] = [
   engenhariaDados,
   bancoDeDados,
   sre,
+  infraestrutura,
 ];
