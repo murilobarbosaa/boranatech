@@ -11,6 +11,7 @@ import { cloud } from "./cloud";
 import { gestao } from "./gestao";
 import { qa } from "./qa";
 import { mobile } from "./mobile";
+import { devops } from "./devops";
 
 export {
   frontend,
@@ -25,6 +26,7 @@ export {
   gestao,
   qa,
   mobile,
+  devops,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -39,4 +41,5 @@ export const roadmapsV2: RoadmapV2[] = [
   gestao,
   qa,
   mobile,
+  devops,
 ];
