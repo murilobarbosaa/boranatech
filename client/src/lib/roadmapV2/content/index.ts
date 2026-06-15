@@ -19,6 +19,7 @@ import { bancoDeDados } from "./banco-de-dados";
 import { sre } from "./sre";
 import { infraestrutura } from "./infraestrutura";
 import { analiseSistemas } from "./analise-sistemas";
+import { blockchain } from "./blockchain";
 
 export {
   frontend,
@@ -41,6 +42,7 @@ export {
   sre,
   infraestrutura,
   analiseSistemas,
+  blockchain,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -63,4 +65,5 @@ export const roadmapsV2: RoadmapV2[] = [
   sre,
   infraestrutura,
   analiseSistemas,
+  blockchain,
 ];
