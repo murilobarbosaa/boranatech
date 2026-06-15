@@ -21,6 +21,7 @@ import { infraestrutura } from "./infraestrutura";
 import { analiseSistemas } from "./analise-sistemas";
 import { blockchain } from "./blockchain";
 import { iot } from "./iot";
+import { mainframe } from "./mainframe";
 
 export {
   frontend,
@@ -45,6 +46,7 @@ export {
   analiseSistemas,
   blockchain,
   iot,
+  mainframe,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -69,4 +71,5 @@ export const roadmapsV2: RoadmapV2[] = [
   analiseSistemas,
   blockchain,
   iot,
+  mainframe,
 ];
