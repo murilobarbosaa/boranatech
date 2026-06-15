@@ -632,3 +632,129 @@ export const iaGlossario: IaTermo[] = [
       "Forma de um programa conversar com a IA por código, pra integrar em apps.",
   },
 ];
+
+export interface IaCriador {
+  nome: string;
+  foco: string;
+  plataforma: string;
+  url: string;
+}
+
+export const iaCriadores: IaCriador[] = [
+  {
+    nome: "3Blue1Brown",
+    foco: "Matemática e redes neurais com animações.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@3blue1brown",
+  },
+  {
+    nome: "Two Minute Papers",
+    foco: "Resumos curtos das pesquisas recentes de IA.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@TwoMinutePapers",
+  },
+  {
+    nome: "Andrej Karpathy",
+    foco: "Como os modelos funcionam por dentro, do zero.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@AndrejKarpathy",
+  },
+  {
+    nome: "StatQuest",
+    foco: "Estatística e machine learning de forma simples.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@statquest",
+  },
+  {
+    nome: "sentdex",
+    foco: "Python e IA na prática, com projetos.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@sentdex",
+  },
+  {
+    nome: "DeepLearningAI",
+    foco: "Canal do Andrew Ng, aulas e novidades de IA.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@Deeplearningai",
+  },
+  {
+    nome: "IBM Technology",
+    foco: "Explicações conceituais curtas de IA e dados.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@IBMTechnology",
+  },
+  {
+    nome: "Matt Wolfe",
+    foco: "Panorama de ferramentas e novidades de IA.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@mreflow",
+  },
+  {
+    nome: "Lex Fridman",
+    foco: "Entrevistas longas com nomes importantes de IA.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@lexfridman",
+  },
+  {
+    nome: "Fireship",
+    foco: "Visão rápida e dev-friendly de tech e IA.",
+    plataforma: "YouTube",
+    url: "https://www.youtube.com/@Fireship",
+  },
+];
+
+export interface IaQuizOpcao {
+  rotulo: string;
+  recomendaA: string[];
+  dica: string;
+}
+
+export const iaQuizPergunta = "O que você quer fazer agora?";
+
+export const iaQuizOpcoes: IaQuizOpcao[] = [
+  {
+    rotulo: "Estudar ou tirar uma dúvida",
+    recomendaA: ["ChatGPT", "Claude", "Gemini"],
+    dica: "Peça explicação passo a passo e exemplos.",
+  },
+  {
+    rotulo: "Programar",
+    recomendaA: ["Cursor", "GitHub Copilot"],
+    dica: "Use dentro do editor pra acelerar o código.",
+  },
+  {
+    rotulo: "Pesquisar com fontes",
+    recomendaA: ["Perplexity"],
+    dica: "Ela responde citando os links pra você conferir.",
+  },
+  {
+    rotulo: "Criar uma imagem",
+    recomendaA: ["Midjourney", "Ideogram", "Leonardo AI"],
+    dica: "Descreva estilo, cores e o que não quer.",
+  },
+  {
+    rotulo: "Criar um vídeo",
+    recomendaA: ["Runway", "Pika", "HeyGen"],
+    dica: "Comece com clipes curtos pra testar.",
+  },
+  {
+    rotulo: "Criar áudio ou voz",
+    recomendaA: ["ElevenLabs", "Suno"],
+    dica: "Bom pra narração, música e protótipos.",
+  },
+  {
+    rotulo: "Escrever ou revisar texto",
+    recomendaA: ["ChatGPT", "Claude"],
+    dica: "Diga o tom, o público e o tamanho.",
+  },
+  {
+    rotulo: "Criar um app ou site",
+    recomendaA: ["v0", "Bolt", "Lovable"],
+    dica: "Descreva a tela e vá ajustando.",
+  },
+  {
+    rotulo: "Estudar dos seus materiais",
+    recomendaA: ["NotebookLM"],
+    dica: "Suba seus PDFs e pergunte sobre eles.",
+  },
+];
