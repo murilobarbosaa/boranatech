@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -26,11 +26,6 @@ import { STACK_OVERFLOW_SURVEY, GITHUB_OCTOVERSE } from "@/lib/surveyData2025";
 import { getTechnologyRanking } from "@/services/contentService";
 
 const ac = getPageAccentUi("amber");
-
-const RANKING_SCOPES = [
-  "Geral",
-  ...technologyCategories.filter((category) => category !== "Todas"),
-];
 
 const SCOPE_LABELS: Record<string, string> = {
   ...technologyCategoryLabels,
@@ -148,6 +143,22 @@ export default function TecnologiaRanking() {
       .catch(() => setRanking(technologyRanking));
   }, []);
 
+  const availableScopes = useMemo(() => {
+    const present = new Set<string>(
+      ranking.map((technology) => technology.category),
+    );
+    return [
+      "Geral",
+      ...technologyCategories.filter(
+        (category) => category !== "Todas" && present.has(category),
+      ),
+    ];
+  }, [ranking]);
+
+  useEffect(() => {
+    if (!availableScopes.includes(scope)) setScope("Geral");
+  }, [availableScopes, scope]);
+
   const scoped =
     scope === "Geral"
       ? ranking
@@ -242,7 +253,7 @@ export default function TecnologiaRanking() {
 
           <div className="mb-6 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <div className="flex w-max gap-2">
-              {RANKING_SCOPES.map((option) => (
+              {availableScopes.map((option) => (
                 <button
                   key={option}
                   type="button"
