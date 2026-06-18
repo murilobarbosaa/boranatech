@@ -45,7 +45,7 @@ function favKey(item: Pick<FavoriteItem, "type" | "id">) {
 export default function PerfilFavoritos() {
   const [, setLocation] = useLocation();
   const { user, loading: authLoading } = useAuth();
-  const { favorites, loading, toggleFavorite, refresh } = useFavorites();
+  const { favorites, loading, toggleFavorite } = useFavorites();
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
 
@@ -54,10 +54,6 @@ export default function PerfilFavoritos() {
       setLocation("/login", { replace: true });
     }
   }, [authLoading, user, setLocation]);
-
-  useEffect(() => {
-    void refresh().catch(() => {});
-  }, [refresh]);
 
   const visibleFavorites = useMemo(
     () => favorites.filter((f) => Boolean(f.title?.trim())),
