@@ -5,7 +5,6 @@ import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import { AuthProvider } from "./contexts/AuthContext";
-import { AuthGateProvider } from "./contexts/AuthGateContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -48,6 +47,7 @@ import TecnologiaDetalhe from "./pages/TecnologiaDetalhe";
 import TecnologiaComparador from "./pages/TecnologiaComparador";
 import TecnologiaMapa from "./pages/TecnologiaMapa";
 import TecnologiaRanking from "./pages/TecnologiaRanking";
+import TecnologiaJogos from "./pages/TecnologiaJogos";
 import Empresas from "./pages/Empresas";
 import EmpresaDetalhe from "./pages/EmpresaDetalhe";
 import EmpresaRankingJunior from "./pages/EmpresaRankingJunior";
@@ -97,6 +97,7 @@ function Router() {
         {() => <Redirect to="/tecnologias/por-area" />}
       </Route>
       <Route path="/tecnologias/ranking" component={TecnologiaRanking} />
+      <Route path="/tecnologias/jogos" component={TecnologiaJogos} />
       <Route path="/tecnologias/:slug" component={TecnologiaDetalhe} />
       <Route path="/empresas" component={Empresas} />
       <Route path="/empresas/ranking-junior" component={EmpresaRankingJunior} />
@@ -187,18 +188,16 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <AuthProvider>
-          <AuthGateProvider>
-            <FavoritesProvider>
-              <SubscriptionProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <AffiliateTracker />
-                  <ScrollToTop />
-                  <Router />
-                </TooltipProvider>
-              </SubscriptionProvider>
-            </FavoritesProvider>
-          </AuthGateProvider>
+          <FavoritesProvider>
+            <SubscriptionProvider>
+              <TooltipProvider>
+                <Toaster />
+                <AffiliateTracker />
+                <ScrollToTop />
+                <Router />
+              </TooltipProvider>
+            </SubscriptionProvider>
+          </FavoritesProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

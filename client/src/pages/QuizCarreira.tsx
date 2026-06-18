@@ -8,6 +8,7 @@ import {
   Loader2,
   RotateCcw,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import posthog from "posthog-js";
@@ -593,6 +594,38 @@ export default function QuizCarreira() {
   );
 }
 
+const AREA_ICON_POSITIONS = [
+  "left-[3%] top-[12%]",
+  "left-[16%] top-[72%]",
+  "left-[8%] top-[40%]",
+  "left-[28%] top-[20%]",
+  "left-[44%] top-[82%]",
+  "left-[58%] top-[14%]",
+  "left-[72%] top-[68%]",
+  "left-[86%] top-[24%]",
+  "left-[92%] top-[56%]",
+  "left-[38%] top-[50%]",
+  "left-[66%] top-[40%]",
+  "left-[22%] top-[90%]",
+  "left-[80%] top-[88%]",
+];
+
+const ROLE_BY_AREA: Record<string, string> = {
+  "Front-end": "Dev Front-end",
+  "Back-end": "Dev Back-end",
+  "Full-stack": "Dev Full-stack",
+  "Ciência de Dados": "Cientista de Dados",
+  "UX/UI Design": "UX/UI Designer",
+  "Inteligência Artificial": "Especialista em IA",
+  "Produto Digital": "Product Manager",
+  Cibersegurança: "Analista de Cibersegurança",
+  "Cloud Computing": "Especialista em Cloud",
+  "Gestão de Projetos Tech": "Gerente de Projetos",
+  "QA / Testes de Software": "Analista de QA",
+  "Desenvolvimento Mobile": "Dev Mobile",
+  DevOps: "Especialista em DevOps",
+};
+
 function ObjectiveScreen({
   onSelect,
   onResume,
@@ -600,88 +633,235 @@ function ObjectiveScreen({
   onSelect: (id: QuizObjective) => void;
   onResume?: () => void;
 }) {
+  const areaNames = Object.keys(AREA_ACCENT);
+  const [areaIdx, setAreaIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      setAreaIdx((i) => (i + 1) % areaNames.length);
+    }, 2000);
+    return () => clearInterval(id);
+  }, [areaNames.length]);
+  const areaAtual = areaNames[areaIdx];
+  const areaAccent = getAreaAccent(areaAtual);
+  const AreaIcon = areasTI.find((a) => a.nome === areaAtual)?.icon;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
-      className="container max-w-3xl py-10 md:py-14"
+      className="container relative max-w-5xl overflow-hidden py-10 md:py-14"
     >
-      <p className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
-        <BrainCircuit className="h-4 w-4" />
-        Quiz de Carreira em Tech
-      </p>
-
-      <h1
-        className="font-display font-black leading-[1.02] tracking-tight text-slate-950"
-        style={{ fontSize: "clamp(2.25rem, 6vw, 3.5rem)" }}
+      {areaNames.map((nome, i) => {
+        const meta = areasTI.find((a) => a.nome === nome);
+        const Icon = meta?.icon;
+        if (!Icon) return null;
+        const accent = getAreaAccent(nome);
+        return (
+          <motion.span
+            key={nome}
+            aria-hidden
+            className={`pointer-events-none absolute ${AREA_ICON_POSITIONS[i % AREA_ICON_POSITIONS.length]}`}
+            style={{ color: accent, opacity: 0.1 }}
+            animate={{ y: [0, -10, 0], rotate: [0, 6, 0] }}
+            transition={{
+              duration: 7 + (i % 5),
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.2,
+            }}
+          >
+            <Icon className="h-8 w-8" strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute bottom-28 left-6 text-slate-900"
+        animate={{ rotate: [0, 360] }}
+        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
       >
-        Vamos achar o <span className="text-violet-600">seu lugar</span> na tech
-      </h1>
+        <Star className="h-9 w-9 fill-amber-300" strokeWidth={2.5} />
+      </motion.span>
+      <motion.span
+        aria-hidden
+        className="pointer-events-none absolute bottom-16 right-10 text-pink-500"
+        animate={{ scale: [1, 1.25, 1], rotate: [0, 18, -18, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Sparkles className="h-8 w-8" strokeWidth={2.5} />
+      </motion.span>
+      <motion.svg
+        aria-hidden
+        viewBox="0 0 100 20"
+        className="pointer-events-none absolute right-8 top-1/2 h-7 w-24 text-emerald-500"
+        animate={{ x: [0, 8, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <path
+          d="M2 10 Q 14 0, 26 10 T 50 10 T 74 10 T 98 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      </motion.svg>
 
-      <p className="mt-4 max-w-xl text-base font-semibold text-slate-600 md:text-lg">
-        Começa escolhendo o seu objetivo. A gente monta o quiz certo pra ele. É
-        rápido, gratuito e não tem resposta certa nem errada.
-      </p>
-
-      <p className="mb-3 mt-8 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-        Escolha um pra começar
-      </p>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {objectiveTracks.map((t, idx) => {
-          const Icon = t.icon;
-          return (
-            <motion.button
-              key={t.id}
-              type="button"
-              onClick={() => onSelect(t.id)}
-              initial={{ opacity: 0, y: 16 }}
+      <div className="relative z-10">
+        <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div>
+            <motion.p
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.05 + idx * 0.07 }}
-              whileHover={{ y: -3 }}
-              whileTap={{ scale: 0.99 }}
-              className="group flex flex-col items-start rounded-3xl border-2 border-[#1a1a1a] bg-white p-5 text-left shadow-[4px_4px_0_#0f172a] transition-shadow duration-200 hover:shadow-[7px_7px_0_var(--accent)]"
-              style={{ ["--accent" as string]: t.accent }}
+              transition={{ duration: 0.4 }}
+              className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
             >
-              <span
-                className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
-                style={{ backgroundColor: t.accent }}
+              <BrainCircuit className="h-4 w-4" />
+              Quiz de Carreira em Tech
+              <motion.span
+                animate={{ scale: [1, 1.3, 1], rotate: [0, 15, -15, 0] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
               >
-                <Icon className="h-6 w-6" strokeWidth={2.4} />
-              </span>
-              <h2 className="font-display text-xl font-black text-slate-950">
-                {t.label}
-              </h2>
-              <p className="mt-1 text-sm font-semibold text-slate-600">
-                {t.description}
-              </p>
-              <span
-                className="mt-4 inline-flex items-center gap-1.5 font-mono text-xs font-black uppercase tracking-wider"
-                style={{ color: t.accent }}
-              >
-                Começar
-                <ArrowRight
-                  className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1"
-                  strokeWidth={3}
-                />
-              </span>
-            </motion.button>
-          );
-        })}
-      </div>
+                <Sparkles className="h-3.5 w-3.5 text-violet-700" />
+              </motion.span>
+            </motion.p>
 
-      {onResume && (
-        <button
-          type="button"
-          onClick={onResume}
-          className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-amber-300 px-5 py-2.5 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
-        >
-          <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
-          Continuar de onde parei
-        </button>
-      )}
+            <motion.h1
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.1 }}
+              className="font-display font-black leading-[1.02] tracking-tight text-slate-950"
+              style={{ fontSize: "clamp(2.25rem, 6vw, 3.5rem)" }}
+            >
+              Vamos achar o <span className="text-violet-600">seu lugar</span> na
+              tech
+            </motion.h1>
+
+            <p className="mt-4 max-w-xl text-base font-semibold text-slate-600 md:text-lg">
+              Começa escolhendo o seu objetivo, a gente monta o quiz certo pra
+              ele. É rápido, gratuito e não tem resposta certa nem errada.
+            </p>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="mt-6 inline-flex items-center gap-2 font-mono text-sm font-black uppercase tracking-wider text-violet-700"
+            >
+              <motion.span
+                animate={{ x: [0, 4, 0] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ArrowRight className="h-4 w-4" strokeWidth={3} />
+              </motion.span>
+              Escolhe um objetivo e a gente cuida do resto
+            </motion.p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="flex flex-col items-center gap-3 lg:items-start"
+          >
+            <span className="font-display text-2xl font-black uppercase tracking-[0.15em] text-slate-500">
+              Eu sou
+            </span>
+            <div className="flex min-h-[5rem] items-center justify-center gap-3 lg:justify-start">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={areaAtual}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="inline-flex items-center gap-2 font-display font-black leading-none"
+                  style={{
+                    color: areaAccent,
+                    fontSize: "clamp(1.75rem, 4vw, 3rem)",
+                  }}
+                >
+                  {AreaIcon && (
+                    <AreaIcon
+                      className="h-8 w-8 shrink-0 md:h-10 md:w-10"
+                      strokeWidth={2.5}
+                    />
+                  )}
+                  {ROLE_BY_AREA[areaAtual] ?? areaAtual}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        </div>
+
+        <p className="mb-3 mt-10 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+          Escolha um pra começar
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {objectiveTracks.map((t, idx) => {
+            const Icon = t.icon;
+            return (
+              <motion.button
+                key={t.id}
+                type="button"
+                onClick={() => onSelect(t.id)}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.05 + idx * 0.07 }}
+                whileHover={{ scale: 1.02, y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                className="group relative flex flex-col items-start overflow-hidden rounded-3xl border-2 border-[#1a1a1a] p-5 text-left shadow-[4px_4px_0_#0f172a] transition-shadow duration-200 hover:shadow-[8px_8px_0_var(--accent)]"
+                style={{
+                  ["--accent" as string]: t.accent,
+                  backgroundColor: `color-mix(in srgb, ${t.accent} 10%, white)`,
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute right-3 top-3 text-2xl opacity-20 transition-opacity duration-200 group-hover:opacity-40"
+                >
+                  {t.emoji}
+                </span>
+                <span
+                  className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a] transition-transform duration-200 group-hover:-rotate-6 group-hover:scale-110"
+                  style={{ backgroundColor: t.accent }}
+                >
+                  <Icon className="h-6 w-6" strokeWidth={2.4} />
+                </span>
+                <h2 className="font-display text-xl font-black text-slate-950">
+                  {t.label}
+                </h2>
+                <p className="mt-1 text-sm font-semibold text-slate-600">
+                  {t.description}
+                </p>
+                <span
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 px-4 py-2 font-display text-xs font-black uppercase tracking-wider text-white shadow-[2px_2px_0_#0f172a] transition-all duration-200 group-hover:shadow-[3px_3px_0_#0f172a]"
+                  style={{ backgroundColor: t.accent }}
+                >
+                  Começar
+                  <ArrowRight
+                    className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1"
+                    strokeWidth={3}
+                  />
+                </span>
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {onResume && (
+          <button
+            type="button"
+            onClick={onResume}
+            className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-amber-300 px-5 py-2.5 font-display text-sm font-black uppercase tracking-wider text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+          >
+            <RotateCcw className="h-4 w-4" strokeWidth={2.5} />
+            Continuar de onde parei
+          </button>
+        )}
+      </div>
     </motion.div>
   );
 }

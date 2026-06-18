@@ -72,13 +72,18 @@ export default function Comunidades() {
             <select
               value={area}
               onChange={(e) => setArea(e.target.value)}
+              aria-label="Filtrar por área"
               className="px-3 py-2 border-2 border-violet-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 bg-white"
             >
               {areas.map((a) => (
-                <option key={a}>{a}</option>
+                <option key={a}>{a === "Todas" ? "Todas as áreas" : a}</option>
               ))}
             </select>
-            <div className="flex gap-2">
+            <div
+              className="flex gap-2"
+              role="group"
+              aria-label="Filtrar por idioma"
+            >
               {idiomas.map((id) => (
                 <button
                   key={id}
@@ -89,7 +94,7 @@ export default function Comunidades() {
                       : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
                   }`}
                 >
-                  {id}
+                  {id === "Todos" ? "Todos os idiomas" : id}
                 </button>
               ))}
             </div>

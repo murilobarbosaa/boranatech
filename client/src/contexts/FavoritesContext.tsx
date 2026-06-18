@@ -1,6 +1,7 @@
 import {
   createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -8,19 +9,63 @@ import {
   type ReactNode,
 } from "react";
 import posthog from "posthog-js";
-import { toast } from "sonner";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useAuthGate, type ResumeContext } from "@/contexts/AuthGateContext";
 import { apiUrl } from "@/lib/api";
+import {
+  consumePendingIntent,
+  savePendingIntent,
+  type FavoriteIntent,
+} from "@/lib/pendingIntent";
 import { supabase } from "@/lib/supabase";
-import type {
-  BookmarkItem,
-  FavoriteItem,
-  FavoriteType,
-  PendingAuthFavorite,
-  ToggleResult,
-} from "@/hooks/useFavorites";
+
+export type FavoriteType =
+  | "area"
+  | "roadmap"
+  | "curso"
+  | "projeto"
+  | "dica"
+  | "conceito"
+  | "plataforma"
+  | "evento"
+  | "noticia"
+  | "comunidade"
+  | "faculdade"
+  | "tecnologia"
+  | "empresa"
+  | "vaga";
+
+export type FavoriteItem = {
+  id: string;
+  type: FavoriteType;
+  title: string;
+  subtitle?: string;
+  url?: string;
+};
+
+export interface BookmarkItem {
+  resource_type: FavoriteType;
+  resource_id: string;
+  title_snapshot?: string;
+  subtitle_snapshot?: string;
+  url_snapshot?: string;
+}
+
+export interface PendingAuthFavorite {
+  type: FavoriteType;
+  itemKey: string;
+  snapshot?: {
+    title?: string;
+    subtitle?: string;
+    url?: string;
+  };
+}
+
+export interface ToggleResult {
+  ok: boolean;
+  requiresAuth?: boolean;
+  isNowFavorited?: boolean;
+}
 
 export interface FavoritesContextValue {
   favorites: FavoriteItem[];
@@ -34,14 +79,11 @@ export interface FavoritesContextValue {
   pendingAuthFavorite: PendingAuthFavorite | null;
   clearPendingAuth: () => void;
   queueFavoriteOnNextLoad: (pending: PendingAuthFavorite) => void;
-  refresh: () => Promise<void>;
 }
 
-export const FavoritesContext = createContext<FavoritesContextValue | null>(
-  null,
-);
-
 const LEGACY_FAVORITES_KEY = "bora-na-tech:favorites";
+const FAVORITES_UPDATED_EVENT = "bora-na-tech:favorites-updated";
+const CACHE_PREFIX = "bora-na-tech:favorites-cache:v1:";
 
 function favoriteKey(item: Pick<FavoriteItem, "id" | "type">) {
   return `${item.type}:${item.id}`;
@@ -65,6 +107,32 @@ function favoriteToBookmark(item: FavoriteItem): BookmarkItem {
     subtitle_snapshot: item.subtitle,
     url_snapshot: item.url,
   };
+}
+
+function cacheKey(userId: string) {
+  return `${CACHE_PREFIX}${userId}`;
+}
+
+function readCache(userId: string): FavoriteItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = window.localStorage.getItem(cacheKey(userId));
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as FavoriteItem[];
+  } catch {
+    return [];
+  }
+}
+
+function writeCache(userId: string, favorites: FavoriteItem[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(cacheKey(userId), JSON.stringify(favorites));
+  } catch {
+    // ignore quota or serialization failures; cache is best-effort
+  }
 }
 
 function readLegacyBookmarks(): BookmarkItem[] {
@@ -102,91 +170,23 @@ async function apiFetch(path: string, options?: RequestInit) {
   });
 }
 
+const FavoritesContext = createContext<FavoritesContextValue | null>(null);
+
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
-  const { registerResumeHandler } = useAuthGate();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingAuthFavorite, setPendingAuthFavorite] =
     useState<PendingAuthFavorite | null>(null);
   const nextLoadFavoriteRef = useRef<PendingAuthFavorite | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
-  const favoritesRef = useRef<FavoriteItem[]>([]);
 
-  useEffect(() => {
-    favoritesRef.current = favorites;
-  }, [favorites]);
-
-  const refresh = useCallback(async () => {
+  const refreshFromServer = useCallback(async () => {
     const res = await apiFetch("/");
     if (!res.ok) throw new Error("Erro ao buscar favoritos");
     const json = (await res.json()) as { data?: BookmarkItem[] };
     setFavorites((json.data || []).map(bookmarkToFavorite));
   }, []);
-
-  // OAuth resume: the AuthGate central resumer consumes the pending intent on
-  // boot and dispatches it here. Optimistic add + POST; on non-2xx, roll back
-  // the optimistic add and toast (no phantom favorite). Mirrors the same-tab
-  // path's res.ok / rollback / idempotent (server 23505) semantics.
-  const applyResumedFavorite = useCallback<
-    (ctx: ResumeContext) => Promise<void>
-  >(
-    async ({ intent }) => {
-      if (intent.kind !== "favorite") return;
-
-      const item: FavoriteItem = {
-        id: intent.itemKey,
-        type: intent.type as FavoriteType,
-        title: intent.snapshot?.title || intent.itemKey,
-        subtitle: intent.snapshot?.subtitle,
-        url: intent.snapshot?.url,
-      };
-      const key = favoriteKey(item);
-      const alreadyHas = favoritesRef.current.some(
-        (fav) => favoriteKey(fav) === key,
-      );
-      if (!alreadyHas) {
-        setFavorites((current) => [item, ...current]);
-      }
-
-      try {
-        const res = await apiFetch("/", {
-          method: "POST",
-          body: JSON.stringify(favoriteToBookmark(item)),
-        });
-        if (!res.ok) throw new Error("oauth favorite insert failed");
-        posthog.capture("favorite_toggled", {
-          action: "added",
-          resource_type: item.type,
-          resource_title: item.title,
-          via: "oauth_intent",
-        });
-      } catch (err) {
-        console.error("[favorites] oauth favorite apply failed", err);
-        if (!alreadyHas) {
-          setFavorites((current) =>
-            current.filter((fav) => favoriteKey(fav) !== key),
-          );
-        }
-        toast.error("Não foi possível salvar nos favoritos. Tente novamente.");
-        return;
-      }
-
-      // Reconcile against the concurrent sign-in load() that may overwrite the
-      // optimistic add with a server list that predates this POST. Best-effort.
-      try {
-        await refresh();
-      } catch {
-        // keep optimistic state; next load reconciles
-      }
-    },
-    [refresh],
-  );
-
-  useEffect(
-    () => registerResumeHandler("favorite", applyResumedFavorite),
-    [registerResumeHandler, applyResumedFavorite],
-  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -206,14 +206,21 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       setPendingAuthFavorite(null);
     }
 
+    const cached = readCache(user.id);
+    if (cached.length > 0) {
+      setFavorites(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     let cancelled = false;
 
     async function load() {
-      setLoading(true);
-
       try {
         if (justSignedIn) {
           await maybeMigrateLegacyBookmarks(user!.id);
+          await maybeConsumeOAuthFavorite();
         }
 
         const res = await apiFetch("/");
@@ -242,31 +249,24 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             void apiFetch("/", {
               method: "POST",
               body: JSON.stringify(favoriteToBookmark(optimistic)),
-            })
-              .then((res) => {
-                if (!res.ok) throw new Error("queued favorite insert failed");
-                posthog.capture("favorite_toggled", {
-                  action: "added",
-                  resource_type: optimistic.type,
-                  resource_title: optimistic.title,
-                  via: "auth_intent",
-                });
-              })
-              .catch((err) => {
-                console.error("[favorites] queued favorite POST failed", err);
-                setFavorites((prev) =>
-                  prev.filter((fav) => favoriteKey(fav) !== key),
-                );
-                toast.error(
-                  "Não foi possível salvar nos favoritos. Tente novamente.",
-                );
-              });
+            }).catch((err) => {
+              console.error("[useFavorites] queued favorite POST failed", err);
+              setFavorites((prev) =>
+                prev.filter((fav) => favoriteKey(fav) !== key),
+              );
+            });
+            posthog.capture("favorite_toggled", {
+              action: "added",
+              resource_type: optimistic.type,
+              resource_title: optimistic.title,
+              via: "auth_intent",
+            });
           }
         }
 
         setFavorites(nextFavorites);
       } catch (err) {
-        console.error("[favorites] load failed", err);
+        console.error("[useFavorites] load failed", err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -280,18 +280,25 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   }, [user, authLoading]);
 
   useEffect(() => {
+    if (!user) return;
+    writeCache(user.id, favorites);
+  }, [user, favorites]);
+
+  useEffect(() => {
     const syncFromStorage = () => {
-      // Cross-tab storage listener: re-fetch in case another tab migrated
-      // bookmarks between mounts.
-      if (user) void refresh().catch(() => {});
+      // Legacy storage event listener: triggers a server re-fetch in case
+      // another tab migrated bookmarks between mounts.
+      if (user) void refreshFromServer().catch(() => {});
     };
 
     window.addEventListener("storage", syncFromStorage);
+    window.addEventListener(FAVORITES_UPDATED_EVENT, syncFromStorage);
 
     return () => {
       window.removeEventListener("storage", syncFromStorage);
+      window.removeEventListener(FAVORITES_UPDATED_EVENT, syncFromStorage);
     };
-  }, [user, refresh]);
+  }, [user, refreshFromServer]);
 
   const favoriteKeys = useMemo(
     () => new Set(favorites.map(favoriteKey)),
@@ -352,7 +359,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           });
           return { ok: true, isNowFavorited: false };
         } catch (err) {
-          console.error("[favorites] delete failed", err);
+          console.error("[useFavorites] delete failed", err);
           setFavorites((current) => [normalizedItem, ...current]);
           return { ok: false, isNowFavorited: true };
         }
@@ -373,7 +380,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         });
         return { ok: true, isNowFavorited: true };
       } catch (err) {
-        console.error("[favorites] insert failed", err);
+        console.error("[useFavorites] insert failed", err);
         setFavorites((current) =>
           current.filter((fav) => favoriteKey(fav) !== key),
         );
@@ -389,12 +396,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     [favorites],
   );
 
-  const queueFavoriteOnNextLoad = useCallback(
-    (pending: PendingAuthFavorite) => {
-      nextLoadFavoriteRef.current = pending;
-    },
-    [],
-  );
+  const queueFavoriteOnNextLoad = useCallback((pending: PendingAuthFavorite) => {
+    nextLoadFavoriteRef.current = pending;
+  }, []);
 
   const clearPendingAuth = useCallback(() => {
     setPendingAuthFavorite(null);
@@ -411,7 +415,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       pendingAuthFavorite,
       clearPendingAuth,
       queueFavoriteOnNextLoad,
-      refresh,
     }),
     [
       favorites,
@@ -422,7 +425,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       pendingAuthFavorite,
       clearPendingAuth,
       queueFavoriteOnNextLoad,
-      refresh,
     ],
   );
 
@@ -431,6 +433,14 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       {children}
     </FavoritesContext.Provider>
   );
+}
+
+export function useFavorites(): FavoritesContextValue {
+  const ctx = useContext(FavoritesContext);
+  if (!ctx) {
+    throw new Error("useFavorites deve ser usado dentro de FavoritesProvider");
+  }
+  return ctx;
 }
 
 async function maybeMigrateLegacyBookmarks(userId: string): Promise<void> {
@@ -455,6 +465,39 @@ async function maybeMigrateLegacyBookmarks(userId: string): Promise<void> {
       window.localStorage.removeItem(LEGACY_FAVORITES_KEY);
     }
   } catch (err) {
-    console.error("[favorites] legacy migration failed", err);
+    console.error("[useFavorites] legacy migration failed", err);
+  }
+}
+
+async function maybeConsumeOAuthFavorite(): Promise<void> {
+  const intent = consumePendingIntent();
+  if (!intent) return;
+
+  if (intent.kind !== "favorite") {
+    savePendingIntent(intent);
+    return;
+  }
+
+  const fav = intent as FavoriteIntent;
+  try {
+    const bookmark: BookmarkItem = {
+      resource_type: fav.type as FavoriteType,
+      resource_id: fav.itemKey,
+      title_snapshot: fav.snapshot?.title,
+      subtitle_snapshot: fav.snapshot?.subtitle,
+      url_snapshot: fav.snapshot?.url,
+    };
+    await apiFetch("/", {
+      method: "POST",
+      body: JSON.stringify(bookmark),
+    });
+    posthog.capture("favorite_toggled", {
+      action: "added",
+      resource_type: fav.type,
+      resource_title: fav.snapshot?.title || fav.itemKey,
+      via: "oauth_intent",
+    });
+  } catch (err) {
+    console.error("[useFavorites] oauth favorite apply failed", err);
   }
 }

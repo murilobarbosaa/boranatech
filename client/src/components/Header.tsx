@@ -4,7 +4,7 @@
 */
 
 import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   ChevronDown,
@@ -454,10 +454,34 @@ function DesktopMenuItem({
   const isActive = isDropdownActive(menu, location);
   const activeItemPath = getActiveDropdownItemPath(menu, location);
   const hasGroupedColumns = menu.columns.some((column) => column.groupLabel);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [shift, setShift] = useState(0);
   const cssVars = {
     "--menu-accent": menu.accentColor,
     "--menu-hover": hexToRgba(menu.accentColor, 0.08),
   } as CSSProperties;
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+
+    function reposition() {
+      const wrapper = wrapperRef.current;
+      const panel = panelRef.current;
+      if (!wrapper || !panel) return;
+
+      const margin = 16;
+      const naturalLeft = wrapper.getBoundingClientRect().left;
+      const naturalRight = naturalLeft + panel.offsetWidth;
+      const overflow = naturalRight - (window.innerWidth - margin);
+      const maxShift = Math.max(0, naturalLeft - margin);
+      setShift(overflow > 0 ? Math.min(overflow, maxShift) : 0);
+    }
+
+    reposition();
+    window.addEventListener("resize", reposition);
+    return () => window.removeEventListener("resize", reposition);
+  }, [isOpen]);
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
     if (event.key === "Escape") {
@@ -467,6 +491,7 @@ function DesktopMenuItem({
 
   return (
     <div
+      ref={wrapperRef}
       className="relative"
       style={cssVars}
       onMouseEnter={() => setOpenMenu(menu.id)}
@@ -494,12 +519,15 @@ function DesktopMenuItem({
 
       <div
         id={`menu-panel-${menu.id}`}
+        ref={panelRef}
         onMouseEnter={() => setOpenMenu(menu.id)}
-        style={{ minWidth: `${menu.columns.length * 240}px` }}
-        className={`absolute left-0 top-full z-[1001] max-w-[calc(100vw-2rem)] pt-3 transition-all duration-150 ${
+        style={{
+          transform: `translateX(${-shift}px) translateY(${isOpen ? "0" : "-0.375rem"})`,
+        }}
+        className={`absolute left-0 top-full z-[1001] w-[min(42rem,calc(100vw-2rem))] pt-2 transition-all duration-150 ${
           isOpen
-            ? "visible translate-y-0 opacity-100"
-            : "invisible -translate-y-1.5 opacity-0 pointer-events-none"
+            ? "visible opacity-100"
+            : "invisible opacity-0 pointer-events-none"
         }`}
       >
         <div
@@ -517,9 +545,7 @@ function DesktopMenuItem({
 
           <div
             className="grid gap-4"
-            style={{
-              gridTemplateColumns: `repeat(${menu.columns.length}, minmax(0, 1fr))`,
-            }}
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))" }}
           >
             {menu.columns.map((column, columnIndex) => (
               <div

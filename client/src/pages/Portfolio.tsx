@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight,
@@ -9,14 +10,15 @@ import {
   Target,
 } from "lucide-react";
 import { toast } from "sonner";
+import AuthModal from "@/components/auth/AuthModal";
 import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAuthGate } from "@/contexts/AuthGateContext";
 import { usePortfolioChecklist } from "@/hooks/usePortfolioChecklist";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { consumePendingIntent, savePendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
 import {
   portfolioChecklist,
@@ -28,9 +30,50 @@ const ac = getPageAccentUi("emerald");
 
 export default function Portfolio() {
   const { user } = useAuth();
-  const { checkedIds, isLoading, toggle, clearPendingAuth } =
-    usePortfolioChecklist();
-  const { openGate } = useAuthGate();
+  const {
+    checkedIds,
+    isLoading,
+    toggle,
+    queueMarkOnNextLoad,
+    pendingAuthItemId,
+    clearPendingAuth,
+  } = usePortfolioChecklist();
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const authJustSucceededRef = useRef(false);
+
+  useEffect(() => {
+    if (pendingAuthItemId && !user) {
+      setAuthModalOpen(true);
+    }
+  }, [pendingAuthItemId, user]);
+
+  const prevUserRef = useRef(user);
+  useEffect(() => {
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
+
+    if (!user) return;
+    if (prevUser) return;
+
+    const oauthIntent = consumePendingIntent();
+    if (
+      oauthIntent &&
+      oauthIntent.kind === "progress" &&
+      oauthIntent.context === "portfolio_checklist"
+    ) {
+      queueMarkOnNextLoad(oauthIntent.itemKey);
+    } else if (oauthIntent) {
+      savePendingIntent(oauthIntent);
+      if (pendingAuthItemId) {
+        queueMarkOnNextLoad(pendingAuthItemId);
+        clearPendingAuth();
+      }
+    } else if (pendingAuthItemId) {
+      queueMarkOnNextLoad(pendingAuthItemId);
+      clearPendingAuth();
+    }
+  }, [user, pendingAuthItemId, clearPendingAuth, queueMarkOnNextLoad]);
 
   const allDone = !isLoading && checkedIds.size === portfolioChecklist.length;
   const progress = Math.round(
@@ -39,26 +82,7 @@ export default function Portfolio() {
 
   async function handleToggle(itemId: string) {
     const result = await toggle(itemId);
-    if (result.requiresAuth) {
-      openGate({
-        intent: {
-          kind: "progress",
-          context: "portfolio_checklist",
-          itemKey: itemId,
-        },
-        modalCopy: {
-          title: (
-            <>
-              Faça login pra salvar seu{" "}
-              <span className="text-[#FFB800]">Progresso</span>
-            </>
-          ),
-          description: "Seu progresso fica salvo na sua conta.",
-        },
-        onDismiss: clearPendingAuth,
-      });
-      return;
-    }
+    if (result.requiresAuth) return;
     if (!result.ok) {
       if (user) {
         toast.error("Sua sessão expirou. Faça login novamente.");
@@ -66,6 +90,21 @@ export default function Portfolio() {
         toast.error("Não foi possível salvar. Tente novamente.");
       }
     }
+  }
+
+  function handleModalOpenChange(open: boolean) {
+    setAuthModalOpen(open);
+    if (!open) {
+      if (authJustSucceededRef.current) {
+        authJustSucceededRef.current = false;
+        return;
+      }
+      clearPendingAuth();
+    }
+  }
+
+  function handleAuthenticated() {
+    authJustSucceededRef.current = true;
   }
 
   return (
@@ -358,6 +397,27 @@ export default function Portfolio() {
           </div>
         </div>
       </section>
+      <AuthModal
+        open={authModalOpen}
+        onOpenChange={handleModalOpenChange}
+        onAuthenticated={handleAuthenticated}
+        title={
+          <>
+            Faça login pra salvar seu{" "}
+            <span className="text-amber-700">Progresso</span>
+          </>
+        }
+        description="Seu progresso fica salvo na sua conta."
+        pendingIntent={
+          pendingAuthItemId
+            ? {
+                kind: "progress",
+                context: "portfolio_checklist",
+                itemKey: pendingAuthItemId,
+              }
+            : undefined
+        }
+      />
     </Layout>
   );
 }

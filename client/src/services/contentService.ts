@@ -72,6 +72,7 @@ function courseFromApi(row: any) {
     proximoConteudo: "",
     tipo: row.is_free ? "Gratuito" : "Pago",
     preco: row.price_label,
+    certificate: "nao_informado",
   };
 }
 

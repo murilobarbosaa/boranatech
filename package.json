@@ -14,6 +14,8 @@
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
+    "posters": "tsx scripts/fetch-tmdb-posters.mjs",
+    "seed:content": "tsx server/scripts/seed-content.ts",
     "test": "vitest run",
     "format": "prettier --write .",
     "postbuild": "echo 'Build complete'",

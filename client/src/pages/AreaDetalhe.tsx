@@ -26,6 +26,7 @@ import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
+import TermoTooltip from "@/components/shared/TermoTooltip";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
 import { companies } from "@/lib/companyData";
 import { careerInstitutes } from "@/lib/platformData";
@@ -572,7 +573,7 @@ export default function AreaDetalhe() {
                   )}
                 >
                   <h2 className="font-display mb-4 text-xl font-bold text-slate-900">
-                    Roadmap inicial
+                    <TermoTooltip termo="roadmap">Roadmap</TermoTooltip> inicial
                   </h2>
                   <div className="space-y-3">
                     {area.roadmapInicial.slice(0, 5).map((etapa, i) => (
