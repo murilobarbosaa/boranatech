@@ -41,10 +41,35 @@ function isRateLimitExempt(pathname: string) {
   );
 }
 
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "script-src 'self' https://us-assets.i.posthog.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "img-src 'self' data: https:",
+  [
+    "connect-src 'self'",
+    "https://api.boranatech.com.br",
+    "https://vlcvaanlkqyxemrxsxzn.supabase.co",
+    "wss://vlcvaanlkqyxemrxsxzn.supabase.co",
+    "https://us.i.posthog.com",
+    "https://us-assets.i.posthog.com",
+  ].join(" "),
+  "frame-src https://www.youtube-nocookie.com",
+].join("; ");
+
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
+  res.setHeader("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
   next();
 });
 
