@@ -16,6 +16,7 @@ import AreaDetalhe from "./pages/AreaDetalhe";
 import SubAreaDetalhe from "./pages/SubAreaDetalhe";
 import Roadmaps from "./pages/Roadmaps";
 import RoadmapsV2 from "./pages/RoadmapsV2";
+import RoadmapsV2Index from "./pages/RoadmapsV2Index";
 import Cursos from "./pages/Cursos";
 import Plataformas from "./pages/Plataformas";
 import Faculdades from "./pages/Faculdades";
@@ -128,7 +129,7 @@ function Router() {
       <Route path="/mentorias" component={Mentorias} />
       <Route path="/admin" component={Admin} />
       <Route path="/roadmaps" component={Roadmaps} />
-      <Route path="/roadmaps-novo" component={RoadmapsV2} />
+      <Route path="/roadmaps-novo" component={RoadmapsV2Index} />
       <Route path="/roadmaps-novo/:slug" component={RoadmapsV2} />
       <Route path="/cursos" component={Cursos} />
       <Route path="/plataformas" component={Plataformas} />
