@@ -38,6 +38,10 @@ export interface Profile {
   avatar_border: string | null;
   avatar_icon: string | null;
   avatar_bg: string | null;
+  avatar_mode: "icon" | "photo";
+  avatar_moderation_status: "clean" | "pending_review" | "removed";
+  avatar_upload_disabled: boolean;
+  avatar_storage_path: string | null;
   bio: string | null;
   area_interesse: string | null;
   nivel_atual: string | null;

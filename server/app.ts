@@ -10,6 +10,7 @@ import { errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
 import aiRouter from "./routes/ai";
 import affiliatesRouter from "./routes/affiliates";
+import avatarsRouter from "./routes/avatars";
 import badgesRouter from "./routes/badges";
 import billingRouter from "./routes/billing";
 import bookmarksRouter from "./routes/bookmarks";
@@ -17,7 +18,9 @@ import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
 import githubRouter from "./routes/github";
 import linkedinRouter from "./routes/linkedin";
+import meAvatarRouter from "./routes/meAvatar";
 import meRouter from "./routes/me";
+import profilesRouter from "./routes/profiles";
 import progressRouter from "./routes/progress";
 import quizRouter from "./routes/quiz";
 import searchRouter from "./routes/search";
@@ -136,6 +139,10 @@ app.use("/api/billing/webhook", (req, _res, next) => {
   next();
 });
 
+// Upload de avatar envia imagem base64 (pode passar de 2mb). Parser dedicado ANTES
+// do json global; requisicoes ja parseadas (req._body) sao ignoradas pelo global.
+app.use("/api/me/avatar", express.json({ limit: "10mb" }));
+
 app.use(express.json({ limit: "2mb" }));
 
 app.use(sitemapRouter);
@@ -147,7 +154,10 @@ app.use("/api", validateSupabaseJwt);
 app.use("/api/ai", aiRouter);
 app.use("/api/github", githubRouter);
 app.use("/api/linkedin", linkedinRouter);
+app.use("/api/me/avatar", meAvatarRouter);
 app.use("/api/me", meRouter);
+app.use("/api/avatars", avatarsRouter);
+app.use("/api/profiles", profilesRouter);
 app.use("/api/badges", badgesRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/bookmarks", bookmarksRouter);

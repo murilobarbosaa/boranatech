@@ -25,11 +25,13 @@ import {
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
-import UserAvatar from "@/components/UserAvatar";
+import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
+import AvatarPhotoPanel from "@/components/profile/AvatarPhotoPanel";
 import { CancelSubscriptionModal } from "@/components/profile/CancelSubscriptionModal";
 import { ConquistasPreview } from "@/components/profile/ConquistasPreview";
 import { ProfileBackground } from "@/components/profile/ProfileBackground";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
+import ProGate from "@/components/pro/ProGate";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -49,6 +51,7 @@ import {
   type AvatarIconId,
 } from "@/constants/avatarOptions";
 import { apiUrl } from "@/lib/api";
+import { showActionToast, showErrorToast } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
 import {
   getStatusLabel,
@@ -62,6 +65,13 @@ import {
   type StudyHeatmapDay,
   type StudyStats,
 } from "@/services/studyService";
+import {
+  applyGoogleAvatar,
+  describeAvatarError,
+  removeAvatar,
+  uploadAvatar,
+  type PendingPhoto,
+} from "@/services/avatarService";
 import type { Profile } from "@/services/contracts";
 import { greet } from "@shared/greeting";
 
@@ -99,7 +109,7 @@ type RoadmapProgress = {
   progress: number;
 };
 
-type AvatarSection = "border" | "icon" | "bg";
+type AvatarSection = "border" | "icon" | "bg" | "photo";
 
 const avatarSections: Array<{
   id: AvatarSection;
@@ -124,6 +134,13 @@ const avatarSections: Array<{
     label: "Fundo",
     title: "Escolha o fundo",
     description: "Combine a cor de fundo com a borda e o ícone escolhidos.",
+  },
+  {
+    id: "photo",
+    label: "Foto",
+    title: "Foto de perfil",
+    description:
+      "Use uma foto no lugar do ícone. A foto substitui ícone e fundo; a borda continua valendo.",
   },
 ];
 
@@ -291,7 +308,7 @@ function AvatarSectionTabs({
 }) {
   return (
     <div
-      className="grid grid-cols-3 gap-1 rounded-2xl border border-slate-200 bg-white p-1"
+      className="grid grid-cols-4 gap-1 rounded-2xl border border-slate-200 bg-white p-1"
       role="tablist"
       aria-label="Categoria do avatar"
     >
@@ -630,6 +647,7 @@ export default function Perfil() {
   const [editAvatarBg, setEditAvatarBg] = useState<AvatarBgId>(defaultAvatarBg);
   const [activeAvatarSection, setActiveAvatarSection] =
     useState<AvatarSection>("border");
+  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
@@ -718,6 +736,28 @@ export default function Perfil() {
   const avatarBorder = normalizeAvatarBorder(localProfile?.avatar_border);
   const avatarIcon = normalizeAvatarIcon(localProfile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(localProfile?.avatar_bg);
+  const photoAvatar = effectiveOwnAvatar(localProfile, isPro);
+  const googleMeta = (user?.user_metadata ?? {}) as Record<string, unknown>;
+  const googlePreviewUrl =
+    typeof googleMeta.avatar_url === "string"
+      ? googleMeta.avatar_url
+      : typeof googleMeta.picture === "string"
+        ? googleMeta.picture
+        : null;
+  // Preview no editor reflete a escolha PENDENTE; o avatar salvo (hero/Header) so
+  // muda depois do Salvar.
+  const previewPhoto =
+    pendingPhoto?.type === "upload"
+      ? { mode: "photo" as const, avatarUrl: pendingPhoto.dataUrl }
+      : pendingPhoto?.type === "google"
+        ? { mode: "photo" as const, avatarUrl: googlePreviewUrl }
+        : pendingPhoto?.type === "remove"
+          ? { mode: "icon" as const, avatarUrl: null }
+          : photoAvatar;
+  const photoActive = previewPhoto.mode === "photo";
+  const hasGoogleIdentity = Boolean(
+    user?.identities?.some((identity) => identity.provider === "google"),
+  );
   const activeAvatarSectionConfig =
     avatarSections.find((s) => s.id === activeAvatarSection) ||
     avatarSections[0];
@@ -741,12 +781,31 @@ export default function Perfil() {
     setEditAvatarIcon(avatarIcon);
     setEditAvatarBg(avatarBg);
     setActiveAvatarSection("border");
+    setPendingPhoto(null);
     setEditingProfile(true);
   }
 
   async function handleSaveProfile() {
     setSavingProfile(true);
     try {
+      // A foto pendente e aplicada (enviada + moderada no servidor) aqui, no Salvar.
+      // Se falhar, mantem o editor aberto e nao grava o resto.
+      if (pendingPhoto) {
+        try {
+          if (pendingPhoto.type === "upload") {
+            await uploadAvatar(pendingPhoto.dataUrl);
+          } else if (pendingPhoto.type === "google") {
+            await applyGoogleAvatar();
+          } else {
+            await removeAvatar();
+          }
+          setPendingPhoto(null);
+        } catch (err) {
+          showErrorToast(describeAvatarError(err));
+          return;
+        }
+      }
+
       const json = await apiFetch("/api/me", {
         method: "PATCH",
         body: JSON.stringify({
@@ -758,10 +817,10 @@ export default function Perfil() {
       });
       setLocalProfile(json.data);
       await refreshProfile().catch(() => undefined);
-      toast.success("Perfil atualizado com sucesso.");
+      showActionToast({ message: "Perfil salvo" });
       setEditingProfile(false);
     } catch {
-      toast.error("Não foi possível salvar o perfil.");
+      showErrorToast("Não foi possível salvar o perfil.");
     } finally {
       setSavingProfile(false);
     }
@@ -902,6 +961,8 @@ export default function Perfil() {
                   border={avatarBorder}
                   icon={avatarIcon}
                   bg={avatarBg}
+                  mode={photoAvatar.mode}
+                  avatarUrl={photoAvatar.avatarUrl}
                   size="xl"
                   loading={profileLoading}
                 />
@@ -985,6 +1046,8 @@ export default function Perfil() {
                           border={editAvatarBorder}
                           icon={editAvatarIcon}
                           bg={editAvatarBg}
+                          mode={previewPhoto.mode}
+                          avatarUrl={previewPhoto.avatarUrl}
                           size="xl"
                         />
                         <div className="mt-5 min-w-0">
@@ -1011,6 +1074,16 @@ export default function Perfil() {
                           {activeAvatarSectionConfig.description}
                         </p>
                       </div>
+
+                      {photoActive &&
+                      (activeAvatarSection === "icon" ||
+                        activeAvatarSection === "bg") ? (
+                        <p className="mt-3 rounded-2xl border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+                          Você está usando uma foto. Ícone e fundo não aparecem
+                          enquanto a foto estiver ativa; a borda continua
+                          valendo.
+                        </p>
+                      ) : null}
 
                       {activeAvatarSection === "border" ? (
                         <AvatarOptionGrid
@@ -1065,13 +1138,32 @@ export default function Perfil() {
                           )}
                         />
                       ) : null}
+
+                      {activeAvatarSection === "photo" ? (
+                        isPro ? (
+                          <AvatarPhotoPanel
+                            profile={localProfile}
+                            hasGoogleIdentity={hasGoogleIdentity}
+                            pending={pendingPhoto}
+                            onStage={setPendingPhoto}
+                          />
+                        ) : (
+                          <ProGate
+                            description="Use uma foto no lugar do ícone. Disponível no Plano Pro."
+                            className="mt-4"
+                          />
+                        )
+                      ) : null}
                     </div>
                   </div>
                 </div>
                 <div className="mt-5 flex justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setEditingProfile(false)}
+                    onClick={() => {
+                      setPendingPhoto(null);
+                      setEditingProfile(false);
+                    }}
                     className="rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-2 font-black"
                   >
                     Cancelar

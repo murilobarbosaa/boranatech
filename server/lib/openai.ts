@@ -1,5 +1,7 @@
 export const OPENAI_BASE_URL = "https://api.openai.com/v1/chat/completions";
+export const OPENAI_MODERATION_URL = "https://api.openai.com/v1/moderations";
 export const DEFAULT_MODEL = "gpt-4o-mini";
+export const MODERATION_MODEL = "omni-moderation-latest";
 
 export function buildOpenAIHeaders(apiKey: string) {
   return {

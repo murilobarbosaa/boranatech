@@ -25,7 +25,7 @@ import {
   normalizeAvatarBorder,
   normalizeAvatarIcon,
 } from "@/constants/avatarOptions";
-import UserAvatar from "@/components/UserAvatar";
+import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
 type MenuItem = {
   label: string;
   description?: string;
@@ -739,6 +739,7 @@ export default function Header() {
   const avatarBorder = normalizeAvatarBorder(profile?.avatar_border);
   const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(profile?.avatar_bg);
+  const ownAvatar = effectiveOwnAvatar(profile, isPro);
 
   function closeMobileDrawer() {
     setMobileOpen(false);
@@ -789,6 +790,8 @@ export default function Header() {
                     border={avatarBorder}
                     icon={avatarIcon}
                     bg={avatarBg}
+                    mode={ownAvatar.mode}
+                    avatarUrl={ownAvatar.avatarUrl}
                     size="sm"
                     loading={avatarLoading}
                   />
@@ -883,6 +886,8 @@ export default function Header() {
                   border={avatarBorder}
                   icon={avatarIcon}
                   bg={avatarBg}
+                  mode={ownAvatar.mode}
+                  avatarUrl={ownAvatar.avatarUrl}
                   size="sm"
                   loading={avatarLoading}
                 />

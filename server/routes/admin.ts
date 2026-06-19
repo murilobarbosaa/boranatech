@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { logAudit } from "../lib/audit";
+import { deleteAvatarObject } from "../lib/avatarUpload";
 import { env } from "../lib/env";
 import { emailQueue } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -838,6 +839,147 @@ router.get("/affiliates-stats", async (_req, res) => {
   } catch (err) {
     console.error("[admin] Erro inesperado ao buscar afiliados", err);
     res.json({ data: [] });
+  }
+});
+
+router.get("/avatar-reports", async (_req, res, next) => {
+  try {
+    const { data: targets, error } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, name, avatar_url, avatar_moderation_updated_at")
+      .eq("avatar_moderation_status", "pending_review")
+      .order("avatar_moderation_updated_at", {
+        ascending: true,
+        nullsFirst: true,
+      });
+
+    if (error)
+      return next(
+        createError(500, "db_error", "Erro ao buscar fila de moderação."),
+      );
+
+    const rows = targets || [];
+    if (rows.length === 0) {
+      res.json({ data: [] });
+      return;
+    }
+
+    const targetIds = rows.map((row) => row.user_id);
+    const { data: reports, error: reportsError } = await supabaseAdmin
+      .from("avatar_reports")
+      .select("target_user_id, reporter_user_id, reason")
+      .in("target_user_id", targetIds)
+      .eq("status", "open");
+
+    if (reportsError)
+      return next(createError(500, "db_error", "Erro ao buscar denúncias."));
+
+    const agg = new Map<
+      string,
+      { reporters: Set<string>; reasons: Record<string, number> }
+    >();
+    for (const report of reports || []) {
+      let entry = agg.get(report.target_user_id);
+      if (!entry) {
+        entry = { reporters: new Set<string>(), reasons: {} };
+        agg.set(report.target_user_id, entry);
+      }
+      entry.reporters.add(report.reporter_user_id);
+      entry.reasons[report.reason] = (entry.reasons[report.reason] || 0) + 1;
+    }
+
+    const data = rows.map((row) => {
+      const entry = agg.get(row.user_id);
+      return {
+        userId: row.user_id,
+        name: row.name || "",
+        avatarUrl: row.avatar_url,
+        distinctReporters: entry ? entry.reporters.size : 0,
+        reasons: entry ? entry.reasons : {},
+        pendingSince: row.avatar_moderation_updated_at,
+      };
+    });
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/avatar-reports/:userId/restore", async (req, res, next) => {
+  try {
+    const targetUserId = req.params.userId;
+    const nowIso = new Date().toISOString();
+
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        avatar_moderation_status: "clean",
+        avatar_moderation_updated_at: nowIso,
+        avatar_moderation_reviewed_by: req.user!.id,
+      })
+      .eq("user_id", targetUserId);
+
+    if (profileError)
+      return next(createError(500, "db_error", "Erro ao restaurar avatar."));
+
+    const { error: reportsError } = await supabaseAdmin
+      .from("avatar_reports")
+      .update({ status: "closed" })
+      .eq("target_user_id", targetUserId)
+      .eq("status", "open");
+
+    if (reportsError)
+      return next(createError(500, "db_error", "Erro ao fechar denúncias."));
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
+  try {
+    const targetUserId = req.params.userId;
+    const nowIso = new Date().toISOString();
+
+    const { data: target } = await supabaseAdmin
+      .from("profiles")
+      .select("avatar_storage_path")
+      .eq("user_id", targetUserId)
+      .maybeSingle();
+
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        avatar_moderation_status: "removed",
+        avatar_upload_disabled: true,
+        avatar_url: null,
+        avatar_storage_path: null,
+        avatar_mode: "icon",
+        avatar_moderation_updated_at: nowIso,
+        avatar_moderation_reviewed_by: req.user!.id,
+      })
+      .eq("user_id", targetUserId);
+
+    if (profileError)
+      return next(createError(500, "db_error", "Erro ao remover avatar."));
+
+    // Nao deixa a imagem de violacao confirmada no bucket (best-effort).
+    await deleteAvatarObject(target?.avatar_storage_path ?? null);
+
+    const { error: reportsError } = await supabaseAdmin
+      .from("avatar_reports")
+      .update({ status: "closed" })
+      .eq("target_user_id", targetUserId)
+      .eq("status", "open");
+
+    if (reportsError)
+      return next(createError(500, "db_error", "Erro ao fechar denúncias."));
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
   }
 });
 

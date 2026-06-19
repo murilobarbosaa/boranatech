@@ -12,6 +12,7 @@ import AuthModal from "@/components/auth/AuthModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { type FavoriteItem, useFavorites } from "@/hooks/useFavorites";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { showActionToast } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 
 type FavoriteButtonProps = {
@@ -79,7 +80,8 @@ export default function FavoriteButton({
     }
 
     if (result.isNowFavorited) {
-      toast.success("Salvo em Favoritos", {
+      showActionToast({
+        message: "Salvo em Favoritos",
         action: {
           label: "Ver",
           onClick: () => {
@@ -88,7 +90,7 @@ export default function FavoriteButton({
         },
       });
     } else {
-      toast.success("Removido dos favoritos.");
+      showActionToast({ message: "Removido dos favoritos." });
     }
   }
 
@@ -105,7 +107,8 @@ export default function FavoriteButton({
 
   function handleAuthenticated() {
     authJustSucceededRef.current = true;
-    toast.success("Salvo em Favoritos", {
+    showActionToast({
+      message: "Salvo em Favoritos",
       action: {
         label: "Ver",
         onClick: () => {

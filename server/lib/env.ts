@@ -70,6 +70,14 @@ export const env = {
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
+  avatarReportHideThreshold: (() => {
+    const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
+    return Number.isInteger(raw) && raw > 0 ? raw : 3;
+  })(),
+  avatarModerationScoreThreshold: (() => {
+    const raw = parseFloat(process.env.AVATAR_MODERATION_SCORE_THRESHOLD || "");
+    return Number.isFinite(raw) && raw > 0 && raw <= 1 ? raw : 0.5;
+  })(),
   currentsApiKey: process.env.CURRENTS_API_KEY || "",
   joobleApiKey: process.env.JOOBLE_API_KEY || "",
   posthogApiKey: process.env.POSTHOG_API_KEY || "",

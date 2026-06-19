@@ -14,9 +14,36 @@ interface UserAvatarProps {
   border?: AvatarBorderId | null;
   icon?: AvatarIconId | null;
   bg?: AvatarBgId | null;
+  mode?: "icon" | "photo" | null;
+  avatarUrl?: string | null;
   size?: UserAvatarSize;
   className?: string;
   loading?: boolean;
+}
+
+// Avatar efetivo do PROPRIO usuario: foto so quando o dono e Pro, escolheu modo
+// foto, tem url e o avatar esta limpo. Mantem o que o dono ve consistente com o
+// que terceiros veem (cobre downgrade e foto em analise). Borda e ortogonal.
+export function effectiveOwnAvatar(
+  profile:
+    | {
+        avatar_mode?: string | null;
+        avatar_url?: string | null;
+        avatar_moderation_status?: string | null;
+      }
+    | null
+    | undefined,
+  isPro: boolean,
+): { mode: "icon" | "photo"; avatarUrl: string | null } {
+  const showPhoto =
+    !!profile &&
+    profile.avatar_mode === "photo" &&
+    !!profile.avatar_url &&
+    isPro &&
+    profile.avatar_moderation_status === "clean";
+  return showPhoto
+    ? { mode: "photo", avatarUrl: profile.avatar_url ?? null }
+    : { mode: "icon", avatarUrl: null };
 }
 
 const sizeClasses: Record<UserAvatarSize, string> = {
@@ -57,6 +84,8 @@ export default function UserAvatar({
   border,
   icon,
   bg,
+  mode,
+  avatarUrl,
   size = "md",
   className = "",
   loading = false,
@@ -66,6 +95,7 @@ export default function UserAvatar({
   const bgOption = getAvatarBgOption(bg);
   const Icon = iconOption.Icon;
   const initials = getUserInitials(name) || "BT";
+  const showPhoto = mode === "photo" && !!avatarUrl;
   const rootClassName = [
     "relative inline-flex shrink-0",
     sizeClasses[size],
@@ -102,7 +132,14 @@ export default function UserAvatar({
           bgOption.className,
         ].join(" ")}
       >
-        {Icon ? (
+        {showPhoto ? (
+          <img
+            src={avatarUrl ?? undefined}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        ) : Icon ? (
           <Icon className={iconSizeClasses[size]} strokeWidth={3} />
         ) : (
           initials
