@@ -13,7 +13,7 @@ import Home from "./pages/home/HomeLanding";
 import Areas from "./pages/Areas";
 import AreaDetalhe from "./pages/AreaDetalhe";
 import SubAreaDetalhe from "./pages/SubAreaDetalhe";
-import Roadmaps from "./pages/Roadmaps";
+import RoadmapCarreira from "./pages/RoadmapCarreira";
 import RoadmapsV2 from "./pages/RoadmapsV2";
 import RoadmapsV2Index from "./pages/RoadmapsV2Index";
 import Cursos from "./pages/Cursos";
@@ -129,9 +129,18 @@ function Router() {
       <Route path="/ia" component={GuiaIa} />
       <Route path="/mentorias" component={Mentorias} />
       <Route path="/admin" component={Admin} />
-      <Route path="/roadmaps" component={Roadmaps} />
-      <Route path="/roadmaps-novo" component={RoadmapsV2Index} />
-      <Route path="/roadmaps-novo/:slug" component={RoadmapsV2} />
+      <Route path="/roadmaps" component={RoadmapsV2Index} />
+      <Route path="/roadmaps/comecar-do-zero">
+        {() => <RoadmapCarreira roadmapId="zero-ti" />}
+      </Route>
+      <Route path="/roadmaps/linkedin">
+        {() => <RoadmapCarreira roadmapId="linkedin" />}
+      </Route>
+      <Route path="/roadmaps/:slug" component={RoadmapsV2} />
+      <Route path="/roadmaps-novo">{() => <Redirect to="/roadmaps" />}</Route>
+      <Route path="/roadmaps-novo/:slug">
+        {(params) => <Redirect to={`/roadmaps/${params.slug}`} />}
+      </Route>
       <Route path="/cursos" component={Cursos} />
       <Route path="/plataformas" component={Plataformas} />
       <Route path="/faculdades/:slug" component={FaculdadeDetalhe} />

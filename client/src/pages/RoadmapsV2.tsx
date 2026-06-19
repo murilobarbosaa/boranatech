@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "wouter";
+import { Redirect, useParams } from "wouter";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -24,7 +24,12 @@ const BURST_TO_WALK = 480;
 
 export default function RoadmapsV2() {
   const params = useParams();
-  const roadmap = roadmapsV2.find((r) => r.slug === params.slug) ?? frontend;
+  const matched = roadmapsV2.find((r) => r.slug === params.slug);
+  // Fallback keeps the hooks below on valid data; an unmatched slug never
+  // renders a different trail, it redirects to /roadmaps (see the guard before
+  // the return), so the principal route stays indexable without showing the
+  // wrong content.
+  const roadmap = matched ?? frontend;
   const slug = roadmap.slug;
   const areaLabel = roadmap.title.includes("Front")
     ? "Front-end"
@@ -136,14 +141,17 @@ export default function RoadmapsV2() {
     ? (roadmap.sections.find((section) => section.id === openSectionId) ?? null)
     : null;
 
+  if (!matched) {
+    return <Redirect to="/roadmaps" />;
+  }
+
   return (
     <Layout>
       <SEO
         title={`Trilha de ${roadmap.title} · Roadmap interativo`}
         description={roadmap.description}
-        url={`/roadmaps-novo/${roadmap.slug}`}
+        url={`/roadmaps/${roadmap.slug}`}
         schemaType="CollectionPage"
-        noindex
       />
 
       <section className="bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
@@ -196,7 +204,7 @@ export default function RoadmapsV2() {
                 type: "roadmap",
                 title: roadmap.title,
                 subtitle: areaLabel,
-                url: `/roadmaps-novo/${roadmap.slug}`,
+                url: `/roadmaps/${roadmap.slug}`,
               }}
             />
           </div>

@@ -1,9 +1,10 @@
-import { Link } from "wouter";
+import { Link, Redirect, useSearch } from "wouter";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { roadmapsV2 } from "@/lib/roadmapV2/content";
 import type { RoadmapNode } from "@/lib/roadmapV2/types";
-import { areasTI } from "@/lib/data";
+import { areasTI, roadmaps } from "@/lib/data";
+import { PRESERVED_TRAILS } from "@/pages/RoadmapCarreira";
 
 function hasProjectNode(nodes: RoadmapNode[]): boolean {
   return nodes.some(
@@ -14,12 +15,18 @@ function hasProjectNode(nodes: RoadmapNode[]): boolean {
 }
 
 export default function RoadmapsV2Index() {
+  const search = useSearch();
+  const areaParam = new URLSearchParams(search).get("area");
+  if (areaParam && roadmapsV2.some((r) => r.slug === areaParam)) {
+    return <Redirect to={`/roadmaps/${areaParam}`} />;
+  }
+
   return (
     <Layout>
       <SEO
         title="Roadmaps · Escolha sua trilha"
         description="Um passo a passo por área, do primeiro conceito ao nível avançado. Tudo de graça."
-        url="/roadmaps-novo"
+        url="/roadmaps"
         schemaType="CollectionPage"
       />
 
@@ -49,7 +56,7 @@ export default function RoadmapsV2Index() {
               return (
                 <Link
                   key={r.slug}
-                  href={`/roadmaps-novo/${r.slug}`}
+                  href={`/roadmaps/${r.slug}`}
                   className="bnt-pressable flex flex-col rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_#0f172a]"
                 >
                   <div className="flex items-center gap-3">
@@ -88,6 +95,49 @@ export default function RoadmapsV2Index() {
                     </span>
                     <span className="text-[12px] font-bold text-slate-600">
                       {r.sections.length} etapas
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+
+            {PRESERVED_TRAILS.map((t) => {
+              const rm = roadmaps.find((r) => r.id === t.roadmapId);
+              if (!rm) return null;
+              const Icon = t.icon;
+              return (
+                <Link
+                  key={t.slug}
+                  href={`/roadmaps/${t.slug}`}
+                  className="bnt-pressable flex flex-col rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_#0f172a]"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${t.tagClass}`}
+                    >
+                      <Icon className="h-[19px] w-[19px] text-white" />
+                    </span>
+                    <h2 className="text-[15px] font-bold leading-tight text-slate-900">
+                      {rm.nome}
+                    </h2>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full border-[1.5px] border-slate-900 bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
+                      carreira
+                    </span>
+                  </div>
+
+                  <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
+                    {rm.descricao}
+                  </p>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-dashed border-slate-300 pt-3">
+                    <span className="text-[11px] text-slate-400">
+                      trilha de carreira
+                    </span>
+                    <span className="text-[12px] font-bold text-slate-600">
+                      {rm.etapas.length} etapas
                     </span>
                   </div>
                 </Link>
