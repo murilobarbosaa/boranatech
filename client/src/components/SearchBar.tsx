@@ -49,6 +49,18 @@ function labelForAreaSlug(slug: string | null | undefined): string {
   );
 }
 
+const ROADMAP_PATH_BY_ID: Record<string, string> = {
+  "zero-ti": "/roadmaps/comecar-do-zero",
+  linkedin: "/roadmaps/linkedin",
+  "qa-testes": "/roadmaps/qa",
+  "produto-digital": "/roadmaps/produto",
+  "ia-aplicada": "/roadmaps/ia",
+};
+
+function roadmapPath(id: string): string {
+  return ROADMAP_PATH_BY_ID[id] ?? `/roadmaps/${id}`;
+}
+
 function searchAll(query: string): SearchResult[] {
   if (!query.trim()) return [];
   const q = query.toLowerCase();
@@ -77,7 +89,7 @@ function searchAll(query: string): SearchResult[] {
         type: "Roadmap",
         title: r.nome,
         description: r.descricao,
-        path: `/roadmaps/${r.id}`,
+        path: roadmapPath(r.id),
       });
     }
   });
