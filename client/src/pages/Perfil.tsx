@@ -33,6 +33,7 @@ import { ProfileBackground } from "@/components/profile/ProfileBackground";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import ProGate from "@/components/pro/ProGate";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
+import ProUpsellModal from "@/components/pro/ProUpsellModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -46,6 +47,7 @@ import {
   normalizeAvatarBg,
   normalizeAvatarBorder,
   normalizeAvatarIcon,
+  resolveEffectiveBorder,
   type AvatarBgId,
   type AvatarBorderId,
   type AvatarIconId,
@@ -250,6 +252,7 @@ type AvatarGridOption<T extends string> = {
   id: T;
   label: string;
   accentClassName?: string;
+  pro?: boolean;
 };
 
 function AvatarOptionGrid<T extends string>({
@@ -258,25 +261,33 @@ function AvatarOptionGrid<T extends string>({
   selected,
   onSelect,
   renderPreview,
+  isPro = false,
+  onProLockedClick,
 }: {
   title: string;
   options: AvatarGridOption<T>[];
   selected: T;
   onSelect: (value: T) => void;
   renderPreview: (option: AvatarGridOption<T>) => ReactNode;
+  isPro?: boolean;
+  onProLockedClick?: () => void;
 }) {
   return (
     <section aria-label={`Opções de ${title.toLowerCase()}`}>
       <div className="mt-2 grid grid-cols-3 gap-2">
         {options.map((option) => {
           const isSelected = selected === option.id;
+          const locked = option.pro === true && !isPro;
 
           return (
             <button
               key={option.id}
               type="button"
               aria-pressed={isSelected}
-              onClick={() => onSelect(option.id)}
+              aria-disabled={locked || undefined}
+              onClick={() =>
+                locked ? onProLockedClick?.() : onSelect(option.id)
+              }
               className={`relative flex min-h-[64px] flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-2 text-center transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-yellow-200 ${optionButtonClass(
                 isSelected,
                 option.accentClassName,
@@ -285,6 +296,11 @@ function AvatarOptionGrid<T extends string>({
               {isSelected ? (
                 <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#1a1a1a] text-white">
                   <Check className="h-3 w-3" strokeWidth={3} />
+                </span>
+              ) : null}
+              {option.pro ? (
+                <span className="absolute left-1.5 top-1.5">
+                  <ProStarIcon />
                 </span>
               ) : null}
               {renderPreview(option)}
@@ -648,6 +664,7 @@ export default function Perfil() {
   const [activeAvatarSection, setActiveAvatarSection] =
     useState<AvatarSection>("border");
   const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
+  const [proUpsellOpen, setProUpsellOpen] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelingSubscription, setCancelingSubscription] = useState(false);
@@ -736,6 +753,11 @@ export default function Perfil() {
   const avatarBorder = normalizeAvatarBorder(localProfile?.avatar_border);
   const avatarIcon = normalizeAvatarIcon(localProfile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(localProfile?.avatar_bg);
+  // Display do proprio avatar: rebaixa borda Pro pra default se nao e Pro.
+  const displayBorder = resolveEffectiveBorder(
+    localProfile?.avatar_border,
+    isPro,
+  );
   const photoAvatar = effectiveOwnAvatar(localProfile, isPro);
   const googleMeta = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const googlePreviewUrl =
@@ -958,7 +980,7 @@ export default function Perfil() {
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                 <UserAvatar
                   name={userName}
-                  border={avatarBorder}
+                  border={displayBorder}
                   icon={avatarIcon}
                   bg={avatarBg}
                   mode={photoAvatar.mode}
@@ -1091,6 +1113,8 @@ export default function Perfil() {
                           options={avatarBorderOptions}
                           selected={editAvatarBorder}
                           onSelect={setEditAvatarBorder}
+                          isPro={isPro}
+                          onProLockedClick={() => setProUpsellOpen(true)}
                           renderPreview={(option) => (
                             <UserAvatar
                               name={editName || userName}
@@ -1672,6 +1696,13 @@ export default function Perfil() {
             onClose={() => setSignOutModalOpen(false)}
             onConfirm={handleConfirmSignOut}
             isLoading={signingOut}
+          />
+
+          {/* TODO(Ana): copy final do upsell de bordas */}
+          <ProUpsellModal
+            open={proUpsellOpen}
+            onOpenChange={setProUpsellOpen}
+            description="As bordas animadas fazem parte do Plano Pro. Assine pra desbloquear."
           />
 
           {deleteModalOpen ? (

@@ -22,8 +22,8 @@ import Logo from "@/components/Logo";
 import { ProInlineBadge, ProStarIcon } from "@/components/pro/ProStarIcon";
 import {
   normalizeAvatarBg,
-  normalizeAvatarBorder,
   normalizeAvatarIcon,
+  resolveEffectiveBorder,
 } from "@/constants/avatarOptions";
 import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
 type MenuItem = {
@@ -736,7 +736,8 @@ export default function Header() {
   const avatarLoading = Boolean(
     user && !profile && (authLoading || profileStatus === "loading"),
   );
-  const avatarBorder = normalizeAvatarBorder(profile?.avatar_border);
+  // Display do proprio avatar: borda Pro rebaixa pra default se o dono nao e Pro.
+  const avatarBorder = resolveEffectiveBorder(profile?.avatar_border, isPro);
   const avatarIcon = normalizeAvatarIcon(profile?.avatar_icon);
   const avatarBg = normalizeAvatarBg(profile?.avatar_bg);
   const ownAvatar = effectiveOwnAvatar(profile, isPro);
