@@ -1,3 +1,4 @@
+import { DEFAULT_AVATAR_BORDER, PRO_AVATAR_BORDERS } from "./avatarBorders";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 export type AvatarMode = "icon" | "photo";
@@ -82,15 +83,19 @@ export async function resolveAvatars(
   const byId = new Map<string, ProfileRow>();
   for (const row of rows) byId.set(row.user_id, row);
 
-  // So checa Pro de quem de fato poderia exibir foto, pra nao disparar RPC a toa.
-  const photoCandidates = rows.filter(
-    (row) =>
+  // So checa Pro de quem precisa (poderia exibir foto OU usa borda Pro), pra nao
+  // disparar RPC a toa. Uma linha por usuario, entao nao ha RPC duplicada.
+  const needsProCheck = rows.filter((row) => {
+    const photoCandidate =
       row.avatar_mode === "photo" &&
       !!row.avatar_url &&
-      row.avatar_moderation_status === "clean",
-  );
+      row.avatar_moderation_status === "clean";
+    const proBorder =
+      row.avatar_border != null && PRO_AVATAR_BORDERS.has(row.avatar_border);
+    return photoCandidate || proBorder;
+  });
   const proPairs = await Promise.all(
-    photoCandidates.map(
+    needsProCheck.map(
       async (row) => [row.user_id, await isOwnerPro(row.user_id)] as const,
     ),
   );
@@ -101,11 +106,19 @@ export async function resolveAvatars(
     // user_id sem profile: default minimo em icone, pra nao quebrar o lote.
     if (!row) return iconDefault(userId, null);
 
+    const ownerPro = proById.get(userId) === true;
     const showPhoto =
       row.avatar_mode === "photo" &&
       !!row.avatar_url &&
       row.avatar_moderation_status === "clean" &&
-      proById.get(userId) === true;
+      ownerPro;
+
+    // Trava de display: dono sem Pro nao exibe borda Pro pros outros, cai no default.
+    const rawBorder = row.avatar_border ?? null;
+    const border =
+      !ownerPro && rawBorder != null && PRO_AVATAR_BORDERS.has(rawBorder)
+        ? DEFAULT_AVATAR_BORDER
+        : rawBorder;
 
     return {
       userId,
@@ -114,7 +127,7 @@ export async function resolveAvatars(
       avatarUrl: showPhoto ? row.avatar_url : null,
       icon: row.avatar_icon ?? null,
       bg: row.avatar_bg ?? null,
-      border: row.avatar_border ?? null,
+      border,
     };
   });
 }

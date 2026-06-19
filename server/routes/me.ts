@@ -1,9 +1,10 @@
 import { Router } from "express";
 import type { Request } from "express";
 
+import { PRO_AVATAR_BORDERS } from "../lib/avatarBorders";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { requireAuth } from "../middleware/auth";
+import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { GENDER_VALUES, type Gender } from "../../shared/gender";
 
@@ -38,6 +39,10 @@ const AVATAR_VALUES = {
     "orange",
     "red",
     "cyan",
+    "pro-rgb",
+    "pro-holo",
+    "pro-godzilla",
+    "pro-storm",
   ]),
   avatar_icon: new Set([
     "initials",
@@ -159,7 +164,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.patch("/", async (req, res, next) => {
+router.patch("/", checkProStatus, async (req, res, next) => {
   try {
     const userId = req.user!.id;
     const body = req.body as Record<string, unknown>;
@@ -178,6 +183,23 @@ router.patch("/", async (req, res, next) => {
         const validationError = validateAvatarPreference(field, updates[field]);
         if (validationError) return next(validationError);
       }
+    }
+
+    // Pro-gate no write: borda Pro so pra quem e Pro. Usa o mesmo mecanismo do
+    // upload de foto (checkProStatus monta req.isPro, com atalho de dev/localhost
+    // e admin). Defesa server-side. Fail-closed: req.isPro != true -> 403.
+    if (
+      typeof updates.avatar_border === "string" &&
+      PRO_AVATAR_BORDERS.has(updates.avatar_border) &&
+      req.isPro !== true
+    ) {
+      return next(
+        createError(
+          403,
+          "forbidden_pro_border",
+          "Essa borda é exclusiva do Plano Pro.",
+        ),
+      );
     }
 
     if ("gender" in updates) {
