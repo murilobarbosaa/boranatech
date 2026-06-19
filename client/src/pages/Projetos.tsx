@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Projetos Page
+  BORA NA TECH? (Projetos Page)
   Style: Neo-Brutalism Suavizado
 */
 
@@ -104,7 +104,7 @@ export default function Projetos() {
   return (
     <Layout>
       <SEO
-        title="Projetos para Portfólio — Ideias práticas para iniciantes em TI"
+        title="Projetos para Portfólio · Ideias práticas para iniciantes em TI"
         description="Ideias de projetos por nível e área para montar portfólio, praticar tecnologia e mostrar evolução em processos seletivos."
         keywords={[
           "projetos para portfólio",
@@ -156,13 +156,14 @@ export default function Projetos() {
             <select
               value={area}
               onChange={(e) => setArea(e.target.value)}
+              aria-label="Filtrar por área"
               className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
             >
               {areaSlugOptions.map((slug) => {
                 const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
                 const key = slug ?? "__null__";
                 const label =
-                  slug === AREA_ALL ? AREA_ALL : labelForAreaSlug(slug);
+                  slug === AREA_ALL ? "Todas as áreas" : labelForAreaSlug(slug);
                 return (
                   <option key={key} value={value}>
                     {label}
@@ -173,10 +174,11 @@ export default function Projetos() {
             <select
               value={nivel}
               onChange={(e) => setNivel(e.target.value)}
+              aria-label="Filtrar por nível"
               className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
             >
               {niveis.map((n) => (
-                <option key={n}>{n}</option>
+                <option key={n}>{n === "Todos" ? "Todos os níveis" : n}</option>
               ))}
             </select>
           </div>

@@ -90,7 +90,7 @@ export default function TrocarSenha() {
   if (loading || !user) {
     return (
       <Layout>
-        <SEO title="Trocar senha — Bora na Tech?" url="/trocar-senha" noindex />
+        <SEO title="Trocar senha · Bora na Tech?" url="/trocar-senha" noindex />
         <section className="hero-pattern py-16">
           <div className="container">
             <p className="text-sm text-slate-500">Carregando…</p>
@@ -102,7 +102,7 @@ export default function TrocarSenha() {
 
   return (
     <Layout>
-      <SEO title="Trocar senha — Bora na Tech?" url="/trocar-senha" noindex />
+      <SEO title="Trocar senha · Bora na Tech?" url="/trocar-senha" noindex />
       <section className="hero-pattern py-16">
         <div className="container">
           <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">

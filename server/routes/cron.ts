@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import { enrichBacklog } from "../jobs/enrichBacklog";
@@ -23,9 +24,25 @@ type SyncResult = {
   failed: number;
 };
 
+function timingSafeEqualStr(a: string, b: string): boolean {
+  // Hash de tamanho fixo dos dois lados para comparar em tempo constante
+  // sem vazar o comprimento. Mesmo padrao do webhook Asaas (billing.ts).
+  const aHash = crypto.createHash("sha256").update(a).digest();
+  const bHash = crypto.createHash("sha256").update(b).digest();
+  return crypto.timingSafeEqual(aHash, bHash);
+}
+
 function requireCronSecret(req: Request, _res: Response, next: NextFunction) {
-  const secret = req.headers["x-cron-secret"] || req.query.secret;
-  if (!env.cronSecret || secret !== env.cronSecret) {
+  // O caller (pg_cron via public.call_cron_endpoint) envia o segredo apenas no
+  // header x-cron-secret. Nao aceitamos query string para nao vazar o segredo
+  // em logs de proxy/plataforma.
+  const received = req.headers["x-cron-secret"];
+  if (
+    !env.cronSecret ||
+    typeof received !== "string" ||
+    !received ||
+    !timingSafeEqualStr(received, env.cronSecret)
+  ) {
     return next(createError(401, "unauthorized", "Cron secret inválido."));
   }
 
@@ -148,9 +165,9 @@ router.post("/sync-jobs", async (_req, res, next) => {
   }
 });
 
-// NOTA (redesenho billing — abordagem C): desde que POST /billing/cancel passou a
+// NOTA (redesenho billing, abordagem C): desde que POST /billing/cancel passou a
 // avisar o Asaas na hora (endDate + DELETE das pendentes futuras), o cancelAsaasSubscription
-// abaixo deixou de ser o mecanismo PRIMARIO de parar o billing no caminho feliz — o Asaas
+// abaixo deixou de ser o mecanismo PRIMARIO de parar o billing no caminho feliz, o Asaas
 // ja para sozinho via endDate. Este cron agora vale como RECONCILIADOR / rede de seguranca:
 // finaliza o status no banco (active -> canceled) no vencimento e cobre casos em que o /cancel
 // falhou no meio ou subs legadas sem endDate. Desligar/ajustar e o passo 7 do plano, nao agora.

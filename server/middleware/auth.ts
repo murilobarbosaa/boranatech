@@ -41,25 +41,13 @@ async function isAdminUser(userId: string) {
   return !error && data === true;
 }
 
-function isLocalDevelopmentRequest(req: AuthRequest) {
+// Allowlist dev-only: fora de producao, forca isPro apenas para user ids
+// listados em DEV_PRO_USER_IDS. Substitui o antigo gatilho por Host header
+// (que era forjavel pelo cliente). Em producao retorna sempre false.
+function isDevProUser(req: AuthRequest) {
   if (env.isProd) return false;
-
-  const host = (
-    req.hostname ||
-    firstHeaderValue(req.headers.host) ||
-    ""
-  ).toLowerCase();
-  const hostname = host.split(":")[0];
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname.endsWith(".ngrok-free.app") ||
-    hostname.endsWith(".ngrok-free.dev") ||
-    hostname.endsWith(".ngrok.io") ||
-    hostname.endsWith(".ngrok.app") ||
-    hostname.endsWith(".ngrok.dev")
-  );
+  if (!req.user) return false;
+  return env.devProUserIds.includes(req.user.id);
 }
 
 export async function validateSupabaseJwt(
@@ -127,13 +115,13 @@ export async function checkProStatus(
   _res: Response,
   next: MiddlewareNext,
 ) {
-  if (isLocalDevelopmentRequest(req)) {
-    req.isPro = true;
+  if (!req.user) {
+    req.isPro = false;
     return next();
   }
 
-  if (!req.user) {
-    req.isPro = false;
+  if (isDevProUser(req)) {
+    req.isPro = true;
     return next();
   }
 
@@ -161,7 +149,7 @@ export function requirePro(
     return next(createError(401, "unauthorized", "Autenticação necessária."));
   }
 
-  if (isLocalDevelopmentRequest(req)) {
+  if (isDevProUser(req)) {
     req.isPro = true;
     return next();
   }

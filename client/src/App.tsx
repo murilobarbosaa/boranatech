@@ -5,6 +5,7 @@ import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import { AuthProvider } from "./contexts/AuthContext";
+import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
@@ -12,7 +13,9 @@ import Home from "./pages/home/HomeLanding";
 import Areas from "./pages/Areas";
 import AreaDetalhe from "./pages/AreaDetalhe";
 import SubAreaDetalhe from "./pages/SubAreaDetalhe";
-import Roadmaps from "./pages/Roadmaps";
+import RoadmapCarreira from "./pages/RoadmapCarreira";
+import RoadmapsV2 from "./pages/RoadmapsV2";
+import RoadmapsV2Index from "./pages/RoadmapsV2Index";
 import Cursos from "./pages/Cursos";
 import Plataformas from "./pages/Plataformas";
 import Faculdades from "./pages/Faculdades";
@@ -44,6 +47,7 @@ import TecnologiaDetalhe from "./pages/TecnologiaDetalhe";
 import TecnologiaComparador from "./pages/TecnologiaComparador";
 import TecnologiaMapa from "./pages/TecnologiaMapa";
 import TecnologiaRanking from "./pages/TecnologiaRanking";
+import TecnologiaJogos from "./pages/TecnologiaJogos";
 import Empresas from "./pages/Empresas";
 import EmpresaDetalhe from "./pages/EmpresaDetalhe";
 import EmpresaRankingJunior from "./pages/EmpresaRankingJunior";
@@ -95,6 +99,7 @@ function Router() {
         {() => <Redirect to="/tecnologias/por-area" />}
       </Route>
       <Route path="/tecnologias/ranking" component={TecnologiaRanking} />
+      <Route path="/tecnologias/jogos" component={TecnologiaJogos} />
       <Route path="/tecnologias/:slug" component={TecnologiaDetalhe} />
       <Route path="/empresas" component={Empresas} />
       <Route path="/empresas/ranking-junior" component={EmpresaRankingJunior} />
@@ -127,7 +132,18 @@ function Router() {
       <Route path="/ia" component={GuiaIa} />
       <Route path="/mentorias" component={Mentorias} />
       <Route path="/admin" component={Admin} />
-      <Route path="/roadmaps" component={Roadmaps} />
+      <Route path="/roadmaps" component={RoadmapsV2Index} />
+      <Route path="/roadmaps/comecar-do-zero">
+        {() => <RoadmapCarreira roadmapId="zero-ti" />}
+      </Route>
+      <Route path="/roadmaps/linkedin">
+        {() => <RoadmapCarreira roadmapId="linkedin" />}
+      </Route>
+      <Route path="/roadmaps/:slug" component={RoadmapsV2} />
+      <Route path="/roadmaps-novo">{() => <Redirect to="/roadmaps" />}</Route>
+      <Route path="/roadmaps-novo/:slug">
+        {(params) => <Redirect to={`/roadmaps/${params.slug}`} />}
+      </Route>
       <Route path="/cursos" component={Cursos} />
       <Route path="/plataformas" component={Plataformas} />
       <Route path="/faculdades/:slug" component={FaculdadeDetalhe} />
@@ -186,14 +202,16 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <AuthProvider>
-          <SubscriptionProvider>
-            <TooltipProvider>
-              <Toaster />
-              <AffiliateTracker />
-              <ScrollToTop />
-              <Router />
-            </TooltipProvider>
-          </SubscriptionProvider>
+          <FavoritesProvider>
+            <SubscriptionProvider>
+              <TooltipProvider>
+                <Toaster />
+                <AffiliateTracker />
+                <ScrollToTop />
+                <Router />
+              </TooltipProvider>
+            </SubscriptionProvider>
+          </FavoritesProvider>
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

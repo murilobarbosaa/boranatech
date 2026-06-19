@@ -187,7 +187,7 @@ export default function FavoriteButton({
         title={
           <>
             Faça login pra salvar nos seus{" "}
-            <span className="text-[#FFB800]">Favoritos</span>
+            <span className="text-amber-700">Favoritos</span>
           </>
         }
         description="Seus favoritos ficam salvos na sua conta."

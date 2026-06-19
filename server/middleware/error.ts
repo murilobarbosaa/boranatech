@@ -11,13 +11,20 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  const statusCode = err.statusCode || 500;
+  // createError sempre seta statusCode numerico; um erro cru lancado nao tem.
+  // Usamos isso para distinguir erro intencional de 500 inesperado.
+  const fromCreateError = typeof err.statusCode === "number";
+  const statusCode = fromCreateError ? err.statusCode! : 500;
   const code = err.code || "internal_error";
-  const message = err.message || "Erro interno do servidor.";
 
-  if (statusCode === 500) {
+  if (statusCode >= 500) {
     console.error(`[error] ${req.method} ${req.path}`, err);
   }
+
+  // 500 inesperado (nao veio de createError): nao vaza err.message ao cliente.
+  const message = fromCreateError
+    ? err.message || "Erro interno do servidor."
+    : "Erro interno do servidor.";
 
   res.status(statusCode).json({
     error: {

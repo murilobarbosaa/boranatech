@@ -123,7 +123,7 @@ async function advance(ms: number) {
   });
 }
 
-describe("AuthContext — resiliência do carregamento de perfil (sem skeleton eterno, sem regredir perfil bom)", () => {
+describe("AuthContext: resiliência do carregamento de perfil (sem skeleton eterno, sem regredir perfil bom)", () => {
   beforeEach(() => {
     supa.reset();
     profileSvc.fn.mockReset();

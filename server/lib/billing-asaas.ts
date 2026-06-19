@@ -9,7 +9,7 @@ const REMOVABLE_STATUSES = ["PENDING", "AWAITING_RISK_ANALYSIS", "OVERDUE"];
 // Avisa o Asaas que a assinatura termina em endDate (abordagem C) e neutraliza
 // cobrancas futuras ja pre-geradas (salvaguarda s1). Idempotente e seguro para
 // retry: endDate pode ser reenviado; DELETE de cobranca ausente (404) conta como
-// sucesso. Pagamentos confirmados (CONFIRMED/RECEIVED) nunca sao tocados — o filtro
+// sucesso. Pagamentos confirmados (CONFIRMED/RECEIVED) nunca sao tocados, o filtro
 // e uma allow-list dos status removiveis. NAO toca no banco: quem chama controla a
 // ordem (Asaas antes, banco depois).
 export async function cancelSubscriptionAtAsaas(
@@ -46,14 +46,14 @@ export async function cancelSubscriptionAtAsaas(
   }
 }
 
-// Desfaz um endDate previamente setado, retomando a recorrencia natural — usado
+// Desfaz um endDate previamente setado, retomando a recorrencia natural, usado
 // pelo POST /billing/reactivate (Caso A, dentro da janela).
 //
-// IMPORTANTE — base de evidencia incompleta: a doc oficial do Asaas (PUT
+// IMPORTANTE: base de evidencia incompleta: a doc oficial do Asaas (PUT
 // /v3/subscriptions/{id}) lista endDate com schema example=null mas NAO afirma
 // explicitamente que enviar null limpa um endDate ja setado. Esta e a leitura
 // mais defensavel do schema, mas PRECISA ser validada empiricamente no sandbox
-// antes de confiar em producao — mesmo padrao do passo 4 (endDate + DELETE).
+// antes de confiar em producao, mesmo padrao do passo 4 (endDate + DELETE).
 // Se sandbox provar que null nao limpa, fallback plausivel: endDate: "" ou abrir
 // ticket com Asaas. NAO inventar mecanismo agora.
 //

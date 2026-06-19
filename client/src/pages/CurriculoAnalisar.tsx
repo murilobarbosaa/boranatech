@@ -43,7 +43,7 @@ export default function CurriculoAnalisar() {
         accent="blue"
         eyebrow="recurso com IA"
         title="Analisador de currículo com IA"
-        subtitle="Receba nota, lacunas, palavras-chave e melhorias por seção — no padrão de quem quer aparecer bem em processos seletivos."
+        subtitle="Receba nota, lacunas, palavras-chave e melhorias por seção, no padrão de quem quer aparecer bem em processos seletivos."
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">

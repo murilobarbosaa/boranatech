@@ -66,7 +66,7 @@ export default function RecuperarSenha() {
     return (
       <Layout>
         <SEO
-          title="Recuperar senha — Bora na Tech?"
+          title="Recuperar senha · Bora na Tech?"
           url="/recuperar-senha"
           noindex
         />
@@ -129,7 +129,7 @@ export default function RecuperarSenha() {
   return (
     <Layout>
       <SEO
-        title="Recuperar senha — Bora na Tech?"
+        title="Recuperar senha · Bora na Tech?"
         url="/recuperar-senha"
         noindex
       />

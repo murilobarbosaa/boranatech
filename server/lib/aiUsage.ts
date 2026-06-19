@@ -12,13 +12,16 @@ export interface AiDailyLimitResult {
   allowed: boolean;
   count: number;
   limit: number;
+  // true quando NAO foi possivel verificar o uso (RPC com erro/null ou excecao).
+  // Distingue "falha de verificacao" (503) de "limite real atingido" (429).
+  verificationFailed?: boolean;
 }
 
 /**
  * Consulta o uso de IA do dia via RPC get_ai_usage_today e compara com o
- * limite (Pro ou Free). Fail-open: se a RPC retornar erro/null ou lancar,
- * libera a chamada (allowed true). O console.warn so acontece quando a RPC
- * lanca, igual ao comportamento original.
+ * limite (Pro ou Free). Fail-closed: se a RPC retornar erro/null ou lancar,
+ * NAO libera a chamada e marca verificationFailed para o caller responder 503
+ * (falha de verificacao), distinto do 429 de limite real atingido.
  */
 export async function checkAiDailyLimit(
   userId: string,
@@ -35,10 +38,11 @@ export async function checkAiDailyLimit(
       return { allowed: usageCount < limit, count: usageCount, limit };
     }
 
-    return { allowed: true, count: 0, limit };
+    console.warn(`${logScope} RPC de rate limit retornou erro/null para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     console.warn(`${logScope} Falha ao verificar rate limit para`, userId);
-    return { allowed: true, count: 0, limit };
+    return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }
 

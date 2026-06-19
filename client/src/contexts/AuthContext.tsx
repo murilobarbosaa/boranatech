@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // profileRef é mantido em sincronia SÍNCRONA com setProfile em cada caller
   // (fetchAndApply success, cancelProfileLifecycle, ambos ramos de refreshProfile).
   // NÃO usar useEffect espelho: o effect roda após commit, abrindo 1 render
-  // de janela onde profile já mudou mas o ref ainda reflete o valor antigo —
+  // de janela onde profile já mudou mas o ref ainda reflete o valor antigo,
   // exatamente a race que startProfileLifecycle observa via profileRef.current
   // para escolher mode='initial' vs 'background'.
   const profileRef = useRef<Profile | null>(null);
@@ -234,12 +234,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // Callback de OAuth em andamento: getSession resolveu null mas a URL ainda
         // tem ?code= (PKCE) / token no hash (implicit). A troca vai concluir e
-        // emitir SIGNED_IN — NÃO feche o loading agora, senão abrimos a janela
+        // emitir SIGNED_IN. NÃO feche o loading agora, senão abrimos a janela
         // (loading=false, user=null) que faz os guards redirecionarem indevidamente.
         if (!initialSession && hasOAuthCallbackInUrl()) {
           console.info("[auth] holding loading for OAuth callback");
           // Salvaguarda: se o SIGNED_IN nunca chegar (ex.: troca PKCE falha), não
-          // travar em spinner eterno — degrada graciosamente para "não autenticado".
+          // travar em spinner eterno, degrada graciosamente para "não autenticado".
           safetyTimer = window.setTimeout(() => {
             if (!mounted) return;
             console.warn(
@@ -261,7 +261,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ) {
       // Durante um callback de OAuth, um INITIAL_SESSION(null) pode chegar antes
       // do SIGNED_IN. Ignore esse estado transitório para não fechar o loading
-      // (e reabrir a janela). O SIGNED_IN — ou a salvaguarda — resolve depois.
+      // (e reabrir a janela). O SIGNED_IN (ou a salvaguarda) resolve depois.
       if (!nextSession && event !== "SIGNED_OUT" && hasOAuthCallbackInUrl()) {
         return;
       }
@@ -377,7 +377,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   //
   // Participa do generation guard: bumpa antes de buscar, cheka antes de
   // aplicar. Se foi suplantado (SIGNED_OUT, ou outra busca mais nova chegou
-  // antes), resolve sem aplicar — o estado já reflete dado >= este.
+  // antes), resolve sem aplicar, o estado já reflete dado >= este.
   // Log info-level para não virar silêncio (lembra do H3).
   const refreshProfile = useCallback(async () => {
     if (!session) {

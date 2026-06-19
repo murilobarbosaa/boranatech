@@ -1,4 +1,4 @@
-# Fase 1C — Relatório de Diagnóstico: resume-builder
+# Fase 1C: Relatório de Diagnóstico: resume-builder
 
 > **Modelo:** `gpt-4o` · **Temperature:** 0.7 · **Gerado em:** 2026-05-20T19:24:28.105Z
 

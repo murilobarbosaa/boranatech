@@ -170,7 +170,7 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
     // d + e. Asaas PRIMEIRO; banco depois. Se o Asaas falhar, o banco NAO reflete o
     // cancelamento (estado consistente). Esta etapa e idempotente e segura para retry:
     // endDate pode ser reenviado e o DELETE trata 404 (cobranca ja removida) como sucesso.
-    // Logo, se o passo (f) falhar, basta repetir POST /cancel — sem efeito colateral.
+    // Logo, se o passo (f) falhar, basta repetir POST /cancel, sem efeito colateral.
     if (subscription.provider_subscription_id && endDate) {
       try {
         await cancelSubscriptionAtAsaas(

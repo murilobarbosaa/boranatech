@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Áreas da TI Page
+  BORA NA TECH? (Áreas da TI Page)
   Style: Neo-Brutalism Suavizado
   - Grid of area cards with filters
   - Search by name
@@ -8,26 +8,48 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   BarChart3,
+  Braces,
   Brain,
+  Bug,
   ClipboardList,
+  Cloud,
+  Code2,
   Compass,
+  Cpu,
+  Database,
+  GitBranch,
   LayoutGrid,
   Lock,
   Paintbrush,
+  Rocket,
   Search,
   SearchX,
+  Settings,
+  Smartphone,
+  Sparkles,
+  Terminal,
   Users,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
-import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
-import { areasPoucoConhecidas, areasTI, type AreaTI } from "@/lib/data";
+import AnimatedContent from "@/components/reactbits/AnimatedContent";
+import CircularText from "@/components/reactbits/CircularText";
+import CountUp from "@/components/reactbits/CountUp";
+import CurvedLoop from "@/components/reactbits/CurvedLoop";
+import SplitText from "@/components/reactbits/SplitText";
+import {
+  areasComplementares,
+  areasPoucoConhecidas,
+  areasTI,
+  type AreaTI,
+} from "@/lib/data";
 import { getAreas } from "@/services/contentService";
 import PageHero from "@/components/shared/PageHero";
 
@@ -80,6 +102,208 @@ const perfilMap: Record<string, string[]> = {
   ],
 };
 
+interface Grupo {
+  label: string;
+  band: string;
+  bandIcon: string;
+  badge: string;
+  explore: string;
+  exploreBorder: string;
+  spotlight: string;
+  tint: string;
+  soft: string;
+  chip: string;
+}
+
+const GRUPOS: Record<string, Grupo> = {
+  dev: {
+    label: "Desenvolvimento",
+    band: "bg-violet-100",
+    bandIcon: "text-violet-700",
+    badge: "text-violet-700",
+    explore: "text-violet-700",
+    exploreBorder: "border-violet-200",
+    spotlight: "rgba(124, 58, 237, 0.16)",
+    tint: "text-violet-500",
+    soft: "bg-violet-50",
+    chip: "bg-violet-100 text-violet-800",
+  },
+  dados: {
+    label: "Dados e IA",
+    band: "bg-blue-100",
+    bandIcon: "text-blue-700",
+    badge: "text-blue-700",
+    explore: "text-blue-700",
+    exploreBorder: "border-blue-200",
+    spotlight: "rgba(37, 99, 235, 0.16)",
+    tint: "text-blue-500",
+    soft: "bg-blue-50",
+    chip: "bg-blue-100 text-blue-800",
+  },
+  infra: {
+    label: "Infra e Cloud",
+    band: "bg-teal-100",
+    bandIcon: "text-teal-700",
+    badge: "text-teal-700",
+    explore: "text-teal-700",
+    exploreBorder: "border-teal-200",
+    spotlight: "rgba(13, 148, 136, 0.15)",
+    tint: "text-teal-500",
+    soft: "bg-teal-50",
+    chip: "bg-teal-100 text-teal-800",
+  },
+  seguranca: {
+    label: "Segurança",
+    band: "bg-rose-100",
+    bandIcon: "text-rose-700",
+    badge: "text-rose-700",
+    explore: "text-rose-700",
+    exploreBorder: "border-rose-200",
+    spotlight: "rgba(225, 29, 72, 0.15)",
+    tint: "text-rose-500",
+    soft: "bg-rose-50",
+    chip: "bg-rose-100 text-rose-800",
+  },
+  design: {
+    label: "Design",
+    band: "bg-fuchsia-100",
+    bandIcon: "text-fuchsia-700",
+    badge: "text-fuchsia-700",
+    explore: "text-fuchsia-700",
+    exploreBorder: "border-fuchsia-200",
+    spotlight: "rgba(192, 38, 211, 0.15)",
+    tint: "text-fuchsia-500",
+    soft: "bg-fuchsia-50",
+    chip: "bg-fuchsia-100 text-fuchsia-800",
+  },
+  gestao: {
+    label: "Gestão",
+    band: "bg-amber-100",
+    bandIcon: "text-amber-800",
+    badge: "text-amber-800",
+    explore: "text-amber-800",
+    exploreBorder: "border-amber-300",
+    spotlight: "rgba(255, 184, 0, 0.18)",
+    tint: "text-amber-500",
+    soft: "bg-amber-50",
+    chip: "bg-amber-100 text-amber-900",
+  },
+  qa: {
+    label: "QA e Suporte",
+    band: "bg-emerald-100",
+    bandIcon: "text-emerald-700",
+    badge: "text-emerald-700",
+    explore: "text-emerald-700",
+    exploreBorder: "border-emerald-200",
+    spotlight: "rgba(16, 185, 129, 0.15)",
+    tint: "text-emerald-500",
+    soft: "bg-emerald-50",
+    chip: "bg-emerald-100 text-emerald-800",
+  },
+};
+
+const SLUG_GRUPO: Record<string, string> = {
+  frontend: "dev",
+  backend: "dev",
+  fullstack: "dev",
+  mobile: "dev",
+  gamedev: "dev",
+  dados: "dados",
+  ia: "dados",
+  "analise-dados": "dados",
+  "engenharia-dados": "dados",
+  "banco-de-dados": "dados",
+  devops: "infra",
+  cloud: "infra",
+  sre: "infra",
+  infraestrutura: "infra",
+  mainframe: "infra",
+  iot: "infra",
+  ciberseguranca: "seguranca",
+  blockchain: "seguranca",
+  uxui: "design",
+  gestao: "gestao",
+  produto: "gestao",
+  "analise-sistemas": "gestao",
+  qa: "qa",
+};
+
+function grupoDoSlug(slug: string) {
+  return GRUPOS[SLUG_GRUPO[slug] ?? "dev"];
+}
+
+function grupoPorChave(chave: string) {
+  return GRUPOS[chave] ?? GRUPOS.dev;
+}
+
+const AWS_EMBAIXADORA_URL: string | undefined = undefined;
+
+const areasDoodles = [
+  { Icon: Code2, cls: "left-[3%] top-[7%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 6.5, rot: -7, delay: 0 },
+  { Icon: Database, cls: "right-[5%] top-[5%] text-purple-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: 8, delay: 0.5 },
+  { Icon: Cloud, cls: "left-[8%] top-[40%] text-violet-600 opacity-[0.15]", size: "h-14 w-14", dur: 6, rot: 5, delay: 1.1 },
+  { Icon: Lock, cls: "right-[3%] top-[36%] text-purple-400 opacity-[0.15]", size: "h-10 w-10", dur: 5.5, rot: -6, delay: 0.3 },
+  { Icon: Smartphone, cls: "left-[2%] top-[72%] text-violet-400 opacity-[0.15]", size: "h-10 w-10", dur: 7, rot: 7, delay: 1.4 },
+  { Icon: BarChart3, cls: "right-[7%] top-[68%] text-purple-600 opacity-[0.15]", size: "h-12 w-12", dur: 6, rot: -5, delay: 0.8 },
+  { Icon: Settings, cls: "left-[15%] top-[20%] text-violet-500 opacity-[0.14]", size: "h-9 w-9", dur: 8, rot: 12, delay: 0.2 },
+  { Icon: Cpu, cls: "right-[14%] top-[18%] text-purple-500 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -8, delay: 1.6 },
+  { Icon: GitBranch, cls: "left-[11%] top-[88%] text-violet-600 opacity-[0.14]", size: "h-9 w-9", dur: 5.5, rot: 6, delay: 0.6 },
+  { Icon: Terminal, cls: "right-[12%] top-[88%] text-violet-500 opacity-[0.14]", size: "h-10 w-10", dur: 7, rot: -6, delay: 1.2 },
+  { Icon: Braces, cls: "left-[46%] top-[3%] text-purple-400 opacity-[0.13]", size: "h-9 w-9", dur: 6, rot: 9, delay: 0.9 },
+  { Icon: Bug, cls: "right-[44%] top-[93%] text-violet-400 opacity-[0.13]", size: "h-8 w-8", dur: 5, rot: -10, delay: 1.5 },
+];
+
+const headerDoodles = [
+  { Icon: Compass, cls: "left-[2%] top-[18%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", dur: 7, rot: -8, delay: 0 },
+  { Icon: Sparkles, cls: "left-[24%] top-[8%] text-purple-500 opacity-[0.15]", size: "h-9 w-9", dur: 6, rot: 10, delay: 0.6 },
+  { Icon: Rocket, cls: "right-[28%] top-[12%] text-violet-600 opacity-[0.15]", size: "h-11 w-11", dur: 7.5, rot: 7, delay: 1.1 },
+  { Icon: Code2, cls: "left-[10%] top-[68%] text-purple-400 opacity-[0.14]", size: "h-10 w-10", dur: 6.5, rot: -6, delay: 0.3 },
+  { Icon: Database, cls: "right-[6%] top-[64%] text-violet-500 opacity-[0.14]", size: "h-10 w-10", dur: 6, rot: 6, delay: 1.4 },
+  { Icon: Cpu, cls: "right-[16%] top-[74%] text-purple-600 opacity-[0.13]", size: "h-9 w-9", dur: 7, rot: -9, delay: 0.9 },
+  { Icon: Braces, cls: "left-[40%] top-[82%] text-violet-400 opacity-[0.13]", size: "h-8 w-8", dur: 5.5, rot: 9, delay: 1.7 },
+  { Icon: GitBranch, cls: "left-[6%] top-[44%] text-violet-500 opacity-[0.14]", size: "h-9 w-9", dur: 6.5, rot: 8, delay: 0.4 },
+  { Icon: Terminal, cls: "right-[36%] top-[80%] text-purple-500 opacity-[0.13]", size: "h-10 w-10", dur: 7, rot: -7, delay: 1.2 },
+];
+
+function Doodles({
+  reduce,
+  items,
+}: {
+  reduce: boolean;
+  items: typeof areasDoodles;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      {items.map((d, i) => {
+        const Icon = d.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute ${d.cls}`}
+            animate={reduce ? undefined : { y: [0, -10, 0], rotate: [0, d.rot, 0] }}
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: d.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut" as const,
+                    delay: d.delay,
+                  }
+            }
+          >
+            <Icon className={d.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
+
 function SkeletonAreaCard() {
   return (
     <div className="card-brutal bg-white rounded-xl p-6 flex flex-col h-full animate-pulse">
@@ -107,6 +331,7 @@ function SkeletonAreaCard() {
 // trocava pra 14. Agora começamos vazio e só renderizamos quando a fonte certa
 // chega; fallback fica reservado pro catch (erro de rede).
 export default function Areas() {
+  const reduce = useReducedMotion() ?? false;
   const [areas, setAreas] = useState<AreaTI[] | null>(null);
   const [search, setSearch] = useState("");
   const [perfil, setPerfil] = useState("todos");
@@ -130,7 +355,7 @@ export default function Areas() {
   return (
     <Layout>
       <SEO
-        title="Áreas da TI — Conheça todas as especializações em tecnologia"
+        title="Áreas da TI · Conheça todas as especializações em tecnologia"
         description="Explore as principais áreas da tecnologia: desenvolvimento, dados, segurança, design, infraestrutura, IA e mais. Descubra qual área combina com você."
         keywords={[
           "áreas da ti",
@@ -146,9 +371,63 @@ export default function Areas() {
         accent="violet"
         pattern="dots"
         eyebrow="mapa de possibilidades"
-        title="Áreas da TI"
+        backgroundSlot={<Doodles reduce={reduce} items={headerDoodles} />}
+        title={
+          <SplitText
+            text="Áreas da TI"
+            className="font-display text-4xl font-bold leading-tight text-slate-950"
+          />
+        }
         subtitle="Cada área é um caminho dentro da TI, com funções e habilidades próprias. Descubra qual combina com você."
+        actions={
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative h-28 w-28 text-violet-700">
+              <CircularText
+                text="BORA NA TECH • SUA BÚSSOLA NA TI • "
+                className="h-full w-full"
+                duration={24}
+                radius={46}
+              />
+              <Compass
+                className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2"
+                aria-hidden
+              />
+            </div>
+            <motion.div
+              className="w-full"
+              animate={reduce ? undefined : { scale: [1, 1.03, 1] }}
+              transition={
+                reduce
+                  ? undefined
+                  : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }
+              }
+            >
+              <Link
+                href="/quiz-carreira"
+                className="flex flex-col items-center gap-1 rounded-2xl border-2 border-slate-900 bg-amber-300 px-4 py-3 text-center shadow-[4px_4px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+              >
+                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wide text-slate-950">
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  Não sabe por onde começar?
+                </span>
+                <span className="flex items-center gap-1 font-display text-sm font-black text-violet-800">
+                  Faça o quiz e descubra sua área
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </Link>
+            </motion.div>
+          </div>
+        }
       />
+
+      <section aria-hidden className="relative overflow-hidden bg-violet-50 py-1">
+        <CurvedLoop
+          items={areasTI.map((a) => a.nome)}
+          className="fill-violet-700 font-display text-[44px] font-black uppercase"
+          speed={0.8}
+          curveAmount={0}
+        />
+      </section>
 
       {/* Filters */}
       <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
@@ -189,12 +468,28 @@ export default function Areas() {
         </div>
       </section>
 
-      {/* Grid */}
-      <section className="bg-violet-50 py-12">
-        <div className="container">
-          <div className="mb-6 flex justify-end">
-            <EmbaixadoraBadge />
-          </div>
+      <section className="relative overflow-hidden bg-violet-50 py-12">
+        <Doodles reduce={reduce} items={areasDoodles} />
+        <div className="container relative z-10">
+          {!isLoading ? (
+            <div className="mb-6">
+              <p className="flex items-center gap-2 font-display text-xl font-black text-slate-900">
+                <Compass className="h-6 w-6 text-violet-700" aria-hidden />
+                <span>
+                  {reduce ? (
+                    areas?.length ?? 0
+                  ) : (
+                    <CountUp to={areas?.length ?? 0} duration={1.2} />
+                  )}{" "}
+                  <SplitText text="caminhos pra você explorar" delay={35} />
+                </span>
+              </p>
+              <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-600">
+                Cada área é um jeito de trabalhar com tecnologia. Toca nas que te
+                dão curiosidade e descobre no seu ritmo. Não tem ordem certa.
+              </p>
+            </div>
+          ) : null}
           {isLoading ? (
             <div
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
@@ -212,10 +507,10 @@ export default function Areas() {
                 aria-hidden
               />
               <p className="text-slate-600 font-medium">
-                Nenhuma área encontrada.
+                Não achamos essa área por aqui.
               </p>
               <p className="text-slate-400 text-sm mt-1">
-                Tente outro termo ou remova os filtros.
+                Tenta outro termo ou tira os filtros pra ver todos os caminhos.
               </p>
               <button
                 onClick={() => {
@@ -228,67 +523,185 @@ export default function Areas() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map((area) => (
-                <div key={area.id} className="relative h-full">
-                  <FavoriteButton
-                    compact
-                    className="absolute right-4 top-4 z-10"
-                    item={{
-                      id: area.id,
-                      type: "area",
-                      title: area.nome,
-                      subtitle: area.descricaoCurta,
-                    }}
-                  />
-                  <Link
-                    href={`/areas/${area.slug}`}
-                    className="card-brutal bg-white rounded-xl p-6 flex flex-col group h-full"
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((area, index) => {
+                const grupo = grupoDoSlug(area.slug);
+                const Icon = area.icon;
+                return (
+                  <AnimatedContent
+                    key={area.id}
+                    distance={16}
+                    duration={0.4}
+                    delay={Math.min(index * 0.05, 0.5)}
+                    className="h-full"
                   >
-                    <div className="mb-4 pr-12">
-                      <AreaIconBox
-                        icon={area.icon}
-                        areaSlug={area.slug}
-                        size="md"
+                    <div className="relative h-full">
+                      <FavoriteButton
+                        compact
+                        className="absolute right-3 top-3 z-30"
+                        item={{
+                          id: area.id,
+                          type: "area",
+                          title: area.nome,
+                          subtitle: area.descricaoCurta,
+                        }}
                       />
-                    </div>
-                    <h3 className="font-display font-bold text-xl text-slate-900 mb-2 group-hover:text-violet-700 transition-colors">
-                      {area.nome}
-                    </h3>
-                    <p className="text-sm text-slate-600 mb-4 line-clamp-2">
-                      {area.descricaoCurta}
-                    </p>
-                    <div className="mb-4 rounded-xl border-2 border-violet-200 bg-violet-50 p-3">
-                      <p className="text-xs font-black uppercase text-violet-800">
-                        Perfil que combina
-                      </p>
-                      <p className="mt-1 text-xs text-slate-800 line-clamp-3">
-                        {area.perfilIndicado}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-4 min-h-[1.75rem]">
-                      {area.habilidades.slice(0, 3).map((h) => (
-                        <span
-                          key={h}
-                          className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full"
+                      <Link
+                        href={`/areas/${area.slug}`}
+                        className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#fbbf24] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#fbbf24] motion-safe:focus-visible:-translate-y-1 motion-safe:focus-visible:shadow-[6px_6px_0_#fbbf24]"
+                      >
+                        <div
+                          className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
                         >
-                          {h}
-                        </span>
-                      ))}
+                          <motion.span
+                            className={grupo.bandIcon}
+                            animate={reduce ? undefined : { y: [0, -3, 0] }}
+                            transition={
+                              reduce
+                                ? undefined
+                                : {
+                                    duration: 2.6 + (index % 3) * 0.4,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                    delay: (index % 4) * 0.3,
+                                  }
+                            }
+                          >
+                            <Icon
+                              className="h-10 w-10 transition-transform duration-200 motion-safe:group-hover:scale-110 motion-safe:group-focus-visible:scale-110"
+                              strokeWidth={2.5}
+                              aria-hidden
+                            />
+                          </motion.span>
+                          <span
+                            className={`inline-flex rounded-full bg-white px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
+                          >
+                            {grupo.label}
+                          </span>
+                        </div>
+                        <div
+                          className={`relative flex flex-1 flex-col items-center px-5 py-4 text-center ${grupo.soft}`}
+                        >
+                          <Icon
+                            className={`pointer-events-none absolute -bottom-1 -right-1 h-16 w-16 opacity-[0.08] ${grupo.tint}`}
+                            aria-hidden
+                          />
+                          {area.slug === "cloud" ? (
+                            <EmbaixadoraBadge
+                              program="AWS"
+                              href={AWS_EMBAIXADORA_URL}
+                              className="relative z-10 mb-2"
+                            />
+                          ) : area.slug === "mainframe" ? (
+                            <EmbaixadoraBadge
+                              program="IBM Z Xplore"
+                              className="relative z-10 mb-2"
+                            />
+                          ) : null}
+                          <h3 className="relative z-10 font-display text-lg font-bold text-slate-900">
+                            {area.nome}
+                          </h3>
+                          <p className="relative z-10 mt-1.5 text-sm leading-relaxed text-slate-600">
+                            {area.descricaoCurta}
+                          </p>
+                          <div className="relative z-10 mt-3 flex flex-wrap justify-center gap-1">
+                            {area.habilidades.slice(0, 3).map((h) => (
+                              <span
+                                key={h}
+                                className={`rounded-full px-2 py-0.5 text-xs font-bold ${grupo.chip}`}
+                              >
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div
+                          className={`flex items-center justify-center gap-1 border-t-2 px-4 py-3 text-sm font-black ${grupo.exploreBorder} ${grupo.explore}`}
+                        >
+                          Explorar{" "}
+                          <ArrowRight
+                            className="h-4 w-4 transition-transform duration-200 motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
+                            aria-hidden
+                          />
+                        </div>
+                      </Link>
                     </div>
-                    <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
-                      <span className="text-xs text-slate-600">
-                        {area.cargos[0]}
-                      </span>
-                      <span className="flex items-center gap-1 text-violet-700 text-sm font-medium group-hover:gap-2 transition-all">
-                        Explorar <ArrowRight className="w-4 h-4" />
-                      </span>
-                    </div>
-                  </Link>
-                </div>
-              ))}
+                  </AnimatedContent>
+                );
+              })}
             </div>
           )}
+
+          <div className="mt-14">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="h-6 w-6 text-violet-700" aria-hidden />
+              <h2 className="font-display text-3xl font-black text-slate-900">
+                Mais áreas pra conhecer
+              </h2>
+            </div>
+            <p className="mb-6 max-w-2xl text-sm text-slate-600">
+              Caminhos que também fazem parte da TI. A trilha completa de cada
+              uma chega em breve.
+            </p>
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {areasComplementares.map((area, index) => {
+                const grupo = grupoPorChave(area.grupo);
+                const Icon = area.icon;
+                return (
+                  <AnimatedContent
+                    key={area.nome}
+                    distance={16}
+                    duration={0.4}
+                    delay={Math.min(index * 0.05, 0.3)}
+                    className="h-full"
+                  >
+                    <div className="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#fbbf24]">
+                      <div
+                        className={`flex flex-col items-center gap-2 px-4 pb-4 pt-6 ${grupo.band}`}
+                      >
+                        <motion.span
+                          className={grupo.bandIcon}
+                          animate={reduce ? undefined : { y: [0, -3, 0] }}
+                          transition={
+                            reduce
+                              ? undefined
+                              : {
+                                  duration: 2.8 + (index % 3) * 0.4,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                  delay: (index % 4) * 0.3,
+                                }
+                          }
+                        >
+                          <Icon className="h-10 w-10" strokeWidth={2.5} aria-hidden />
+                        </motion.span>
+                        <span
+                          className={`inline-flex rounded-full bg-white px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${grupo.badge}`}
+                        >
+                          {grupo.label}
+                        </span>
+                      </div>
+                      <div className="relative flex flex-1 flex-col items-center px-5 py-4 text-center">
+                        <Icon
+                          className={`pointer-events-none absolute -bottom-1 -right-1 h-16 w-16 opacity-[0.08] ${grupo.tint}`}
+                          aria-hidden
+                        />
+                        <h3 className="relative z-10 font-display text-lg font-bold text-slate-900">
+                          {area.nome}
+                        </h3>
+                        <p className="relative z-10 mt-1.5 text-sm leading-relaxed text-slate-600">
+                          {area.descricao}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-center border-t-2 border-slate-200 px-4 py-3 text-[0.65rem] font-black uppercase tracking-wide text-slate-400">
+                        trilha em breve
+                      </div>
+                    </div>
+                  </AnimatedContent>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="mt-14">
             <div className="mb-2 flex items-center gap-2">

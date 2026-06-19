@@ -1,4 +1,4 @@
-# BORA NA TECH? — Brainstorm de Design
+# BORA NA TECH?: Brainstorm de Design
 
 ## Contexto
 
@@ -9,7 +9,7 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 <response>
 <idea>
 
-## Abordagem 1 — "Diário de Bordo Tech"
+## Abordagem 1: "Diário de Bordo Tech"
 
 **Design Movement:** Editorial moderno + Zine digital
 
@@ -22,10 +22,10 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 
 **Color Philosophy:**
 
-- Fundo: creme quente (#F5F0E8) — acolhedor, não clínico
-- Primária: azul petróleo (#1B4F72) — confiança e profissionalismo
+- Fundo: creme quente (#F5F0E8), acolhedor, não clínico
+- Primária: azul petróleo (#1B4F72), confiança e profissionalismo
 - Acentos por área: coral (#E74C3C) para Front-end, verde-salva (#27AE60) para Dados, lilás (#8E44AD) para UX/UI
-- Texto: quase-preto (#1A1A2E) — legível e sofisticado
+- Texto: quase-preto (#1A1A2E), legível e sofisticado
 
 **Layout Paradigm:**
 
@@ -53,9 +53,9 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 
 **Typography System:**
 
-- Display: Playfair Display (bold 700/900) — autoridade editorial
-- Corpo: DM Sans (400/500) — leitura confortável
-- Mono: JetBrains Mono — para termos técnicos e códigos
+- Display: Playfair Display (bold 700/900), autoridade editorial
+- Corpo: DM Sans (400/500), leitura confortável
+- Mono: JetBrains Mono, para termos técnicos e códigos
 
 </idea>
 <probability>0.08</probability>
@@ -66,25 +66,25 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 <response>
 <idea>
 
-## Abordagem 2 — "Mapa de Exploração" ✅ ESCOLHIDA
+## Abordagem 2: "Mapa de Exploração" ✅ ESCOLHIDA
 
-**Design Movement:** Flat design com profundidade — Neo-Brutalism suavizado
+**Design Movement:** Flat design com profundidade, Neo-Brutalism suavizado
 
 **Core Principles:**
 
 - Clareza acima de tudo: cada elemento tem propósito visual claro
 - Hierarquia por peso e cor, não por decoração excessiva
 - Espaço branco generoso como elemento de respiro e confiança
-- Cards com bordas definidas e sombras sólidas (não difusas) — identidade marcante
+- Cards com bordas definidas e sombras sólidas (não difusas), identidade marcante
 
 **Color Philosophy:**
 
 - Fundo: branco puro (#FFFFFF) e cinza muito claro (#F8F9FA) para seções alternadas
-- Primária: violeta-índigo (#5B21B6) — tecnologia, criatividade, modernidade
-- Secundária: âmbar (#F59E0B) — energia, chamada para ação, destaque
-- Terciária: verde-esmeralda (#059669) — progresso, carreira, conquista
-- Texto: slate escuro (#0F172A) — máxima legibilidade
-- Bordas: slate-200 (#E2E8F0) — delicadas mas presentes
+- Primária: violeta-índigo (#5B21B6), tecnologia, criatividade, modernidade
+- Secundária: âmbar (#F59E0B), energia, chamada para ação, destaque
+- Terciária: verde-esmeralda (#059669), progresso, carreira, conquista
+- Texto: slate escuro (#0F172A), máxima legibilidade
+- Bordas: slate-200 (#E2E8F0), delicadas mas presentes
 
 **Layout Paradigm:**
 
@@ -113,9 +113,9 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 
 **Typography System:**
 
-- Display: Space Grotesk (700/800) — geométrico, tecnológico, jovem
-- Corpo: Plus Jakarta Sans (400/500/600) — moderna, acolhedora, legível
-- Mono: Fira Code — para termos técnicos
+- Display: Space Grotesk (700/800), geométrico, tecnológico, jovem
+- Corpo: Plus Jakarta Sans (400/500/600), moderna, acolhedora, legível
+- Mono: Fira Code, para termos técnicos
 
 </idea>
 <probability>0.09</probability>
@@ -126,13 +126,13 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 <response>
 <idea>
 
-## Abordagem 3 — "Cosmos Tech"
+## Abordagem 3: "Cosmos Tech"
 
 **Design Movement:** Dark mode futurista + glassmorphism
 
 **Core Principles:**
 
-- Fundo escuro como tela de exploração — sensação de "universo a descobrir"
+- Fundo escuro como tela de exploração, sensação de "universo a descobrir"
 - Glassmorphism nos cards: blur + transparência + borda luminosa
 - Gradientes vibrantes como pontos de luz no escuro
 - Tipografia luminosa: texto claro sobre escuro com glow sutil
@@ -141,9 +141,9 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 
 - Fundo: azul-noite profundo (#0A0E27)
 - Cards: vidro escuro com blur (rgba(255,255,255,0.05) + backdrop-blur)
-- Primária: ciano elétrico (#00D4FF) — tecnologia, futuro
-- Secundária: magenta (#FF006E) — criatividade, destaque
-- Terciária: verde-neon (#00FF88) — progresso, sucesso
+- Primária: ciano elétrico (#00D4FF), tecnologia, futuro
+- Secundária: magenta (#FF006E), criatividade, destaque
+- Terciária: verde-neon (#00FF88), progresso, sucesso
 - Texto: branco (#FFFFFF) e cinza-claro (#B0B8D4)
 
 **Layout Paradigm:**
@@ -172,9 +172,9 @@ Plataforma educativa para iniciantes em tecnologia. Público: jovens 18-24 anos,
 
 **Typography System:**
 
-- Display: Syne (800) — futurista, impactante
-- Corpo: Outfit (400/500) — moderna e legível no escuro
-- Mono: Space Mono — para termos técnicos
+- Display: Syne (800), futurista, impactante
+- Corpo: Outfit (400/500), moderna e legível no escuro
+- Mono: Space Mono, para termos técnicos
 
 </idea>
 <probability>0.07</probability>

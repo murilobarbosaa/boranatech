@@ -28,7 +28,7 @@ function labelForCursoArea(slug: string | null | undefined): string {
 // CONFIGURAÇÕES
 // =========================================
 
-// Info evergreen por evento — alguns eventos podem ter ocorrido, então não exibimos
+// Info evergreen por evento, alguns eventos podem ter ocorrido, então não exibimos
 // data e usamos uma descrição atemporal no lugar.
 // TODO: mover esses textos pra data.ts como campo `evergreenInfo` em cada evento.
 const EVENTO_EVERGREEN: Record<string, string> = {
@@ -141,7 +141,7 @@ export default function PraVoce() {
             style={{ fontSize: "clamp(40px, 6vw, 72px)" }}
           >
             Conteúdo curado pra{" "}
-            {/* Text-stroke transparente em "começar." — palavra curta isolada
+            {/* Text-stroke transparente em "começar.", palavra curta isolada
                 lê melhor com outline 2px do que duas palavras com stroke. */}
             <span className="text-[#0369a1] sm:text-transparent sm:[-webkit-text-stroke:2.5px_#0369a1]">
               começar.
@@ -188,7 +188,7 @@ export default function PraVoce() {
 // =========================================
 
 function NoticiaDestaque({ noticia }: { noticia: (typeof noticias)[0] }) {
-  // Tempo de leitura simulado — data.ts só tem resumo curto, então hardcoded.
+  // Tempo de leitura simulado, data.ts só tem resumo curto, então hardcoded.
   // TODO: calcular dinamicamente quando notícias tiverem corpo completo.
   const tempoLeitura = "3 min de leitura";
 
@@ -202,7 +202,7 @@ function NoticiaDestaque({ noticia }: { noticia: (typeof noticias)[0] }) {
     >
       <Link href="/noticias">
         <div className="group h-full cursor-pointer rounded-3xl border-2 border-slate-950 bg-white p-6 md:p-8 lg:p-10 shadow-[4px_4px_0_#0f172a] md:shadow-[6px_6px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[10px_10px_0_#0f172a] flex flex-col">
-          {/* Badge da categoria (no topo agora — label "Notícia em destaque" removida) */}
+          {/* Badge da categoria (no topo agora, label "Notícia em destaque" removida) */}
           <div className="inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-100 px-3 py-1 shadow-[2px_2px_0_#0f172a]">
             <Tag size={12} className="text-amber-700" strokeWidth={2.5} />
             <span className="font-display text-xs font-black uppercase tracking-wider text-amber-700">
@@ -223,7 +223,7 @@ function NoticiaDestaque({ noticia }: { noticia: (typeof noticias)[0] }) {
             {noticia.resumo}
           </p>
 
-          {/* Pull-quote / takeaway — preenche whitespace e dá ângulo encorajador */}
+          {/* Pull-quote / takeaway: preenche whitespace e dá ângulo encorajador */}
           <blockquote className="mt-5 border-l-4 border-sky-300 pl-4 italic text-slate-700 leading-relaxed">
             {noticia.porQueImporta}
           </blockquote>
@@ -278,7 +278,7 @@ function EventoCard({
     >
       <Link href="/eventos">
         <div className="group h-full cursor-pointer rounded-2xl border-2 border-slate-950 bg-white p-6 shadow-[4px_4px_0_#0f172a] transition-all duration-300 hover:-translate-y-1 hover:shadow-[6px_6px_0_#0f172a] flex flex-col">
-          {/* Topo: logo do evento (label "EVENTO" removida — ícone já sugere) */}
+          {/* Topo: logo do evento (label "EVENTO" removida, ícone já sugere) */}
           <EventoLogo logoUrl={evento.logoUrl} nome={evento.nome} />
 
           {/* Nome do evento */}
@@ -422,7 +422,7 @@ function CursoCard({
             {curso.titulo}
           </h3>
 
-          {/* Canal + Plataforma (linha de descrição removida — contexto suficiente) */}
+          {/* Canal + Plataforma (linha de descrição removida, contexto suficiente) */}
           <p className="mt-1 text-sm font-medium text-slate-600">
             Por {curso.canal} · {curso.plataforma}
           </p>
@@ -452,7 +452,7 @@ function CursoCard({
 }
 
 // =========================================
-// NuvemSvg — nuvem neobrutalist com 4 bumps
+// NuvemSvg: nuvem neobrutalist com 4 bumps
 // =========================================
 
 type NuvemProps = {

@@ -37,7 +37,23 @@ app.set("trust proxy", 1);
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 180;
+// Teto de seguranca pro numero de chaves vivas no store em memoria.
+const RATE_LIMIT_MAX_ENTRIES = 50_000;
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+
+// Remove entradas expiradas pra o store nao crescer indefinidamente: sem isso,
+// uma chave por IP que nunca mais volta ficaria pra sempre (vazamento). Roda
+// periodicamente (unref pra nao segurar o processo) e tambem sob demanda
+// quando o store passa do teto.
+function sweepRateLimitStore(now: number) {
+  rateLimitStore.forEach((entry, key) => {
+    if (entry.resetAt <= now) {
+      rateLimitStore.delete(key);
+    }
+  });
+}
+
+setInterval(() => sweepRateLimitStore(Date.now()), RATE_LIMIT_WINDOW_MS).unref();
 
 function isRateLimitExempt(pathname: string) {
   return (
@@ -45,10 +61,35 @@ function isRateLimitExempt(pathname: string) {
   );
 }
 
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "script-src 'self' https://us-assets.i.posthog.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "img-src 'self' data: https:",
+  [
+    "connect-src 'self'",
+    "https://api.boranatech.com.br",
+    "https://vlcvaanlkqyxemrxsxzn.supabase.co",
+    "wss://vlcvaanlkqyxemrxsxzn.supabase.co",
+    "https://us.i.posthog.com",
+    "https://us-assets.i.posthog.com",
+  ].join(" "),
+  "frame-src https://www.youtube-nocookie.com",
+].join("; ");
+
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains",
+  );
+  res.setHeader("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
   next();
 });
 
@@ -85,6 +126,9 @@ app.use((req, res, next) => {
   const current = rateLimitStore.get(key);
 
   if (!current || current.resetAt <= now) {
+    if (rateLimitStore.size >= RATE_LIMIT_MAX_ENTRIES) {
+      sweepRateLimitStore(now);
+    }
     rateLimitStore.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
     return next();
   }

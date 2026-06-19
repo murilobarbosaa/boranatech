@@ -14,7 +14,7 @@ export default function HomeLanding() {
   return (
     <Layout>
       <SEO
-        title="Bora na Tech? — Sua bússola para começar em tecnologia"
+        title="Bora na Tech? · Sua bússola para começar em tecnologia"
         description="Plataforma de carreira em TI para iniciantes. Áreas, roadmaps, cursos, projetos, IA, eventos e carreira organizados em uma jornada clara."
         url="/"
       />

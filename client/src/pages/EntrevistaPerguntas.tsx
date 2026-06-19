@@ -42,6 +42,7 @@ export default function EntrevistaPerguntas() {
             options={["Todas", "Técnica", "Comportamental", "Lógica"]}
             value={type}
             onChange={setType}
+            labels={{ Todas: "Todos os tipos" }}
           />
         </div>
         <div className="space-y-4">

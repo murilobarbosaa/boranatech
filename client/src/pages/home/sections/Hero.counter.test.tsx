@@ -190,7 +190,7 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
-describe("Hero — contador do hero (last-known-good no localStorage, sem default 4800, sem 0 inventado)", () => {
+describe("Hero: contador do hero (last-known-good no localStorage, sem default 4800, sem 0 inventado)", () => {
   it("[primeira-visita-sem-cache-mostra-placeholder] localStorage vazio + fetch pendurado: badge mostra a frase, sem '+', sem dígitos, sem 4800", () => {
     fetchSpy.mockReturnValue(new Promise(() => {}));
 

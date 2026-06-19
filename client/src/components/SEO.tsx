@@ -23,7 +23,7 @@ interface SEOProps {
 
 const siteName = "Bora na Tech?";
 const siteUrl = "https://boranatech.com.br";
-const defaultTitle = "Bora na Tech? — Sua bússola para começar na tecnologia";
+const defaultTitle = "Bora na Tech? · Sua bússola para começar na tecnologia";
 const defaultDescription =
   "Plataforma de carreira em TI para iniciantes. Quiz de área, roadmaps, cursos curados, ferramentas de IA e comunidade. Comece sua trajetória em tech com direção e clareza.";
 const defaultImage = `${siteUrl}/opengraph.png`;

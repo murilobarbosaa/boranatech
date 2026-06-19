@@ -10,6 +10,7 @@ import {
 import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import InglesSubNav from "@/components/shared/InglesSubNav";
+import InglesTrilhaQuiz from "@/components/ingles/InglesTrilhaQuiz";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -115,6 +116,7 @@ export default function Ingles() {
       <InglesSubNav />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
+          <InglesTrilhaQuiz />
           <div className="grid gap-5 lg:grid-cols-3">
             <div className="card-brutal rounded-2xl bg-white p-6 lg:col-span-2">
               <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">

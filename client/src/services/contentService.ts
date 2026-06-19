@@ -72,6 +72,7 @@ function courseFromApi(row: any) {
     proximoConteudo: "",
     tipo: row.is_free ? "Gratuito" : "Pago",
     preco: row.price_label,
+    certificate: "nao_informado",
   };
 }
 
@@ -141,7 +142,6 @@ function roadmapFromApi(row: any) {
     proximoPasso: "",
   };
 }
-
 function technologyFromApi(row: any) {
   // Enriquece a linha do Supabase (metadados) com os percentuais e fonte do
   // Survey, casados por slug. O Supabase é dono dos metadados; o arquivo de
@@ -475,7 +475,6 @@ export async function getRoadmap(slug: string) {
     return roadmaps.find((roadmap) => roadmap.id === slug) || null;
   }
 }
-
 export async function getNews(
   params: GetNewsParams = {},
 ): Promise<NewsResponse | null> {

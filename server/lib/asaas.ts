@@ -76,7 +76,10 @@ export async function createAsaasCheckout(params: {
     callback: params.successUrl ? { successUrl: params.successUrl } : undefined,
   });
 
-  console.log("[asaas] response:", JSON.stringify(data));
+  console.log(
+    "[asaas] subscription created:",
+    JSON.stringify({ id: data?.id, status: data?.status, value: data?.value }),
+  );
   return data;
 }
 
@@ -102,7 +105,7 @@ export async function cancelAsaasSubscription(subscriptionId: string) {
 }
 
 type AsaasSubscriptionUpdate = {
-  endDate?: string | null; // YYYY-MM-DD: ultimo vencimento a gerar; Asaas para de gerar cobrancas apos. null e tentativa de LIMPAR — leitura do schema (example: null); validar empiricamente antes de prod (ver billing-asaas.ts/reactivateSubscriptionAtAsaas).
+  endDate?: string | null; // YYYY-MM-DD: ultimo vencimento a gerar; Asaas para de gerar cobrancas apos. null e tentativa de LIMPAR, leitura do schema (example: null); validar empiricamente antes de prod (ver billing-asaas.ts/reactivateSubscriptionAtAsaas).
   status?: "ACTIVE" | "INACTIVE";
   nextDueDate?: string;
   value?: number;

@@ -6,73 +6,15 @@ export const creatorHandle = "@ana.natech";
 /** Foto de perfil da curadora Ana Moura (@ana.natech · via Unavatar/LinkedIn, mesmo provider estável usado pelas demais criadoras). */
 export const creatorPhotoUrl = "https://unavatar.io/linkedin/anajulia-moura";
 
-export const tipCategories = [
-  "Dicas gerais",
-  "Dicas de rotina",
-  "Dicas de carreira",
-  "Dicas de mercado",
-  "Dicas de portfólio",
-];
-
-export const tipsArticles = [
-  {
-    id: "gerais-primeiros-passos",
-    category: "Dicas gerais",
-    title: "Como começar em tecnologia sem se perder",
-    author: "Ana Moura",
-    credit: "Curadoria BORA NA TECH?",
-    summary:
-      "Um guia direto para escolher uma primeira área, organizar estudos e evitar excesso de abas abertas.",
-    youtube: "Curso em Vídeo: primeiros passos em programação",
-    url: "https://www.youtube.com/@CursoemVideo",
-  },
-  {
-    id: "rotina-estudos",
-    category: "Dicas de rotina",
-    title: "Rotina realista para estudar trabalhando ou cuidando da casa",
-    author: "Rafaella Ballerini",
-    credit: "Inspirado em conteúdos públicos da comunidade dev",
-    summary:
-      "Blocos curtos, revisão semanal e projeto pequeno para transformar estudo em entrega visível.",
-    youtube: "Rafaella Ballerini: rotina e carreira dev",
-    url: "https://www.youtube.com/@rafaellaballerini",
-  },
-  {
-    id: "carreira-linkedin",
-    category: "Dicas de carreira",
-    title: "LinkedIn para primeira oportunidade",
-    author: "Gabriela Serpa",
-    credit: "Referência de carreira e posicionamento profissional",
-    summary:
-      "Como escrever título, sobre e posts mesmo sem experiência formal em tecnologia.",
-    youtube: "Dicas de LinkedIn para iniciantes",
-    url: "https://www.youtube.com/results?search_query=linkedin+para+iniciantes+tecnologia",
-  },
-  {
-    id: "mercado-vagas",
-    category: "Dicas de mercado",
-    title: "Como ler vagas sem se assustar com a lista de requisitos",
-    author: "Loiane Groner",
-    credit: "Referência brasileira em educação tech",
-    summary:
-      "Entenda requisitos essenciais, desejáveis e sinais de vagas boas para estágio, trainee ou júnior.",
-    youtube: "Loiane Groner: carreira em tecnologia",
-    url: "https://www.youtube.com/@loianegroner",
-  },
-  {
-    id: "portfolio-readme",
-    category: "Dicas de portfólio",
-    title: "README que explica seu projeto sem entrevista",
-    author: "Camila Cavalcante",
-    credit: "Curadoria de boas práticas GitHub",
-    summary:
-      "Estrutura simples para mostrar objetivo, prints, tecnologias, aprendizados e próximos passos.",
-    youtube: "Como fazer README no GitHub",
-    url: "https://www.youtube.com/results?search_query=como+fazer+readme+github+portfolio",
-  },
-];
-
 export const womenArea = {
+  founder: {
+    name: "Ana",
+    role: "CEO e Cofundadora da Bora na Tech",
+    handle: "@ana.natech",
+    instagramUrl: "https://www.instagram.com/ana.natech/",
+    message: "",
+    photoUrl: "",
+  },
   tips: [
     "Procure comunidades com moderação ativa e canais para iniciantes.",
     "Monte uma rede pequena de apoio: uma pessoa para tirar dúvidas, uma para revisar currículo e uma para compartilhar vagas.",
@@ -111,6 +53,50 @@ export const womenArea = {
       name: "Women Techmakers",
       desc: "Programa global do Google com eventos, histórias e recursos para mulheres em tecnologia.",
       url: "https://www.womentechmakers.com",
+    },
+    {
+      name: "Django Girls",
+      desc: "Workshops gratuitos que apresentam mulheres ao desenvolvimento web com Python e Django.",
+      url: "https://djangogirls.org",
+    },
+    {
+      name: "Rails Girls",
+      desc: "Comunidade global com eventos gratuitos para mulheres conhecerem tecnologia e tirarem ideias do papel.",
+      url: "https://railsgirls.com",
+    },
+    {
+      name: "Meninas Programadoras (USP)",
+      desc: "Projeto da USP que ensina programação com Python e Scratch de graça para meninas do ensino médio.",
+      url: "https://meninasprogramadoras.icmc.usp.br",
+    },
+  ],
+  courses: [
+    {
+      name: "Cisco Girls in ICT e Women Rock-IT",
+      desc: "Cursos gratuitos de redes e cibersegurança da Cisco voltados para meninas e mulheres.",
+      url: "https://www.netacad.com/girls-in-ict",
+    },
+    {
+      name: "WOMCY (Women in Cybersecurity LATAM)",
+      desc: "Organização que forma e conecta mulheres na área de cibersegurança na América Latina.",
+      url: "https://womcy.org",
+    },
+  ],
+  mentorship: [
+    {
+      name: "WoMakersCode",
+      desc: "Capacitação, eventos e rede de apoio para mulheres em tecnologia.",
+      url: "https://womakerscode.org",
+    },
+    {
+      name: "{reprograma}",
+      desc: "Formação para mulheres iniciantes, com comunidade e acompanhamento.",
+      url: "https://reprograma.com.br",
+    },
+    {
+      name: "MariaLab",
+      desc: "Coletivo com oficinas e rede de apoio para mulheres na tecnologia.",
+      url: "https://marialab.org",
     },
   ],
   creators: [
@@ -162,6 +148,13 @@ export const womenArea = {
       topic: "Produto, carreira e bastidores de tecnologia",
       url: "https://www.linkedin.com/search/results/content/?keywords=Leticia%20Caires%20produto%20tech",
       avatarUrl: "https://unavatar.io/linkedin/leticiascaires",
+    },
+    {
+      name: "Attekita Dev",
+      handle: "@attekitadev",
+      topic: "Desenvolvimento de apps, games e carreira em tecnologia",
+      url: "https://www.youtube.com/@attekitadev",
+      avatarUrl: "https://unavatar.io/youtube/attekitadev",
     },
   ],
   videos: [
@@ -245,6 +238,121 @@ export const womenArea = {
     "Iniciantes são acolhidas sem piadas ou respostas agressivas.",
     "A comunidade compartilha oportunidades, referências e apoio prático.",
   ],
+  podcasts: [
+    {
+      title: "Emílias Podcast (Mulheres na Computação)",
+      url: "https://open.spotify.com/show/1Pm95WtrS8ZqBqRCUprQDq",
+    },
+    {
+      title: "Elas Programam",
+      url: "https://open.spotify.com/show/1Ay5y5TFWQPq3Pw2Xy209U",
+    },
+    {
+      title: "Start Coding",
+      url: "https://open.spotify.com/show/0dTUNs8tpqAC5d71m8SGU0",
+    },
+  ],
+  articles: [
+    {
+      name: "Mulheres em TI no Brasil: crescimento e desafios (Serasa Experian)",
+      desc: "Reportagem sobre a evolução da presença feminina em tecnologia no país.",
+      url: "https://www.serasaexperian.com.br/sala-de-imprensa/rh/numero-de-mulheres-em-ti-cresce-46-em-um-ano-revela-serasa-experian/",
+    },
+    {
+      name: "Bolsas para mulheres em programação e dados (Agência Brasil)",
+      desc: "Iniciativa pública que oferece bolsas de estudo para mulheres na área.",
+      url: "https://agenciabrasil.ebc.com.br/economia/noticia/2025-03/iniciativa-oferece-31-mil-bolsas-para-mulheres-em-programacao-e-dados",
+    },
+    {
+      name: "Mulheres na tecnologia em 2025 (Olhar Digital)",
+      desc: "Coluna panorâmica sobre representatividade feminina na tecnologia.",
+      url: "https://olhardigital.com.br/2025/03/22/colunistas/mulheres-na-tecnologia-em-2025-sera-que-avancamos/",
+    },
+    {
+      name: "Lista: comunidades e recursos para mulheres devs (GitHub)",
+      desc: "Coletânea colaborativa de comunidades, eventos e materiais.",
+      url: "https://github.com/FreeCodeCampSp/mulheresprogramam",
+    },
+    {
+      name: "Lista: canais e cursos de tech feitos por mulheres (GitHub)",
+      desc: "Coletânea de criadoras e cursos de tecnologia feitos por mulheres.",
+      url: "https://github.com/ComunidadeCafeina/women-teaching-tech",
+    },
+    {
+      name: "Mulheres na tecnologia: representatividade e desafios (Tech4Humans)",
+      desc: "Análise sobre a presença feminina na tecnologia no Brasil e no mundo.",
+      url: "https://blog.techforhumans.com.br/post/mulheres-na-tecnologia-uma-analise-global-e-brasileira-da-representatividade-e-desafios",
+    },
+  ],
+  reassurance: {
+    intro:
+      "Sentir que você é a única na sala ou duvidar se pertence à área é mais comum do que parece. Esses sentimentos não dizem nada sobre a sua capacidade.",
+    readingLabel: "Leitura: mulheres na tecnologia, representatividade e desafios",
+    readingUrl:
+      "https://blog.techforhumans.com.br/post/mulheres-na-tecnologia-uma-analise-global-e-brasileira-da-representatividade-e-desafios",
+    fears: [
+      {
+        title: "Síndrome de impostora",
+        desc: "Achar que ainda não sabe o suficiente acontece com muita gente, inclusive com quem já está há anos na área.",
+      },
+      {
+        title: "Ser a única mulher na sala",
+        desc: "Procurar comunidades de mulheres ajuda a encontrar apoio, referências e gente passando pelo mesmo.",
+      },
+      {
+        title: "Medo de começar",
+        desc: "Você não precisa estar pronta para dar o primeiro passo. Comece pequeno e siga a trilha no seu ritmo.",
+      },
+    ],
+  },
+  starterPath: [
+    {
+      title: "Entre numa comunidade",
+      desc: "Escolha um grupo com moderação ativa e canal para iniciantes, e se apresente sem medo.",
+    },
+    {
+      title: "Faça uma oficina ou curso gratuito",
+      desc: "Comece por uma formação introdutória, como as oficinas das comunidades e os cursos gratuitos listados aqui.",
+    },
+    {
+      title: "Pratique e registre",
+      desc: "Construa projetos pequenos e guarde tudo: posts, prints e repositórios viram o seu portfólio.",
+    },
+    {
+      title: "Procure uma mentora",
+      desc: "Use os programas de mentoria e a rede da comunidade para pedir revisão, tirar dúvidas e conseguir indicações.",
+    },
+    {
+      title: "Conheça os canais de apoio",
+      desc: "Saiba para onde recorrer se precisar: os canais oficiais estão no fim desta página.",
+    },
+  ],
+  support: {
+    intro:
+      "Se você passar por assédio, machismo ou discriminação por ser uma das poucas mulheres na área, saiba que pode buscar apoio e denunciar. Os canais abaixo são oficiais e gratuitos.",
+    sourceLabel: "Fonte oficial: gov.br/mulheres",
+    sourceUrl: "https://www.gov.br/mulheres/pt-br/ligue180",
+    channels: [
+      {
+        label: "Ligue 180",
+        value: "180",
+        desc: "Central de Atendimento à Mulher. Funciona 24 horas, todos os dias.",
+        tel: "180",
+      },
+      {
+        label: "WhatsApp do Ligue 180",
+        value: "(61) 9610-0180",
+        desc: "O mesmo atendimento, por mensagem.",
+        tel: "",
+      },
+      {
+        label: "Emergência",
+        value: "190",
+        desc: "Polícia Militar, em caso de risco imediato.",
+        tel: "190",
+      },
+    ],
+  },
 };
 
 export const dictionaryTerms = [
@@ -2383,7 +2491,7 @@ export const LEVEL_META: Record<QuizLevel, LevelMeta> = {
   iniciante: {
     label: "Iniciante",
     emoji: "🌱",
-    tagline: "Você está começando agora — e esse é o melhor lugar pra começar.",
+    tagline: "Você está começando agora, e esse é o melhor lugar pra começar.",
     doing: [
       "As próximas 15 perguntas vêm em linguagem simples, sem jargão técnico.",
       "Cruzamos suas respostas com as áreas de tech pra achar a que mais combina com você.",
@@ -4030,7 +4138,7 @@ export const collegeSuggestions: CollegeSuggestion[] = [
 ];
 
 /* ===========================================================================
- * QUIZ — Objetivos, cores por área e quiz de tecnologia
+ * QUIZ: Objetivos, cores por área e quiz de tecnologia
  * ======================================================================== */
 
 /**
@@ -4079,7 +4187,7 @@ export const objectiveTracks: ObjectiveTrack[] = [
     label: "Começar do zero",
     description: "Nunca mexi com tecnologia e quero saber por onde começar.",
     accent: "#15803d",
-    introHeadline: "Todo mundo começa em algum lugar — bora achar o seu",
+    introHeadline: "Todo mundo começa em algum lugar. Bora achar o seu",
     introSub:
       "Sem termo técnico e sem pressão. A gente parte do zero e te mostra a área e os primeiros passos que mais fazem sentido pra você.",
     suggestedLevel: "iniciante",
@@ -4161,7 +4269,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "🎨",
     accent: "#7c3aed",
     tagline: "A porta de entrada mais rápida pro desenvolvimento web.",
-    why: "Você curte ver o resultado na tela, na hora, e quer entrar logo no mercado web — JavaScript roda em todo navegador e o React é o framework mais pedido em vagas de front-end.",
+    why: "Você curte ver o resultado na tela, na hora, e quer entrar logo no mercado web. JavaScript roda em todo navegador e o React é o framework mais pedido em vagas de front-end.",
     startHere: [
       "HTML e CSS pra estruturar e estilizar páginas",
       "JavaScript do zero (lógica, DOM, eventos)",
@@ -4175,7 +4283,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "🐍",
     accent: "#15803d",
     tagline: "A linguagem mais versátil pra quem quer manter portas abertas.",
-    why: "Você quer uma primeira linguagem fácil de ler e que sirva pra muita coisa — Python é ótimo pra back-end, automação, dados e IA, então te dá liberdade pra migrar de foco depois.",
+    why: "Você quer uma primeira linguagem fácil de ler e que sirva pra muita coisa. Python é ótimo pra back-end, automação, dados e IA, então te dá liberdade pra migrar de foco depois.",
     startHere: [
       "Lógica de programação com Python",
       "Manipular dados e arquivos",
@@ -4189,7 +4297,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "📊",
     accent: "#d97706",
     tagline: "A base de quem trabalha perto de números e decisões.",
-    why: "Você gosta de achar padrões e gerar insights — SQL é a habilidade número um pra trabalhar com dados, e com ela você já constrói relatórios e dashboards que apoiam decisões.",
+    why: "Você gosta de achar padrões e gerar insights. SQL é a habilidade número um pra trabalhar com dados, e com ela você já constrói relatórios e dashboards que apoiam decisões.",
     startHere: [
       "SQL (SELECT, JOIN, agregações)",
       "Planilhas e fundamentos de análise",
@@ -4203,7 +4311,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "⚙️",
     accent: "#166534",
     tagline: "Back-end em JavaScript, do mesmo idioma do front.",
-    why: "Você curte construir a lógica e as regras por trás dos sistemas e quer aproveitar o JavaScript dos dois lados — com Node você cria APIs e serviços usando a mesma linguagem do front-end.",
+    why: "Você curte construir a lógica e as regras por trás dos sistemas e quer aproveitar o JavaScript dos dois lados. Com Node você cria APIs e serviços usando a mesma linguagem do front-end.",
     startHere: [
       "JavaScript sólido (assíncrono, módulos)",
       "Node.js + Express pra criar APIs",
@@ -4217,7 +4325,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "📱",
     accent: "#ea580c",
     tagline: "Pra quem quer focar em apps de celular desde já.",
-    why: "Seu foco é o celular — com Flutter ou React Native você cria apps que rodam em Android e iOS a partir de uma base de código só, indo direto pro que te empolga.",
+    why: "Seu foco é o celular. Com Flutter ou React Native você cria apps que rodam em Android e iOS a partir de uma base de código só, indo direto pro que te empolga.",
     startHere: [
       "Lógica de programação (Dart pra Flutter ou JS pra RN)",
       "Layout e navegação de telas",
@@ -4231,7 +4339,7 @@ export const techRecommendations: TechRecommendation[] = [
     emoji: "☁️",
     accent: "#0e7490",
     tagline: "Pra quem curte automação, infraestrutura e escala.",
-    why: "Você gosta de manter as coisas no ar, automatizar e mexer com servidores — dominar Linux, Docker e uma nuvem abre as portas de Cloud e DevOps.",
+    why: "Você gosta de manter as coisas no ar, automatizar e mexer com servidores. Dominar Linux, Docker e uma nuvem abre as portas de Cloud e DevOps.",
     startHere: [
       "Linux e linha de comando",
       "Docker pra empacotar aplicações",
@@ -4250,7 +4358,7 @@ export function getTechRecommendation(key: string): TechRecommendation {
 /**
  * Quiz de tecnologia (objetivo "escolher-tecnologia"). Reaproveita o shape de
  * QuizOption: `area` guarda a chave da tecnologia e `scores` aponta para as
- * chaves de techRecommendations. Sem nível — fluxo direto e curto.
+ * chaves de techRecommendations. Sem nível, fluxo direto e curto.
  */
 export const TECH_QUESTION_COUNT = 7;
 
@@ -4342,7 +4450,7 @@ export const techQuiz: QuizQuestion[] = [
     question: "Quanto de matemática e estatística te anima?",
     options: [
       {
-        label: "Bastante — curto números e padrões",
+        label: "Bastante, curto números e padrões",
         area: "SQL e Dados",
         scores: { "SQL e Dados": 4, Python: 3 },
       },

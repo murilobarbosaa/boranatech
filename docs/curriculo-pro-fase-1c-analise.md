@@ -1,4 +1,4 @@
-# Fase 1C — Análise e Veredito: Tool `resume-builder`
+# Fase 1C: Análise e Veredito: Tool `resume-builder`
 
 > **Diagnóstico, não correção.** Nenhum prompt foi alterado nesta fase.
 > **Modelos testados:** `gpt-4o-mini` (configurado) e `gpt-4o` (re-teste de cenários falhos).
@@ -24,9 +24,9 @@ Bons sinais:
 
 Problemas críticos a corrigir:
 
-1. **C8: marcador `[[CURRICULO_READY]]` disparado ANTES da confirmação explícita** — bug no PROMPT, reproduz nos dois modelos. Quebraria o fluxo da UI (geração dispara cedo).
-2. **C7: inconsistência iniciante-vs-3-anos não é apontada** — risco de gerar currículo com persona errada. Falha pesada no mini, parcial no 4o.
-3. **C2: formato Cronológico recomendado pra Big Tech** — viola lógica do próprio prompt. Falha só no mini. 4o recomenda Harvard corretamente.
+1. **C8: marcador `[[CURRICULO_READY]]` disparado ANTES da confirmação explícita**, bug no PROMPT, reproduz nos dois modelos. Quebraria o fluxo da UI (geração dispara cedo).
+2. **C7: inconsistência iniciante-vs-3-anos não é apontada**, risco de gerar currículo com persona errada. Falha pesada no mini, parcial no 4o.
+3. **C2: formato Cronológico recomendado pra Big Tech**, viola lógica do próprio prompt. Falha só no mini. 4o recomenda Harvard corretamente.
 4. **Coleta inteligente vaza:** o Natechinho pede 2-3x o mesmo dado em turnos consecutivos quando o user responde algo lateral (C8/T3-T4: pediu nome+contato 3 vezes seguidas).
 
 ## Verificações transversais
@@ -39,11 +39,11 @@ Calculadas automaticamente nas 32 respostas do Natechinho (gpt-4o-mini, run prin
 | Tom masculino consistente                                                       | **0 problemas ✅**                |
 | Marcador `[[CURRICULO_READY]]` em turno intermediário                           | **1 turno ❌** (C8/T10)           |
 | Variantes inválidas do marcador (`[CURRICULO_READY]`, "CURRICULO PRONTO", etc.) | **0 ✅**                          |
-| Saudação aprovada na primeira mensagem                                          | n/a — a UI emite isso, não a tool |
+| Saudação aprovada na primeira mensagem                                          | n/a, a UI emite isso, não a tool |
 
 ## Por cenário
 
-### C1 — Estudante zerado · ✅ PASS
+### C1: Estudante zerado · ✅ PASS
 
 | Critério                                              | Resultado  | Evidência                                                                                                              |
 | ----------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -54,7 +54,7 @@ Calculadas automaticamente nas 32 respostas do Natechinho (gpt-4o-mini, run prin
 
 **Observação:** Em T2 perguntou idioma sem inferir BR pelo contexto (2º ano de CC + estágio = obviamente BR). Não é falha grave porque eventualmente coletou; mas o roteiro pede inferir.
 
-### C2 — Sênior pra Big Tech · ⚠️ FAIL parcial (mini) / PASS (4o)
+### C2: Sênior pra Big Tech · ⚠️ FAIL parcial (mini) / PASS (4o)
 
 | Critério                                     | gpt-4o-mini                  | gpt-4o               |
 | -------------------------------------------- | ---------------------------- | -------------------- |
@@ -68,7 +68,7 @@ Calculadas automaticamente nas 32 respostas do Natechinho (gpt-4o-mini, run prin
 Citação do mini (T2): _"Como tu já tem 8 anos de carreira, o formato cronológico vai funcionar bem"._
 Citação do 4o (T1): _"Com tua experiência de 8 anos, acho que o formato Harvard vai ser ideal"._
 
-### C3 — Transição de carreira · ⚠️ PASS fraco
+### C3: Transição de carreira · ⚠️ PASS fraco
 
 | Critério                           | Resultado    | Evidência                                                                                                                        |
 | ---------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -79,7 +79,7 @@ Citação do 4o (T1): _"Com tua experiência de 8 anos, acho que o formato Harva
 
 **Diagnóstico:** o prompt menciona "valoriza habilidades transferíveis" pra Transição, mas o modelo NÃO está pegando os 10 anos de contabilidade como ativo transferível. Vê só como "carreira anterior" descartável. Precisa de exemplo no prompt: _"se a pessoa tem N anos em outra área, mencione algo concreto que essas skills agregam (planilhas avançadas, raciocínio analítico, lidar com prazos fiscais, etc.)"_.
 
-### C4 — User dá tudo na 1ª mensagem · ⚠️ PASS médio
+### C4: User dá tudo na 1ª mensagem · ⚠️ PASS médio
 
 | Critério                                       | Resultado | Evidência                                                                                                                                      |
 | ---------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -89,7 +89,7 @@ Citação do 4o (T1): _"Com tua experiência de 8 anos, acho que o formato Harva
 
 **Diagnóstico:** comportamento correto na ação (não repete), mas falha em anunciar. Isso quebra a confiança do user de que o sistema "entendeu". O prompt diz "anuncie a inferência" pro caso de inferência fora-do-óbvio (Mountain View → inglês). Não cobre explicitamente o caso "user mandou pacote completo, ecoe de volta". Precisa de exemplo.
 
-### C5 — Fuga de assunto · ✅ PASS
+### C5: Fuga de assunto · ✅ PASS
 
 | Critério                                | Resultado | Evidência                                                                      |
 | --------------------------------------- | --------- | ------------------------------------------------------------------------------ |
@@ -99,7 +99,7 @@ Citação do 4o (T1): _"Com tua experiência de 8 anos, acho que o formato Harva
 
 Funcionou exatamente como o exemplo do prompt. Sólido.
 
-### C6 — User vago / respostas fracas · ⚠️ PASS fraco
+### C6: User vago / respostas fracas · ⚠️ PASS fraco
 
 | Critério                                   | Resultado                        | Evidência                                                                                                                               |
 | ------------------------------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
@@ -109,7 +109,7 @@ Funcionou exatamente como o exemplo do prompt. Sólido.
 
 **Diagnóstico:** o prompt diz claramente _"Uma rodada de aprofundamento por item, não três perguntas seguidas no mesmo turno"_, e o modelo violou no T3. A regra existe mas o exemplo no prompt mostra justamente o caso de UMA pergunta extra ("Que tipo? Que tecnologia? Tinha funcionalidade legal?"), que o modelo está imitando como template, despachando 3 perguntas. **A própria formulação do exemplo está induzindo o erro.**
 
-### C7 — Inconsistência · ❌ FAIL (mini) / ⚠️ PASS fraco (4o)
+### C7: Inconsistência · ❌ FAIL (mini) / ⚠️ PASS fraco (4o)
 
 | Critério                            | gpt-4o-mini                                 | gpt-4o                                                               |
 | ----------------------------------- | ------------------------------------------- | -------------------------------------------------------------------- |
@@ -121,7 +121,7 @@ Funcionou exatamente como o exemplo do prompt. Sólido.
 
 Citação do mini (T3): _"Show! Então, tu já tem uma experiência legal na área. Vou considerar que tu se encaixa mais na persona Júnior, já que tem essa bagagem."_
 
-### C8 — Fluxo completo até `[[CURRICULO_READY]]` · ❌ FAIL crítico (ambos modelos)
+### C8: Fluxo completo até `[[CURRICULO_READY]]` · ❌ FAIL crítico (ambos modelos)
 
 | Critério                                            | gpt-4o-mini         | gpt-4o              |
 | --------------------------------------------------- | ------------------- | ------------------- |
@@ -130,7 +130,7 @@ Citação do mini (T3): _"Show! Então, tu já tem uma experiência legal na ár
 | Emite marcador exato na última linha                | ✅                  | ✅                  |
 | Não inventa variações                               | ✅                  | ✅                  |
 
-**Diagnóstico do bug do marcador:** No T10, o user disse "Inglês intermediário, leio bem mas falo travado". Em vez de fazer o resumão e PEDIR confirmação, o modelo já faz o resumão E dispara `[[CURRICULO_READY]]` na mesma mensagem. O T11 (confirmação do user) é desnecessário — o marcador já foi.
+**Diagnóstico do bug do marcador:** No T10, o user disse "Inglês intermediário, leio bem mas falo travado". Em vez de fazer o resumão e PEDIR confirmação, o modelo já faz o resumão E dispara `[[CURRICULO_READY]]` na mesma mensagem. O T11 (confirmação do user) é desnecessário, o marcador já foi.
 
 Trecho ofensivo do mini (T10):
 
@@ -148,7 +148,7 @@ Trecho ofensivo do 4o (T10):
 
 **Bug secundário do C8:** turnos T3 e T4 repetem o pedido "me passa teu nome completo e um contato" sem avançar, porque o user respondeu sobre "monta do zero" (T3) e "pode ser híbrido" (T4) em vez de dar nome+contato. O Natechinho fica preso esperando o dado faltante em vez de continuar conversando com graça. O 4o-mini repete o mesmo bloco 3 vezes seguidas (T2, T3, T4). O 4o melhora um pouco (varia a frase) mas também fica esperando o mesmo dado. **Falta no prompt:** _"se a resposta do user não trouxe o dado que tu pediu, prossiga com o próximo dado em vez de repetir o pedido."_
 
-## Comparação mini vs 4o — onde modelo importa, onde não
+## Comparação mini vs 4o: onde modelo importa, onde não
 
 | Falha                                 | Mini | 4o          | Fonte                                 |
 | ------------------------------------- | ---- | ----------- | ------------------------------------- |
@@ -169,7 +169,7 @@ Trocar pra 4o resolveria C2 mas não C7 nem C8 (e C8 é o pior). **Conclusão:**
 
 Listadas em ordem de gravidade. Cada uma é uma proposta de texto novo pra Fase 1D (correção). **Não aplicadas nesta fase.**
 
-### S1 (crítico) — Reformular regra do marcador
+### S1 (crítico): Reformular regra do marcador
 
 Substituir a seção `# Sinal de fim (CRÍTICO)` por algo mais mecânico:
 
@@ -179,31 +179,31 @@ Substituir a seção `# Sinal de fim (CRÍTICO)` por algo mais mecânico:
 >
 > _Se na tua mensagem aparece o resumão pela primeira vez, ela TERMINA com uma pergunta de confirmação. O marcador fica pro próximo turno._
 
-### S2 (crítico) — Apontar inconsistência
+### S2 (crítico): Apontar inconsistência
 
 Reforçar a seção `## Inconsistências` com gatilho explícito:
 
 > _Sempre que o user disser algo que contradiz uma afirmação anterior dele mesmo (ex: disse "nunca trabalhei" e depois mencionou anos de experiência; disse "iniciante" e depois listou cargos sêniores), pare a coleta no MESMO turno, aponte com tom suave usando a fórmula "tu mencionou X antes, agora apareceu Y, qual prevalece?", e SÓ siga depois que o user esclarecer. Não recategorize a persona em silêncio._
 
-### S3 (médio) — Prioridade de sinais pra recomendação de formato
+### S3 (médio): Prioridade de sinais pra recomendação de formato
 
 Acrescentar uma linha à seção `## Lógica de recomendação`:
 
 > _Quando há conflito entre sinais (ex: Experiente + Big Tech), o alvo da vaga vence o tempo de carreira. Big Tech / consultoria → Harvard. Vaga regular → siga o tempo de carreira._
 
-### S4 (médio) — Eco de pacotes completos
+### S4 (médio): Eco de pacotes completos
 
 Acrescentar à seção `# REGRA-MÃE`:
 
 > _Quando o user fornecer múltiplos campos numa única mensagem (ex: nome + contato + área + nível + idioma + formato no mesmo turno), ECOE de volta o que tu capturou antes de pedir o próximo dado. Exemplo: "Show, Maria! Peguei tudo: dev frontend júnior, 1 ano, São Paulo, currículo em PT, formato híbrido. Bora seguir pra tua formação."_
 
-### S5 (médio) — Não repetir pedido quando user responde lateral
+### S5 (médio): Não repetir pedido quando user responde lateral
 
 Acrescentar à seção `# REGRA-MÃE` ou `## Coleta: enriquecimento de respostas fracas`:
 
 > _Se tu pediu um dado e o user respondeu OUTRA COISA (sem trazer o dado pedido), NÃO repita o pedido textualmente no próximo turno. Aceite a resposta lateral, integre, e siga com a próxima pergunta natural do fluxo. O dado faltante volta no resumão final pra ser preenchido._
 
-### S6 (leve) — Exemplo de aprofundamento com UMA pergunta
+### S6 (leve): Exemplo de aprofundamento com UMA pergunta
 
 Trocar o exemplo da seção `## Coleta: enriquecimento de respostas fracas`. Hoje:
 
@@ -213,7 +213,7 @@ O exemplo MOSTRA 3 perguntas seguidas, induzindo o modelo a fazer 3. Trocar por 
 
 > _Pessoa: "fiz um site" / Você: "Massa! Me conta uma coisa só, qual a tecnologia que tu usou nele?"_
 
-### S7 (leve) — Habilidades transferíveis pra Transição
+### S7 (leve): Habilidades transferíveis pra Transição
 
 Acrescentar à seção `# As 4 personas`, linha Transição:
 
@@ -221,9 +221,9 @@ Acrescentar à seção `# As 4 personas`, linha Transição:
 
 ## Próximos passos sugeridos
 
-1. **Fase 1D — Correção do prompt:** aplicar S1, S2, S3 (críticos/médios), depois rodar `pnpm tsx scripts/test-resume-builder.ts` de novo e validar que C7 e C8 passam. Critério de saída: 0 marcadores prematuros, C7 aponta inconsistência, C2 recomenda Harvard/Híbrido pra Big Tech.
-2. **Fase 1E** (opcional, se sobrar) — aplicar S4-S7. Eles afetam UX mas não correção.
-3. **Fase 2 — UI:** o restante do prompt é sólido o suficiente pra UI consumir, desde que S1 e S2 estejam aplicados.
+1. **Fase 1D, Correção do prompt:** aplicar S1, S2, S3 (críticos/médios), depois rodar `pnpm tsx scripts/test-resume-builder.ts` de novo e validar que C7 e C8 passam. Critério de saída: 0 marcadores prematuros, C7 aponta inconsistência, C2 recomenda Harvard/Híbrido pra Big Tech.
+2. **Fase 1E** (opcional, se sobrar), aplicar S4-S7. Eles afetam UX mas não correção.
+3. **Fase 2, UI:** o restante do prompt é sólido o suficiente pra UI consumir, desde que S1 e S2 estejam aplicados.
 
 ## Reprodutibilidade
 

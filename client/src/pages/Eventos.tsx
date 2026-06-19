@@ -1,5 +1,5 @@
 /*
-  BORA NA TECH? — Eventos Page
+  BORA NA TECH? (Eventos Page)
   Style: Neo-Brutalism Suavizado
 */
 
@@ -29,7 +29,7 @@ function googleCalendarUrl(evento: (typeof eventos)[number]) {
     text: evento.nome,
     dates: `${evento.calendarStart}/${evento.calendarEnd}`,
     details: `${evento.descricao}\n\nOrganizador: ${evento.organizador}\nValor: ${evento.valor}\nLink: ${evento.link}`,
-    location: `${evento.cidade}, ${rotuloEstadoEvento(evento.estado)} — ${evento.formato}`,
+    location: `${evento.cidade}, ${rotuloEstadoEvento(evento.estado)} (${evento.formato})`,
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -107,7 +107,7 @@ export default function Eventos() {
   return (
     <Layout>
       <SEO
-        title="Eventos Tech — Hackathons, meetups e conferências de tecnologia"
+        title="Eventos Tech · Hackathons, meetups e conferências de tecnologia"
         description="Encontre eventos de tecnologia, hackathons, meetups e conferências para aprender, fazer networking e entrar no mercado tech."
         keywords={[
           "eventos tech brasil",

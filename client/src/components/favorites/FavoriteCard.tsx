@@ -2,6 +2,7 @@ import { type CSSProperties } from "react";
 import { Link } from "wouter";
 import {
   BookA,
+  Bookmark,
   Briefcase,
   Building2,
   CalendarDays,
@@ -132,8 +133,16 @@ const TYPE_META: Record<FavoriteType, TypeMeta> = {
   },
 };
 
-export function getFavoriteTypeMeta(type: FavoriteType): TypeMeta {
-  return TYPE_META[type];
+const FALLBACK_META: TypeMeta = {
+  label: "Outros",
+  Icon: Bookmark,
+  accent: "#cbd5e1",
+  iconBg: "bg-slate-100 text-slate-700",
+  internalPath: () => null,
+};
+
+export function getFavoriteTypeMeta(type: string): TypeMeta {
+  return (TYPE_META as Record<string, TypeMeta>)[type] ?? FALLBACK_META;
 }
 
 function externalHost(url: string): string | null {
@@ -155,7 +164,7 @@ export function FavoriteCard({
   isRemoving = false,
   onRemove,
 }: FavoriteCardProps) {
-  const meta = TYPE_META[item.type];
+  const meta = getFavoriteTypeMeta(item.type);
   const host = item.url ? externalHost(item.url) : null;
   const internal = item.url ? null : meta.internalPath(item);
   const shadowStyle: CSSProperties = { boxShadow: `5px 5px 0 ${meta.accent}` };

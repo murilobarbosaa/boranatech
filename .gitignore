@@ -22,3 +22,6 @@ skills-lock.json
 # Supabase CLI artifacts
 supabase/.temp/
 supabase/.branches/
+
+# Local DB content backups (never commit)
+backups/

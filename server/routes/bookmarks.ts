@@ -23,21 +23,48 @@ const VALID_RESOURCE_TYPES = [
   "vaga",
 ];
 
+// Range size requested per query. Since the loop advances by the number of
+// rows actually returned and only stops on an empty page, correctness does not
+// depend on this matching the PostgREST max_rows cap (a smaller cap just means
+// more pages).
+const BOOKMARKS_PAGE_SIZE = 1000;
+// Safety ceiling on total rows collected, to avoid a pathological loop.
+const BOOKMARKS_MAX_ROWS = 10000;
+
 router.use(requireAuth);
 
 router.get("/", async (req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("user_bookmarks")
-      .select("*")
-      .eq("user_id", req.user!.id)
-      .order("created_at", { ascending: false });
+    const bookmarks: unknown[] = [];
 
-    if (error) {
-      return next(createError(500, "db_error", "Erro ao buscar favoritos."));
+    while (bookmarks.length < BOOKMARKS_MAX_ROWS) {
+      const from = bookmarks.length;
+      const to = from + BOOKMARKS_PAGE_SIZE - 1;
+
+      const { data, error } = await supabaseAdmin
+        .from("user_bookmarks")
+        .select("*")
+        .eq("user_id", req.user!.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        return next(createError(500, "db_error", "Erro ao buscar favoritos."));
+      }
+
+      const rows = data || [];
+      if (rows.length === 0) {
+        return res.json({ data: bookmarks });
+      }
+
+      bookmarks.push(...rows);
     }
 
-    res.json({ data: data || [] });
+    console.warn(
+      `[bookmarks] user ${req.user!.id} hit BOOKMARKS_MAX_ROWS (${BOOKMARKS_MAX_ROWS}); results may be truncated.`,
+    );
+    res.json({ data: bookmarks });
   } catch (err) {
     next(err);
   }

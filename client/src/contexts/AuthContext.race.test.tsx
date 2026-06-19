@@ -53,7 +53,7 @@ vi.mock("posthog-js", () => ({
 // Importado DEPOIS dos mocks (vi.mock é hoisted, mas mantemos a ordem clara).
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
-// Sessão válida mínima — AuthContext deriva `user: session?.user ?? null`.
+// Sessão válida mínima, AuthContext deriva `user: session?.user ?? null`.
 const validSession = {
   access_token: "tok",
   user: { id: "u1", email: "a@b.com", user_metadata: {} },
@@ -89,7 +89,7 @@ async function flushMicrotasks() {
   });
 }
 
-describe("AuthContext — race de hidratação (callback de OAuth)", () => {
+describe("AuthContext: race de hidratação (callback de OAuth)", () => {
   beforeEach(() => {
     supa.reset();
     vi.clearAllMocks();

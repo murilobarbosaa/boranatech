@@ -61,7 +61,7 @@ async function flush() {
   });
 }
 
-describe("useRecoveryFlow — detecção de recuperação (implicit + PKCE)", () => {
+describe("useRecoveryFlow: detecção de recuperação (implicit + PKCE)", () => {
   beforeEach(() => {
     supa.reset();
     recovery.seen = false;
