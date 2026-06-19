@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 import {
   getAvatarBgOption,
   getAvatarBorderOption,
@@ -70,6 +72,27 @@ const offsetClasses: Record<UserAvatarSize, string> = {
   preview: "translate-x-1 translate-y-1",
 };
 
+// Espessura do anel Pro animado por tamanho. Lugar unico pra ajustar. Em sm cai
+// pra 2px porque 3px pesa demais num avatar pequeno.
+const proRingWidth: Record<UserAvatarSize, string> = {
+  sm: "2px",
+  md: "3px",
+  lg: "3px",
+  xl: "3px",
+  preview: "3px",
+};
+
+// Translacao do disco de offset por tamanho, EM PX, espelhando offsetClasses
+// (sm 3px, md 4px, lg 8px, xl 10px, preview 4px). Usado pra recentrar o conic do
+// anel no mesmo ponto do conic da sombra, virando um gradiente continuo so.
+const proOffsetPx: Record<UserAvatarSize, string> = {
+  sm: "3px",
+  md: "4px",
+  lg: "8px",
+  xl: "10px",
+  preview: "4px",
+};
+
 export function getUserInitials(name: string) {
   return name
     .split(/\s+/)
@@ -96,9 +119,11 @@ export default function UserAvatar({
   const Icon = iconOption.Icon;
   const initials = getUserInitials(name) || "BT";
   const showPhoto = mode === "photo" && !!avatarUrl;
+  const proEffect = borderOption.effect;
   const rootClassName = [
     "relative inline-flex shrink-0",
     sizeClasses[size],
+    proEffect ? `pro-anim-${proEffect}` : "",
     className,
   ].join(" ");
 
@@ -120,15 +145,21 @@ export default function UserAvatar({
     <span className={rootClassName} aria-hidden="true">
       <span
         className={[
-          "absolute inset-0 rounded-full",
-          borderOption.offsetClassName,
+          "absolute rounded-full",
+          // Com effect, o disco da sombra sobra 2px pra fora da span 2 em toda a
+          // volta (-inset-0.5) pra dar lastro de gradiente atras da beirada e
+          // cobrir a emenda externa entre o anel e a sombra. Sem effect, igual a hoje.
+          proEffect ? "-inset-0.5" : "inset-0",
+          proEffect
+            ? `pro-offset pro-offset-${proEffect}`
+            : borderOption.offsetClassName,
           offsetClasses[size],
         ].join(" ")}
       />
       <span
         className={[
           "relative z-10 flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 font-display font-black",
-          borderOption.borderClassName,
+          proEffect ? "border-transparent" : borderOption.borderClassName,
           bgOption.className,
         ].join(" ")}
       >
@@ -145,6 +176,21 @@ export default function UserAvatar({
           initials
         )}
       </span>
+      {/* Anel fino: filho DIRETO do root (irmao da span 2, depois dela), por cima
+          (z-20), cobrindo a beirada inteira incluindo a faixa de 2px da borda
+          transparente da span 2. Fora da span 2 pra nao ser recortado pelo
+          overflow-hidden dela. */}
+      {proEffect ? (
+        <span
+          className={`pointer-events-none absolute inset-0 z-20 rounded-full pro-ring pro-ring-${proEffect}`}
+          style={
+            {
+              "--pro-ring-w": proRingWidth[size],
+              "--pro-offset": proOffsetPx[size],
+            } as CSSProperties
+          }
+        />
+      ) : null}
     </span>
   );
 }

@@ -20,6 +20,10 @@ export const avatarBorderIds = [
   "orange",
   "red",
   "cyan",
+  "pro-rgb",
+  "pro-holo",
+  "pro-godzilla",
+  "pro-storm",
 ] as const;
 export const avatarIconIds = [
   "initials",
@@ -55,6 +59,11 @@ export type AvatarBorderOption = {
   offsetClassName: string;
   accentClassName: string;
   swatchClassName: string;
+  pro?: boolean;
+  // Quando definido, o UserAvatar troca a cor estatica da borda por um anel
+  // animado (classe .pro-ring-<effect> no index.css). borderClassName segue como
+  // fallback estatico.
+  effect?: "rgb" | "holographic" | "godzilla" | "storm";
 };
 
 export type AvatarIconOption = {
@@ -145,6 +154,46 @@ export const avatarBorderOptions: AvatarBorderOption[] = [
     offsetClassName: "bg-[#06B6D4]",
     accentClassName: "border-[#06B6D4] text-[#0E7490]",
     swatchClassName: "bg-[#06B6D4]",
+  },
+  {
+    id: "pro-rgb",
+    label: "RGB", // TODO(Ana): nome final
+    pro: true,
+    effect: "rgb",
+    borderClassName: "border-[#7a5cff]",
+    offsetClassName: "bg-slate-950",
+    accentClassName: "border-[#7a5cff] text-[#7a5cff]",
+    swatchClassName: "bg-[#7a5cff]",
+  },
+  {
+    id: "pro-holo",
+    label: "Holografico", // TODO(Ana): nome final
+    pro: true,
+    effect: "holographic",
+    borderClassName: "border-[#22d3ee]",
+    offsetClassName: "bg-slate-950",
+    accentClassName: "border-[#22d3ee] text-[#0e7490]",
+    swatchClassName: "bg-[#22d3ee]",
+  },
+  {
+    id: "pro-godzilla",
+    label: "Roxo", // TODO(Ana): nome final, ideia "roxo godzilla"
+    pro: true,
+    effect: "godzilla",
+    borderClassName: "border-[#7c3aed]",
+    offsetClassName: "bg-slate-950",
+    accentClassName: "border-[#7c3aed] text-[#7c3aed]",
+    swatchClassName: "bg-[#7c3aed]",
+  },
+  {
+    id: "pro-storm",
+    label: "Tempestade", // TODO(Ana): nome final
+    pro: true,
+    effect: "storm",
+    borderClassName: "border-[#1e40af]",
+    offsetClassName: "bg-slate-950",
+    accentClassName: "border-[#1e40af] text-[#1e40af]",
+    swatchClassName: "bg-[#1e40af]",
   },
 ];
 
@@ -282,4 +331,21 @@ export function getAvatarBgOption(value: unknown) {
     avatarBgOptions.find((option) => option.id === normalizeAvatarBg(value)) ||
     avatarBgOptions[0]
   );
+}
+
+// Le o flag pro do catalogo. Borda exclusiva do Plano Pro?
+export function isProBorder(border: unknown): boolean {
+  return avatarBorderOptions.some(
+    (option) => option.id === border && option.pro === true,
+  );
+}
+
+// Rebaixamento gracioso no DISPLAY do proprio avatar: dono sem Pro nao exibe
+// borda Pro, cai pro default. Nao usar nos previews do picker/edicao (teaser).
+export function resolveEffectiveBorder(
+  border: unknown,
+  isPro: boolean,
+): AvatarBorderId {
+  const normalized = normalizeAvatarBorder(border);
+  return !isProBorder(normalized) || isPro ? normalized : defaultAvatarBorder;
 }

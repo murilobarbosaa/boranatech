@@ -986,3 +986,197 @@
     -webkit-print-color-adjust: exact;
   }
 }
+
+/* Bordas Pro animadas. Anel fino COLADO na borda real do avatar (UserAvatar),
+   sem anel grosso nem glow externo. A geometria do site (sombra offset + 2px)
+   e mantida; este anel substitui a cor estatica da borda por um gradiente
+   animado. Espessura via --pro-ring-w (default 3px; sm cai pra 2px). Fallback:
+   sem suporte a @property ou com motion reduzido, fica o gradiente estatico. */
+@property --pro-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@keyframes proRingSpin {
+  to {
+    --pro-angle: 360deg;
+  }
+}
+
+/* Relogio unico: a span raiz anima --pro-angle (duracao por efeito) e os filhos
+   (anel + sombra) so leem o valor herdado, girando pelo mesmo relogio. */
+.pro-anim-rgb {
+  animation: proRingSpin 3.2s linear infinite;
+}
+
+.pro-anim-holographic {
+  animation: proRingSpin 2.8s linear infinite;
+}
+
+.pro-anim-godzilla {
+  animation: proRingSpin 3s linear infinite;
+}
+
+.pro-anim-storm {
+  animation: proRingSpin 3.4s linear infinite;
+}
+
+.pro-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 9999px;
+  pointer-events: none;
+  padding: var(--pro-ring-w, 3px);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+/* Disco de offset (span 1 do UserAvatar): mesma cor/animacao do anel, sem mascara,
+   pra "borda preta" deslocada virar o gradiente animado grosso e colorido. */
+.pro-offset {
+  border-radius: 9999px;
+}
+
+/* Sombra (disco cheio): conic centrado no centro do proprio disco, que ja esta
+   deslocado por offsetClasses. Sem animacao propria, le --pro-angle herdado. */
+.pro-offset-rgb {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg),
+    #ff0040,
+    #ff8a00,
+    #ffe600,
+    #00ff66,
+    #00e5ff,
+    #7a5cff,
+    #ff00d4,
+    #ff0040
+  );
+}
+
+.pro-offset-holographic {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg),
+    #9af0ff,
+    #ffd1f7,
+    #fff3b0,
+    #c8b6ff,
+    #9af0ff,
+    #ffd1f7,
+    #fff3b0,
+    #c8b6ff,
+    #9af0ff
+  );
+  filter: saturate(1.25);
+}
+
+/* Anel fino (na beirada, sem deslocamento): MESMOS stops da sombra, mas com o
+   centro do conic somando a translacao do offset (--pro-offset), pra cair no
+   mesmo ponto e angulo da sombra e virar um gradiente continuo so. */
+.pro-ring-rgb {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg) at calc(50% + var(--pro-offset, 0px))
+      calc(50% + var(--pro-offset, 0px)),
+    #ff0040,
+    #ff8a00,
+    #ffe600,
+    #00ff66,
+    #00e5ff,
+    #7a5cff,
+    #ff00d4,
+    #ff0040
+  );
+}
+
+.pro-ring-holographic {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg) at calc(50% + var(--pro-offset, 0px))
+      calc(50% + var(--pro-offset, 0px)),
+    #9af0ff,
+    #ffd1f7,
+    #fff3b0,
+    #c8b6ff,
+    #9af0ff,
+    #ffd1f7,
+    #fff3b0,
+    #c8b6ff,
+    #9af0ff
+  );
+  filter: saturate(1.25);
+}
+
+.pro-offset-godzilla {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg),
+    #000000,
+    #6b21a8,
+    #d500f9,
+    #9d00ff,
+    #000000,
+    #7c3aed,
+    #c026d3,
+    #000000
+  );
+}
+
+.pro-offset-storm {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg),
+    #0b1e3f,
+    #1e3a8a,
+    #93c5fd,
+    #ffffff,
+    #1e40af,
+    #0b1e3f,
+    #3b82f6,
+    #e0f2fe,
+    #0b1e3f
+  );
+}
+
+.pro-ring-godzilla {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg) at calc(50% + var(--pro-offset, 0px))
+      calc(50% + var(--pro-offset, 0px)),
+    #000000,
+    #6b21a8,
+    #d500f9,
+    #9d00ff,
+    #000000,
+    #7c3aed,
+    #c026d3,
+    #000000
+  );
+}
+
+.pro-ring-storm {
+  background: conic-gradient(
+    from var(--pro-angle, 0deg) at calc(50% + var(--pro-offset, 0px))
+      calc(50% + var(--pro-offset, 0px)),
+    #0b1e3f,
+    #1e3a8a,
+    #93c5fd,
+    #ffffff,
+    #1e40af,
+    #0b1e3f,
+    #3b82f6,
+    #e0f2fe,
+    #0b1e3f
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pro-anim-rgb,
+  .pro-anim-holographic,
+  .pro-anim-godzilla,
+  .pro-anim-storm {
+    animation: none;
+  }
+}
