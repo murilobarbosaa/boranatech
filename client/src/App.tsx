@@ -78,6 +78,7 @@ import Admin from "./pages/Admin";
 import Licenca from "./pages/Licenca";
 import Privacidade from "./pages/Privacidade";
 import TermosDeUso from "./pages/TermosDeUso";
+import DevProBorders from "./pages/dev/ProBordersPlayground";
 
 function Router() {
   return (
@@ -167,6 +168,8 @@ function Router() {
       <Route path="/licenca" component={Licenca} />
       <Route path="/privacidade" component={Privacidade} />
       <Route path="/termos-de-uso" component={TermosDeUso} />
+      {/* PROTOTIPO DESCARTAVEL: bordas Pro animadas. Remover junto com a pasta dev/. */}
+      <Route path="/dev/pro-borders" component={DevProBorders} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
