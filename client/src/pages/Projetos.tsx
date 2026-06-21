@@ -109,17 +109,26 @@ export default function Projetos() {
   }, []);
 
   const q = query.trim().toLowerCase();
-  const filtered = projectItems.filter((p) => {
+  const baseFiltered = projectItems.filter((p) => {
     const matchArea = area === AREA_ALL || p.areaSlug === area;
-    const matchNivel = nivel === "Todos" || p.nivel === nivel;
     const matchTech = tech === TECH_ALL || p.ferramentas.includes(tech);
     const matchQuery =
       !q ||
       p.nome.toLowerCase().includes(q) ||
       p.objetivo.toLowerCase().includes(q) ||
       p.ferramentas.some((f) => f.toLowerCase().includes(q));
-    return matchArea && matchNivel && matchTech && matchQuery;
+    return matchArea && matchTech && matchQuery;
   });
+  const filtered = baseFiltered.filter(
+    (p) => nivel === "Todos" || p.nivel === nivel,
+  );
+  const nivelCounts = niveis.reduce<Record<string, number>>((acc, n) => {
+    acc[n] =
+      n === "Todos"
+        ? baseFiltered.length
+        : baseFiltered.filter((p) => p.nivel === n).length;
+    return acc;
+  }, {});
 
   const grupos = filtered.reduce<{ slug: string | null; itens: Projeto[] }[]>(
     (acc, p) => {
@@ -224,7 +233,9 @@ export default function Projetos() {
               className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
             >
               {niveis.map((n) => (
-                <option key={n}>{n === "Todos" ? "Todos os níveis" : n}</option>
+                <option key={n} value={n}>
+                  {n === "Todos" ? "Todos os níveis" : n} ({nivelCounts[n]})
+                </option>
               ))}
             </select>
             <select
