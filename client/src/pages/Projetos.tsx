@@ -11,6 +11,7 @@ import {
   Lightbulb,
   ExternalLink,
   PlayCircle,
+  Search,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -83,6 +84,7 @@ export default function Projetos() {
   const [area, setArea] = useState(initialAreaFromUrl ?? AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const areaSlugOptions = useMemo<(string | null)[]>(
     () => [
       AREA_ALL,
@@ -97,10 +99,16 @@ export default function Projetos() {
       .catch(() => setProjectItems(projetos));
   }, []);
 
+  const q = query.trim().toLowerCase();
   const filtered = projectItems.filter((p) => {
     const matchArea = area === AREA_ALL || p.areaSlug === area;
     const matchNivel = nivel === "Todos" || p.nivel === nivel;
-    return matchArea && matchNivel;
+    const matchQuery =
+      !q ||
+      p.nome.toLowerCase().includes(q) ||
+      p.objetivo.toLowerCase().includes(q) ||
+      p.ferramentas.some((f) => f.toLowerCase().includes(q));
+    return matchArea && matchNivel && matchQuery;
   });
 
   const grupos = filtered.reduce<{ slug: string | null; itens: Projeto[] }[]>(
@@ -165,7 +173,22 @@ export default function Projetos() {
 
       <section className="bg-orange-50 border-b-2 border-orange-200 py-4 sticky top-16 z-40">
         <div className="container">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3">
+            <div className="relative w-full sm:max-w-sm">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Buscar projeto por nome, objetivo ou tecnologia"
+                placeholder="Buscar por nome, objetivo ou tecnologia..."
+                className="w-full pl-9 pr-4 py-2 border-2 border-orange-200 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500"
+              />
+            </div>
+            <div className="flex flex-wrap gap-3">
             <select
               value={area}
               onChange={(e) => setArea(e.target.value)}
@@ -194,6 +217,7 @@ export default function Projetos() {
                 <option key={n}>{n === "Todos" ? "Todos os níveis" : n}</option>
               ))}
             </select>
+            </div>
           </div>
         </div>
       </section>
