@@ -19,6 +19,8 @@ import { areasTI, projetos } from "@/lib/data";
 import { projectHelpVideos } from "@/lib/platformData";
 import { getProjects } from "@/services/contentService";
 
+type Projeto = (typeof projetos)[number];
+
 const niveis = ["Todos", "Iniciante", "Básico", "Intermediário", "Avançado"];
 const nivelGuides = [
   {
@@ -100,6 +102,17 @@ export default function Projetos() {
     const matchNivel = nivel === "Todos" || p.nivel === nivel;
     return matchArea && matchNivel;
   });
+
+  const grupos = filtered.reduce<{ slug: string | null; itens: Projeto[] }[]>(
+    (acc, p) => {
+      const key = p.areaSlug ?? null;
+      const grupo = acc.find((g) => g.slug === key);
+      if (grupo) grupo.itens.push(p);
+      else acc.push({ slug: key, itens: [p] });
+      return acc;
+    },
+    [],
+  );
 
   return (
     <Layout>
@@ -187,12 +200,24 @@ export default function Projetos() {
 
       <section className="bg-[#fff7ed] py-12">
         <div className="container">
-          <div className="space-y-4">
-            {filtered.map((projeto) => (
-              <div
-                key={projeto.id}
-                className="card-brutal bg-white rounded-xl overflow-hidden shadow-[5px_5px_0_#fdba74]"
+          <div className="space-y-10">
+            {grupos.map((grupo) => (
+              <section
+                key={grupo.slug ?? "geral"}
+                aria-label={`Projetos de ${labelForAreaSlug(grupo.slug)}`}
               >
+                <h2 className="font-display text-2xl font-black text-slate-950 mb-4">
+                  {labelForAreaSlug(grupo.slug)}{" "}
+                  <span className="text-sm font-bold text-slate-500">
+                    ({grupo.itens.length})
+                  </span>
+                </h2>
+                <div className="space-y-4">
+                  {grupo.itens.map((projeto) => (
+                    <div
+                      key={projeto.id}
+                      className="card-brutal bg-white rounded-xl overflow-hidden shadow-[5px_5px_0_#fdba74]"
+                    >
                 <div className="w-full flex items-start justify-between p-6 text-left">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
@@ -372,7 +397,10 @@ export default function Projetos() {
                     </div>
                   </div>
                 )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
 
