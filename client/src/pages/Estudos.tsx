@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
-import AiChatPanel from "@/components/shared/AiChatPanel";
+import EstudosWorkspace from "@/components/estudos/EstudosWorkspace";
 import PageHero from "@/components/shared/PageHero";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -40,14 +40,7 @@ export default function Estudos() {
           {!isPro ? (
             <ProGate description="Converse com o Natechinho e receba um plano de estudos sob medida: cronograma por semana, marcos e recursos para o seu nível, tempo e objetivo." />
           ) : (
-            <AiChatPanel
-              endpoint="study-plan"
-              title="Plano de estudos com o Natechinho"
-              description="Me conta sua área, nível, tempo e objetivo, e eu monto seu cronograma semanal."
-              initialAssistantMessage={`Oi! Eu sou o Natechinho, seu mentor de estudos aqui no BoraNaTech. Fico feliz que você veio.
-
-              Me conta com calma: qual área da tech está te puxando mais agora (tipo front, back, dados, mobile…) e, em poucas palavras, o que você quer conquistar com esse estudo? Pode mandar do seu jeito, sem pressa.`}
-            />
+            <EstudosWorkspace />
           )}
           <div className="card-brutal rounded-2xl bg-white p-6">
             <h2 className="font-display text-2xl font-black">

@@ -1,0 +1,196 @@
+import { useEffect, useRef, useState } from "react";
+import { Send, Sparkles } from "lucide-react";
+
+import { Spinner } from "@/components/ui/spinner";
+import type { AiChatMessage } from "@/lib/aiClient";
+import { cn } from "@/lib/utils";
+
+// Visual espelhado do AiChatPanel compartilhado (tema violet), porém SEM chamada
+// de API: este painel é apresentacional. O estado vive no EstudosWorkspace.
+
+interface EstudosChatPanelProps {
+  messages: AiChatMessage[];
+  loading: boolean;
+  error: string;
+  onSend: (text: string) => void;
+  title?: string;
+  description?: string;
+  placeholder?: string;
+}
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-2 py-1" aria-hidden>
+      {[0, 1, 2].map((dot) => (
+        <span
+          key={dot}
+          className="ai-chat-typing-dot h-2.5 w-2.5 rounded-full bg-violet-500"
+        />
+      ))}
+    </div>
+  );
+}
+
+function AssistantAvatar() {
+  return (
+    <div
+      className="flex h-7 w-7 shrink-0 items-center justify-center self-end rounded-full border-2 border-slate-900 bg-violet-600 shadow-[1px_1px_0_#0f172a] sm:h-8 sm:w-8"
+      aria-hidden
+    >
+      <Sparkles className="h-3.5 w-3.5 text-amber-200 sm:h-4 sm:w-4" />
+    </div>
+  );
+}
+
+export default function EstudosChatPanel({
+  messages,
+  loading,
+  error,
+  onSend,
+  title = "Plano de estudos com o Natechinho",
+  description = "Me conta sua área, nível, tempo e objetivo, e eu monto seu cronograma semanal.",
+  placeholder = "Mensagem",
+}: EstudosChatPanelProps) {
+  const [input, setInput] = useState("");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, loading]);
+
+  function handleSend() {
+    const trimmed = input.trim();
+    if (!trimmed || loading) return;
+    onSend(trimmed);
+    setInput("");
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  return (
+    <div className="card-brutal flex h-full min-h-[420px] w-full flex-col overflow-hidden rounded-2xl bg-white">
+      <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-900 bg-violet-700 px-4 py-3 text-white sm:px-5 sm:py-3.5">
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-600 shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
+          aria-hidden
+        >
+          <Sparkles className="h-5 w-5 text-amber-200 sm:h-6 sm:w-6" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
+            {title}
+          </h2>
+          <p className="mt-0.5 truncate text-xs font-medium leading-snug text-violet-100 sm:text-sm">
+            {description}
+          </p>
+        </div>
+      </header>
+
+      <div
+        className="wa-chat-wallpaper flex min-h-0 flex-1 flex-col border-b-2 border-slate-900"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
+        <div
+          ref={scrollContainerRef}
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 sm:px-5 sm:py-5"
+        >
+          <div className="flex w-full flex-col gap-3">
+            {messages.map((m, i) =>
+              m.role === "assistant" ? (
+                <div key={i} className="flex items-end justify-start gap-2">
+                  <AssistantAvatar />
+                  <div
+                    className={cn(
+                      "max-w-[82%] rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:max-w-[68%] sm:px-4 sm:py-3",
+                      "text-[15px] leading-relaxed text-slate-900 sm:text-base",
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap break-words font-body">
+                      {m.content}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div key={i} className="flex justify-end">
+                  <div
+                    className={cn(
+                      "max-w-[82%] rounded-2xl rounded-br-md border border-amber-300/80 bg-amber-200 px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:max-w-[68%] sm:px-4 sm:py-3",
+                      "text-[15px] leading-relaxed text-slate-900 sm:text-base",
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap break-words font-body">
+                      {m.content}
+                    </p>
+                  </div>
+                </div>
+              ),
+            )}
+
+            {loading ? (
+              <div className="flex items-end justify-start gap-2">
+                <AssistantAvatar />
+                <div className="flex max-w-[82%] items-center rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:px-4">
+                  <span className="sr-only">Digitando</span>
+                  <TypingDots />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {error ? (
+        <div className="shrink-0 border-b-2 border-slate-900 bg-red-50 px-4 py-2.5 sm:px-5">
+          <p className="text-center text-sm font-bold text-red-800 sm:text-base">
+            {error}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="shrink-0 bg-violet-50 px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
+        <div className="flex w-full items-end gap-2 sm:gap-3">
+          <label className="sr-only" htmlFor="estudos-chat-input">
+            Mensagem
+          </label>
+          <div className="flex min-h-[46px] flex-1 items-end rounded-3xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a]">
+            <textarea
+              id="estudos-chat-input"
+              rows={1}
+              className="max-h-32 min-h-[46px] w-full resize-y rounded-3xl border-0 bg-transparent px-4 py-3 font-body text-[15px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-500 disabled:opacity-60 sm:px-4 sm:py-3.5 sm:text-base"
+              placeholder={placeholder}
+              value={input}
+              disabled={loading}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </div>
+          <button
+            type="button"
+            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:bg-violet-800 enabled:hover:-translate-y-px disabled:opacity-45 sm:h-[52px] sm:w-[52px]"
+            disabled={loading || !input.trim()}
+            aria-label="Enviar"
+            onClick={handleSend}
+          >
+            {loading ? (
+              <Spinner className="h-5 w-5 sm:h-6 sm:w-6" />
+            ) : (
+              <Send className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />
+            )}
+          </button>
+        </div>
+        <p className="mt-2 text-center text-xs font-bold text-slate-600 sm:text-sm">
+          Enter envia · Shift+Enter nova linha
+        </p>
+      </div>
+    </div>
+  );
+}
