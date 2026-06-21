@@ -1,17 +1,22 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  ArrowUp,
   Bot,
   BookOpen,
+  Check,
   CheckCircle,
   Compass,
+  Copy,
   ExternalLink,
   GraduationCap,
   Lightbulb,
   Map,
   Newspaper,
   RotateCcw,
+  Search,
+  Shuffle,
   Sparkles,
   Target,
   TrendingUp,
@@ -19,7 +24,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
 import SEO from "@/components/SEO";
@@ -51,18 +56,48 @@ const costBadge: Record<IaCusto, string> = {
   Pago: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
-const allTools = iaTools.flatMap((grupo) => grupo.ferramentas);
+const custoInfo: Record<IaCusto, string> = {
+  Grátis: "Dá pra usar sem pagar.",
+  Freemium: "Tem versão grátis com limites; recursos extras são pagos.",
+  Pago: "Precisa de assinatura ou compra pra usar.",
+};
+
+const custoOptions: (IaCusto | "Todos")[] = [
+  "Todos",
+  "Grátis",
+  "Freemium",
+  "Pago",
+];
+
+type ToolWithCat = IaTool & { categoria: string };
+
+const allTools: ToolWithCat[] = iaTools.flatMap((grupo) =>
+  grupo.ferramentas.map((tool) => ({ ...tool, categoria: grupo.grupo })),
+);
 const totalTools = allTools.length;
 const categorias = ["Todas", ...iaTools.map((grupo) => grupo.grupo)];
+const niveisCurso = [
+  "Todos",
+  ...Array.from(new Set(iaCursos.map((curso) => curso.nivel))),
+];
 
 const TABS = [
-  { id: "Ferramentas", icon: Wrench },
-  { id: "Descubra sua IA", icon: Compass },
-  { id: "Como usar", icon: Lightbulb },
-  { id: "Aprender", icon: GraduationCap },
-  { id: "Criadores", icon: Youtube },
-  { id: "Notícias e mercado", icon: Newspaper },
+  { id: "Ferramentas", slug: "ferramentas", icon: Wrench },
+  { id: "Descubra sua IA", slug: "descubra", icon: Compass },
+  { id: "Como usar", slug: "como-usar", icon: Lightbulb },
+  { id: "Aprender", slug: "aprender", icon: GraduationCap },
+  { id: "Criadores", slug: "criadores", icon: Youtube },
+  { id: "Notícias e mercado", slug: "noticias-mercado", icon: Newspaper },
 ];
+
+const tabCounts: Record<string, number | undefined> = {
+  Ferramentas: totalTools,
+  "Descubra sua IA": iaQuizOpcoes.length,
+  "Como usar": iaPromptTips.length + iaUsageTips.length,
+  Aprender: iaCursos.length + iaGlossario.length,
+  Criadores: iaCriadores.length,
+  "Notícias e mercado": undefined,
+};
 
 const fadeUp = {
   initial: { opacity: 0, y: 14 },
@@ -70,6 +105,13 @@ const fadeUp = {
   viewport: { once: true, margin: "-60px" },
   transition: { duration: 0.3 },
 };
+
+function normalize(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
 
 function findTool(nome: string) {
   return allTools.find((tool) => tool.nome === nome);
@@ -114,12 +156,25 @@ function BrandLogo({ url, nome }: { url: string; nome: string }) {
   );
 }
 
-function ToolCard({ tool }: { tool: IaTool }) {
+function ToolCard({ tool }: { tool: ToolWithCat }) {
+  const [copied, setCopied] = useState(false);
+
+  function copyLink() {
+    if (!navigator.clipboard) return;
+    navigator.clipboard
+      .writeText(tool.url)
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => {});
+  }
+
   return (
     <motion.div
       {...fadeUp}
       whileHover={{ y: -4 }}
-      className="card-brutal flex flex-col rounded-2xl bg-white p-5"
+      className="card-brutal flex flex-col rounded-2xl bg-white p-5 transition-shadow duration-200 hover:shadow-[8px_8px_0_#c4b5fd]"
     >
       <div className="flex items-center gap-3">
         <BrandLogo url={tool.url} nome={tool.nome} />
@@ -132,29 +187,50 @@ function ToolCard({ tool }: { tool: IaTool }) {
           </p>
         </div>
       </div>
-      <span
-        className={cn(
-          "mt-3 inline-flex w-fit rounded-full border px-2 py-0.5 text-[11px] font-black uppercase",
-          costBadge[tool.custo],
-        )}
-      >
-        {tool.custo}
-      </span>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span
+          title={custoInfo[tool.custo]}
+          className={cn(
+            "inline-flex cursor-help rounded-full border px-2 py-0.5 text-[11px] font-black uppercase",
+            costBadge[tool.custo],
+          )}
+        >
+          {tool.custo}
+        </span>
+        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+          {tool.categoria}
+        </span>
+      </div>
       <p className="mt-3 text-sm text-slate-600">{tool.paraQueServe}</p>
       <p className="mt-2 flex-1 text-sm text-slate-700">
         <span className="font-black">Quando usar:</span> {tool.quandoUsar}
       </p>
-      <a
-        href={tool.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(
-          "mt-4 inline-flex items-center gap-1 text-xs font-black uppercase",
-          ac.link,
-        )}
-      >
-        Site oficial <ExternalLink className="h-3 w-3" />
-      </a>
+      <div className="mt-4 flex items-center gap-2">
+        <a
+          href={tool.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            "inline-flex items-center gap-1 text-xs font-black uppercase",
+            ac.link,
+          )}
+        >
+          Site oficial <ExternalLink className="h-3 w-3" />
+        </a>
+        <button
+          type="button"
+          onClick={copyLink}
+          aria-label={`Copiar link de ${tool.nome}`}
+          className="ml-auto inline-flex items-center gap-1 rounded-full border-2 border-slate-300 bg-white px-2 py-1 text-[11px] font-black text-slate-700 transition-all hover:border-violet-400"
+        >
+          {copied ? (
+            <Check className="h-3 w-3 text-emerald-600" />
+          ) : (
+            <Copy className="h-3 w-3" />
+          )}
+          {copied ? "Copiado" : "Copiar link"}
+        </button>
+      </div>
     </motion.div>
   );
 }
@@ -197,20 +273,96 @@ function SectionTitle({
 
 export default function GuiaIa() {
   const { isPro } = useSubscription();
-  const [activeTab, setActiveTab] = useState("Ferramentas");
-  const [categoria, setCategoria] = useState("Todas");
-  const [quizPick, setQuizPick] = useState<IaQuizOpcao | null>(null);
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const matchedTab =
+    TABS.find((tab) => tab.slug === new URLSearchParams(search).get("aba"))
+      ?.id ?? TABS[0].id;
+  const [activeTab, setActiveTab] = useState(matchedTab);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const visibleGroups =
-    categoria === "Todas"
-      ? iaTools
-      : iaTools.filter((grupo) => grupo.grupo === categoria);
+  const [categoria, setCategoria] = useState("Todas");
+  const [busca, setBusca] = useState("");
+  const [custoFiltro, setCustoFiltro] = useState<IaCusto | "Todos">("Todos");
+  const [ordenar, setOrdenar] = useState<"Relevância" | "A-Z">("Relevância");
+  const [surpresa, setSurpresa] = useState<ToolWithCat | null>(null);
+  const [nivelCurso, setNivelCurso] = useState("Todos");
+  const [quizPick, setQuizPick] = useState<IaQuizOpcao | null>(null);
+  const [showTop, setShowTop] = useState(false);
+
+  useEffect(() => {
+    setActiveTab(matchedTab);
+  }, [matchedTab]);
+
+  useEffect(() => {
+    function onScroll() {
+      setShowTop(window.scrollY > 400);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  function selectTab(id: string) {
+    const slug = TABS.find((tab) => tab.id === id)?.slug ?? TABS[0].slug;
+    navigate(`/ia?aba=${slug}`, { replace: true });
+    setActiveTab(id);
+  }
+
+  function onTabKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const dir = event.key === "ArrowRight" ? 1 : -1;
+    const next = (index + dir + TABS.length) % TABS.length;
+    selectTab(TABS[next].id);
+    tabRefs.current[next]?.focus();
+  }
+
+  function sortear() {
+    const index = Math.floor(Math.random() * allTools.length);
+    setSurpresa(allTools[index]);
+  }
+
+  function limparFiltros() {
+    setBusca("");
+    setCategoria("Todas");
+    setCustoFiltro("Todos");
+    setOrdenar("Relevância");
+  }
 
   const quizTools = quizPick
     ? quizPick.recomendaA
         .map((nome) => findTool(nome))
-        .filter((tool): tool is IaTool => Boolean(tool))
+        .filter((tool): tool is ToolWithCat => Boolean(tool))
     : [];
+
+  const buscaNorm = normalize(busca.trim());
+  const toolsFiltrados = allTools.filter((tool) => {
+    const matchCategoria = categoria === "Todas" || tool.categoria === categoria;
+    const matchCusto = custoFiltro === "Todos" || tool.custo === custoFiltro;
+    const matchBusca =
+      !buscaNorm ||
+      normalize(tool.nome).includes(buscaNorm) ||
+      normalize(tool.empresa).includes(buscaNorm);
+    return matchCategoria && matchCusto && matchBusca;
+  });
+  const toolsOrdenados =
+    ordenar === "A-Z"
+      ? [...toolsFiltrados].sort((a, b) => a.nome.localeCompare(b.nome))
+      : toolsFiltrados;
+  const isFiltering =
+    Boolean(buscaNorm) ||
+    categoria !== "Todas" ||
+    custoFiltro !== "Todos" ||
+    ordenar === "A-Z";
+
+  const cursosFiltrados =
+    nivelCurso === "Todos"
+      ? iaCursos
+      : iaCursos.filter((curso) => curso.nivel === nivelCurso);
 
   return (
     <Layout>
@@ -235,7 +387,7 @@ export default function GuiaIa() {
           <>
             <button
               type="button"
-              onClick={() => setActiveTab("Descubra sua IA")}
+              onClick={() => selectTab("Descubra sua IA")}
               className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-black"
             >
               <Compass className="h-4 w-4" />
@@ -243,7 +395,7 @@ export default function GuiaIa() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("Ferramentas")}
+              onClick={() => selectTab("Ferramentas")}
               className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[4px_4px_0_#0f172a]"
             >
               <Wrench className="h-4 w-4" />
@@ -278,6 +430,11 @@ export default function GuiaIa() {
                 erros, revisar, rascunhar texto ou código e pesquisar. Pense
                 nelas como um apoio rápido, não como uma fonte final de verdade.
               </p>
+              <p className="mt-4 text-sm font-bold text-violet-700">
+                {isPro
+                  ? "Boas-vindas de volta. Os recursos Pro do guia estão liberados."
+                  : "Comece de graça e veja o que a IA faz por você."}
+              </p>
             </motion.div>
             <motion.div
               {...fadeUp}
@@ -305,77 +462,225 @@ export default function GuiaIa() {
             </motion.div>
           </div>
 
-          <div
-            role="tablist"
-            aria-label="Seções do guia de IA"
-            className="flex flex-wrap gap-2"
-          >
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={pillClass(active)}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.id}
-                </button>
-              );
-            })}
+          <div className={cn("sticky top-16 z-30 border-b-2 border-slate-200 py-3", ac.contentBg)}>
+            <div
+              role="tablist"
+              aria-label="Seções do guia de IA"
+              className="flex gap-2 overflow-x-auto snap-x [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {TABS.map((tab, index) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                const count = tabCounts[tab.id];
+                return (
+                  <button
+                    key={tab.id}
+                    ref={(node) => {
+                      tabRefs.current[index] = node;
+                    }}
+                    type="button"
+                    role="tab"
+                    id={`tab-${tab.slug}`}
+                    aria-selected={active}
+                    aria-controls={`panel-${tab.slug}`}
+                    tabIndex={active ? 0 : -1}
+                    onClick={() => selectTab(tab.id)}
+                    onKeyDown={(event) => onTabKeyDown(event, index)}
+                    className={cn(pillClass(active), "shrink-0 snap-start")}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.id}
+                    {count != null ? (
+                      <span className="text-xs font-bold opacity-60">
+                        {count}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {activeTab === "Ferramentas" ? (
-            <div>
+            <div
+              role="tabpanel"
+              id="panel-ferramentas"
+              aria-labelledby="tab-ferramentas"
+              tabIndex={0}
+            >
               <SectionTitle
                 icon={Bot}
                 eyebrow="quais IAs e pra que serve"
                 title="Escolha pela tarefa"
-                description="As principais IAs agrupadas por uso. Filtre por categoria pra achar rápido."
+                description="As principais IAs por uso. Busque, filtre por custo e ordene."
               />
-              <div className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-slate-500">
-                <Sparkles className="h-4 w-4 text-violet-500" />
-                {totalTools} ferramentas no guia
+
+              <div
+                className={cn(
+                  "mb-6 rounded-2xl border-2 p-4",
+                  ac.panelBorder,
+                  ac.panelSoft,
+                )}
+              >
+                <ul className="space-y-1 text-sm font-bold text-slate-700">
+                  <li className="flex gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                    <span>
+                      Lembrete: a IA pode errar. Sempre confira o que ela te der
+                      antes de usar.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                    <span>
+                      Nunca cole senhas, chaves ou dados de clientes nessas
+                      ferramentas.
+                    </span>
+                  </li>
+                </ul>
               </div>
-              <div className="mb-6 flex flex-wrap gap-2">
-                {categorias.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategoria(cat)}
-                    className={filterClass(categoria === cat)}
-                  >
-                    {cat}
-                  </button>
-                ))}
+
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={sortear}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-200 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                >
+                  <Shuffle className="h-4 w-4" />
+                  Me surpreenda
+                </button>
+                <span className="inline-flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <Sparkles className="h-4 w-4 text-violet-500" />
+                  {totalTools} ferramentas no guia
+                </span>
               </div>
-              <div className="space-y-8">
-                {visibleGroups.map((grupo) => (
-                  <div key={grupo.grupo} className="space-y-4">
-                    <div className="flex flex-wrap items-baseline gap-2">
-                      <p className="social-badge inline-flex px-3 py-1 text-xs font-black uppercase">
-                        {grupo.grupo}
-                      </p>
-                      <span className="text-xs font-bold text-slate-400">
-                        {grupo.ferramentas.length}{" "}
-                        {grupo.ferramentas.length === 1
-                          ? "ferramenta"
-                          : "ferramentas"}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600">{grupo.descricao}</p>
-                    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                      {grupo.ferramentas.map((tool) => (
-                        <ToolCard key={tool.nome} tool={tool} />
-                      ))}
-                    </div>
+
+              {surpresa ? (
+                <div className="mb-8 rounded-2xl border-2 border-violet-300 bg-violet-50 p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs font-black uppercase text-violet-700">
+                      Sugestão da sorte
+                    </p>
+                    <button
+                      type="button"
+                      onClick={sortear}
+                      className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                    >
+                      <Shuffle className="h-3 w-3" />
+                      Outra
+                    </button>
                   </div>
-                ))}
+                  <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                    <ToolCard tool={surpresa} />
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mb-4 flex flex-col gap-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={busca}
+                    onChange={(event) => setBusca(event.target.value)}
+                    placeholder="Buscar ferramenta por nome..."
+                    aria-label="Buscar ferramenta"
+                    className="w-full rounded-full border-2 border-slate-300 bg-white py-2 pl-10 pr-4 text-sm font-medium text-slate-800 outline-none transition-all focus:border-violet-500 focus:ring-4 focus:ring-violet-100"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {categorias.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategoria(cat)}
+                      className={filterClass(categoria === cat)}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {custoOptions.map((op) => (
+                    <button
+                      key={op}
+                      type="button"
+                      onClick={() => setCustoFiltro(op)}
+                      className={filterClass(custoFiltro === op)}
+                    >
+                      {op}
+                    </button>
+                  ))}
+                  <span className="mx-1 h-5 w-px bg-slate-300" />
+                  {(["Relevância", "A-Z"] as const).map((op) => (
+                    <button
+                      key={op}
+                      type="button"
+                      onClick={() => setOrdenar(op)}
+                      className={filterClass(ordenar === op)}
+                    >
+                      {op}
+                    </button>
+                  ))}
+                  <span className="ml-auto text-xs font-bold text-slate-500">
+                    {toolsFiltrados.length}{" "}
+                    {toolsFiltrados.length === 1 ? "ferramenta" : "ferramentas"}
+                  </span>
+                </div>
               </div>
+
+              {toolsFiltrados.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-8 text-center">
+                  <p className="font-display text-lg font-black text-slate-950">
+                    Nada encontrado
+                  </p>
+                  <p className="mx-auto mt-1 max-w-md text-sm text-slate-600">
+                    Tente outro termo ou troque os filtros.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={limparFiltros}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Limpar filtros
+                  </button>
+                </div>
+              ) : isFiltering ? (
+                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                  {toolsOrdenados.map((tool) => (
+                    <ToolCard key={tool.nome} tool={tool} />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-8">
+                  {iaTools.map((grupo) => (
+                    <div key={grupo.grupo} className="space-y-4">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <p className="social-badge inline-flex px-3 py-1 text-xs font-black uppercase">
+                          {grupo.grupo}
+                        </p>
+                        <span className="text-xs font-bold text-slate-400">
+                          {grupo.ferramentas.length}{" "}
+                          {grupo.ferramentas.length === 1
+                            ? "ferramenta"
+                            : "ferramentas"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600">{grupo.descricao}</p>
+                      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                        {grupo.ferramentas.map((tool) => (
+                          <ToolCard
+                            key={tool.nome}
+                            tool={{ ...tool, categoria: grupo.grupo }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <Link
                 href="/ferramentas?categoria=IA"
                 className={cn(
@@ -391,7 +696,13 @@ export default function GuiaIa() {
           ) : null}
 
           {activeTab === "Descubra sua IA" ? (
-            <div className="space-y-8">
+            <div
+              role="tabpanel"
+              id="panel-descubra"
+              aria-labelledby="tab-descubra"
+              tabIndex={0}
+              className="space-y-8"
+            >
               <div>
                 <SectionTitle
                   icon={Compass}
@@ -409,9 +720,7 @@ export default function GuiaIa() {
                         key={opcao.rotulo}
                         type="button"
                         onClick={() => setQuizPick(opcao)}
-                        className={filterClass(
-                          quizPick?.rotulo === opcao.rotulo,
-                        )}
+                        className={filterClass(quizPick?.rotulo === opcao.rotulo)}
                       >
                         {opcao.rotulo}
                       </button>
@@ -476,7 +785,13 @@ export default function GuiaIa() {
           ) : null}
 
           {activeTab === "Como usar" ? (
-            <div className="space-y-10">
+            <div
+              role="tabpanel"
+              id="panel-como-usar"
+              aria-labelledby="tab-como-usar"
+              tabIndex={0}
+              className="space-y-10"
+            >
               <div>
                 <SectionTitle
                   icon={Lightbulb}
@@ -553,7 +868,13 @@ export default function GuiaIa() {
           ) : null}
 
           {activeTab === "Aprender" ? (
-            <div className="space-y-10">
+            <div
+              role="tabpanel"
+              id="panel-aprender"
+              aria-labelledby="tab-aprender"
+              tabIndex={0}
+              className="space-y-10"
+            >
               <div className="card-brutal flex flex-col gap-4 rounded-2xl bg-violet-100 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-display text-2xl font-black text-slate-950">
@@ -580,13 +901,25 @@ export default function GuiaIa() {
                   title="Cursos pra aprender IA"
                   description="Materiais gratuitos pra entender e usar IA, do zero ao intermediário."
                 />
+                <div className="mb-5 flex flex-wrap gap-2">
+                  {niveisCurso.map((nivel) => (
+                    <button
+                      key={nivel}
+                      type="button"
+                      onClick={() => setNivelCurso(nivel)}
+                      className={filterClass(nivelCurso === nivel)}
+                    >
+                      {nivel}
+                    </button>
+                  ))}
+                </div>
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  {iaCursos.map((curso) => (
+                  {cursosFiltrados.map((curso) => (
                     <motion.div
                       key={curso.nome}
                       {...fadeUp}
                       whileHover={{ y: -4 }}
-                      className="card-brutal flex flex-col rounded-2xl bg-white p-5"
+                      className="card-brutal flex flex-col rounded-2xl bg-white p-5 transition-shadow duration-200 hover:shadow-[8px_8px_0_#c4b5fd]"
                     >
                       <div className="flex items-center gap-3">
                         <BrandLogo url={curso.url} nome={curso.fonte} />
@@ -669,7 +1002,12 @@ export default function GuiaIa() {
           ) : null}
 
           {activeTab === "Criadores" ? (
-            <div>
+            <div
+              role="tabpanel"
+              id="panel-criadores"
+              aria-labelledby="tab-criadores"
+              tabIndex={0}
+            >
               <SectionTitle
                 icon={Youtube}
                 eyebrow="quem acompanhar"
@@ -682,7 +1020,7 @@ export default function GuiaIa() {
                     key={criador.nome}
                     {...fadeUp}
                     whileHover={{ y: -4 }}
-                    className="card-brutal flex flex-col rounded-2xl bg-white p-5"
+                    className="card-brutal flex flex-col rounded-2xl bg-white p-5 transition-shadow duration-200 hover:shadow-[8px_8px_0_#c4b5fd]"
                   >
                     <div className="flex items-center gap-3">
                       <BrandLogo url={criador.url} nome={criador.nome} />
@@ -729,7 +1067,13 @@ export default function GuiaIa() {
           ) : null}
 
           {activeTab === "Notícias e mercado" ? (
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div
+              role="tabpanel"
+              id="panel-noticias-mercado"
+              aria-labelledby="tab-noticias-mercado"
+              tabIndex={0}
+              className="grid gap-5 lg:grid-cols-2"
+            >
               <div>
                 <div className="mb-4 flex items-center gap-2">
                   <Newspaper className={cn("h-6 w-6", ac.iconMuted)} />
@@ -752,7 +1096,12 @@ export default function GuiaIa() {
                     </Link>
                   </div>
                 ) : (
-                  <ProGate description="Aqui ficam todas as notícias de IA num só lugar. Assine o Pro e acompanhe tudo em tempo real, sem limite." />
+                  <div>
+                    <p className="mb-3 text-sm font-bold text-violet-700">
+                      No Pro: notícias de IA em tempo real, sem limite.
+                    </p>
+                    <ProGate description="Aqui ficam todas as notícias de IA num só lugar. Assine o Pro e acompanhe tudo em tempo real, sem limite." />
+                  </div>
                 )}
               </div>
               <div>
@@ -769,13 +1118,29 @@ export default function GuiaIa() {
                     </p>
                   </div>
                 ) : (
-                  <ProGate description="No Pro você acompanha o mercado e as bolsas das empresas de IA: valores, variações e destaques. Chegando em breve." />
+                  <div>
+                    <p className="mb-3 text-sm font-bold text-violet-700">
+                      No Pro: mercado e bolsa de IA, com valores e variações.
+                    </p>
+                    <ProGate description="No Pro você acompanha o mercado e as bolsas das empresas de IA: valores, variações e destaques. Chegando em breve." />
+                  </div>
                 )}
               </div>
             </div>
           ) : null}
         </div>
       </section>
+
+      {showTop ? (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Voltar ao topo"
+          className="fixed bottom-6 right-6 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[4px_4px_0_#0f172a]"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </button>
+      ) : null}
     </Layout>
   );
 }
