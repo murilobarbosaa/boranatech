@@ -1,16 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AiChatMessage } from "@/lib/aiClient";
 import { callAiStructured } from "@/lib/aiClient";
 import { cn } from "@/lib/utils";
 import type { PlanoEstudos, StudyPlanResponse } from "@shared/estudos/schema";
 import EstudosChatPanel from "./EstudosChatPanel";
 import PlanoEstudosCanvas from "./PlanoEstudosCanvas";
+
+// COPY pendente de sign-off da Ana. Aqui só os rótulos das abas (mobile).
+// TODO(Ana): pendente de sign-off
+const COPY = {
+  tabConversa: "Conversa",
+  tabPlano: "Meu plano",
+} as const;
+
+type EstudosTab = "conversa" | "plano";
 
 // Mensagem inicial do Natechinho, já aprovada (mesmo texto da tela atual).
 const INITIAL_GREETING =
@@ -57,8 +67,21 @@ export default function EstudosWorkspace() {
   const [plano, setPlano] = useState<PlanoEstudos | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<EstudosTab>("conversa");
+  const [hasPlanoUpdate, setHasPlanoUpdate] = useState(false);
 
   const isLarge = useMinWidth(LG_BREAKPOINT);
+
+  // Ref pra ler a aba ativa no momento da RESPOSTA (o usuário pode ter trocado
+  // de aba durante o loading), não no momento do envio.
+  const activeTabRef = useRef<EstudosTab>(activeTab);
+
+  function handleTabChange(value: string) {
+    const tab: EstudosTab = value === "plano" ? "plano" : "conversa";
+    activeTabRef.current = tab;
+    setActiveTab(tab);
+    if (tab === "plano") setHasPlanoUpdate(false);
+  }
 
   async function handleSend(text: string) {
     if (loading) return;
@@ -81,6 +104,15 @@ export default function EstudosWorkspace() {
       ]);
       // Substitui o plano inteiro a cada turno; as keys cuidam da animação.
       setPlano(data.plano);
+
+      // Pulsa a aba "Meu plano" só se o plano tem conteúdo visível E o usuário
+      // está olhando a aba "Conversa". Turno vazio (sem área e sem semanas) não
+      // pulsa. Em lg+ as duas colunas já aparecem, então o pulse é irrelevante.
+      const planoTemConteudo =
+        data.plano.area != null || data.plano.semanas.length > 0;
+      if (planoTemConteudo && activeTabRef.current === "conversa") {
+        setHasPlanoUpdate(true);
+      }
     } catch (err) {
       // Erro não apaga o último plano bom; aparece no chat.
       setError(getAiErrorMessage(err));
@@ -117,9 +149,36 @@ export default function EstudosWorkspace() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className={PANEL_HEIGHT}>{chat}</div>
-      <div className={PANEL_HEIGHT}>{canvas}</div>
-    </div>
+    <Tabs value={activeTab} onValueChange={handleTabChange} className="gap-3">
+      <TabsList className="grid w-full grid-cols-2 border-2 border-slate-900 bg-violet-50 p-1">
+        <TabsTrigger
+          value="conversa"
+          className="font-display font-black data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+        >
+          {COPY.tabConversa}
+        </TabsTrigger>
+        <TabsTrigger
+          value="plano"
+          className="relative font-display font-black data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+        >
+          {COPY.tabPlano}
+          {hasPlanoUpdate ? (
+            <span
+              className="absolute right-1.5 top-1 flex h-2.5 w-2.5"
+              aria-hidden
+            >
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-600" />
+            </span>
+          ) : null}
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="conversa" className={PANEL_HEIGHT}>
+        {chat}
+      </TabsContent>
+      <TabsContent value="plano" className={PANEL_HEIGHT}>
+        {canvas}
+      </TabsContent>
+    </Tabs>
   );
 }
