@@ -47,6 +47,7 @@ const nivelGuides = [
 ];
 
 const AREA_ALL = "Todas";
+const TECH_ALL = "Todas";
 const SPECIAL_LABELS: Record<string, string> = {
   carreira: "Carreira",
   fullstack: "Full Stack",
@@ -85,11 +86,19 @@ export default function Projetos() {
   const [nivel, setNivel] = useState("Todos");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [tech, setTech] = useState(TECH_ALL);
   const areaSlugOptions = useMemo<(string | null)[]>(
     () => [
       AREA_ALL,
       ...Array.from(new Set(projectItems.map((p) => p.areaSlug))),
     ],
+    [projectItems],
+  );
+  const techOptions = useMemo(
+    () =>
+      Array.from(new Set(projectItems.flatMap((p) => p.ferramentas))).sort(
+        (a, b) => a.localeCompare(b, "pt-BR"),
+      ),
     [projectItems],
   );
 
@@ -103,12 +112,13 @@ export default function Projetos() {
   const filtered = projectItems.filter((p) => {
     const matchArea = area === AREA_ALL || p.areaSlug === area;
     const matchNivel = nivel === "Todos" || p.nivel === nivel;
+    const matchTech = tech === TECH_ALL || p.ferramentas.includes(tech);
     const matchQuery =
       !q ||
       p.nome.toLowerCase().includes(q) ||
       p.objetivo.toLowerCase().includes(q) ||
       p.ferramentas.some((f) => f.toLowerCase().includes(q));
-    return matchArea && matchNivel && matchQuery;
+    return matchArea && matchNivel && matchTech && matchQuery;
   });
 
   const grupos = filtered.reduce<{ slug: string | null; itens: Projeto[] }[]>(
@@ -215,6 +225,19 @@ export default function Projetos() {
             >
               {niveis.map((n) => (
                 <option key={n}>{n === "Todos" ? "Todos os níveis" : n}</option>
+              ))}
+            </select>
+            <select
+              value={tech}
+              onChange={(e) => setTech(e.target.value)}
+              aria-label="Filtrar por tecnologia"
+              className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+            >
+              <option value={TECH_ALL}>Todas as tecnologias</option>
+              {techOptions.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
               ))}
             </select>
             </div>
