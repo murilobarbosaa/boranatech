@@ -148,7 +148,7 @@ export async function buildStudyCatalogMessage(
   ].join("\n");
 }
 
-type CanonicalRow = { title: string; slug: string };
+type CanonicalRow = { title: string; slug: string; url: string | null };
 type CanonicalMaps = Record<PlanoItemTipo, Map<string, CanonicalRow>>;
 
 /**
@@ -184,20 +184,39 @@ export async function validateStudyPlanRefs(
     projeto: new Map(),
   };
 
-  async function loadAreaScoped(
-    tipo: "curso" | "projeto",
-    table: "courses" | "projects",
-  ) {
-    const ids = Array.from(idsByTipo[tipo]);
+  async function loadCourses() {
+    const ids = Array.from(idsByTipo.curso);
     if (ids.length === 0) return;
     const { data } = await supabaseAdmin
-      .from(table)
+      .from("courses")
+      .select("id, title, slug, area_slug, url")
+      .eq("is_published", true)
+      .in("id", ids);
+    for (const row of data ?? []) {
+      if (areaSlug && row.area_slug && row.area_slug !== areaSlug) continue;
+      canonical.curso.set(row.id, {
+        title: row.title,
+        slug: row.slug ?? "",
+        url: row.url ?? null,
+      });
+    }
+  }
+
+  async function loadProjects() {
+    const ids = Array.from(idsByTipo.projeto);
+    if (ids.length === 0) return;
+    const { data } = await supabaseAdmin
+      .from("projects")
       .select("id, title, slug, area_slug")
       .eq("is_published", true)
       .in("id", ids);
     for (const row of data ?? []) {
       if (areaSlug && row.area_slug && row.area_slug !== areaSlug) continue;
-      canonical[tipo].set(row.id, { title: row.title, slug: row.slug ?? "" });
+      canonical.projeto.set(row.id, {
+        title: row.title,
+        slug: row.slug ?? "",
+        url: null,
+      });
     }
   }
 
@@ -216,7 +235,11 @@ export async function validateStudyPlanRefs(
           : [];
         if (!related.includes(areaSlug)) continue;
       }
-      canonical.tecnologia.set(row.id, { title: row.name, slug: row.slug ?? "" });
+      canonical.tecnologia.set(row.id, {
+        title: row.name,
+        slug: row.slug ?? "",
+        url: null,
+      });
     }
   }
 
@@ -225,16 +248,20 @@ export async function validateStudyPlanRefs(
     if (ids.length === 0) return;
     const { data } = await supabaseAdmin
       .from("platforms")
-      .select("id, name, slug")
+      .select("id, name, slug, url")
       .eq("is_published", true)
       .in("id", ids);
     for (const row of data ?? [])
-      canonical.plataforma.set(row.id, { title: row.name, slug: row.slug ?? "" });
+      canonical.plataforma.set(row.id, {
+        title: row.name,
+        slug: row.slug ?? "",
+        url: row.url ?? null,
+      });
   }
 
   await Promise.all([
-    loadAreaScoped("curso", "courses"),
-    loadAreaScoped("projeto", "projects"),
+    loadCourses(),
+    loadProjects(),
     loadTechnologies(),
     loadPlatforms(),
   ]);
@@ -248,7 +275,7 @@ export async function validateStudyPlanRefs(
         dropped++;
         continue;
       }
-      kept.push({ ...item, titulo: row.title, slug: row.slug });
+      kept.push({ ...item, titulo: row.title, slug: row.slug, url: row.url });
     }
     semana.itens = kept;
   }

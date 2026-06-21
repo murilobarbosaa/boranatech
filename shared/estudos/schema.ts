@@ -51,6 +51,12 @@ export const PlanoItemSchema = z.object({
     .describe(
       "Slug do item. Pode deixar vazio; o servidor sobrescreve pelo slug canônico do banco.",
     ),
+  url: z
+    .string()
+    .nullable()
+    .describe(
+      "URL externa do item. Deixe null; o servidor sobrescreve com a URL canônica do banco quando houver.",
+    ),
 });
 
 export const PlanoSemanaSchema = z.object({
