@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 interface EstudosChatPanelProps {
   messages: AiChatMessage[];
-  loading: boolean;
+  streaming: boolean;
   error: string;
   onSend: (text: string) => void;
   title?: string;
@@ -44,7 +44,7 @@ function AssistantAvatar() {
 
 export default function EstudosChatPanel({
   messages,
-  loading,
+  streaming,
   error,
   onSend,
   title = "Plano de estudos com o Natechinho",
@@ -58,14 +58,20 @@ export default function EstudosChatPanel({
     const el = scrollContainerRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [messages, loading]);
+  }, [messages, streaming]);
 
   function handleSend() {
     const trimmed = input.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || streaming) return;
     onSend(trimmed);
     setInput("");
   }
+
+  const lastMessage = messages[messages.length - 1];
+  const showTypingDots =
+    streaming &&
+    lastMessage?.role === "assistant" &&
+    lastMessage.content === "";
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -106,19 +112,21 @@ export default function EstudosChatPanel({
           <div className="flex w-full flex-col gap-3">
             {messages.map((m, i) =>
               m.role === "assistant" ? (
-                <div key={i} className="flex items-end justify-start gap-2">
-                  <AssistantAvatar />
-                  <div
-                    className={cn(
-                      "max-w-[82%] rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:max-w-[68%] sm:px-4 sm:py-3",
-                      "text-[15px] leading-relaxed text-slate-900 sm:text-base",
-                    )}
-                  >
-                    <p className="whitespace-pre-wrap break-words font-body">
-                      {m.content}
-                    </p>
+                m.content === "" ? null : (
+                  <div key={i} className="flex items-end justify-start gap-2">
+                    <AssistantAvatar />
+                    <div
+                      className={cn(
+                        "max-w-[82%] rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:max-w-[68%] sm:px-4 sm:py-3",
+                        "text-[15px] leading-relaxed text-slate-900 sm:text-base",
+                      )}
+                    >
+                      <p className="whitespace-pre-wrap break-words font-body">
+                        {m.content}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )
               ) : (
                 <div key={i} className="flex justify-end">
                   <div
@@ -135,7 +143,7 @@ export default function EstudosChatPanel({
               ),
             )}
 
-            {loading ? (
+            {showTypingDots ? (
               <div className="flex items-end justify-start gap-2">
                 <AssistantAvatar />
                 <div className="flex max-w-[82%] items-center rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3.5 py-2.5 shadow-[0_1px_1px_rgba(11,20,26,0.08)] sm:px-4">
@@ -168,7 +176,7 @@ export default function EstudosChatPanel({
               className="max-h-32 min-h-[46px] w-full resize-y rounded-3xl border-0 bg-transparent px-4 py-3 font-body text-[15px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-500 disabled:opacity-60 sm:px-4 sm:py-3.5 sm:text-base"
               placeholder={placeholder}
               value={input}
-              disabled={loading}
+              disabled={streaming}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
             />
@@ -176,11 +184,11 @@ export default function EstudosChatPanel({
           <button
             type="button"
             className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-700 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:bg-violet-800 enabled:hover:-translate-y-px disabled:opacity-45 sm:h-[52px] sm:w-[52px]"
-            disabled={loading || !input.trim()}
+            disabled={streaming || !input.trim()}
             aria-label="Enviar"
             onClick={handleSend}
           >
-            {loading ? (
+            {streaming ? (
               <Spinner className="h-5 w-5 sm:h-6 sm:w-6" />
             ) : (
               <Send className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.25} />

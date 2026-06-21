@@ -7,11 +7,16 @@ import {
 } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AiChatMessage } from "@/lib/aiClient";
-import { callAiStructured } from "@/lib/aiClient";
+import { callAiChatStream, callAiStructured } from "@/lib/aiClient";
 import { cn } from "@/lib/utils";
-import type { PlanoEstudos, StudyPlanResponse } from "@shared/estudos/schema";
+import type { PlanoEstudos } from "@shared/estudos/schema";
 import EstudosChatPanel from "./EstudosChatPanel";
 import PlanoEstudosCanvas from "./PlanoEstudosCanvas";
+
+// Mesma cadência de reveal do CurriculoChatPanel: os tokens entram num buffer e
+// são revelados a ritmo fixo no content da última msg assistant.
+const TYPING_CHARS_PER_SECOND = 45;
+const TYPING_TICK_MS = Math.max(8, Math.round(1000 / TYPING_CHARS_PER_SECOND));
 
 // COPY pendente de sign-off da Ana. Aqui só os rótulos das abas (mobile).
 // TODO(Ana): pendente de sign-off
@@ -65,8 +70,11 @@ export default function EstudosWorkspace() {
     { role: "assistant", content: INITIAL_GREETING },
   ]);
   const [plano, setPlano] = useState<PlanoEstudos | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  // Loadings SEPARADOS: chatStreaming controla a bolha/typing do chat;
+  // planLoading controla o canvas (shimmer/pill do PLANO, não da conversa).
+  const [chatStreaming, setChatStreaming] = useState(false);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [chatError, setChatError] = useState("");
   const [activeTab, setActiveTab] = useState<EstudosTab>("conversa");
   const [hasPlanoUpdate, setHasPlanoUpdate] = useState(false);
 
@@ -83,53 +91,115 @@ export default function EstudosWorkspace() {
     if (tab === "plano") setHasPlanoUpdate(false);
   }
 
-  async function handleSend(text: string) {
-    if (loading) return;
-    setError("");
+  // a) Conversa em streaming. Mesma mecânica do CurriculoChatPanel: buffer +
+  // typewriter revelando no content da última msg assistant.
+  async function runChatStream(afterUser: AiChatMessage[]) {
+    const fullBufferRef = { current: "" };
+    const streamDoneRef = { current: false };
+    let revealedLength = 0;
+
+    const revealDone = new Promise<void>((resolve) => {
+      const timer = window.setInterval(() => {
+        const target = fullBufferRef.current;
+        if (revealedLength < target.length) {
+          revealedLength = Math.min(target.length, revealedLength + 1);
+          const slice = target.slice(0, revealedLength);
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") {
+              next[next.length - 1] = { role: "assistant", content: slice };
+            }
+            return next;
+          });
+        } else if (streamDoneRef.current) {
+          window.clearInterval(timer);
+          resolve();
+        }
+      }, TYPING_TICK_MS);
+    });
+
+    let streamError: unknown = null;
+    try {
+      await callAiChatStream("study-plan", afterUser, {
+        onToken: (delta) => {
+          fullBufferRef.current += delta;
+        },
+        onError: (msg) => {
+          console.warn("[EstudosWorkspace] stream error:", msg);
+        },
+      });
+    } catch (err) {
+      streamError = err;
+    }
+
+    streamDoneRef.current = true;
+    await revealDone;
+    setChatStreaming(false);
+
+    if (streamError) {
+      setChatError(getAiErrorMessage(streamError));
+      // Remove a bolha vazia se nenhum token chegou.
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && last.content === "") {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+    }
+  }
+
+  // b) Plano estruturado em paralelo. Erro NÃO apaga o último plano bom.
+  async function runPlanBuild(afterUser: AiChatMessage[]) {
+    try {
+      const { data } = await callAiStructured<PlanoEstudos>(
+        "study-plan-build",
+        { messages: afterUser },
+      );
+      // Substitui o plano inteiro a cada turno; as keys cuidam da animação.
+      setPlano(data);
+
+      // Pulsa "Meu plano" só com conteúdo visível E aba ativa = conversa.
+      const planoTemConteudo = data.area != null || data.semanas.length > 0;
+      if (planoTemConteudo && activeTabRef.current === "conversa") {
+        setHasPlanoUpdate(true);
+      }
+    } catch (err) {
+      // Mantém o plano atual; o próximo turno reconstrói. Sem UI alarmante.
+      console.warn("[EstudosWorkspace] plano build error:", err);
+    } finally {
+      setPlanLoading(false);
+    }
+  }
+
+  function handleSend(text: string) {
+    if (chatStreaming) return;
+    setChatError("");
 
     const afterUser: AiChatMessage[] = [
       ...messages,
       { role: "user", content: text },
     ];
-    setMessages(afterUser);
-    setLoading(true);
+    // user + bolha assistant vazia (alvo do streaming).
+    setMessages([...afterUser, { role: "assistant", content: "" }]);
+    setChatStreaming(true);
+    setPlanLoading(true);
 
-    try {
-      const { data } = await callAiStructured<StudyPlanResponse>("study-plan", {
-        messages: afterUser,
-      });
-      setMessages([
-        ...afterUser,
-        { role: "assistant", content: data.mensagem },
-      ]);
-      // Substitui o plano inteiro a cada turno; as keys cuidam da animação.
-      setPlano(data.plano);
-
-      // Pulsa a aba "Meu plano" só se o plano tem conteúdo visível E o usuário
-      // está olhando a aba "Conversa". Turno vazio (sem área e sem semanas) não
-      // pulsa. Em lg+ as duas colunas já aparecem, então o pulse é irrelevante.
-      const planoTemConteudo =
-        data.plano.area != null || data.plano.semanas.length > 0;
-      if (planoTemConteudo && activeTabRef.current === "conversa") {
-        setHasPlanoUpdate(true);
-      }
-    } catch (err) {
-      // Erro não apaga o último plano bom; aparece no chat.
-      setError(getAiErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
+    // As DUAS chamadas disparam em paralelo (sem await sequencial).
+    void runChatStream(afterUser);
+    void runPlanBuild(afterUser);
   }
 
   const chat = (
     <EstudosChatPanel
       messages={messages}
-      loading={loading}
-      error={error}
+      streaming={chatStreaming}
+      error={chatError}
       onSend={handleSend}
     />
   );
-  const canvas = <PlanoEstudosCanvas plano={plano} loading={loading} />;
+  const canvas = <PlanoEstudosCanvas plano={plano} loading={planLoading} />;
 
   if (isLarge) {
     return (

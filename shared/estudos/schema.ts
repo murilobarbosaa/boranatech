@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 /**
- * Schema canônico da resposta do Natechinho no chat de plano de estudos.
+ * Schema canônico do plano de estudos estruturado (PlanoEstudos).
  *
- * Uma única chamada devolve dois campos: `mensagem` (a fala conversacional do
- * Natechinho, no tom de sempre) e `plano` (o estado estruturado do plano de
- * estudos). Os itens do plano referenciam SÓ conteúdo curado real, por UUID,
- * validado no servidor antes de chegar no front.
+ * A conversa do Natechinho (tool study-plan) roda em streaming separado; este
+ * plano é montado pela tool estruturada study-plan-build a partir do histórico.
+ * Os itens referenciam SÓ conteúdo curado real, por UUID, validado no servidor
+ * (titulo/slug/url canônicos) antes de chegar no front.
  *
  * Decisão de design (mesma do currículo): campos sem dado obrigatório usam
  * .nullable() em vez de .optional(), porque o structured output da OpenAI em
@@ -109,21 +109,10 @@ export const PlanoEstudosSchema = z.object({
     ),
 });
 
-export const StudyPlanResponseSchema = z.object({
-  mensagem: z
-    .string()
-    .min(1)
-    .describe(
-      "Fala conversacional do Natechinho, no tom acolhedor de sempre. É o texto que aparece no chat.",
-    ),
-  plano: PlanoEstudosSchema,
-});
-
 export type PlanoArea = z.infer<typeof PlanoAreaSchema>;
 export type PlanoItem = z.infer<typeof PlanoItemSchema>;
 export type PlanoSemana = z.infer<typeof PlanoSemanaSchema>;
 export type PlanoEstudos = z.infer<typeof PlanoEstudosSchema>;
-export type StudyPlanResponse = z.infer<typeof StudyPlanResponseSchema>;
 export type PlanoItemTipo = (typeof PLANO_ITEM_TIPOS)[number];
 export type PlanoNivel = (typeof PLANO_NIVEIS)[number];
 export type PlanoStatus = (typeof PLANO_STATUS)[number];
