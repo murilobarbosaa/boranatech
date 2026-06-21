@@ -26,6 +26,10 @@ export interface AiToolConfig {
   maxTokens?: number;
   injectStudyCatalog?: boolean;
   validateCatalogRefs?: boolean;
+  // Quando true, o log de sucesso vai com status não-contado ("support") em vez
+  // de "success", então get_ai_usage_today (que só conta 'success') não consome
+  // cota. Segue o precedente do github.ts ("skipped").
+  uncounted?: boolean;
 }
 
 const curriculoJsonSchema = toOpenAIStrictSchema(CurriculoSchema);
@@ -484,6 +488,8 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     maxTokens: 4_000,
     injectStudyCatalog: true,
     validateCatalogRefs: true,
+    // Chamada de apoio do turno (1:1 com o chat). Não consome cota diária.
+    uncounted: true,
     description: "Monta o plano de estudos estruturado a partir da conversa",
     responseFormat: {
       name: "study_plan",

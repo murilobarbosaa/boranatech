@@ -225,7 +225,10 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         userId,
         tool: toolKey,
         requestId,
-        status: "success",
+        // Tools "uncounted" logam com status não-contado pra não consumir cota
+        // (get_ai_usage_today só conta 'success'). A chamada aconteceu, só não
+        // é medida. Mesmo precedente do github.ts ("skipped").
+        status: toolConfig.uncounted ? "support" : "success",
         inputChars,
         outputChars,
         inputTokens: data.usage?.prompt_tokens || 0,
