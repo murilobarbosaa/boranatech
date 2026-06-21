@@ -93,25 +93,40 @@ export default function Salarios() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((row, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="p-3">{row.area}</td>
-                      <td className="p-3">{row.level}</td>
-                      <td className="p-3">{row.city}</td>
-                      <td className="p-3">
-                        {Number(row.clt).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
-                      </td>
-                      <td className="p-3">
-                        {Number(row.pj).toLocaleString("pt-BR", {
-                          style: "currency",
-                          currency: "BRL",
-                        })}
+                  {filtered.length === 0 ? (
+                    <tr className="border-t">
+                      <td
+                        colSpan={5}
+                        className="p-6 text-center text-sm font-bold text-slate-500"
+                      >
+                        Nenhum dado salarial para esse recorte. Tente ampliar a
+                        área, o nível ou a cidade.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filtered.map((row) => (
+                      <tr
+                        key={`${row.area}-${row.level}-${row.city}`}
+                        className="border-t"
+                      >
+                        <td className="p-3">{row.area}</td>
+                        <td className="p-3">{row.level}</td>
+                        <td className="p-3">{row.city}</td>
+                        <td className="p-3">
+                          {Number(row.clt).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </td>
+                        <td className="p-3">
+                          {Number(row.pj).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -200,11 +215,16 @@ export default function Salarios() {
                 Tempo de experiência
                 <input
                   type="number"
+                  min={0}
                   className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3"
                   value={experience}
-                  onChange={(event) =>
-                    setExperience(Number(event.target.value))
-                  }
+                  onChange={(event) => {
+                    const next =
+                      event.target.value === ""
+                        ? 0
+                        : Number(event.target.value);
+                    setExperience(Number.isNaN(next) || next < 0 ? 0 : next);
+                  }}
                 />
               </label>
               <div
