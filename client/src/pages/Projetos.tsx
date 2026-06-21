@@ -12,6 +12,7 @@ import {
   ExternalLink,
   PlayCircle,
   Search,
+  X,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -129,6 +130,39 @@ export default function Projetos() {
         : baseFiltered.filter((p) => p.nivel === n).length;
     return acc;
   }, {});
+
+  function limparFiltros() {
+    setArea(AREA_ALL);
+    setNivel("Todos");
+    setTech(TECH_ALL);
+    setQuery("");
+  }
+
+  const activeFilters: { key: string; label: string; clear: () => void }[] = [];
+  if (area !== AREA_ALL)
+    activeFilters.push({
+      key: "area",
+      label: `Área: ${labelForAreaSlug(area)}`,
+      clear: () => setArea(AREA_ALL),
+    });
+  if (nivel !== "Todos")
+    activeFilters.push({
+      key: "nivel",
+      label: `Nível: ${nivel}`,
+      clear: () => setNivel("Todos"),
+    });
+  if (tech !== TECH_ALL)
+    activeFilters.push({
+      key: "tech",
+      label: `Tecnologia: ${tech}`,
+      clear: () => setTech(TECH_ALL),
+    });
+  if (q)
+    activeFilters.push({
+      key: "query",
+      label: `Busca: "${query.trim()}"`,
+      clear: () => setQuery(""),
+    });
 
   const grupos = filtered.reduce<{ slug: string | null; itens: Projeto[] }[]>(
     (acc, p) => {
@@ -252,6 +286,29 @@ export default function Projetos() {
               ))}
             </select>
             </div>
+            {activeFilters.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {activeFilters.map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={f.clear}
+                    aria-label={`Remover filtro ${f.label}`}
+                    className="inline-flex items-center gap-1 rounded-full border-2 border-orange-300 bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800 transition-colors hover:bg-orange-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                  >
+                    {f.label}
+                    <X className="h-3 w-3" aria-hidden />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={limparFiltros}
+                  className="rounded text-xs font-bold text-orange-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </section>
