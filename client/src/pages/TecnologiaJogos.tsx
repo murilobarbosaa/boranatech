@@ -39,6 +39,67 @@ function themeFor(name: string) {
   return CARD_THEMES[hash % CARD_THEMES.length];
 }
 
+const GAME_EMOJI: Record<string, string> = {
+  "Among Us": "🚀",
+  "Angry Birds": "🐦",
+  "Apex Legends": "🎯",
+  "Baba Is You": "🧩",
+  "Battlefield 1": "🎖️",
+  "Beat Saber": "🎶",
+  Celeste: "🏔️",
+  "Cities: Skylines": "🏙️",
+  "Counter-Strike: Global Offensive": "🔫",
+  Cuphead: "☕",
+  "Cyberpunk 2077": "🌃",
+  "Dead Cells": "⚔️",
+  "Disco Elysium": "🕵️",
+  Doom: "😈",
+  "Dota 2": "🛡️",
+  "EA Sports FC 24": "⚽",
+  "Enter the Gungeon": "🔫",
+  Factorio: "🏭",
+  "Final Fantasy VII Remake": "🗡️",
+  Fortnite: "🪂",
+  "Gears of War": "⚙️",
+  "Genshin Impact": "⛩️",
+  "Grand Theft Auto V": "🚗",
+  "Half-Life 2": "🧪",
+  Hearthstone: "🃏",
+  "Hellblade: Senua's Sacrifice": "🌀",
+  "Hollow Knight": "🪲",
+  "Hotline Miami": "🌴",
+  "Hyper Light Drifter": "⚡",
+  "Katana Zero": "🥷",
+  "Kerbal Space Program": "🛰️",
+  "Minecraft: Java Edition": "⛏️",
+  "Monument Valley": "🏛️",
+  "Ori and the Blind Forest": "🌲",
+  "Papers, Please": "🛂",
+  "Pokemon Go": "📱",
+  "Portal 2": "🌀",
+  "PUBG: Battlegrounds": "🍳",
+  Quake: "👹",
+  "Red Dead Redemption 2": "🤠",
+  RimWorld: "🪐",
+  "Risk of Rain": "🌧️",
+  "Rocket League": "🏎️",
+  "RollerCoaster Tycoon": "🎢",
+  "Sea of Thieves": "🏴‍☠️",
+  "Slay the Spire": "🗼",
+  Spelunky: "🏺",
+  "Stardew Valley": "🌾",
+  "Street Fighter 6": "🥊",
+  Subnautica: "🌊",
+  "Super Mario 64": "🍄",
+  "Team Fortress 2": "🎩",
+  Terraria: "🪓",
+  "The Witcher 3: Wild Hunt": "🐺",
+  Undertale: "❤️",
+  Valorant: "🎯",
+  "Vampire Survivors": "🧛",
+  "Wolfenstein 3D": "🪖",
+};
+
 const JOGOS_DOODLES = [
   { Icon: Gamepad2, cls: "left-[4%] top-[20%] text-fuchsia-500", size: "h-12 w-12" },
   { Icon: Sparkles, cls: "right-[8%] top-[16%] text-violet-500", size: "h-10 w-10" },
@@ -157,6 +218,7 @@ export default function TecnologiaJogos() {
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((g, index) => {
               const theme = themeFor(g.game);
+              const emoji = GAME_EMOJI[g.game];
               return (
                 <AnimatedContent
                   key={g.game}
@@ -186,8 +248,21 @@ export default function TecnologiaJogos() {
                           backgroundSize: "12px 12px",
                         }}
                       />
-                      <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-white/70 bg-white/15 font-display text-lg font-black transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6">
-                        {initials(g.game)}
+                      {emoji ? (
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute -right-2 -top-3 select-none text-6xl opacity-20 transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110"
+                        >
+                          {emoji}
+                        </span>
+                      ) : null}
+                      <span
+                        className={cn(
+                          "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-white/70 bg-white/15 font-display font-black transition-transform duration-200 group-hover:scale-110 group-hover:-rotate-6",
+                          emoji ? "text-2xl" : "text-lg",
+                        )}
+                      >
+                        {emoji ?? initials(g.game)}
                       </span>
                       <div className="relative min-w-0">
                         <h2 className="font-display text-lg font-black leading-tight">
