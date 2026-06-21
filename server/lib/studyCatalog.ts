@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "./supabaseAdmin";
 import type {
+  PlanoEstudos,
   PlanoItemTipo,
-  StudyPlanResponse,
 } from "../../shared/estudos/schema";
 
 /**
@@ -157,10 +157,9 @@ type CanonicalMaps = Record<PlanoItemTipo, Map<string, CanonicalRow>>;
  * canônico. Descarta silenciosamente o resto e loga a quantidade.
  */
 export async function validateStudyPlanRefs(
-  response: StudyPlanResponse,
-): Promise<StudyPlanResponse> {
-  const plano = response.plano;
-  if (!plano?.semanas?.length) return response;
+  plano: PlanoEstudos,
+): Promise<PlanoEstudos> {
+  if (!plano?.semanas?.length) return plano;
 
   const idsByTipo: Record<PlanoItemTipo, Set<string>> = {
     curso: new Set(),
@@ -286,5 +285,5 @@ export async function validateStudyPlanRefs(
     );
   }
 
-  return response;
+  return plano;
 }

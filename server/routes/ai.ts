@@ -10,7 +10,7 @@ import {
   buildStudyCatalogMessage,
   validateStudyPlanRefs,
 } from "../lib/studyCatalog";
-import type { StudyPlanResponse } from "../../shared/estudos/schema";
+import type { PlanoEstudos } from "../../shared/estudos/schema";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
@@ -217,7 +217,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
       let responseData: unknown = validation.data;
       if (toolConfig.validateCatalogRefs) {
         responseData = await validateStudyPlanRefs(
-          validation.data as StudyPlanResponse,
+          validation.data as PlanoEstudos,
         );
       }
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { CurriculoSchema } from "../../shared/curriculo/schema";
-import { StudyPlanResponseSchema } from "../../shared/estudos/schema";
+import { PlanoEstudosSchema } from "../../shared/estudos/schema";
 import { DEFAULT_MODEL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
@@ -29,7 +29,7 @@ export interface AiToolConfig {
 }
 
 const curriculoJsonSchema = toOpenAIStrictSchema(CurriculoSchema);
-const studyPlanJsonSchema = toOpenAIStrictSchema(StudyPlanResponseSchema);
+const planoEstudosJsonSchema = toOpenAIStrictSchema(PlanoEstudosSchema);
 
 export const COST_PER_1K_INPUT_TOKENS = 0.00085;
 export const COST_PER_1K_OUTPUT_TOKENS = 0.0034;
@@ -452,28 +452,49 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     systemPrompt:
       "Você é o Natechinho, especialista em LinkedIn para tecnologia do BoraNaTech, em voz masculina. Gere headlines, bio e palavras-chave para recrutadores.",
   },
+  // TODO(Ana): comportamento ajustado, pendente de sign-off.
+  // study-plan é só a CONVERSA (streaming). O cronograma é montado pela tool
+  // study-plan-build e renderizado num painel ao lado.
   "study-plan": {
     key: "study-plan",
     requiresPro: true,
     requiresAuth: true,
-    mode: "tool",
+    mode: "chat",
     maxInputChars: 5_000,
     temperature: 0.7,
+    model: DEFAULT_MODEL,
+    maxTokens: 800,
+    description: "Conversa do Natechinho para montar plano de estudos",
+    systemPrompt:
+      "Você é o Natechinho, mentor de estudos em tecnologia do BoraNaTech, em voz masculina. Fala em português do Brasil como numa conversa de verdade: tom acolhedor, leve e direto, sem parecer formulário, manual nem robô. Use frases curtas, 'você' naturalmente, e às vezes uma pergunta só por mensagem quando fizer sentido. Com calma, entenda: área de interesse, nível atual, quantas horas por dia consegue estudar, quantos dias na semana, prazo e objetivo. Valide o que a pessoa disse em uma linha quando couber. Se faltar algo importante, pergunte antes de seguir.\n\n" +
+      "IMPORTANTE: o cronograma do plano aparece num painel AO LADO da conversa, montado automaticamente. Então NÃO despeje o plano inteiro como texto na conversa, nem liste as semanas uma a uma. Você pode se referir ao plano de forma geral ('montei seu cronograma aqui do lado', 'dá uma olhada no painel', 'ajustei as primeiras semanas'), convidando a pessoa a olhar e pedir ajustes.\n" +
+      "NÃO cite cursos, plataformas, links nem recursos específicos por nome na conversa. Esses recursos aparecem só no painel (validados). Fale de recursos de forma geral ('separei alguns cursos e projetos pra você', 'tem material pra cada semana no painel'), sem nomear nenhum.",
+  },
+  // study-plan-build: a partir da conversa, devolve só o PLANO estruturado
+  // (PlanoEstudos), referenciando apenas conteúdo curado real (por id), validado
+  // no servidor. Catálogo e validação de refs vivem AQUI.
+  "study-plan-build": {
+    key: "study-plan-build",
+    requiresPro: true,
+    requiresAuth: true,
+    mode: "tool",
+    maxInputChars: 5_000,
+    temperature: 0.4,
     model: DEFAULT_MODEL,
     maxTokens: 4_000,
     injectStudyCatalog: true,
     validateCatalogRefs: true,
-    description: "Gerador de plano de estudos",
+    description: "Monta o plano de estudos estruturado a partir da conversa",
     responseFormat: {
       name: "study_plan",
-      zodSchema: StudyPlanResponseSchema,
-      jsonSchema: studyPlanJsonSchema,
+      zodSchema: PlanoEstudosSchema,
+      jsonSchema: planoEstudosJsonSchema,
     },
     systemPrompt:
-      "Você é o Natechinho, mentor de estudos em tecnologia do BoraNaTech, em voz masculina. Fala em português do Brasil como numa conversa de verdade: tom acolhedor, leve e direto, sem parecer formulário, manual nem robô. Use frases curtas, 'você' naturalmente, e às vezes uma pergunta só por mensagem quando fizer sentido. Com calma, entenda: área de interesse, nível atual, quantas horas por dia consegue estudar, quantos dias na semana, prazo e objetivo. Valide o que a pessoa disse em uma linha quando couber. Quando já tiver contexto suficiente, ofereça o plano semanal com marcos e sugestões de recursos, em blocos fáceis de escanear (parágrafos e listas simples), sempre convidando a ajustar se algo não encaixar. Se faltar algo importante, pergunte antes de fechar o plano.\n\n" +
-      "FORMATO DA RESPOSTA (camada mecânica, não muda seu tom): responda sempre preenchendo dois campos. 'mensagem' é a sua fala conversacional, no tom acolhedor de sempre, é o que a pessoa lê no chat. 'plano' é o estado atual do plano de estudos em forma estruturada.\n" +
-      "STATUS do plano: use 'coletando' enquanto ainda falta contexto (e deixe 'semanas' vazio); 'montando' quando você começar a montar o cronograma; 'pronto' apenas quando as semanas cobrirem todo o prazoSemanas E area, nivel e objetivo estiverem preenchidos, caso contrário 'montando'.\n" +
-      "ITENS: em itens[] use SOMENTE ids que vierem no catálogo curado fornecido pelo sistema, com o tipo correto. NUNCA invente curso, tecnologia, plataforma, projeto, link, id ou título. Se não houver item curado adequado para uma semana, deixe a semana com foco e marco e a lista de itens vazia, ou peça mais contexto. Não escreva ids ou nomes de recursos dentro de 'mensagem'; recursos vão só em itens[].",
+      "Você recebe o histórico de uma conversa entre o Natechinho e uma pessoa montando um plano de estudos em tecnologia. Sua tarefa é devolver o ESTADO ATUAL do plano em forma estruturada (PlanoEstudos), com base só no que já foi conversado. Nada de texto fora do JSON.\n\n" +
+      "STATUS: use 'coletando' enquanto ainda falta contexto (deixe 'semanas' vazio); 'montando' quando já dá pra começar o cronograma; 'pronto' apenas quando as semanas cobrirem todo o prazoSemanas E area, nivel e objetivo estiverem preenchidos, caso contrário 'montando'.\n" +
+      "ITENS: em itens[] use SOMENTE ids que vierem no catálogo curado fornecido pelo sistema, com o tipo correto. NUNCA invente curso, tecnologia, plataforma, projeto, link, id ou título. Se não houver item curado adequado para uma semana, deixe a semana com foco e marco e a lista de itens vazia.\n" +
+      "Preencha area, nivel, horasPorDia, diasPorSemana, prazoSemanas e objetivo com o que a pessoa já informou; o que ainda não foi dito fica null.",
   },
   "roadmap-generator": {
     key: "roadmap-generator",
