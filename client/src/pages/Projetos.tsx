@@ -193,12 +193,7 @@ export default function Projetos() {
                 key={projeto.id}
                 className="card-brutal bg-white rounded-xl overflow-hidden shadow-[5px_5px_0_#fdba74]"
               >
-                <div
-                  onClick={() =>
-                    setExpanded(expanded === projeto.id ? null : projeto.id)
-                  }
-                  className="w-full flex items-start justify-between p-6 text-left"
-                >
+                <div className="w-full flex items-start justify-between p-6 text-left">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span
@@ -213,7 +208,17 @@ export default function Projetos() {
                       </span>
                     </div>
                     <h3 className="font-display font-bold text-xl text-slate-900">
-                      {projeto.nome}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpanded(expanded === projeto.id ? null : projeto.id)
+                        }
+                        aria-expanded={expanded === projeto.id}
+                        aria-controls={`projeto-detalhe-${projeto.id}`}
+                        className="block w-full rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                      >
+                        {projeto.nome}
+                      </button>
                     </h3>
                     <p className="text-sm text-slate-600 mt-1">
                       {projeto.objetivo}
@@ -229,16 +234,36 @@ export default function Projetos() {
                         subtitle: labelForAreaSlug(projeto.areaSlug),
                       }}
                     />
-                    {expanded === projeto.id ? (
-                      <ChevronUp className="w-5 h-5 text-slate-400" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded(expanded === projeto.id ? null : projeto.id)
+                      }
+                      aria-expanded={expanded === projeto.id}
+                      aria-controls={`projeto-detalhe-${projeto.id}`}
+                      aria-label={
+                        expanded === projeto.id
+                          ? `Recolher ${projeto.nome}`
+                          : `Expandir ${projeto.nome}`
+                      }
+                      className="rounded text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                    >
+                      {expanded === projeto.id ? (
+                        <ChevronUp className="w-5 h-5" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5" />
+                      )}
+                    </button>
                   </div>
                 </div>
 
                 {expanded === projeto.id && (
-                  <div className="px-6 pb-6 border-t border-slate-100 pt-4">
+                  <div
+                    id={`projeto-detalhe-${projeto.id}`}
+                    role="region"
+                    aria-label={`Detalhes de ${projeto.nome}`}
+                    className="px-6 pb-6 border-t border-slate-100 pt-4"
+                  >
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
                         {/* Ferramentas */}
