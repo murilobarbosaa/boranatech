@@ -148,7 +148,8 @@ export async function buildStudyCatalogMessage(
   ].join("\n");
 }
 
-type CanonicalMaps = Record<PlanoItemTipo, Map<string, string>>;
+type CanonicalRow = { title: string; slug: string };
+type CanonicalMaps = Record<PlanoItemTipo, Map<string, CanonicalRow>>;
 
 /**
  * Valida cada item referenciado no plano contra o banco. Para id válido (existe,
@@ -191,12 +192,12 @@ export async function validateStudyPlanRefs(
     if (ids.length === 0) return;
     const { data } = await supabaseAdmin
       .from(table)
-      .select("id, title, area_slug")
+      .select("id, title, slug, area_slug")
       .eq("is_published", true)
       .in("id", ids);
     for (const row of data ?? []) {
       if (areaSlug && row.area_slug && row.area_slug !== areaSlug) continue;
-      canonical[tipo].set(row.id, row.title);
+      canonical[tipo].set(row.id, { title: row.title, slug: row.slug ?? "" });
     }
   }
 
@@ -205,7 +206,7 @@ export async function validateStudyPlanRefs(
     if (ids.length === 0) return;
     const { data } = await supabaseAdmin
       .from("technologies")
-      .select("id, name, related_area_slugs")
+      .select("id, name, slug, related_area_slugs")
       .eq("is_published", true)
       .in("id", ids);
     for (const row of data ?? []) {
@@ -215,7 +216,7 @@ export async function validateStudyPlanRefs(
           : [];
         if (!related.includes(areaSlug)) continue;
       }
-      canonical.tecnologia.set(row.id, row.name);
+      canonical.tecnologia.set(row.id, { title: row.name, slug: row.slug ?? "" });
     }
   }
 
@@ -224,10 +225,11 @@ export async function validateStudyPlanRefs(
     if (ids.length === 0) return;
     const { data } = await supabaseAdmin
       .from("platforms")
-      .select("id, name")
+      .select("id, name, slug")
       .eq("is_published", true)
       .in("id", ids);
-    for (const row of data ?? []) canonical.plataforma.set(row.id, row.name);
+    for (const row of data ?? [])
+      canonical.plataforma.set(row.id, { title: row.name, slug: row.slug ?? "" });
   }
 
   await Promise.all([
@@ -241,12 +243,12 @@ export async function validateStudyPlanRefs(
   for (const semana of plano.semanas) {
     const kept: typeof semana.itens = [];
     for (const item of semana.itens || []) {
-      const title = canonical[item.tipo]?.get(item.id);
-      if (title === undefined) {
+      const row = canonical[item.tipo]?.get(item.id);
+      if (row === undefined) {
         dropped++;
         continue;
       }
-      kept.push({ ...item, titulo: title });
+      kept.push({ ...item, titulo: row.title, slug: row.slug });
     }
     semana.itens = kept;
   }

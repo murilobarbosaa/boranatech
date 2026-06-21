@@ -46,6 +46,11 @@ export const PlanoItemSchema = z.object({
     .describe(
       "Título do item, apenas para exibição. O servidor sobrescreve pelo título canônico do banco.",
     ),
+  slug: z
+    .string()
+    .describe(
+      "Slug do item. Pode deixar vazio; o servidor sobrescreve pelo slug canônico do banco.",
+    ),
 });
 
 export const PlanoSemanaSchema = z.object({
