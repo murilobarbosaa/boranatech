@@ -315,6 +315,12 @@ export default function Projetos() {
 
       <section className="bg-[#fff7ed] py-12">
         <div className="container">
+          <p
+            className="mb-6 text-sm font-bold text-slate-600"
+            aria-live="polite"
+          >
+            {filtered.length} projeto{filtered.length !== 1 ? "s" : ""}
+          </p>
           <div className="space-y-10">
             {grupos.map((grupo) => (
               <section
