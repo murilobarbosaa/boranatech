@@ -6,6 +6,11 @@ import { estimateCost, getToolConfig } from "../lib/aiTools";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { buildLoginContextMessage } from "../lib/loginContext";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../lib/openai";
+import {
+  buildStudyCatalogMessage,
+  validateStudyPlanRefs,
+} from "../lib/studyCatalog";
+import type { StudyPlanResponse } from "../../shared/estudos/schema";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
@@ -88,6 +93,18 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     }
 
     inputText = cleaned.map((message) => message.content).join(" ");
+
+    if (toolConfig.injectStudyCatalog) {
+      try {
+        const catalogMessage = await buildStudyCatalogMessage(inputText);
+        if (catalogMessage) {
+          systemMessages.push({ role: "system", content: catalogMessage });
+        }
+      } catch (err) {
+        console.warn("[ai] Falha ao montar catálogo de estudos, seguindo sem ele:", err);
+      }
+    }
+
     openaiMessages = [...systemMessages, ...cleaned];
   } else {
     const payloadText = JSON.stringify(req.body, null, 2);
@@ -118,6 +135,10 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
     temperature: toolConfig.temperature,
     messages: openaiMessages,
   };
+
+  if (toolConfig.maxTokens) {
+    requestBody.max_tokens = toolConfig.maxTokens;
+  }
 
   if (toolConfig.responseFormat) {
     requestBody.response_format = {
@@ -193,6 +214,13 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         return next(createError(502, "upstream_error", "Resposta da IA não bateu com o schema esperado."));
       }
 
+      let responseData: unknown = validation.data;
+      if (toolConfig.validateCatalogRefs) {
+        responseData = await validateStudyPlanRefs(
+          validation.data as StudyPlanResponse,
+        );
+      }
+
       await logAiUsage({
         userId,
         tool: toolKey,
@@ -206,7 +234,7 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
         costEstimate: estimateCost(inputChars, outputChars),
       });
 
-      res.json({ data: validation.data });
+      res.json({ data: responseData });
       return;
     }
 
@@ -335,6 +363,7 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
         model: toolConfig.model || DEFAULT_MODEL,
         temperature: toolConfig.temperature,
         messages: [...systemMessages, ...cleaned],
+        ...(toolConfig.maxTokens ? { max_tokens: toolConfig.maxTokens } : {}),
         stream: true,
         stream_options: { include_usage: true },
       }),
