@@ -443,135 +443,6 @@ export default function Faculdades() {
         <FaculdadesDoodles />
         <div className="container relative">
           <div className="mb-6 flex items-start gap-3">
-            <span className="rounded-xl border-2 border-slate-900 bg-violet-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-              <GraduationCap className="h-6 w-6" aria-hidden />
-            </span>
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-violet-700">
-                entenda os graus
-              </p>
-              <h2 className="font-display text-3xl font-black text-slate-950">
-                Técnico, Tecnólogo e Bacharelado
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm text-slate-700">
-                Três caminhos diferentes pra entrar na TI. Veja o tempo, o foco e
-                onde cada um te leva.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            {GRAU_INFO.map((g, i) => {
-              const Icon = g.Icon;
-              return (
-                <AnimatedContent
-                  key={g.grau}
-                  distance={16}
-                  duration={0.4}
-                  delay={i * 0.1}
-                  className="h-full"
-                >
-                  <div
-                    className={`flex h-full flex-col gap-2 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a] ${g.style}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <motion.span
-                        animate={reduce ? undefined : { y: [0, -3, 0] }}
-                        transition={
-                          reduce
-                            ? undefined
-                            : {
-                                duration: 2.6 + i * 0.3,
-                                repeat: Infinity,
-                                ease: "easeInOut",
-                              }
-                        }
-                      >
-                        <Icon className="h-7 w-7 text-slate-900" aria-hidden />
-                      </motion.span>
-                      <h3 className="font-display text-xl font-black text-slate-950">
-                        {g.grau}
-                      </h3>
-                      <span
-                        className={`ml-auto rounded-full px-2 py-0.5 text-[0.65rem] font-black uppercase ${g.badge}`}
-                      >
-                        {g.duracao}
-                      </span>
-                    </div>
-                    <p className="text-sm font-bold text-slate-800">{g.nivel}</p>
-                    <p className="text-sm text-slate-700">{g.foco}</p>
-                    <p className="text-sm text-slate-700">
-                      <strong className="text-slate-900">Acesso:</strong>{" "}
-                      {g.acesso}
-                    </p>
-                    <p className="mt-auto text-xs text-slate-600">
-                      <strong className="text-slate-900">Exemplos:</strong>{" "}
-                      {g.exemplos}
-                    </p>
-                  </div>
-                </AnimatedContent>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b-2 border-slate-900 bg-white py-12">
-        <div className="container">
-          <div className="mb-6 flex items-start gap-3">
-            <span className="rounded-xl border-2 border-slate-900 bg-amber-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
-              <Award className="h-6 w-6" aria-hidden />
-            </span>
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-amber-700">
-                qualidade do curso
-              </p>
-              <h2 className="font-display text-3xl font-black text-slate-950">
-                O que é cada nota do MEC
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm text-slate-700">
-                As notas vão de 1 a 5 e são consideradas satisfatórias a partir
-                de 3. A nota muda com o tempo, então confira a atual de cada curso
-                no e-MEC.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {NOTAS_MEC.map((n, i) => (
-              <AnimatedContent
-                key={n.sigla}
-                distance={14}
-                duration={0.4}
-                delay={i * 0.08}
-                className="h-full"
-              >
-                <div className="flex h-full flex-col gap-1 rounded-2xl border-2 border-slate-900 bg-amber-50 p-4 shadow-[4px_4px_0_#fcd34d]">
-                  <span className="font-display text-2xl font-black text-amber-700">
-                    {n.sigla}
-                  </span>
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-700">
-                    {n.nome}
-                  </p>
-                  <p className="text-sm text-slate-700">{n.desc}</p>
-                </div>
-              </AnimatedContent>
-            ))}
-          </div>
-          <a
-            href={EMEC_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-          >
-            Consultar notas no e-MEC
-            <ExternalLink className="h-4 w-4" aria-hidden />
-          </a>
-        </div>
-      </section>
-
-      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-50 py-12">
-        <FaculdadesDoodles />
-        <div className="container relative">
-          <div className="mb-6 flex items-start gap-3">
             <span className="rounded-xl border-2 border-slate-900 bg-sky-300 p-3 text-slate-950 shadow-[3px_3px_0_#0f172a]">
               <Building2 className="h-6 w-6" aria-hidden />
             </span>
@@ -755,6 +626,113 @@ export default function Faculdades() {
               </p>
             </div>
           ) : null}
+        </div>
+      </section>
+
+      <section className="border-b-2 border-slate-900 bg-white py-12">
+        <div className="container space-y-4">
+          <h2 className="font-display text-2xl font-black text-slate-950">
+            Entenda antes de escolher
+          </h2>
+          <details className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-5">
+            <summary className="cursor-pointer rounded font-display text-lg font-black text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2">
+              Técnico, Tecnólogo e Bacharelado
+            </summary>
+            <p className="mt-2 max-w-2xl text-sm text-slate-700">
+              Três caminhos diferentes pra entrar na TI. Veja o tempo, o foco e
+              onde cada um te leva.
+            </p>
+            <div className="mt-4 grid gap-5 md:grid-cols-3">
+              {GRAU_INFO.map((g, i) => {
+                const Icon = g.Icon;
+                return (
+                  <AnimatedContent
+                    key={g.grau}
+                    distance={16}
+                    duration={0.4}
+                    delay={i * 0.1}
+                    className="h-full"
+                  >
+                    <div
+                      className={`flex h-full flex-col gap-2 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a] ${g.style}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <motion.span
+                          animate={reduce ? undefined : { y: [0, -3, 0] }}
+                          transition={
+                            reduce
+                              ? undefined
+                              : {
+                                  duration: 2.6 + i * 0.3,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                }
+                          }
+                        >
+                          <Icon className="h-7 w-7 text-slate-900" aria-hidden />
+                        </motion.span>
+                        <h3 className="font-display text-xl font-black text-slate-950">
+                          {g.grau}
+                        </h3>
+                        <span
+                          className={`ml-auto rounded-full px-2 py-0.5 text-[0.65rem] font-black uppercase ${g.badge}`}
+                        >
+                          {g.duracao}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-800">
+                        {g.nivel}
+                      </p>
+                      <p className="text-sm text-slate-700">{g.foco}</p>
+                      <p className="text-sm text-slate-700">
+                        <strong className="text-slate-900">Acesso:</strong>{" "}
+                        {g.acesso}
+                      </p>
+                      <p className="mt-auto text-xs text-slate-600">
+                        <strong className="text-slate-900">Exemplos:</strong>{" "}
+                        {g.exemplos}
+                      </p>
+                    </div>
+                  </AnimatedContent>
+                );
+              })}
+            </div>
+          </details>
+          <details className="rounded-2xl border-2 border-slate-900 bg-amber-50 p-5">
+            <summary className="cursor-pointer rounded font-display text-lg font-black text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">
+              O que é cada nota do MEC
+            </summary>
+            <p className="mt-2 max-w-2xl text-sm text-slate-700">
+              As notas vão de 1 a 5 e são consideradas satisfatórias a partir de
+              3. A nota muda com o tempo, então confira a atual de cada curso no
+              e-MEC.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {NOTAS_MEC.map((n) => (
+                <div
+                  key={n.sigla}
+                  className="flex h-full flex-col gap-1 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#fcd34d]"
+                >
+                  <span className="font-display text-2xl font-black text-amber-700">
+                    {n.sigla}
+                  </span>
+                  <p className="text-xs font-black uppercase tracking-wide text-slate-700">
+                    {n.nome}
+                  </p>
+                  <p className="text-sm text-slate-700">{n.desc}</p>
+                </div>
+              ))}
+            </div>
+            <a
+              href={EMEC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            >
+              Consultar notas no e-MEC
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </a>
+          </details>
         </div>
       </section>
 
