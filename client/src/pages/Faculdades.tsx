@@ -258,6 +258,22 @@ function slugifyCourse(value: string) {
     .replace(/^-|-$/g, "");
 }
 
+function normalizeCurso(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+type CursoGenerico = (typeof faculdades.cursos)[number];
+const cursoExplicacaoPorNome = new Map<string, CursoGenerico>();
+for (const cursoGenerico of faculdades.cursos) {
+  cursoExplicacaoPorNome.set(normalizeCurso(cursoGenerico.nome), cursoGenerico);
+}
+
 export default function Faculdades() {
   const [tipo, setTipo] = useState("Todos");
   const [mat, setMat] = useState("Todos");
@@ -539,6 +555,9 @@ export default function Faculdades() {
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                   {itens.map((item, i) => {
                     const st = GRAU_STYLE[item.grau];
+                    const exp = cursoExplicacaoPorNome.get(
+                      normalizeCurso(item.curso),
+                    );
                     return (
                 <AnimatedContent
                   key={`${item.sigla}-${item.curso}`}
@@ -598,6 +617,51 @@ export default function Faculdades() {
                         ))}
                       </div>
                     </div>
+                    {exp ? (
+                      <div className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-white/70 p-3">
+                        <p className="text-xs text-slate-700">
+                          {exp.oQueEstuda}
+                        </p>
+                        <div>
+                          <p className="text-[0.6rem] font-black uppercase tracking-wide text-blue-700">
+                            Pontos positivos
+                          </p>
+                          <ul className="mt-1 space-y-0.5">
+                            {exp.pontoPositivos.slice(0, 3).map((p) => (
+                              <li
+                                key={p}
+                                className="flex items-start gap-1 text-[0.7rem] text-slate-600"
+                              >
+                                <Check
+                                  className="mt-0.5 h-3 w-3 shrink-0 text-blue-500"
+                                  aria-hidden
+                                />
+                                {p}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-[0.6rem] font-black uppercase tracking-wide text-red-600">
+                            Pontos de atenção
+                          </p>
+                          <ul className="mt-1 space-y-0.5">
+                            {exp.pontosAtencao.slice(0, 3).map((p) => (
+                              <li
+                                key={p}
+                                className="flex items-start gap-1 text-[0.7rem] text-slate-600"
+                              >
+                                <X
+                                  className="mt-0.5 h-3 w-3 shrink-0 text-red-400"
+                                  aria-hidden
+                                />
+                                {p}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="mt-auto flex flex-wrap gap-2 pt-4">
                       <a
                         href={item.url}
