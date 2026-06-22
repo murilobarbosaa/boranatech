@@ -74,7 +74,7 @@ export default function TrailDrawer({
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-7 pb-9 pt-3">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-7 pb-9 pt-3">
               {section.children.map((node) => (
                 <RoadmapNodeItem
                   key={node.id}
