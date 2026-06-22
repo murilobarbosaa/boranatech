@@ -19,6 +19,15 @@ import {
   ExternalLink,
   Building2,
   Sparkles,
+  Code2,
+  Database,
+  Network,
+  Shield,
+  Briefcase,
+  Gamepad2,
+  CircleCheck,
+  Layers,
+  type LucideIcon,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -31,6 +40,11 @@ import {
   EMEC_URL,
   type FaculdadeCurso,
 } from "@/lib/faculdadesInstituicoes";
+import {
+  subareaDaInstituicao,
+  SUBAREA_ORDER,
+  type Subarea,
+} from "@/lib/faculdadesSubareas";
 
 const tipos = ["Todos", "Tecnólogo", "Bacharelado"];
 const matNiveis = ["Todos", "Médio", "Alto", "Médio-Alto"];
@@ -223,6 +237,17 @@ function FaculdadesDoodles() {
 const GRAUS_FILTRO = ["Todos", "Bacharelado", "Tecnólogo", "Técnico"];
 const REDES_FILTRO = ["Todas", "Pública", "Privada"];
 
+const SUBAREA_ICON: Record<Subarea, LucideIcon> = {
+  Desenvolvimento: Code2,
+  "Dados e IA": Database,
+  "Infra e Redes": Network,
+  Segurança: Shield,
+  "Gestão e Produto": Briefcase,
+  Jogos: Gamepad2,
+  QA: CircleCheck,
+  Outros: Layers,
+};
+
 function slugifyCourse(value: string) {
   return value
     .toLowerCase()
@@ -254,6 +279,14 @@ export default function Faculdades() {
       return matchGrau && matchRede;
     },
   );
+
+  const subareasRender: { subarea: Subarea; itens: FaculdadeCurso[] }[] =
+    SUBAREA_ORDER.map((subarea) => ({
+      subarea,
+      itens: instituicoesFiltradas.filter(
+        (item) => subareaDaInstituicao(item) === subarea,
+      ),
+    })).filter((grupo) => grupo.itens.length > 0);
 
   const nearby = collegeSuggestions.filter((item) => {
     if (!selectedUf) return true;
@@ -488,10 +521,25 @@ export default function Faculdades() {
             {instituicoesFiltradas.length !== 1 ? "s" : ""}
           </p>
 
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {instituicoesFiltradas.map((item, i) => {
-              const st = GRAU_STYLE[item.grau];
-              return (
+          {subareasRender.map(({ subarea, itens }) => {
+            const SubIcon = SUBAREA_ICON[subarea];
+            return (
+              <div
+                key={subarea}
+                id={`subarea-${slugifyCourse(subarea)}`}
+                className="mb-10 scroll-mt-24"
+              >
+                <h3 className="mb-4 flex items-center gap-2 font-display text-xl font-black text-slate-950">
+                  <SubIcon className="h-5 w-5 text-slate-700" aria-hidden />
+                  {subarea}
+                  <span className="text-sm font-bold text-slate-500">
+                    ({itens.length})
+                  </span>
+                </h3>
+                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                  {itens.map((item, i) => {
+                    const st = GRAU_STYLE[item.grau];
+                    return (
                 <AnimatedContent
                   key={`${item.sigla}-${item.curso}`}
                   distance={16}
@@ -571,9 +619,12 @@ export default function Faculdades() {
                     </div>
                   </div>
                 </AnimatedContent>
-              );
-            })}
-          </div>
+                      );
+                    })}
+                </div>
+              </div>
+            );
+          })}
 
           {instituicoesFiltradas.length === 0 ? (
             <div className="py-12 text-center">
