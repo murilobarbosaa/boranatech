@@ -248,6 +248,10 @@ const SUBAREA_ICON: Record<Subarea, LucideIcon> = {
   Outros: Layers,
 };
 
+// TODO(Ana): revisar a copy deste guia rapido de grau antes de publicar.
+const GUIA_GRAU =
+  "Quer entrar rápido? Técnico ou Tecnólogo (2 a 3 anos, bem prático). Quer base sólida e acesso à pós? Bacharelado (4 a 5 anos).";
+
 function slugifyCourse(value: string) {
   return value
     .toLowerCase()
@@ -339,6 +343,93 @@ export default function Faculdades() {
               Compare os principais cursos de graduação em tecnologia e descubra
               qual faz mais sentido para você.
             </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b-2 border-slate-900 bg-white py-6">
+        <div className="container space-y-4">
+          <p className="text-sm font-bold text-slate-700">{GUIA_GRAU}</p>
+          <nav
+            aria-label="Atalhos por subárea"
+            className="flex flex-wrap gap-2"
+          >
+            {subareasRender.map(({ subarea, itens }) => {
+              const SubIcon = SUBAREA_ICON[subarea];
+              return (
+                <a
+                  key={subarea}
+                  href={`#subarea-${slugifyCourse(subarea)}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-black text-slate-700 transition-transform hover:border-slate-900 motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2"
+                >
+                  <SubIcon className="h-3.5 w-3.5" aria-hidden />
+                  {subarea}
+                  <span className="text-slate-500">({itens.length})</span>
+                </a>
+              );
+            })}
+          </nav>
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Filtrar faculdades por grau, rede e estado"
+          >
+            {GRAUS_FILTRO.map((g) => (
+              <button
+                key={g}
+                type="button"
+                onClick={() => setGrauInst(g)}
+                aria-pressed={grauInst === g}
+                className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
+                  grauInst === g
+                    ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-violet-50"
+                }`}
+              >
+                {g}
+              </button>
+            ))}
+            <span className="mx-1 hidden h-5 w-px self-center bg-slate-300 sm:block" />
+            {REDES_FILTRO.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRedeInst(r)}
+                aria-pressed={redeInst === r}
+                className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
+                  redeInst === r
+                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+            <span className="mx-1 hidden h-5 w-px self-center bg-slate-300 sm:block" />
+            <div className="relative">
+              <MapPin
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+              <select
+                aria-label="Filtrar por estado"
+                value={selectedUf}
+                onChange={(event) => setSelectedUf(event.target.value)}
+                className="cursor-pointer appearance-none rounded-full border-2 border-slate-300 bg-white py-1.5 pl-9 pr-8 text-xs font-black text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
+              >
+                <option value="">Todos os estados</option>
+                <option value="__ead__">EAD / Nacional</option>
+                {brazilianStates.map(({ uf, name }) => (
+                  <option key={uf} value={uf}>
+                    {name} ({uf})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600"
+                aria-hidden
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -492,44 +583,6 @@ export default function Faculdades() {
                 confira sempre a atual no e-MEC.
               </p>
             </div>
-          </div>
-
-          <div
-            className="mb-5 flex flex-wrap items-center gap-2"
-            role="group"
-            aria-label="Filtrar faculdades por grau e rede"
-          >
-            {GRAUS_FILTRO.map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => setGrauInst(g)}
-                aria-pressed={grauInst === g}
-                className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
-                  grauInst === g
-                    ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-violet-50"
-                }`}
-              >
-                {g}
-              </button>
-            ))}
-            <span className="mx-1 hidden h-5 w-px self-center bg-slate-300 sm:block" />
-            {REDES_FILTRO.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRedeInst(r)}
-                aria-pressed={redeInst === r}
-                className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
-                  redeInst === r
-                    ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
           </div>
 
           <p className="mb-4 text-sm text-slate-500">
