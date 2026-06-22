@@ -296,7 +296,12 @@ export default function Faculdades() {
     (item) => {
       const matchGrau = grauInst === "Todos" || item.grau === grauInst;
       const matchRede = redeInst === "Todas" || item.rede === redeInst;
-      return matchGrau && matchRede;
+      const matchUf =
+        selectedUf === "" ||
+        (selectedUf === "__ead__"
+          ? item.uf === "Nacional"
+          : item.uf === selectedUf);
+      return matchGrau && matchRede && matchUf;
     },
   );
 
@@ -796,9 +801,9 @@ export default function Faculdades() {
                   Encontre faculdades perto de você
                 </h2>
                 <p className="mt-2 text-sm text-slate-600">
-                  Escolha o estado onde você está para ver sugestões iniciais
-                  com vantagens. Ofertas nacionais (EAD) aparecem em qualquer
-                  UF. Confirme cursos e conceitos no{" "}
+                  Use o filtro de estado no topo da página para ver as
+                  instituições por UF. Ofertas nacionais (EAD) aparecem em
+                  qualquer estado. Confirme cursos e conceitos no{" "}
                   <a
                     href="https://emec.mec.gov.br"
                     target="_blank"
@@ -809,35 +814,6 @@ export default function Faculdades() {
                   </a>
                   .
                 </p>
-                <label
-                  htmlFor="faculdades-estado"
-                  className="mt-4 block text-xs font-black uppercase tracking-wide text-slate-500"
-                >
-                  Estado
-                </label>
-                <div className="relative mt-2">
-                  <MapPin
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                    aria-hidden
-                  />
-                  <select
-                    id="faculdades-estado"
-                    value={selectedUf}
-                    onChange={(event) => setSelectedUf(event.target.value)}
-                    className="w-full cursor-pointer appearance-none rounded-xl border-2 border-slate-900 bg-white py-3 pl-10 pr-10 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus:ring-4 focus:ring-violet-200"
-                  >
-                    <option value="">Todos os estados</option>
-                    {brazilianStates.map(({ uf, name }) => (
-                      <option key={uf} value={uf}>
-                        {name} ({uf})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600"
-                    aria-hidden
-                  />
-                </div>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {nearby.map((item) => (
