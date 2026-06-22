@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowLeft,
@@ -99,6 +99,108 @@ const GAME_EMOJI: Record<string, string> = {
   "Vampire Survivors": "🧛",
   "Wolfenstein 3D": "🪖",
 };
+
+const GAME_BG_STYLES = [
+  "pixel",
+  "fliperama",
+  "scanlines",
+  "plataforma",
+  "tiles",
+] as const;
+type GameBgStyle = (typeof GAME_BG_STYLES)[number];
+
+const BG_PATTERNS: Record<GameBgStyle, CSSProperties> = {
+  pixel: {
+    backgroundImage:
+      "linear-gradient(rgba(255,255,255,0.18) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.18) 2px, transparent 2px)",
+    backgroundSize: "16px 16px",
+  },
+  fliperama: {
+    backgroundImage:
+      "repeating-linear-gradient(0deg, rgba(255,255,255,0.14) 0 1px, transparent 1px 16px), repeating-linear-gradient(90deg, rgba(255,255,255,0.14) 0 1px, transparent 1px 16px), radial-gradient(circle at 50% 130%, rgba(255,255,255,0.4), transparent 60%)",
+    backgroundSize: "16px 16px, 16px 16px, 100% 100%",
+  },
+  scanlines: {
+    backgroundImage:
+      "repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 2px, transparent 2px 5px)",
+    backgroundSize: "100% 5px",
+  },
+  plataforma: {
+    backgroundImage:
+      "linear-gradient(rgba(255,255,255,0.14) 1px, transparent 1px), linear-gradient(0deg, rgba(0,0,0,0.22), transparent 42%)",
+    backgroundSize: "22px 22px, 100% 100%",
+  },
+  tiles: {
+    backgroundImage:
+      "repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0 10px, transparent 10px 20px)",
+    backgroundSize: "28px 28px",
+  },
+};
+
+const STYLE_BY_GAME: Record<string, GameBgStyle> = {
+  "Among Us": "tiles",
+  "Angry Birds": "plataforma",
+  "Apex Legends": "fliperama",
+  "Baba Is You": "tiles",
+  "Battlefield 1": "scanlines",
+  "Beat Saber": "fliperama",
+  Celeste: "pixel",
+  "Cities: Skylines": "tiles",
+  "Counter-Strike: Global Offensive": "fliperama",
+  Cuphead: "pixel",
+  "Cyberpunk 2077": "fliperama",
+  "Dead Cells": "pixel",
+  "Disco Elysium": "tiles",
+  Doom: "scanlines",
+  "Dota 2": "fliperama",
+  "EA Sports FC 24": "fliperama",
+  "Enter the Gungeon": "pixel",
+  Factorio: "tiles",
+  "Final Fantasy VII Remake": "scanlines",
+  Fortnite: "fliperama",
+  "Gears of War": "scanlines",
+  "Genshin Impact": "plataforma",
+  "Grand Theft Auto V": "fliperama",
+  "Half-Life 2": "scanlines",
+  Hearthstone: "tiles",
+  "Hellblade: Senua's Sacrifice": "scanlines",
+  "Hollow Knight": "plataforma",
+  "Hotline Miami": "fliperama",
+  "Hyper Light Drifter": "pixel",
+  "Katana Zero": "pixel",
+  "Kerbal Space Program": "tiles",
+  "Minecraft: Java Edition": "pixel",
+  "Monument Valley": "tiles",
+  "Ori and the Blind Forest": "plataforma",
+  "Papers, Please": "scanlines",
+  "Pokemon Go": "tiles",
+  "Portal 2": "scanlines",
+  "PUBG: Battlegrounds": "fliperama",
+  Quake: "scanlines",
+  "Red Dead Redemption 2": "plataforma",
+  RimWorld: "tiles",
+  "Risk of Rain": "pixel",
+  "Rocket League": "fliperama",
+  "RollerCoaster Tycoon": "tiles",
+  "Sea of Thieves": "plataforma",
+  "Slay the Spire": "tiles",
+  Spelunky: "pixel",
+  "Stardew Valley": "pixel",
+  "Street Fighter 6": "fliperama",
+  Subnautica: "plataforma",
+  "Super Mario 64": "plataforma",
+  "Team Fortress 2": "fliperama",
+  Terraria: "pixel",
+  "The Witcher 3: Wild Hunt": "plataforma",
+  Undertale: "pixel",
+  Valorant: "fliperama",
+  "Vampire Survivors": "pixel",
+  "Wolfenstein 3D": "scanlines",
+};
+
+function styleFor(name: string, year?: number): GameBgStyle {
+  return STYLE_BY_GAME[name] ?? (year && year <= 1999 ? "scanlines" : "pixel");
+}
 
 const JOGOS_DOODLES = [
   { Icon: Gamepad2, cls: "left-[4%] top-[20%] text-fuchsia-500", size: "h-12 w-12" },
@@ -219,6 +321,7 @@ export default function TecnologiaJogos() {
             {filtered.map((g, index) => {
               const theme = themeFor(g.game);
               const emoji = GAME_EMOJI[g.game];
+              const patternStyle = BG_PATTERNS[styleFor(g.game, g.year)];
               return (
                 <AnimatedContent
                   key={g.game}
@@ -228,7 +331,7 @@ export default function TecnologiaJogos() {
                   className="h-full"
                 >
                   <motion.div
-                    whileHover={{ y: -6 }}
+                    whileHover={{ y: -6, rotate: -1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#0f172a] transition-shadow duration-200 hover:shadow-[8px_8px_0_#0f172a]"
                   >
@@ -241,12 +344,8 @@ export default function TecnologiaJogos() {
                     >
                       <span
                         aria-hidden
-                        className="pointer-events-none absolute inset-0 opacity-30"
-                        style={{
-                          backgroundImage:
-                            "radial-gradient(rgba(255,255,255,0.6) 1px, transparent 1px)",
-                          backgroundSize: "12px 12px",
-                        }}
+                        className="pointer-events-none absolute inset-0"
+                        style={patternStyle}
                       />
                       {emoji ? (
                         <span
