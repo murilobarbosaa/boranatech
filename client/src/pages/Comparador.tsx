@@ -1221,27 +1221,31 @@ export default function Comparador() {
           </div>
 
           <div className="card-brutal overflow-hidden rounded-2xl bg-white">
-            <div className="grid grid-cols-3 border-b-2 border-slate-900 bg-violet-700 text-white">
-              <div className="p-4 text-sm font-black">Critério</div>
-              <div className="p-4 text-sm font-black">{left.name}</div>
-              <div className="p-4 text-sm font-black">{right.name}</div>
-            </div>
-            {comparisonRows.map((row) => (
-              <div
-                key={row.label}
-                className="grid grid-cols-3 border-b border-slate-200 last:border-0"
-              >
-                <div className="p-4 text-sm font-black text-slate-950">
-                  {row.label}
+            <div className="overflow-x-auto">
+              <div className="min-w-[560px]">
+                <div className="grid grid-cols-3 border-b-2 border-slate-900 bg-violet-700 text-white">
+                  <div className="p-4 text-sm font-black">Critério</div>
+                  <div className="p-4 text-sm font-black">{left.name}</div>
+                  <div className="p-4 text-sm font-black">{right.name}</div>
                 </div>
-                <div className="p-4 text-sm text-slate-600">
-                  {row.getValue(left)}
-                </div>
-                <div className="p-4 text-sm text-slate-600">
-                  {row.getValue(right)}
-                </div>
+                {comparisonRows.map((row) => (
+                  <div
+                    key={row.label}
+                    className="grid grid-cols-3 border-b border-slate-200 last:border-0"
+                  >
+                    <div className="p-4 text-sm font-black text-slate-950">
+                      {row.label}
+                    </div>
+                    <div className="p-4 text-sm text-slate-600">
+                      {row.getValue(left)}
+                    </div>
+                    <div className="p-4 text-sm text-slate-600">
+                      {row.getValue(right)}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-3">
