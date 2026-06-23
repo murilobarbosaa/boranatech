@@ -108,6 +108,22 @@ const areaComplexity: Record<string, number> = {
   Mainframe: 14,
 };
 
+const MAX_READINESS =
+  5 +
+  5 +
+  Math.max(...Object.values(experienceDiscounts)) +
+  Math.max(...Object.values(portfolioDiscounts)) +
+  Math.max(...Object.values(projectCadenceDiscounts)) +
+  Math.max(...Object.values(jobMaterialsDiscounts)) +
+  Math.max(...Object.values(interviewDiscounts)) +
+  Math.max(...Object.values(applicationDiscounts)) +
+  Math.max(...Object.values(consistencyDiscounts)) +
+  Math.max(...Object.values(supportDiscounts)) +
+  2 +
+  2;
+
+const MAX_READINESS_REDUCTION = 0.6;
+
 export default function Simulador() {
   const [step, setStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
@@ -157,16 +173,16 @@ export default function Simulador() {
     englishDiscount +
     networkingDiscount;
   const adjustedBaseMonths = baseMonths + lowPacePenalty;
+  const readinessRatio = Math.min(1, readinessDiscount / MAX_READINESS);
   const months = Math.max(
     2,
     Math.round(
-      (adjustedBaseMonths - readinessDiscount) * (goalMultipliers[goal] || 1),
+      adjustedBaseMonths *
+        (1 - readinessRatio * MAX_READINESS_REDUCTION) *
+        (goalMultipliers[goal] || 1),
     ),
   );
-  const readinessScore = Math.min(
-    100,
-    Math.round((readinessDiscount / 37) * 100),
-  );
+  const readinessScore = Math.min(100, Math.round(readinessRatio * 100));
   const studyIntensity =
     weeklyHours >= 20 ? "alta" : weeklyHours >= 10 ? "moderada" : "leve";
   const priorityActions = [
