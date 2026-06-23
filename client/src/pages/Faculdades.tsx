@@ -33,6 +33,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
+import MiniQuiz from "@/components/shared/MiniQuiz";
 import { faculdades } from "@/lib/data";
 import { brazilianStates, collegeSuggestions } from "@/lib/platformData";
 import {
@@ -122,6 +123,75 @@ const caminhosFormacao = [
     atencao: "Pede disciplina e um portfólio pra provar o que você sabe.",
   },
 ];
+
+const caminhoQuizPerguntas = [
+  {
+    id: "tempo",
+    pergunta: "Quanto tempo você quer investir na formação?",
+    opcoes: [
+      {
+        rotulo: "O quanto for preciso, penso no longo prazo",
+        pontosPara: ["graduacao"],
+      },
+      { rotulo: "Pouco, quero entrar rápido", pontosPara: ["bootcamp", "tecnico"] },
+      { rotulo: "No meu ritmo, sem prazo fixo", pontosPara: ["livres"] },
+    ],
+  },
+  {
+    id: "estrutura",
+    pergunta: "Você aprende melhor com...",
+    opcoes: [
+      {
+        rotulo: "Uma grade organizada e diploma no fim",
+        pontosPara: ["graduacao", "tecnico"],
+      },
+      { rotulo: "Um intensivo focado em prática", pontosPara: ["bootcamp"] },
+      {
+        rotulo: "Liberdade pra montar meu próprio caminho",
+        pontosPara: ["livres"],
+      },
+    ],
+  },
+  {
+    id: "objetivo",
+    pergunta: "Seu objetivo agora é...",
+    opcoes: [
+      {
+        rotulo: "Base sólida pra crescer na carreira",
+        pontosPara: ["graduacao"],
+      },
+      { rotulo: "Um primeiro passo acessível na área", pontosPara: ["tecnico"] },
+      {
+        rotulo: "Conseguir um emprego o mais rápido possível",
+        pontosPara: ["bootcamp"],
+      },
+      { rotulo: "Testar a área gastando pouco", pontosPara: ["livres"] },
+    ],
+  },
+];
+
+const caminhoQuizResultados = {
+  graduacao: {
+    titulo: "Graduação",
+    descricao:
+      "Base sólida e diploma reconhecido, boa pra crescimento de longo prazo e vagas que pedem diploma.",
+  },
+  tecnico: {
+    titulo: "Curso técnico",
+    descricao:
+      "Formação curta e prática, ótima porta de entrada pra começar logo na área.",
+  },
+  bootcamp: {
+    titulo: "Bootcamp",
+    descricao:
+      "Intensivo e focado em te colocar no mercado rápido, exige dedicação alta em pouco tempo.",
+  },
+  livres: {
+    titulo: "Cursos livres e estudo por conta",
+    descricao:
+      "Flexível e barato, funciona com disciplina e um bom roadmap pra te guiar.",
+  },
+};
 
 const GRAU_INFO = [
   {
@@ -1042,6 +1112,15 @@ export default function Faculdades() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="mt-6">
+            <MiniQuiz
+              titulo="Qual caminho de formação combina com você?"
+              subtitulo="Responda 3 perguntas rápidas."
+              perguntas={caminhoQuizPerguntas}
+              resultados={caminhoQuizResultados}
+            />
           </div>
 
           {/* Onde buscar */}
