@@ -1,7 +1,9 @@
 import { Lightbulb, PlayCircle, Target } from "lucide-react";
 import Layout from "@/components/Layout";
+import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +15,7 @@ import {
 const ac = getPageAccentUi("emerald");
 
 export default function Evolucao() {
+  const { isPro, loading } = useSubscription();
   return (
     <Layout>
       <PageHero
@@ -70,6 +73,20 @@ export default function Evolucao() {
               ))}
             </div>
           </div>
+
+          {!isPro && !loading ? (
+            <div>
+              {/* TODO(Ana): copy da CTA do plano de estudos (gap pro proximo nivel) */}
+              <AiCtaLink
+                href="/estudos"
+                description="A IA monta o cronograma pro próximo nível"
+                accent="emerald"
+                className="w-full"
+              >
+                Sabe o gap pro próximo nível? Monte o plano pra chegar lá
+              </AiCtaLink>
+            </div>
+          ) : null}
 
           <div>
             <div className="mb-5">
