@@ -6,6 +6,7 @@ import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import {
   interviewQuestions,
   interviewStudySites,
@@ -15,6 +16,7 @@ import { youtubeEmbedUrl } from "@/lib/utils";
 
 export default function EntrevistaPerguntas() {
   const [type, setType] = useState("Todas");
+  const { isPro, loading } = useSubscription();
   const filtered = interviewQuestions.filter(
     (item) => type === "Todas" || item.type === type,
   );
@@ -26,14 +28,16 @@ export default function EntrevistaPerguntas() {
         subtitle="Perguntas técnicas, comportamentais e de lógica para praticar."
         accent="blue"
         actions={
-          <AiCtaLink
-            href="/entrevistas/simulador"
-            description="Simule a entrevista e receba feedback"
-            accent="blue"
-            className="w-full"
-          >
-            Praticar com IA
-          </AiCtaLink>
+          !isPro && !loading ? (
+            <AiCtaLink
+              href="/entrevistas/simulador"
+              description="Simule a entrevista e receba feedback"
+              accent="blue"
+              className="w-full"
+            >
+              Praticar com IA
+            </AiCtaLink>
+          ) : undefined
         }
       />
       <section className="container space-y-10 py-12">

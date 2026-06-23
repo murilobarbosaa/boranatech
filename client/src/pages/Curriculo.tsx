@@ -3,6 +3,7 @@ import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { linkedinGuide, resumeTemplates } from "@/lib/careerToolsData";
@@ -10,6 +11,7 @@ import { linkedinGuide, resumeTemplates } from "@/lib/careerToolsData";
 const ac = getPageAccentUi("blue");
 
 export default function Curriculo() {
+  const { isPro, loading } = useSubscription();
   return (
     <Layout>
       <PageHero
@@ -18,24 +20,26 @@ export default function Curriculo() {
         title="Currículo e LinkedIn para Tech"
         subtitle="Apareça para os recrutadores certos."
         actions={
-          <>
-            <AiCtaLink
-              href="/curriculo/analisar"
-              description="Nota, lacunas e palavras-chave"
-              accent="blue"
-              className="w-full"
-            >
-              Analisar currículo com IA
-            </AiCtaLink>
-            <AiCtaLink
-              href="/curriculo/linkedin"
-              description="Headline, Sobre e visibilidade"
-              accent="blue"
-              className="w-full"
-            >
-              Otimizar LinkedIn com IA
-            </AiCtaLink>
-          </>
+          !isPro && !loading ? (
+            <>
+              <AiCtaLink
+                href="/curriculo/analisar"
+                description="Nota, lacunas e palavras-chave"
+                accent="blue"
+                className="w-full"
+              >
+                Analisar currículo com IA
+              </AiCtaLink>
+              <AiCtaLink
+                href="/curriculo/linkedin"
+                description="Headline, Sobre e visibilidade"
+                accent="blue"
+                className="w-full"
+              >
+                Otimizar LinkedIn com IA
+              </AiCtaLink>
+            </>
+          ) : undefined
         }
       />
       <section className={cn(ac.contentBg, "py-12")}>

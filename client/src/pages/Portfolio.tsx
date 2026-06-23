@@ -16,6 +16,7 @@ import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { usePortfolioChecklist } from "@/hooks/usePortfolioChecklist";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { consumePendingIntent, savePendingIntent } from "@/lib/pendingIntent";
@@ -30,6 +31,7 @@ const ac = getPageAccentUi("emerald");
 
 export default function Portfolio() {
   const { user } = useAuth();
+  const { isPro, loading } = useSubscription();
   const {
     checkedIds,
     isLoading,
@@ -117,44 +119,46 @@ export default function Portfolio() {
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
-          <Link
-            href="/portfolio/analisar"
-            className={cn(
-              "card-brutal group block rounded-3xl p-6 text-white transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0_#0f172a]",
-              ac.tableBanner,
-            )}
-          >
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-start gap-4">
-                <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-950 bg-amber-300 text-slate-950 shadow-[4px_4px_0_#0f172a]">
-                  <Sparkles className="h-8 w-8" />
-                </span>
-                <div>
-                  <h2 className="font-display text-3xl font-black leading-tight md:text-4xl">
-                    Analisar seu portfólio com IA
-                  </h2>
-                  <p
-                    className={cn(
-                      "mt-2 max-w-3xl text-sm font-medium md:text-base",
-                      ac.tableBannerMuted,
-                    )}
-                  >
-                    Receba uma avaliação do seu GitHub com pontos fortes,
-                    lacunas, melhorias de README, organização dos projetos e
-                    próximos passos para ficar mais pronta para vagas.
-                  </p>
+          {!isPro && !loading ? (
+            <Link
+              href="/portfolio/analisar"
+              className={cn(
+                "card-brutal group block rounded-3xl p-6 text-white transition-all hover:-translate-y-1 hover:shadow-[8px_8px_0_#0f172a]",
+                ac.tableBanner,
+              )}
+            >
+              <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-4">
+                  <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-950 bg-amber-300 text-slate-950 shadow-[4px_4px_0_#0f172a]">
+                    <Sparkles className="h-8 w-8" />
+                  </span>
+                  <div>
+                    <h2 className="font-display text-3xl font-black leading-tight md:text-4xl">
+                      Analisar seu portfólio com IA
+                    </h2>
+                    <p
+                      className={cn(
+                        "mt-2 max-w-3xl text-sm font-medium md:text-base",
+                        ac.tableBannerMuted,
+                      )}
+                    >
+                      Receba uma avaliação do seu GitHub com pontos fortes,
+                      lacunas, melhorias de README, organização dos projetos e
+                      próximos passos para ficar mais pronta para vagas.
+                    </p>
+                  </div>
                 </div>
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center justify-center gap-2 rounded-full border-2 border-white bg-white px-5 py-3 text-sm font-black transition-all group-hover:bg-amber-300 group-hover:text-slate-950",
+                    ac.tbodyAccent,
+                  )}
+                >
+                  Começar análise <ArrowRight className="h-4 w-4" />
+                </span>
               </div>
-              <span
-                className={cn(
-                  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full border-2 border-white bg-white px-5 py-3 text-sm font-black transition-all group-hover:bg-amber-300 group-hover:text-slate-950",
-                  ac.tbodyAccent,
-                )}
-              >
-                Começar análise <ArrowRight className="h-4 w-4" />
-              </span>
-            </div>
-          </Link>
+            </Link>
+          ) : null}
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {portfolioGuides.map(([area, quantity, project, avoid]) => (
               <DetailsChevronOnly

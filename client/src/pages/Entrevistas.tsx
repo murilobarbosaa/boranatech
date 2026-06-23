@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { interviewSteps } from "@/lib/careerToolsData";
@@ -10,6 +11,7 @@ import { interviewSteps } from "@/lib/careerToolsData";
 const ac = getPageAccentUi("sky");
 
 export default function Entrevistas() {
+  const { isPro, loading } = useSubscription();
   return (
     <Layout>
       <PageHero
@@ -18,14 +20,16 @@ export default function Entrevistas() {
         title="Processo Seletivo em Tech"
         subtitle="Tudo que você precisa saber para passar nas entrevistas."
         actions={
-          <AiCtaLink
-            href="/entrevistas/simulador"
-            description="Treine respostas com feedback"
-            accent="blue"
-            className="w-full"
-          >
-            Simulador com IA
-          </AiCtaLink>
+          !isPro && !loading ? (
+            <AiCtaLink
+              href="/entrevistas/simulador"
+              description="Treine respostas com feedback"
+              accent="blue"
+              className="w-full"
+            >
+              Simulador com IA
+            </AiCtaLink>
+          ) : undefined
         }
       />
       <section
