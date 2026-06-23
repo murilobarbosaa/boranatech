@@ -96,7 +96,6 @@ export default function AuthModal({
         }
 
         await signUp(parsed.data);
-        localStorage.setItem("bnt_signup_completed", "true");
         getMyProfile().catch((triggerErr) => {
           console.warn(
             "[AuthModal] failed to trigger welcome email:",
@@ -119,6 +118,11 @@ export default function AuthModal({
 
       onAuthenticated?.();
       onOpenChange(false);
+      if (isSignup) {
+        // Cadastro pelo modal tambem leva pra tela de boas-vindas; login mantem
+        // o comportamento atual (so fechar o modal).
+        setLocation("/bem-vindo");
+      }
     } catch (err) {
       console.error("[AuthModal] handleSubmit failed", err);
       setError(getAuthErrorMessage(err));
