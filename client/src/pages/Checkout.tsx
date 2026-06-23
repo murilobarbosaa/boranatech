@@ -30,6 +30,7 @@ import {
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import CeuEstrelado from "@/components/shared/CeuEstrelado";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
@@ -296,7 +297,7 @@ function HeroSection() {
       aria-labelledby="hero-pro-title"
       className="relative overflow-hidden bg-slate-950 py-20 md:py-28"
     >
-      <HeroBackground />
+      <CeuEstrelado />
 
       <div className="container relative z-10">
         <div className="mx-auto max-w-4xl text-center">
@@ -374,80 +375,6 @@ function HeroSection() {
         </div>
       </div>
     </section>
-  );
-}
-
-function HeroBackground() {
-  const stars = [
-    { top: "12%", left: "8%", size: 8, delay: 0, duration: 3 },
-    { top: "18%", left: "92%", size: 6, delay: 0.5, duration: 2.6 },
-    { top: "30%", left: "20%", size: 5, delay: 1.2, duration: 3.4 },
-    { top: "26%", left: "78%", size: 7, delay: 1.8, duration: 2.8 },
-    { top: "55%", left: "12%", size: 5, delay: 0.8, duration: 3.2 },
-    { top: "62%", left: "88%", size: 8, delay: 2.4, duration: 2.4 },
-    { top: "72%", left: "30%", size: 6, delay: 1.5, duration: 3 },
-    { top: "78%", left: "70%", size: 5, delay: 2.8, duration: 2.6 },
-    { top: "45%", left: "50%", size: 4, delay: 3.2, duration: 3.6 },
-    { top: "85%", left: "45%", size: 7, delay: 0.3, duration: 2.8 },
-  ];
-
-  return (
-    <>
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at center, rgba(255,184,0,0.15), transparent 60%)",
-        }}
-        aria-hidden="true"
-      />
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-50"
-        aria-hidden="true"
-      >
-        <defs>
-          <pattern
-            id="checkout-stars"
-            x="0"
-            y="0"
-            width="120"
-            height="120"
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M 30 14 L 32 22 L 40 22 L 33 28 L 35 36 L 30 31 L 25 36 L 27 28 L 20 22 L 28 22 Z"
-              fill="#fbbf24"
-              opacity="0.18"
-            />
-            <path
-              d="M 90 80 L 91 84 L 95 84 L 92 87 L 93 91 L 90 88 L 87 91 L 88 87 L 85 84 L 89 84 Z"
-              fill="#fbbf24"
-              opacity="0.22"
-            />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#checkout-stars)" />
-      </svg>
-      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        {stars.map((s, idx) => (
-          <span
-            key={idx}
-            className="animate-twinkle absolute rounded-full bg-amber-300"
-            style={
-              {
-                top: s.top,
-                left: s.left,
-                width: s.size,
-                height: s.size,
-                boxShadow: `0 0 ${s.size * 3}px ${s.size * 1.2}px rgba(255, 184, 0, 0.7)`,
-                ["--twinkle-delay" as string]: `${s.delay}s`,
-                ["--twinkle-duration" as string]: `${s.duration}s`,
-              } as React.CSSProperties
-            }
-          />
-        ))}
-      </div>
-    </>
   );
 }
 
