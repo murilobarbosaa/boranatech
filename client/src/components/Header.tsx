@@ -651,11 +651,10 @@ function DesktopNav({ location }: { location: string }) {
         className={`nav-pill inline-flex items-center gap-1 px-3 py-1.5 text-sm font-bold ${
           isPathActive("/comparador", location)
             ? "nav-pill-active text-slate-900"
-            : "text-slate-700"
+            : "text-violet-700"
         }`}
       >
         Comparador
-        <ProStarBadge />
       </Link>
     </nav>
   );
@@ -977,11 +976,10 @@ export default function Header() {
             className={`mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
               isPathActive("/comparador", location)
                 ? "border-slate-900 bg-white text-slate-950"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                : "border-violet-300 bg-white text-violet-700 hover:border-violet-400"
             }`}
           >
             Comparador
-            <ProStarBadge />
           </Link>
         </nav>
 
