@@ -135,8 +135,8 @@ export default function Salarios() {
   const [city, setCity] = useState("Todas");
   const [type, setType] = useState("Todos");
   const [pj, setPj] = useState(9000);
-  const [negotiationArea, setNegotiationArea] = useState("Front-end");
-  const [experience, setExperience] = useState(1);
+  const [negArea, setNegArea] = useState(String(salaryRows[0].area));
+  const [negLevel, setNegLevel] = useState(String(salaryRows[0].level));
 
   const areas = [
     "Todas",
@@ -153,8 +153,18 @@ export default function Salarios() {
     [area, city, level],
   );
   const cltEquivalent = Math.round(pj * 0.68);
-  const askMin = 3200 + experience * 900;
-  const askMax = askMin + 1800;
+  const negAreaOptions = areas.filter((option) => option !== "Todas");
+  const negLevelOptions = levels.filter((option) => option !== "Todos");
+  const negRows = salaryRows.filter(
+    (row) => row.area === negArea && row.level === negLevel,
+  );
+  const negBase = negRows.length
+    ? Math.min(...negRows.map((row) => Number(row.clt)))
+    : null;
+  const negTeto =
+    negBase !== null
+      ? Math.round(Math.max(...negRows.map((row) => Number(row.clt))) * 1.15)
+      : null;
 
   return (
     <Layout>
@@ -276,7 +286,14 @@ export default function Salarios() {
 
             {aba === "Calculadoras" ? (
               <div className="grid gap-6 lg:grid-cols-2">
-                <div className="card-brutal rounded-2xl bg-amber-100 p-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.3 }}
+                  whileHover={{ y: -4 }}
+                  className="card-brutal rounded-2xl bg-amber-100 p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#fcd34d]"
+                >
                   <h2 className="font-display text-2xl font-black">
                     Calculadora CLT vs PJ
                   </h2>
@@ -298,78 +315,90 @@ export default function Salarios() {
                       }}
                     />
                   </label>
-                  <label className="mt-3 block text-sm font-black">
-                    Estado
-                    <select className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3">
-                      <option>SP</option>
-                      <option>RJ</option>
-                      <option>MG</option>
-                    </select>
-                  </label>
                   <div className="mt-5 rounded-2xl border-2 border-slate-900 bg-white p-5">
-                    <p className="text-sm font-bold">
+                    <p className="text-xs font-bold text-slate-500">
+                      Estimativa simplificada. Valide com um contador antes de
+                      decidir.
+                    </p>
+                    <p className="mt-2 text-sm font-bold">
                       Essa proposta PJ equivale a um salário CLT de
                     </p>
                     <p
                       className={cn("font-display text-3xl font-black", ac.link)}
                     >
-                      {cltEquivalent.toLocaleString("pt-BR", {
-                        style: "currency",
-                        currency: "BRL",
-                      })}
+                      R$ <CountUp to={cltEquivalent} separator="." />
                     </p>
                   </div>
+                  <p className="mt-4 text-sm font-bold text-slate-700">
+                    Por que menos que o PJ? Porque o CLT já inclui o que está
+                    abaixo, e no PJ você banca tudo isso.
+                  </p>
                   {[
-                    "INSS",
-                    "FGTS (8%)",
-                    "Férias + 1/3",
-                    "13º salário",
-                    "Benefícios médios",
-                  ].map((item) => (
+                    {
+                      item: "FGTS (8%)",
+                      desc: "No CLT, a empresa deposita 8% do salário numa conta sua. No PJ, isso não existe.",
+                    },
+                    {
+                      item: "13º salário",
+                      desc: "Um salário extra por ano no CLT. No PJ, você teria que guardar por conta.",
+                    },
+                    {
+                      item: "Férias + 1/3",
+                      desc: "No CLT você tira férias pagas com adicional de 1/3. No PJ, férias saem do seu bolso.",
+                    },
+                    {
+                      item: "INSS",
+                      desc: "No CLT o desconto já entra na folha. No PJ, você recolhe por conta.",
+                    },
+                    {
+                      item: "Benefícios médios",
+                      desc: "VR, VA e plano de saúde costumam vir no CLT. No PJ, normalmente não.",
+                    },
+                  ].map(({ item, desc }) => (
                     <DetailsChevronOnly
                       key={item}
                       className="mt-3 rounded-xl border-2 border-slate-900 bg-white p-3"
                       title={<span className="font-black">{item}</span>}
                     >
-                      <p className="mt-2 text-sm text-slate-600">
-                        Estimativa simplificada para comparação inicial. Valide
-                        com contador antes de decidir.
-                      </p>
+                      <p className="mt-2 text-sm text-slate-600">{desc}</p>
                     </DetailsChevronOnly>
                   ))}
-                </div>
+                </motion.div>
 
-                <div className="card-brutal rounded-2xl bg-white p-6">
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.3 }}
+                  whileHover={{ y: -4 }}
+                  className="card-brutal rounded-2xl bg-white p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#fcd34d]"
+                >
                   <h2 className="font-display text-2xl font-black">
                     Calculadora de negociação salarial
                   </h2>
                   <label className="mt-4 block text-sm font-black">
                     Área
-                    <input
+                    <select
                       className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3"
-                      value={negotiationArea}
-                      onChange={(event) =>
-                        setNegotiationArea(event.target.value)
-                      }
-                    />
+                      value={negArea}
+                      onChange={(event) => setNegArea(event.target.value)}
+                    >
+                      {negAreaOptions.map((option) => (
+                        <option key={option}>{option}</option>
+                      ))}
+                    </select>
                   </label>
                   <label className="mt-3 block text-sm font-black">
-                    Tempo de experiência
-                    <input
-                      type="number"
-                      min={0}
+                    Nível
+                    <select
                       className="mt-1 w-full rounded-xl border-2 border-slate-900 p-3"
-                      value={experience}
-                      onChange={(event) => {
-                        const next =
-                          event.target.value === ""
-                            ? 0
-                            : Number(event.target.value);
-                        setExperience(
-                          Number.isNaN(next) || next < 0 ? 0 : next,
-                        );
-                      }}
-                    />
+                      value={negLevel}
+                      onChange={(event) => setNegLevel(event.target.value)}
+                    >
+                      {negLevelOptions.map((option) => (
+                        <option key={option}>{option}</option>
+                      ))}
+                    </select>
                   </label>
                   <div
                     className={cn(
@@ -378,20 +407,32 @@ export default function Salarios() {
                       ac.panelSoft,
                     )}
                   >
-                    <p className="font-black">
-                      Você pode pedir entre R${" "}
-                      {askMin.toLocaleString("pt-BR")} e R${" "}
-                      {askMax.toLocaleString("pt-BR")}
-                    </p>
+                    {negBase !== null && negTeto !== null ? (
+                      <>
+                        <p className="font-black">
+                          Referência da tabela: R${" "}
+                          <CountUp to={negBase} separator="." />. Você pode pedir
+                          entre R$ <CountUp to={negBase} separator="." /> e R${" "}
+                          <CountUp to={negTeto} separator="." />.
+                        </p>
+                        <p className="mt-2 text-xs font-bold text-slate-500">
+                          Faixa baseada na tabela acima, com até 15% de margem de
+                          negociação.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="font-bold text-slate-700">
+                        Ainda não temos {negArea} {negLevel} na tabela. Use os
+                        recortes disponíveis como referência.
+                      </p>
+                    )}
                     <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                      <li>
-                        Tenho projetos práticos alinhados com {negotiationArea}.
-                      </li>
+                      <li>Tenho projetos práticos alinhados com {negArea}.</li>
                       <li>Trago repertório das tecnologias pedidas na vaga.</li>
                       <li>Posso mostrar evolução e entregas documentadas.</li>
                     </ul>
                   </div>
-                </div>
+                </motion.div>
               </div>
             ) : null}
 
