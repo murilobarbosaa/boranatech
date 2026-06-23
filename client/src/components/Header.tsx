@@ -115,7 +115,6 @@ const menuData: DropdownMenu[] = [
             label: "Roadmap Básico", // TODO(Ana): confirmar termo final (Básico vs Grátis vs outro)
             description: "Planos de estudo por área",
             path: "/roadmaps",
-            isPro: true,
           },
           {
             label: "Plano de Estudos",
