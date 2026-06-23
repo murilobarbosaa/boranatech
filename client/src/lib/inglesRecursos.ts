@@ -3,7 +3,7 @@ export type EnglishObjetivo =
   | "Conversar"
   | "Ler documentacao e codigo"
   | "Entrevista internacional"
-  | "Passar num exame";
+  | "Passar em um exame";
 
 export interface RecursoIngles {
   nome: string;
@@ -25,7 +25,7 @@ export const OBJETIVOS_INGLES: EnglishObjetivo[] = [
   "Conversar",
   "Ler documentacao e codigo",
   "Entrevista internacional",
-  "Passar num exame",
+  "Passar em um exame",
 ];
 
 export const SUBAREAS_INGLES = [
@@ -55,7 +55,7 @@ export const recursosIngles: RecursoIngles[] = [
     "nivel": "Todos",
     "objetivo": [
       "Conversar",
-      "Passar num exame"
+      "Passar em um exame"
     ],
     "gratuito": true,
     "desc": "Cursos, videos e audios gratuitos da BBC com sotaque britanico e legendas."
@@ -67,7 +67,7 @@ export const recursosIngles: RecursoIngles[] = [
     "nivel": "Todos",
     "objetivo": [
       "Conversar",
-      "Passar num exame"
+      "Passar em um exame"
     ],
     "gratuito": true,
     "desc": "Plataforma gratuita do British Council com exercicios por nivel e teste de proficiencia."
@@ -89,7 +89,7 @@ export const recursosIngles: RecursoIngles[] = [
     "subarea": "Plataformas e cursos",
     "nivel": "Todos",
     "objetivo": [
-      "Passar num exame"
+      "Passar em um exame"
     ],
     "gratuito": false,
     "desc": "Site oficial dos exames de Cambridge com materiais e provas reconhecidas mundialmente."
@@ -101,7 +101,7 @@ export const recursosIngles: RecursoIngles[] = [
     "nivel": "Intermediario",
     "objetivo": [
       "Ler documentacao e codigo",
-      "Passar num exame"
+      "Passar em um exame"
     ],
     "gratuito": true,
     "desc": "Cursos online de universidades, varios gratuitos, otimos pra estudar ingles em contexto de area."
@@ -113,7 +113,7 @@ export const recursosIngles: RecursoIngles[] = [
     "nivel": "Todos",
     "objetivo": [
       "Conversar",
-      "Passar num exame"
+      "Passar em um exame"
     ],
     "gratuito": true,
     "desc": "Recursos gratuitos de ingles organizados por nivel, do iniciante ao avancado, com jogos e quizzes."
@@ -227,7 +227,7 @@ export const recursosIngles: RecursoIngles[] = [
     "objetivo": [
       "Conversar",
       "Ler documentacao e codigo",
-      "Passar num exame"
+      "Passar em um exame"
     ],
     "gratuito": true,
     "desc": "Dicionario de ingles com definicoes simples, audio de pronuncia e exemplos de uso real."
@@ -263,7 +263,7 @@ export const recursosIngles: RecursoIngles[] = [
     "nivel": "Todos",
     "objetivo": [
       "Conversar",
-      "Passar num exame"
+      "Passar em um exame"
     ],
     "gratuito": true,
     "desc": "App de flashcards com repeticao espacada pra fixar vocabulario sem esquecer."
