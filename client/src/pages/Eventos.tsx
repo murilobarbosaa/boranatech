@@ -9,8 +9,12 @@ import {
   CalendarPlus,
   ChevronDown,
   ExternalLink,
+  LayoutGrid,
   MapPin,
+  Trophy,
   Users,
+  Video,
+  type LucideIcon,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -70,11 +74,36 @@ function EventLogo({ name, logoUrl }: { name: string; logoUrl: string }) {
 
 const ALL = "";
 
+type Tab = "todos" | "webinars" | "hackathons";
+
+const TAB_DEFS: { id: Tab; label: string; Icon: LucideIcon }[] = [
+  { id: "todos", label: "Todos os eventos", Icon: LayoutGrid },
+  { id: "webinars", label: "Webinars", Icon: Video },
+  { id: "hackathons", label: "Hackathons", Icon: Trophy },
+];
+
+function matchTab(categoria: string, tab: Tab): boolean {
+  if (tab === "hackathons") return categoria.toLowerCase().includes("hackathon");
+  if (tab === "webinars") return categoria.toLowerCase().includes("webinar");
+  return true;
+}
+
 export default function Eventos() {
+  const [tab, setTab] = useState<Tab>("todos");
   const [categoria, setCategoria] = useState(ALL);
   const [formato, setFormato] = useState(ALL);
   const [estadoUF, setEstadoUF] = useState<"" | EstadoUfSigla>(ALL);
   const [apenasGratuitos, setApenasGratuitos] = useState(false);
+
+  const tabCounts = useMemo(() => {
+    const upcoming = eventos.filter((e) => !isEventoPassado(e));
+    return {
+      todos: upcoming.length,
+      webinars: upcoming.filter((e) => matchTab(e.categoria, "webinars")).length,
+      hackathons: upcoming.filter((e) => matchTab(e.categoria, "hackathons"))
+        .length,
+    };
+  }, []);
 
   const categoriasUnicas = useMemo(
     () =>
@@ -89,6 +118,8 @@ export default function Eventos() {
       eventos.filter((e) => {
         if (isEventoPassado(e)) return false;
 
+        const matchTipo = matchTab(e.categoria, tab);
+
         const matchCat = !categoria || e.categoria === categoria;
 
         const matchFmt = !formato || e.formato === formato;
@@ -97,9 +128,9 @@ export default function Eventos() {
 
         const matchGratuito =
           !apenasGratuitos || e.valor.toLowerCase().includes("gratuito");
-        return matchCat && matchFmt && matchEst && matchGratuito;
+        return matchTipo && matchCat && matchFmt && matchEst && matchGratuito;
       }),
-    [categoria, formato, estadoUF, apenasGratuitos],
+    [tab, categoria, formato, estadoUF, apenasGratuitos],
   );
 
   const selectClass =
@@ -139,29 +170,66 @@ export default function Eventos() {
 
       <section className="bg-fuchsia-50 border-b-2 border-fuchsia-200 py-4 sticky top-16 z-40">
         <div className="container">
+          <div
+            role="tablist"
+            aria-label="Tipo de evento"
+            className="mb-4 flex flex-wrap gap-2"
+          >
+            {TAB_DEFS.map(({ id, label, Icon }) => {
+              const active = tab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setTab(id)}
+                  className={`inline-flex items-center gap-2 rounded-full border-2 border-slate-900 px-4 py-2 text-sm font-black transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-fuchsia-200 ${
+                    active
+                      ? "bg-fuchsia-500 text-white shadow-[3px_3px_0_#0f172a]"
+                      : "bg-white text-slate-900 hover:-translate-y-0.5 hover:shadow-[2px_2px_0_#0f172a]"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[11px] font-black ${
+                      active
+                        ? "bg-white/25 text-white"
+                        : "bg-fuchsia-100 text-fuchsia-700"
+                    }`}
+                  >
+                    {tabCounts[id]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <div className="flex flex-wrap items-end gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="filter-evento-tipo"
-                className="text-xs font-bold text-slate-700"
-              >
-                {LABEL_FILTROS.categoria}
-              </label>
-              <select
-                id="filter-evento-tipo"
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
-                className={selectClass}
-                title={LABEL_FILTROS.categoria}
-              >
-                {categoriasUnicas.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-                <option value="">{LABEL_FILTROS.categoria}</option>
-              </select>
-            </div>
+            {tab === "todos" && (
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="filter-evento-tipo"
+                  className="text-xs font-bold text-slate-700"
+                >
+                  {LABEL_FILTROS.categoria}
+                </label>
+                <select
+                  id="filter-evento-tipo"
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  className={selectClass}
+                  title={LABEL_FILTROS.categoria}
+                >
+                  {categoriasUnicas.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                  <option value="">{LABEL_FILTROS.categoria}</option>
+                </select>
+              </div>
+            )}
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="filter-evento-modalidade"
@@ -307,26 +375,34 @@ export default function Eventos() {
             ))}
           </div>
 
-          {filtered.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-3xl mb-3">📅</p>
-              <p className="text-slate-600 font-medium">
-                Nenhum evento encontrado com esses filtros.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setCategoria(ALL);
-                  setFormato(ALL);
-                  setEstadoUF(ALL);
-                  setApenasGratuitos(false);
-                }}
-                className="mt-4 text-fuchsia-700 text-sm font-medium hover:underline"
-              >
-                Limpar filtros
-              </button>
-            </div>
-          )}
+          {filtered.length === 0 &&
+            (tabCounts[tab] === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-3xl mb-3">🗓️</p>
+                <p className="text-slate-600 font-medium">
+                  Ainda não temos eventos desse tipo por aqui.
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <p className="text-3xl mb-3">📅</p>
+                <p className="text-slate-600 font-medium">
+                  Nenhum evento encontrado com esses filtros.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoria(ALL);
+                    setFormato(ALL);
+                    setEstadoUF(ALL);
+                    setApenasGratuitos(false);
+                  }}
+                  className="mt-4 text-fuchsia-700 text-sm font-medium hover:underline"
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            ))}
 
           <div className="mt-10 p-5 bg-fuchsia-50 border-2 border-fuchsia-200 rounded-xl">
             <h3 className="font-display font-semibold text-slate-900 mb-2">
