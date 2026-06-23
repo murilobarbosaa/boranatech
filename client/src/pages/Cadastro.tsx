@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { TicketPercent } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { sanitizeReturnTo } from "@/components/auth/RequireAuth";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import Auth from "@/pages/Auth";
 
@@ -19,7 +20,10 @@ export default function Cadastro() {
 
   useEffect(() => {
     if (loading || !session) return;
-    setLocation("/perfil", { replace: true });
+    const returnTo = sanitizeReturnTo(
+      new URLSearchParams(window.location.search).get("returnTo"),
+    );
+    setLocation(returnTo ?? "/perfil", { replace: true });
   }, [loading, session, setLocation]);
 
   if (loading || session) return null;

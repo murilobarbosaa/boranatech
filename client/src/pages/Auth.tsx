@@ -9,6 +9,7 @@ import { GenderSelect } from "@/components/auth/GenderSelect";
 import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
+import { sanitizeReturnTo } from "@/components/auth/RequireAuth";
 import { getAuthErrorMessage, type FriendlyError } from "@/lib/authErrors";
 import {
   firstIssueMessage,
@@ -78,7 +79,12 @@ export default function Auth({
         toast.success("Login realizado com sucesso.");
       }
 
-      setLocation(isSignup ? "/planos" : "/perfil", { replace: true });
+      const returnTo = sanitizeReturnTo(
+        new URLSearchParams(window.location.search).get("returnTo"),
+      );
+      setLocation(returnTo ?? (isSignup ? "/planos" : "/perfil"), {
+        replace: true,
+      });
     } catch (err) {
       console.error("[Auth] handleSubmit failed", err);
       setError(getAuthErrorMessage(err));

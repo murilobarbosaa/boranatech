@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
+import RequireAuth from "./components/auth/RequireAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
@@ -89,21 +90,75 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/areas" component={Areas} />
-      <Route path="/areas/:parent/:subarea" component={SubAreaDetalhe} />
-      <Route path="/areas/:slug" component={AreaDetalhe} />
+      <Route path="/areas/:parent/:subarea">
+        {() => (
+          <RequireAuth>
+            <SubAreaDetalhe />
+          </RequireAuth>
+        )}
+      </Route>
+      <Route path="/areas/:slug">
+        {() => (
+          <RequireAuth>
+            <AreaDetalhe />
+          </RequireAuth>
+        )}
+      </Route>
       <Route path="/tecnologias" component={Tecnologias} />
-      <Route path="/tecnologias/comparar" component={TecnologiaComparador} />
-      <Route path="/tecnologias/por-area" component={TecnologiaMapa} />
+      <Route path="/tecnologias/comparar">
+        {() => (
+          <RequireAuth>
+            <TecnologiaComparador />
+          </RequireAuth>
+        )}
+      </Route>
+      <Route path="/tecnologias/por-area">
+        {() => (
+          <RequireAuth>
+            <TecnologiaMapa />
+          </RequireAuth>
+        )}
+      </Route>
       {/* TODO: remover redirect após 90 dias em prod */}
       <Route path="/tecnologias/mapa">
         {() => <Redirect to="/tecnologias/por-area" />}
       </Route>
-      <Route path="/tecnologias/ranking" component={TecnologiaRanking} />
-      <Route path="/tecnologias/jogos" component={TecnologiaJogos} />
-      <Route path="/tecnologias/:slug" component={TecnologiaDetalhe} />
+      <Route path="/tecnologias/ranking">
+        {() => (
+          <RequireAuth>
+            <TecnologiaRanking />
+          </RequireAuth>
+        )}
+      </Route>
+      <Route path="/tecnologias/jogos">
+        {() => (
+          <RequireAuth>
+            <TecnologiaJogos />
+          </RequireAuth>
+        )}
+      </Route>
+      <Route path="/tecnologias/:slug">
+        {() => (
+          <RequireAuth>
+            <TecnologiaDetalhe />
+          </RequireAuth>
+        )}
+      </Route>
       <Route path="/empresas" component={Empresas} />
-      <Route path="/empresas/ranking-junior" component={EmpresaRankingJunior} />
-      <Route path="/empresas/:slug" component={EmpresaDetalhe} />
+      <Route path="/empresas/ranking-junior">
+        {() => (
+          <RequireAuth>
+            <EmpresaRankingJunior />
+          </RequireAuth>
+        )}
+      </Route>
+      <Route path="/empresas/:slug">
+        {() => (
+          <RequireAuth>
+            <EmpresaDetalhe />
+          </RequireAuth>
+        )}
+      </Route>
       <Route path="/salarios" component={Salarios} />
       <Route path="/entrevistas" component={Entrevistas} />
       <Route path="/entrevistas/perguntas" component={EntrevistaPerguntas} />
@@ -134,19 +189,39 @@ function Router() {
       <Route path="/admin" component={Admin} />
       <Route path="/roadmaps" component={RoadmapsV2Index} />
       <Route path="/roadmaps/comecar-do-zero">
-        {() => <RoadmapCarreira roadmapId="zero-ti" />}
+        {() => (
+          <RequireAuth>
+            <RoadmapCarreira roadmapId="zero-ti" />
+          </RequireAuth>
+        )}
       </Route>
       <Route path="/roadmaps/linkedin">
-        {() => <RoadmapCarreira roadmapId="linkedin" />}
+        {() => (
+          <RequireAuth>
+            <RoadmapCarreira roadmapId="linkedin" />
+          </RequireAuth>
+        )}
       </Route>
-      <Route path="/roadmaps/:slug" component={RoadmapsV2} />
+      <Route path="/roadmaps/:slug">
+        {() => (
+          <RequireAuth>
+            <RoadmapsV2 />
+          </RequireAuth>
+        )}
+      </Route>
       <Route path="/roadmaps-novo">{() => <Redirect to="/roadmaps" />}</Route>
       <Route path="/roadmaps-novo/:slug">
         {(params) => <Redirect to={`/roadmaps/${params.slug}`} />}
       </Route>
       <Route path="/cursos" component={Cursos} />
       <Route path="/plataformas" component={Plataformas} />
-      <Route path="/faculdades/:slug" component={FaculdadeDetalhe} />
+      <Route path="/faculdades/:slug">
+        {() => (
+          <RequireAuth>
+            <FaculdadeDetalhe />
+          </RequireAuth>
+        )}
+      </Route>
       <Route path="/faculdades" component={Faculdades} />
       <Route path="/eventos" component={Eventos} />
       <Route path="/projetos" component={Projetos} />
