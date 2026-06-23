@@ -22,6 +22,10 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
+import MiniQuiz, {
+  type MiniQuizPergunta,
+  type MiniQuizResultado,
+} from "@/components/shared/MiniQuiz";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import { plataformas } from "@/lib/data";
 import { technologies } from "@/lib/technologyData";
@@ -78,6 +82,219 @@ function PlatformLogo({
     />
   );
 }
+
+type Plataforma = (typeof plataformas)[number];
+type Nivel = "iniciante" | "intermediario" | "avancado" | "todos";
+
+function precoTipo(tipo: string): "gratis" | "pago" | "hibrido" | "outro" {
+  const t = tipo.toLowerCase();
+  if (t.includes("hibr") || t.includes("híbr")) return "hibrido";
+  if (t.includes("grat")) return "gratis";
+  if (t.includes("pag")) return "pago";
+  return "outro";
+}
+
+function niveisCobertos(nivelIdeal: string): Nivel[] {
+  const t = nivelIdeal.toLowerCase();
+  const niveis: Nivel[] = [];
+  if (t.includes("todos")) niveis.push("todos");
+  if (t.includes("inician")) niveis.push("iniciante");
+  if (t.includes("intermedi")) niveis.push("intermediario");
+  if (t.includes("avan")) niveis.push("avancado");
+  return niveis.length ? niveis : ["todos"];
+}
+
+function temArea(areasFortes: string[], chaves: string[]): boolean {
+  const txt = areasFortes.join(" ").toLowerCase();
+  return chaves.some((c) => txt.includes(c));
+}
+
+function idsOnde(pred: (p: Plataforma) => boolean): string[] {
+  return plataformas.filter(pred).map((p) => p.id);
+}
+
+function seloIdioma(idioma: string): string {
+  const t = idioma.toLowerCase();
+  const pt = t.includes("portug");
+  const en = t.includes("ingl");
+  if (pt && en) return "PT e EN";
+  if (pt) return "PT";
+  if (en) return "EN";
+  return "Vários idiomas";
+}
+
+const QUIZ_TITULO = "Não sabe qual escolher?"; // TODO(Ana)
+const QUIZ_SUBTITULO =
+  "Responda 4 perguntas e veja a plataforma que mais combina com você."; // TODO(Ana)
+const QUIZ_PORQUE =
+  "Combina com o que você marcou de área, formato, preço e nível."; // TODO(Ana)
+
+const QUIZ_PERGUNTAS: MiniQuizPergunta[] = [
+  {
+    id: "area",
+    pergunta: "O que você mais quer fazer?", // TODO(Ana)
+    opcoes: [
+      {
+        rotulo: "Criar sites e telas (Front-end / UX)", // TODO(Ana)
+        pontosPara: idsOnde((p) =>
+          temArea(p.areasFortes, [
+            "front",
+            "ux",
+            "ui",
+            "design",
+            "web",
+            "css",
+            "prototip",
+          ]),
+        ),
+      },
+      {
+        rotulo: "Programar a lógica por trás (Back-end / Full-stack)", // TODO(Ana)
+        pontosPara: idsOnde((p) => temArea(p.areasFortes, ["back", "full"])),
+      },
+      {
+        rotulo: "Dados, IA ou Python", // TODO(Ana)
+        pontosPara: idsOnde((p) =>
+          temArea(p.areasFortes, [
+            "dado",
+            "dados",
+            "ia",
+            "intelig",
+            "python",
+            "machine",
+            "data",
+            "bi",
+            "sql",
+            "matem",
+            "probabil",
+            "algoritmo",
+          ]),
+        ),
+      },
+      {
+        rotulo: "Segurança, redes e infraestrutura", // TODO(Ana)
+        pontosPara: idsOnde((p) =>
+          temArea(p.areasFortes, [
+            "seguran",
+            "ciber",
+            "rede",
+            "infra",
+            "devops",
+            "cloud",
+            "linux",
+            "linha de comando",
+          ]),
+        ),
+      },
+      {
+        rotulo: "Ainda não sei, quero fundamentos", // TODO(Ana)
+        pontosPara: idsOnde(
+          (p) =>
+            p.boaParaIniciantes ||
+            temArea(p.areasFortes, [
+              "todas as áreas",
+              "fundament",
+              "lógica",
+              "logica",
+              "algoritmo",
+            ]),
+        ),
+      },
+    ],
+  },
+  {
+    id: "formato",
+    pergunta: "Como você prefere aprender?", // TODO(Ana)
+    opcoes: [
+      {
+        rotulo: "Assistindo aula e seguindo trilha", // TODO(Ana)
+        pontosPara: idsOnde((p) => p.categoria === "Cursos"),
+      },
+      {
+        rotulo: "Praticando e resolvendo desafios", // TODO(Ana)
+        pontosPara: idsOnde(
+          (p) => p.categoria === "Desafios" || p.categoria === "Playground",
+        ),
+      },
+      {
+        rotulo: "Brincando, tipo jogo", // TODO(Ana)
+        pontosPara: idsOnde((p) => p.categoria === "Jogo"),
+      },
+      {
+        rotulo: "Lendo doc e indo direto", // TODO(Ana)
+        pontosPara: idsOnde(
+          (p) => p.categoria === "Documentação" || p.categoria === "Roadmap",
+        ),
+      },
+    ],
+  },
+  {
+    id: "preco",
+    pergunta: "Quanto você quer investir?", // TODO(Ana)
+    opcoes: [
+      {
+        rotulo: "Só grátis", // TODO(Ana)
+        pontosPara: idsOnde((p) => precoTipo(p.tipo) === "gratis"),
+      },
+      {
+        rotulo: "Pago um pouco se valer a pena", // TODO(Ana)
+        pontosPara: idsOnde(
+          (p) =>
+            precoTipo(p.tipo) === "pago" || precoTipo(p.tipo) === "hibrido",
+        ),
+      },
+      {
+        rotulo: "Tanto faz, quero o melhor", // TODO(Ana)
+        pontosPara: [],
+      },
+    ],
+  },
+  {
+    id: "nivel",
+    pergunta: "Qual seu nível hoje?", // TODO(Ana)
+    opcoes: [
+      {
+        rotulo: "Começando do zero", // TODO(Ana)
+        pontosPara: [
+          ...idsOnde((p) => {
+            const n = niveisCobertos(p.nivelIdeal);
+            return n.includes("iniciante") || n.includes("todos");
+          }),
+          ...idsOnde((p) => p.boaParaIniciantes),
+        ],
+      },
+      {
+        rotulo: "Já sei o básico, quero avançar", // TODO(Ana)
+        pontosPara: idsOnde((p) => {
+          const n = niveisCobertos(p.nivelIdeal);
+          return n.includes("intermediario") || n.includes("todos");
+        }),
+      },
+      {
+        rotulo: "Já tenho experiência", // TODO(Ana)
+        pontosPara: idsOnde((p) => {
+          const n = niveisCobertos(p.nivelIdeal);
+          return n.includes("avancado") || n.includes("todos");
+        }),
+      },
+    ],
+  },
+];
+
+const QUIZ_RESULTADOS: Record<string, MiniQuizResultado> = Object.fromEntries(
+  plataformas.map((p): [string, MiniQuizResultado] => [
+    p.id,
+    {
+      titulo: p.nome,
+      descricao: p.descricao,
+      acaoRotulo: "Visitar plataforma", // TODO(Ana)
+      acaoHref: p.link,
+      logoUrl: p.logoUrl,
+      idioma: seloIdioma(p.idioma),
+      externo: true,
+    },
+  ]),
+);
 
 export default function Plataformas() {
   const platformItems = plataformas;
@@ -344,6 +561,16 @@ export default function Plataformas() {
       {/* Grid */}
       <section className="bg-[#ecfdf5] py-12">
         <div className="container">
+          <div className="mb-8">
+            <MiniQuiz
+              titulo={QUIZ_TITULO}
+              subtitulo={QUIZ_SUBTITULO}
+              perguntas={QUIZ_PERGUNTAS}
+              resultados={QUIZ_RESULTADOS}
+              alternativas={2}
+              porque={QUIZ_PORQUE}
+            />
+          </div>
           <div className="mb-6 grid gap-4 md:grid-cols-2">
             <div className="card-brutal flex flex-col rounded-2xl bg-white p-6 shadow-[5px_5px_0_#6ee7b7]">
               <div className="flex flex-wrap items-center gap-3">
