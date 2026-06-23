@@ -5,9 +5,13 @@ import {
   ArrowRight,
   CheckCircle,
   Clock,
+  Compass,
+  GraduationCap,
   Info,
   ListChecks,
+  Map,
   SlidersHorizontal,
+  Wallet,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
@@ -15,6 +19,13 @@ import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { areasTI } from "@/lib/data";
+import { roadmapsV2 } from "@/lib/roadmapV2/content";
+
+interface PriorityAction {
+  text: string;
+  href: string;
+  cta: string;
+}
 
 const ac = getPageAccentUi("fuchsia");
 
@@ -197,27 +208,55 @@ export default function Simulador() {
     weeklyHours >= 20 ? "alta" : weeklyHours >= 10 ? "moderada" : "leve";
   const priorityActions = [
     portfolioDiscounts[portfolio] < 2
-      ? "Transformar estudos em projetos publicáveis com README, prints e contexto do problema."
+      ? {
+          text: "Transformar estudos em projetos publicáveis com README, prints e contexto do problema.",
+          href: "/portfolio",
+          cta: "Ver portfólio",
+        }
       : null,
     projectCadenceDiscounts[projectCadence] < 2
-      ? "Aumentar a prática com projetos próprios, não só aulas e exercícios isolados."
+      ? {
+          text: "Aumentar a prática com projetos próprios, não só aulas e exercícios isolados.",
+          href: "/projetos",
+          cta: "Ideias de projeto",
+        }
       : null,
     jobMaterialsDiscounts[jobMaterials] < 2
-      ? "Organizar currículo, LinkedIn e apresentação curta antes de aplicar em volume."
+      ? {
+          text: "Organizar currículo, LinkedIn e apresentação curta antes de aplicar em volume.",
+          href: "/curriculo",
+          cta: "Arrumar currículo",
+        }
       : null,
     interviewDiscounts[interview] < 2
-      ? "Treinar entrevistas técnicas e comportamentais com perguntas reais da área."
+      ? {
+          text: "Treinar entrevistas técnicas e comportamentais com perguntas reais da área.",
+          href: "/entrevistas",
+          cta: "Treinar entrevistas",
+        }
       : null,
     applicationDiscounts[applications] < 2
-      ? "Criar uma rotina semanal de aplicações com currículo adaptado para cada vaga."
+      ? {
+          text: "Criar uma rotina semanal de aplicações com currículo adaptado para cada vaga.",
+          href: "/estagio",
+          cta: "Ver vagas e estágios",
+        }
       : null,
     consistencyDiscounts[consistency] < 2
-      ? "Definir metas semanais e revisar o progresso para reduzir pausas longas."
+      ? {
+          text: "Definir metas semanais e revisar o progresso para reduzir pausas longas.",
+          href: "/evolucao",
+          cta: "Acompanhar evolução",
+        }
       : null,
     supportDiscounts[support] < 1
-      ? "Entrar em comunidades para ter feedback, repertório e indicações mais cedo."
+      ? {
+          text: "Entrar em comunidades para ter feedback, repertório e indicações mais cedo.",
+          href: "/comunidades",
+          cta: "Entrar numa comunidade",
+        }
       : null,
-  ].filter(Boolean) as string[];
+  ].filter(Boolean) as PriorityAction[];
 
   function toggleKnowledge(item: string) {
     setKnowledge((current) =>
@@ -238,6 +277,36 @@ export default function Simulador() {
 
   const areaSlug = areasTI.find((entry) => entry.nome === area)?.slug;
   const areaPageHref = areaSlug ? `/areas/${areaSlug}` : "/areas";
+  const roadmapHref =
+    areaSlug && roadmapsV2.some((entry) => entry.slug === areaSlug)
+      ? `/roadmaps/${areaSlug}`
+      : "/roadmaps";
+  const areaPath = [
+    {
+      href: roadmapHref,
+      Icon: Map,
+      label: "Roadmap da área",
+      desc: "Trilha passo a passo, do básico ao avançado.",
+    },
+    {
+      href: "/salarios",
+      Icon: Wallet,
+      label: "Salários",
+      desc: "Panorama de faixas salariais em tech.",
+    },
+    {
+      href: "/cursos",
+      Icon: GraduationCap,
+      label: "Cursos",
+      desc: "Onde estudar, do gratuito ao avançado.",
+    },
+    {
+      href: areaPageHref,
+      Icon: Compass,
+      label: `Página de ${area}`,
+      desc: "Visão geral, skills e o que faz quem atua nela.",
+    },
+  ];
 
   const resultsBlock = (
     <div
@@ -339,11 +408,28 @@ export default function Simulador() {
           <p className="font-display text-lg font-black text-slate-950">
             O que mais encurta o caminho no seu caso
           </p>
-          <ul className="mt-3 space-y-2 text-sm font-medium text-slate-700">
+          <ul className="mt-4 space-y-3">
             {priorityActions.slice(0, 4).map((action) => (
-              <li key={action}>• {action}</li>
+              <li key={action.text}>
+                <Link
+                  href={action.href}
+                  className="group flex flex-col gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-all hover:border-slate-900 hover:bg-white hover:shadow-[3px_3px_0_#0f172a] sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <span className="text-sm font-medium text-slate-700">
+                    {action.text}
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border-2 border-slate-900 bg-fuchsia-300 px-3 py-1.5 text-xs font-black text-slate-950 transition-transform group-hover:-translate-y-px sm:self-auto">
+                    {action.cta}
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              </li>
             ))}
           </ul>
+          <p className="mt-4 text-sm font-medium text-slate-600">
+            O prazo encurta conforme você cobre esses fatores. Foque nas ações
+            acima pra acelerar.
+          </p>
         </div>
       ) : (
         <div className="mt-8 rounded-2xl border-2 border-slate-900 bg-white p-5 text-left shadow-[3px_3px_0_#0f172a]">
@@ -357,6 +443,34 @@ export default function Simulador() {
           </p>
         </div>
       )}
+
+      <div className="mt-8 rounded-2xl border-2 border-slate-900 bg-white p-5 text-left shadow-[3px_3px_0_#0f172a]">
+        <p className="font-display text-lg font-black text-slate-950">
+          Seu caminho em {area}
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {areaPath.map(({ href, Icon, label, desc }) => (
+            <Link
+              key={label}
+              href={href}
+              className="group flex items-start gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-all hover:border-slate-900 hover:bg-white hover:shadow-[3px_3px_0_#0f172a]"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-fuchsia-300 shadow-[2px_2px_0_#0f172a]">
+                <Icon className="h-5 w-5 text-slate-950" strokeWidth={2.4} />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-1 font-display font-black text-slate-950">
+                  {label}
+                  <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </span>
+                <span className="mt-0.5 block text-sm font-medium text-slate-600">
+                  {desc}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <div className="mt-8 flex flex-col flex-wrap justify-center gap-3 sm:flex-row">
         <Link
