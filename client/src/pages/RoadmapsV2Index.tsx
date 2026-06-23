@@ -105,12 +105,15 @@ export default function RoadmapsV2Index() {
                     duration: 0.35,
                     delay: Math.min(index * 0.04, 0.4),
                   }}
-                  whileHover={{ y: -4 }}
                 >
                   <Link
                     href={`/roadmaps/${r.slug}`}
-                    className="bnt-pressable group flex h-full flex-col rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_#0f172a] transition-shadow hover:shadow-[5px_5px_0_#0f172a]"
+                    className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
                   >
+                    <span
+                      aria-hidden
+                      className={`-mx-5 -mt-5 mb-4 h-2 ${area.tagClass}`}
+                    />
                     <div className="flex items-center gap-3">
                       <span
                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${area.tagClass}`}
@@ -179,12 +182,15 @@ export default function RoadmapsV2Index() {
                       duration: 0.35,
                       delay: Math.min(index * 0.04, 0.4),
                     }}
-                    whileHover={{ y: -4 }}
                   >
                     <Link
                       href={`/roadmaps/${t.slug}`}
-                      className="bnt-pressable group flex h-full flex-col rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[3px_3px_0_#0f172a] transition-shadow hover:shadow-[5px_5px_0_#0f172a]"
+                      className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
                     >
+                      <span
+                        aria-hidden
+                        className={`-mx-5 -mt-5 mb-4 h-2 ${t.tagClass}`}
+                      />
                       <div className="flex items-center gap-3">
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border-[2px] border-slate-900 ${t.tagClass}`}
