@@ -72,8 +72,9 @@ export default function RoadmapsV2Index() {
             <span className="inline-block rounded-full border-2 border-slate-900 bg-emerald-400 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-900 shadow-[2px_2px_0_#0f172a]">
               100% grátis
             </span>
+            {/* TODO(Ana): confirmar termo final (Básico vs Grátis vs outro) e revisar a frase do hero */}
             <h1 className="mt-3.5 font-display text-3xl font-black leading-tight tracking-tight text-slate-950">
-              Roadmap grátis
+              Roadmap Básico
             </h1>
             <p className="mt-2 max-w-2xl text-base font-medium text-slate-600">
               Escolha sua trilha: um passo a passo por área, do primeiro conceito
