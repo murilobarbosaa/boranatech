@@ -111,7 +111,9 @@ export default function Projetos() {
 
   const q = query.trim().toLowerCase();
   const baseFiltered = projectItems.filter((p) => {
-    const matchArea = area === AREA_ALL || p.areaSlug === area;
+    const matchArea =
+      area === AREA_ALL ||
+      (area === "" ? p.areaSlug === null : p.areaSlug === area);
     const matchTech = tech === TECH_ALL || p.ferramentas.includes(tech);
     const matchQuery =
       !q ||
