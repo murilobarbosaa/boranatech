@@ -11740,7 +11740,21 @@ export const noticias = [
   },
 ];
 
-export const comunidades = [
+export interface Comunidade {
+  id: string;
+  nome: string;
+  tipo: string;
+  plataforma: string;
+  area: string;
+  publicoIndicado: string;
+  porqueAcompanhar: string;
+  link: string;
+  idioma: string;
+  modalidade: "Online" | "Presencial" | "Híbrido";
+  estado?: string;
+}
+
+export const comunidades: Comunidade[] = [
   {
     id: "reprograma",
     nome: "{reprograma}",
@@ -11752,6 +11766,7 @@ export const comunidades = [
       "Escola de tecnologia para mulheres com bolsas gratuitas. Uma das mais importantes iniciativas de diversidade em tech no Brasil.",
     link: "https://www.reprograma.com.br",
     idioma: "Português",
+    modalidade: "Online",
   },
   {
     id: "womakerscode",
@@ -11764,6 +11779,7 @@ export const comunidades = [
       "Maior comunidade de mulheres em tecnologia do Brasil. Eventos, mentorias e conteúdo de carreira.",
     link: "https://womakerscode.org",
     idioma: "Português",
+    modalidade: "Online",
   },
   {
     id: "dev-community",
@@ -11776,6 +11792,7 @@ export const comunidades = [
       "Comunidade global de desenvolvedores. Artigos, discussões e networking internacional.",
     link: "https://dev.to",
     idioma: "Inglês",
+    modalidade: "Online",
   },
   {
     id: "tableless",
@@ -11788,6 +11805,7 @@ export const comunidades = [
       "Um dos blogs mais antigos e respeitados de front-end em português.",
     link: "https://tableless.com.br",
     idioma: "Português",
+    modalidade: "Online",
   },
   {
     id: "data-hackers",
@@ -11800,6 +11818,7 @@ export const comunidades = [
       "Maior comunidade de dados do Brasil. Pesquisa anual sobre o mercado de dados.",
     link: "https://datahackers.com.br",
     idioma: "Português",
+    modalidade: "Online",
   },
   {
     id: "ux-collective",
@@ -11812,6 +11831,7 @@ export const comunidades = [
       "Artigos de alta qualidade sobre UX/UI em português. Ótimo para se manter atualizado.",
     link: "https://brasil.uxdesign.cc",
     idioma: "Português",
+    modalidade: "Online",
   },
   {
     id: "training-center",
@@ -11824,6 +11844,7 @@ export const comunidades = [
       "Comunidade focada em ajudar iniciantes com mentorias gratuitas e grupos de estudo.",
     link: "https://github.com/training-center",
     idioma: "Português",
+    modalidade: "Online",
   },
   {
     id: "frontendbr",
@@ -11836,6 +11857,7 @@ export const comunidades = [
       "Comunidade ativa de front-end com discussões técnicas, vagas e eventos.",
     link: "https://github.com/frontendbr",
     idioma: "Português",
+    modalidade: "Online",
   },
 ];
 
