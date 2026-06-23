@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import LaunchGate from "./components/gate/LaunchGate";
 import ScrollToTop from "./components/ScrollToTop";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
@@ -208,7 +209,9 @@ function App() {
                 <Toaster />
                 <AffiliateTracker />
                 <ScrollToTop />
-                <Router />
+                <LaunchGate>
+                  <Router />
+                </LaunchGate>
               </TooltipProvider>
             </SubscriptionProvider>
           </FavoritesProvider>
