@@ -80,7 +80,9 @@ const CSP_REPORT_ONLY = [
     "https://us.i.posthog.com",
     "https://us-assets.i.posthog.com",
   ].join(" "),
-  "frame-src https://www.youtube-nocookie.com",
+  // 'self' necessario pro iframe da landing de lancamento (client/public/lancamento.html).
+  // Nao remover sem migrar a landing pra fora de iframe.
+  "frame-src 'self' https://www.youtube-nocookie.com",
 ].join("; ");
 
 app.use((req, res, next) => {
