@@ -11,10 +11,13 @@ import {
   Navigation,
   Route,
   Signpost,
+  Sparkles,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
+import { toast } from "sonner";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { roadmapsV2 } from "@/lib/roadmapV2/content";
 import type { RoadmapNode } from "@/lib/roadmapV2/types";
 import { areasTI, roadmaps } from "@/lib/data";
@@ -111,6 +114,29 @@ export default function RoadmapsV2Index() {
               Escolha sua trilha: um passo a passo por área, do primeiro conceito
               ao nível avançado.
             </p>
+
+            {/* TODO: quando a pagina de roadmap IA existir, apontar este botao
+                pra a rota da ferramenta (ex.: <Link href="/roadmaps/ia">) e
+                remover o estado "em breve" (o toast e o selo). roadmap-generator
+                e Pro (requiresPro em server/lib/aiTools.ts), por isso o selo Pro. */}
+            <button
+              type="button"
+              onClick={() =>
+                // TODO(Ana): copy do aviso de "em breve"
+                toast(
+                  "Em breve você vai poder gerar um roadmap sob medida com IA.",
+                )
+              }
+              className="mt-5 inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2"
+            >
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              {/* TODO(Ana): copy do botao de roadmap com IA */}
+              Criar roadmap com IA
+              <ProStarIcon className="ml-0.5" />
+              <span className="rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-900">
+                em breve
+              </span>
+            </button>
           </motion.div>
 
           <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
