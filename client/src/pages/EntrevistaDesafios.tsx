@@ -1,9 +1,12 @@
 import Layout from "@/components/Layout";
+import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { technicalChallenges } from "@/lib/careerToolsData";
 
 export default function EntrevistaDesafios() {
+  const { isPro, loading } = useSubscription();
   return (
     <Layout>
       <PageHero
@@ -48,6 +51,19 @@ export default function EntrevistaDesafios() {
           </DetailsChevronOnly>
         ))}
       </section>
+      {!isPro && !loading ? (
+        <section className="container pb-16">
+          {/* TODO(Ana): copy da CTA do simulador (momento de dor pos-desafios) */}
+          <AiCtaLink
+            href="/entrevistas/simulador"
+            description="Treine a entrevista completa e receba feedback"
+            accent="blue"
+            className="w-full"
+          >
+            Treinou os desafios? Agora simule a entrevista com IA
+          </AiCtaLink>
+        </section>
+      ) : null}
     </Layout>
   );
 }
