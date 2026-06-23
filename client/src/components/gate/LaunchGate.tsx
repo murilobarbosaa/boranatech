@@ -4,7 +4,7 @@ import { apiUrl } from "@/lib/api";
 import { getBetaToken } from "@/lib/betaGate";
 import Acesso from "@/pages/Acesso";
 
-import LandingPlaceholder from "./LandingPlaceholder";
+import LandingFrame from "./LandingFrame";
 
 type GateState = "loading" | "open" | "gated";
 
@@ -65,6 +65,6 @@ export default function LaunchGate({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  // d) caso contrario -> placeholder da landing (Build B2 substitui).
-  return <LandingPlaceholder />;
+  // d) caso contrario -> landing de lancamento (iframe).
+  return <LandingFrame />;
 }

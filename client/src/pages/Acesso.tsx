@@ -53,6 +53,8 @@ export default function Acesso() {
     if (codeFromUrl) {
       setCode(codeFromUrl);
       void submitCode(codeFromUrl);
+      // Tira o ?code= da URL pra nao vazar o codigo em historico/share.
+      window.history.replaceState({}, "", "/acesso");
     }
   }, []);
 
