@@ -38,6 +38,7 @@ import PerfilFavoritos from "./pages/PerfilFavoritos";
 import Conquistas from "./pages/conquistas/Conquistas";
 import Auth from "./pages/Auth";
 import Cadastro from "./pages/Cadastro";
+import BemVindo from "./pages/BemVindo";
 import Checkout from "./pages/Checkout";
 import CheckoutSucesso from "./pages/CheckoutSucesso";
 import RecuperarSenha from "./pages/RecuperarSenha";
@@ -253,6 +254,7 @@ function Router() {
       <Route path="/checkout" component={Checkout} />
       <Route path="/login">{() => <Auth mode="login" />}</Route>
       <Route path="/cadastro" component={Cadastro} />
+      <Route path="/bem-vindo" component={BemVindo} />
       <Route path="/recuperar-senha" component={RecuperarSenha} />
       <Route path="/trocar-senha" component={TrocarSenha} />
       <Route path="/redefinir-senha" component={RedefinirSenha} />
