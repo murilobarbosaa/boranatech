@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { AiCtaLink } from "@/components/shared/AiCta";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { vagasInfo, linkedinDicas } from "@/lib/data";
 import { careerInstitutes } from "@/lib/platformData";
 import { getJobs } from "@/services/contentService";
@@ -142,6 +144,7 @@ type ExternalJob = {
 };
 
 export default function Estagio({ initialTab = 0 }: EstagioProps) {
+  const { isPro, loading } = useSubscription();
   const [tab, setTab] = useState(initialTab);
   const [jobs, setJobs] = useState<ExternalJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
@@ -247,6 +250,19 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
           {/* Tab 0: Vagas */}
           {tab === 0 && (
             <div>
+              {!isPro && !loading ? (
+                <div className="mb-10">
+                  {/* TODO(Ana): copy da CTA de prontidao pra candidatura */}
+                  <AiCtaLink
+                    href="/empregabilidade"
+                    description="Veja seu encaixe na vaga e o que falta"
+                    accent="amber"
+                    className="w-full"
+                  >
+                    Está pronto pra se candidatar? Cheque sua prontidão com IA
+                  </AiCtaLink>
+                </div>
+              ) : null}
               {/* Tipos de vaga */}
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                 {vagasInfo.diferencas.map((d) => (
