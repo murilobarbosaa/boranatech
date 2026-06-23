@@ -10,8 +10,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import { AiCtaLink } from "@/components/shared/AiCta";
 import PageHero from "@/components/shared/PageHero";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -128,6 +130,7 @@ function modeInsight(entries: StudyEntry[]): string {
 
 export default function EstudosDiario() {
   const { loading: authLoading, user } = useAuth();
+  const { isPro, loading } = useSubscription();
   const [entries, setEntries] = useState<StudyEntry[]>([]);
   const [stats, setStats] = useState<StudyStats | null>(null);
   const [loadingEntries, setLoadingEntries] = useState(true);
@@ -469,6 +472,18 @@ export default function EstudosDiario() {
                     {weekTotalMin} min)
                   </p>
                 </div>
+
+                {/* TODO(Ana): copy da CTA do plano de estudos com IA */}
+                {!isPro && !loading ? (
+                  <AiCtaLink
+                    href="/estudos"
+                    description="A IA monta seu cronograma por semana"
+                    accent="fuchsia"
+                    className="w-full"
+                  >
+                    Cansou de planejar na mão? Monte seu plano de estudos com IA
+                  </AiCtaLink>
+                ) : null}
               </aside>
 
               <div className="card-brutal rounded-2xl bg-white p-6 shadow-[5px_5px_0_#0f172a] lg:col-span-3">
