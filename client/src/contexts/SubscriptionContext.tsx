@@ -70,7 +70,7 @@ export function SubscriptionProvider({
     async (options?: { silent?: boolean }) => {
       const silent = options?.silent === true;
 
-      if (isLocalDevelopmentHost()) {
+      if (import.meta.env.DEV && isLocalDevelopmentHost()) {
         setSubscription(buildDevMockSubscription());
         setIsPro(true);
         setLoading(false);
@@ -108,7 +108,7 @@ export function SubscriptionProvider({
   useEffect(() => {
     let mounted = true;
 
-    if (isLocalDevelopmentHost()) {
+    if (import.meta.env.DEV && isLocalDevelopmentHost()) {
       setSubscription(buildDevMockSubscription());
       setIsPro(true);
       setLoading(false);
