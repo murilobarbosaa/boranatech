@@ -1143,36 +1143,27 @@ export const certifications = [
 }));
 
 export const englishVocabulary = [
-  "Front-end",
-  "Back-end",
-  "Dados",
-  "DevOps",
-  "UX/UI",
-].map((area) => ({
-  area,
-  terms: [
-    "deploy",
-    "branch",
-    "issue",
-    "release",
-    "debug",
-    "layout",
-    "query",
-    "pipeline",
-    "feedback",
-    "deadline",
-    "feature",
-    "bug",
-    "endpoint",
-    "repository",
-    "commit",
-    "review",
-    "accessibility",
-    "metric",
-    "cache",
-    "scalable",
-  ],
-}));
+  "deploy",
+  "branch",
+  "issue",
+  "release",
+  "debug",
+  "layout",
+  "query",
+  "pipeline",
+  "feedback",
+  "deadline",
+  "feature",
+  "bug",
+  "endpoint",
+  "repository",
+  "commit",
+  "review",
+  "accessibility",
+  "metric",
+  "cache",
+  "scalable",
+];
 
 export type EnglishLevel = "Básico" | "Intermediário" | "Avançado";
 export type PlatformCost = "Grátis" | "Pago" | "Freemium";

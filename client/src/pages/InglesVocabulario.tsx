@@ -1,6 +1,5 @@
 import { AlertTriangle, Volume2 } from "lucide-react";
 import Layout from "@/components/Layout";
-import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import InglesSubNav from "@/components/shared/InglesSubNav";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -121,32 +120,22 @@ export default function InglesVocabulario() {
                 Termos que aparecem em vagas, docs e projetos
               </h2>
             </div>
-            {englishVocabulary.map((group) => (
-              <DetailsChevronOnly
-                key={group.area}
-                className="card-brutal rounded-2xl bg-white p-5"
-                title={
-                  <span className="font-display text-xl font-black">
-                    {group.area}
+            <div className="card-brutal rounded-2xl bg-white p-5">
+              <div className="flex flex-wrap gap-2">
+                {englishVocabulary.map((term) => (
+                  <span
+                    key={term}
+                    className={cn(
+                      "rounded-full px-2 py-1 text-xs font-bold",
+                      ac.panelSoft,
+                      ac.tbodyAccent,
+                    )}
+                  >
+                    {term}
                   </span>
-                }
-              >
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {group.terms.map((term) => (
-                    <span
-                      key={term}
-                      className={cn(
-                        "rounded-full px-2 py-1 text-xs font-bold",
-                        ac.panelSoft,
-                        ac.tbodyAccent,
-                      )}
-                    >
-                      {term}
-                    </span>
-                  ))}
-                </div>
-              </DetailsChevronOnly>
-            ))}
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
