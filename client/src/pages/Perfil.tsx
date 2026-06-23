@@ -67,6 +67,7 @@ import {
   type StudyHeatmapDay,
   type StudyStats,
 } from "@/services/studyService";
+import { getQuizHistory } from "@/services/careerQuizService";
 import {
   applyGoogleAvatar,
   describeAvatarError,
@@ -109,6 +110,13 @@ type RoadmapProgress = {
   total_steps: number;
   completed_steps: number;
   progress: number;
+};
+
+type QuizAttempt = {
+  result_area: string;
+  result_area_slug: string | null;
+  confidence: number | null;
+  completed_at: string;
 };
 
 type AvatarSection = "border" | "icon" | "bg" | "photo";
@@ -652,6 +660,10 @@ export default function Perfil() {
   const [recentEntries, setRecentEntries] = useState<StudyEntry[]>([]);
   const [heatmapData, setHeatmapData] = useState<StudyHeatmapDay[]>([]);
   const [roadmaps, setRoadmaps] = useState<RoadmapProgress[]>([]);
+  const [quizAttempt, setQuizAttempt] = useState<QuizAttempt | null>(null);
+  const [quizStatus, setQuizStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
   const [dataLoading, setDataLoading] = useState(true);
   const [heatmapLoading, setHeatmapLoading] = useState(true);
   const [editingProfile, setEditingProfile] = useState(false);
@@ -733,6 +745,25 @@ export default function Perfil() {
       }
     });
 
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setQuizStatus("loading");
+    getQuizHistory()
+      .then((history) => {
+        if (cancelled) return;
+        const list = (history as QuizAttempt[]) ?? [];
+        setQuizAttempt(list.length > 0 ? list[0] : null);
+        setQuizStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setQuizStatus("error");
+      });
     return () => {
       cancelled = true;
     };
@@ -1012,16 +1043,6 @@ export default function Perfil() {
                       : ""}
                     <span className="text-slate-400">{email}</span>
                   </p>
-
-                  {currentStreak > 0 ? (
-                    <div className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-amber-400 bg-amber-100 px-3 py-1.5 text-amber-900">
-                      <Flame className="h-4 w-4" strokeWidth={2.5} />
-                      <span className="font-display text-sm font-black">
-                        {currentStreak}{" "}
-                        {currentStreak === 1 ? "dia seguido" : "dias seguidos"}
-                      </span>
-                    </div>
-                  ) : null}
                 </div>
               </div>
 
@@ -1203,6 +1224,76 @@ export default function Perfil() {
                 </div>
               </div>
             ) : null}
+          </section>
+
+          <section
+            style={sectionStyle(50)}
+            className="animate-fade-slide-up rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8"
+          >
+            {quizStatus === "loading" ? (
+              <p className="font-mono text-xs text-slate-500">
+                Carregando seu resultado do quiz...
+              </p>
+            ) : quizAttempt ? (
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">
+                  Sua área de carreira
+                </p>
+                <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                  <h2 className="font-display text-3xl font-black text-[#1a1a1a] md:text-4xl">
+                    {quizAttempt.result_area}
+                  </h2>
+                  {typeof quizAttempt.confidence === "number" ? (
+                    <span className="inline-flex rounded-full border-2 border-violet-300 bg-violet-100 px-3 py-1 text-xs font-black text-violet-800">
+                      {quizAttempt.confidence}% de match
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <Link
+                    href={
+                      quizAttempt.result_area_slug
+                        ? `/roadmaps?area=${quizAttempt.result_area_slug}`
+                        : "/quiz-carreira/resultado"
+                    }
+                    className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-[#1a1a1a] shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                  >
+                    {quizAttempt.result_area_slug
+                      ? "Ver roadmap da área"
+                      : "Ver resultado completo"}
+                  </Link>
+                  <Link
+                    href="/quiz-carreira"
+                    className="text-sm font-bold text-violet-700 underline-offset-2 hover:text-violet-900 hover:underline"
+                  >
+                    Refazer quiz
+                  </Link>
+                </div>
+              </div>
+            ) : quizStatus === "error" ? (
+              <p className="text-sm font-semibold text-slate-600">
+                Não foi possível carregar seu resultado do quiz agora.
+              </p>
+            ) : (
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-violet-700">
+                  Quiz de carreira
+                </p>
+                <h2 className="mt-2 font-display text-2xl font-black text-[#1a1a1a] md:text-3xl">
+                  Você ainda não fez o quiz de carreira
+                </h2>
+                <p className="mt-2 text-sm font-semibold text-slate-600">
+                  Descubra qual área de TI combina mais com você em poucos
+                  minutos.
+                </p>
+                <Link
+                  href="/quiz-carreira"
+                  className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-[#1a1a1a] shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5"
+                >
+                  Fazer o quiz
+                </Link>
+              </div>
+            )}
           </section>
 
           {/* Bloco 2: Progresso */}
