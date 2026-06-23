@@ -11,6 +11,7 @@ import {
   MonitorPlay,
   RotateCcw,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
@@ -938,6 +939,7 @@ export default function Comparador() {
   }
 
   const kindMeta = comparisonGroups.find((g) => g.id === comparisonKind);
+  const reduce = useReducedMotion();
 
   return (
     <Layout>
@@ -953,10 +955,10 @@ export default function Comparador() {
         url="/comparador"
         schemaType="WebPage"
       />
-      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-emerald-100 py-12">
-        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#059669_1px,transparent_1px)] [background-size:18px_18px]" />
+      <section className="relative overflow-hidden border-b-2 border-slate-900 bg-violet-100 py-12">
+        <div className="pointer-events-none absolute inset-0 opacity-50 [background-image:radial-gradient(#7c3aed_1px,transparent_1px)] [background-size:18px_18px]" />
         <div className="container relative">
-          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
+          <p className="mb-4 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]">
             comparador
           </p>
           <h1 className="font-display text-4xl font-black text-slate-950">
@@ -969,11 +971,16 @@ export default function Comparador() {
         </div>
       </section>
 
-      <section className="bg-[#f7fee7] py-12">
+      <section className="bg-[#faf8f4] py-12">
         <div className="container space-y-6">
           {/* PASSO 1: escolher a subarea (controle unico) */}
           {/* TODO(Ana): revisar copy dos passos do comparador */}
-          <div>
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.4 }}
+          >
             <div className="mb-4 flex items-center gap-3">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
                 1
@@ -988,18 +995,26 @@ export default function Comparador() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {comparisonGroups.map((g) => {
+              {comparisonGroups.map((g, idx) => {
                 const ui = SUBAREA_UI[g.id];
                 const Icon = ui.Icon;
                 const active = comparisonKind === g.id;
                 return (
-                  <button
+                  <motion.button
                     key={g.id}
                     type="button"
                     onClick={() => setComparisonKind(g.id)}
                     aria-pressed={active}
+                    initial={reduce ? false : { opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{
+                      duration: 0.3,
+                      delay: Math.min(idx * 0.05, 0.2),
+                    }}
+                    whileHover={reduce ? undefined : { y: -2 }}
                     className={cn(
-                      "flex h-full flex-col rounded-2xl border-2 border-slate-900 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5",
+                      "flex h-full flex-col rounded-2xl border-2 border-slate-900 p-4 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2",
                       active
                         ? cn(ui.bg, ui.shadow)
                         : "bg-white shadow-[3px_3px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a]",
@@ -1019,11 +1034,11 @@ export default function Comparador() {
                     <span className="mt-1 text-xs font-semibold text-slate-500">
                       {g.hint}
                     </span>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
 
           {/* PASSO 2: filtros subordinados a subarea */}
           <div className="card-brutal rounded-2xl bg-white p-5">
@@ -1045,7 +1060,7 @@ export default function Comparador() {
               <button
                 type="button"
                 onClick={resetFilters}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-emerald-50"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-violet-50"
               >
                 <RotateCcw className="h-4 w-4" />
                 Limpar filtros
@@ -1097,7 +1112,7 @@ export default function Comparador() {
               </label>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-900">
+            <div className="mt-4 flex flex-wrap items-start gap-2 rounded-xl bg-violet-50 p-3 text-sm font-bold text-violet-900">
               <Filter className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 {filteredItems.length >= 2
@@ -1181,8 +1196,11 @@ export default function Comparador() {
 
           <div className="grid gap-5 lg:grid-cols-2">
             {[left, right].map((item) => (
-              <article
+              <motion.article
                 key={item.id}
+                initial={reduce ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
                 className="card-brutal rounded-2xl bg-white p-6"
               >
                 <p className="mb-2 inline-flex rounded-full bg-violet-100 px-2 py-1 text-xs font-black uppercase text-violet-700">
@@ -1216,7 +1234,7 @@ export default function Comparador() {
                     </p>
                   </div>
                 </div>
-              </article>
+              </motion.article>
             ))}
           </div>
 
@@ -1249,9 +1267,9 @@ export default function Comparador() {
           </div>
 
           <div className="grid gap-5 lg:grid-cols-3">
-            <div className="card-brutal rounded-2xl bg-emerald-50 p-5 lg:col-span-2">
+            <div className="card-brutal rounded-2xl bg-violet-50 p-5 lg:col-span-2">
               <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
-                <Lightbulb className="h-6 w-6 text-emerald-700" />
+                <Lightbulb className="h-6 w-6 text-violet-700" />
                 Recomendação prática
               </h2>
               <p className="mt-3 text-sm font-semibold text-slate-700">
