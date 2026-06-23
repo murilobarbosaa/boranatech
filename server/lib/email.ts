@@ -215,6 +215,24 @@ export async function sendWelcomeEmail(
   });
 }
 
+export async function sendWaitlistConfirmationEmail(to: string, name?: string) {
+  const safeName = name ? escapeHtml(name) : "";
+  const theme = themeFor(null);
+  // TODO(Ana): copy final do e-mail de confirmacao da lista de espera.
+  const title = "Voce esta na lista!";
+  const greeting = safeName ? `Oi, ${safeName}!` : "Oi!";
+  const body = `
+    ${paragraph(`${greeting} Recebemos seu cadastro na lista de espera do Bora na Tech.`)}
+    ${paragraph("Assim que o acesso for liberado, a gente avisa por aqui.")}
+  `;
+  await sendEmail({
+    to,
+    from: FROM_RELATIONSHIP,
+    subject: title,
+    html: layout(theme, title, body),
+  });
+}
+
 export async function sendProUpgradeEmail(
   to: string,
   name: string,
