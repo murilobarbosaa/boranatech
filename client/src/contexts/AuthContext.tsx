@@ -79,7 +79,17 @@ function normalizeEmail(email: string) {
 
 function authRedirectTo() {
   const redirectPath = import.meta.env.VITE_AUTH_REDIRECT_PATH || "/perfil";
-  return `${window.location.origin}${redirectPath.startsWith("/") ? redirectPath : `/${redirectPath}`}`;
+  const normalizedPath = redirectPath.startsWith("/")
+    ? redirectPath
+    : `/${redirectPath}`;
+  // Em produção, VITE_SITE_URL fixa o domínio canônico para o OAuth sempre
+  // voltar a https://boranatech.com.br, independente do host de origem
+  // (apex/www/alias da Vercel). Sem a env (preview/local), usa a origin atual
+  // para o callback retornar ao mesmo host onde o login começou.
+  const base = (
+    import.meta.env.VITE_SITE_URL || window.location.origin
+  ).replace(/\/+$/, "");
+  return `${base}${normalizedPath}`;
 }
 
 function computeRetryDelay(attempt: number): number | null {
