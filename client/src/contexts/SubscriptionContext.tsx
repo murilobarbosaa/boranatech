@@ -41,20 +41,6 @@ function buildDevMockSubscription() {
   };
 }
 
-function isLocalDevelopmentHost() {
-  if (typeof window === "undefined") return false;
-
-  const hostname = window.location.hostname;
-  return (
-    ["localhost", "127.0.0.1", "::1"].includes(hostname) ||
-    hostname.endsWith(".ngrok-free.app") ||
-    hostname.endsWith(".ngrok-free.dev") ||
-    hostname.endsWith(".ngrok.io") ||
-    hostname.endsWith(".ngrok.app") ||
-    hostname.endsWith(".ngrok.dev")
-  );
-}
-
 export function SubscriptionProvider({
   children,
 }: {
@@ -70,16 +56,16 @@ export function SubscriptionProvider({
     async (options?: { silent?: boolean }) => {
       const silent = options?.silent === true;
 
-      if (isLocalDevelopmentHost()) {
-        setSubscription(buildDevMockSubscription());
-        setIsPro(true);
+      if (!user) {
+        setSubscription(null);
+        setIsPro(false);
         setLoading(false);
         return;
       }
 
-      if (!user) {
-        setSubscription(null);
-        setIsPro(false);
+      if (import.meta.env.DEV) {
+        setSubscription(buildDevMockSubscription());
+        setIsPro(true);
         setLoading(false);
         return;
       }
@@ -108,16 +94,16 @@ export function SubscriptionProvider({
   useEffect(() => {
     let mounted = true;
 
-    if (isLocalDevelopmentHost()) {
-      setSubscription(buildDevMockSubscription());
-      setIsPro(true);
+    if (!user) {
+      setSubscription(null);
+      setIsPro(false);
       setLoading(false);
       return;
     }
 
-    if (!user) {
-      setSubscription(null);
-      setIsPro(false);
+    if (import.meta.env.DEV) {
+      setSubscription(buildDevMockSubscription());
+      setIsPro(true);
       setLoading(false);
       return;
     }
