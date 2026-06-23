@@ -410,7 +410,7 @@ export default function Plataformas() {
       </section>
 
       {/* Filters */}
-      <section className="bg-emerald-50 border-b-2 border-emerald-200 py-4 sticky top-16 z-40">
+      <section className="bg-emerald-50 border-b-2 border-emerald-200 py-4">
         <div className="container">
           <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#6ee7b7]">
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
