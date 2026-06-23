@@ -314,32 +314,61 @@ export default function Plataformas() {
       {/* Grid */}
       <section className="bg-[#ecfdf5] py-12">
         <div className="container">
-          <div className="card-brutal mb-6 rounded-2xl bg-white p-6 shadow-[5px_5px_0_#6ee7b7]">
-            <div className="flex flex-wrap items-center gap-3">
-              <EmbaixadoraBadge />
-              <span className="rounded-full border-2 border-amber-300 bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                Gratuita
-              </span>
+          <div className="mb-6 grid gap-4 md:grid-cols-2">
+            <div className="card-brutal flex flex-col rounded-2xl bg-white p-6 shadow-[5px_5px_0_#6ee7b7]">
+              <div className="flex flex-wrap items-center gap-3">
+                <EmbaixadoraBadge />
+                <span className="rounded-full border-2 border-amber-300 bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                  Gratuita
+                </span>
+              </div>
+              <h2 className="mt-3 font-display text-2xl font-black text-slate-950">
+                IBM Z Xplore
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Ambiente real e gratuito da IBM para aprender mainframe (COBOL,
+                JCL, z/OS) com desafios práticos.
+              </p>
+              <p className="mt-2 text-sm font-bold text-slate-800">
+                Ao se cadastrar no IBM Z Xplore, informe Ana Julia Moura como sua
+                embaixadora (referral).
+              </p>
+              <a
+                href="https://ibm.com/products/z/resources/zxplore"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex w-fit items-center gap-1 rounded-lg border-2 border-slate-900 bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]"
+              >
+                Visitar <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
-            <h2 className="mt-3 font-display text-2xl font-black text-slate-950">
-              IBM Z Xplore
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Ambiente real e gratuito da IBM para aprender mainframe (COBOL,
-              JCL, z/OS) com desafios práticos.
-            </p>
-            <p className="mt-2 text-sm font-bold text-slate-800">
-              Ao se cadastrar no IBM Z Xplore, informe Ana Julia Moura como sua
-              embaixadora (referral).
-            </p>
-            <a
-              href="https://ibm.com/products/z/resources/zxplore"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-1 rounded-lg border-2 border-slate-900 bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]"
-            >
-              Visitar <ExternalLink className="w-3 h-3" />
-            </a>
+            <div className="card-brutal flex flex-col rounded-2xl bg-white p-6 shadow-[5px_5px_0_#6ee7b7]">
+              <div className="flex flex-wrap items-center gap-3">
+                <EmbaixadoraBadge program="AWS Builder Center" />
+                <span className="rounded-full border-2 border-amber-300 bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                  Gratuita
+                </span>
+              </div>
+              <h2 className="mt-3 font-display text-2xl font-black text-slate-950">
+                AWS Builder Center
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Comunidade e hub gratuito da AWS pra quem constrói na nuvem:
+                troca de soluções, conteúdo e contato com outros builders.
+              </p>
+              <p className="mt-2 text-sm font-bold text-slate-800">
+                Acesse o AWS Builder Center pelo link de embaixadora da Ana pra
+                contar como referral.
+              </p>
+              <a
+                href="https://builder.aws.com/start?trk=dbcfd07d-099b-4604-bd7a-118478998dc4&sc_channel=el"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex w-fit items-center gap-1 rounded-lg border-2 border-slate-900 bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#0f172a]"
+              >
+                Visitar <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
           {categoriaFilter === "Jogo" ? (
             <div className="relative mb-6 overflow-hidden rounded-2xl border-2 border-slate-900 bg-violet-100 p-6 shadow-[5px_5px_0_#c4b5fd]">
