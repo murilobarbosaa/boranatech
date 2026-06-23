@@ -296,10 +296,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.getItem("bnt_social_signup_pending") === "true"
         ) {
           localStorage.removeItem("bnt_social_signup_pending");
-          localStorage.setItem("bnt_signup_completed", "true");
           window.setTimeout(() => {
-            if (window.location.pathname !== "/planos")
-              window.location.assign("/planos");
+            if (window.location.pathname !== "/bem-vindo")
+              window.location.assign("/bem-vindo");
           }, 0);
         }
       }

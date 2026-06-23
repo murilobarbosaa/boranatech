@@ -61,7 +61,6 @@ export default function Auth({
         }
 
         await signUp(parsed.data);
-        localStorage.setItem("bnt_signup_completed", "true");
         getMyProfile().catch((triggerErr) => {
           console.warn("[Auth] failed to trigger welcome email:", triggerErr);
         });
@@ -82,7 +81,7 @@ export default function Auth({
       const returnTo = sanitizeReturnTo(
         new URLSearchParams(window.location.search).get("returnTo"),
       );
-      setLocation(returnTo ?? (isSignup ? "/planos" : "/perfil"), {
+      setLocation(returnTo ?? (isSignup ? "/bem-vindo" : "/perfil"), {
         replace: true,
       });
     } catch (err) {
@@ -220,10 +219,11 @@ export default function Auth({
                 disabled={isSubmitting}
                 type="submit"
               >
+                {/* TODO(Ana): rotulo do botao de cadastro (agora leva a /bem-vindo). */}
                 {isSubmitting
                   ? "Processando..."
                   : isSignup
-                    ? "Cadastrar e ver perfil"
+                    ? "Criar minha conta"
                     : "Entrar"}
               </button>
             </form>

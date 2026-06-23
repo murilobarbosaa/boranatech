@@ -1,4 +1,5 @@
-import { Link } from "wouter";
+import { useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
@@ -15,6 +16,8 @@ import {
 
 import SEO from "@/components/SEO";
 import CeuEstrelado from "@/components/shared/CeuEstrelado";
+import { useAuth } from "@/contexts/AuthContext";
+import { updateMyProfile } from "@/services/profileService";
 
 // TODO(Ana): copy provisoria dos beneficios Pro. Revisar titulos e ordem.
 const PRO_BENEFICIOS: { icon: LucideIcon; label: string }[] = [
@@ -30,6 +33,43 @@ const PRO_BENEFICIOS: { icon: LucideIcon; label: string }[] = [
 
 export default function BemVindo() {
   const reduce = useReducedMotion();
+  const [, setLocation] = useLocation();
+  const { profile, refreshProfile } = useAuth();
+
+  // Quem ja concluiu o onboarding (ou caiu no fallback local) nao ve a tela de
+  // novo: redireciona pro perfil.
+  useEffect(() => {
+    const jaOnboardado =
+      profile?.onboarding_completed === true ||
+      (typeof window !== "undefined" &&
+        window.localStorage.getItem("bnt_signup_completed") === "true");
+    if (jaOnboardado) setLocation("/perfil", { replace: true });
+  }, [profile, setLocation]);
+
+  // Marca onboarding_completed no perfil (PATCH). Se falhar, grava o fallback
+  // local pra nao prender a pessoa nesta tela num retorno futuro.
+  function marcarOnboarding() {
+    void updateMyProfile({ onboarding_completed: true })
+      .then(() => refreshProfile())
+      .catch(() => {
+        try {
+          window.localStorage.setItem("bnt_signup_completed", "true");
+        } catch {
+          // localStorage indisponivel; a navegacao segue mesmo assim.
+        }
+      });
+  }
+
+  // TODO: trocar pra /onboarding quando a rota existir.
+  function irParaPrimeirosPassos() {
+    marcarOnboarding();
+    setLocation("/quiz-carreira");
+  }
+
+  function irParaExplorar() {
+    marcarOnboarding();
+    setLocation("/areas");
+  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
@@ -64,9 +104,9 @@ export default function BemVindo() {
 
         {/* Botao primario: Primeiros passos. */}
         <div className="mt-8 flex flex-col items-center gap-2">
-          {/* TODO: trocar pra /onboarding quando a rota existir. */}
-          <Link
-            href="/quiz-carreira"
+          <button
+            type="button"
+            onClick={irParaPrimeirosPassos}
             className="bnt-pressable group inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-8 py-4 font-display font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
           >
             {/* TODO(Ana): rotulo do botao primario. */}
@@ -76,7 +116,7 @@ export default function BemVindo() {
               className="transition-transform group-hover:translate-x-1"
               aria-hidden="true"
             />
-          </Link>
+          </button>
           {/* TODO(Ana): linha discreta indicando que leva ao onboarding. */}
           <p className="text-xs font-medium text-slate-400">
             Leva a um passo a passo rápido pra te situar.
@@ -85,12 +125,13 @@ export default function BemVindo() {
 
         {/* Link secundario discreto. */}
         {/* TODO(Ana): rotulo do link secundario. */}
-        <Link
-          href="/areas"
+        <button
+          type="button"
+          onClick={irParaExplorar}
           className="mt-5 inline-block text-sm font-bold text-slate-400 underline-offset-4 transition-colors hover:text-white hover:underline"
         >
           Explorar por conta própria
-        </Link>
+        </button>
 
         {/* Bloco Pro compacto. */}
         <div className="mt-10 rounded-2xl border-2 border-amber-400/30 bg-white/5 p-5 text-left md:p-6">

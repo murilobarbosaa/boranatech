@@ -23,7 +23,10 @@ export default function Cadastro() {
     const returnTo = sanitizeReturnTo(
       new URLSearchParams(window.location.search).get("returnTo"),
     );
-    setLocation(returnTo ?? "/perfil", { replace: true });
+    // Funil unico pos-auth: /bem-vindo decide se mostra a tela (onboarding
+    // pendente) ou manda pro perfil (ja onboardado). Evita competir com o
+    // redirect de cadastro.
+    setLocation(returnTo ?? "/bem-vindo", { replace: true });
   }, [loading, session, setLocation]);
 
   if (loading || session) return null;
