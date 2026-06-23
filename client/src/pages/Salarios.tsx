@@ -1,6 +1,14 @@
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Check, ExternalLink, X } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  Banknote,
+  Check,
+  Coins,
+  DollarSign,
+  ExternalLink,
+  Sparkles,
+  X,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
@@ -15,7 +23,84 @@ import {
   workTypes,
 } from "@/lib/marketData";
 
-const ac = getPageAccentUi("amber");
+const ac = getPageAccentUi("emerald");
+
+const MONEY_ICONS = [Banknote, Coins, DollarSign];
+
+const MONEY_ITEMS = [
+  { left: "5%", top: "14%", delay: 0, duration: 7, icon: 0, rot: 10, size: "h-9 w-9", color: "text-emerald-400" },
+  { left: "16%", top: "62%", delay: 1.1, duration: 8.5, icon: 1, rot: -12, size: "h-7 w-7", color: "text-emerald-500" },
+  { left: "27%", top: "28%", delay: 2.2, duration: 6.5, icon: 2, rot: 8, size: "h-6 w-6", color: "text-emerald-300" },
+  { left: "38%", top: "72%", delay: 0.6, duration: 9, icon: 0, rot: -8, size: "h-8 w-8", color: "text-emerald-400" },
+  { left: "49%", top: "18%", delay: 1.7, duration: 7.5, icon: 1, rot: 14, size: "h-7 w-7", color: "text-emerald-500" },
+  { left: "59%", top: "58%", delay: 2.8, duration: 8, icon: 2, rot: -10, size: "h-6 w-6", color: "text-emerald-300" },
+  { left: "68%", top: "24%", delay: 0.9, duration: 9.5, icon: 0, rot: 12, size: "h-9 w-9", color: "text-emerald-400" },
+  { left: "77%", top: "66%", delay: 2.0, duration: 7, icon: 1, rot: -14, size: "h-7 w-7", color: "text-emerald-500" },
+  { left: "85%", top: "16%", delay: 1.3, duration: 8.5, icon: 2, rot: 9, size: "h-6 w-6", color: "text-emerald-300" },
+  { left: "92%", top: "54%", delay: 2.5, duration: 6.8, icon: 0, rot: -9, size: "h-8 w-8", color: "text-emerald-400" },
+  { left: "11%", top: "40%", delay: 1.5, duration: 8.2, icon: 2, rot: 11, size: "h-6 w-6", color: "text-emerald-300" },
+  { left: "73%", top: "44%", delay: 0.3, duration: 7.8, icon: 1, rot: -11, size: "h-7 w-7", color: "text-emerald-500" },
+];
+
+const SPARKLE_ITEMS = [
+  { left: "22%", top: "20%", delay: 0.4, duration: 3.2 },
+  { left: "55%", top: "70%", delay: 1.2, duration: 3.8 },
+  { left: "82%", top: "34%", delay: 2.0, duration: 3.4 },
+  { left: "34%", top: "52%", delay: 0.9, duration: 4 },
+];
+
+function MoneyRain() {
+  const reduce = useReducedMotion();
+  if (reduce) return null;
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      {MONEY_ITEMS.map((item, index) => {
+        const Icon = MONEY_ICONS[item.icon];
+        return (
+          <motion.span
+            key={`m-${index}`}
+            className={cn("absolute", item.color)}
+            style={{ left: item.left, top: item.top }}
+            initial={{ opacity: 0 }}
+            animate={{
+              y: [0, -18, 0],
+              x: [0, 8, 0],
+              rotate: [0, item.rot, 0],
+              opacity: [0.18, 0.34, 0.18],
+            }}
+            transition={{
+              duration: item.duration,
+              delay: item.delay,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <Icon className={item.size} aria-hidden />
+          </motion.span>
+        );
+      })}
+      {SPARKLE_ITEMS.map((item, index) => (
+        <motion.span
+          key={`s-${index}`}
+          className="absolute text-emerald-300"
+          style={{ left: item.left, top: item.top }}
+          animate={{ opacity: [0.15, 0.5, 0.15], scale: [1, 1.25, 1] }}
+          transition={{
+            duration: item.duration,
+            delay: item.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        >
+          <Sparkles className="h-5 w-5" aria-hidden />
+        </motion.span>
+      ))}
+    </div>
+  );
+}
 
 const ABAS = [
   "Tabela salarial",
@@ -129,6 +214,7 @@ const fadeUp = {
 };
 
 export default function Salarios() {
+  const reduce = useReducedMotion();
   const [aba, setAba] = useState("Tabela salarial");
   const [area, setArea] = useState("Todas");
   const [level, setLevel] = useState("Todos");
@@ -169,10 +255,23 @@ export default function Salarios() {
   return (
     <Layout>
       <PageHero
-        accent="amber"
+        accent="emerald"
         eyebrow="referência de mercado"
-        title="Salários em TI"
+        title={
+          reduce ? (
+            "Salários em TI"
+          ) : (
+            <motion.span
+              className="inline-block bg-[length:200%_100%] bg-clip-text text-transparent [background-image:linear-gradient(110deg,#065f46_0%,#10b981_35%,#065f46_65%)]"
+              animate={{ backgroundPositionX: ["0%", "200%"] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            >
+              Salários em TI
+            </motion.span>
+          )
+        }
         subtitle="Quanto você pode ganhar em cada área, nível e cidade."
+        backgroundSlot={<MoneyRain />}
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-8">
@@ -186,8 +285,8 @@ export default function Salarios() {
                 className={cn(
                   "rounded-full border-2 px-4 py-2 text-sm font-black transition-all",
                   aba === item
-                    ? "border-slate-900 bg-amber-400 text-slate-950 shadow-[2px_2px_0_#0f172a]"
-                    : "border-slate-300 bg-white text-slate-700 hover:border-amber-400",
+                    ? "border-slate-900 bg-emerald-600 text-white shadow-[2px_2px_0_#0f172a]"
+                    : "border-slate-300 bg-white text-slate-700 hover:border-emerald-400",
                 )}
               >
                 {item}
@@ -292,7 +391,7 @@ export default function Salarios() {
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ duration: 0.3 }}
                   whileHover={{ y: -4 }}
-                  className="card-brutal rounded-2xl bg-amber-100 p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#fcd34d]"
+                  className="card-brutal rounded-2xl bg-emerald-100 p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#6ee7b7]"
                 >
                   <h2 className="font-display text-2xl font-black">
                     Calculadora CLT vs PJ
@@ -371,7 +470,7 @@ export default function Salarios() {
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ duration: 0.3 }}
                   whileHover={{ y: -4 }}
-                  className="card-brutal rounded-2xl bg-white p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#fcd34d]"
+                  className="card-brutal rounded-2xl bg-white p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#6ee7b7]"
                 >
                   <h2 className="font-display text-2xl font-black">
                     Calculadora de negociação salarial
@@ -438,7 +537,7 @@ export default function Salarios() {
 
             {aba === "Mercado" ? (
               <div className="grid gap-5 md:grid-cols-3">
-                <div className="card-brutal rounded-2xl bg-white p-5">
+                <div className="card-brutal rounded-2xl bg-white p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]">
                   <h3 className="font-display text-xl font-black">
                     Áreas com mais vagas
                   </h3>
@@ -451,7 +550,7 @@ export default function Salarios() {
                     </p>
                   ))}
                 </div>
-                <div className="card-brutal rounded-2xl bg-white p-5">
+                <div className="card-brutal rounded-2xl bg-white p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]">
                   <h3 className="font-display text-xl font-black">
                     Tecnologias mais pedidas
                   </h3>
@@ -470,7 +569,7 @@ export default function Salarios() {
                     ))}
                   </div>
                 </div>
-                <div className="card-brutal rounded-2xl bg-white p-5">
+                <div className="card-brutal rounded-2xl bg-white p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]">
                   <h3 className="font-display text-xl font-black">
                     Cidades que mais contratam
                   </h3>
@@ -532,7 +631,7 @@ export default function Salarios() {
                     {[salarioCltPj.clt, salarioCltPj.pj].map((bloco) => (
                       <div
                         key={bloco.titulo}
-                        className="card-brutal rounded-2xl bg-white p-5"
+                        className="card-brutal rounded-2xl bg-white p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]"
                       >
                         <h3 className="font-display text-xl font-black text-slate-950">
                           {bloco.titulo}
@@ -576,7 +675,7 @@ export default function Salarios() {
                   </div>
                 </div>
 
-                <div className="card-brutal rounded-2xl bg-amber-100 p-6">
+                <div className="card-brutal rounded-2xl bg-emerald-100 p-6">
                   <h2 className="font-display text-2xl font-black">
                     Dicas de negociação
                   </h2>
@@ -587,7 +686,7 @@ export default function Salarios() {
                         className="flex items-start gap-2 text-sm font-bold text-slate-800"
                       >
                         <Check
-                          className="mt-0.5 h-4 w-4 shrink-0 text-amber-700"
+                          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"
                           aria-hidden
                         />
                         {dica}
