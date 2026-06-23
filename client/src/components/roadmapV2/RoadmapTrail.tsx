@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { Flag } from "lucide-react";
 import type { RoadmapSection } from "@/lib/roadmapV2/types";
 import {
   isComplete,
@@ -63,6 +64,7 @@ function buildLayout(count: number) {
     pts.push({ x: COL_X[col], y: TOP_PAD + row * ROW_GAP });
   }
   const segments: Point[][] = [];
+  const paths: string[] = [];
   for (let i = 0; i < count - 1; i++) {
     const p0 = pts[i - 1] || pts[i];
     const p1 = pts[i];
@@ -70,14 +72,23 @@ function buildLayout(count: number) {
     const p3 = pts[i + 2] || pts[i + 1];
     const cp1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
     const cp2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
+    const dir = i % 2 === 0 ? 1 : -1;
+    const bow = 30 + 16 * Math.sin(i * 1.7);
+    cp1.x += dir * bow;
+    cp1.y += dir * 14 * Math.cos(i * 0.9);
+    cp2.x -= dir * bow * 0.78;
+    cp2.y += dir * 16 * Math.sin(i * 1.1);
     const dots: Point[] = [];
     for (let k = 0; k < DOTS; k++) {
       const t = 0.16 + 0.68 * (k / (DOTS - 1));
       dots.push(bezier(p1, cp1, cp2, p2, t));
     }
     segments.push(dots);
+    paths.push(
+      `M ${p1.x} ${p1.y} C ${cp1.x.toFixed(1)} ${cp1.y.toFixed(1)} ${cp2.x.toFixed(1)} ${cp2.y.toFixed(1)} ${p2.x} ${p2.y}`,
+    );
   }
-  return { VBH, pts, segments };
+  return { VBH, pts, segments, paths };
 }
 
 export type TrailHandle = {
@@ -106,6 +117,38 @@ function seedReached(
     if (isComplete(sections[i], done)) reached.add(i);
   }
   return reached;
+}
+
+function ChestMark() {
+  return (
+    <svg
+      width="34"
+      height="30"
+      viewBox="0 0 34 30"
+      fill="none"
+      aria-hidden
+      className="opacity-40"
+    >
+      <path
+        d="M3 14 Q17 4 31 14"
+        fill="#d8b66e"
+        stroke="#7a5a2e"
+        strokeWidth="2"
+      />
+      <rect
+        x="3"
+        y="12"
+        width="28"
+        height="15"
+        rx="2"
+        fill="#caa15a"
+        stroke="#7a5a2e"
+        strokeWidth="2"
+      />
+      <rect x="14" y="14" width="6" height="9" rx="1" fill="#7a5a2e" />
+      <circle cx="17" cy="18" r="1.6" fill="#FFB800" />
+    </svg>
+  );
 }
 
 const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
@@ -211,6 +254,9 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
       };
     }, []);
 
+    const firstPt = layout.pts[0];
+    const lastPt = layout.pts[layout.pts.length - 1];
+
     return (
       <div className="relative mt-7 w-full" style={{ height: layout.VBH }}>
         <svg
@@ -218,6 +264,53 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
           preserveAspectRatio="none"
           className="absolute inset-0 block h-full w-full overflow-visible"
         >
+          {layout.paths.map((d, si) => (
+            <path
+              key={`route-${si}`}
+              d={d}
+              fill="none"
+              stroke="#9c7b4f"
+              strokeWidth={2.5}
+              strokeDasharray="2 10"
+              strokeLinecap="round"
+              opacity={0.4}
+              className="pointer-events-none"
+            />
+          ))}
+          <g className="pointer-events-none" opacity={0.32}>
+            <circle
+              cx={54}
+              cy={58}
+              r={20}
+              fill="none"
+              stroke="#9c7b4f"
+              strokeWidth={2}
+            />
+            <path d="M54 42 L60 58 L54 74 L48 58 Z" fill="#9c7b4f" />
+            <path d="M54 42 L57 58 L54 58 Z" fill="#b04a2f" />
+          </g>
+          {lastPt && (
+            <g
+              className="pointer-events-none"
+              opacity={0.5}
+              stroke="#b04a2f"
+              strokeWidth={4}
+              strokeLinecap="round"
+            >
+              <line
+                x1={lastPt.x - 13}
+                y1={lastPt.y - 58}
+                x2={lastPt.x + 13}
+                y2={lastPt.y - 32}
+              />
+              <line
+                x1={lastPt.x + 13}
+                y1={lastPt.y - 58}
+                x2={lastPt.x - 13}
+                y2={lastPt.y - 32}
+              />
+            </g>
+          )}
           {layout.segments.map((dots, si) => (
             <motion.g
               key={si}
@@ -237,7 +330,7 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
                   key={k}
                   cx={dot.x.toFixed(1)}
                   cy={dot.y.toFixed(1)}
-                  r={6}
+                  r={(5.5 + ((si * 2 + k) % 3) * 0.6).toFixed(1)}
                   variants={{
                     lit: {
                       fill: "#FFB800",
@@ -245,7 +338,7 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
                       transition: { duration: 0.55, ease: "easeInOut" },
                     },
                     unlit: {
-                      fill: "#d0d7e2",
+                      fill: "#c9b08a",
                       scale: 1,
                       transition: { duration: 0.25 },
                     },
@@ -261,6 +354,35 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
         </svg>
 
         <div className="absolute inset-0">
+          {firstPt && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute"
+              style={{
+                left: `${(firstPt.x / VBW) * 100}%`,
+                top: `${(firstPt.y / layout.VBH) * 100}%`,
+                transform: "translate(-135%, -75%)",
+              }}
+            >
+              <Flag
+                className="h-6 w-6 text-amber-800 opacity-40"
+                strokeWidth={2.5}
+              />
+            </div>
+          )}
+          {lastPt && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute"
+              style={{
+                left: `${(lastPt.x / VBW) * 100}%`,
+                top: `${(lastPt.y / layout.VBH) * 100}%`,
+                transform: "translate(-50%, 42%)",
+              }}
+            >
+              <ChestMark />
+            </div>
+          )}
           {sections.map((section, i) => {
             const pt = layout.pts[i];
             // Unlock + pulse only after the dot-walk finishes arriving at this
