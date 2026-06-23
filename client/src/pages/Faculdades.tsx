@@ -361,7 +361,7 @@ export default function Faculdades() {
   const [selectedUf, setSelectedUf] = useState("");
   const [grauInst, setGrauInst] = useState("Todos");
   const [redeInst, setRedeInst] = useState("Todas");
-  const [openTip, setOpenTip] = useState<string | null>(null);
+  const [openTips, setOpenTips] = useState<Record<string, boolean>>({});
   const reduce = useReducedMotion();
 
   const filtered = faculdades.cursos.filter((c) => {
@@ -502,12 +502,15 @@ export default function Faculdades() {
               <button
                 key={chip.id}
                 type="button"
-                aria-pressed={openTip === chip.id}
+                aria-pressed={Boolean(openTips[chip.id])}
                 onClick={() =>
-                  setOpenTip(openTip === chip.id ? null : chip.id)
+                  setOpenTips((prev) => ({
+                    ...prev,
+                    [chip.id]: !prev[chip.id],
+                  }))
                 }
                 className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
-                  openTip === chip.id
+                  openTips[chip.id]
                     ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-violet-50"
                 }`}
@@ -517,7 +520,7 @@ export default function Faculdades() {
             ))}
           </div>
 
-          {openTip === "mec" ? (
+          {openTips.mec ? (
             <div className="rounded-2xl border-2 border-slate-900 bg-amber-50 p-5">
               <p className="max-w-2xl text-sm text-slate-700">
                 As notas vão de 1 a 5 e são consideradas satisfatórias a partir
@@ -552,7 +555,7 @@ export default function Faculdades() {
             </div>
           ) : null}
 
-          {openTip === "escolher" ? (
+          {openTips.escolher ? (
             <div className="rounded-xl border-2 border-violet-200 bg-white p-6">
               <h3 className="font-display text-2xl font-black text-slate-950">
                 Como escolher uma boa faculdade
@@ -588,7 +591,7 @@ export default function Faculdades() {
             </div>
           ) : null}
 
-          {openTip === "obrigatoria" ? (
+          {openTips.obrigatoria ? (
             <div className="rounded-xl border-2 border-violet-200 bg-violet-50 p-5">
               <div className="flex items-start gap-3">
                 <Star className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
@@ -608,7 +611,7 @@ export default function Faculdades() {
             </div>
           ) : null}
 
-          {openTip === "onde" ? (
+          {openTips.onde ? (
             <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-5">
               <h3 className="mb-3 font-display font-semibold text-slate-900">
                 Onde buscar faculdades gratuitas e com bolsa
@@ -975,9 +978,9 @@ export default function Faculdades() {
                   Encontre faculdades perto de você
                 </h2>
                 <p className="mt-2 text-sm text-slate-600">
-                  Escolha o estado abaixo para ver as instituições por UF.
-                  Ofertas nacionais (EAD) aparecem em qualquer estado. Confirme
-                  cursos e conceitos no{" "}
+                  Estas sugestões mudam conforme o estado que você escolher no
+                  filtro de instituições acima. Confira sempre cursos e conceitos
+                  no{" "}
                   <a
                     href="https://emec.mec.gov.br"
                     target="_blank"
@@ -988,29 +991,6 @@ export default function Faculdades() {
                   </a>
                   .
                 </p>
-                <div className="relative mt-4 max-w-xs">
-                  <MapPin
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                    aria-hidden
-                  />
-                  <select
-                    aria-label="Filtrar sugestões por estado"
-                    value={selectedUf}
-                    onChange={(event) => setSelectedUf(event.target.value)}
-                    className="w-full cursor-pointer appearance-none rounded-lg border-2 border-violet-200 bg-white py-2 pl-9 pr-8 text-sm font-bold text-slate-700 focus:border-violet-500 focus:outline-none"
-                  >
-                    <option value="">Todos os estados</option>
-                    {brazilianStates.map(({ uf, name }) => (
-                      <option key={uf} value={uf}>
-                        {name} ({uf})
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600"
-                    aria-hidden
-                  />
-                </div>
                 {selectedUf &&
                 selectedUf !== "__ead__" &&
                 nearby.every((item) => item.nacional) ? (
