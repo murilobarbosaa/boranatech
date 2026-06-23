@@ -109,6 +109,24 @@ const ABAS = [
   "Entender salário",
 ];
 
+const fontesReferencia = [
+  {
+    nome: "Guia Salarial Robert Half",
+    desc: "Faixas por cargo em percentis, atualizado todo ano.",
+    url: "https://www.roberthalf.com/br/pt/insights/guia-salarial/tecnologia",
+  },
+  {
+    nome: "Glassdoor",
+    desc: "Salários informados por quem trabalha na área.",
+    url: "https://www.glassdoor.com.br/",
+  },
+  {
+    nome: "Pesquisa Salarial Código Fonte TV",
+    desc: "Levantamento anual com milhares de devs no Brasil.",
+    url: "https://pesquisa.codigofonte.com.br/",
+  },
+];
+
 const salarioGlossario = [
   {
     termo: "CLT",
@@ -296,6 +314,7 @@ export default function Salarios() {
 
           <motion.div key={aba} {...fadeUp} className="space-y-8">
             {aba === "Tabela salarial" ? (
+              <>
               <div className="card-brutal rounded-2xl bg-white p-6">
                 <h2 className="font-display text-2xl font-black">
                   Tabela salarial interativa
@@ -381,6 +400,33 @@ export default function Salarios() {
                   </p>
                 )}
               </div>
+              <div className="card-brutal rounded-2xl bg-white p-6">
+                <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                  Fontes de referência
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Estas são faixas de referência da BoraNaTech, um ponto de
+                  partida. Os valores reais variam por empresa, região,
+                  senioridade e momento do mercado. Para comparar com dados
+                  atualizados, consulte:
+                </p>
+                <ul className="mt-4 space-y-3">
+                  {fontesReferencia.map((fonte) => (
+                    <li key={fonte.nome} className="text-sm text-slate-700">
+                      <a
+                        href={fonte.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={cn("font-black underline", ac.link)}
+                      >
+                        {fonte.nome}
+                      </a>{" "}
+                      {fonte.desc}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              </>
             ) : null}
 
             {aba === "Calculadoras" ? (
