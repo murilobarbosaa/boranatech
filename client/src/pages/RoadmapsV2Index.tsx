@@ -1,5 +1,17 @@
 import { Link, Redirect, useSearch } from "wouter";
-import { ArrowRight, Compass, Flag, Map, Route } from "lucide-react";
+import {
+  ArrowRight,
+  Compass,
+  Flag,
+  Footprints,
+  Map,
+  MapPin,
+  Milestone,
+  Mountain,
+  Navigation,
+  Route,
+  Signpost,
+} from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -9,10 +21,16 @@ import { areasTI, roadmaps } from "@/lib/data";
 import { PRESERVED_TRAILS } from "@/pages/RoadmapCarreira";
 
 const HERO_DOODLES = [
-  { Icon: Map, pos: "left-[3%] top-[22%]", size: "h-12 w-12", rot: 6, dur: 8 },
-  { Icon: Route, pos: "right-[5%] top-[16%]", size: "h-11 w-11", rot: -5, dur: 9 },
-  { Icon: Compass, pos: "right-[16%] bottom-[20%]", size: "h-10 w-10", rot: 7, dur: 10 },
-  { Icon: Flag, pos: "left-[12%] bottom-[14%]", size: "h-9 w-9", rot: -6, dur: 8.5 },
+  { Icon: Map, cls: "left-[3%] top-[6%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", rot: 6, dur: 7, delay: 0 },
+  { Icon: Route, cls: "right-[5%] top-[5%] text-purple-500 opacity-[0.16]", size: "h-11 w-11", rot: -5, dur: 8, delay: 0.5 },
+  { Icon: Milestone, cls: "left-[16%] top-[19%] text-violet-400 opacity-[0.13]", size: "h-9 w-9", rot: 9, dur: 8, delay: 0.2 },
+  { Icon: Compass, cls: "right-[14%] top-[28%] text-violet-600 opacity-[0.15]", size: "h-10 w-10", rot: 7, dur: 6.5, delay: 1.1 },
+  { Icon: MapPin, cls: "left-[7%] top-[36%] text-purple-400 opacity-[0.15]", size: "h-10 w-10", rot: -6, dur: 7, delay: 0.3 },
+  { Icon: Signpost, cls: "right-[7%] top-[56%] text-purple-600 opacity-[0.14]", size: "h-11 w-11", rot: -7, dur: 7.5, delay: 0.8 },
+  { Icon: Flag, cls: "left-[10%] top-[62%] text-violet-500 opacity-[0.14]", size: "h-9 w-9", rot: 7, dur: 6, delay: 1.4 },
+  { Icon: Navigation, cls: "right-[17%] top-[76%] text-purple-500 opacity-[0.13]", size: "h-9 w-9", rot: -8, dur: 6.5, delay: 1.6 },
+  { Icon: Footprints, cls: "left-[6%] top-[86%] text-violet-600 opacity-[0.13]", size: "h-9 w-9", rot: 6, dur: 7, delay: 0.6 },
+  { Icon: Mountain, cls: "right-[9%] top-[88%] text-violet-500 opacity-[0.13]", size: "h-10 w-10", rot: -6, dur: 6, delay: 1.2 },
 ];
 
 function hasProjectNode(nodes: RoadmapNode[]): boolean {
@@ -23,21 +41,33 @@ function hasProjectNode(nodes: RoadmapNode[]): boolean {
   );
 }
 
-function HeroDoodles() {
+function HeroDoodles({ reduce }: { reduce: boolean | null }) {
   return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-      {HERO_DOODLES.map((doodle) => {
+    <div
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden
+    >
+      {HERO_DOODLES.map((doodle, i) => {
         const Icon = doodle.Icon;
         return (
           <motion.span
-            key={doodle.pos}
-            aria-hidden
-            className={`absolute text-slate-900 ${doodle.pos}`}
-            style={{ opacity: 0.08 }}
-            animate={{ y: [0, -10, 0], rotate: [0, doodle.rot, 0] }}
-            transition={{ duration: doodle.dur, repeat: Infinity, ease: "easeInOut" }}
+            key={i}
+            className={`absolute ${doodle.cls}`}
+            animate={
+              reduce ? undefined : { y: [0, -10, 0], rotate: [0, doodle.rot, 0] }
+            }
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: doodle.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: doodle.delay,
+                  }
+            }
           >
-            <Icon className={doodle.size} />
+            <Icon className={doodle.size} strokeWidth={2.5} />
           </motion.span>
         );
       })}
@@ -63,7 +93,7 @@ export default function RoadmapsV2Index() {
       />
 
       <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
-        <HeroDoodles />
+        <HeroDoodles reduce={reduce} />
         <div className="relative z-10 mx-auto max-w-[1180px] px-5 pb-20 pt-8">
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 14 }}
