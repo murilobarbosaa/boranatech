@@ -160,14 +160,33 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 async function apiFetch(path: string, options?: RequestInit) {
   const authHeader = await getAuthHeader();
 
-  return fetch(apiUrl(`/api/bookmarks${path}`), {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeader,
-      ...(options?.headers || {}),
-    },
-  });
+  const doFetch = (extraHeaders: Record<string, string>) =>
+    fetch(apiUrl(`/api/bookmarks${path}`), {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...extraHeaders,
+        ...(options?.headers || {}),
+      },
+    });
+
+  const res = await doFetch(authHeader);
+
+  // getSession pode devolver um access_token já expirado sem renová-lo (aba
+  // ociosa, máquina suspensa, refresh agendado que não disparou), e o servidor
+  // responde 401. Renovamos a sessão explicitamente e repetimos a requisição
+  // uma única vez. Se o refresh falhar (sessão de fato encerrada), devolvemos a
+  // resposta 401 original para o erro ser tratado normalmente.
+  if (res.status === 401 && supabase) {
+    const {
+      data: { session },
+    } = await supabase.auth.refreshSession();
+    if (session?.access_token) {
+      return doFetch({ Authorization: `Bearer ${session.access_token}` });
+    }
+  }
+
+  return res;
 }
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
