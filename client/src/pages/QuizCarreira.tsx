@@ -5,10 +5,13 @@ import {
   BrainCircuit,
   Check,
   ChevronLeft,
+  Compass,
+  ListChecks,
   Loader2,
   RotateCcw,
   Sparkles,
   Star,
+  Target,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import posthog from "posthog-js";
@@ -718,7 +721,7 @@ function ObjectiveScreen({
               className="mb-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
             >
               <BrainCircuit className="h-4 w-4" />
-              Quiz de Carreira em Tech
+              Quiz de carreira
               <motion.span
                 animate={{ scale: [1, 1.3, 1], rotate: [0, 15, -15, 0] }}
                 transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
@@ -734,13 +737,13 @@ function ObjectiveScreen({
               className="font-display font-black leading-[1.02] tracking-tight text-slate-950"
               style={{ fontSize: "clamp(2.25rem, 6vw, 3.5rem)" }}
             >
-              Vamos achar o <span className="text-violet-600">seu lugar</span> na
-              tech
+              Qual <span className="text-violet-600">área de tech</span> combina
+              com você?
             </motion.h1>
 
             <p className="mt-4 max-w-xl text-base font-semibold text-slate-600 md:text-lg">
-              Começa escolhendo o seu objetivo, a gente monta o quiz certo pra
-              ele. É rápido, gratuito e não tem resposta certa nem errada.
+              Responde umas perguntas rápidas e a gente te mostra a área mais a
+              ver com seu jeito, por que ela combina e por onde começar.
             </p>
 
             <motion.p
@@ -795,8 +798,58 @@ function ObjectiveScreen({
           </motion.div>
         </div>
 
-        <p className="mb-3 mt-10 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
-          Escolha um pra começar
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, delay: 0.25 }}
+          className="mt-10 rounded-3xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a] md:p-6"
+        >
+          <p className="mb-4 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-violet-700">
+            Como funciona
+          </p>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              {
+                Icon: ListChecks,
+                texto:
+                  "Você responde perguntas sobre o que curte e como pensa. Não tem certo ou errado.",
+              },
+              {
+                Icon: Target,
+                texto: "Cada resposta pontua as áreas de tech.",
+              },
+              {
+                Icon: Compass,
+                texto:
+                  "No fim você vê sua área, o porquê e um caminho pra começar.",
+              },
+            ].map((passo, idx) => {
+              const StepIcon = passo.Icon;
+              return (
+                <div
+                  key={passo.texto}
+                  className="flex items-start gap-3 rounded-2xl border-2 border-slate-200 bg-violet-50/60 p-4"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-violet-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <StepIcon
+                      className="mb-1.5 h-5 w-5 text-violet-700"
+                      strokeWidth={2.4}
+                    />
+                    <p className="text-sm font-semibold text-slate-700">
+                      {passo.texto}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        <p className="mb-3 mt-8 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">
+          Escolha seu objetivo pra começar:
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
