@@ -1,13 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  BookOpen,
   CheckCircle,
+  Compass,
   Filter,
+  GraduationCap,
   Lightbulb,
+  type LucideIcon,
+  MonitorPlay,
   RotateCcw,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { cn } from "@/lib/utils";
 
 type ComparisonCategory = "faculdades" | "cursos" | "areas" | "plataformas";
 type ComparisonItem = {
@@ -60,6 +66,37 @@ const comparisonGroups: Array<{
     hint: "Assinaturas e ecossistemas (Alura, Coursera…)",
   },
 ];
+
+// Apresentacao por subarea (icone de linha + cor). So estilo, nao toca no dado.
+const SUBAREA_UI: Record<
+  ComparisonCategory,
+  { Icon: LucideIcon; text: string; bg: string; shadow: string }
+> = {
+  areas: {
+    Icon: Compass,
+    text: "text-violet-700",
+    bg: "bg-violet-100",
+    shadow: "shadow-[5px_5px_0_#7c3aed]",
+  },
+  faculdades: {
+    Icon: GraduationCap,
+    text: "text-blue-700",
+    bg: "bg-blue-100",
+    shadow: "shadow-[5px_5px_0_#1d4ed8]",
+  },
+  cursos: {
+    Icon: BookOpen,
+    text: "text-amber-700",
+    bg: "bg-amber-100",
+    shadow: "shadow-[5px_5px_0_#d97706]",
+  },
+  plataformas: {
+    Icon: MonitorPlay,
+    text: "text-emerald-700",
+    bg: "bg-emerald-100",
+    shadow: "shadow-[5px_5px_0_#059669]",
+  },
+};
 
 const comparisonItems: ComparisonItem[] = [
   {
@@ -934,20 +971,76 @@ export default function Comparador() {
 
       <section className="bg-[#f7fee7] py-12">
         <div className="container space-y-6">
-          <div className="card-brutal rounded-2xl bg-white p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          {/* PASSO 1: escolher a subarea (controle unico) */}
+          {/* TODO(Ana): revisar copy dos passos do comparador */}
+          <div>
+            <div className="mb-4 flex items-center gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                1
+              </span>
               <div>
                 <h2 className="font-display text-2xl font-black text-slate-950">
-                  Refine a comparação
+                  O que você quer comparar?
                 </h2>
-                <p className="mt-1 text-sm font-semibold text-slate-600">
-                  Primeiro escolha{" "}
-                  <strong className="text-slate-800">
-                    o mesmo tipo de caminho
-                  </strong>{" "}
-                  nas duas colunas. Não dá para comparar, por exemplo, uma
-                  graduação com um curso curto online; são decisões diferentes.
+                <p className="text-sm font-semibold text-slate-600">
+                  Escolha uma categoria. A comparação acontece só dentro dela.
                 </p>
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {comparisonGroups.map((g) => {
+                const ui = SUBAREA_UI[g.id];
+                const Icon = ui.Icon;
+                const active = comparisonKind === g.id;
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setComparisonKind(g.id)}
+                    aria-pressed={active}
+                    className={cn(
+                      "flex h-full flex-col rounded-2xl border-2 border-slate-900 p-4 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5",
+                      active
+                        ? cn(ui.bg, ui.shadow)
+                        : "bg-white shadow-[3px_3px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a]",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex h-9 w-9 items-center justify-center rounded-xl border-2 border-slate-900 bg-white",
+                        ui.text,
+                      )}
+                    >
+                      <Icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="mt-3 font-display text-sm font-black text-slate-950">
+                      {g.label}
+                    </span>
+                    <span className="mt-1 text-xs font-semibold text-slate-500">
+                      {g.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* PASSO 2: filtros subordinados a subarea */}
+          <div className="card-brutal rounded-2xl bg-white p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  2
+                </span>
+                <div>
+                  <h2 className="font-display text-2xl font-black text-slate-950">
+                    Refine (opcional)
+                  </h2>
+                  <p className="text-sm font-semibold text-slate-600">
+                    Ajuste prioridade, pagamento e ritmo para filtrar as opções
+                    desta categoria.
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -959,28 +1052,7 @@ export default function Comparador() {
               </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <label className="text-xs font-black uppercase text-slate-600 md:col-span-2 lg:col-span-4">
-                Tipo de caminho (as duas opções serão só deste grupo)
-                <select
-                  value={comparisonKind}
-                  onChange={(event) =>
-                    setComparisonKind(event.target.value as ComparisonCategory)
-                  }
-                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-indigo-50 p-3 text-sm font-black text-slate-900"
-                >
-                  {comparisonGroups.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-                {kindMeta ? (
-                  <p className="mt-2 text-[11px] font-semibold normal-case leading-snug text-slate-500">
-                    {kindMeta.hint}
-                  </p>
-                ) : null}
-              </label>
+            <div className="grid gap-4 md:grid-cols-3">
               <label className="text-xs font-black uppercase text-slate-600">
                 Prioridade
                 <select
@@ -1035,29 +1107,30 @@ export default function Comparador() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <span className="w-full text-xs font-black uppercase text-slate-600">
-              Atalho: tipo de caminho
+          {/* PASSO 3: escolher A e B (mesmo grupo) */}
+          <div className="flex items-center gap-3">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              3
             </span>
-            {comparisonGroups.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setComparisonKind(item.id)}
-                className={`rounded-full border-2 px-4 py-2 text-left text-sm font-black transition-colors ${
-                  comparisonKind === item.id
-                    ? "border-slate-900 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
-                    : "border-slate-300 bg-white hover:bg-slate-50"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+            <div>
+              <h2 className="font-display text-2xl font-black text-slate-950">
+                Coloque lado a lado
+              </h2>
+              <p className="text-sm font-semibold text-slate-600">
+                Escolha as duas opções de "{kindMeta?.label ?? comparisonKind}"
+                para comparar.
+              </p>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
-              <span className="text-slate-950">Opção A</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-slate-900 bg-violet-200 text-xs font-black text-violet-900">
+                  A
+                </span>
+                <span className="text-slate-950">Opção A</span>
+              </span>
               <span className="mt-0.5 block text-xs font-semibold text-slate-500">
                 Mesmo grupo que a opção B
               </span>
@@ -1081,7 +1154,12 @@ export default function Comparador() {
               </select>
             </label>
             <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
-              <span className="text-slate-950">Opção B</span>
+              <span className="inline-flex items-center gap-2">
+                <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-slate-900 bg-amber-200 text-xs font-black text-amber-900">
+                  B
+                </span>
+                <span className="text-slate-950">Opção B</span>
+              </span>
               <span className="mt-0.5 block text-xs font-semibold text-slate-500">
                 Só entradas do tipo "{kindMeta?.label ?? comparisonKind}"
               </span>
