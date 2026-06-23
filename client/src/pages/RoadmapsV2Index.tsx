@@ -1,6 +1,6 @@
 import { Link, Redirect, useSearch } from "wouter";
 import { ArrowRight, Compass, Flag, Map, Route } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { roadmapsV2 } from "@/lib/roadmapV2/content";
@@ -47,6 +47,7 @@ function HeroDoodles() {
 
 export default function RoadmapsV2Index() {
   const search = useSearch();
+  const reduce = useReducedMotion();
   const areaParam = new URLSearchParams(search).get("area");
   if (areaParam && roadmapsV2.some((r) => r.slug === areaParam)) {
     return <Redirect to={`/roadmaps/${areaParam}`} />;
@@ -65,7 +66,7 @@ export default function RoadmapsV2Index() {
         <HeroDoodles />
         <div className="relative z-10 mx-auto max-w-[1180px] px-5 pb-20 pt-8">
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduce ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
           >
@@ -99,7 +100,7 @@ export default function RoadmapsV2Index() {
               return (
                 <motion.div
                   key={r.slug}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={reduce ? false : { opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
                     duration: 0.35,
@@ -161,12 +162,19 @@ export default function RoadmapsV2Index() {
           </div>
 
           <div className="mt-14">
-            <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
-              Trilhas de carreira
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
-              Caminhos por objetivo de carreira, da base ao próximo passo.
-            </p>
+            <motion.div
+              initial={reduce ? false : { opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              <h2 className="font-display text-2xl font-black tracking-tight text-slate-950">
+                Trilhas de carreira
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm font-medium text-slate-600">
+                Caminhos por objetivo de carreira, da base ao próximo passo.
+              </p>
+            </motion.div>
 
             <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {PRESERVED_TRAILS.map((t, index) => {
@@ -176,7 +184,7 @@ export default function RoadmapsV2Index() {
                 return (
                   <motion.div
                     key={t.slug}
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={reduce ? false : { opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{
                       duration: 0.35,
