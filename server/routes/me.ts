@@ -7,10 +7,29 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { GENDER_VALUES, type Gender } from "../../shared/gender";
+import {
+  MAX_PROFILE_SKILLS,
+  SKILL_KINDS,
+  SKILL_LEVELS,
+  type SkillKind,
+  type SkillLevel,
+} from "../../shared/profileSkills";
 
 const router = Router();
 
 const GENDER_SET = new Set<string>(GENDER_VALUES);
+const SKILL_KIND_SET = new Set<string>(SKILL_KINDS);
+const SKILL_LEVEL_SET = new Set<string>(SKILL_LEVELS);
+
+const PROFILE_TEXT_LIMITS: Record<string, number> = {
+  headline: 140,
+  city: 80,
+  uf: 40,
+  career_goal: 240,
+};
+const PROFILE_URL_FIELDS = ["github_url", "linkedin_url", "website_url"];
+const PROFILE_URL_MAX = 300;
+const SKILL_TEXT_MAX = 80;
 
 const EDITABLE_FIELDS = [
   "name",
@@ -26,6 +45,13 @@ const EDITABLE_FIELDS = [
   "onboarding_step",
   "preferences",
   "gender",
+  "headline",
+  "city",
+  "uf",
+  "career_goal",
+  "github_url",
+  "linkedin_url",
+  "website_url",
 ];
 
 const AVATAR_VALUES = {
@@ -91,6 +117,43 @@ function validateAvatarPreference(
     );
   }
 
+  return null;
+}
+
+function validateProfileText(field: string, value: unknown, max: number) {
+  if (value === null) return null;
+  if (typeof value !== "string") {
+    return createError(400, "invalid_request", `Valor inválido para ${field}.`);
+  }
+  if (value.length > max) {
+    return createError(
+      400,
+      "invalid_request",
+      `O campo ${field} excede o tamanho máximo.`,
+    );
+  }
+  return null;
+}
+
+function validateProfileUrl(field: string, value: unknown) {
+  if (value === null) return null;
+  if (typeof value !== "string") {
+    return createError(400, "invalid_request", `Valor inválido para ${field}.`);
+  }
+  if (value.length > PROFILE_URL_MAX) {
+    return createError(
+      400,
+      "invalid_request",
+      `O campo ${field} excede o tamanho máximo.`,
+    );
+  }
+  if (value.trim() !== "" && !/^https?:\/\/.+/.test(value.trim())) {
+    return createError(
+      400,
+      "invalid_request",
+      `O campo ${field} deve ser uma URL http ou https.`,
+    );
+  }
   return null;
 }
 
@@ -214,6 +277,20 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       }
     }
 
+    for (const [field, max] of Object.entries(PROFILE_TEXT_LIMITS)) {
+      if (field in updates) {
+        const textError = validateProfileText(field, updates[field], max);
+        if (textError) return next(textError);
+      }
+    }
+
+    for (const field of PROFILE_URL_FIELDS) {
+      if (field in updates) {
+        const urlError = validateProfileUrl(field, updates[field]);
+        if (urlError) return next(urlError);
+      }
+    }
+
     if (Object.keys(updates).length === 0) {
       return next(
         createError(
@@ -326,6 +403,139 @@ router.delete("/", async (req, res, next) => {
 
     console.log("[me] Conta excluída:", userId);
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+type SkillRow = {
+  user_id: string;
+  kind: SkillKind;
+  slug: string;
+  label: string;
+  level: SkillLevel;
+};
+
+router.get("/skills", async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+    const { data, error } = await supabaseAdmin
+      .from("profile_skills")
+      .select("kind, slug, label, level")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      return next(createError(500, "db_error", "Erro ao buscar skills."));
+    }
+
+    res.json({ data: data || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put("/skills", async (req, res, next) => {
+  try {
+    const userId = req.user!.id;
+    const body = req.body as { skills?: unknown };
+    const rawSkills = body.skills;
+
+    if (!Array.isArray(rawSkills)) {
+      return next(
+        createError(400, "invalid_request", "skills deve ser uma lista."),
+      );
+    }
+    if (rawSkills.length > MAX_PROFILE_SKILLS) {
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          `Máximo de ${MAX_PROFILE_SKILLS} skills.`,
+        ),
+      );
+    }
+
+    const seen = new Set<string>();
+    const rows: SkillRow[] = [];
+
+    for (const item of rawSkills) {
+      if (typeof item !== "object" || item === null) {
+        return next(
+          createError(400, "invalid_request", "Item de skill inválido."),
+        );
+      }
+      const entry = item as Record<string, unknown>;
+      const { kind, slug, label, level } = entry;
+
+      if (typeof kind !== "string" || !SKILL_KIND_SET.has(kind)) {
+        return next(createError(400, "invalid_request", "kind inválido."));
+      }
+      if (typeof level !== "string" || !SKILL_LEVEL_SET.has(level)) {
+        return next(createError(400, "invalid_request", "level inválido."));
+      }
+      if (
+        typeof slug !== "string" ||
+        !slug.trim() ||
+        slug.length > SKILL_TEXT_MAX
+      ) {
+        return next(createError(400, "invalid_request", "slug inválido."));
+      }
+      if (
+        typeof label !== "string" ||
+        !label.trim() ||
+        label.length > SKILL_TEXT_MAX
+      ) {
+        return next(createError(400, "invalid_request", "label inválido."));
+      }
+
+      const key = `${kind}:${slug.trim()}`;
+      if (seen.has(key)) {
+        return next(
+          createError(400, "invalid_request", "skill duplicada (kind + slug)."),
+        );
+      }
+      seen.add(key);
+
+      rows.push({
+        user_id: userId,
+        kind: kind as SkillKind,
+        slug: slug.trim(),
+        label: label.trim(),
+        level: level as SkillLevel,
+      });
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from("profile_skills")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteError) {
+      return next(createError(500, "db_error", "Erro ao atualizar skills."));
+    }
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabaseAdmin
+        .from("profile_skills")
+        .insert(rows);
+
+      if (insertError) {
+        return next(createError(500, "db_error", "Erro ao salvar skills."));
+      }
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("profile_skills")
+      .select("kind, slug, label, level")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      return next(createError(500, "db_error", "Erro ao buscar skills."));
+    }
+
+    res.json({ data: data || [] });
   } catch (err) {
     next(err);
   }
