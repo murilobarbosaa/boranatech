@@ -178,7 +178,9 @@ export default function Projetos() {
               className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
             >
               {niveis.map((n) => (
-                <option key={n}>{n === "Todos" ? "Todos os níveis" : n}</option>
+                <option key={n} value={n}>
+                  {n === "Todos" ? "Todos os níveis" : n}
+                </option>
               ))}
             </select>
           </div>
