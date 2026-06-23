@@ -36,13 +36,17 @@ export default function BemVindo() {
   const [, setLocation] = useLocation();
   const { profile, refreshProfile } = useAuth();
 
-  // Quem ja concluiu o onboarding (ou caiu no fallback local) nao ve a tela de
-  // novo: redireciona pro perfil.
+  // Quem ja concluiu o onboarding nao ve a tela de novo: redireciona pro perfil.
+  // O sinal de "ja fez onboarding" e SO o perfil. Enquanto profile e null/
+  // undefined (carregando), nao redireciona: o recem-cadastrado, que tem
+  // onboarding_completed = false, permanece na tela. O fallback local
+  // (bnt_onboarding_done) so existe apos a pessoa AGIR e o PATCH falhar, nunca
+  // e gravado no signup.
   useEffect(() => {
     const jaOnboardado =
       profile?.onboarding_completed === true ||
       (typeof window !== "undefined" &&
-        window.localStorage.getItem("bnt_signup_completed") === "true");
+        window.localStorage.getItem("bnt_onboarding_done") === "true");
     if (jaOnboardado) setLocation("/perfil", { replace: true });
   }, [profile, setLocation]);
 
@@ -53,7 +57,7 @@ export default function BemVindo() {
       .then(() => refreshProfile())
       .catch(() => {
         try {
-          window.localStorage.setItem("bnt_signup_completed", "true");
+          window.localStorage.setItem("bnt_onboarding_done", "true");
         } catch {
           // localStorage indisponivel; a navegacao segue mesmo assim.
         }
