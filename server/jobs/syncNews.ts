@@ -12,6 +12,19 @@ const KEYWORDS = [
 ];
 const PER_KEYWORD_LIMIT = 10;
 
+// Titulos genericos/lixo que a Currents as vezes devolve repetidamente
+// (comparados com o titulo normalizado). Bloqueados na ingestao.
+const JUNK_TITLES = new Set<string>(["anuncios da empresa"]);
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 type SyncNewsResult = {
   found: number;
   created: number;
@@ -72,6 +85,7 @@ export async function syncNews(): Promise<SyncNewsResult> {
   }
 
   const byUrl = new Map<string, CurrentsArticle>();
+  const seenTitles = new Set<string>();
 
   for (const keyword of KEYWORDS) {
     try {
@@ -79,10 +93,19 @@ export async function syncNews(): Promise<SyncNewsResult> {
       let added = 0;
       for (const article of news) {
         const urlValue = typeof article.url === "string" ? article.url : "";
-        if (urlValue && !byUrl.has(urlValue)) {
-          byUrl.set(urlValue, article);
-          added += 1;
-        }
+        const titleValue =
+          typeof article.title === "string" ? article.title : "";
+        const normTitle = normalizeTitle(titleValue);
+        if (!urlValue || byUrl.has(urlValue)) continue;
+        if (
+          !normTitle ||
+          JUNK_TITLES.has(normTitle) ||
+          seenTitles.has(normTitle)
+        )
+          continue;
+        byUrl.set(urlValue, article);
+        seenTitles.add(normTitle);
+        added += 1;
       }
       console.log(
         `[sync-news] keyword "${keyword}": ${news.length} fetched, ${added} new`,
