@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight, CheckCircle, ListChecks } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle,
+  Clock,
+  Info,
+  ListChecks,
+  SlidersHorizontal,
+} from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -149,6 +158,7 @@ export default function Simulador() {
   const [support, setSupport] = useState("Estou fazendo tudo sozinha");
   const [knowledge, setKnowledge] = useState<string[]>([]);
   const totalSteps = 11;
+  const reduce = useReducedMotion();
 
   const weeklyHours = hours * days;
   const baseMonths = areaComplexity[area] || 12;
@@ -378,19 +388,81 @@ export default function Simulador() {
       <PageHero
         accent="fuchsia"
         eyebrow={
-          showResults ? "resultado do diagnóstico" : "diagnóstico e prazo"
+          showResults ? "resultado do diagnóstico" : "Simulador de carreira"
         }
-        title={showResults ? "Seu cenário estimado" : "Simulador de Carreira"}
+        title={
+          showResults
+            ? "Seu cenário estimado"
+            : "Em quanto tempo você chega na sua meta?"
+        }
         subtitle={
           showResults
             ? "Um prazo orientativo e as alavancas que mais mexem no seu caso, para planejar sem achismo."
-            : "Responda o diagnóstico passo a passo. Na última tela você escolhe a meta e só então vê o prazo estimado."
+            : "Responde um diagnóstico rápido sobre sua situação e seus hábitos, e a gente estima um prazo até sua meta e o que priorizar pra chegar mais rápido."
         }
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
           {!showResults ? (
             <div className="card-brutal rounded-2xl bg-white p-6">
+              {step === 1 && (
+                <motion.div
+                  initial={reduce ? false : { opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="mb-6"
+                >
+                  <p className="mb-3 font-mono text-[11px] font-black uppercase tracking-[0.2em] text-fuchsia-700">
+                    Como funciona
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {[
+                      {
+                        Icon: ListChecks,
+                        texto:
+                          "Você responde sobre onde está hoje e como estuda: área, horas, portfólio, prática.",
+                      },
+                      {
+                        Icon: SlidersHorizontal,
+                        texto: "Cada fator encurta ou estica o prazo estimado.",
+                      },
+                      {
+                        Icon: Clock,
+                        texto:
+                          "No fim você vê uma estimativa de tempo e as ações que mais aceleram seu caminho.",
+                      },
+                    ].map((passo, idx) => {
+                      const StepIcon = passo.Icon;
+                      return (
+                        <div
+                          key={passo.texto}
+                          className="flex items-start gap-3 rounded-2xl border-2 border-slate-200 bg-fuchsia-50/60 p-4"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-fuchsia-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <StepIcon
+                              className="mb-1.5 h-5 w-5 text-fuchsia-700"
+                              strokeWidth={2.4}
+                            />
+                            <p className="text-sm font-semibold text-slate-700">
+                              {passo.texto}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-4 flex items-start gap-2 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                    <p className="text-sm font-bold text-amber-800">
+                      É uma estimativa pra te orientar, não uma promessa.
+                      Carreira depende de muita coisa que nenhum simulador prevê.
+                    </p>
+                  </div>
+                </motion.div>
+              )}
               <div className="mb-6">
                 <div className="mb-2 flex items-center justify-between text-xs font-black uppercase">
                   <span className={ac.progressLabel}>
