@@ -5,7 +5,8 @@ import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const router = Router();
 
-const SIGNUP_WINDOW_SECONDS = 60 * 60;
+const SIGNUP_WINDOW_SECONDS = 10 * 60;
+const SIGNUP_MAX_ATTEMPTS = 20;
 // Validacao simples: presenca de local, arroba e dominio com ponto. A confirmacao
 // real do endereco fica a cargo do envio do e-mail.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,23 +40,25 @@ router.post("/", async (req, res) => {
         ? body.source.trim().slice(0, MAX_SOURCE_LENGTH)
         : "landing-lancamento";
 
-    // Throttle por ip:email no Redis, mesmo padrao do affiliatesRouter. Fail-open:
-    // sem Redis ou em erro, segue sem throttle. SET NX EX detecta de forma atomica
-    // o primeiro cadastro da janela e aplica o TTL. Se ja cadastrou nessa janela,
-    // responde sucesso idempotente sem tocar no banco.
+    // Throttle por IP no Redis, mesmo contador do POST /api/beta/unlock (INCR +
+    // EXPIRE). Janela generosa porque CGNAT poe varios usuarios legitimos no mesmo
+    // IP e o dado ja dedupa por e-mail: o throttle so barra flood, nao cadastro
+    // legitimo repetido. Fail-open: sem Redis ou em erro, segue sem throttle.
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     if (redisConnection) {
       try {
-        const key = `waitlist:signup:${ip}:${email}`;
-        const result = await redisConnection.set(
-          key,
-          "1",
-          "EX",
-          SIGNUP_WINDOW_SECONDS,
-          "NX",
-        );
-        if (result !== "OK") {
-          res.json({ ok: true });
+        const key = `waitlist:signup:${ip}`;
+        const attempts = await redisConnection.incr(key);
+        if (attempts === 1) {
+          await redisConnection.expire(key, SIGNUP_WINDOW_SECONDS);
+        }
+        if (attempts > SIGNUP_MAX_ATTEMPTS) {
+          res.status(429).json({
+            error: {
+              code: "too_many_attempts",
+              message: "Muitas tentativas. Tente novamente em instantes.",
+            },
+          });
           return;
         }
       } catch (err) {
