@@ -231,6 +231,13 @@ const GRAU_INFO = [
   },
 ];
 
+const TIP_CHIPS = [
+  { id: "mec", label: "O que é cada nota do MEC" },
+  { id: "escolher", label: "Como escolher uma boa faculdade" },
+  { id: "obrigatoria", label: "Faculdade é obrigatória?" },
+  { id: "onde", label: "Onde buscar faculdades gratuitas e com bolsa" },
+];
+
 const NOTAS_MEC = [
   {
     sigla: "Enade",
@@ -354,6 +361,7 @@ export default function Faculdades() {
   const [selectedUf, setSelectedUf] = useState("");
   const [grauInst, setGrauInst] = useState("Todos");
   const [redeInst, setRedeInst] = useState("Todas");
+  const [openTip, setOpenTip] = useState<string | null>(null);
   const reduce = useReducedMotion();
 
   const filtered = faculdades.cursos.filter((c) => {
@@ -419,6 +427,231 @@ export default function Faculdades() {
               qual faz mais sentido para você.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="border-b-2 border-slate-900 bg-white py-12">
+        <div className="container space-y-4">
+          <h2 className="font-display text-2xl font-black text-slate-950">
+            Técnico, Tecnólogo e Bacharelado
+          </h2>
+          <p className="max-w-2xl text-sm text-slate-700">
+            Três caminhos diferentes pra entrar na TI. Veja o tempo, o foco e
+            onde cada um te leva.
+          </p>
+          <div className="grid gap-5 md:grid-cols-3">
+            {GRAU_INFO.map((g, i) => {
+              const Icon = g.Icon;
+              return (
+                <AnimatedContent
+                  key={g.grau}
+                  distance={16}
+                  duration={0.4}
+                  delay={i * 0.1}
+                  className="h-full"
+                >
+                  <div
+                    className={`flex h-full flex-col gap-2 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a] ${g.style}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <motion.span
+                        animate={reduce ? undefined : { y: [0, -3, 0] }}
+                        transition={
+                          reduce
+                            ? undefined
+                            : {
+                                duration: 2.6 + i * 0.3,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                              }
+                        }
+                      >
+                        <Icon className="h-7 w-7 text-slate-900" aria-hidden />
+                      </motion.span>
+                      <h3 className="font-display text-xl font-black text-slate-950">
+                        {g.grau}
+                      </h3>
+                      <span
+                        className={`ml-auto rounded-full px-2 py-0.5 text-[0.65rem] font-black uppercase ${g.badge}`}
+                      >
+                        {g.duracao}
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-800">{g.nivel}</p>
+                    <p className="text-sm text-slate-700">{g.foco}</p>
+                    <p className="text-sm text-slate-700">
+                      <strong className="text-slate-900">Acesso:</strong>{" "}
+                      {g.acesso}
+                    </p>
+                    <p className="mt-auto text-xs text-slate-600">
+                      <strong className="text-slate-900">Exemplos:</strong>{" "}
+                      {g.exemplos}
+                    </p>
+                  </div>
+                </AnimatedContent>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b-2 border-slate-900 bg-white py-8">
+        <div className="container space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {TIP_CHIPS.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                aria-pressed={openTip === chip.id}
+                onClick={() =>
+                  setOpenTip(openTip === chip.id ? null : chip.id)
+                }
+                className={`rounded-full border-2 px-3 py-1.5 text-xs font-black transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 ${
+                  openTip === chip.id
+                    ? "border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]"
+                    : "border-slate-300 bg-white text-slate-700 hover:bg-violet-50"
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+
+          {openTip === "mec" ? (
+            <div className="rounded-2xl border-2 border-slate-900 bg-amber-50 p-5">
+              <p className="max-w-2xl text-sm text-slate-700">
+                As notas vão de 1 a 5 e são consideradas satisfatórias a partir
+                de 3. A nota muda com o tempo, então confira a atual de cada
+                curso no e-MEC.
+              </p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {NOTAS_MEC.map((n) => (
+                  <div
+                    key={n.sigla}
+                    className="flex h-full flex-col gap-1 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#fcd34d]"
+                  >
+                    <span className="font-display text-2xl font-black text-amber-700">
+                      {n.sigla}
+                    </span>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-700">
+                      {n.nome}
+                    </p>
+                    <p className="text-sm text-slate-700">{n.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <a
+                href={EMEC_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+              >
+                Consultar notas no e-MEC
+                <ExternalLink className="h-4 w-4" aria-hidden />
+              </a>
+            </div>
+          ) : null}
+
+          {openTip === "escolher" ? (
+            <div className="rounded-xl border-2 border-violet-200 bg-white p-6">
+              <h3 className="font-display text-2xl font-black text-slate-950">
+                Como escolher uma boa faculdade
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Não existe faculdade perfeita pra todo mundo. Veja os pontos que
+                mais importam na hora de comparar e decidir.
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {criteriosFaculdade.map((item) => (
+                  <div
+                    key={item.titulo}
+                    className="rounded-xl border-2 border-slate-200 bg-violet-50/60 p-4"
+                  >
+                    <div className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">
+                          {item.titulo}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          {item.desc}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-5 text-sm text-slate-600">
+                Liste o que é inegociável pra você e use esses pontos pra
+                comparar cada opção antes de bater o martelo.
+              </p>
+            </div>
+          ) : null}
+
+          {openTip === "obrigatoria" ? (
+            <div className="rounded-xl border-2 border-violet-200 bg-violet-50 p-5">
+              <div className="flex items-start gap-3">
+                <Star className="mt-0.5 h-5 w-5 shrink-0 text-violet-600" />
+                <div>
+                  <h3 className="mb-2 font-display font-semibold text-slate-900">
+                    Faculdade é obrigatória?
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    Não! A faculdade não é obrigatória para entrar em TI, mas
+                    pode abrir portas em algumas empresas. Se quiser entrar
+                    rápido no mercado, cursos técnicos e bootcamps podem ser mais
+                    eficientes. Se quiser uma base sólida e crescimento de longo
+                    prazo, considere a graduação.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {openTip === "onde" ? (
+            <div className="rounded-xl border-2 border-slate-200 bg-slate-50 p-5">
+              <h3 className="mb-3 font-display font-semibold text-slate-900">
+                Onde buscar faculdades gratuitas e com bolsa
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                {[
+                  {
+                    nome: "ProUni",
+                    desc: "Bolsas em faculdades privadas via ENEM",
+                    link: "https://prouni.mec.gov.br",
+                  },
+                  {
+                    nome: "FIES",
+                    desc: "Financiamento estudantil para faculdades privadas",
+                    link: "https://fies.mec.gov.br",
+                  },
+                  {
+                    nome: "SISU",
+                    desc: "Acesso a universidades federais via ENEM",
+                    link: "https://sisu.mec.gov.br",
+                  },
+                  {
+                    nome: "EAD Gratuito",
+                    desc: "UAB: Universidade Aberta do Brasil",
+                    link: "https://uab.capes.gov.br",
+                  },
+                ].map((item) => (
+                  <a
+                    key={item.nome}
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-lg border-2 border-slate-200 bg-white p-3 transition-colors hover:border-violet-400"
+                  >
+                    <p className="mb-1 text-sm font-semibold text-slate-900">
+                      {item.nome}
+                    </p>
+                    <p className="text-xs text-slate-500">{item.desc}</p>
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -699,113 +932,6 @@ export default function Faculdades() {
         </div>
       </section>
 
-      <section className="border-b-2 border-slate-900 bg-white py-12">
-        <div className="container space-y-4">
-          <h2 className="font-display text-2xl font-black text-slate-950">
-            Entenda antes de escolher
-          </h2>
-          <details className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-5">
-            <summary className="cursor-pointer rounded font-display text-lg font-black text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2">
-              Técnico, Tecnólogo e Bacharelado
-            </summary>
-            <p className="mt-2 max-w-2xl text-sm text-slate-700">
-              Três caminhos diferentes pra entrar na TI. Veja o tempo, o foco e
-              onde cada um te leva.
-            </p>
-            <div className="mt-4 grid gap-5 md:grid-cols-3">
-              {GRAU_INFO.map((g, i) => {
-                const Icon = g.Icon;
-                return (
-                  <AnimatedContent
-                    key={g.grau}
-                    distance={16}
-                    duration={0.4}
-                    delay={i * 0.1}
-                    className="h-full"
-                  >
-                    <div
-                      className={`flex h-full flex-col gap-2 rounded-2xl border-2 border-slate-900 p-5 shadow-[4px_4px_0_#0f172a] ${g.style}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <motion.span
-                          animate={reduce ? undefined : { y: [0, -3, 0] }}
-                          transition={
-                            reduce
-                              ? undefined
-                              : {
-                                  duration: 2.6 + i * 0.3,
-                                  repeat: Infinity,
-                                  ease: "easeInOut",
-                                }
-                          }
-                        >
-                          <Icon className="h-7 w-7 text-slate-900" aria-hidden />
-                        </motion.span>
-                        <h3 className="font-display text-xl font-black text-slate-950">
-                          {g.grau}
-                        </h3>
-                        <span
-                          className={`ml-auto rounded-full px-2 py-0.5 text-[0.65rem] font-black uppercase ${g.badge}`}
-                        >
-                          {g.duracao}
-                        </span>
-                      </div>
-                      <p className="text-sm font-bold text-slate-800">
-                        {g.nivel}
-                      </p>
-                      <p className="text-sm text-slate-700">{g.foco}</p>
-                      <p className="text-sm text-slate-700">
-                        <strong className="text-slate-900">Acesso:</strong>{" "}
-                        {g.acesso}
-                      </p>
-                      <p className="mt-auto text-xs text-slate-600">
-                        <strong className="text-slate-900">Exemplos:</strong>{" "}
-                        {g.exemplos}
-                      </p>
-                    </div>
-                  </AnimatedContent>
-                );
-              })}
-            </div>
-          </details>
-          <details className="rounded-2xl border-2 border-slate-900 bg-amber-50 p-5">
-            <summary className="cursor-pointer rounded font-display text-lg font-black text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2">
-              O que é cada nota do MEC
-            </summary>
-            <p className="mt-2 max-w-2xl text-sm text-slate-700">
-              As notas vão de 1 a 5 e são consideradas satisfatórias a partir de
-              3. A nota muda com o tempo, então confira a atual de cada curso no
-              e-MEC.
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {NOTAS_MEC.map((n) => (
-                <div
-                  key={n.sigla}
-                  className="flex h-full flex-col gap-1 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#fcd34d]"
-                >
-                  <span className="font-display text-2xl font-black text-amber-700">
-                    {n.sigla}
-                  </span>
-                  <p className="text-xs font-black uppercase tracking-wide text-slate-700">
-                    {n.nome}
-                  </p>
-                  <p className="text-sm text-slate-700">{n.desc}</p>
-                </div>
-              ))}
-            </div>
-            <a
-              href={EMEC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-4 py-2 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
-            >
-              Consultar notas no e-MEC
-              <ExternalLink className="h-4 w-4" aria-hidden />
-            </a>
-          </details>
-        </div>
-      </section>
-
       <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
         <div className="container">
           <div className="flex flex-wrap items-center gap-3">
@@ -849,9 +975,9 @@ export default function Faculdades() {
                   Encontre faculdades perto de você
                 </h2>
                 <p className="mt-2 text-sm text-slate-600">
-                  Use o filtro de estado no topo da página para ver as
-                  instituições por UF. Ofertas nacionais (EAD) aparecem em
-                  qualquer estado. Confirme cursos e conceitos no{" "}
+                  Escolha o estado abaixo para ver as instituições por UF.
+                  Ofertas nacionais (EAD) aparecem em qualquer estado. Confirme
+                  cursos e conceitos no{" "}
                   <a
                     href="https://emec.mec.gov.br"
                     target="_blank"
@@ -862,6 +988,37 @@ export default function Faculdades() {
                   </a>
                   .
                 </p>
+                <div className="relative mt-4 max-w-xs">
+                  <MapPin
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                    aria-hidden
+                  />
+                  <select
+                    aria-label="Filtrar sugestões por estado"
+                    value={selectedUf}
+                    onChange={(event) => setSelectedUf(event.target.value)}
+                    className="w-full cursor-pointer appearance-none rounded-lg border-2 border-violet-200 bg-white py-2 pl-9 pr-8 text-sm font-bold text-slate-700 focus:border-violet-500 focus:outline-none"
+                  >
+                    <option value="">Todos os estados</option>
+                    {brazilianStates.map(({ uf, name }) => (
+                      <option key={uf} value={uf}>
+                        {name} ({uf})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600"
+                    aria-hidden
+                  />
+                </div>
+                {selectedUf &&
+                selectedUf !== "__ead__" &&
+                nearby.every((item) => item.nacional) ? (
+                  <p className="mt-3 rounded-lg border-2 border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+                    Ainda não temos instituições mapeadas nesse estado. As
+                    opções nacionais (EAD) valem pra qualquer UF.
+                  </p>
+                ) : null}
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {nearby.map((item) => (
@@ -1031,57 +1188,6 @@ export default function Faculdades() {
             </div>
           )}
 
-          <div className="mt-10 rounded-xl border-2 border-violet-200 bg-white p-6">
-            <h3 className="font-display text-2xl font-black text-slate-950">
-              Como escolher uma boa faculdade
-            </h3>
-            <p className="mt-2 text-sm text-slate-600">
-              Não existe faculdade perfeita pra todo mundo. Veja os pontos que
-              mais importam na hora de comparar e decidir.
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {criteriosFaculdade.map((item) => (
-                <div
-                  key={item.titulo}
-                  className="rounded-xl border-2 border-slate-200 bg-violet-50/60 p-4"
-                >
-                  <div className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">
-                        {item.titulo}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-600">{item.desc}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="mt-5 text-sm text-slate-600">
-              Liste o que é inegociável pra você e use esses pontos pra comparar
-              cada opção antes de bater o martelo.
-            </p>
-          </div>
-
-          {/* Dica importante */}
-          <div className="mt-10 p-5 bg-violet-50 border-2 border-violet-200 rounded-xl">
-            <div className="flex items-start gap-3">
-              <Star className="w-5 h-5 text-violet-600 mt-0.5 shrink-0" />
-              <div>
-                <h3 className="font-display font-semibold text-slate-900 mb-2">
-                  Faculdade é obrigatória?
-                </h3>
-                <p className="text-sm text-slate-600">
-                  Não! A faculdade não é obrigatória para entrar em TI, mas pode
-                  abrir portas em algumas empresas. Se quiser entrar rápido no
-                  mercado, cursos técnicos e bootcamps podem ser mais
-                  eficientes. Se quiser uma base sólida e crescimento de longo
-                  prazo, considere a graduação.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <div className="mt-6 rounded-xl border-2 border-violet-200 bg-white p-6">
             <h3 className="font-display text-2xl font-black text-slate-950">
               Outros caminhos de formação
@@ -1123,49 +1229,6 @@ export default function Faculdades() {
             />
           </div>
 
-          {/* Onde buscar */}
-          <div className="mt-6 p-5 bg-slate-50 border-2 border-slate-200 rounded-xl">
-            <h3 className="font-display font-semibold text-slate-900 mb-3">
-              Onde buscar faculdades gratuitas e com bolsa
-            </h3>
-            <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                {
-                  nome: "ProUni",
-                  desc: "Bolsas em faculdades privadas via ENEM",
-                  link: "https://prouni.mec.gov.br",
-                },
-                {
-                  nome: "FIES",
-                  desc: "Financiamento estudantil para faculdades privadas",
-                  link: "https://fies.mec.gov.br",
-                },
-                {
-                  nome: "SISU",
-                  desc: "Acesso a universidades federais via ENEM",
-                  link: "https://sisu.mec.gov.br",
-                },
-                {
-                  nome: "EAD Gratuito",
-                  desc: "UAB: Universidade Aberta do Brasil",
-                  link: "https://uab.capes.gov.br",
-                },
-              ].map((item) => (
-                <a
-                  key={item.nome}
-                  href={item.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-3 bg-white border-2 border-slate-200 rounded-lg hover:border-violet-400 transition-colors"
-                >
-                  <p className="font-semibold text-sm text-slate-900 mb-1">
-                    {item.nome}
-                  </p>
-                  <p className="text-xs text-slate-500">{item.desc}</p>
-                </a>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
     </Layout>
