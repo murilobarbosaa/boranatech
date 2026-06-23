@@ -436,18 +436,18 @@ export default function Plataformas() {
               </div>
             </div>
 
-            <div className="space-y-4 border-t border-slate-100 pt-4">
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-3">
+              <div className="inline-flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Formato
-                </p>
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {categorias.map((c) => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setCategoriaFilter(c)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all ${
+                      className={`px-3 py-1 rounded-full text-xs font-bold border-2 transition-all ${
                         categoriaFilter === c
                           ? "bg-emerald-800 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
                           : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
@@ -459,17 +459,17 @@ export default function Plataformas() {
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-4">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              <div className="inline-flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Tipo
-                </p>
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {tipos.map((t) => (
                     <button
                       key={t}
                       type="button"
                       onClick={() => setTipoFilter(t)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                      className={`px-3 py-1 rounded-full text-xs font-medium border-2 transition-all ${
                         tipoFilter === t
                           ? "bg-emerald-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
                           : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
@@ -481,17 +481,17 @@ export default function Plataformas() {
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-4">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+              <div className="inline-flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Certificado
-                </p>
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {certificadoOptions.map((option) => (
                     <button
                       key={option}
                       type="button"
                       onClick={() => setCertificadoFilter(option)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                      className={`px-3 py-1 rounded-full text-xs font-medium border-2 transition-all ${
                         certificadoFilter === option
                           ? "bg-emerald-600 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
                           : "bg-white text-slate-700 border-slate-300 hover:border-emerald-400"
@@ -503,56 +503,51 @@ export default function Plataformas() {
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-4">
-                <div className="flex flex-wrap gap-4">
-                  <div>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Idioma
-                    </p>
-                    <select
-                      value={idiomaFilter}
-                      onChange={(event) => setIdiomaFilter(event.target.value)}
-                      className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
-                      aria-label="Filtrar por idioma"
-                    >
-                      {idiomas.map((idioma) => (
-                        <option key={idioma} value={idioma}>
-                          {idioma === "Todos" ? "Todos os idiomas" : idioma}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Área
-                    </p>
-                    <select
-                      value={areaFilter}
-                      onChange={(event) => setAreaFilter(event.target.value)}
-                      className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
-                      aria-label="Filtrar por área"
-                    >
-                      {areas.map((area) => (
-                        <option key={area} value={area}>
-                          {area === "Todas" ? "Todas as áreas" : area}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+              <div className="inline-flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Idioma
+                </span>
+                <select
+                  value={idiomaFilter}
+                  onChange={(event) => setIdiomaFilter(event.target.value)}
+                  className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
+                  aria-label="Filtrar por idioma"
+                >
+                  {idiomas.map((idioma) => (
+                    <option key={idioma} value={idioma}>
+                      {idioma === "Todos" ? "Todos os idiomas" : idioma}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="border-t border-slate-100 pt-4">
-                <label className="flex w-fit items-center gap-2 rounded-full border-2 border-slate-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={iniciante}
-                    onChange={(e) => setIniciante(e.target.checked)}
-                    className="w-4 h-4 accent-emerald-700"
-                  />
-                  Boa para iniciantes
-                </label>
+              <div className="inline-flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Área
+                </span>
+                <select
+                  value={areaFilter}
+                  onChange={(event) => setAreaFilter(event.target.value)}
+                  className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 outline-none transition-all focus:border-emerald-700 focus:ring-4 focus:ring-emerald-100"
+                  aria-label="Filtrar por área"
+                >
+                  {areas.map((area) => (
+                    <option key={area} value={area}>
+                      {area === "Todas" ? "Todas as áreas" : area}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              <label className="inline-flex items-center gap-2 rounded-full border-2 border-slate-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={iniciante}
+                  onChange={(e) => setIniciante(e.target.checked)}
+                  className="w-4 h-4 accent-emerald-700"
+                />
+                Boa para iniciantes
+              </label>
             </div>
           </div>
         </div>
