@@ -402,6 +402,7 @@ router.get("/news", async (req, res, next) => {
     const to = from + limit - 1;
     query = query
       .order("published_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: false })
       .range(from, to);
 
     const { data, count, error } = await query;
