@@ -17,6 +17,8 @@ import {
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { AiCtaLink } from "@/components/shared/AiCta";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, projetos } from "@/lib/data";
 import { projectHelpVideos } from "@/lib/platformData";
 import { getProjects } from "@/services/contentService";
@@ -80,6 +82,7 @@ const nivelColors: Record<string, string> = {
 };
 
 export default function Projetos() {
+  const { isPro, loading } = useSubscription();
   const search = useSearch();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
   const [projectItems, setProjectItems] = useState(projetos);
@@ -544,6 +547,20 @@ export default function Projetos() {
               </button>
             </div>
           )}
+
+          {!isPro && !loading ? (
+            <div className="mt-10">
+              {/* TODO(Ana): copy da CTA de analise de portfolio */}
+              <AiCtaLink
+                href="/portfolio/analisar"
+                description="A IA aponta o que falta no seu GitHub"
+                accent="orange"
+                className="w-full"
+              >
+                Construiu seus projetos? Veja como deixar seu GitHub mais forte
+              </AiCtaLink>
+            </div>
+          ) : null}
         </div>
       </section>
     </Layout>
