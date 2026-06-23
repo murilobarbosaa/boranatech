@@ -199,6 +199,13 @@ const menuData: DropdownMenu[] = [
             label: "Entrevista",
             description: "Prepare-se para processos seletivos",
             path: "/entrevistas",
+            isPro: true,
+          },
+          {
+            label: "Simulador de Entrevista",
+            description: "Treine com IA e receba feedback",
+            path: "/entrevistas/simulador",
+            isPro: true,
           },
           {
             label: "Currículo",
