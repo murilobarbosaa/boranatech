@@ -212,11 +212,11 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
     }, []);
 
     return (
-      <div className="relative mt-7 w-full">
+      <div className="relative mt-7 w-full" style={{ height: layout.VBH }}>
         <svg
           viewBox={`0 0 ${VBW} ${layout.VBH}`}
-          preserveAspectRatio="xMidYMid meet"
-          className="block h-auto w-full overflow-visible"
+          preserveAspectRatio="none"
+          className="absolute inset-0 block h-full w-full overflow-visible"
         >
           {layout.segments.map((dots, si) => (
             <motion.g
