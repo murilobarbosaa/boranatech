@@ -12,6 +12,9 @@ const FROM_RELATIONSHIP = '"Bora na Tech?" <oi@boranatech.com.br>';
 
 const APP_URL = "https://boranatech.com.br";
 
+const EMAIL_ASSETS =
+  "https://vlcvaanlkqyxemrxsxzn.supabase.co/storage/v1/object/public/email-assets";
+
 // Redes do footer. slug = icone simple-icons; url = destino (placeholder ate termos as oficiais).
 const SOCIAL = [
   { name: "Instagram", slug: "instagram", url: "INSTAGRAM_URL" },
@@ -115,6 +118,43 @@ function socialIcons(theme: EmailTheme) {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr>${cells}</tr></table>`;
 }
 
+function socialIconsPng() {
+  const cells = SOCIAL.map(
+    (s) => `
+                <td style="padding:0 8px;">
+                  <a href="${s.url}" style="text-decoration:none;">
+                    <img src="${EMAIL_ASSETS}/social-${s.slug}.png" width="40" height="40" alt="${s.name}" style="display:block;border:0;outline:none;">
+                  </a>
+                </td>`,
+  ).join("");
+  return `<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>${cells}</tr></table>`;
+}
+
+function waitlistLayout(title: string, body: string, heroImageUrl: string) {
+  return `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F1F5F9;margin:0;padding:28px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#FFFFFF;border:4px solid #0F172A;">
+        <tr><td style="padding:0;font-size:0;line-height:0;">
+          <img src="${heroImageUrl}" width="600" alt="Boas vindas ao Bora na Tech. Voce esta na lista de espera." style="display:block;width:100%;max-width:600px;height:auto;border:0;">
+        </td></tr>
+        <tr><td style="padding:36px 40px 0 40px;">
+          <h1 style="margin:0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:28px;line-height:1.15;font-weight:700;color:#0F172A;">${title}</h1>
+        </td></tr>
+        <tr><td style="padding:14px 40px 0 40px;">${body}</td></tr>
+        <tr><td style="padding:30px 40px 0 40px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:2px solid #E2E8F0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+        </td></tr>
+        <tr><td style="padding:22px 40px 34px 40px;text-align:center;">
+          <p style="margin:0 0 16px;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.4;font-weight:700;color:#0F172A;text-align:center;">Acompanha a gente nas redes pra nao perder nada ate la</p>
+          ${socialIconsPng()}
+          <p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#94A3B8;text-align:center;">Bora na Tech. Sua bussola para comecar na tecnologia</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>`;
+}
+
 function layout(theme: EmailTheme, title: string, body: string) {
   return `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f0e8;margin:0;padding:24px 0;">
@@ -215,21 +255,26 @@ export async function sendWelcomeEmail(
   });
 }
 
-export async function sendWaitlistConfirmationEmail(to: string, name?: string) {
-  const safeName = name ? escapeHtml(name) : "";
-  const theme = themeFor(null);
+export async function sendWaitlistConfirmationEmail(to: string, _name?: string) {
+  const heroImageUrl = `${EMAIL_ASSETS}/waitlist-hero.jpeg`;
   // TODO(Ana): copy final do e-mail de confirmacao da lista de espera.
-  const title = "Voce esta na lista!";
-  const greeting = safeName ? `Oi, ${safeName}!` : "Oi!";
+  const title = "Falta pouco pra você começar na tech 🚀";
   const body = `
-    ${paragraph(`${greeting} Recebemos seu cadastro na lista de espera do Bora na Tech.`)}
-    ${paragraph("Assim que o acesso for liberado, a gente avisa por aqui.")}
+    <p style="margin:0;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#334155;">Seu lugar na lista de espera está confirmado. Isso quer dizer que você vai ser um dos primeiros a entrar quando o <strong style="color:#0F172A;">Bora na Tech</strong> abrir as portas.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 0;">
+      <tr><td style="background:#FCC700;border:4px solid #0F172A;padding:18px 22px;">
+        <p style="margin:0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:12px;line-height:1.2;font-weight:700;letter-spacing:1.5px;color:#0F172A;">MARCA AÍ</p>
+        <p style="margin:6px 0 0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:22px;line-height:1.2;font-weight:700;color:#0F172A;">Lançamento em 1º de julho</p>
+      </td></tr>
+    </table>
+    <p style="margin:20px 0 0;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#334155;">No dia do lançamento você vai ter acesso a quiz vocacional, roadmaps, conteúdo selecionado, glossário e comunidade. Tudo pra te dar uma direção clara de por onde começar.</p>
   `;
+  // TODO(Ana): subject agora acompanha o titulo da copy nova.
   await sendEmail({
     to,
     from: FROM_RELATIONSHIP,
     subject: title,
-    html: layout(theme, title, body),
+    html: waitlistLayout(title, body, heroImageUrl),
   });
 }
 
