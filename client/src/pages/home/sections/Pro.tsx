@@ -94,6 +94,49 @@ const PRO_SHORTCUTS: Array<{ icon: LucideIcon; name: string; href: string }> = [
   { icon: Mic, name: "Simulador", href: "/entrevistas/simulador" },
 ];
 
+const SHORTCUT_COLORS: Array<{
+  card: string;
+  iconWrap: string;
+  icon: string;
+  arrow: string;
+}> = [
+  {
+    card: "border-violet-400/40 hover:border-violet-300 hover:shadow-[0_0_28px_rgba(167,139,250,0.45)]",
+    iconWrap: "border-violet-400/50 bg-violet-500/20",
+    icon: "text-violet-200",
+    arrow: "text-violet-300/70 group-hover:text-violet-200",
+  },
+  {
+    card: "border-fuchsia-400/40 hover:border-fuchsia-300 hover:shadow-[0_0_28px_rgba(232,121,249,0.45)]",
+    iconWrap: "border-fuchsia-400/50 bg-fuchsia-500/20",
+    icon: "text-fuchsia-200",
+    arrow: "text-fuchsia-300/70 group-hover:text-fuchsia-200",
+  },
+  {
+    card: "border-sky-400/40 hover:border-sky-300 hover:shadow-[0_0_28px_rgba(56,189,248,0.45)]",
+    iconWrap: "border-sky-400/50 bg-sky-500/20",
+    icon: "text-sky-200",
+    arrow: "text-sky-300/70 group-hover:text-sky-200",
+  },
+  {
+    card: "border-pink-400/40 hover:border-pink-300 hover:shadow-[0_0_28px_rgba(244,114,182,0.45)]",
+    iconWrap: "border-pink-400/50 bg-pink-500/20",
+    icon: "text-pink-200",
+    arrow: "text-pink-300/70 group-hover:text-pink-200",
+  },
+];
+
+const STAR_COLORS = [
+  "#C084FC",
+  "#E879F9",
+  "#A78BFA",
+  "#F0ABFC",
+  "#D8B4FE",
+  "#F472B6",
+  "#C4B5FD",
+  "#F5D0FE",
+];
+
 export default function Pro() {
   const { user } = useAuth();
   const { isPro, loading } = useSubscription();
@@ -108,7 +151,7 @@ function ProPitchVariant() {
   return (
     <section
       aria-labelledby="pro-pitch-title"
-      className="relative overflow-hidden bg-slate-950 py-20 md:py-24"
+      className="relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-20 md:py-24"
     >
       <BackgroundDecoration />
 
@@ -119,7 +162,7 @@ function ProPitchVariant() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
-            className="mb-6 font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-amber-400"
+            className="mb-6 bg-gradient-to-r from-fuchsia-300 via-violet-200 to-fuchsia-300 bg-clip-text font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-transparent"
           >
             Bora na Tech? Pro
           </motion.p>
@@ -133,7 +176,10 @@ function ProPitchVariant() {
             className="mb-4 font-display font-black leading-[1.05] text-white"
             style={{ fontSize: "clamp(2.75rem, 5.5vw, 4.5rem)" }}
           >
-            Tudo isso, em uma <span className="text-amber-400">assinatura</span>
+            Tudo isso, em uma{" "}
+            <span className="bg-gradient-to-r from-fuchsia-400 via-violet-300 to-fuchsia-400 bg-clip-text text-transparent">
+              assinatura
+            </span>
             .
           </motion.h2>
 
@@ -142,7 +188,7 @@ function ProPitchVariant() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mx-auto max-w-2xl text-base md:text-lg font-medium text-slate-300"
+            className="mx-auto max-w-2xl text-base md:text-lg font-medium text-violet-100"
           >
             8 ferramentas com IA pra entrar em TI. Currículo, LinkedIn,
             portfólio, entrevista e mais.
@@ -174,7 +220,7 @@ function ProPitchVariant() {
               />
             </button>
           </Link>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-violet-200">
             A partir de R$ 14,99/mês no plano anual.
           </p>
         </motion.div>
@@ -193,7 +239,7 @@ function ProThankYouVariant() {
   return (
     <section
       aria-labelledby="pro-thanks-title"
-      className="relative overflow-hidden bg-slate-950 py-16 md:py-20"
+      className="relative overflow-hidden bg-gradient-to-br from-violet-950 via-purple-900 to-fuchsia-900 py-16 md:py-20"
     >
       <BackgroundDecoration />
 
@@ -204,7 +250,7 @@ function ProThankYouVariant() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.5 }}
-            className="mb-4 font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-amber-400"
+            className="mb-4 bg-gradient-to-r from-fuchsia-300 via-violet-200 to-fuchsia-300 bg-clip-text font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-transparent"
           >
             Obrigado pelo Pro
           </motion.p>
@@ -218,7 +264,11 @@ function ProThankYouVariant() {
             className="mb-3 font-display font-black leading-[1.05] text-white"
             style={{ fontSize: "clamp(2.25rem, 4.5vw, 3.5rem)" }}
           >
-            Olá, <span className="text-amber-400">{displayName}</span>! 👋
+            Olá,{" "}
+            <span className="bg-gradient-to-r from-fuchsia-400 via-violet-300 to-fuchsia-400 bg-clip-text text-transparent">
+              {displayName}
+            </span>
+            ! 👋
           </motion.h2>
 
           <motion.p
@@ -226,53 +276,60 @@ function ProThankYouVariant() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-base md:text-lg font-medium text-slate-300"
+            className="text-base md:text-lg font-medium text-violet-100"
           >
             Suas 4 ferramentas favoritas estão aqui:
           </motion.p>
         </div>
 
         <div className="mx-auto mt-10 grid max-w-3xl gap-4 sm:grid-cols-2">
-          {PRO_SHORTCUTS.map((tool, idx) => (
-            <motion.div
-              key={tool.href}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.4, delay: 0.2 + idx * 0.08 }}
-            >
-              <Link href={tool.href}>
-                <article className="group flex items-center gap-4 rounded-2xl border-2 border-amber-400/30 bg-white/5 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-400/60 hover:bg-white/10">
-                  <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-400/10">
-                    <tool.icon
-                      size={20}
-                      className="text-amber-400"
-                      strokeWidth={2.5}
-                      aria-hidden="true"
+          {PRO_SHORTCUTS.map((tool, idx) => {
+            const color = SHORTCUT_COLORS[idx % SHORTCUT_COLORS.length];
+            return (
+              <motion.div
+                key={tool.href}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.4, delay: 0.2 + idx * 0.08 }}
+              >
+                <Link href={tool.href}>
+                  <article
+                    className={`group flex items-center gap-4 rounded-2xl border-2 bg-white/5 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 ${color.card}`}
+                  >
+                    <span
+                      className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${color.iconWrap}`}
+                    >
+                      <tool.icon
+                        size={20}
+                        className={color.icon}
+                        strokeWidth={2.5}
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-display text-base font-black text-white">
+                        {tool.name}
+                      </p>
+                      <p className="text-xs font-medium text-violet-200/80">
+                        Acessar agora
+                      </p>
+                    </div>
+                    <ArrowRight
+                      size={18}
+                      className={`shrink-0 transition-all group-hover:translate-x-1 ${color.arrow}`}
                     />
-                  </span>
-                  <div className="flex-1">
-                    <p className="font-display text-base font-black text-white">
-                      {tool.name}
-                    </p>
-                    <p className="text-xs font-medium text-slate-400">
-                      Acessar agora
-                    </p>
-                  </div>
-                  <ArrowRight
-                    size={18}
-                    className="shrink-0 text-amber-400/60 transition-all group-hover:translate-x-1 group-hover:text-amber-400"
-                  />
-                </article>
-              </Link>
-            </motion.div>
-          ))}
+                  </article>
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
 
-        <p className="mt-10 text-center text-sm font-medium text-slate-400">
+        <p className="mt-10 text-center text-sm font-medium text-violet-200">
           <Link
             href="/perfil"
-            className="underline decoration-amber-400/40 underline-offset-4 hover:decoration-amber-400"
+            className="underline decoration-fuchsia-400/50 underline-offset-4 hover:decoration-fuchsia-300"
           >
             Acesse seu perfil
           </Link>{" "}
@@ -333,7 +390,9 @@ function Constellation() {
               y1={starsByPositionY(fromStar)}
               x2={starsByPositionX(toStar)}
               y2={starsByPositionY(toStar)}
-              stroke={isActive ? "rgba(252,211,77,1)" : "rgba(255,184,0,0.22)"}
+              stroke={
+                isActive ? "rgba(240,171,252,0.95)" : "rgba(192,132,252,0.32)"
+              }
               strokeWidth={isActive ? 3 : 1.5}
               strokeDasharray={isActive ? "0" : "4 4"}
               initial={reduce ? false : { opacity: 0 }}
@@ -390,7 +449,7 @@ function Constellation() {
                 delay: 0.2 + idx * 0.08,
                 ease: "backOut",
               }}
-              className="cursor-pointer outline-none focus-visible:[&_circle]:stroke-amber-300"
+              className="cursor-pointer outline-none focus-visible:[&_circle]:stroke-fuchsia-200"
               style={{ transformOrigin: `${cx}px ${cy}px` }}
             >
               <motion.circle
@@ -398,7 +457,11 @@ function Constellation() {
                 cy={cy}
                 animate={{ r: radius, opacity: baseOpacity }}
                 transition={{ duration: 0.3, ease: "easeOut" }}
-                fill={isHovered ? "#FCD34D" : "#FFB800"}
+                fill={
+                  isHovered
+                    ? "#FAE8FF"
+                    : STAR_COLORS[idx % STAR_COLORS.length]
+                }
                 filter="url(#star-glow)"
                 stroke="transparent"
                 strokeWidth={2}
@@ -407,7 +470,7 @@ function Constellation() {
                 x={cx}
                 y={star.position.y > 60 ? cy - 28 : cy + 42}
                 textAnchor={labelAnchor}
-                fill="#f1f5f9"
+                fill="#faf5ff"
                 fontSize="26"
                 fontWeight="800"
                 fontFamily="Space Grotesk, sans-serif"
@@ -432,7 +495,7 @@ function BackgroundDecoration() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at center, rgba(255,184,0,0.12), transparent 70%)",
+            "radial-gradient(circle at center, rgba(192,132,252,0.18), transparent 70%)",
         }}
         aria-hidden="true"
       />
@@ -440,7 +503,7 @@ function BackgroundDecoration() {
         className="pointer-events-none absolute left-[5%] top-[10%] h-[500px] w-[500px] rounded-full"
         style={{
           background:
-            "radial-gradient(circle, rgba(255,184,0,0.08) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(232,121,249,0.22) 0%, transparent 70%)",
           filter: "blur(40px)",
         }}
         aria-hidden="true"
@@ -449,8 +512,17 @@ function BackgroundDecoration() {
         className="pointer-events-none absolute bottom-[10%] right-[5%] h-[600px] w-[600px] rounded-full"
         style={{
           background:
-            "radial-gradient(circle, rgba(139,92,246,0.10) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(139,92,246,0.24) 0%, transparent 70%)",
           filter: "blur(50px)",
+        }}
+        aria-hidden="true"
+      />
+      <div
+        className="pointer-events-none absolute right-[18%] top-[8%] h-[360px] w-[360px] rounded-full"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(217,70,239,0.18) 0%, transparent 70%)",
+          filter: "blur(46px)",
         }}
         aria-hidden="true"
       />
