@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
   BookOpen,
@@ -271,6 +271,7 @@ export default function Checkout() {
       ) : null}
 
       <HeroSection />
+      <WhyProSummary />
       <MockupHeroSlot />
       <FeaturesZigZagSection />
       <ExtraFeaturesSection />
@@ -373,6 +374,52 @@ function HeroSection() {
             </p>
           </motion.div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function WhyProSummary() {
+  return (
+    <section aria-labelledby="why-pro-title" className="bg-[#faf8f4] pt-12 md:pt-16">
+      <div className="container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.5 }}
+          className="mx-auto max-w-4xl rounded-3xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_#0f172a] md:p-8"
+        >
+          <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-amber-700">
+            Por que assinar o Pro?
+          </p>
+          <h2
+            id="why-pro-title"
+            className="mx-auto mt-3 max-w-2xl font-display text-xl md:text-2xl font-black leading-snug text-slate-950"
+          >
+            O Pro desbloqueia 8 ferramentas com IA pra acelerar sua entrada em
+            TI.
+          </h2>
+          <ul className="mt-6 flex flex-wrap justify-center gap-2.5">
+            {mainFeatures.map((feature) => {
+              const Icon = PRO_FEATURE_ICONS[feature.iconName];
+              return (
+                <li
+                  key={feature.number}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-amber-50 px-3.5 py-1.5 text-sm font-black text-slate-900"
+                >
+                  <Icon
+                    size={16}
+                    className="text-amber-700"
+                    strokeWidth={2.5}
+                    aria-hidden="true"
+                  />
+                  {feature.title}
+                </li>
+              );
+            })}
+          </ul>
+        </motion.div>
       </div>
     </section>
   );
@@ -1021,19 +1068,30 @@ function FreeVsProSection() {
           </ul>
         </div>
 
-        <div className="mt-12 flex justify-center">
+        <p className="mx-auto mt-12 max-w-2xl text-center text-base font-bold text-slate-700">
+          Grátis: a base acima. Pro: as 8 ferramentas com IA pra acelerar.
+        </p>
+
+        <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <button
             type="button"
             onClick={scrollToPlans}
             aria-label="Ir para escolha de plano"
-            className="bnt-pressable group inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-6 py-3 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+            className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
           >
-            <span>Conhecer os planos</span>
+            <Sparkles size={18} aria-hidden="true" />
+            <span>Assinar Pro</span>
             <ArrowRight
-              size={16}
+              size={18}
               className="transition-transform group-hover:translate-x-1"
             />
           </button>
+          <Link
+            href="/"
+            className="bnt-pressable inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-white px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+          >
+            Continuar com o básico
+          </Link>
         </div>
       </div>
     </section>
@@ -1197,6 +1255,12 @@ function PlansSection({
             Cancele quando quiser · Sem taxa de cancelamento · Suporte por
             e-mail
           </p>
+          <Link
+            href="/"
+            className="text-sm font-bold text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-800 hover:decoration-slate-800"
+          >
+            Continuar com o básico (grátis)
+          </Link>
         </div>
       </div>
     </section>
