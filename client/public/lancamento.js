@@ -160,23 +160,7 @@
   }, {threshold:.3});
   if(statsBox) io2.observe(statsBox);
 
-  // ---- Countdown 01/07/2026 (Brasilia, UTC-3), atualiza todos os relogios ----
-  var target = new Date("2026-07-01T00:00:00-03:00").getTime();
-  function pad(n){ return String(n).padStart(2,"0"); }
-  function setAll(cls, val){ var els = document.getElementsByClassName(cls); for(var i=0;i<els.length;i++){ els[i].textContent = val; } }
-  function tick(){
-    var diff = target - Date.now();
-    if(diff <= 0){
-      setAll("js-d","00"); setAll("js-h","00"); setAll("js-m","00"); setAll("js-s","00"); setAll("js-days","0");
-      return;
-    }
-    var s = Math.floor(diff/1000), dd = Math.floor(s/86400);
-    setAll("js-days", String(dd));
-    setAll("js-d", pad(dd));
-    setAll("js-h", pad(Math.floor((s%86400)/3600)));
-    setAll("js-m", pad(Math.floor((s%3600)/60)));
-    setAll("js-s", pad(s%60));
-  }
-  tick();
-  setInterval(tick, 1000);
+  // Countdown desativado: a data de lancamento ainda nao esta definida. Os
+  // relogios (js-d/js-h/js-m/js-s/js-days) ficam estaticos em 00 no HTML e
+  // nada os atualiza. // TODO(Ana): religar com a data real quando definida.
 })();
