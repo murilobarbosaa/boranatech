@@ -648,11 +648,7 @@ function DesktopNav({ location }: { location: string }) {
         aria-current={
           isPathActive("/comparador", location) ? "page" : undefined
         }
-        className={`nav-pill inline-flex items-center gap-1 px-3 py-1.5 text-sm font-bold ${
-          isPathActive("/comparador", location)
-            ? "nav-pill-active text-slate-900"
-            : "text-violet-700"
-        }`}
+        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-orange-500 px-3 py-1.5 text-sm font-black text-white shadow-[4px_4px_0_#0f172a,0_0_14px_rgba(249,115,22,0.55)] ring-2 ring-orange-300 transition-transform hover:-translate-y-0.5 hover:bg-orange-600 motion-safe:animate-pulse"
       >
         Comparador
       </Link>
@@ -973,11 +969,7 @@ export default function Header() {
             aria-current={
               isPathActive("/comparador", location) ? "page" : undefined
             }
-            className={`mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 px-4 py-3 text-center text-sm font-black shadow-[2px_2px_0_#0f172a] ${
-              isPathActive("/comparador", location)
-                ? "border-slate-900 bg-white text-slate-950"
-                : "border-violet-300 bg-white text-violet-700 hover:border-violet-400"
-            }`}
+            className="mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 border-slate-950 bg-orange-500 px-4 py-3 text-center text-sm font-black text-white shadow-[2px_2px_0_#0f172a,0_0_14px_rgba(249,115,22,0.55)] ring-2 ring-orange-300 transition-transform hover:bg-orange-600 motion-safe:animate-pulse"
           >
             Comparador
           </Link>
