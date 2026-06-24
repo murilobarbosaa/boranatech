@@ -18,6 +18,7 @@ import SEO from "@/components/SEO";
 import {
   getNews,
   type NewsItem,
+  type NewsKeyword,
   type NewsLevel,
   type NewsResponse,
 } from "@/services/contentService";
@@ -29,6 +30,16 @@ const LEVEL_OPTIONS: Array<{ value: NewsLevel | ""; label: string }> = [
   { value: "iniciante", label: "Iniciante" },
   { value: "intermediario", label: "Intermediário" },
   { value: "avancado", label: "Avançado" },
+];
+
+// TODO(Ana): revisar os rotulos pt-BR das areas. Os valores sao as keywords
+// reais da Currents (sourceKeyword), nao categorias novas inventadas.
+const AREA_OPTIONS: Array<{ value: NewsKeyword | ""; label: string }> = [
+  { value: "", label: "Todas as áreas" },
+  { value: "artificial intelligence", label: "IA" },
+  { value: "software engineering", label: "Programação" },
+  { value: "cybersecurity", label: "Segurança" },
+  { value: "tech startup", label: "Startups" },
 ];
 
 const LEVEL_BADGE: Record<NewsLevel, string> = {
@@ -216,6 +227,7 @@ function Pagination({
 export default function Noticias() {
   const [page, setPageRaw] = useState(1);
   const [level, setLevel] = useState<NewsLevel | "">("");
+  const [area, setArea] = useState<NewsKeyword | "">("");
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [response, setResponse] = useState<NewsResponse | null>(null);
@@ -273,6 +285,13 @@ export default function Noticias() {
   }, [page, level, debouncedSearch]);
 
   const items = response?.items ?? [];
+  // Filtro de area no front (sobre a pagina carregada): o unico campo de area
+  // confiavel (sourceKeyword) e derivado no client; a tabela news nao tem
+  // coluna de area (tags vem vazio). Por isso filtra a pagina atual, nao o
+  // total. Combina com nivel e busca, que sao server-side.
+  const visibleItems = area
+    ? items.filter((item) => item.sourceKeyword === area)
+    : items;
   const pagination = response?.pagination;
   const totalLabel = useMemo(() => {
     if (!pagination) return "";
@@ -346,6 +365,23 @@ export default function Noticias() {
               ))}
             </div>
 
+            <div className="flex flex-wrap gap-2">
+              {AREA_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value || "all-areas"}
+                  type="button"
+                  onClick={() => setArea(opt.value)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border-2 transition-all ${
+                    area === opt.value
+                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      : "bg-white text-slate-700 border-violet-200 hover:border-violet-500"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
             {pagination && !loading && (
               <span className="text-xs font-semibold text-slate-500 md:ml-auto">
                 {totalLabel}
@@ -379,6 +415,7 @@ export default function Noticias() {
                 type="button"
                 onClick={() => {
                   setLevel("");
+                  setArea("");
                   setSearchInput("");
                 }}
                 className="mt-4 text-slate-700 text-sm font-semibold hover:underline"
@@ -388,11 +425,19 @@ export default function Noticias() {
             </div>
           ) : (
             <>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {items.map((item) => (
-                  <NewsCard key={item.id} item={item} />
-                ))}
-              </div>
+              {visibleItems.length === 0 ? (
+                <div className="rounded-xl border-2 border-slate-200 bg-white px-4 py-6 text-center text-sm font-semibold text-slate-600">
+                  {/* TODO(Ana): copy do aviso de area sem resultado nesta pagina */}
+                  Nenhuma notícia desta área nesta página. Tente outra página ou
+                  troque a área.
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {visibleItems.map((item) => (
+                    <NewsCard key={item.id} item={item} />
+                  ))}
+                </div>
+              )}
               {pagination && (
                 <Pagination
                   page={pagination.page}
