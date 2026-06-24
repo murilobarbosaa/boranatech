@@ -8,6 +8,7 @@ import {
   sendCancellationScheduledEmail,
   sendPaymentFailedEmail,
   sendProUpgradeEmail,
+  sendWaitlistConfirmationEmail,
   sendWelcomeEmail,
 } from "./email";
 
@@ -18,7 +19,8 @@ export type EmailJobData =
   | ({ type: "pro_upgrade"; planName: string } & Recipient)
   | ({ type: "cancellation" } & Recipient)
   | ({ type: "cancellation_scheduled"; effectiveAt: string } & Recipient)
-  | ({ type: "payment_failed" } & Recipient);
+  | ({ type: "payment_failed" } & Recipient)
+  | ({ type: "waitlist_confirmation" } & Recipient);
 
 export const redisConnection = env.redisUrl
   ? new IORedis(env.redisUrl, {
@@ -67,6 +69,9 @@ async function sendDirect(data: EmailJobData) {
       break;
     case "payment_failed":
       await sendPaymentFailedEmail(data.to, data.name, data.gender);
+      break;
+    case "waitlist_confirmation":
+      await sendWaitlistConfirmationEmail(data.to, data.name);
       break;
   }
 }

@@ -86,6 +86,12 @@ export const env = {
   redisUrl: process.env.REDIS_URL || "",
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",
+  // Portao de lancamento. "gated" mantem o portao fechado; "open" libera geral.
+  waitlistMode: (process.env.WAITLIST_MODE || "gated") as "open" | "gated",
+  // Codigo de acesso beta. Ausente: unlock sempre 401 (fail-closed).
+  waitlistAccessCode: process.env.WAITLIST_ACCESS_CODE || "",
+  // Secret HMAC do token de beta. Ausente: o portao nao emite token, sem crashar.
+  waitlistTokenSecret: process.env.WAITLIST_TOKEN_SECRET || "",
   // Allowlist dev-only de user ids que enxergam como Pro fora de producao.
   // Ignorada quando NODE_ENV === "production". Nunca prefixar com VITE_.
   devProUserIds: (process.env.DEV_PRO_USER_IDS || "")

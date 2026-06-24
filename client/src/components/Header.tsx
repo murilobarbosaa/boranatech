@@ -26,6 +26,7 @@ import {
   resolveEffectiveBorder,
 } from "@/constants/avatarOptions";
 import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
+import { SignOutConfirmModal } from "./profile/SignOutConfirmModal";
 type MenuItem = {
   label: string;
   description?: string;
@@ -742,6 +743,8 @@ function MobileAccordion({
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
+  const [signOutModalOpen, setSignOutModalOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [location] = useLocation();
   const {
     loading: authLoading,
@@ -775,8 +778,14 @@ export default function Header() {
   }
 
   async function handleSignOut() {
-    await signOut();
-    closeMobileDrawer();
+    setSigningOut(true);
+    try {
+      await signOut();
+      closeMobileDrawer();
+    } finally {
+      setSigningOut(false);
+      setSignOutModalOpen(false);
+    }
   }
 
   return (
@@ -843,7 +852,7 @@ export default function Header() {
                 ) : null}
                 <button
                   type="button"
-                  onClick={handleSignOut}
+                  onClick={() => setSignOutModalOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
                 >
                   <LogOut className="h-4 w-4" />
@@ -943,7 +952,10 @@ export default function Header() {
                 ) : null}
                 <button
                   type="button"
-                  onClick={handleSignOut}
+                  onClick={() => {
+                    closeMobileDrawer();
+                    setSignOutModalOpen(true);
+                  }}
                   className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a]"
                 >
                   <LogOut className="h-4 w-4" />
@@ -990,6 +1002,13 @@ export default function Header() {
       </div>
 
       <div className="h-16" />
+
+      <SignOutConfirmModal
+        isOpen={signOutModalOpen}
+        onClose={() => setSignOutModalOpen(false)}
+        onConfirm={handleSignOut}
+        isLoading={signingOut}
+      />
     </>
   );
 }

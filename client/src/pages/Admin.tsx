@@ -42,6 +42,7 @@ import {
 import { toast } from "sonner";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import SEO from "@/components/SEO";
+import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
 import { apiUrl } from "@/lib/api";
@@ -1816,6 +1817,8 @@ function AdminCheckbox({
 export default function Admin() {
   const { loading: authLoading, signOut, user } = useAuth();
   const [session, setSession] = useState<AdminSession | null>(null);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [accessState, setAccessState] = useState<
     "loading" | "login" | "forbidden" | "allowed"
   >("loading");
@@ -2148,8 +2151,14 @@ export default function Admin() {
   }, [dashboard, aiStats]);
 
   async function handleLogout() {
-    await signOut();
-    setSession(null);
+    setLoggingOut(true);
+    try {
+      await signOut();
+      setSession(null);
+    } finally {
+      setLoggingOut(false);
+      setLogoutModalOpen(false);
+    }
   }
 
   function handleGenerateAffiliateCode() {
@@ -2323,9 +2332,15 @@ export default function Admin() {
       activeSection={activeSection}
       session={session}
       setActiveSection={setActiveSection}
-      onLogout={handleLogout}
+      onLogout={() => setLogoutModalOpen(true)}
     >
       <SEO title="Admin · Bora na Tech?" url="/admin" noindex />
+      <SignOutConfirmModal
+        isOpen={logoutModalOpen}
+        onClose={() => setLogoutModalOpen(false)}
+        onConfirm={handleLogout}
+        isLoading={loggingOut}
+      />
       <section className="hero-pattern border-b-2 border-slate-900 py-10">
         <div className="container">
           <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">

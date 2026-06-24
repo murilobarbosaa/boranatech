@@ -1,0 +1,860 @@
+<!doctype html>
+<!--
+  Bora na Tech? · Landing de lançamento + lista de espera (DRAFT v5)
+  Copy é rascunho: revisão editorial da Ana antes de ir pro ar (TODO Ana).
+  Apenas lista de espera. Nenhum acesso a feature: sem links pro app, "portas" sao rotulos.
+  Form: estado de sucesso local hoje. Producao em // INTEGRACAO (Supabase + Resend + PostHog).
+  Logo reproduzida fiel do componente Logo.tsx (bussola/compass em circulo amarelo + wordmark).
+  Sociais: confirmar URLs reais de LinkedIn e TikTok (Instagram e X uso handle boranatech).
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bora na Tech? · Entre na lista do lançamento</title>
+<meta name="description" content="A bússola para começar na tecnologia. Quiz de área, 23 roadmaps guiados, projetos práticos e ferramentas de IA. Entre na lista de espera do lançamento." />
+<meta name="theme-color" content="#FCC700" />
+<!-- Fontes self-hosted: ver @font-face no inicio do <style> (CSP font-src 'self'). -->
+
+<style>
+  /* Fontes auto-hospedadas (snapshot do Google Fonts), replicadas de client/src/fonts.css. */
+  @font-face{font-family:"Fira Code";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/uU9NCBsR6Z2vfE9aq3bh09SDulI.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Fira Code";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/uU9NCBsR6Z2vfE9aq3bh3dSD.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Fira Code";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/uU9NCBsR6Z2vfE9aq3bh09SDulI.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Fira Code";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/uU9NCBsR6Z2vfE9aq3bh3dSD.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Fira Code";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/uU9eCBsR6Z2vfE9aq3bL0fxyUs4tcw4W_ONrJV77Nv7g.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Fira Code";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/uU9eCBsR6Z2vfE9aq3bL0fxyUs4tcw4W_ONrJVD7Ng.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yyygA.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yyygA.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yyygA.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko40yyygA.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/LDIoaomQNQcsA88c7O9yZ4KMCoOg4Ko20yw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_KUn9Qx_VIKg.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:800;font-display:swap;src:url(/fonts/LDIbaomQNQcsA88c7O9yZ4KMCoOg4IA6-91aHEjcWuA_KUn9TR_V.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPb94C-s0.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPb94C-s0.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPb94C-s0.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPb94C-s0.woff2) format("woff2");unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/V8mDoQDjQSkFtoMM3T6r8E7mPbF4Cw.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+  :root{
+    --ink:#0F172A;
+    --yellow:#FCC700;
+    --yellow-deep:#E6B400;
+    --violet:#6b1fc9;
+    --violet-deep:#5719a6;
+    --violet-bright:#8b4ff5;
+    --lavender:#ECE6FA;
+    --lavender-2:#F4EFFC;
+    --cream:#faf8f4;
+    --paper:#ffffff;
+    --muted:#475569;
+    --font-display:"Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-body:"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono:"Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sh:4px 4px 0 var(--ink);
+    --sh-lg:6px 6px 0 var(--ink);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--font-body);color:var(--ink);background-color:var(--cream);
+    background-image:
+      radial-gradient(rgba(15,23,42,0.06) 1px, transparent 1px),
+      radial-gradient(rgba(107,31,201,0.06) 1px, transparent 1px);
+    background-position:0 0, 12px 12px;background-size:24px 24px;
+    -webkit-font-smoothing:antialiased;line-height:1.55;overflow-x:clip;
+  }
+  h1,h2,h3,.display{font-family:var(--font-display);line-height:1.06;letter-spacing:-0.01em}
+  a{color:inherit}
+  .wrap{width:100%;max-width:1160px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  .section{padding:84px 0;position:relative;overflow:hidden}
+
+  /* Scroll progress */
+  .progress{position:fixed;top:0;left:0;height:4px;width:0;z-index:95;background:linear-gradient(90deg,var(--yellow),var(--violet))}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;background:var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:7px 14px;box-shadow:3px 3px 0 var(--ink)}
+
+  /* Buttons */
+  .btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--font-body);font-weight:700;font-size:1.04rem;background:var(--yellow);color:var(--ink);border:3px solid var(--ink);border-radius:13px;padding:16px 28px;box-shadow:var(--sh);cursor:pointer;transition:transform .14s cubic-bezier(.23,1,.32,1), box-shadow .14s cubic-bezier(.23,1,.32,1), background-color .14s ease;text-decoration:none;white-space:nowrap;overflow:hidden}
+  .btn .glare{position:absolute;top:0;left:-120%;width:55%;height:100%;background:linear-gradient(100deg, transparent, rgba(255,255,255,.6), transparent);transform:skewX(-18deg);transition:left .55s ease;pointer-events:none}
+  .btn:hover .glare{left:150%}
+  .btn:hover{background:var(--yellow-deep);transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink)}
+  .btn:active{transform:translate(1px,1px) scale(.98);box-shadow:2px 2px 0 var(--ink)}
+  .btn:focus-visible{outline:3px solid var(--violet);outline-offset:3px}
+  .btn-xl{font-size:1.16rem;padding:19px 36px;border-radius:15px}
+  .btn-sm{font-size:.92rem;padding:10px 18px;border-width:2px;border-radius:11px}
+  .btn-ink{background:var(--ink);color:#fff}
+  .btn-ink:hover{background:#1e293b}
+  .btn-violet{background:var(--violet);color:#fff;border-color:var(--ink)}
+  .btn-violet:hover{background:var(--violet-deep)}
+  .btn-pulse{animation:ring 2.6s ease-in-out infinite}
+  @keyframes ring{0%,100%{box-shadow:4px 4px 0 var(--ink), 0 0 0 0 rgba(107,31,201,.4)}50%{box-shadow:4px 4px 0 var(--ink), 0 0 0 9px rgba(107,31,201,0)}}
+
+  .card{background:var(--paper);border:2px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:24px;transition:transform .16s cubic-bezier(.23,1,.32,1), box-shadow .16s cubic-bezier(.23,1,.32,1)}
+  .card:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
+
+  /* Reveals */
+  .r{opacity:0;transform:translateY(24px);transition:opacity .6s ease, transform .6s cubic-bezier(.23,1,.32,1)}
+  .r.is{opacity:1;transform:none}
+  .stg>*{opacity:0;transform:translateY(26px)}
+  .stg.is>*{opacity:1;transform:none;transition:opacity .55s ease, transform .55s cubic-bezier(.23,1,.32,1)}
+  .stg.is>*:nth-child(1){transition-delay:.00s}.stg.is>*:nth-child(2){transition-delay:.09s}
+  .stg.is>*:nth-child(3){transition-delay:.18s}.stg.is>*:nth-child(4){transition-delay:.27s}
+  .stg.is>*:nth-child(5){transition-delay:.36s}.stg.is>*:nth-child(6){transition-delay:.45s}
+
+  /* Decorations + stickers */
+  .deco{position:absolute;z-index:0;pointer-events:none;border:3px solid var(--ink);box-shadow:var(--sh)}
+  .deco.circle{border-radius:50%}
+  .deco.y{background:var(--yellow)} .deco.v{background:var(--violet)} .deco.k{background:var(--ink)} .deco.l{background:var(--lavender)}
+  .float{animation:float 6s ease-in-out infinite}
+  .float.b{animation-duration:7.5s;animation-delay:.6s}
+  .float.c{animation-duration:5.5s;animation-delay:.3s}
+  @keyframes float{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-16px) rotate(8deg)}}
+  .spin-slow{animation:spin 16s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .sticker{position:absolute;z-index:2;font-family:var(--font-display);font-weight:700;font-size:.82rem;background:var(--yellow);color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:8px 14px;box-shadow:var(--sh);transform:rotate(-8deg)}
+
+  /* Enfeites de fundo (atras do conteudo) */
+  .bgshape{position:absolute;z-index:0;pointer-events:none;border:7px solid var(--ink);opacity:.05}
+  .bgshape.circle{border-radius:50%}
+  .bgshape.fill{background:var(--ink);border:none;opacity:.045}
+  .bgshape.light{border-color:#fff;opacity:.09}
+  .bgshape.light.fill{background:#fff;border:none;opacity:.06}
+  .bgshape.y{border-color:var(--yellow);opacity:.5}
+  .bgwatermark{position:absolute;z-index:0;pointer-events:none;opacity:.06}
+  .bgwatermark svg{display:block}
+
+  /* Header (logo + timer + CTA, sticky) */
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(250,248,244,.94);backdrop-filter:blur(6px);border-bottom:2px solid var(--ink)}
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;height:68px}
+  .brand{display:inline-flex;align-items:center;gap:10px;text-decoration:none}
+  .logo-mark{flex:none;width:40px;height:40px;border:2px solid var(--ink);background:var(--yellow);border-radius:999px;display:grid;place-items:center;box-shadow:2px 2px 0 var(--ink);transition:box-shadow .15s ease, transform .15s ease}
+  .brand:hover .logo-mark{box-shadow:4px 4px 0 var(--ink);transform:translate(-1px,-1px)}
+  .brand:hover .logo-mark svg{transform:rotate(40deg)}
+  .logo-mark svg{width:22px;height:22px;stroke:var(--ink);transition:transform .4s cubic-bezier(.23,1,.32,1)}
+  .logo-text{font-family:var(--font-display);font-weight:700;text-transform:uppercase;font-size:1.04rem;letter-spacing:.01em;color:var(--ink);line-height:1}
+  .logo-text .q{color:var(--violet)}
+  .hdr-timer{font-family:var(--font-mono);font-size:.82rem;font-weight:600;color:var(--ink);background:#fff;border:2px solid var(--ink);border-radius:999px;padding:6px 14px;box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
+  .hdr-timer b{color:var(--violet)}
+  .hdr-timer .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#dc2626;margin-right:7px;vertical-align:middle;animation:blink 1.2s ease-in-out infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+  /* Hero */
+  .hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;align-items:center;padding:60px 24px 78px}
+  .hero h1{font-size:clamp(2.4rem,5.3vw,3.9rem);font-weight:700;margin:16px 0 16px}
+  .hero h1 .u{position:relative;white-space:nowrap}
+  .hero h1 .u::after{content:"";position:absolute;left:-2px;right:-2px;bottom:.04em;height:.34em;background:var(--yellow);z-index:-1;border-radius:3px;transform:scaleX(0);transform-origin:left;animation:hl .7s .5s cubic-bezier(.23,1,.32,1) forwards}
+  @keyframes hl{to{transform:scaleX(1)}}
+  #rot{display:inline-block;transition:opacity .26s ease}
+  .lede{font-size:1.15rem;color:#334155;max-width:40ch;margin-bottom:22px}
+  .promise-mini{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+  .promise-mini span{font-family:var(--font-mono);font-size:.72rem;font-weight:600;background:var(--lavender);border:2px solid var(--ink);border-radius:999px;padding:5px 11px;box-shadow:2px 2px 0 var(--ink)}
+
+  .enter{opacity:0;transform:translateY(20px);animation:enter .6s cubic-bezier(.23,1,.32,1) forwards}
+  .d1{animation-delay:.05s}.d2{animation-delay:.15s}.d3{animation-delay:.25s}.d4{animation-delay:.35s}.d5{animation-delay:.45s}.d6{animation-delay:.55s}
+  @keyframes enter{to{opacity:1;transform:none}}
+
+  /* Signup */
+  .signup{display:flex;gap:11px;flex-wrap:wrap;max-width:520px}
+  .signup input{flex:1;min-width:220px;font-family:var(--font-body);font-size:1.05rem;border:3px solid var(--ink);border-radius:13px;padding:16px 18px;background:#fff;color:var(--ink)}
+  .signup input::placeholder{color:#94a3b8}
+  .signup input:focus{outline:3px solid var(--violet);outline-offset:2px}
+  .formnote{font-size:.85rem;color:var(--muted);margin-top:14px;display:flex;align-items:center;gap:7px}
+  .success{display:none;background:#fff;border:3px solid var(--ink);border-radius:14px;box-shadow:var(--sh);padding:18px 20px;max-width:520px}
+  .success.show{display:block;animation:pop .34s cubic-bezier(.23,1,.32,1) both}
+  .success b{font-family:var(--font-display);font-size:1.08rem}
+  .success p{font-size:.9rem;color:var(--muted);margin-top:4px}
+  @keyframes pop{from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+  .err{color:#b91c1c;font-size:.85rem;margin-top:8px;font-weight:600;display:none}
+  .err.show{display:block}
+
+  /* Countdown (hero) */
+  .countdown{margin-top:30px}
+  .countdown .lbl{font-family:var(--font-mono);font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .clock{display:flex;gap:11px}
+  .unit{background:var(--ink);color:#fff;border-radius:13px;min-width:74px;padding:14px 8px;text-align:center;box-shadow:3px 3px 0 var(--violet)}
+  .unit .n{font-family:var(--font-mono);font-weight:600;font-size:2rem;line-height:1}
+  .unit .t{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:#cbd5e1;margin-top:6px}
+
+  /* Journey */
+  .journey{display:flex;flex-direction:column;gap:0;position:relative;transition:transform .22s ease;transform-style:preserve-3d}
+  .jcard{display:flex;align-items:center;gap:16px;background:#fff;border:2px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:16px 18px;transition:transform .16s ease, box-shadow .16s ease}
+  .jcard:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
+  .jcard:nth-child(1){background:var(--lavender)}
+  .jcard .ic{flex:none;width:48px;height:48px;border:2px solid var(--ink);border-radius:12px;display:grid;place-items:center;transition:transform .16s ease}
+  .jcard:hover .ic{transform:rotate(-6deg) scale(1.05)}
+  .jcard:nth-child(1) .ic{background:var(--yellow)}
+  .jcard:nth-child(3) .ic{background:#d3bdf3}
+  .jcard:nth-child(5) .ic{background:var(--yellow)}
+  .jcard:nth-child(7) .ic{background:var(--violet)}
+  .jcard:nth-child(7) .ic svg{stroke:#fff}
+  .jcard .step{font-family:var(--font-mono);font-size:.68rem;font-weight:600;color:#64748b;letter-spacing:.08em}
+  .jcard .nm{font-family:var(--font-display);font-weight:700;font-size:1.06rem}
+  .jcard .ds{font-size:.83rem;color:var(--muted)}
+  .jconn{height:22px;width:3px;margin-left:43px;background-image:repeating-linear-gradient(var(--ink) 0 5px, transparent 5px 10px);background-size:3px 20px;animation:ants 9s linear infinite}
+  @keyframes ants{to{background-position:0 -200px}}
+
+  /* Promise strip (band escura, badges da marca) */
+  .pstrip{background:var(--ink);border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:18px 0;overflow:hidden}
+  .pstrip .marq{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+  .pstrip .track{display:flex;gap:14px;width:max-content;align-items:center;animation:scrollx 40s linear infinite;padding:4px 0}
+  .pstrip:hover .track{animation-play-state:paused}
+  .pbadge{flex:none;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-display);font-weight:700;font-size:1.02rem;border:2px solid #fff;border-radius:999px;padding:9px 18px;white-space:nowrap;color:#fff}
+  .pbadge .st{width:9px;height:9px;border-radius:50%;flex:none}
+  .pbadge.y{background:var(--yellow);color:var(--ink);border-color:var(--ink)} .pbadge.y .st{background:var(--violet)}
+  .pbadge.v{background:var(--violet);border-color:#fff} .pbadge.v .st{background:var(--yellow)}
+  .pbadge.o{background:transparent;border-color:#fff} .pbadge.o .st{background:var(--yellow)}
+
+  @keyframes scrollx{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* Areas marquee (marca) */
+  .marq-wrap{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);background:#fff;padding:22px 0 24px}
+  .marq-cap{text-align:center;font-family:var(--font-mono);font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:16px}
+  .marq-cap b{color:var(--violet)}
+  .marq{overflow:hidden;padding:6px 0 12px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent);mask-image:linear-gradient(90deg,transparent,#000 9%,#000 91%,transparent)}
+  .marq + .marq{margin-top:6px}
+  .track{display:flex;gap:12px;width:max-content;animation:scrollx 36s linear infinite}
+  .track.rev{animation-direction:reverse;animation-duration:42s}
+  .marq:hover .track{animation-play-state:paused}
+  .pill{flex:none;font-weight:700;font-size:.92rem;color:#fff;border:2px solid var(--ink);border-radius:999px;padding:9px 17px;box-shadow:3px 3px 0 var(--ink);white-space:nowrap;transition:transform .15s ease, box-shadow .15s ease}
+  .pill:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+  .pill.y{background:var(--yellow);color:var(--ink)} .pill.p{background:var(--violet)} .pill.k{background:var(--ink)}
+
+  /* Section heads */
+  .head{max-width:660px;margin-bottom:46px}
+  .head.center{margin-left:auto;margin-right:auto;text-align:center}
+  .head h2{font-size:clamp(1.95rem,3.9vw,2.7rem);font-weight:700;margin-top:12px}
+  .head p{color:var(--muted);font-size:1.08rem;margin-top:13px}
+
+  /* Promise bands (frases apelativas) */
+  .pband{border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);padding:46px 0;text-align:center}
+  .pband.v{background:var(--violet);color:#fff}
+  .pband.y{background:var(--yellow);color:var(--ink)}
+  .pband h3{font-size:clamp(1.6rem,3.6vw,2.5rem);font-weight:700;max-width:24ch;margin:0 auto}
+  .pband .hl{background:var(--ink);color:#fff;padding:2px 10px;border-radius:6px}
+  .pband.v .hl{background:var(--yellow);color:var(--ink)}
+  .pband p{margin-top:14px;font-size:1.05rem;opacity:.92}
+
+  /* Pain */
+  .pain{background:var(--lavender-2);border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+  .pain .eyebrow{background:var(--ink);color:#fff}
+  .pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  .pcardx{display:flex;gap:16px;align-items:flex-start;background:#fff;border:2px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:22px;transition:transform .16s ease, box-shadow .16s ease}
+  .pcardx:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
+  .pcardx .px{flex:none;width:44px;height:44px;border:2px solid var(--ink);border-radius:999px;display:grid;place-items:center;background:var(--lavender);transition:transform .16s ease}
+  .pcardx:hover .px{transform:rotate(8deg) scale(1.06)}
+  .pcardx h3{font-size:1.12rem;margin-bottom:6px}
+  .pcardx p{font-size:.93rem;color:var(--muted)}
+
+  /* Dilemas / curiosidade */
+  .dilemas .eyebrow{background:var(--violet);color:#fff}
+  .qgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .qcard{display:flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--ink);border-radius:14px;box-shadow:var(--sh);padding:16px 18px;font-family:var(--font-display);font-weight:600;font-size:1.04rem;transition:transform .16s ease, box-shadow .16s ease}
+  .qcard:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
+  .qmark{flex:none;width:40px;height:40px;border:2px solid var(--ink);border-radius:999px;display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:1.25rem;background:var(--yellow);color:var(--ink);transition:transform .16s ease}
+  .qcard:hover .qmark{transform:rotate(10deg) scale(1.08)}
+  .qcard:nth-child(even) .qmark{background:var(--violet);color:#fff}
+  .dilemas-teaser{text-align:center;margin-top:38px;font-family:var(--font-display);font-weight:700;font-size:clamp(1.3rem,3vw,1.75rem)}
+  .dilemas-teaser .hl{background:var(--yellow);box-shadow:0 2px 0 var(--ink);padding:2px 10px;border-radius:5px}
+
+  /* Segments */
+  .segs{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .seg{background:#fff;border:2px solid var(--ink);border-radius:18px;box-shadow:var(--sh);overflow:hidden;transition:transform .16s ease, box-shadow .16s ease}
+  .seg:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
+  .seg .bar{height:10px;border-bottom:2px solid var(--ink)}
+  .seg .body{padding:24px}
+  .seg .moment{font-family:var(--font-mono);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#64748b}
+  .seg h3{font-size:1.34rem;margin:8px 0 10px}
+  .seg p{font-size:.95rem;color:var(--muted);margin-bottom:18px}
+  .seg .toollabel{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;border:2px solid var(--ink);border-radius:999px;padding:6px 13px}
+  .seg-1 .bar{background:var(--yellow)} .seg-1 .toollabel{background:var(--yellow);color:var(--ink)}
+  .seg-2 .bar{background:var(--violet)} .seg-2 .toollabel{background:var(--violet);color:#fff}
+  .seg-3 .bar{background:var(--ink)} .seg-3 .toollabel{background:var(--ink);color:#fff}
+
+  /* Mid CTA band */
+  .band{background:var(--violet);border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);color:#fff}
+  .band .wrap{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:36px 24px;flex-wrap:wrap}
+  .band h3{font-size:clamp(1.45rem,3vw,2.05rem);font-weight:700;max-width:22ch}
+  .band p{color:#e9ddfb;margin-top:6px;font-size:1.02rem}
+
+  /* Free breadth */
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .vcard h3{font-size:1.1rem;margin:14px 0 7px}
+  .vcard p{font-size:.91rem;color:var(--muted)}
+  .vchip{width:50px;height:50px;border:2px solid var(--ink);border-radius:12px;display:grid;place-items:center;box-shadow:3px 3px 0 var(--ink);transition:transform .16s ease}
+  .vcard:hover .vchip{transform:rotate(-6deg) scale(1.05)}
+  .vcard:nth-child(odd) .vchip{background:var(--yellow)}
+  .vcard:nth-child(even) .vchip{background:var(--violet)}
+  .vcard:nth-child(even) .vchip svg{stroke:#fff}
+  .freebadge{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-family:var(--font-mono);font-size:.72rem;font-weight:600;color:var(--violet);background:#f1e9fc;border:2px solid var(--violet);border-radius:999px;padding:5px 12px}
+
+  /* Pro / IA */
+  .pro{background:var(--lavender);border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+  .pro .eyebrow{background:var(--violet);color:#fff}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px}
+  .pcard{background:#fff;border:2px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:24px 22px;position:relative;transition:transform .16s ease, box-shadow .16s ease}
+  .pcard:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
+  .pcard .tag{position:absolute;top:-12px;right:14px;font-family:var(--font-mono);font-size:.64rem;font-weight:600;background:var(--ink);color:var(--yellow);border:2px solid var(--ink);border-radius:999px;padding:3px 11px;letter-spacing:.06em}
+  .pcard .tag.free{background:var(--yellow);color:var(--ink)}
+  .pcard h3{font-size:1.08rem;margin-bottom:7px}
+  .pcard p{font-size:.9rem;color:var(--muted)}
+  .pcard .ic{width:46px;height:46px;border:2px solid var(--ink);border-radius:12px;display:grid;place-items:center;background:var(--yellow);margin-bottom:14px}
+  .pro-cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:32px}
+  .pricetag{display:inline-flex;align-items:center;gap:11px;background:#fff;border:2px solid var(--ink);border-radius:12px;box-shadow:var(--sh);padding:13px 19px;font-size:.94rem}
+  .pricetag b{font-family:var(--font-display)}
+
+  /* Why now */
+  .why{background:var(--ink);color:#fff;border-bottom:2px solid var(--ink)}
+  .why .eyebrow{background:transparent;color:#fff;border-color:#fff;box-shadow:3px 3px 0 var(--violet-bright)}
+  .why h2{font-size:clamp(1.8rem,3.5vw,2.5rem);font-weight:700;margin-top:18px}
+  .why .lead{color:#cbd5e1;font-size:1.1rem;max-width:56ch;margin-top:14px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px}
+  .stat{background:#1b2536;border:2px solid #334155;border-radius:16px;padding:24px;box-shadow:4px 4px 0 var(--violet)}
+  .stat .n{font-family:var(--font-display);font-weight:700;font-size:clamp(2.1rem,4.5vw,3rem);line-height:1}
+  .stat .n .y{color:var(--yellow)}
+  .stat .t{color:#94a3b8;font-size:.92rem;margin-top:8px}
+  .why .src{font-family:var(--font-mono);font-size:.72rem;color:#64748b;margin-top:22px}
+
+  /* Countdown band (FOCO no timer) */
+  .cb{background:var(--violet);border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);color:#fff;text-align:center}
+  .cb .eyebrow{background:var(--yellow);color:var(--ink);border-color:var(--ink)}
+  .cb h2{font-size:clamp(2rem,4.6vw,3rem);font-weight:700;margin:16px 0 8px}
+  .cb p{color:#e9ddfb;font-size:1.06rem;margin-bottom:30px}
+  .clock-big{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:30px}
+  .clock-big .unit{background:var(--ink);border:2px solid var(--yellow);min-width:104px;padding:18px 10px;box-shadow:5px 5px 0 var(--yellow)}
+  .clock-big .unit .n{font-size:clamp(2.4rem,7vw,3.6rem);color:var(--yellow)}
+  .clock-big .unit .t{color:#e9ddfb;font-size:.7rem;margin-top:8px}
+
+  /* Final CTA */
+  .final{background:var(--yellow);border-top:2px solid var(--ink)}
+  .final .wrap{text-align:center;display:flex;flex-direction:column;align-items:center}
+  .final h2{font-size:clamp(2.1rem,4.6vw,3.1rem);font-weight:700;max-width:16ch}
+  .final p{font-size:1.13rem;color:#3a2f10;margin:14px 0 30px;max-width:46ch}
+  .final .signup,.final .success{margin-left:auto;margin-right:auto}
+  .final .signup input{border-color:var(--ink)}
+  .final .formnote{justify-content:center;color:#4a3c10}
+
+  /* Footer */
+  footer{background:var(--ink);color:#fff;border-top:2px solid var(--ink);padding:46px 0 104px}
+  footer .wrap{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  footer .logo-text{color:#fff}
+  footer .logo-text .q{color:var(--yellow)}
+  .ft-fine{font-size:.85rem;color:#94a3b8;max-width:36ch;margin-top:12px}
+  .socials{display:flex;gap:10px;flex-wrap:wrap}
+  .social-badge{background:transparent;border:2px solid #fff;border-radius:12px;width:44px;height:44px;display:grid;place-items:center;transition:transform .14s ease, background-color .14s ease}
+  .social-badge:hover{transform:translate(-2px,-2px);background:var(--violet);box-shadow:3px 3px 0 var(--yellow)}
+  .social-badge svg{stroke:#fff;width:20px;height:20px}
+
+  /* Sticky mobile CTA (com timer) */
+  .sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;justify-content:space-between;gap:12px;background:var(--ink);border-top:2px solid var(--yellow);padding:11px 16px}
+  .sticky-cta .mini{color:#fff;font-family:var(--font-mono);font-size:.82rem}
+  .sticky-cta .mini b{color:var(--yellow)}
+
+  @media (max-width:900px){
+    .hero .wrap{grid-template-columns:1fr;gap:42px;padding-top:46px}
+    .pgrid{grid-template-columns:1fr}
+    .segs{grid-template-columns:1fr}
+    .grid4{grid-template-columns:repeat(2,1fr)}
+    .grid3{grid-template-columns:1fr}
+    .stats{grid-template-columns:1fr}
+    .section{padding:62px 0}
+    .deco{display:none}
+    .sticker{display:none}
+    .hdr-timer{display:none}
+  }
+  @media (max-width:560px){
+    .wrap{padding:0 18px}
+    .section{padding:54px 0}
+    .head{margin-bottom:32px}
+    .grid4{grid-template-columns:1fr}
+    .qgrid{grid-template-columns:1fr}
+    .hero h1{font-size:2.15rem}
+    .lede{font-size:1.06rem}
+    .unit{min-width:0;flex:1 1 22%;padding:12px 4px}
+    .unit .n{font-size:1.65rem}
+    .clock{gap:8px}
+    .clock-big{gap:9px}
+    .clock-big .unit{min-width:0;flex:1 1 42%;padding:16px 6px}
+    .clock-big .unit .n{font-size:2.3rem}
+    .signup input{min-width:100%}
+    .signup .btn{width:100%}
+    .btn-xl{width:100%;font-size:1.05rem;padding:16px 20px}
+    .band .wrap{padding:30px 18px}
+    .band h3{font-size:1.45rem}
+    .pband{padding:38px 0}
+    .pro-cta{flex-direction:column;align-items:stretch}
+    .pricetag{justify-content:flex-start}
+    .qcard{font-size:.98rem;padding:14px 16px}
+    .promise-mini span{font-size:.68rem}
+    .header-cta{display:none}
+    .hdr-timer{display:none}
+    .sticky-cta{display:flex}
+    footer{padding:38px 0 90px}
+    footer .wrap{flex-direction:column;align-items:flex-start;gap:20px}
+    .logo-text{font-size:.95rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+    .r,.stg>*,.enter{opacity:1!important;transform:none!important}
+    .hero h1 .u::after{transform:scaleX(1)!important}
+    .btn:hover,.card:hover,.seg:hover,.pcard:hover,.pcardx:hover,.jcard:hover,.pill:hover,.social-badge:hover{transform:none}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+
+<!-- Header: logo + timer ao vivo + CTA -->
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#topo" aria-label="Bora na Tech">
+      <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>
+      <span class="logo-text">BORA NA TECH<span class="q">?</span></span>
+    </a>
+    <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+    <span class="hdr-timer"><span class="dot"></span>Em breve</span>
+    <a class="btn btn-sm header-cta" data-scroll href="#topo">Entrar na lista</a>
+  </div>
+</header>
+
+<main id="topo">
+<!-- Hero -->
+<section class="hero section">
+  <span class="bgshape circle" style="width:340px;height:340px;top:-110px;left:-120px"></span>
+  <span class="bgshape" style="width:220px;height:220px;bottom:-70px;right:-70px;border-radius:26px"></span>
+  <span class="deco circle y float" style="width:54px;height:54px;top:60%;right:2%"></span>
+  <span class="deco v float b" style="width:42px;height:42px;top:38%;left:1%;border-radius:10px"></span>
+  <span class="sticker float c" style="top:3%;right:7%">Bora? ⚡</span>
+  <div class="wrap">
+    <div>
+      <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+      <span class="eyebrow enter d1">⚡ Lista de espera aberta · lançamento em breve</span>
+      <h1 class="enter d2">Entrar na tech sem <span class="u"><span id="rot">se perder</span></span></h1>
+      <p class="lede enter d3">Descubra sua área, siga um roadmap e pratique em projetos reais. Do zero ao primeiro emprego, com um caminho claro e sem se afogar na internet.</p>
+
+      <div class="promise-mini enter d4">
+        <span>🧭 Sua bússola na TI</span>
+        <span>🎯 Do zero ao primeiro emprego</span>
+        <span>💸 Grátis pra começar</span>
+      </div>
+
+      <div class="enter d5">
+        <div class="signup" data-signup>
+          <input type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com" aria-label="Seu e-mail" data-email />
+          <button class="btn btn-pulse btn-magnetic" data-submit><span class="glare"></span>Quero entrar na lista</button>
+        </div>
+        <p class="err" data-err>Coloca um e-mail válido pra gente te avisar.</p>
+        <div class="success" data-success role="status" aria-live="polite">
+          <b>Prontinho, você está na lista. ✓</b>
+          <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+          <p>A gente te avisa no lançamento. Sem spam.</p>
+        </div>
+        <p class="formnote" data-note>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Grátis pra entrar. Sem cartão, sem spam.
+        </p>
+      </div>
+
+      <div class="countdown enter d6">
+        <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+        <div class="lbl"><span class="dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#dc2626;animation:blink 1.2s ease-in-out infinite"></span> Lançamento em breve</div>
+        <div class="clock" aria-label="Lançamento">
+          <div class="unit"><div class="n js-d">00</div><div class="t">dias</div></div>
+          <div class="unit"><div class="n js-h">00</div><div class="t">horas</div></div>
+          <div class="unit"><div class="n js-m">00</div><div class="t">min</div></div>
+          <div class="unit"><div class="n js-s">00</div><div class="t">seg</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="journey enter d3" id="journey" aria-label="A jornada no Bora na Tech">
+      <div class="jcard">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="16 8 13.5 13.5 8 16 10.5 10.5"/></svg></div>
+        <div><div class="step">Fase 01</div><div class="nm">Descobrir</div><div class="ds">Ache a área que combina com você.</div></div>
+      </div>
+      <div class="jconn"></div>
+      <div class="jcard">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h7v16H6a2 2 0 0 0-2 2z"/><path d="M20 5a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2z"/></svg></div>
+        <div><div class="step">Fase 02</div><div class="nm">Estudar</div><div class="ds">Siga um roadmap, sem adivinhar.</div></div>
+      </div>
+      <div class="jconn"></div>
+      <div class="jcard">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2-2z"/></svg></div>
+        <div><div class="step">Fase 03</div><div class="nm">Praticar</div><div class="ds">Projetos pra montar seu portfólio.</div></div>
+      </div>
+      <div class="jconn"></div>
+      <div class="jcard">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="#fff"/></svg></div>
+        <div><div class="step">Fase 04</div><div class="nm">Conseguir</div><div class="ds">Chegue pronto pro primeiro emprego.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Promessas espalhadas (strip animada) -->
+<section class="pstrip" aria-label="O que o Bora promete">
+  <div class="marq">
+    <div class="track">
+      <span class="pbadge y"><span class="st"></span>Sua bússola na TI</span>
+      <span class="pbadge v"><span class="st"></span>Do zero ao primeiro emprego</span>
+      <span class="pbadge o"><span class="st"></span>Direção, não no escuro</span>
+      <span class="pbadge y"><span class="st"></span>Sem se afogar na internet</span>
+      <span class="pbadge v"><span class="st"></span>100% grátis pra começar</span>
+      <span class="pbadge o"><span class="st"></span>Feito pra quem nunca programou</span>
+      <span class="pbadge y"><span class="st"></span>Um caminho, não mil abas</span>
+      <span class="pbadge v"><span class="st"></span>Chega de tutorial hell</span>
+      <span class="pbadge y"><span class="st"></span>Sua bússola na TI</span>
+      <span class="pbadge v"><span class="st"></span>Do zero ao primeiro emprego</span>
+      <span class="pbadge o"><span class="st"></span>Direção, não no escuro</span>
+      <span class="pbadge y"><span class="st"></span>Sem se afogar na internet</span>
+      <span class="pbadge v"><span class="st"></span>100% grátis pra começar</span>
+      <span class="pbadge o"><span class="st"></span>Feito pra quem nunca programou</span>
+      <span class="pbadge y"><span class="st"></span>Um caminho, não mil abas</span>
+      <span class="pbadge v"><span class="st"></span>Chega de tutorial hell</span>
+    </div>
+  </div>
+</section>
+
+<!-- Por que agora (vagas) - subido pro topo -->
+<section class="why section">
+  <span class="bgshape circle light fill" style="width:320px;height:320px;top:-80px;right:-90px"></span>
+  <span class="bgshape light" style="width:200px;height:200px;bottom:-60px;left:-50px;border-radius:20px"></span>
+  <div class="wrap">
+    <div class="r">
+      <span class="eyebrow">Por que agora</span>
+      <h2>Sobra vaga em tech. Falta direção.</h2>
+      <p class="lead">O Brasil forma menos de um terço dos profissionais de tecnologia que o mercado pede todo ano. Quem se organiza cedo larga na frente, e o Bora na Tech existe pra te dar essa direção.</p>
+    </div>
+    <div class="stats stg" id="stats">
+      <div class="stat"><div class="n"><span class="y" data-count="159">0</span> mil</div><div class="t">vagas em tecnologia por ano no Brasil</div></div>
+      <div class="stat"><div class="n"><span data-count="53">0</span> mil</div><div class="t">profissionais formados por ano</div></div>
+      <div class="stat"><div class="n"><span class="y" data-count="23">0</span></div><div class="t">trilhas guiadas pra você seguir</div></div>
+    </div>
+    <div class="r" style="margin-top:30px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero garantir minha vaga na lista</a>
+      <span class="src" style="margin-top:0">Fonte: dados de formação e demanda do setor de TI no Brasil.</span>
+    </div>
+  </div>
+</section>
+
+<!-- Dores -->
+<section class="pain section">
+  <span class="deco v float" style="width:46px;height:46px;bottom:8%;right:3%;border-radius:12px"></span>
+  <span class="deco circle l float b" style="width:38px;height:38px;top:12%;left:2%"></span>
+  <div class="wrap">
+    <div class="head center r">
+      <span class="eyebrow">Chega de se perder</span>
+      <h2>Começar sozinho trava qualquer um.</h2>
+      <p>Não falta conteúdo na internet. Falta caminho. E é exatamente aí que a maioria desiste antes de começar.</p>
+    </div>
+    <div class="pgrid stg">
+      <div class="pcardx">
+        <div class="px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b1fc9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 2.5"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+        <div><h3>"Não sei por onde começar"</h3><p>Front, back, dados, IA. São tantas áreas e opiniões na internet que você empaca antes do primeiro passo.</p></div>
+      </div>
+      <div class="pcardx">
+        <div class="px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b1fc9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></div>
+        <div><h3>Travado no tutorial hell</h3><p>Você assiste aula atrás de aula, copia tudo na tela e continua sem conseguir fazer nada sozinho.</p></div>
+      </div>
+      <div class="pcardx">
+        <div class="px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b1fc9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5z"/><path d="M2 12l10 5 10-5"/><path d="M2 17l10 5 10-5"/></svg></div>
+        <div><h3>Afogado em curso</h3><p>Dez cursos começados, nenhum terminado. O problema nunca foi falta de material, foi falta de direção.</p></div>
+      </div>
+      <div class="pcardx">
+        <div class="px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b1fc9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2.4"/></svg></div>
+        <div><h3>"Será que tô pronto?"</h3><p>Você estuda, mas não faz a menor ideia se já dá pra se candidatar a uma vaga ou se ainda falta muito.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Dilemas / curiosidade (o que vai ter, por cima, instigando) -->
+<section class="dilemas section">
+  <span class="bgshape circle" style="width:280px;height:280px;top:-70px;right:-80px"></span>
+  <span class="deco circle v float" style="width:44px;height:44px;top:10%;right:3%"></span>
+  <span class="deco y float b" style="width:36px;height:36px;bottom:14%;left:2%;border-radius:9px"></span>
+  <div class="wrap">
+    <div class="head center r">
+      <span class="eyebrow">Toda hora uma dúvida</span>
+      <h2>Quantas dessas já te travaram?</h2>
+      <p>Começar em tech é decisão atrás de decisão. Sozinho e no escuro, é fácil empacar em qualquer uma.</p>
+    </div>
+    <div class="qgrid stg">
+      <div class="qcard"><span class="qmark">?</span> Qual curso fazer primeiro?</div>
+      <div class="qcard"><span class="qmark">?</span> Qual plataforma vale a pena assinar?</div>
+      <div class="qcard"><span class="qmark">?</span> Qual faculdade escolher? Ou nem fazer?</div>
+      <div class="qcard"><span class="qmark">?</span> Será que essa área tem futuro?</div>
+      <div class="qcard"><span class="qmark">?</span> Por onde começar de verdade?</div>
+      <div class="qcard"><span class="qmark">?</span> Quanto dá pra ganhar começando?</div>
+      <div class="qcard"><span class="qmark">?</span> Tô pronto pra mandar currículo?</div>
+      <div class="qcard"><span class="qmark">?</span> Que projeto botar no portfólio?</div>
+    </div>
+    <p class="dilemas-teaser r">Cada uma vai ter resposta aqui. <span class="hl">Quer ser o primeiro a ver?</span></p>
+    <div style="text-align:center;margin-top:26px" class="r">
+      <a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero descobrir no lançamento</a>
+    </div>
+  </div>
+</section>
+
+<!-- Frase apelativa -->
+<section class="pband v">
+  <div class="wrap">
+    <h3>Aqui você não estuda perdido. Cada passo, <span class="hl">no lugar certo</span>.</h3>
+    <p>É a diferença entre tentar sozinho por meses e ter uma bússola desde o primeiro dia.</p>
+  </div>
+</section>
+
+<!-- Solução -->
+<section class="section">
+  <span class="deco circle y float" style="width:48px;height:48px;top:8%;left:3%"></span>
+  <div class="wrap">
+    <div class="head center r">
+      <span class="eyebrow">A solução</span>
+      <h2>Pra cada momento, um próximo passo claro.</h2>
+      <p>Não importa se você nunca programou ou se já tá estudando. Tem um ponto de partida certo pra você.</p>
+    </div>
+    <div class="segs stg">
+      <div class="seg seg-1">
+        <div class="bar"></div>
+        <div class="body">
+          <div class="moment">Tô começando do zero</div>
+          <h3>Ache sua área</h3>
+          <p>Um quiz rápido mostra qual área de tecnologia mais combina com o seu perfil. Sem achismo.</p>
+          <span class="toollabel">Quiz de carreira</span>
+        </div>
+      </div>
+      <div class="seg seg-2">
+        <div class="bar"></div>
+        <div class="body">
+          <div class="moment">Já sei minha área</div>
+          <h3>Siga o caminho</h3>
+          <p>Um roadmap mostra exatamente o que estudar e em que ordem, do básico ao avançado.</p>
+          <span class="toollabel">Roadmaps guiados</span>
+        </div>
+      </div>
+      <div class="seg seg-3">
+        <div class="bar"></div>
+        <div class="body">
+          <div class="moment">Já tô estudando</div>
+          <h3>Mãos na massa</h3>
+          <p>Projetos práticos pra aplicar o que aprendeu e montar um portfólio que prova o que você sabe.</p>
+          <span class="toollabel">Projetos reais</span>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:44px" class="r">
+      <a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Garantir meu acesso antecipado</a>
+    </div>
+  </div>
+</section>
+
+<!-- Areas marquee (23 trilhas) -->
+<section class="marq-wrap" aria-label="Áreas e trilhas">
+  <div class="marq-cap"><b>23 trilhas guiadas</b>, do front-end à IA</div>
+  <div class="marq">
+    <div class="track">
+      <span class="pill p">Front-end</span><span class="pill y">Back-end</span><span class="pill k">Full-stack</span>
+      <span class="pill p">Dados</span><span class="pill y">IA</span><span class="pill k">UX/UI</span>
+      <span class="pill p">Mobile</span><span class="pill y">Cloud</span><span class="pill k">DevOps</span>
+      <span class="pill p">Cibersegurança</span><span class="pill y">Game Dev</span>
+      <span class="pill p">Front-end</span><span class="pill y">Back-end</span><span class="pill k">Full-stack</span>
+      <span class="pill p">Dados</span><span class="pill y">IA</span><span class="pill k">UX/UI</span>
+      <span class="pill p">Mobile</span><span class="pill y">Cloud</span><span class="pill k">DevOps</span>
+      <span class="pill p">Cibersegurança</span><span class="pill y">Game Dev</span>
+    </div>
+  </div>
+  <div class="marq">
+    <div class="track rev">
+      <span class="pill y">Engenharia de Dados</span><span class="pill k">QA</span><span class="pill p">Produto</span>
+      <span class="pill y">Gestão</span><span class="pill k">SRE</span><span class="pill p">Banco de Dados</span>
+      <span class="pill y">IoT</span><span class="pill k">Blockchain</span><span class="pill p">Infraestrutura</span>
+      <span class="pill y">Engenharia de Dados</span><span class="pill k">QA</span><span class="pill p">Produto</span>
+      <span class="pill y">Gestão</span><span class="pill k">SRE</span><span class="pill p">Banco de Dados</span>
+      <span class="pill y">IoT</span><span class="pill k">Blockchain</span><span class="pill p">Infraestrutura</span>
+    </div>
+  </div>
+</section>
+
+<!-- Mid CTA -->
+<section class="band">
+  <div class="wrap">
+    <div class="r">
+      <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+      <h3>Tudo isso abre em breve.</h3>
+      <p>Não fica de fora. Entre na lista e seja um dos primeiros a usar.</p>
+    </div>
+    <a class="btn btn-xl r" data-scroll href="#topo"><span class="glare"></span>Quero meu lugar</a>
+  </div>
+</section>
+
+<!-- Free breadth -->
+<section class="section">
+  <span class="bgshape circle" style="width:300px;height:300px;top:-60px;right:-80px"></span>
+  <div class="wrap">
+    <div class="head r">
+      <span class="eyebrow">De graça</span>
+      <h2>A orientação é toda gratuita.</h2>
+      <p>Você não paga pra se achar na tecnologia. Quiz, roadmaps, projetos e conteúdo, sem custo nenhum.</p>
+    </div>
+    <div class="grid4 stg">
+      <div class="card vcard">
+        <div class="vchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/><path d="M8 9l2.5 2L8 13"/></svg></div>
+        <h3>Conteúdo curado</h3>
+        <p>Cursos, materiais e referências filtrados, sem se afogar em link solto.</p>
+        <span class="freebadge">Grátis</span>
+      </div>
+      <div class="card vcard">
+        <div class="vchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3 19a6 6 0 0 1 12 0M15 19a5 5 0 0 1 6 0"/></svg></div>
+        <h3>Comunidade e eventos</h3>
+        <p>Gente começando junto, eventos e grupos pra não travar sozinho.</p>
+        <span class="freebadge">Grátis</span>
+      </div>
+      <div class="card vcard">
+        <div class="vchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+        <h3>Dicionário de TI</h3>
+        <p>Aquele termo que todo mundo fala e ninguém te explicou, traduzido pro português.</p>
+        <span class="freebadge">Grátis</span>
+      </div>
+      <div class="card vcard">
+        <div class="vchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+        <h3>Salários e empresas</h3>
+        <p>Quanto pagam, quem contrata júnior e o que esperar do mercado.</p>
+        <span class="freebadge">Grátis</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:42px" class="r">
+      <a class="btn btn-violet btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero acesso no lançamento</a>
+    </div>
+  </div>
+</section>
+
+<!-- Pro / IA -->
+<section class="pro section">
+  <span class="bgshape circle" style="width:300px;height:300px;bottom:-90px;left:-90px"></span>
+  <div class="wrap">
+    <div class="head r">
+      <span class="eyebrow">Pro</span>
+      <h2>A IA que te deixa pronto pra vaga.</h2>
+      <p>Quando você já está estudando, o Pro analisa seu perfil e monta seu caminho com IA. Diagnóstico do que falta, o que melhorar e o que fazer agora, sem achismo.</p>
+    </div>
+    <div class="grid3 stg">
+      <div class="pcard">
+        <span class="tag">PRO</span>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.5 1.3a12 12 0 0 0-6.2 0C7.6 1.3 6.6 1.6 6.6 1.6a4.3 4.3 0 0 0-.1 3.2A4.6 4.6 0 0 0 5.2 8c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V20"/></svg></div>
+        <h3>Análise de GitHub</h3>
+        <p>Saiba como o recrutador vê seu perfil e receba um plano claro do que melhorar pra se destacar.</p>
+      </div>
+      <div class="pcard">
+        <span class="tag">PRO</span>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 10v7M7 7v.01M11 17v-4a2 2 0 0 1 4 0v4"/></svg></div>
+        <h3>Análise de LinkedIn</h3>
+        <p>Um raio-x do seu LinkedIn com ajustes práticos pra aparecer nas buscas e atrair recrutador.</p>
+      </div>
+      <div class="pcard">
+        <span class="tag">PRO</span>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v14H4z"/><path d="M8 9h8M8 13h5"/><path d="M9 22h6"/></svg></div>
+        <h3>Plano de estudos</h3>
+        <p>Um plano sob medida pro seu nível e objetivo. O que estudar, em que ordem, sem roadmap genérico.</p>
+      </div>
+    </div>
+    <div class="pro-cta r">
+      <div class="pricetag">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b1fc9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span><b>Saia do achismo e vá direto pra vaga.</b> Análises com IA feitas pro seu perfil, no seu ritmo.</span>
+      </div>
+      <a class="btn btn-violet btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero o Pro no lançamento</a>
+    </div>
+  </div>
+</section>
+
+<!-- Countdown band (FOCO no timer) -->
+<section class="cb section">
+  <span class="deco circle y float" style="width:44px;height:44px;top:16%;left:5%"></span>
+  <span class="deco y float b" style="width:38px;height:38px;bottom:18%;right:6%;border-radius:10px"></span>
+  <div class="wrap">
+    <!-- TODO(Ana): texto neutro ate a data de lancamento ser definida. -->
+    <span class="eyebrow r">Lançamento</span>
+    <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+    <h2 class="r">O lançamento é em breve.</h2>
+    <p class="r">A lista vira acesso no lançamento. Garanta o seu antes.</p>
+    <div class="clock-big r" aria-label="Lançamento">
+      <div class="unit"><div class="n js-d">00</div><div class="t">dias</div></div>
+      <div class="unit"><div class="n js-h">00</div><div class="t">horas</div></div>
+      <div class="unit"><div class="n js-m">00</div><div class="t">min</div></div>
+      <div class="unit"><div class="n js-s">00</div><div class="t">seg</div></div>
+    </div>
+    <div class="r"><a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Entrar na lista agora</a></div>
+  </div>
+</section>
+
+<!-- Final CTA -->
+<section class="final section">
+  <span class="bgwatermark" style="top:-20px;right:6%"><svg width="240" height="240" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="1"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>
+  <span class="bgshape circle" style="width:300px;height:300px;bottom:-100px;left:-90px"></span>
+  <span class="deco v float" style="width:40px;height:40px;top:20%;left:6%;border-radius:10px"></span>
+  <span class="deco circle k float b" style="width:34px;height:34px;bottom:22%;right:7%"></span>
+  <div class="wrap">
+    <span class="eyebrow r">É agora ou na próxima leva</span>
+    <h2 class="r" style="margin-top:16px">Garanta seu lugar no lançamento.</h2>
+    <p class="r">Entre na lista hoje e seja um dos primeiros quando a plataforma abrir.</p>
+
+    <div class="r" style="width:100%;display:flex;flex-direction:column;align-items:center">
+      <div class="signup" data-signup>
+        <input type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com" aria-label="Seu e-mail" data-email />
+        <button class="btn btn-ink btn-pulse btn-magnetic" data-submit><span class="glare"></span>Quero entrar na lista</button>
+      </div>
+      <p class="err" data-err>Coloca um e-mail válido pra gente te avisar.</p>
+      <div class="success" data-success role="status" aria-live="polite">
+        <b>Prontinho, você está na lista. ✓</b>
+        <p>A gente te avisa no lançamento. Sem spam.</p>
+      </div>
+      <p class="formnote" data-note>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4a3c10" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Leva 5 segundos. Cancela quando quiser.
+      </p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <a class="brand" href="#topo" aria-label="Bora na Tech">
+        <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>
+        <span class="logo-text">BORA NA TECH<span class="q">?</span></span>
+      </a>
+      <p class="ft-fine">Sua bússola para começar na tecnologia.<br>© 2026 Bora Ecosystem.</p>
+    </div>
+    <div class="socials" aria-label="Redes sociais">
+      <a class="social-badge" href="https://instagram.com/boranatech" target="_blank" rel="noopener" aria-label="Instagram">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg>
+      </a>
+      <a class="social-badge" href="https://linkedin.com/company/boranatech" target="_blank" rel="noopener" aria-label="LinkedIn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+      </a>
+      <a class="social-badge" href="https://tiktok.com/@boranatech" target="_blank" rel="noopener" aria-label="TikTok">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4c.5 2.5 2.5 4.5 5 5"/></svg>
+      </a>
+      <a class="social-badge" href="https://x.com/boranatech" target="_blank" rel="noopener" aria-label="X">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M20 4L4 20"/></svg>
+      </a>
+    </div>
+  </div>
+</footer>
+
+<div class="sticky-cta">
+  <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+  <div class="mini">Lançamento em breve</div>
+  <a class="btn btn-sm" data-scroll href="#topo">Entrar na lista</a>
+</div>
+
+<script src="/lancamento.js" defer></script>
+</body>
+</html>
