@@ -3,6 +3,31 @@
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   var API_BASE = new URLSearchParams(location.search).get("api") || "";
 
+  // Estado global de "ja cadastrou", persistido no localStorage. A origem do
+  // iframe e a mesma da app, entao a chave precisa ser exatamente esta pra nao
+  // colidir com outras chaves (bnt_beta_token etc).
+  var WAITLIST_KEY = "bnt_waitlist_signup";
+  function hasSignedUp(){
+    try { return localStorage.getItem(WAITLIST_KEY) === "1"; }
+    catch(e){ return false; }
+  }
+  function markSignedUp(){
+    try { localStorage.setItem(WAITLIST_KEY, "1"); }
+    catch(e){}
+  }
+  // Aplica a confirmacao em TODOS os forms (idempotente). Nao dispara confete:
+  // confete e so no momento do submit real, nao no re-aplicar do estado.
+  function applySignedUpState(){
+    document.querySelectorAll("[data-signup]").forEach(function(block){
+      var scope = block.parentElement;
+      var note = scope.querySelector("[data-note]");
+      var success = scope.querySelector("[data-success]");
+      block.style.display = "none";
+      if(note) note.style.display = "none";
+      if(success) success.classList.add("show");
+    });
+  }
+
   function confetti(x, y){
     if(reduce) return;
     var colors = ["#FCC700","#6b1fc9","#0F172A","#8b4ff5","#ffffff"];
@@ -27,8 +52,6 @@
     var btn = block.querySelector("[data-submit]");
     var scope = block.parentElement;
     var err = scope.querySelector("[data-err]");
-    var success = scope.querySelector("[data-success]");
-    var note = scope.querySelector("[data-note]");
     // Mensagem original de e-mail invalido (copy do design), preservada pra
     // restaurar quando a validacao falhar depois de um erro de rede.
     var invalidMsg = err ? err.textContent : "";
@@ -45,9 +68,8 @@
           body:JSON.stringify({email:email, source:"landing-lancamento"})
         });
         if(!res.ok) throw new Error("waitlist falhou");
-        block.style.display = "none";
-        if(note) note.style.display = "none";
-        success.classList.add("show");
+        markSignedUp();
+        applySignedUpState();
         confetti(r.left + r.width/2, r.top + r.height/2);
         try {
           window.parent.postMessage({ type:"bnt:waitlist_signup", source:"landing-lancamento" }, location.origin);
@@ -64,6 +86,7 @@
     });
   }
   document.querySelectorAll("[data-signup]").forEach(wire);
+  if(hasSignedUp()) applySignedUpState();
 
   document.querySelectorAll("[data-scroll]").forEach(function(a){
     a.addEventListener("click", function(e){
@@ -71,7 +94,10 @@
       var hero = document.getElementById("topo");
       hero.scrollIntoView({behavior:"smooth", block:"start"});
       var input = hero.querySelector("[data-email]");
-      if(input){ setTimeout(function(){ input.focus(); }, 500); }
+      // So foca se o input existir e estiver visivel. Pra quem ja se cadastrou
+      // o input do hero esta escondido (data-success no lugar), entao o foco
+      // vira no-op naturalmente.
+      if(input && input.offsetParent !== null){ setTimeout(function(){ input.focus(); }, 500); }
     });
   });
 
