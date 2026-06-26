@@ -356,6 +356,17 @@
   .sticky-cta .mini{color:#fff;font-family:var(--font-mono);font-size:.82rem}
   .sticky-cta .mini b{color:var(--yellow)}
 
+  /* Creators parceiros que apoiam o projeto */
+  .creators-row{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-top:8px}
+  .creator{display:inline-flex;align-items:center;gap:14px;background:#fff;border:2px solid var(--ink);border-radius:14px;box-shadow:var(--sh);padding:13px 20px;text-decoration:none;color:var(--ink);transition:transform .16s cubic-bezier(.23,1,.32,1), box-shadow .16s cubic-bezier(.23,1,.32,1)}
+  .creator:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
+  .creator:focus-visible{outline:3px solid var(--violet);outline-offset:3px}
+  .creator .ava{flex:none;width:46px;height:46px;border:2px solid var(--ink);border-radius:999px;display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:1rem;letter-spacing:.02em}
+  .creator .handle{font-family:var(--font-display);font-weight:700;font-size:1.02rem}
+  .creator:nth-child(3n+1) .ava{background:var(--yellow);color:var(--ink)}
+  .creator:nth-child(3n+2) .ava{background:var(--violet);color:#fff}
+  .creator:nth-child(3n+3) .ava{background:var(--lavender);color:var(--ink)}
+
   @media (max-width:900px){
     .hero .wrap{grid-template-columns:1fr;gap:42px;padding-top:46px}
     .pgrid{grid-template-columns:1fr}
@@ -370,6 +381,7 @@
   }
   @media (max-width:560px){
     .wrap{padding:0 18px}
+    .creator{width:100%;justify-content:center}
     .section{padding:54px 0}
     .head{margin-bottom:32px}
     .grid4{grid-template-columns:1fr}
@@ -403,7 +415,7 @@
     *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
     .r,.stg>*,.enter{opacity:1!important;transform:none!important}
     .hero h1 .u::after{transform:scaleX(1)!important}
-    .btn:hover,.card:hover,.seg:hover,.pcard:hover,.pcardx:hover,.jcard:hover,.pill:hover,.social-badge:hover{transform:none}
+    .btn:hover,.card:hover,.seg:hover,.pcard:hover,.pcardx:hover,.jcard:hover,.pill:hover,.social-badge:hover,.creator:hover{transform:none}
   }
 </style>
 </head>
@@ -821,6 +833,18 @@
     </div>
   </div>
 </section>
+
+<!-- Creators que apoiam o projeto -->
+<!-- TODO(Ana): revisar o titulo e a copy da faixa de creators -->
+<section class="section">
+  <div class="wrap">
+    <div class="head center r">
+      <span class="eyebrow">Parcerias</span>
+      <h2>Creators que apoiam o projeto</h2>
+    </div>
+    <div class="creators-row stg" data-creators></div>
+  </div>
+</section>
 </main>
 
 <footer>
@@ -855,6 +879,41 @@
   <a class="btn btn-sm" data-scroll href="#topo">Entrar na lista</a>
 </div>
 
+<script>
+  (function () {
+    // TODO(Ana): conferir os @ e adicionar/remover creators aqui.
+    var CREATORS = [
+      { handle: "grazi.tech", url: "https://instagram.com/grazi.tech" },
+      { handle: "gabrielsm.dev", url: "https://instagram.com/gabrielsm.dev" },
+      { handle: "code.evelyn", url: "https://instagram.com/code.evelyn" }
+    ];
+    function initials(handle) {
+      var parts = handle.replace(/[^a-zA-Z]+/g, " ").trim().split(/\s+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+      return handle.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase() || "@";
+    }
+    var box = document.querySelector("[data-creators]");
+    if (!box) return;
+    CREATORS.forEach(function (creator) {
+      var link = document.createElement("a");
+      link.className = "creator";
+      link.href = creator.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.setAttribute("aria-label", "Instagram de @" + creator.handle);
+      var ava = document.createElement("span");
+      ava.className = "ava";
+      ava.setAttribute("aria-hidden", "true");
+      ava.textContent = initials(creator.handle);
+      var handle = document.createElement("span");
+      handle.className = "handle";
+      handle.textContent = "@" + creator.handle;
+      link.appendChild(ava);
+      link.appendChild(handle);
+      box.appendChild(link);
+    });
+  })();
+</script>
 <script src="/lancamento.js" defer></script>
 </body>
 </html>
