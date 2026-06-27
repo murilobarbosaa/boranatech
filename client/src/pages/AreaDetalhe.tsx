@@ -381,7 +381,7 @@ export default function AreaDetalhe() {
           <AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" />
         }
         actions={
-          <>
+          <div className="flex flex-col gap-4">
             <div className="flex justify-end">
               <FavoriteButton
                 compact
@@ -393,16 +393,16 @@ export default function AreaDetalhe() {
                 }}
               />
             </div>
-            <div className="area-rise">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-700">
+            <div className="area-rise w-full rounded-2xl border-2 border-slate-900 bg-white/65 p-4 shadow-[5px_5px_0_rgba(15,23,42,0.18)]">
+              <p className="text-center text-xs font-black uppercase tracking-[0.18em] text-slate-700">
                 Criadores
               </p>
               {creators.length > 0 ? (
                 <>
-                  <p className="mt-1 font-display text-base font-bold text-slate-950">
+                  <p className="mt-1 text-center font-display text-base font-bold text-slate-950">
                     Criadores pra acompanhar
                   </p>
-                  <div className="mt-3 grid grid-cols-1 gap-2">
+                  <div className="mt-4 grid grid-cols-1 gap-2.5">
                     {creators.map((creator) => (
                       <a
                         key={creator.url}
@@ -414,7 +414,7 @@ export default function AreaDetalhe() {
                           ac.liftShadow,
                         )}
                       >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-white">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-white">
                           {creator.avatarUrl ? (
                             <img
                               src={creator.avatarUrl}
@@ -429,7 +429,7 @@ export default function AreaDetalhe() {
                             />
                           )}
                         </span>
-                        <span className="min-w-0">
+                        <span className="min-w-0 text-left">
                           <span className="block truncate font-display text-sm font-black text-slate-950">
                             {creator.name}
                           </span>
@@ -455,13 +455,13 @@ export default function AreaDetalhe() {
                 </>
               ) : (
                 <>
-                  <p className="mt-1 font-display text-base font-bold text-slate-950">
+                  <p className="mt-1 text-center font-display text-base font-bold text-slate-950">
                     Em breve: criadores recomendados desta área
                   </p>
-                  <p className="text-xs font-semibold text-slate-700">
+                  <p className="mt-1 text-center text-xs font-semibold text-slate-600">
                     Exemplo de como vai ficar.
                   </p>
-                  <div className="mt-3 grid grid-cols-1 gap-2">
+                  <div className="mt-4 grid grid-cols-1 gap-2.5">
                     {CREATOR_EXAMPLES.map((exemplo) => (
                       <div
                         key={exemplo.platform}
@@ -470,10 +470,10 @@ export default function AreaDetalhe() {
                           ac.panelBorder,
                         )}
                       >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400">
                           <User className="h-5 w-5" aria-hidden />
                         </span>
-                        <span className="min-w-0">
+                        <span className="min-w-0 text-left">
                           <span className="block font-display text-sm font-black text-slate-400">
                             Criador exemplo
                           </span>
@@ -492,7 +492,7 @@ export default function AreaDetalhe() {
                 </>
               )}
             </div>
-          </>
+          </div>
         }
       />
 
