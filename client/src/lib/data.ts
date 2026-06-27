@@ -11793,6 +11793,48 @@ export const projetos = [
       "Construí um chatbot que conversa usando uma API de IA! Pratiquei integração com API, controle de histórico e tratamento de erros. Link nos comentários!",
     proximoProjeto: "API REST de Tarefas",
   },
+  {
+    id: "jogo-da-memoria",
+    nome: "Jogo da Memória",
+    areaSlug: "gamedev" as string | null,
+    nivel: "Iniciante",
+    objetivo:
+      "Criar um jogo da memória onde a pessoa vira cartas e tenta achar os pares.",
+    ferramentas: ["HTML", "CSS", "JavaScript"],
+    passosSimplificados: [
+      "Monte o tabuleiro com as cartas embaralhadas",
+      "Faça a carta virar ao clicar",
+      "Compare duas cartas viradas e verifique se são par",
+      "Conte tentativas e mostre quando o jogador vencer",
+      "Adicione um botão de reiniciar e publique",
+    ],
+    entregavel: "Jogo da memória jogável e publicado.",
+    comoPublicar: "GitHub Pages ou Netlify",
+    sugestaoLinkedIn:
+      "Desenvolvi um jogo da memória do zero em JavaScript! Treinei manipulação de DOM, lógica de comparação e controle de estado. Joga aí!",
+    proximoProjeto: "App de Notas com Markdown",
+  },
+  {
+    id: "design-system-storybook",
+    nome: "Design System com Storybook",
+    areaSlug: "frontend" as string | null,
+    nivel: "Intermediário",
+    objetivo:
+      "Criar um pequeno conjunto de componentes reutilizáveis e documentá-los no Storybook.",
+    ferramentas: ["React", "Storybook", "CSS", "TypeScript"],
+    passosSimplificados: [
+      "Crie componentes base: botão, input e card",
+      "Padronize cores, espaçamentos e tipografia",
+      "Documente cada componente no Storybook",
+      "Mostre as variações (estados, tamanhos)",
+      "Publique o Storybook",
+    ],
+    entregavel: "Storybook publicado com os componentes e suas variações.",
+    comoPublicar: "Chromatic ou GitHub Pages",
+    sugestaoLinkedIn:
+      "Montei um mini design system com componentes reutilizáveis documentados no Storybook! Treinei padronização visual e documentação de UI. Dá uma olhada!",
+    proximoProjeto: "Galeria de Fotos com Busca",
+  },
 ];
 
 export const vagasInfo = {
