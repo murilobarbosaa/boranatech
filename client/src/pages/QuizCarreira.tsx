@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight,
@@ -20,6 +20,7 @@ import SEO from "@/components/SEO";
 import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModal";
 import AuthGateModal from "@/components/gate/AuthGateModal";
 import { useAuthGate } from "@/hooks/useAuthGate";
+import { consumePendingGate, peekPendingGate } from "@/lib/authGate";
 import { areasTI } from "@/lib/data";
 import {
   triageQuestions,
@@ -128,13 +129,20 @@ function clearProgress() {
   }
 }
 
+function isQuizGatePayload(
+  p: unknown,
+): p is { objective?: string; resume?: boolean } {
+  return typeof p === "object" && p !== null;
+}
+
 // A triagem agora é só o nivelamento (3 perguntas). Objetivo virou a tela de
 // entrada; motivo deixou de ser uma etapa separada.
 const triageSteps = triageQuestions;
 
 export default function QuizCarreira() {
   const [, setLocation] = useLocation();
-  const { gateAction, modalProps } = useAuthGate();
+  const { gateAction, modalProps, status } = useAuthGate();
+  const hasConsumedGateRef = useRef(false);
   const [phase, setPhase] = useState<QuizPhase>("objective");
   const [objective, setObjective] = useState<QuizObjective | null>(null);
   const [level, setLevel] = useState<QuizLevel | null>(null);
@@ -248,6 +256,41 @@ export default function QuizCarreira() {
       destination: "/quiz-carreira",
     });
   };
+
+  useEffect(() => {
+    // Replay de intent de quiz pos-login. Roda UMA vez por mount, so autenticado.
+    // Territorio do BUG 2: consome (remove) em vez de peek-e-deixa, e o ref guard
+    // impede re-disparo (StrictMode monta/desmonta/remonta em dev).
+    if (status !== "authenticated") return;
+    if (hasConsumedGateRef.current) return;
+
+    const gate = peekPendingGate();
+    const intent = gate?.intent;
+    // Ownership: so processa intent de quiz; deixa os outros (ex.: favorito) intactos.
+    if (!intent || intent.kind !== "domain" || intent.domain !== "quiz") return;
+
+    hasConsumedGateRef.current = true;
+    consumePendingGate();
+
+    const payload = intent.payload;
+    if (!isQuizGatePayload(payload)) {
+      console.warn("[quiz] pending_gate payload malformado", payload);
+      return;
+    }
+    if (
+      typeof payload.objective === "string" &&
+      objectiveTracks.some((track) => track.id === payload.objective)
+    ) {
+      handleSelectObjective(payload.objective as QuizObjective);
+    } else if (payload.resume === true) {
+      handleResume();
+    } else {
+      console.warn(
+        "[quiz] pending_gate de quiz sem objective valido nem resume",
+        payload,
+      );
+    }
+  }, [status]);
 
   const handleTriageAnswer = (optionIndex: number) => {
     const step = triageSteps[triageIndex];
