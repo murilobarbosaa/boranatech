@@ -13,6 +13,10 @@ import posthog from "posthog-js";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUrl } from "@/lib/api";
 import {
+  consumePendingGate,
+  peekPendingGate,
+} from "@/lib/authGate";
+import {
   consumePendingIntent,
   savePendingIntent,
   type FavoriteIntent,
@@ -240,6 +244,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         if (justSignedIn) {
           await maybeMigrateLegacyBookmarks(user!.id);
           await maybeConsumeOAuthFavorite();
+          await maybeConsumePendingGateFavorite();
         }
 
         const res = await apiFetch("/");
@@ -518,5 +523,67 @@ async function maybeConsumeOAuthFavorite(): Promise<void> {
     });
   } catch (err) {
     console.error("[useFavorites] oauth favorite apply failed", err);
+  }
+}
+
+function isFavoriteGatePayload(p: unknown): p is {
+  type: string;
+  itemKey: string;
+  snapshot?: { title?: string; subtitle?: string; url?: string };
+} {
+  if (!p || typeof p !== "object") return false;
+  const candidate = p as { type?: unknown; itemKey?: unknown };
+  return (
+    typeof candidate.type === "string" && typeof candidate.itemKey === "string"
+  );
+}
+
+// Replay novo (Fase 2a): re-executa um favorito persistido pelo useAuthGate no
+// pending_gate. Espelha maybeConsumeOAuthFavorite (mesmo POST, mesma telemetria,
+// sem dedup, igual ao caminho OAuth). Inerte ate o FavoriteButton passar a
+// escrever DomainIntent de favorito no pending_gate (Fase 2b). Ownership por
+// dominio: so processa intent.kind === "domain" && domain === "favorite".
+async function maybeConsumePendingGateFavorite(): Promise<void> {
+  const gate = peekPendingGate();
+  const intent = gate?.intent;
+
+  // Nao e nosso (ausente, navegacao, ou outro dominio): nao consome.
+  if (!intent || intent.kind !== "domain" || intent.domain !== "favorite") {
+    return;
+  }
+
+  const payload = intent.payload;
+  if (!isFavoriteGatePayload(payload)) {
+    // E nosso, mas inutil: consome (limpa) sem POST.
+    consumePendingGate();
+    console.warn(
+      "[useFavorites] pending_gate favorite payload malformado; descartado sem POST",
+    );
+    return;
+  }
+
+  consumePendingGate();
+
+  const favoriteItem: FavoriteItem = {
+    id: payload.itemKey,
+    type: payload.type as FavoriteType,
+    title: payload.snapshot?.title ?? "",
+    subtitle: payload.snapshot?.subtitle,
+    url: payload.snapshot?.url,
+  };
+
+  try {
+    await apiFetch("/", {
+      method: "POST",
+      body: JSON.stringify(favoriteToBookmark(favoriteItem)),
+    });
+    posthog.capture("favorite_toggled", {
+      action: "added",
+      resource_type: favoriteItem.type,
+      resource_title: payload.snapshot?.title || payload.itemKey,
+      via: "gate_intent",
+    });
+  } catch (err) {
+    console.error("[useFavorites] pending_gate favorite apply failed", err);
   }
 }
