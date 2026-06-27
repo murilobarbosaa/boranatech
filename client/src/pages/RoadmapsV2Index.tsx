@@ -78,6 +78,99 @@ function HeroDoodles({ reduce }: { reduce: boolean | null }) {
   );
 }
 
+function TrailMascot({
+  className,
+  body,
+  reduce,
+  delay,
+}: {
+  className: string;
+  body: string;
+  reduce: boolean | null;
+  delay: number;
+}) {
+  return (
+    <motion.div
+      className={`pointer-events-none absolute z-0 ${className}`}
+      aria-hidden
+      animate={reduce ? undefined : { y: [0, -9, 0], rotate: [0, 4, 0] }}
+      transition={
+        reduce
+          ? undefined
+          : { duration: 4.6, repeat: Infinity, ease: "easeInOut", delay }
+      }
+    >
+      <svg viewBox="0 0 64 74" className="h-full w-full" fill="none">
+        <path
+          d="M32 4 L40 15 L32 17 Z"
+          fill="#ef4444"
+          stroke="#0f172a"
+          strokeWidth="3"
+          strokeLinejoin="round"
+        />
+        <line x1="32" y1="6" x2="32" y2="24" stroke="#0f172a" strokeWidth="3" />
+        <rect
+          x="9"
+          y="22"
+          width="46"
+          height="40"
+          rx="15"
+          fill={body}
+          stroke="#0f172a"
+          strokeWidth="3.5"
+        />
+        <circle
+          cx="24"
+          cy="39"
+          r="5.5"
+          fill="#ffffff"
+          stroke="#0f172a"
+          strokeWidth="2.5"
+        />
+        <circle
+          cx="40"
+          cy="39"
+          r="5.5"
+          fill="#ffffff"
+          stroke="#0f172a"
+          strokeWidth="2.5"
+        />
+        <circle cx="25" cy="40" r="2.2" fill="#0f172a" />
+        <circle cx="41" cy="40" r="2.2" fill="#0f172a" />
+        <path
+          d="M23 49 Q32 56 41 49"
+          fill="none"
+          stroke="#0f172a"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+        <rect
+          x="17"
+          y="61"
+          width="9"
+          height="7"
+          rx="2.5"
+          fill={body}
+          stroke="#0f172a"
+          strokeWidth="3"
+        />
+        <rect
+          x="38"
+          y="61"
+          width="9"
+          height="7"
+          rx="2.5"
+          fill={body}
+          stroke="#0f172a"
+          strokeWidth="3"
+        />
+        <circle cx="15" cy="34" r="3" fill="#fda4af" opacity="0.85" />
+        <circle cx="49" cy="34" r="3" fill="#fda4af" opacity="0.85" />
+      </svg>
+    </motion.div>
+  );
+}
+
 export default function RoadmapsV2Index() {
   const search = useSearch();
   const reduce = useReducedMotion();
@@ -96,7 +189,23 @@ export default function RoadmapsV2Index() {
       />
 
       <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        <div
+          className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-br from-violet-300/45 via-fuchsia-200/35 to-amber-200/45"
+          aria-hidden
+        />
         <HeroDoodles reduce={reduce} />
+        <TrailMascot
+          className="right-[3%] top-4 hidden h-20 w-20 sm:block sm:h-28 sm:w-28"
+          body="#8b5cf6"
+          reduce={reduce}
+          delay={0}
+        />
+        <TrailMascot
+          className="right-[14%] top-28 hidden h-14 w-14 md:block"
+          body="#f59e0b"
+          reduce={reduce}
+          delay={0.8}
+        />
         <div className="relative z-10 mx-auto max-w-[1180px] px-5 pb-20 pt-8">
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 14 }}
