@@ -312,9 +312,10 @@ const menuData: DropdownMenu[] = [
             path: "/comunidades",
           },
           {
-            label: "Mentorias",
-            description: "Sessões com quem já está na área",
+            label: "Mentorias e Ebooks",
+            description: "Mentorias e ebooks de parceiros",
             path: "/mentorias",
+            isPro: true,
           },
           { label: "Mulheres", path: "/mulheres", isWomen: true },
         ],
