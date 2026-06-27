@@ -771,7 +771,7 @@ export default function FaculdadeDetalhe() {
   );
   const detail = params.slug ? courseDetails[params.slug] : undefined;
 
-  if (!course || !detail) {
+  if (!course) {
     return (
       <Layout>
         <div className="container py-20 text-center">
@@ -793,6 +793,241 @@ export default function FaculdadeDetalhe() {
             <ArrowLeft className="h-4 w-4" aria-hidden /> Voltar para faculdades
           </Link>
         </div>
+      </Layout>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <Layout>
+        <PageHero
+          accent={accent}
+          eyebrow={`${course.tipo} · ${course.duracao}`}
+          title={course.nome}
+          subtitle={course.perfilIndicado}
+          topSlot={
+            <Link
+              href="/faculdades"
+              className={cn(
+                "inline-flex items-center gap-2 text-sm font-bold",
+                ac.link,
+                ac.linkHover,
+              )}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Todos os cursos superiores
+            </Link>
+          }
+          titlePrefix={
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 bg-white text-slate-900 shadow-[4px_4px_0_#0f172a]">
+              <GraduationCap className="h-9 w-9" aria-hidden />
+            </span>
+          }
+          actions={
+            <FavoriteButton
+              item={{
+                id: slugifyCourse(course.nome),
+                type: "faculdade",
+                title: course.nome,
+                subtitle: course.tipo,
+              }}
+            />
+          }
+        />
+
+        <section className={cn(ac.contentBg, "py-12")}>
+          <div className="container">
+            <div className="grid gap-8 lg:grid-cols-3">
+              <main className="space-y-8 lg:col-span-2">
+                <section className="card-brutal rounded-xl bg-white p-6">
+                  <h2 className="font-display mb-3 text-xl font-black text-slate-950">
+                    O que você estuda nesse curso
+                  </h2>
+                  <p className="leading-relaxed text-slate-700">
+                    {course.oQueEstuda}
+                  </p>
+                </section>
+
+                <section
+                  className={cn(
+                    "card-brutal rounded-xl border-2 p-6",
+                    ac.panelBorder,
+                    ac.panelSoft,
+                  )}
+                >
+                  <h2 className="font-display mb-3 text-xl font-black text-slate-950">
+                    Pra quem é
+                  </h2>
+                  <p className="text-slate-700">{course.perfilIndicado}</p>
+                  <h3 className="font-display mb-2 mt-5 text-base font-black text-slate-950">
+                    Diferença dos outros cursos
+                  </h3>
+                  <p className="text-sm font-medium text-slate-600">
+                    {course.diferencas}
+                  </p>
+                </section>
+
+                <section className="card-brutal rounded-xl bg-white p-6">
+                  <h2 className="font-display mb-4 text-xl font-black text-slate-950">
+                    Onde você pode atuar
+                  </h2>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {course.areasAtuacao.map((area) => (
+                      <div
+                        key={area}
+                        className={cn(
+                          "rounded-xl border-2 p-4",
+                          ac.panelBorder,
+                          ac.panelSoft,
+                        )}
+                      >
+                        <Briefcase
+                          className={cn("mb-2 h-5 w-5", ac.iconMuted)}
+                          aria-hidden
+                        />
+                        <p className={cn("font-bold", ac.tbodyAccentBold)}>
+                          {area}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="card-brutal rounded-xl bg-white p-6">
+                  <h2 className="font-display mb-4 text-xl font-black text-slate-950">
+                    Pontos positivos
+                  </h2>
+                  <ul className="space-y-2">
+                    {course.pontoPositivos.map((point) => (
+                      <li
+                        key={point}
+                        className="flex items-start gap-2 text-sm text-slate-700"
+                      >
+                        <CheckCircle
+                          className={cn(
+                            "mt-0.5 h-4 w-4 shrink-0",
+                            ac.iconMuted,
+                          )}
+                          aria-hidden
+                        />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              </main>
+
+              <aside className="space-y-5">
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl border-2 bg-white p-6",
+                    ac.panelBorder,
+                    ac.panelSoft,
+                  )}
+                >
+                  <h3
+                    className={cn(
+                      "font-display mb-4 text-lg font-black",
+                      ac.tbodyAccentBold,
+                    )}
+                  >
+                    Resumo rápido
+                  </h3>
+                  <div className="space-y-3 text-sm text-slate-900">
+                    <div>
+                      <p
+                        className={cn(
+                          "text-xs font-black uppercase",
+                          ac.iconMuted,
+                        )}
+                      >
+                        Duração
+                      </p>
+                      <p className="font-bold">{course.duracao}</p>
+                    </div>
+                    <div>
+                      <p
+                        className={cn(
+                          "text-xs font-black uppercase",
+                          ac.iconMuted,
+                        )}
+                      >
+                        Tipo
+                      </p>
+                      <p className="font-bold">{course.tipo}</p>
+                    </div>
+                    <div>
+                      <p
+                        className={cn(
+                          "text-xs font-black uppercase",
+                          ac.iconMuted,
+                        )}
+                      >
+                        Programação
+                      </p>
+                      <p className="font-bold">{course.programacao}</p>
+                    </div>
+                    <div>
+                      <p
+                        className={cn(
+                          "text-xs font-black uppercase",
+                          ac.iconMuted,
+                        )}
+                      >
+                        Matemática
+                      </p>
+                      <p className="font-bold">{course.matematica}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-brutal rounded-xl border-red-200 bg-red-50 p-5">
+                  <h3 className="font-display mb-3 font-black text-slate-950">
+                    Pontos de atenção
+                  </h3>
+                  <ul className="space-y-2">
+                    {course.pontosAtencao.map((point) => (
+                      <li
+                        key={point}
+                        className="text-sm font-medium text-slate-700"
+                      >
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl border-2 p-5",
+                    ac.panelBorder,
+                    ac.panelSoft,
+                  )}
+                >
+                  <div className="mb-3 flex items-center gap-3">
+                    <span
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-900 text-white shadow-[2px_2px_0_#0f172a]",
+                        ac.tableBanner,
+                      )}
+                    >
+                      <Sparkles className="h-5 w-5 text-white" aria-hidden />
+                    </span>
+                    <p className="font-display text-sm font-bold text-slate-900">
+                      Quer comparar com outros caminhos?
+                    </p>
+                  </div>
+                  <Link
+                    href="/comparador"
+                    className="btn-brutal-accent block rounded-lg py-2.5 text-center text-sm font-black"
+                  >
+                    Abrir comparador
+                  </Link>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
       </Layout>
     );
   }
