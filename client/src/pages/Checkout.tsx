@@ -225,8 +225,13 @@ export default function Checkout() {
         <div className="border-b-2 border-slate-950 bg-[#FFB800]">
           <div className="container py-3 text-center">
             <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
-              Cupom {affiliateCode} aplicado, {discountPercent}% de desconto em
-              qualquer plano
+              {/* TODO(Ana): confirmar copy final */}
+              Cupom {affiliateCode} aplicado, {discountPercent}% de desconto na
+              primeira cobrança.
+            </p>
+            <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-950/70">
+              {/* TODO(Ana): confirmar copy final */}
+              Renovações no valor cheio.
             </p>
           </div>
         </div>
@@ -461,9 +466,16 @@ export default function Checkout() {
           {hasCoupon ? (
             <div className="mx-auto mt-8 flex w-full max-w-xl items-center justify-center gap-2 rounded-full border-2 border-emerald-700 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-800">
               <Check size={16} strokeWidth={3} aria-hidden="true" />
-              <span>
-                Desconto de {discountPercent}% já aplicado nos preços abaixo ·
-                Cupom {affiliateCode}
+              <span className="flex flex-col items-center text-center sm:flex-row sm:gap-1.5">
+                <span>
+                  {/* TODO(Ana): confirmar copy final */}
+                  Desconto de {discountPercent}% na primeira cobrança, já
+                  aplicado nos preços abaixo · Cupom {affiliateCode}
+                </span>
+                <span className="text-xs font-semibold text-emerald-700">
+                  {/* TODO(Ana): confirmar copy final */}
+                  Renovações no valor cheio.
+                </span>
               </span>
             </div>
           ) : null}

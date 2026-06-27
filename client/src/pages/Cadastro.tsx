@@ -39,8 +39,13 @@ export default function Cadastro() {
           <div className="rounded-2xl border-2 border-slate-900 bg-[#FFB800] p-4 text-slate-950 shadow-[4px_4px_0_#0f172a]">
             <p className="flex items-center gap-2 text-sm font-black">
               <TicketPercent className="h-5 w-5" />
-              Você vai assinar com {visibleDiscount}% de desconto, cupom{" "}
-              {affiliateCode} aplicado automaticamente
+              {/* TODO(Ana): confirmar copy final */}
+              Você vai assinar com {visibleDiscount}% de desconto na primeira
+              cobrança, cupom {affiliateCode} aplicado automaticamente
+            </p>
+            <p className="mt-1 text-xs font-bold text-slate-950/80">
+              {/* TODO(Ana): confirmar copy final */}
+              Renovações no valor cheio.
             </p>
           </div>
         ) : null
