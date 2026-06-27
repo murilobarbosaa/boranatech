@@ -119,7 +119,7 @@ export default function RoadmapsV2Index() {
                 pra a rota da ferramenta (ex.: <Link href="/roadmaps/ia">) e
                 remover o estado "em breve" (o toast e o selo). roadmap-generator
                 e Pro (requiresPro em server/lib/aiTools.ts), por isso o selo Pro. */}
-            <button
+            <motion.button
               type="button"
               onClick={() =>
                 // TODO(Ana): copy do aviso de "em breve"
@@ -127,16 +127,24 @@ export default function RoadmapsV2Index() {
                   "Em breve você vai poder gerar um roadmap sob medida com IA.",
                 )
               }
-              className="mt-5 inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2"
+              animate={reduce ? undefined : { scale: [1, 1.04, 1] }}
+              transition={
+                reduce
+                  ? undefined
+                  : { duration: 1.9, repeat: Infinity, ease: "easeInOut" }
+              }
+              whileHover={reduce ? undefined : { y: -2 }}
+              whileTap={reduce ? undefined : { scale: 0.96 }}
+              className="mt-5 inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-gradient-to-r from-violet-600 via-fuchsia-500 to-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a,0_0_22px_rgba(168,85,247,0.65)] transition-shadow hover:shadow-[5px_5px_0_#0f172a,0_0_32px_rgba(168,85,247,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2"
             >
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              <Sparkles className="h-4 w-4 motion-safe:animate-pulse" aria-hidden="true" />
               {/* TODO(Ana): copy do botao de roadmap com IA */}
               Criar roadmap com IA
               <ProStarIcon className="ml-0.5" />
               <span className="rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-900">
                 em breve
               </span>
-            </button>
+            </motion.button>
           </motion.div>
 
           <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
