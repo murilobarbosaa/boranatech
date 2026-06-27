@@ -8273,6 +8273,64 @@ export const cursosGratuitos = [
     proximoConteudo: "Aprofundar em cada tecnologia separadamente e criar projetos maiores.",
     tipo: "Gratuito",
   },
+  {
+    id: "curso-foundational-csharp",
+    certificate: "sim",
+    titulo: "Foundational C# with Microsoft",
+    canal: "Microsoft",
+    plataforma: "freeCodeCamp",
+    link: "https://www.freecodecamp.org/learn/foundational-c-sharp-with-microsoft",
+    areaSlug: "backend",
+    nivel: "Iniciante",
+    duracao: "",
+    idioma: "Inglês",
+    descricao:
+      "Trilha de fundamentos de C# em parceria com a Microsoft, com certificação ao concluir.",
+    motivoIndicacao: "", // TODO(Ana): escrever o motivo da indicação
+    oQueAprende: ["Fundamentos de C#"],
+    proximoConteudo: "", // TODO(Ana): sugerir próximo conteúdo
+    tipo: "Gratuito",
+  },
+  {
+    id: "curso-imersao-dev-alura",
+    certificate: "sim",
+    titulo: "Imersão Dev",
+    canal: "Alura",
+    plataforma: "Alura",
+    link: "https://imersao.dev/",
+    areaSlug: "frontend",
+    nivel: "Iniciante",
+    duracao: "5 dias",
+    idioma: "Português",
+    descricao:
+      "Evento gratuito de programação com lógica, JavaScript, HTML e CSS, com certificado de participação.",
+    motivoIndicacao: "", // TODO(Ana): escrever o motivo da indicação
+    oQueAprende: ["Lógica de programação", "JavaScript", "HTML", "CSS"],
+    proximoConteudo: "", // TODO(Ana): sugerir próximo conteúdo
+    tipo: "Gratuito",
+  },
+  {
+    id: "curso-oracle-next-education",
+    certificate: "nao_informado",
+    titulo: "Oracle Next Education (ONE)",
+    canal: "Oracle",
+    plataforma: "Alura",
+    link: "https://www.oracle.com/br/education/oracle-next-education/",
+    areaSlug: "fullstack",
+    nivel: "Iniciante",
+    duracao: "",
+    idioma: "Português",
+    descricao:
+      "Programa gratuito de formação e empregabilidade em tecnologia da Oracle em parceria com a Alura.",
+    motivoIndicacao: "", // TODO(Ana): escrever o motivo da indicação
+    oQueAprende: [
+      "Lógica de programação",
+      "Programação",
+      "Carreira em tecnologia",
+    ],
+    proximoConteudo: "", // TODO(Ana): sugerir próximo conteúdo
+    tipo: "Gratuito",
+  },
 ];
 
 const plataformasBase = [
