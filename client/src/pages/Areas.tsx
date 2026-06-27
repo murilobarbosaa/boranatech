@@ -116,7 +116,7 @@ const tipoFiltros: { id: string; label: string }[] = [
 
 function SkeletonAreaCard() {
   return (
-    <div className="flex h-full animate-pulse flex-col rounded-2xl border-2 border-slate-200 bg-white p-5">
+    <div className="flex h-full animate-pulse flex-col rounded-2xl border-2 border-slate-200 bg-white p-4">
       <div className="mb-4 h-10 w-10 rounded-lg bg-slate-200" />
       <div className="mb-2 h-5 w-2/3 rounded bg-slate-200" />
       <div className="mb-2 h-4 w-full rounded bg-slate-100" />
@@ -340,7 +340,7 @@ export default function Areas() {
 
           {isLoading ? (
             <div
-              className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
               aria-busy="true"
               aria-label="Carregando áreas"
             >
@@ -368,7 +368,7 @@ export default function Areas() {
               </button>
             </div>
           ) : (
-            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((area, index) => {
                 const Icon = area.icon;
                 const accent = getAreaAccent(area.nome);
@@ -377,14 +377,14 @@ export default function Areas() {
                   <>
                     <div className="flex items-start justify-between gap-2 pr-9">
                       <span
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2"
                         style={{
                           backgroundColor: accentTint,
                           borderColor: accent,
                           color: accent,
                         }}
                       >
-                        <Icon className="h-6 w-6" strokeWidth={2.5} aria-hidden />
+                        <Icon className="h-5 w-5" strokeWidth={2.5} aria-hidden />
                       </span>
                       <span
                         className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${TIPO_SELO[area.tipo]}`}
@@ -399,7 +399,7 @@ export default function Areas() {
                         className="mt-3"
                       />
                     ) : null}
-                    <h3 className="mt-3 font-display text-lg font-bold text-slate-900">
+                    <h3 className="mt-3 font-display text-base font-bold text-slate-900">
                       {area.nome}
                     </h3>
                     <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
@@ -470,12 +470,12 @@ export default function Areas() {
                     {area.href ? (
                       <Link
                         href={area.href}
-                        className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_#fbbf24] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#fbbf24] motion-safe:focus-visible:-translate-y-1 motion-safe:focus-visible:shadow-[6px_6px_0_#fbbf24]"
+                        className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[4px_4px_0_#fbbf24] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#fbbf24] motion-safe:focus-visible:-translate-y-1 motion-safe:focus-visible:shadow-[6px_6px_0_#fbbf24]"
                       >
                         {inner}
                       </Link>
                     ) : (
-                      <div className="flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-5 shadow-[4px_4px_0_#fbbf24]">
+                      <div className="flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[4px_4px_0_#fbbf24]">
                         {inner}
                       </div>
                     )}
