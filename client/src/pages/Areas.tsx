@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   Search,
   SearchX,
   Sparkles,
+  Star,
   Users,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -234,14 +235,44 @@ export default function Areas() {
         title="Áreas da TI"
         subtitle="Cada área é um caminho dentro da tech. Filtra pelo que te interessa, clica numa e veja o que ela é, o que faz e por onde começar."
         actions={
-          <Link
-            href="/quiz-carreira"
-            className="pro-glare inline-flex items-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+          <motion.div
+            className="relative inline-block"
+            animate={reduce ? undefined : { scale: [1, 1.03, 1] }}
+            transition={
+              reduce
+                ? undefined
+                : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }
+            }
           >
-            <Sparkles className="h-4 w-4" aria-hidden />
-            Não sabe por onde começar? Faça o quiz
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
+            <Star
+              className="pointer-events-none absolute -left-2 -top-2 h-3.5 w-3.5 fill-amber-300 text-amber-500 motion-safe:animate-twinkle"
+              style={{ "--twinkle-duration": "2.4s" } as CSSProperties}
+              aria-hidden
+            />
+            <Star
+              className="pointer-events-none absolute -right-1.5 top-1/2 h-2.5 w-2.5 fill-amber-200 text-amber-400 motion-safe:animate-twinkle"
+              style={
+                {
+                  "--twinkle-delay": "-1.2s",
+                  "--twinkle-duration": "3.2s",
+                } as CSSProperties
+              }
+              aria-hidden
+            />
+            <Star
+              className="pointer-events-none absolute -bottom-2 right-7 h-3 w-3 fill-amber-300 text-amber-500 motion-safe:animate-twinkle"
+              style={{ "--twinkle-delay": "-0.6s" } as CSSProperties}
+              aria-hidden
+            />
+            <Link
+              href="/quiz-carreira"
+              className="pro-glare inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 text-center font-display text-sm font-black leading-snug text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+            >
+              <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+              Não sabe por onde começar? Faça o quiz
+              <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+            </Link>
+          </motion.div>
         }
       />
 
