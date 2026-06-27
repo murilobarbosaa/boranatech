@@ -129,7 +129,8 @@ type AdminSectionId =
   | "seo"
   | "financeiro"
   | "ia"
-  | "afiliados";
+  | "afiliados"
+  | "newsletter";
 
 type UserProfile = {
   userId?: string;
@@ -325,6 +326,11 @@ const adminNavItems: AdminNavItem[] = [
     href: "#afiliados",
     label: "Afiliados",
     icon: <Handshake className="h-4 w-4" />,
+  },
+  {
+    href: "#newsletter",
+    label: "Newsletter",
+    icon: <Mail className="h-4 w-4" />,
   },
 ];
 
@@ -973,6 +979,268 @@ function contentPayload(
     is_pro: Boolean(form.is_pro),
     is_published: Boolean(form.is_published),
   };
+}
+
+type NewsletterSubscriberRow = {
+  email: string;
+  status: "pending_confirmation" | "confirmed" | "unsubscribed";
+  created_at: string;
+  confirmed_at: string | null;
+  unsubscribed_at: string | null;
+};
+
+type NewsletterAdminData = {
+  counts: {
+    pending_confirmation: number;
+    confirmed: number;
+    unsubscribed: number;
+    total: number;
+  };
+  subscribers: NewsletterSubscriberRow[];
+  pagination: { limit: number; offset: number; total: number };
+};
+
+type NewsletterStatusFilter =
+  | "all"
+  | "pending_confirmation"
+  | "confirmed"
+  | "unsubscribed";
+
+const NEWSLETTER_PAGE_SIZE = 50;
+
+const NEWSLETTER_STATUS_META: Record<
+  NewsletterSubscriberRow["status"],
+  { label: string; className: string }
+> = {
+  confirmed: {
+    label: "Confirmado",
+    className: "border-emerald-600 bg-emerald-50 text-emerald-700",
+  },
+  pending_confirmation: {
+    label: "Pendente",
+    className: "border-amber-500 bg-amber-50 text-amber-700",
+  },
+  unsubscribed: {
+    label: "Cancelado",
+    className: "border-slate-400 bg-slate-100 text-slate-600",
+  },
+};
+
+const NEWSLETTER_FILTERS: Array<{ id: NewsletterStatusFilter; label: string }> =
+  [
+    { id: "all", label: "Todos" },
+    { id: "confirmed", label: "Confirmados" },
+    { id: "pending_confirmation", label: "Pendentes" },
+    { id: "unsubscribed", label: "Cancelados" },
+  ];
+
+function formatNewsletterDate(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function NewsletterAdminSection() {
+  const [data, setData] = useState<NewsletterAdminData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] =
+    useState<NewsletterStatusFilter>("all");
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        params.set("limit", String(NEWSLETTER_PAGE_SIZE));
+        params.set("offset", String(offset));
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        const json = await adminFetch(
+          `/newsletter/subscribers?${params.toString()}`,
+        );
+        if (cancelled) return;
+        setData(json.data as NewsletterAdminData);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : "Erro ao carregar assinantes.",
+        );
+        setData(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [statusFilter, offset]);
+
+  function changeFilter(next: NewsletterStatusFilter) {
+    setStatusFilter(next);
+    setOffset(0);
+  }
+
+  const counts = data?.counts;
+  const pagination = data?.pagination;
+  const subscribers = data?.subscribers ?? [];
+  const canPrev = offset > 0;
+  const canNext = pagination
+    ? offset + pagination.limit < pagination.total
+    : false;
+
+  const countCards = [
+    { label: "Confirmados", value: counts?.confirmed ?? 0 },
+    { label: "Pendentes", value: counts?.pending_confirmation ?? 0 },
+    { label: "Cancelados", value: counts?.unsubscribed ?? 0 },
+    { label: "Total", value: counts?.total ?? 0 },
+  ];
+
+  return (
+    <AdminSection
+      id="newsletter"
+      eyebrow="newsletter"
+      icon={<Mail className="h-4 w-4" />}
+      title="Assinantes da newsletter"
+      subtitle="Visão somente leitura de quem entrou na newsletter, por status. Sem edição."
+    >
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {countCards.map((card) => (
+          <div
+            key={card.label}
+            className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+          >
+            <p className="text-xs font-black uppercase text-slate-500">
+              {card.label}
+            </p>
+            <p className="font-display text-3xl font-black text-slate-950">
+              {card.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {NEWSLETTER_FILTERS.map((filter) => (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => changeFilter(filter.id)}
+            className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors ${
+              statusFilter === filter.id
+                ? "bg-slate-950 text-white"
+                : "bg-white text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+        {loading && !data ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            Carregando assinantes...
+          </p>
+        ) : error ? (
+          <p className="p-6 text-sm font-semibold text-rose-600">{error}</p>
+        ) : subscribers.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            Nenhum assinante ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b-2 border-slate-900 bg-slate-50">
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    E-mail
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Inscrição
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Confirmação
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {subscribers.map((row) => {
+                  const meta = NEWSLETTER_STATUS_META[row.status];
+                  return (
+                    <tr
+                      key={row.email}
+                      className="border-b border-slate-200 last:border-0"
+                    >
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        {row.email}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${meta.className}`}
+                        >
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatNewsletterDate(row.created_at)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatNewsletterDate(row.confirmed_at)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {pagination && pagination.total > 0 ? (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="text-xs font-bold text-slate-500">
+            {Math.min(offset + 1, pagination.total)} a{" "}
+            {Math.min(offset + pagination.limit, pagination.total)} de{" "}
+            {pagination.total}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!canPrev || loading}
+              onClick={() =>
+                setOffset((prev) => Math.max(prev - NEWSLETTER_PAGE_SIZE, 0))
+              }
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              disabled={!canNext || loading}
+              onClick={() => setOffset((prev) => prev + NEWSLETTER_PAGE_SIZE)}
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </AdminSection>
+  );
 }
 
 function ContentAdminSection() {
@@ -3202,6 +3470,8 @@ export default function Admin() {
               </div>
             </AdminSection>
           ) : null}
+
+          {activeSection === "newsletter" ? <NewsletterAdminSection /> : null}
 
           {activeSection === "afiliados" ? (
             <article

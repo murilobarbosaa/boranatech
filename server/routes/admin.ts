@@ -983,4 +983,88 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
   }
 });
 
+// Visao somente leitura dos assinantes da newsletter, por status. Sem mutacao:
+// nao entra no CRUD generico de /content/:type. Filtro de status opcional,
+// paginacao por limit/offset. Tudo via supabaseAdmin (bypassa RLS).
+router.get("/newsletter/subscribers", async (req, res, next) => {
+  try {
+    const NEWSLETTER_STATUSES = [
+      "pending_confirmation",
+      "confirmed",
+      "unsubscribed",
+    ] as const;
+    type NewsletterStatus = (typeof NEWSLETTER_STATUSES)[number];
+
+    const statusParam =
+      typeof req.query.status === "string" ? req.query.status : undefined;
+    if (
+      statusParam !== undefined &&
+      !NEWSLETTER_STATUSES.includes(statusParam as NewsletterStatus)
+    ) {
+      return next(createError(400, "invalid_status", "Status inválido."));
+    }
+    const statusFilter = statusParam as NewsletterStatus | undefined;
+
+    const parsedLimit = parseInt(String(req.query.limit ?? "50"), 10);
+    const limit = Math.min(
+      Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 50, 1),
+      200,
+    );
+    const parsedOffset = parseInt(String(req.query.offset ?? "0"), 10);
+    const offset = Math.max(
+      Number.isFinite(parsedOffset) ? parsedOffset : 0,
+      0,
+    );
+
+    // Counts por status (head + count exato), um por status. Usa o indice
+    // newsletter_subscribers_status_idx.
+    const countResults = await Promise.all(
+      NEWSLETTER_STATUSES.map((s) =>
+        supabaseAdmin
+          .from("newsletter_subscribers")
+          .select("*", { count: "exact", head: true })
+          .eq("status", s),
+      ),
+    );
+    for (const result of countResults) {
+      if (result.error)
+        return next(createError(500, "db_error", "Erro ao contar assinantes."));
+    }
+    const counts = {
+      pending_confirmation: countResults[0].count ?? 0,
+      confirmed: countResults[1].count ?? 0,
+      unsubscribed: countResults[2].count ?? 0,
+      total: 0,
+    };
+    counts.total =
+      counts.pending_confirmation + counts.confirmed + counts.unsubscribed;
+
+    // Lista paginada. O count exato DESSA query (mesmo filtro) e o total da
+    // paginacao.
+    let listQuery = supabaseAdmin
+      .from("newsletter_subscribers")
+      .select("email, status, created_at, confirmed_at, unsubscribed_at", {
+        count: "exact",
+      })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (statusFilter) listQuery = listQuery.eq("status", statusFilter);
+
+    const { data, count, error } = await listQuery;
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar assinantes."));
+
+    res.json({
+      data: {
+        counts,
+        subscribers: data || [],
+        pagination: { limit, offset, total: count ?? 0 },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
