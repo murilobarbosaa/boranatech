@@ -21,9 +21,13 @@ import TrailStation from "./TrailStation";
 const VBW = 780;
 const TOP_PAD = 80;
 const BOTTOM_PAD = 110;
-const ROW_GAP = 215;
-const PER_ROW = 3;
-const COL_X = [150, 390, 630];
+const STEP_Y = 128;
+const CENTER_X = VBW / 2;
+const SWAY_A = 180;
+const SWAY_B = 54;
+const FREQ_A = 0.85;
+const FREQ_B = 1.93;
+const PHASE_B = 0.7;
 const DOTS = 6;
 
 // Dot-walk animation timing (kept in sync with the motion variants below).
@@ -54,14 +58,14 @@ function bezier(a: Point, cp1: Point, cp2: Point, b: Point, t: number): Point {
 }
 
 function buildLayout(count: number) {
-  const rows = Math.ceil(count / PER_ROW);
-  const VBH = TOP_PAD + ROW_GAP * (rows - 1) + BOTTOM_PAD;
+  const VBH = TOP_PAD + STEP_Y * Math.max(count - 1, 0) + BOTTOM_PAD;
   const pts: Point[] = [];
   for (let i = 0; i < count; i++) {
-    const row = Math.floor(i / PER_ROW);
-    const pir = i % PER_ROW;
-    const col = row % 2 === 0 ? pir : PER_ROW - 1 - pir;
-    pts.push({ x: COL_X[col], y: TOP_PAD + row * ROW_GAP });
+    const x =
+      CENTER_X +
+      SWAY_A * Math.sin(i * FREQ_A) +
+      SWAY_B * Math.sin(i * FREQ_B + PHASE_B);
+    pts.push({ x, y: TOP_PAD + i * STEP_Y });
   }
   const segments: Point[][] = [];
   const paths: string[] = [];
@@ -263,7 +267,7 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
         mx: (p.x + layout.pts[i + 1].x) / 2,
         my: (p.y + layout.pts[i + 1].y) / 2,
       }))
-      .filter((d) => d.i % PER_ROW === PER_ROW - 1);
+      .filter((d) => d.i % 2 === 1);
 
     return (
       <div className="relative mt-7 w-full" style={{ height: layout.VBH }}>
