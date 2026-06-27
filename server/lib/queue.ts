@@ -6,6 +6,8 @@ import { env } from "./env";
 import {
   sendCancellationEmail,
   sendCancellationScheduledEmail,
+  sendNewsletterConfirmEmail,
+  sendNewsletterWelcomeEmail,
   sendPaymentFailedEmail,
   sendProUpgradeEmail,
   sendWaitlistConfirmationEmail,
@@ -20,7 +22,9 @@ export type EmailJobData =
   | ({ type: "cancellation" } & Recipient)
   | ({ type: "cancellation_scheduled"; effectiveAt: string } & Recipient)
   | ({ type: "payment_failed" } & Recipient)
-  | ({ type: "waitlist_confirmation" } & Recipient);
+  | ({ type: "waitlist_confirmation" } & Recipient)
+  | { type: "newsletter_confirm"; to: string; confirmUrl: string }
+  | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string };
 
 export const redisConnection = env.redisUrl
   ? new IORedis(env.redisUrl, {
@@ -72,6 +76,12 @@ async function sendDirect(data: EmailJobData) {
       break;
     case "waitlist_confirmation":
       await sendWaitlistConfirmationEmail(data.to, data.name);
+      break;
+    case "newsletter_confirm":
+      await sendNewsletterConfirmEmail(data.to, data.confirmUrl);
+      break;
+    case "newsletter_welcome":
+      await sendNewsletterWelcomeEmail(data.to, data.unsubscribeUrl);
       break;
   }
 }

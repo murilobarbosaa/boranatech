@@ -274,6 +274,73 @@ export async function sendWaitlistConfirmationEmail(to: string, _name?: string) 
   });
 }
 
+export async function sendNewsletterConfirmEmail(
+  to: string,
+  confirmUrl: string,
+) {
+  const theme = NEUTRAL_THEME;
+  // TODO(Ana): copy final do e-mail de confirmacao de inscricao (double opt-in).
+  const title = "Confirme sua inscrição na newsletter";
+  const body = `
+    ${paragraph("Falta um passo para você começar a receber a newsletter do Bora na Tech.")}
+    ${paragraph("Clique no botão abaixo para confirmar sua inscrição.")}
+    ${button("Confirmar inscrição", confirmUrl, theme)}
+    ${paragraph("Se não foi você que pediu, ignore este e-mail.")}
+  `;
+  // TODO(Ana): versao texto plano do e-mail de confirmacao de inscricao.
+  const text = [
+    "Confirme sua inscricao na newsletter",
+    "",
+    "Falta um passo para voce comecar a receber a newsletter do Bora na Tech.",
+    "Confirme sua inscricao neste link:",
+    confirmUrl,
+    "",
+    "Se nao foi voce que pediu, ignore este e-mail.",
+  ].join("\n");
+
+  // E-mail transacional de double opt-in: nao adiciona header List-Unsubscribe
+  // proprio (o mailto central de sendEmail permanece intacto).
+  await sendEmail({
+    to,
+    from: FROM_RELATIONSHIP,
+    subject: title,
+    html: layout(theme, title, body),
+    text,
+  });
+}
+
+export async function sendNewsletterWelcomeEmail(
+  to: string,
+  unsubscribeUrl: string,
+) {
+  const theme = NEUTRAL_THEME;
+  // TODO(Ana): copy final do e-mail de boas-vindas pos-confirmacao da newsletter.
+  const title = "Inscrição confirmada!";
+  const body = `
+    ${paragraph("Sua inscrição na newsletter do Bora na Tech está confirmada.")}
+    ${paragraph("A partir de agora você recebe novidades da tech direto no seu inbox.")}
+    ${paragraph(`Para sair quando quiser, <a href="${unsubscribeUrl}" style="color:${theme.accent};">clique aqui</a>.`)}
+  `;
+  // TODO(Ana): versao texto plano do e-mail de boas-vindas da newsletter.
+  const text = [
+    "Inscricao confirmada!",
+    "",
+    "Sua inscricao na newsletter do Bora na Tech esta confirmada.",
+    "A partir de agora voce recebe novidades da tech direto no seu inbox.",
+    "",
+    "Para sair quando quiser, acesse:",
+    unsubscribeUrl,
+  ].join("\n");
+
+  await sendEmail({
+    to,
+    from: FROM_RELATIONSHIP,
+    subject: title,
+    html: layout(theme, title, body),
+    text,
+  });
+}
+
 export async function sendProUpgradeEmail(
   to: string,
   name: string,

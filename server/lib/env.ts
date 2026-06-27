@@ -92,6 +92,16 @@ export const env = {
   waitlistAccessCode: process.env.WAITLIST_ACCESS_CODE || "",
   // Secret HMAC do token de beta. Ausente: o portao nao emite token, sem crashar.
   waitlistTokenSecret: process.env.WAITLIST_TOKEN_SECRET || "",
+  // Captura de newsletter. "off" mantem a captura desligada; "on" libera.
+  newsletterCaptureMode: (process.env.NEWSLETTER_CAPTURE_MODE || "off") as
+    | "on"
+    | "off",
+  // Secret HMAC dos tokens de newsletter (confirmacao/descadastro). Ausente: deny.
+  newsletterTokenSecret: process.env.NEWSLETTER_TOKEN_SECRET || "",
+  // Base URL absoluta do BACKEND para montar os links de confirm/unsubscribe nos
+  // e-mails (ex.: https://api.boranatech.com.br). Vazia = captura fechada (nao da
+  // pra montar link valido). Nao reutiliza appPublicUrl, que aponta pro frontend.
+  newsletterPublicBaseUrl: process.env.NEWSLETTER_PUBLIC_BASE_URL || "",
   // Allowlist dev-only de user ids que enxergam como Pro fora de producao.
   // Ignorada quando NODE_ENV === "production". Nunca prefixar com VITE_.
   devProUserIds: (process.env.DEV_PRO_USER_IDS || "")

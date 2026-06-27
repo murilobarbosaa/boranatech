@@ -21,6 +21,7 @@ import launchStateRouter, { betaRouter } from "./routes/launchState";
 import linkedinRouter from "./routes/linkedin";
 import meAvatarRouter from "./routes/meAvatar";
 import meRouter from "./routes/me";
+import newsletterRouter from "./routes/newsletter";
 import profilesRouter from "./routes/profiles";
 import progressRouter from "./routes/progress";
 import quizRouter from "./routes/quiz";
@@ -200,6 +201,7 @@ app.use(sitemapRouter);
 app.use("/api/affiliates", affiliatesRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/waitlist", waitlistRouter);
+app.use("/api/newsletter", newsletterRouter);
 app.use("/api/launch-state", launchStateRouter);
 app.use("/api/beta", betaRouter);
 
