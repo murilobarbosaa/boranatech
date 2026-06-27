@@ -21,14 +21,35 @@ import TrailStation from "./TrailStation";
 const VBW = 780;
 const TOP_PAD = 80;
 const BOTTOM_PAD = 110;
-const STEP_Y = 128;
-const CENTER_X = VBW / 2;
-const SWAY_A = 180;
-const SWAY_B = 54;
-const FREQ_A = 0.85;
-const FREQ_B = 1.93;
-const PHASE_B = 0.7;
 const DOTS = 6;
+
+const THEMES = [
+  { path: "#7c3aed", dotLit: "#a855f7", dotDim: "#ddd6fe", halo: "#ede9fe" },
+  { path: "#0891b2", dotLit: "#06b6d4", dotDim: "#a5f3fc", halo: "#cffafe" },
+  { path: "#ea580c", dotLit: "#f97316", dotDim: "#fed7aa", halo: "#ffedd5" },
+  { path: "#db2777", dotLit: "#ec4899", dotDim: "#fbcfe8", halo: "#fce7f3" },
+  { path: "#16a34a", dotLit: "#22c55e", dotDim: "#bbf7d0", halo: "#dcfce7" },
+  { path: "#2563eb", dotLit: "#3b82f6", dotDim: "#bfdbfe", halo: "#dbeafe" },
+];
+
+function hashSeed(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 // Dot-walk animation timing (kept in sync with the motion variants below).
 const WALK_DELAY = 0.05;
@@ -57,15 +78,30 @@ function bezier(a: Point, cp1: Point, cp2: Point, b: Point, t: number): Point {
   };
 }
 
-function buildLayout(count: number) {
-  const VBH = TOP_PAD + STEP_Y * Math.max(count - 1, 0) + BOTTOM_PAD;
+function buildLayout(count: number, seedKey: string, narrow: boolean) {
+  const rand = mulberry32(hashSeed(seedKey));
+  const template = Math.floor(rand() * 3);
+  const themeIndex = Math.floor(rand() * THEMES.length);
+  const freq = 0.7 + rand() * 0.9;
+  const phase = rand() * Math.PI * 2;
+  const stepY = 134 + Math.floor(rand() * 20);
+  const sLoops = 1 + rand() * 1.4;
+  const half = narrow ? 0.3 : 0.38;
+  const xMin = (0.5 - half) * VBW;
+  const xMax = (0.5 + half) * VBW;
+  const denom = Math.max(count - 1, 1);
+  const wave = (i: number): number => {
+    if (template === 0) return Math.sin(i * freq + phase);
+    if (template === 1) return Math.sin((i / denom) * Math.PI * sLoops + phase);
+    const side = i % 2 === 0 ? -1 : 1;
+    return side * (0.62 + 0.38 * Math.sin(i * freq + phase));
+  };
+  const VBH = TOP_PAD + stepY * Math.max(count - 1, 0) + BOTTOM_PAD;
   const pts: Point[] = [];
   for (let i = 0; i < count; i++) {
-    const x =
-      CENTER_X +
-      SWAY_A * Math.sin(i * FREQ_A) +
-      SWAY_B * Math.sin(i * FREQ_B + PHASE_B);
-    pts.push({ x, y: TOP_PAD + i * STEP_Y });
+    const w = Math.max(-1, Math.min(1, wave(i)));
+    const x = xMin + ((w + 1) / 2) * (xMax - xMin);
+    pts.push({ x, y: TOP_PAD + i * stepY });
   }
   const segments: Point[][] = [];
   const paths: string[] = [];
@@ -92,7 +128,7 @@ function buildLayout(count: number) {
       `M ${p1.x} ${p1.y} C ${cp1.x.toFixed(1)} ${cp1.y.toFixed(1)} ${cp2.x.toFixed(1)} ${cp2.y.toFixed(1)} ${p2.x} ${p2.y}`,
     );
   }
-  return { VBH, pts, segments, paths };
+  return { VBH, pts, segments, paths, theme: THEMES[themeIndex] };
 }
 
 export type TrailHandle = {
@@ -157,9 +193,17 @@ function ChestMark() {
 
 const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
   function RoadmapTrail({ sections, done, onOpenSection }, ref) {
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const [narrow, setNarrow] = useState<boolean>(() =>
+      typeof window !== "undefined" ? window.innerWidth < 600 : false,
+    );
+    const seedKey = useMemo(
+      () => sections.map((s) => s.id).join("|"),
+      [sections],
+    );
     const layout = useMemo(
-      () => buildLayout(sections.length),
-      [sections.length],
+      () => buildLayout(sections.length, seedKey, narrow),
+      [sections.length, seedKey, narrow],
     );
     const [lit, setLit] = useState<Set<number>>(() =>
       seedReached(sections, done),
@@ -258,6 +302,16 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
       };
     }, []);
 
+    useEffect(() => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const ro = new ResizeObserver(() => {
+        setNarrow(el.clientWidth < 600);
+      });
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
+
     const firstPt = layout.pts[0];
     const lastPt = layout.pts[layout.pts.length - 1];
     const trailDecor = layout.pts
@@ -270,7 +324,11 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
       .filter((d) => d.i % 2 === 1);
 
     return (
-      <div className="relative mt-7 w-full" style={{ height: layout.VBH }}>
+      <div
+        ref={wrapRef}
+        className="relative mt-7 w-full"
+        style={{ height: layout.VBH }}
+      >
         <svg
           viewBox={`0 0 ${VBW} ${layout.VBH}`}
           preserveAspectRatio="none"
@@ -281,11 +339,11 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
               key={`route-${si}`}
               d={d}
               fill="none"
-              stroke="#9c7b4f"
+              stroke={layout.theme.path}
               strokeWidth={2.5}
               strokeDasharray="2 10"
               strokeLinecap="round"
-              opacity={0.4}
+              opacity={0.45}
               className="pointer-events-none"
             />
           ))}
@@ -345,12 +403,12 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
                   r={(5.5 + ((si * 2 + k) % 3) * 0.6).toFixed(1)}
                   variants={{
                     lit: {
-                      fill: "#FFB800",
+                      fill: layout.theme.dotLit,
                       scale: [1, 2.1, 1],
                       transition: { duration: 0.55, ease: "easeInOut" },
                     },
                     unlit: {
-                      fill: "#c9b08a",
+                      fill: layout.theme.dotDim,
                       scale: 1,
                       transition: { duration: 0.25 },
                     },
@@ -508,19 +566,35 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
                   transform: "translate(-50%, -50%)",
                 }}
               >
-                <TrailStation
-                  ref={(el) => {
-                    stationRefs.current[i] = el;
+                <motion.div
+                  className="relative"
+                  initial={reduce ? false : { opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    duration: 0.32,
+                    delay: Math.min(i * 0.05, 0.6),
+                    ease: "easeOut",
                   }}
-                  number={i + 1}
-                  title={section.title}
-                  level={section.level}
-                  locked={!unlocked}
-                  complete={complete}
-                  current={unlocked && !complete}
-                  progressPct={pct}
-                  onOpen={() => onOpenSection(section.id)}
-                />
+                >
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full blur-xl"
+                    style={{ background: layout.theme.halo, opacity: 0.55 }}
+                  />
+                  <TrailStation
+                    ref={(el) => {
+                      stationRefs.current[i] = el;
+                    }}
+                    number={i + 1}
+                    title={section.title}
+                    level={section.level}
+                    locked={!unlocked}
+                    complete={complete}
+                    current={unlocked && !complete}
+                    progressPct={pct}
+                    onOpen={() => onOpenSection(section.id)}
+                  />
+                </motion.div>
               </div>
             );
           })}
