@@ -1,7 +1,9 @@
+import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { Icon } from "@iconify/react";
 import { Heart } from "lucide-react";
 import Logo from "@/components/Logo";
+import { apiUrl } from "@/lib/api";
 import { FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/footerData";
 
 type SocialIconProps = {
@@ -72,6 +74,174 @@ const SOCIAL_ITEMS = [
   },
 ] as const;
 
+// Regex simples de e-mail no client, espelha a validacao basica do backend. A
+// validacao real do endereco fica a cargo do double opt-in (envio do e-mail).
+const NEWSLETTER_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function NewsletterCapture() {
+  const [captureStatus, setCaptureStatus] = useState<"loading" | "on" | "off">(
+    "loading",
+  );
+  const [email, setEmail] = useState("");
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // 1 request leve no mount. A flag e server-only, entao o front descobre o estado
+  // por GET /api/newsletter/state.
+  useEffect(() => {
+    let cancelled = false;
+    async function resolveState() {
+      try {
+        const res = await fetch(apiUrl("/api/newsletter/state"));
+        if (!res.ok) throw new Error("state indisponivel");
+        const data = (await res.json()) as { status?: string };
+        if (cancelled) return;
+        // Fail-closed no front: so liga o form com "on" explicito.
+        setCaptureStatus(data.status === "on" ? "on" : "off");
+      } catch {
+        if (!cancelled) setCaptureStatus("off");
+      }
+    }
+    resolveState();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // loading e off mostram o stub inerte, exatamente como antes do lancamento.
+  if (captureStatus !== "on") {
+    return (
+      <>
+        <p className="mb-4 text-sm text-slate-400">
+          Novidades da tech direto no seu inbox. Em breve.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            placeholder="seu@email.com"
+            disabled
+            aria-label="Email para newsletter (em breve)"
+            className="min-w-0 flex-1 cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-500 placeholder:text-slate-600"
+          />
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-800 px-4 py-2 font-display text-xs font-black text-slate-500"
+          >
+            Em breve
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  if (submitStatus === "success") {
+    return (
+      <p
+        className="text-sm text-slate-400"
+        role="status"
+        aria-live="polite"
+      >
+        {/* TODO(Ana): copy de sucesso pedindo confirmacao no inbox (double opt-in). Nao dizer "inscrito": ainda falta confirmar. */}
+        Quase la. Enviamos um e-mail de confirmacao, confira sua caixa de entrada
+        para concluir a inscricao.
+      </p>
+    );
+  }
+
+  const submitting = submitStatus === "submitting";
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed || !NEWSLETTER_EMAIL_RE.test(trimmed)) {
+      // TODO(Ana): mensagem de e-mail invalido (validacao client).
+      setErrorMessage("Informe um e-mail valido.");
+      setSubmitStatus("error");
+      return;
+    }
+
+    setSubmitStatus("submitting");
+    setErrorMessage("");
+
+    try {
+      const res = await fetch(apiUrl("/api/newsletter/signup"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed, source: "footer" }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: { code?: string } }
+        | null;
+
+      if (res.ok && data?.ok) {
+        setSubmitStatus("success");
+        return;
+      }
+
+      const code = data?.error?.code;
+      // TODO(Ana): copy de cada caso de erro abaixo.
+      if (res.status === 400 && code === "invalid_email") {
+        setErrorMessage("E-mail invalido.");
+      } else if (res.status === 429 && code === "too_many_attempts") {
+        setErrorMessage("Muitas tentativas. Tente novamente em instantes.");
+      } else if (res.status === 403 && code === "newsletter_closed") {
+        setErrorMessage("As inscricoes nao estao abertas no momento.");
+      } else {
+        setErrorMessage("Nao foi possivel concluir. Tente novamente.");
+      }
+      setSubmitStatus("error");
+    } catch {
+      // TODO(Ana): copy de erro de rede.
+      setErrorMessage("Nao foi possivel concluir. Tente novamente.");
+      setSubmitStatus("error");
+    }
+  }
+
+  return (
+    <>
+      <p className="mb-4 text-sm text-slate-400">
+        {/* TODO(Ana): copy do convite a newsletter (sem "Em breve"). */}
+        Novidades da tech direto no seu inbox.
+      </p>
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="flex gap-2">
+          <input
+            id="newsletter-email"
+            type="email"
+            required
+            placeholder="seu@email.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            disabled={submitting}
+            aria-label="Email para newsletter"
+            aria-describedby="newsletter-status"
+            aria-invalid={submitStatus === "error"}
+            className="min-w-0 flex-1 rounded-lg border-2 border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 transition-colors focus:border-amber-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg border-2 border-slate-800 bg-amber-400 px-4 py-2 font-display text-xs font-black text-slate-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {/* TODO(Ana): rotulos do botao (normal e carregando). */}
+            {submitting ? "Enviando..." : "Inscrever"}
+          </button>
+        </div>
+        <p
+          id="newsletter-status"
+          className="mt-2 min-h-[1rem] text-xs text-rose-400"
+          aria-live="polite"
+        >
+          {submitStatus === "error" ? errorMessage : ""}
+        </p>
+      </form>
+    </>
+  );
+}
+
 export default function Footer() {
   const year = new Date().getFullYear();
 
@@ -126,25 +296,7 @@ export default function Footer() {
             <h3 className="mb-4 font-display text-xs font-black tracking-widest text-amber-400">
               NEWSLETTER
             </h3>
-            <p className="mb-4 text-sm text-slate-400">
-              Novidades da tech direto no seu inbox. Em breve.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="seu@email.com"
-                disabled
-                aria-label="Email para newsletter (em breve)"
-                className="min-w-0 flex-1 cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-500 placeholder:text-slate-600"
-              />
-              <button
-                type="button"
-                disabled
-                className="cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-800 px-4 py-2 font-display text-xs font-black text-slate-500"
-              >
-                Em breve
-              </button>
-            </div>
+            <NewsletterCapture />
           </div>
         </div>
 
