@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Flag } from "lucide-react";
+import { Flag, Footprints } from "lucide-react";
 import type { RoadmapSection } from "@/lib/roadmapV2/types";
 import {
   isComplete,
@@ -256,6 +256,14 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
 
     const firstPt = layout.pts[0];
     const lastPt = layout.pts[layout.pts.length - 1];
+    const trailDecor = layout.pts
+      .slice(0, -1)
+      .map((p, i) => ({
+        i,
+        mx: (p.x + layout.pts[i + 1].x) / 2,
+        my: (p.y + layout.pts[i + 1].y) / 2,
+      }))
+      .filter((d) => d.i % PER_ROW === PER_ROW - 1);
 
     return (
       <div className="relative mt-7 w-full" style={{ height: layout.VBH }}>
@@ -383,6 +391,96 @@ const RoadmapTrail = forwardRef<TrailHandle, RoadmapTrailProps>(
               <ChestMark />
             </div>
           )}
+          {trailDecor.map((d) => (
+            <div
+              key={`decor-${d.i}`}
+              aria-hidden
+              className="pointer-events-none absolute"
+              style={{
+                left: `${(d.mx / VBW) * 100}%`,
+                top: `${(d.my / layout.VBH) * 100}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <motion.div
+                animate={reduce ? undefined : { y: [0, -6, 0] }}
+                transition={
+                  reduce
+                    ? undefined
+                    : {
+                        duration: 4 + (d.i % 3),
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: (d.i % 3) * 0.4,
+                      }
+                }
+              >
+                {d.i % 3 === 0 ? (
+                  <Footprints
+                    className="h-5 w-5 text-amber-800 opacity-30"
+                    strokeWidth={2.5}
+                  />
+                ) : d.i % 3 === 1 ? (
+                  <svg
+                    width="30"
+                    height="26"
+                    viewBox="0 0 30 26"
+                    fill="none"
+                    className="opacity-35"
+                  >
+                    <rect
+                      x="4"
+                      y="3"
+                      width="22"
+                      height="20"
+                      rx="3"
+                      fill="#e8d8b0"
+                      stroke="#7a5a2e"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M8 9 H22 M8 13 H20 M8 17 H15"
+                      stroke="#9c7b4f"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeDasharray="1 3"
+                    />
+                    <path
+                      d="M17 14 l4 4 M21 14 l-4 4"
+                      stroke="#b04a2f"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    width="22"
+                    height="30"
+                    viewBox="0 0 22 30"
+                    fill="none"
+                    className="opacity-35"
+                  >
+                    <line
+                      x1="5"
+                      y1="2"
+                      x2="5"
+                      y2="28"
+                      stroke="#7a5a2e"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M5 4 L20 8 L5 13 Z"
+                      fill="#d97706"
+                      stroke="#7a5a2e"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </motion.div>
+            </div>
+          ))}
           {sections.map((section, i) => {
             const pt = layout.pts[i];
             // Unlock + pulse only after the dot-walk finishes arriving at this
