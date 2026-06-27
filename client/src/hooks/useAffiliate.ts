@@ -10,6 +10,11 @@ type StoredAffiliate = {
   expires: number;
 };
 
+export function clearStoredAffiliate() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(AFFILIATE_STORAGE_KEY);
+}
+
 function readStoredAffiliate(): StoredAffiliate | null {
   if (typeof window === "undefined") return null;
 
@@ -76,7 +81,7 @@ export function useAffiliate() {
   }, []);
 
   function clearAffiliate() {
-    window.localStorage.removeItem(AFFILIATE_STORAGE_KEY);
+    clearStoredAffiliate();
     setAffiliate(null);
   }
 

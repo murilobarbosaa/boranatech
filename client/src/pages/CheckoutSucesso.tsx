@@ -7,6 +7,7 @@ import { fireProCelebration } from "@/lib/proConfetti";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import { clearStoredAffiliate } from "@/hooks/useAffiliate";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { greet } from "@shared/greeting";
@@ -21,6 +22,7 @@ export default function CheckoutSucesso() {
   const reduce = useReducedMotion();
   const cardRef = useRef<HTMLDivElement>(null);
   const confettiFiredRef = useRef(false);
+  const affiliateConsumedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +82,15 @@ export default function CheckoutSucesso() {
 
     return fireProCelebration({ x: centerX, y: baseY });
   }, [isLoadingScreen, showSuccess, reduce]);
+
+  // Consome o cupom de afiliado uma unica vez quando a conversao confirma (isPro).
+  // Guarda via ref para nao remover de novo em re-render. Nao mexe no carimbo
+  // subscriptions.affiliate_code, que e o registro de comissao no servidor.
+  useEffect(() => {
+    if (!isPro || affiliateConsumedRef.current) return;
+    affiliateConsumedRef.current = true;
+    clearStoredAffiliate();
+  }, [isPro]);
 
   const fadeSlideUp = {
     initial: reduce ? false : { opacity: 0, y: 12 },
