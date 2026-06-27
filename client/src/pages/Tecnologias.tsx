@@ -17,6 +17,8 @@ import PageHero from "@/components/shared/PageHero";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -108,6 +110,7 @@ export default function Tecnologias() {
   const [technologyItems, setTechnologyItems] = useState(technologies);
   const [category, setCategory] = useState("Todas");
   const [query, setQuery] = useState("");
+  const { gateNavigate, modalProps } = useAuthGate();
 
   useEffect(() => {
     getTechnologies()
@@ -166,6 +169,10 @@ export default function Tecnologias() {
                 href={`/tecnologias/${technology.slug}`}
                 aria-label={technology.name}
                 className="group shrink-0"
+                onClick={(event) => {
+                  event.preventDefault();
+                  gateNavigate(`/tecnologias/${technology.slug}`);
+                }}
               >
                 <TechnologyLogo
                   name={technology.name}
@@ -215,24 +222,40 @@ export default function Tecnologias() {
             <Link
               href="/tecnologias/comparar?from=tecnologias"
               className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/comparar?from=tecnologias");
+              }}
             >
               Comparar tecnologias
             </Link>
             <Link
               href="/tecnologias/por-area?from=tecnologias"
               className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/por-area?from=tecnologias");
+              }}
             >
               Tecnologias por área
             </Link>
             <Link
               href="/tecnologias/ranking?from=tecnologias"
               className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/ranking?from=tecnologias");
+              }}
             >
               Ranking de demanda
             </Link>
             <Link
               href="/tecnologias/jogos"
               className="btn-brutal-primary rounded-full bg-fuchsia-300 px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/jogos");
+              }}
             >
               🎮 Como os jogos foram feitos
             </Link>
@@ -260,6 +283,10 @@ export default function Tecnologias() {
                     <Link
                       href={`/tecnologias/${technology.slug}`}
                       className="group block flex-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-300"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        gateNavigate(`/tecnologias/${technology.slug}`);
+                      }}
                     >
                       <div className="mb-4 flex items-start justify-between gap-3">
                         <TechnologyLogo
@@ -357,6 +384,8 @@ export default function Tecnologias() {
           </div>
         </div>
       </section>
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }
