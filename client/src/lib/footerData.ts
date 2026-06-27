@@ -3,9 +3,9 @@
 
 export const SOCIAL_LINKS = {
   instagram: "https://www.instagram.com/boranatech/",
-  linkedin: "https://www.linkedin.com/in/bora-na-tech-b17107412",
+  linkedin: "https://www.linkedin.com/in/bora-na-tech-b17107412/",
   tiktok: "https://www.tiktok.com/@boranatech_",
-  twitter: "https://x.com/BoraNaTech",
+  twitter: "https://x.com/boranatech",
 } as const;
 
 type FooterLink = { label: string; href: string };

@@ -16,10 +16,18 @@ const EMAIL_ASSETS =
 
 // Redes do footer. slug = icone simple-icons; url = destino (placeholder ate termos as oficiais).
 const SOCIAL = [
-  { name: "Instagram", slug: "instagram", url: "INSTAGRAM_URL" },
-  { name: "LinkedIn", slug: "linkedin", url: "LINKEDIN_URL" },
-  { name: "TikTok", slug: "tiktok", url: "TIKTOK_URL" },
-  { name: "X", slug: "x", url: "X_URL" },
+  {
+    name: "Instagram",
+    slug: "instagram",
+    url: "https://www.instagram.com/boranatech/",
+  },
+  {
+    name: "LinkedIn",
+    slug: "linkedin",
+    url: "https://www.linkedin.com/in/bora-na-tech-b17107412/",
+  },
+  { name: "TikTok", slug: "tiktok", url: "https://www.tiktok.com/@boranatech_" },
+  { name: "X", slug: "x", url: "https://x.com/boranatech" },
 ];
 
 type EmailTheme = {
