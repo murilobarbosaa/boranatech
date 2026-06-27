@@ -240,6 +240,12 @@
   .cchip .ava.av-v{background-color:var(--violet);color:#fff}
   .cchip .ava.av-l{background-color:var(--lavender);color:var(--ink)}
   .cchip .handle{font-family:var(--font-display);font-weight:700;font-size:.92rem}
+  /* Fundo colorido por card, cor estavel por posicao, texto ajustado pro contraste */
+  .cchip.cc-yellow{background:var(--yellow);color:var(--ink)}
+  .cchip.cc-violet-deep{background:var(--violet-deep);color:#fff}
+  .cchip.cc-lavender{background:var(--lavender);color:var(--ink)}
+  .cchip.cc-violet-bright{background:var(--violet-bright);color:#fff}
+  .cchip.cc-violet-deep .ava,.cchip.cc-violet-bright .ava{border-color:#fff}
   .creator .ava,.cchip .ava{overflow:hidden}
   .creator .ava img,.cchip .ava img{width:100%;height:100%;object-fit:cover;display:block}
 
@@ -923,6 +929,7 @@
       { name: "Evelyn", handle: "code.evelyn", photo: "/creators/code-evelyn.jpg", url: "https://instagram.com/code.evelyn" }
     ];
     var AV_COLORS = ["av-y", "av-v", "av-l"];
+    var CARD_COLORS = ["cc-yellow", "cc-violet-deep", "cc-lavender", "cc-violet-bright"];
 
     function initials(handle) {
       var parts = handle.replace(/[^a-zA-Z]+/g, " ").trim().split(/\s+/);
@@ -976,7 +983,7 @@
     if (track) {
       function buildChip(creator, idx) {
         var link = document.createElement("a");
-        link.className = "cchip";
+        link.className = "cchip " + CARD_COLORS[idx % CARD_COLORS.length];
         link.href = creator.url;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
