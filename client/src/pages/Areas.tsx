@@ -245,6 +245,41 @@ export default function Areas() {
         }
       />
 
+      <div
+        className="bnt-marquee overflow-hidden border-b-2 border-slate-900 bg-violet-700 py-3"
+        aria-label="Áreas da TI passando"
+      >
+        <div
+          className="bnt-marquee-track flex w-max items-center gap-3"
+          style={{
+            maskImage:
+              "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)",
+            WebkitMaskImage:
+              "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)",
+          }}
+        >
+          {[...areasTI, ...areasTI].map((area, i) => {
+            const dup = i >= areasTI.length;
+            return (
+              <Link
+                key={`${area.slug}-${i}`}
+                href={`/areas/${area.slug}`}
+                aria-hidden={dup}
+                tabIndex={dup ? -1 : undefined}
+                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3.5 py-1.5 font-display text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: getAreaAccent(area.nome) }}
+                  aria-hidden
+                />
+                {area.nome}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <section className="bg-violet-50 py-12">
         <div className="container">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
