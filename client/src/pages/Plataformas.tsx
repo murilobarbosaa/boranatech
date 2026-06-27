@@ -6,9 +6,11 @@
 
 import { useMemo, useState } from "react";
 import {
+  ArrowRight,
   ExternalLink,
   Check,
   X,
+  Sparkles,
   Star,
   Award,
   RotateCcw,
@@ -304,6 +306,7 @@ export default function Plataformas() {
   const [idiomaFilter, setIdiomaFilter] = useState("Todos");
   const [iniciante, setIniciante] = useState(false);
   const [certificadoFilter, setCertificadoFilter] = useState("Todos");
+  const [quizAberto, setQuizAberto] = useState(false);
 
   const categorias = [
     "Todas",
@@ -557,14 +560,53 @@ export default function Plataformas() {
       <section className="bg-[#ecfdf5] py-12">
         <div className="container">
           <div className="mb-8">
-            <MiniQuiz
-              titulo={QUIZ_TITULO}
-              subtitulo={QUIZ_SUBTITULO}
-              perguntas={QUIZ_PERGUNTAS}
-              resultados={QUIZ_RESULTADOS}
-              alternativas={2}
-              porque={QUIZ_PORQUE}
-            />
+            {!quizAberto ? (
+              <button
+                type="button"
+                onClick={() => setQuizAberto(true)}
+                aria-expanded={false}
+                aria-controls="plataformas-quiz"
+                className="card-brutal flex w-full items-center gap-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-5 text-left shadow-[5px_5px_0_#a78bfa] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#a78bfa] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]">
+                  <Sparkles className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  {/* TODO(Ana): copy do botao que abre o quiz */}
+                  <span className="block font-display text-lg font-black text-slate-950">
+                    {QUIZ_TITULO}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-600">
+                    {QUIZ_SUBTITULO}
+                  </span>
+                </span>
+                <span className="hidden shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_#0f172a] sm:inline-flex">
+                  Fazer o quiz
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </button>
+            ) : (
+              <div className="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setQuizAberto(false)}
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                  Fechar quiz
+                </button>
+              </div>
+            )}
+            <div id="plataformas-quiz" className={quizAberto ? "" : "hidden"}>
+              <MiniQuiz
+                titulo={QUIZ_TITULO}
+                subtitulo={QUIZ_SUBTITULO}
+                perguntas={QUIZ_PERGUNTAS}
+                resultados={QUIZ_RESULTADOS}
+                alternativas={2}
+                porque={QUIZ_PORQUE}
+              />
+            </div>
           </div>
           <div className="mb-6 grid gap-4 md:grid-cols-2">
             <div className="card-brutal flex flex-col rounded-2xl bg-white p-6 shadow-[5px_5px_0_#6ee7b7]">
