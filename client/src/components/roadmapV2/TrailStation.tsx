@@ -86,13 +86,15 @@ const TrailStation = forwardRef<HTMLButtonElement, TrailStationProps>(
       };
     }, []);
 
-    const SHAPES = [
-      "rounded-full",
-      "rounded-[34%]",
-      "rounded-2xl",
-      "rounded-[50%_50%_42%_42%]",
-    ];
-    const shape = SHAPES[(number - 1) % SHAPES.length];
+    const SHAPE_BY_LEVEL: Record<
+      NonNullable<RoadmapSection["level"]>,
+      string
+    > = {
+      iniciante: "rounded-full",
+      intermediario: "rounded-[34%]",
+      avancado: "rounded-[10px]",
+    };
+    const shape = level ? SHAPE_BY_LEVEL[level] : "rounded-full";
 
     function handleClick() {
       if (locked) {
