@@ -11583,6 +11583,216 @@ export const projetos = [
       "Automatizei um processo ponta a ponta com n8n: webhooks, transformação e integração, habilidade pedida em ops e produto técnicos.",
     proximoProjeto: "Filas e idempotência no mesmo fluxo",
   },
+  {
+    id: "conversor-de-moedas",
+    nome: "Conversor de Moedas",
+    areaSlug: "frontend" as string | null,
+    nivel: "Iniciante",
+    objetivo:
+      "Criar um conversor que mostra o valor de uma moeda em outra usando cotação real de uma API pública.",
+    ferramentas: ["HTML", "CSS", "JavaScript", "fetch", "API de câmbio"],
+    passosSimplificados: [
+      "Monte o formulário: valor, moeda de origem e moeda de destino",
+      "Busque as cotações em uma API pública de câmbio com fetch",
+      "Calcule a conversão com a taxa retornada",
+      "Mostre o resultado formatado em moeda",
+      "Trate erros (sem internet, valor inválido) e publique",
+    ],
+    entregavel: "Página publicada que converte moedas com cotação real.",
+    comoPublicar: "GitHub Pages (gratuito) ou Netlify",
+    sugestaoLinkedIn:
+      "Construí um conversor de moedas consumindo uma API de câmbio real! Pratiquei fetch, async/await e formatação de moeda em JavaScript. Link nos comentários!",
+    proximoProjeto: "Dashboard de Clima",
+  },
+  {
+    id: "dashboard-de-clima",
+    nome: "Dashboard de Clima",
+    areaSlug: "frontend" as string | null,
+    nivel: "Iniciante",
+    objetivo:
+      "Mostrar a previsão do tempo de uma cidade buscando os dados de uma API de clima.",
+    ferramentas: ["HTML", "CSS", "JavaScript", "fetch", "API de clima"],
+    passosSimplificados: [
+      "Crie um campo de busca por cidade",
+      "Consulte uma API de clima com o nome da cidade",
+      "Exiba temperatura, condição e ícone do tempo",
+      "Adicione estados de carregando e de erro",
+      "Deixe o layout responsivo e publique",
+    ],
+    entregavel: "Página que mostra o clima atual de qualquer cidade buscada.",
+    comoPublicar: "GitHub Pages ou Netlify",
+    sugestaoLinkedIn:
+      "Fiz um dashboard de clima que consome uma API e mostra a previsão de qualquer cidade! Aprendi a lidar com estados de carregamento e erro. Dá uma olhada!",
+    proximoProjeto: "Galeria de Fotos com Busca",
+  },
+  {
+    id: "app-notas-markdown",
+    nome: "App de Notas com Markdown",
+    areaSlug: "frontend" as string | null,
+    nivel: "Intermediário",
+    objetivo:
+      "Criar um app de anotações que aceita Markdown e salva as notas no navegador.",
+    ferramentas: ["React", "JavaScript", "Markdown", "LocalStorage"],
+    passosSimplificados: [
+      "Crie a lista de notas e o editor de texto",
+      "Renderize o Markdown digitado em tempo real",
+      "Salve e carregue as notas do LocalStorage",
+      "Permita criar, editar e excluir notas",
+      "Estilize e publique",
+    ],
+    entregavel: "App de notas com Markdown que persiste no navegador.",
+    comoPublicar: "Vercel ou Netlify",
+    sugestaoLinkedIn:
+      "Construí um app de notas com suporte a Markdown e persistência no navegador usando React! Pratiquei estado, efeitos e LocalStorage. Link nos comentários!",
+    proximoProjeto: "API REST de Tarefas",
+  },
+  {
+    id: "galeria-fotos-busca",
+    nome: "Galeria de Fotos com Busca",
+    areaSlug: "frontend" as string | null,
+    nivel: "Intermediário",
+    objetivo:
+      "Buscar e exibir fotos de uma API pública de imagens conforme o termo pesquisado.",
+    ferramentas: ["HTML", "CSS", "JavaScript", "fetch", "API de imagens"],
+    passosSimplificados: [
+      "Crie a barra de busca",
+      "Consulte uma API pública de imagens com o termo",
+      "Exiba as fotos em grade responsiva",
+      "Adicione carregamento progressivo e estado vazio",
+      "Trate erros e publique",
+    ],
+    entregavel: "Galeria que mostra fotos de acordo com a busca.",
+    comoPublicar: "GitHub Pages ou Netlify",
+    sugestaoLinkedIn:
+      "Fiz uma galeria de fotos que consome uma API de imagens e responde à busca em tempo real! Treinei fetch, grid responsivo e tratamento de erros. Vem ver!",
+    proximoProjeto: "Encurtador de Links",
+  },
+  {
+    id: "api-rest-tarefas",
+    nome: "API REST de Tarefas",
+    areaSlug: "backend" as string | null,
+    nivel: "Intermediário",
+    objetivo:
+      "Criar uma API REST que cria, lista, atualiza e remove tarefas (CRUD completo).",
+    ferramentas: ["Node.js", "Express", "Banco de dados", "Postman ou Insomnia"],
+    passosSimplificados: [
+      "Configure o servidor Express",
+      "Crie as rotas CRUD de tarefas",
+      "Conecte a um banco de dados para persistir",
+      "Valide os dados de entrada e trate erros",
+      "Documente as rotas e publique",
+    ],
+    entregavel: "API REST publicada com CRUD de tarefas funcionando.",
+    comoPublicar: "Render ou Railway",
+    sugestaoLinkedIn:
+      "Construí minha primeira API REST com Node e Express, com CRUD completo e banco de dados! Aprendi rotas, validação e tratamento de erros. Repositório nos comentários!",
+    proximoProjeto: "Autenticação com JWT",
+  },
+  {
+    id: "encurtador-de-links",
+    nome: "Encurtador de Links",
+    areaSlug: "fullstack" as string | null,
+    nivel: "Intermediário",
+    objetivo:
+      "Receber um link longo e gerar um link curto que redireciona para o original.",
+    ferramentas: ["Node.js", "Express", "Banco de dados", "HTML", "CSS"],
+    passosSimplificados: [
+      "Crie a tela para colar o link e ver o link curto",
+      "No backend, gere um código único para cada link",
+      "Salve o par (código e link original) no banco",
+      "Crie a rota que redireciona o código para o link original",
+      "Publique o front e o back",
+    ],
+    entregavel: "Encurtador funcionando: gera link curto e redireciona.",
+    comoPublicar: "Front no Vercel e back no Render ou Railway",
+    sugestaoLinkedIn:
+      "Desenvolvi um encurtador de links fullstack! Treinei geração de códigos únicos, redirecionamento e integração front com back. Link nos comentários!",
+    proximoProjeto: "Autenticação com JWT",
+  },
+  {
+    id: "autenticacao-jwt",
+    nome: "Autenticação com JWT",
+    areaSlug: "backend" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Implementar cadastro e login com senha protegida e rotas que só abrem com token válido.",
+    ferramentas: ["Node.js", "Express", "JWT", "bcrypt", "Banco de dados"],
+    passosSimplificados: [
+      "Crie as rotas de cadastro e login",
+      "Guarde a senha com hash (bcrypt)",
+      "Gere um token JWT no login",
+      "Proteja rotas exigindo o token válido",
+      "Teste os fluxos e publique",
+    ],
+    entregavel: "API com cadastro, login e rotas protegidas por token.",
+    comoPublicar: "Render ou Railway",
+    sugestaoLinkedIn:
+      "Implementei autenticação com JWT do zero: hash de senha, geração de token e proteção de rotas! Um passo importante pra segurança em APIs. Repositório nos comentários!",
+    proximoProjeto: "API REST de Tarefas",
+  },
+  {
+    id: "lista-compras-mobile",
+    nome: "Lista de Compras (Mobile)",
+    areaSlug: "mobile" as string | null,
+    nivel: "Iniciante",
+    objetivo:
+      "Criar um app de celular para montar a lista de compras e marcar o que já foi comprado.",
+    ferramentas: ["React Native", "Expo", "JavaScript"],
+    passosSimplificados: [
+      "Crie a tela com campo para adicionar item",
+      "Liste os itens adicionados",
+      "Permita marcar item como comprado e remover",
+      "Salve a lista no dispositivo",
+      "Teste no celular com o Expo e publique o código",
+    ],
+    entregavel: "App mobile de lista de compras rodando no celular.",
+    comoPublicar: "Código no GitHub e preview com Expo",
+    sugestaoLinkedIn:
+      "Fiz meu primeiro app mobile com React Native e Expo: uma lista de compras com itens e marcação de comprado! Rodei direto no celular. Vem ver!",
+    proximoProjeto: "App de Notas com Markdown",
+  },
+  {
+    id: "analise-dados-vendas",
+    nome: "Análise de Dados de Vendas",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Intermediário",
+    objetivo:
+      "Ler uma planilha de vendas, calcular métricas e gerar gráficos com os principais insights.",
+    ferramentas: ["Python", "pandas", "matplotlib", "Jupyter ou Google Colab"],
+    passosSimplificados: [
+      "Carregue o CSV de vendas com o pandas",
+      "Limpe os dados (tipos, nulos, duplicados)",
+      "Calcule métricas: total por mês, produto e região",
+      "Gere gráficos dos principais resultados",
+      "Escreva uma conclusão curta com os insights",
+    ],
+    entregavel: "Notebook com a análise, gráficos e conclusões das vendas.",
+    comoPublicar: "Notebook no GitHub ou link do Google Colab",
+    sugestaoLinkedIn:
+      "Analisei uma base de vendas com pandas: limpei os dados, calculei métricas e gerei gráficos com os insights! Primeiro passo na análise de dados. Notebook nos comentários!",
+    proximoProjeto: "Chatbot com IA",
+  },
+  {
+    id: "chatbot-com-ia",
+    nome: "Chatbot com IA",
+    areaSlug: "ia" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Criar um chat que conversa com a pessoa usando uma API de modelo de linguagem.",
+    ferramentas: ["JavaScript ou Python", "API de IA", "HTML", "CSS"],
+    passosSimplificados: [
+      "Monte a interface de chat (mensagens e campo de envio)",
+      "Envie a mensagem da pessoa para uma API de IA",
+      "Mostre a resposta do modelo na conversa",
+      "Mantenha o histórico da conversa na tela",
+      "Trate erros e limites, e publique",
+    ],
+    entregavel: "Chat publicado que responde usando uma API de IA.",
+    comoPublicar: "Vercel ou Netlify",
+    sugestaoLinkedIn:
+      "Construí um chatbot que conversa usando uma API de IA! Pratiquei integração com API, controle de histórico e tratamento de erros. Link nos comentários!",
+    proximoProjeto: "API REST de Tarefas",
+  },
 ];
 
 export const vagasInfo = {
