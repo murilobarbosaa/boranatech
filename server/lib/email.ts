@@ -1,7 +1,6 @@
 import { Resend } from "resend";
 
 import type { Gender } from "../../shared/gender";
-import { greet } from "../../shared/greeting";
 import { getProBenefitLabels } from "../../shared/proFeatures";
 import { env } from "./env";
 
@@ -30,33 +29,13 @@ type EmailTheme = {
   accentText: string; // cor que contrasta sobre accent (icones sociais e fallback de alt)
 };
 
-const GENDER_THEMES: Record<"feminino" | "masculino" | "default", EmailTheme> =
-  {
-    feminino: {
-      brand: "#6B1FC9",
-      accent: "#FCC700",
-      buttonText: "#ffffff",
-      accentText: "#1a1a1a",
-    },
-    masculino: {
-      brand: "#3B7DD8",
-      accent: "#FCC700",
-      buttonText: "#ffffff",
-      accentText: "#1a1a1a",
-    },
-    default: {
-      brand: "#FCC700",
-      accent: "#6B1FC9",
-      buttonText: "#1a1a1a",
-      accentText: "#ffffff",
-    },
-  };
-
-function themeFor(gender?: Gender | null): EmailTheme {
-  if (gender === "feminino") return GENDER_THEMES.feminino;
-  if (gender === "masculino") return GENDER_THEMES.masculino;
-  return GENDER_THEMES.default; // outro, prefiro_nao_dizer, null
-}
+// Tema unico neutro para todos os e-mails (sem segregacao por genero).
+const NEUTRAL_THEME: EmailTheme = {
+  brand: "#FCC700",
+  accent: "#6B1FC9",
+  buttonText: "#1a1a1a",
+  accentText: "#ffffff",
+};
 
 function escapeHtml(value: string) {
   return value
@@ -130,8 +109,14 @@ function socialIconsPng() {
   return `<table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>${cells}</tr></table>`;
 }
 
-function waitlistLayout(title: string, body: string, heroImageUrl: string) {
+function waitlistLayout(
+  title: string,
+  body: string,
+  heroImageUrl: string,
+  preheader: string,
+) {
   return `
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;font-size:1px;line-height:1px;color:#FFFFFF;">${preheader}&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F1F5F9;margin:0;padding:28px 12px;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#FFFFFF;border:4px solid #0F172A;">
@@ -217,23 +202,33 @@ async function sendEmail(params: {
   from: string;
   subject: string;
   html: string;
+  text?: string;
+  headers?: Record<string, string>;
 }) {
   if (!env.resendApiKey || !resend) {
     console.warn("[email] RESEND_API_KEY ausente. E-mail não enviado.");
     return;
   }
 
-  await resend.emails.send(params);
+  // List-Unsubscribe (so mailto por enquanto) vale para todos os envios.
+  await resend.emails.send({
+    ...params,
+    headers: {
+      "List-Unsubscribe": "<mailto:oi@boranatech.com.br?subject=unsubscribe>",
+      ...params.headers,
+    },
+  });
 }
 
 export async function sendWelcomeEmail(
   to: string,
   name: string,
-  gender?: Gender | null,
+  _gender?: Gender | null,
 ) {
   const safeName = escapeHtml(name);
-  const hello = greet(gender);
-  const theme = themeFor(gender);
+  // TODO(Ana): saudacao neutra fixa (sem genero).
+  const hello = "Olá";
+  const theme = NEUTRAL_THEME;
   const title = "Boas-vindas ao Bora na Tech!";
   const body = `
     ${paragraph(`${hello}, ${safeName}! Que bom ter você por aqui. Sua conta está pronta e o acesso é todo seu.`)}
@@ -257,24 +252,36 @@ export async function sendWelcomeEmail(
 
 export async function sendWaitlistConfirmationEmail(to: string, _name?: string) {
   const heroImageUrl = `${EMAIL_ASSETS}/waitlist-hero.jpeg`;
-  // TODO(Ana): copy final do e-mail de confirmacao da lista de espera.
-  const title = "Falta pouco pra você começar na tech 🚀";
+  // TODO(Ana): copy final do e-mail de boas-vindas a lista de espera.
+  const title = "Boas-vindas ao Bora na Tech";
   const body = `
     <p style="margin:0;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#334155;">Seu lugar na lista de espera está confirmado. Isso quer dizer que você vai ser um dos primeiros a entrar quando o <strong style="color:#0F172A;">Bora na Tech</strong> abrir as portas.</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 0;">
-      <tr><td style="background:#FCC700;border:4px solid #0F172A;padding:18px 22px;">
-        <p style="margin:0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:12px;line-height:1.2;font-weight:700;letter-spacing:1.5px;color:#0F172A;">MARCA AÍ</p>
-        <p style="margin:6px 0 0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:22px;line-height:1.2;font-weight:700;color:#0F172A;">Lançamento em 1º de julho</p>
-      </td></tr>
-    </table>
-    <p style="margin:20px 0 0;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#334155;">No dia do lançamento você vai ter acesso a quiz vocacional, roadmaps, conteúdo selecionado, glossário e comunidade. Tudo pra te dar uma direção clara de por onde começar.</p>
+    <p style="margin:20px 0 0;font-family:'Plus Jakarta Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#334155;">No lançamento você vai ter acesso a quiz vocacional, roadmaps, conteúdo selecionado, glossário e comunidade. Tudo pra te dar uma direção clara de por onde começar.</p>
   `;
-  // TODO(Ana): subject agora acompanha o titulo da copy nova.
+  // TODO(Ana): subject acompanha o titulo da copy nova.
+  // TODO(Ana): preheader (previa na caixa de entrada, nao repetir o titulo)
+  const preheader =
+    "Seu lugar no Bora na Tech esta confirmado. Veja o que vem por ai.";
+
+  // TODO(Ana): versao texto plano do e-mail de boas-vindas a lista de espera
+  const text = [
+    "Boas-vindas ao Bora na Tech",
+    "",
+    "Seu lugar na lista de espera esta confirmado. Voce vai ser um dos primeiros a entrar quando o Bora na Tech abrir as portas.",
+    "",
+    "No lancamento voce vai ter acesso a quiz vocacional, roadmaps, conteudo selecionado, glossario e comunidade. Tudo pra te dar uma direcao clara de por onde comecar.",
+    "",
+    "Acompanha a gente nas redes pra nao perder nada ate la.",
+    "",
+    "Bora na Tech. Sua bussola para comecar na tecnologia.",
+  ].join("\n");
+
   await sendEmail({
     to,
     from: FROM_RELATIONSHIP,
     subject: title,
-    html: waitlistLayout(title, body, heroImageUrl),
+    html: waitlistLayout(title, body, heroImageUrl, preheader),
+    text,
   });
 }
 
@@ -282,13 +289,13 @@ export async function sendProUpgradeEmail(
   to: string,
   name: string,
   planName: string,
-  gender?: Gender | null,
+  _gender?: Gender | null,
 ) {
   const safeName = escapeHtml(name);
   const safePlanName = escapeHtml(planName);
-  const hello = greet(gender);
-  const theme = themeFor(gender);
-  const title = `${hello}, seu plano Pro está ativo!`;
+  const theme = NEUTRAL_THEME;
+  // TODO(Ana): subject neutro (sem genero).
+  const title = "Seu plano Pro está ativo!";
   const body = `
     ${paragraph(`Obrigado por assinar o ${safePlanName}, ${safeName}. Seu acesso completo já está liberado.`)}
     ${paragraph("A partir de agora você tem:")}
@@ -308,11 +315,10 @@ export async function sendCancellationScheduledEmail(
   to: string,
   name: string,
   effectiveAt: string,
-  gender?: Gender | null,
+  _gender?: Gender | null,
 ) {
   const safeName = escapeHtml(name);
-  const hello = greet(gender);
-  const theme = themeFor(gender);
+  const theme = NEUTRAL_THEME;
   const date = new Date(effectiveAt);
   const formattedDate = Number.isNaN(date.getTime())
     ? "o fim do período pago"
@@ -322,7 +328,8 @@ export async function sendCancellationScheduledEmail(
         year: "numeric",
       });
   const safeDate = escapeHtml(formattedDate);
-  const title = `${hello}, seu cancelamento foi agendado`;
+  // TODO(Ana): subject neutro (sem genero).
+  const title = "Seu cancelamento foi agendado";
   const body = `
     ${paragraph(`Recebemos seu pedido de cancelamento, ${safeName}. Você mantém o acesso completo ao Pro até <strong>${safeDate}</strong>.`)}
     ${paragraph("Mudou de ideia? Dá para reativar antes dessa data e continuar sem perder nada.")}
@@ -339,12 +346,12 @@ export async function sendCancellationScheduledEmail(
 export async function sendCancellationEmail(
   to: string,
   name: string,
-  gender?: Gender | null,
+  _gender?: Gender | null,
 ) {
   const safeName = escapeHtml(name);
-  const hello = greet(gender);
-  const theme = themeFor(gender);
-  const title = `${hello}, sua assinatura foi encerrada`;
+  const theme = NEUTRAL_THEME;
+  // TODO(Ana): subject neutro (sem genero).
+  const title = "Sua assinatura foi encerrada";
   const body = `
     ${paragraph(`Sua assinatura Pro foi encerrada, ${safeName}. Obrigado por ter feito parte do Pro.`)}
     ${paragraph("Você continua com acesso gratuito à plataforma. Quando quiser voltar, a porta está aberta.")}
@@ -361,12 +368,12 @@ export async function sendCancellationEmail(
 export async function sendPaymentFailedEmail(
   to: string,
   name: string,
-  gender?: Gender | null,
+  _gender?: Gender | null,
 ) {
   const safeName = escapeHtml(name);
-  const hello = greet(gender);
-  const theme = themeFor(gender);
-  const title = `${hello}, tivemos um problema no pagamento`;
+  const theme = NEUTRAL_THEME;
+  // TODO(Ana): subject neutro (sem genero).
+  const title = "Tivemos um problema no pagamento";
   const body = `
     ${paragraph(`Não conseguimos processar o pagamento da sua assinatura Pro, ${safeName}.`)}
     ${paragraph("Para manter seu acesso, atualize sua forma de pagamento. Leva menos de um minuto.")}
