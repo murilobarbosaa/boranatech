@@ -12449,6 +12449,118 @@ export const faculdades = {
         "Exige interesse por eletrônica e redes",
       ],
     },
+    {
+      nome: "Técnico em Desenvolvimento de Sistemas",
+      duracao: "1 a 2 anos",
+      tipo: "Técnico",
+      oQueEstuda:
+        "Lógica de programação, desenvolvimento web e mobile, banco de dados e versionamento de código.",
+      perfilIndicado:
+        "Quem quer começar a programar cedo, ainda no ensino médio ou logo depois.",
+      diferencas:
+        "Nível médio (não é superior). Entrada rápida e prática, mas sozinho não dá acesso à pós-graduação.",
+      areasAtuacao: [
+        "Programador júnior",
+        "Desenvolvedor web",
+        "Suporte a sistemas",
+      ],
+      matematica: "Baixo",
+      programacao: "Alto",
+      pontoPositivos: [
+        "Entrada rápida (1 a 2 anos)",
+        "Dá pra fazer junto com o ensino médio",
+        "Bem prático e voltado a código",
+      ],
+      pontosAtencao: [
+        "Não é curso superior",
+        "Sozinho não dá acesso à pós",
+        "Mercado costuma pedir continuidade dos estudos",
+      ],
+    },
+    {
+      nome: "Técnico em Informática para Internet",
+      duracao: "1 a 2 anos",
+      tipo: "Técnico",
+      oQueEstuda:
+        "Criação de sites e aplicações web, HTML, CSS, JavaScript, design de interface e banco de dados.",
+      perfilIndicado:
+        "Quem curte web e quer criar sites e sistemas online desde cedo.",
+      diferencas:
+        "Foco em desenvolvimento web no nível médio. Mais específico que o técnico em informática geral.",
+      areasAtuacao: [
+        "Desenvolvedor web",
+        "Front-end júnior",
+        "Suporte a sites",
+      ],
+      matematica: "Baixo",
+      programacao: "Alto",
+      pontoPositivos: [
+        "Foco em web",
+        "Prático e rápido",
+        "Bom primeiro passo pra front-end",
+      ],
+      pontosAtencao: [
+        "Não é superior",
+        "Escopo mais estreito",
+        "Pede continuidade pra cargos maiores",
+      ],
+    },
+    {
+      nome: "Técnico em Redes de Computadores",
+      duracao: "1 a 2 anos",
+      tipo: "Técnico",
+      oQueEstuda:
+        "Instalação e manutenção de redes, cabeamento, configuração de equipamentos, segurança básica e administração de servidores.",
+      perfilIndicado:
+        "Quem gosta de infraestrutura, hardware e de fazer a rede funcionar.",
+      diferencas:
+        "Nível médio voltado a infraestrutura de redes. Mais mão na massa que os cursos superiores de redes.",
+      areasAtuacao: [
+        "Técnico de redes",
+        "Suporte de infraestrutura",
+        "Auxiliar de TI",
+      ],
+      matematica: "Médio",
+      programacao: "Baixo",
+      pontoPositivos: [
+        "Prático e voltado a infraestrutura",
+        "Entrada rápida",
+        "Boa base de hardware e redes",
+      ],
+      pontosAtencao: [
+        "Não é superior",
+        "Menos foco em programação",
+        "Pede certificações pra crescer",
+      ],
+    },
+    {
+      nome: "Técnico em Manutenção e Suporte em Informática",
+      duracao: "1 a 2 anos",
+      tipo: "Técnico",
+      oQueEstuda:
+        "Montagem e manutenção de computadores, sistemas operacionais, suporte ao usuário e redes básicas.",
+      perfilIndicado:
+        "Quem gosta de mexer em hardware e resolver problemas de TI no dia a dia.",
+      diferencas:
+        "Nível médio focado em hardware e suporte. Porta de entrada prática pra área de TI.",
+      areasAtuacao: [
+        "Técnico de suporte",
+        "Help desk",
+        "Técnico de manutenção",
+      ],
+      matematica: "Baixo",
+      programacao: "Baixo",
+      pontoPositivos: [
+        "Entrada rápida no mercado",
+        "Bem prático",
+        "Demanda constante por suporte",
+      ],
+      pontosAtencao: [
+        "Não é superior",
+        "Pouco foco em programação",
+        "Crescimento pede mais estudo e certificação",
+      ],
+    },
   ],
 };
 
