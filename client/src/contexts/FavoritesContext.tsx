@@ -80,9 +80,6 @@ export interface FavoritesContextValue {
   ) => boolean;
   toggleFavorite: (item: FavoriteItem) => Promise<ToggleResult>;
   getFavoritesByType: (resourceType: FavoriteType) => FavoriteItem[];
-  pendingAuthFavorite: PendingAuthFavorite | null;
-  clearPendingAuth: () => void;
-  queueFavoriteOnNextLoad: (pending: PendingAuthFavorite) => void;
 }
 
 const LEGACY_FAVORITES_KEY = "bora-na-tech:favorites";
@@ -199,8 +196,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingAuthFavorite, setPendingAuthFavorite] =
-    useState<PendingAuthFavorite | null>(null);
   const nextLoadFavoriteRef = useRef<PendingAuthFavorite | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
 
@@ -224,10 +219,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     const prevUserId = prevUserIdRef.current;
     prevUserIdRef.current = user.id;
     const justSignedIn = !prevUserId;
-
-    if (justSignedIn) {
-      setPendingAuthFavorite(null);
-    }
 
     const cached = readCache(user.id);
     if (cached.length > 0) {
@@ -357,7 +348,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             url: normalizedItem.url,
           },
         };
-        setPendingAuthFavorite(pending);
         nextLoadFavoriteRef.current = pending;
         return { ok: false, requiresAuth: true };
       }
@@ -420,15 +410,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     [favorites],
   );
 
-  const queueFavoriteOnNextLoad = useCallback((pending: PendingAuthFavorite) => {
-    nextLoadFavoriteRef.current = pending;
-  }, []);
-
-  const clearPendingAuth = useCallback(() => {
-    setPendingAuthFavorite(null);
-    nextLoadFavoriteRef.current = null;
-  }, []);
-
   const value = useMemo<FavoritesContextValue>(
     () => ({
       favorites,
@@ -436,20 +417,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       isFavorite,
       toggleFavorite,
       getFavoritesByType,
-      pendingAuthFavorite,
-      clearPendingAuth,
-      queueFavoriteOnNextLoad,
     }),
-    [
-      favorites,
-      loading,
-      isFavorite,
-      toggleFavorite,
-      getFavoritesByType,
-      pendingAuthFavorite,
-      clearPendingAuth,
-      queueFavoriteOnNextLoad,
-    ],
+    [favorites, loading, isFavorite, toggleFavorite, getFavoritesByType],
   );
 
   return (
