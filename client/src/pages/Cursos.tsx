@@ -21,7 +21,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { AiCtaLink } from "@/components/shared/AiCta";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
 import { youtubeEmbedUrl } from "@/lib/utils";
@@ -58,6 +60,7 @@ const areaTagClass: Record<string, string> = {
 };
 
 export default function Cursos() {
+  const { isPro, loading } = useSubscription();
   const search = useSearch();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
   const [courses, setCourses] = useState(cursosGratuitos);
@@ -342,6 +345,20 @@ export default function Cursos() {
       {/* Grid */}
       <section className="bg-[#fff9e7] py-12">
         <div className="container">
+          {!isPro && !loading ? (
+            <div className="mb-8">
+              {/* TODO(Ana): copy da CTA do plano de estudos */}
+              <AiCtaLink
+                href="/estudos"
+                description="A IA monta a ordem certa e o ritmo pra você"
+                accent="amber"
+                className="w-full"
+              >
+                Não sabe quais cursos fazer? Monte um plano de estudos
+                personalizado e descubra a ordem certa
+              </AiCtaLink>
+            </div>
+          ) : null}
           {filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
