@@ -14,7 +14,7 @@ const APP_URL = "https://boranatech.com.br";
 const EMAIL_ASSETS =
   "https://vlcvaanlkqyxemrxsxzn.supabase.co/storage/v1/object/public/email-assets";
 
-// Redes do footer. slug = icone simple-icons; url = destino (placeholder ate termos as oficiais).
+// Redes do footer. slug = nome do arquivo PNG (social-<slug>.png); url = link oficial.
 const SOCIAL = [
   {
     name: "Instagram",
@@ -83,29 +83,10 @@ function button(label: string, href: string, theme: EmailTheme) {
     </table>`;
 }
 
-function socialIcons(theme: EmailTheme) {
-  // Cor embutida na propria URL do icone (simple-icons), sem depender de filter CSS
-  // (ignorado por Outlook e outros). O circulo usa background accent; se a imagem nao
-  // carregar, o alt text aparece na cor accentText e o footer continua legivel.
-  const iconColor = theme.accentText.replace("#", "");
-  const cells = SOCIAL.map(
-    (social) => `
-                  <td style="padding:0 4px;">
-                    <a href="${social.url}" style="text-decoration:none;color:${theme.accentText};font-size:10px;font-weight:bold;">
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                        <tr>
-                          <td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;background:${theme.accent};border-radius:50%;">
-                            <img src="https://cdn.simpleicons.org/${social.slug}/${iconColor}" width="17" height="17" alt="${social.name}" style="display:inline-block;border:0;outline:none;vertical-align:middle;" />
-                          </td>
-                        </tr>
-                      </table>
-                    </a>
-                  </td>`,
-  ).join("");
-  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 12px;"><tr>${cells}</tr></table>`;
-}
-
-function socialIconsPng() {
+// Icones sociais via PNGs hospedadas (EMAIL_ASSETS), sem depender de CDN externo.
+// Usado tanto pelo layout() dos transacionais quanto pelo waitlistLayout().
+// TODO(Ana): aparencia final dos icones (inclusive contraste no footer escuro dos transacionais).
+function socialIcons() {
   const cells = SOCIAL.map(
     (s) => `
                 <td style="padding:0 8px;">
@@ -140,7 +121,7 @@ function waitlistLayout(
         </td></tr>
         <tr><td style="padding:22px 40px 34px 40px;text-align:center;">
           <p style="margin:0 0 16px;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:15px;line-height:1.4;font-weight:700;color:#0F172A;text-align:center;">Acompanha a gente nas redes pra nao perder nada ate la</p>
-          ${socialIconsPng()}
+          ${socialIcons()}
           <p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#94A3B8;text-align:center;">Bora na Tech. Sua bussola para comecar na tecnologia</p>
         </td></tr>
       </table>
@@ -195,7 +176,7 @@ function layout(theme: EmailTheme, title: string, body: string) {
           <!-- FOOTER -->
           <tr>
             <td style="background:#1a1a1a;padding:22px 28px;">
-              ${socialIcons(theme)}
+              ${socialIcons()}
               <div style="color:#9a9a9a;font-size:11px;line-height:1.5;">Bora na Tech? Sua bússola para começar na tecnologia.</div>
             </td>
           </tr>
