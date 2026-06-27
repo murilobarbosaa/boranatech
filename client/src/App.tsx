@@ -86,6 +86,7 @@ import Licenca from "./pages/Licenca";
 import Privacidade from "./pages/Privacidade";
 import TermosDeUso from "./pages/TermosDeUso";
 import DevProBorders from "./pages/dev/ProBordersPlayground";
+import AuthGatePlayground from "./pages/dev/AuthGatePlayground";
 
 function Router() {
   return (
@@ -264,6 +265,10 @@ function Router() {
       <Route path="/termos-de-uso" component={TermosDeUso} />
       {/* PROTOTIPO DESCARTAVEL: bordas Pro animadas. Remover junto com a pasta dev/. */}
       <Route path="/dev/pro-borders" component={DevProBorders} />
+      {/* PROTOTIPO DESCARTAVEL: playground do gate de auth, so em dev. */}
+      {import.meta.env.DEV && (
+        <Route path="/dev/auth-gate" component={AuthGatePlayground} />
+      )}
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
