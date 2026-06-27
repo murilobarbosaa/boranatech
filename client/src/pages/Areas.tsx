@@ -27,6 +27,7 @@ import {
   areasTI,
   type AreaTI,
 } from "@/lib/data";
+import { getAreaAccent } from "@/lib/platformData";
 import { getAreas } from "@/services/contentService";
 
 const areaSlugs = new Set(areasTI.map((area) => area.slug));
@@ -335,14 +336,23 @@ export default function Areas() {
             <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((area, index) => {
                 const Icon = area.icon;
+                const accent = getAreaAccent(area.nome);
+                const accentTint = `${accent}1a`;
                 const inner = (
                   <>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="flex h-11 w-11 items-center justify-center rounded-xl border-2 border-slate-900 bg-violet-100 text-violet-700">
+                    <div className="flex items-start justify-between gap-2 pr-9">
+                      <span
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2"
+                        style={{
+                          backgroundColor: accentTint,
+                          borderColor: accent,
+                          color: accent,
+                        }}
+                      >
                         <Icon className="h-6 w-6" strokeWidth={2.5} aria-hidden />
                       </span>
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${TIPO_SELO[area.tipo]}`}
+                        className={`inline-flex shrink-0 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide ${TIPO_SELO[area.tipo]}`}
                       >
                         {area.tipo}
                       </span>
@@ -365,7 +375,8 @@ export default function Areas() {
                         {area.habilidades.map((h) => (
                           <span
                             key={h}
-                            className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800"
+                            className="rounded-full px-2 py-0.5 text-xs font-bold"
+                            style={{ backgroundColor: accentTint, color: accent }}
                           >
                             {h}
                           </span>
@@ -374,7 +385,10 @@ export default function Areas() {
                     ) : null}
                     <div className="mt-4 flex items-center pt-3 text-sm font-black">
                       {area.href ? (
-                        <span className="inline-flex items-center gap-1 text-violet-700">
+                        <span
+                          className="inline-flex items-center gap-1"
+                          style={{ color: accent }}
+                        >
                           Explorar
                           <ArrowRight
                             className="h-4 w-4 transition-transform duration-200 motion-safe:group-hover:translate-x-1 motion-safe:group-focus-visible:translate-x-1"
