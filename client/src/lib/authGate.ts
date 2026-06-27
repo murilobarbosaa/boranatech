@@ -1,4 +1,4 @@
-import { sanitizeReturnTo } from "@/components/auth/RequireAuth";
+import { sanitizeReturnTo } from "@/lib/returnTo";
 
 // Fundacao do gate de autenticacao (Fase 1). Modelo de "intencao" generico,
 // desacoplado de favoritos/progresso. A re-execucao real de dominio (favoritos)

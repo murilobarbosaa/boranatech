@@ -9,7 +9,7 @@ import { GenderSelect } from "@/components/auth/GenderSelect";
 import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
-import { sanitizeReturnTo } from "@/components/auth/RequireAuth";
+import { sanitizeReturnTo } from "@/lib/returnTo";
 import { getAuthErrorMessage, type FriendlyError } from "@/lib/authErrors";
 import {
   firstIssueMessage,

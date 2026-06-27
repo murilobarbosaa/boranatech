@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { TicketPercent } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { sanitizeReturnTo } from "@/components/auth/RequireAuth";
+import { sanitizeReturnTo } from "@/lib/returnTo";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import Auth from "@/pages/Auth";
 
