@@ -82,7 +82,7 @@ function Avatar({
   const [failed, setFailed] = useState(false);
   return (
     <span
-      className="grid h-[34px] w-[34px] shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-white font-display text-[0.82rem] font-bold text-slate-950"
+      className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full border-2 bg-white font-display text-[0.7rem] font-bold text-slate-950"
       style={{ borderColor }}
       aria-hidden
     >
@@ -119,7 +119,7 @@ function Chip({
       aria-label={`Instagram de @${creator.handle}`}
       aria-hidden={duplicated}
       tabIndex={duplicated ? -1 : undefined}
-      className="mr-3 inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full border-2 border-slate-950 py-1.5 pl-1.5 pr-[15px] font-display text-[0.92rem] font-bold shadow-[3px_3px_0_#0f172a] transition-all duration-150 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[5px_5px_0_#0f172a]"
+      className="mr-3 inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-950 py-1 pl-1 pr-3 font-display text-[0.8rem] font-bold shadow-[3px_3px_0_#0f172a] transition-all duration-150 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[5px_5px_0_#0f172a]"
       style={{ backgroundColor: color.bg, color: color.text }}
     >
       <Avatar creator={creator} borderColor={color.avatarBorder} />
@@ -134,10 +134,10 @@ export default function CreatorsBand() {
   return (
     <section
       aria-label="Creators que apoiam o projeto"
-      className="overflow-hidden border-y-2 border-slate-950 bg-[#6b1fc9] py-3"
+      className="sticky top-16 z-40 overflow-hidden border-b-2 border-slate-950 bg-[#6b1fc9] py-2"
     >
       {/* TODO(Ana): revisar a copy do titulo da faixa de creators */}
-      <p className="mb-2.5 text-center font-mono text-xs font-semibold uppercase tracking-[0.12em] text-[#FCC700]">
+      <p className="mb-1 hidden text-center font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#FCC700] sm:block">
         Creators que apoiam
       </p>
 

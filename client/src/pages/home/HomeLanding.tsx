@@ -19,8 +19,8 @@ export default function HomeLanding() {
         description="Plataforma de carreira em TI para iniciantes. Áreas, roadmaps, cursos, projetos, IA, eventos e carreira organizados em uma jornada clara."
         url="/"
       />
-      <Hero />
       <CreatorsBand />
+      <Hero />
       <LogoLoop />
       <Mapa />
       <PorOndeComecar />
