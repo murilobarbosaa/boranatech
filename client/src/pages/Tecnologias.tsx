@@ -64,9 +64,11 @@ const ROADMAP_AREA_SLUGS = new Set([
   "uxui",
 ]);
 
-function roadmapHref(areas: string[]): string {
+function roadmapTarget(areas: string[]): { href: string; gated: boolean } {
   const match = areas.find((area) => ROADMAP_AREA_SLUGS.has(area));
-  return match ? `/roadmaps?area=${match}` : "/roadmaps";
+  return match
+    ? { href: `/roadmaps?area=${match}`, gated: true }
+    : { href: "/roadmaps", gated: false };
 }
 
 const DOODLES = [
@@ -264,6 +266,7 @@ export default function Tecnologias() {
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((technology, index) => {
               const curiosity = technologyCuriosities[technology.name];
+              const roadmap = roadmapTarget(technology.areas);
               return (
                 <AnimatedContent
                   key={technology.slug}
@@ -371,8 +374,14 @@ export default function Tecnologias() {
                     ) : null}
 
                     <Link
-                      href={roadmapHref(technology.areas)}
+                      href={roadmap.href}
                       className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5"
+                      onClick={(event) => {
+                        if (roadmap.gated) {
+                          event.preventDefault();
+                          gateNavigate(roadmap.href);
+                        }
+                      }}
                     >
                       <Map className="h-4 w-4" aria-hidden />
                       Ver roadmap
