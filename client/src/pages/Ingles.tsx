@@ -7,6 +7,7 @@ import {
   Mic,
   Target,
 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import InglesSubNav from "@/components/shared/InglesSubNav";
@@ -105,6 +106,7 @@ const checklist = [
 ];
 
 export default function Ingles() {
+  const [mostrarQuiz, setMostrarQuiz] = useState(false);
   return (
     <Layout>
       <PageHero
@@ -116,7 +118,18 @@ export default function Ingles() {
       <InglesSubNav />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
-          <InglesTrilhaQuiz />
+          <div className="flex flex-col items-start gap-4">
+            <button
+              type="button"
+              onClick={() => setMostrarQuiz((v) => !v)}
+              aria-expanded={mostrarQuiz}
+              className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            >
+              <Target className="h-4 w-4" aria-hidden />
+              {mostrarQuiz ? "Ocultar teste de nível" : "Fazer o teste de nível"}
+            </button>
+            {mostrarQuiz ? <InglesTrilhaQuiz /> : null}
+          </div>
           <div className="grid gap-5 lg:grid-cols-3">
             <div className="card-brutal rounded-2xl bg-white p-6 lg:col-span-2">
               <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
