@@ -5,6 +5,7 @@ import {
   createAsaasCheckout,
   getAsaasSubscriptionPayments,
   getOrCreateAsaasCustomer,
+  updateAsaasPaymentValue,
 } from "../lib/asaas";
 import {
   cancelSubscriptionAtAsaas,
@@ -476,14 +477,24 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       );
     }
 
+    const { data: priorActivated } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("user_id", userId)
+      .not("current_period_start", "is", null)
+      .limit(1)
+      .maybeSingle();
+    const isFirstPurchase = !priorActivated;
+
     const customer = await getOrCreateAsaasCustomer({
       userId,
       name: profile.name || profile.email || req.user!.email,
       email: profile.email || req.user!.email,
     });
 
-    let checkoutValue = PLAN_VALUES[planId];
+    const fullValue = PLAN_VALUES[planId];
     let validAffiliateCode = "";
+    let firstPaymentValue: number | null = null;
 
     if (affiliateCode) {
       const { data: affiliate, error: affiliateError } = await supabaseAdmin
@@ -494,17 +505,19 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
         .maybeSingle();
 
       if (!affiliateError && affiliate) {
-        validAffiliateCode = affiliate.code;
-        checkoutValue = Number(
-          (
-            checkoutValue *
-            (1 - Number(affiliate.discount_percent || 0) / 100)
-          ).toFixed(2),
-        );
-        await supabaseAdmin
-          .from("affiliates")
-          .update({ trials: Number(affiliate.trials || 0) + 1 })
-          .eq("id", affiliate.id);
+        validAffiliateCode = affiliate.code; // atribuicao/comissao inalterada
+        if (isFirstPurchase) {
+          firstPaymentValue = Number(
+            (
+              fullValue *
+              (1 - Number(affiliate.discount_percent || 0) / 100)
+            ).toFixed(2),
+          );
+          await supabaseAdmin
+            .from("affiliates")
+            .update({ trials: Number(affiliate.trials || 0) + 1 })
+            .eq("id", affiliate.id);
+        }
       }
     }
 
@@ -512,15 +525,27 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       customerId: customer.id,
       userId,
       planCode: planId,
-      value: checkoutValue,
+      value: fullValue,
       cycle: PLAN_CYCLES[planId],
       affiliateCode: validAffiliateCode || undefined,
       successUrl: `${env.appPublicUrl}/planos/sucesso`,
     });
     const payments = await getAsaasSubscriptionPayments(asaasSubscription.id);
-    const firstPayment = Array.isArray(payments?.data)
-      ? payments.data[0]
-      : undefined;
+    const all = Array.isArray(payments?.data) ? payments.data : [];
+    const pending = all.filter(
+      (p: { status?: string }) => p?.status === "PENDING",
+    );
+    let firstPayment = (pending.length ? pending : all)
+      .slice()
+      .sort((a: { dueDate?: string }, b: { dueDate?: string }) =>
+        String(a?.dueDate || "").localeCompare(String(b?.dueDate || "")),
+      )[0];
+    if (firstPaymentValue !== null && firstPayment?.id) {
+      firstPayment = await updateAsaasPaymentValue(
+        firstPayment.id,
+        firstPaymentValue,
+      );
+    }
     const checkoutUrl =
       firstPayment?.invoiceUrl ||
       firstPayment?.paymentLink ||

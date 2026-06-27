@@ -134,3 +134,13 @@ export async function updateAsaasSubscription(
 export async function deleteAsaasPayment(paymentId: string) {
   return asaasRequest("DELETE", `/payments/${encodeURIComponent(paymentId)}`);
 }
+
+// PUT /v3/payments/{id}: edita uma cobranca ja existente. Usado pra descontar SO a
+// primeira cobranca de uma assinatura, deixando a recorrencia no valor cheio.
+// Diferente de updateAsaasSubscription (que so afeta cobrancas futuras), aqui
+// editamos a cobranca especifica que ja existe.
+export async function updateAsaasPaymentValue(paymentId: string, value: number) {
+  return asaasRequest("PUT", `/payments/${encodeURIComponent(paymentId)}`, {
+    value,
+  });
+}
