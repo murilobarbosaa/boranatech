@@ -47,7 +47,7 @@ import {
   type Subarea,
 } from "@/lib/faculdadesSubareas";
 
-const tipos = ["Todos", "Tecnólogo", "Bacharelado"];
+const tipos = ["Todos", "Técnico", "Tecnólogo", "Bacharelado"];
 const matNiveis = ["Todos", "Médio", "Alto", "Médio-Alto"];
 
 const matematicaColor: Record<string, string> = {
