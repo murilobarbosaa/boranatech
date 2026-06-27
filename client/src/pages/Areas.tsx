@@ -280,8 +280,34 @@ export default function Areas() {
         </div>
       </div>
 
-      <section className="bg-violet-50 py-12">
-        <div className="container">
+      <section className="relative overflow-hidden bg-violet-50 py-12">
+        <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+          <div
+            className="animate-gentle-float absolute -left-10 top-16 h-40 w-40 rounded-full bg-violet-300 opacity-[0.18] blur-3xl"
+            style={{ animationDuration: "5s" }}
+          />
+          <div
+            className="animate-gentle-float absolute -right-12 top-[22%] h-56 w-56 rounded-full bg-violet-400 opacity-[0.12] blur-3xl"
+            style={{ animationDelay: "-1.5s", animationDuration: "6.5s" }}
+          />
+          <div
+            className="animate-gentle-float absolute left-[12%] top-1/2 h-32 w-32 rounded-full bg-fuchsia-300 opacity-[0.12] blur-3xl"
+            style={{ animationDelay: "-0.8s", animationDuration: "5.5s" }}
+          />
+          <div
+            className="animate-gentle-float absolute right-[18%] top-[64%] h-44 w-44 rounded-full bg-violet-300 opacity-[0.14] blur-3xl"
+            style={{ animationDelay: "-2.4s", animationDuration: "6s" }}
+          />
+          <div
+            className="animate-gentle-float absolute -left-8 bottom-12 h-48 w-48 rounded-full bg-violet-400 opacity-[0.1] blur-3xl"
+            style={{ animationDelay: "-3s", animationDuration: "7s" }}
+          />
+          <div
+            className="animate-gentle-float absolute -right-10 -bottom-10 h-52 w-52 rounded-full bg-violet-500 opacity-[0.08] blur-3xl"
+            style={{ animationDelay: "-1.1s", animationDuration: "6.2s" }}
+          />
+        </div>
+        <div className="container relative z-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
