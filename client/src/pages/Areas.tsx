@@ -236,7 +236,7 @@ export default function Areas() {
         actions={
           <Link
             href="/quiz-carreira"
-            className="inline-flex items-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+            className="pro-glare inline-flex items-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
           >
             <Sparkles className="h-4 w-4" aria-hidden />
             Não sabe por onde começar? Faça o quiz
