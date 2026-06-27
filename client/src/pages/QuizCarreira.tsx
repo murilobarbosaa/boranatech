@@ -18,6 +18,8 @@ import posthog from "posthog-js";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModal";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import { areasTI } from "@/lib/data";
 import {
   triageQuestions,
@@ -132,6 +134,7 @@ const triageSteps = triageQuestions;
 
 export default function QuizCarreira() {
   const [, setLocation] = useLocation();
+  const { gateAction, modalProps } = useAuthGate();
   const [phase, setPhase] = useState<QuizPhase>("objective");
   const [objective, setObjective] = useState<QuizObjective | null>(null);
   const [level, setLevel] = useState<QuizLevel | null>(null);
@@ -228,6 +231,22 @@ export default function QuizCarreira() {
     setAnswers(saved.answers);
     setCurrentIndex(saved.currentIndex);
     setPhase(saved.phase);
+  };
+
+  const handleSelectObjectiveGated = (id: QuizObjective) => {
+    gateAction({
+      intent: { kind: "domain", domain: "quiz", payload: { objective: id } },
+      run: () => handleSelectObjective(id),
+      destination: "/quiz-carreira",
+    });
+  };
+
+  const handleResumeGated = () => {
+    gateAction({
+      intent: { kind: "domain", domain: "quiz", payload: { resume: true } },
+      run: () => handleResume(),
+      destination: "/quiz-carreira",
+    });
   };
 
   const handleTriageAnswer = (optionIndex: number) => {
@@ -528,8 +547,8 @@ export default function QuizCarreira() {
           {phase === "objective" && (
             <ObjectiveScreen
               key="objective"
-              onSelect={handleSelectObjective}
-              onResume={resumeAvailable ? handleResume : undefined}
+              onSelect={handleSelectObjectiveGated}
+              onResume={resumeAvailable ? handleResumeGated : undefined}
             />
           )}
 
@@ -593,6 +612,8 @@ export default function QuizCarreira() {
         onClose={() => setResetModalOpen(false)}
         onConfirm={handleResetConfirmed}
       />
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }
