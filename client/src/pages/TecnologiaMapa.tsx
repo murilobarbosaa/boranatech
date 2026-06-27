@@ -154,7 +154,7 @@ export default function TecnologiaMapa() {
             className={cn(
               "grid items-start gap-6",
               sections.length === 1
-                ? "grid-cols-1"
+                ? "grid-cols-1 sm:max-w-xl"
                 : "md:grid-cols-2 lg:grid-cols-3",
             )}
           >
