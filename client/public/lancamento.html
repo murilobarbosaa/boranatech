@@ -226,6 +226,21 @@
   .pill:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
   .pill.y{background:var(--yellow);color:var(--ink)} .pill.p{background:var(--violet)} .pill.k{background:var(--ink)}
 
+  /* Faixa rolante de creators no topo (marquee) */
+  .cmarq-wrap{position:relative;background:var(--violet);border-bottom:2px solid var(--ink);overflow:hidden;padding:11px 0}
+  .cmarq-cap{text-align:center;font-family:var(--font-mono);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--yellow);margin-bottom:9px}
+  .cmarq{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  .ctrack{display:flex;gap:12px;width:max-content;align-items:center;animation:scrollx 30s linear infinite}
+  .cmarq-wrap:hover .ctrack{animation-play-state:paused}
+  .cchip{flex:none;display:inline-flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:3px 3px 0 var(--ink);padding:6px 15px 6px 6px;text-decoration:none;color:var(--ink);white-space:nowrap;transition:transform .15s ease, box-shadow .15s ease}
+  .cchip:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+  .cchip:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+  .cchip .ava{flex:none;width:34px;height:34px;border:2px solid var(--ink);border-radius:999px;display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:.82rem;background-size:cover;background-position:center}
+  .cchip .ava.av-y{background-color:var(--yellow);color:var(--ink)}
+  .cchip .ava.av-v{background-color:var(--violet);color:#fff}
+  .cchip .ava.av-l{background-color:var(--lavender);color:var(--ink)}
+  .cchip .handle{font-family:var(--font-display);font-weight:700;font-size:.92rem}
+
   /* Section heads */
   .head{max-width:660px;margin-bottom:46px}
   .head.center{margin-left:auto;margin-right:auto;text-align:center}
@@ -415,12 +430,21 @@
     *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
     .r,.stg>*,.enter{opacity:1!important;transform:none!important}
     .hero h1 .u::after{transform:scaleX(1)!important}
-    .btn:hover,.card:hover,.seg:hover,.pcard:hover,.pcardx:hover,.jcard:hover,.pill:hover,.social-badge:hover,.creator:hover{transform:none}
+    .btn:hover,.card:hover,.seg:hover,.pcard:hover,.pcardx:hover,.jcard:hover,.pill:hover,.social-badge:hover,.creator:hover,.cchip:hover{transform:none}
   }
 </style>
 </head>
 <body>
 <div class="progress" id="progress"></div>
+
+<!-- Faixa rolante de creators que apoiam o projeto (topo de tudo) -->
+<!-- TODO(Ana): revisar a copy da faixa e adicionar/remover creators no array do script. -->
+<section class="cmarq-wrap" aria-label="Creators que apoiam o projeto">
+  <p class="cmarq-cap">Creators que apoiam</p>
+  <div class="cmarq">
+    <div class="ctrack" data-creators-marquee></div>
+  </div>
+</section>
 
 <!-- Header: logo + timer ao vivo + CTA -->
 <header class="topbar">
@@ -882,36 +906,80 @@
 <script>
   (function () {
     // TODO(Ana): conferir os @ e adicionar/remover creators aqui.
+    // photo: caminho de uma imagem local (ex: "/creators/grazi.jpg") ou null pra usar as iniciais.
     var CREATORS = [
-      { handle: "grazi.tech", url: "https://instagram.com/grazi.tech" },
-      { handle: "gabrielsm.dev", url: "https://instagram.com/gabrielsm.dev" },
-      { handle: "code.evelyn", url: "https://instagram.com/code.evelyn" }
+      { handle: "grazi.tech", url: "https://instagram.com/grazi.tech", photo: null },
+      { handle: "gabrielsm.dev", url: "https://instagram.com/gabrielsm.dev", photo: null },
+      { handle: "code.evelyn", url: "https://instagram.com/code.evelyn", photo: null },
+      { handle: "gama18k", url: "https://instagram.com/gama18k", photo: null }
     ];
+    var AV_COLORS = ["av-y", "av-v", "av-l"];
+
     function initials(handle) {
       var parts = handle.replace(/[^a-zA-Z]+/g, " ").trim().split(/\s+/);
       if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
       return handle.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase() || "@";
     }
-    var box = document.querySelector("[data-creators]");
-    if (!box) return;
-    CREATORS.forEach(function (creator) {
-      var link = document.createElement("a");
-      link.className = "creator";
-      link.href = creator.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.setAttribute("aria-label", "Instagram de @" + creator.handle);
-      var ava = document.createElement("span");
-      ava.className = "ava";
+
+    function fillAvatar(ava, creator) {
       ava.setAttribute("aria-hidden", "true");
-      ava.textContent = initials(creator.handle);
-      var handle = document.createElement("span");
-      handle.className = "handle";
-      handle.textContent = "@" + creator.handle;
-      link.appendChild(ava);
-      link.appendChild(handle);
-      box.appendChild(link);
-    });
+      if (creator.photo) {
+        ava.style.backgroundImage = "url('" + creator.photo + "')";
+      } else {
+        ava.textContent = initials(creator.handle);
+      }
+    }
+
+    // Faixa estatica (rodape): cards lado a lado.
+    var box = document.querySelector("[data-creators]");
+    if (box) {
+      CREATORS.forEach(function (creator) {
+        var link = document.createElement("a");
+        link.className = "creator";
+        link.href = creator.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", "Instagram de @" + creator.handle);
+        var ava = document.createElement("span");
+        ava.className = "ava";
+        fillAvatar(ava, creator);
+        var handle = document.createElement("span");
+        handle.className = "handle";
+        handle.textContent = "@" + creator.handle;
+        link.appendChild(ava);
+        link.appendChild(handle);
+        box.appendChild(link);
+      });
+    }
+
+    // Faixa rolante (topo): duplica a lista pro loop nao ter buraco.
+    var track = document.querySelector("[data-creators-marquee]");
+    if (track) {
+      function buildChip(creator, idx) {
+        var link = document.createElement("a");
+        link.className = "cchip";
+        link.href = creator.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", "Instagram de @" + creator.handle);
+        var ava = document.createElement("span");
+        ava.className = "ava " + AV_COLORS[idx % AV_COLORS.length];
+        fillAvatar(ava, creator);
+        var handle = document.createElement("span");
+        handle.className = "handle";
+        handle.textContent = "@" + creator.handle;
+        link.appendChild(ava);
+        link.appendChild(handle);
+        return link;
+      }
+      for (var pass = 0; pass < 2; pass++) {
+        CREATORS.forEach(function (creator, idx) {
+          var chip = buildChip(creator, idx);
+          if (pass === 1) chip.setAttribute("aria-hidden", "true");
+          track.appendChild(chip);
+        });
+      }
+    }
   })();
 </script>
 <script src="/lancamento.js" defer></script>
