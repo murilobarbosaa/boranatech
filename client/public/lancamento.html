@@ -235,11 +235,13 @@
   .cchip{flex:none;display:inline-flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--ink);border-radius:999px;box-shadow:3px 3px 0 var(--ink);padding:6px 15px 6px 6px;text-decoration:none;color:var(--ink);white-space:nowrap;transition:transform .15s ease, box-shadow .15s ease}
   .cchip:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
   .cchip:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
-  .cchip .ava{flex:none;width:34px;height:34px;border:2px solid var(--ink);border-radius:999px;display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:.82rem;background-size:cover;background-position:center}
+  .cchip .ava{flex:none;width:34px;height:34px;border:2px solid var(--ink);border-radius:999px;overflow:hidden;display:grid;place-items:center;font-family:var(--font-display);font-weight:700;font-size:.82rem;background-size:cover;background-position:center}
   .cchip .ava.av-y{background-color:var(--yellow);color:var(--ink)}
   .cchip .ava.av-v{background-color:var(--violet);color:#fff}
   .cchip .ava.av-l{background-color:var(--lavender);color:var(--ink)}
   .cchip .handle{font-family:var(--font-display);font-weight:700;font-size:.92rem}
+  .creator .ava,.cchip .ava{overflow:hidden}
+  .creator .ava img,.cchip .ava img{width:100%;height:100%;object-fit:cover;display:block}
 
   /* Section heads */
   .head{max-width:660px;margin-bottom:46px}
@@ -431,6 +433,11 @@
     .r,.stg>*,.enter{opacity:1!important;transform:none!important}
     .hero h1 .u::after{transform:scaleX(1)!important}
     .btn:hover,.card:hover,.seg:hover,.pcard:hover,.pcardx:hover,.jcard:hover,.pill:hover,.social-badge:hover,.creator:hover,.cchip:hover{transform:none}
+    /* Sem movimento: a faixa vira um wrap estatico com todos os cards visiveis. */
+    .cmarq-wrap{overflow:visible}
+    .cmarq{overflow:visible;-webkit-mask-image:none;mask-image:none}
+    .ctrack{flex-wrap:wrap;justify-content:center;width:auto}
+    .cchip.dup{display:none}
   }
 </style>
 </head>
@@ -906,12 +913,14 @@
 <script>
   (function () {
     // TODO(Ana): conferir os @ e adicionar/remover creators aqui.
-    // photo: caminho de uma imagem local (ex: "/creators/grazi.jpg") ou null pra usar as iniciais.
+    // photo: caminho da imagem em /creators (ou null pra cair nas iniciais como fallback).
     var CREATORS = [
-      { handle: "grazi.tech", url: "https://instagram.com/grazi.tech", photo: null },
-      { handle: "gabrielsm.dev", url: "https://instagram.com/gabrielsm.dev", photo: null },
-      { handle: "code.evelyn", url: "https://instagram.com/code.evelyn", photo: null },
-      { handle: "gama18k", url: "https://instagram.com/gama18k", photo: null }
+      { name: "Grazi", handle: "grazi.tech", photo: "/creators/grazi-tech.jpg", url: "https://instagram.com/grazi.tech" },
+      { name: "Jessica", handle: "jess.data", photo: "/creators/jess-data.jpg", url: "https://instagram.com/jess.data" },
+      { name: "Gama", handle: "gama18k", photo: "/creators/gama18k.jpg", url: "https://instagram.com/gama18k" },
+      { name: "Gabriel", handle: "gabrielsm.dev", photo: "/creators/gabrielsm-dev.jpg", url: "https://instagram.com/gabrielsm.dev" },
+      { name: "Carol", handle: "carolpaier.tech", photo: "/creators/carolpaier.jpg", url: "https://instagram.com/carolpaier.tech" },
+      { name: "Evelyn", handle: "code.evelyn", photo: "/creators/code-evelyn.jpg", url: "https://instagram.com/code.evelyn" }
     ];
     var AV_COLORS = ["av-y", "av-v", "av-l"];
 
@@ -921,12 +930,22 @@
       return handle.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase() || "@";
     }
 
+    // Mostra a foto real num avatar redondo; se a imagem faltar (404), cai nas iniciais.
     function fillAvatar(ava, creator) {
       ava.setAttribute("aria-hidden", "true");
+      var ini = initials(creator.handle);
       if (creator.photo) {
-        ava.style.backgroundImage = "url('" + creator.photo + "')";
+        var img = document.createElement("img");
+        img.src = creator.photo;
+        img.alt = "";
+        img.decoding = "async";
+        img.addEventListener("error", function () {
+          img.remove();
+          ava.textContent = ini;
+        });
+        ava.appendChild(img);
       } else {
-        ava.textContent = initials(creator.handle);
+        ava.textContent = ini;
       }
     }
 
@@ -975,7 +994,10 @@
       for (var pass = 0; pass < 2; pass++) {
         CREATORS.forEach(function (creator, idx) {
           var chip = buildChip(creator, idx);
-          if (pass === 1) chip.setAttribute("aria-hidden", "true");
+          if (pass === 1) {
+            chip.classList.add("dup");
+            chip.setAttribute("aria-hidden", "true");
+          }
           track.appendChild(chip);
         });
       }
