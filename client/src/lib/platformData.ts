@@ -2292,6 +2292,104 @@ export const dictionaryTerms = [
     meaning:
       "Identificador de produto eletrônico usado em RFID para rastrear itens.",
   },
+  {
+    term: "Recursão",
+    category: "Programação",
+    tags: ["Programação", "Lógica"],
+    meaning:
+      "Quando uma função chama a si mesma para resolver um problema em partes menores.",
+  },
+  {
+    term: "Big O",
+    category: "Programação",
+    tags: ["Programação", "Performance"],
+    meaning:
+      "Uma forma de medir o quanto um algoritmo fica mais lento conforme os dados crescem.",
+  },
+  {
+    term: "Estrutura de dados",
+    category: "Programação",
+    tags: ["Programação", "Estrutura de dados"],
+    meaning:
+      "Jeitos de organizar dados na memória para usá-los de forma eficiente.",
+  },
+  {
+    term: "Pilha",
+    category: "Programação",
+    tags: ["Programação", "Estrutura de dados"],
+    meaning:
+      "Estrutura onde o último a entrar é o primeiro a sair, como uma pilha de pratos.",
+  },
+  {
+    term: "POO",
+    category: "Programação",
+    tags: ["Programação", "POO"],
+    meaning:
+      "Programação Orientada a Objetos: organizar o código em objetos que juntam dados e comportamentos.",
+  },
+  {
+    term: "Herança",
+    category: "Programação",
+    tags: ["Programação", "POO"],
+    meaning:
+      "Quando uma classe aproveita atributos e métodos de outra, evitando repetir código.",
+  },
+  {
+    term: "Polimorfismo",
+    category: "Programação",
+    tags: ["Programação", "POO"],
+    meaning:
+      "Quando o mesmo método se comporta de jeitos diferentes dependendo do objeto.",
+  },
+  {
+    term: "Encapsulamento",
+    category: "Programação",
+    tags: ["Programação", "POO"],
+    meaning:
+      "Esconder os detalhes internos de um objeto e expor só o necessário para usá-lo.",
+  },
+  {
+    term: "Classe",
+    category: "Programação",
+    tags: ["Programação", "POO"],
+    meaning:
+      "Um molde que define como criar objetos com certos dados e comportamentos.",
+  },
+  {
+    term: "Compilador",
+    category: "Programação",
+    tags: ["Programação", "Geral"],
+    meaning:
+      "Um programa que traduz o código que você escreve para uma linguagem que a máquina entende.",
+  },
+  {
+    term: "Concorrência",
+    category: "Programação",
+    tags: ["Programação", "Performance"],
+    meaning:
+      "Quando um programa lida com várias tarefas ao mesmo tempo, alternando entre elas.",
+  },
+  {
+    term: "Thread",
+    category: "Programação",
+    tags: ["Programação", "Performance"],
+    meaning:
+      "Uma linha de execução dentro de um programa; várias rodam tarefas em paralelo.",
+  },
+  {
+    term: "Versionamento semântico",
+    category: "DevOps",
+    tags: ["DevOps", "Geral"],
+    meaning:
+      "Um padrão de numerar versões (como 2.1.0) que indica o tipo de mudança feita.",
+  },
+  {
+    term: "Refatoração",
+    category: "Programação",
+    tags: ["Programação", "Qualidade"],
+    meaning:
+      "Melhorar a organização do código sem mudar o que ele faz por fora.",
+  },
 ];
 
 export const comparisonOptions = {
