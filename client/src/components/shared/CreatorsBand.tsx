@@ -119,7 +119,7 @@ function Chip({
       aria-label={`Instagram de @${creator.handle}`}
       aria-hidden={duplicated}
       tabIndex={duplicated ? -1 : undefined}
-      className="inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full border-2 border-slate-950 py-1.5 pl-1.5 pr-[15px] font-display text-[0.92rem] font-bold shadow-[3px_3px_0_#0f172a] transition-all duration-150 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[5px_5px_0_#0f172a]"
+      className="mr-3 inline-flex shrink-0 items-center gap-2.5 whitespace-nowrap rounded-full border-2 border-slate-950 py-1.5 pl-1.5 pr-[15px] font-display text-[0.92rem] font-bold shadow-[3px_3px_0_#0f172a] transition-all duration-150 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[5px_5px_0_#0f172a]"
       style={{ backgroundColor: color.bg, color: color.text }}
     >
       <Avatar creator={creator} borderColor={color.avatarBorder} />
@@ -142,7 +142,7 @@ export default function CreatorsBand() {
       </p>
 
       {reduce ? (
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-3 px-4">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-y-3 px-4">
           {CREATORS.map((creator, i) => (
             <Chip key={creator.handle} creator={creator} index={i} />
           ))}
@@ -152,7 +152,7 @@ export default function CreatorsBand() {
           className="bnt-marquee overflow-hidden"
           style={{ WebkitMaskImage: FADE_MASK, maskImage: FADE_MASK }}
         >
-          <div className="bnt-marquee-track flex w-max items-center gap-3">
+          <div className="bnt-marquee-track flex w-max items-center">
             {[...CREATORS, ...CREATORS].map((creator, i) => (
               <Chip
                 key={`${creator.handle}-${i}`}
