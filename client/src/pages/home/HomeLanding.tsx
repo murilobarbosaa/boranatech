@@ -1,3 +1,4 @@
+import CreatorsBand from "@/components/shared/CreatorsBand";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import Hero from "./sections/Hero";
@@ -19,6 +20,7 @@ export default function HomeLanding() {
         url="/"
       />
       <Hero />
+      <CreatorsBand />
       <LogoLoop />
       <Mapa />
       <PorOndeComecar />
