@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { MessageCircle, Plus, Send, X } from "lucide-react";
 
+import AuthGateModal from "@/components/gate/AuthGateModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import {
   streamAgentChat,
   type AgentChatMessage,
@@ -66,6 +68,9 @@ function AssistantText({ text }: { text: string }) {
 export default function AgentWidget() {
   const { user, loading } = useAuth();
   const [location] = useLocation();
+  // Mesmo gate de login do resto do app. Usado SO quando o launcher e clicado por
+  // um usuario deslogado: abre o modal de login em vez do chat.
+  const { requireAuth, modalProps } = useAuthGate();
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<AgentChatMessage[]>([]);
@@ -80,9 +85,22 @@ export default function AgentWidget() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, statusLabel, errorMsg, open]);
 
-  // Visivel SO para usuario autenticado nesta fase: o agente retorna 401 sem
-  // login. Enquanto carrega ou deslogado, nao renderiza o launcher.
-  if (loading || !user) return null;
+  // Enquanto o estado de auth carrega, nao renderiza nada (evita piscar). Depois
+  // disso o launcher aparece para todos; o comportamento do clique e que muda
+  // conforme estar logado ou nao (ver handleLauncherClick).
+  if (loading) return null;
+
+  function handleLauncherClick() {
+    // Deslogado: NAO abre o chat. Dispara o mesmo gate de login do resto do app.
+    // requireAuth({}) persiste o destino atual (a pagina onde a pessoa esta) e
+    // abre o modal; apos o login ela volta pra ca. Nenhuma conversa parte de um
+    // usuario sem sessao.
+    if (!user) {
+      requireAuth({});
+      return;
+    }
+    setOpen((v) => !v);
+  }
 
   function startNewConversation() {
     if (streaming) return;
@@ -102,6 +120,9 @@ export default function AgentWidget() {
   }
 
   async function send() {
+    // Barreira de seguranca: deslogado nunca conversa. streamAgentChat exige
+    // sessao (o backend devolve 401 sem token), entao nem chamamos sem user.
+    if (!user) return;
     const text = input.trim();
     if (!text || streaming) return;
 
@@ -151,7 +172,7 @@ export default function AgentWidget() {
 
   return (
     <>
-      {open && (
+      {open && user && (
         <div className="fixed bottom-24 right-5 z-40 flex h-[min(70vh,560px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#faf8f4] shadow-[6px_6px_0_#0f172a]">
           <div className="flex items-center justify-between border-b-2 border-slate-950 bg-violet-800 px-4 py-3 text-white">
             {/* TODO(Ana): titulo do assistente. */}
@@ -262,13 +283,21 @@ export default function AgentWidget() {
 
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleLauncherClick}
         className="bnt-pressable fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-800 text-white shadow-[4px_4px_0_#0f172a]"
         /* TODO(Ana): label de acessibilidade do launcher. */
         aria-label="Abrir assistente"
       >
-        {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {open && user ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <MessageCircle className="h-6 w-6" />
+        )}
       </button>
+
+      {/* Modal de login do gate, acionado pelo launcher quando deslogado. Para
+          usuario logado fica inerte (open=false). */}
+      <AuthGateModal {...modalProps} />
     </>
   );
 }
