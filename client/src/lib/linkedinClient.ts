@@ -39,6 +39,7 @@ export async function analyzeLinkedin(
       `RATE_LIMITED: ${body.error?.message || "Limite atingido"}`,
     );
   }
+  if (response.status === 503) throw new Error("LINKEDIN_BUSY");
   if (response.status === 422) throw new Error("UNREADABLE");
   if (response.status === 400) throw new Error("INVALID_REQUEST");
   if (!response.ok) {

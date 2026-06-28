@@ -110,6 +110,26 @@ router.post(
 
     const usage = await checkAiDailyLimit(userId, !!req.isPro, "[linkedin]");
     if (!usage.allowed) {
+      // Falha de verificacao (RPC fora) e distinta de cota estourada: 503, nao
+      // 429, e loga como "error" pra nao poluir a metrica de rate_limited.
+      // Espelha server/routes/github.ts.
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        // TODO(Ana): mensagem de falha ao verificar o limite de uso (503).
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Não foi possível verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
       await logAiUsage({
         userId,
         tool: TOOL,
