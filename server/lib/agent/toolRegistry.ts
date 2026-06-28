@@ -1,12 +1,26 @@
+import { getActivitySummary } from "./tools/getActivitySummary";
+import { getFavorites } from "./tools/getFavorites";
+import { getLinkedinAnalysis } from "./tools/getLinkedinAnalysis";
+import { getProfileSkills } from "./tools/getProfileSkills";
 import { getQuizResult } from "./tools/getQuizResult";
 import { searchPlatformContent } from "./tools/searchPlatformContent";
 import { suggestNavigation } from "./tools/suggestNavigation";
 import type { AgentTool } from "./types";
 
-// Registro unico de tools do agente. Free: searchPlatformContent, suggestNavigation.
-// Pro (Fase 2): getQuizResult (tier "pro"). O gating por tier abaixo garante que
+// Registro unico de tools do agente.
+// Free: searchPlatformContent, suggestNavigation.
+// Pro (tier "pro"): getQuizResult, getFavorites, getProfileSkills,
+// getActivitySummary, getLinkedinAnalysis. O gating por tier abaixo garante que
 // usuario free NUNCA recebe uma tool tier "pro".
-const TOOLS: AgentTool[] = [searchPlatformContent, suggestNavigation, getQuizResult];
+const TOOLS: AgentTool[] = [
+  searchPlatformContent,
+  suggestNavigation,
+  getQuizResult,
+  getFavorites,
+  getProfileSkills,
+  getActivitySummary,
+  getLinkedinAnalysis,
+];
 
 // Selecao por tier verificado server-side. Free (!isPro) recebe APENAS tools com
 // tier "free" (filtro explicito abaixo); Pro recebe free + pro. Uma tool tier
