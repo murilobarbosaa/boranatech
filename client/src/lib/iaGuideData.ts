@@ -7,6 +7,8 @@ export interface IaTool {
   quandoUsar: string;
   custo: IaCusto;
   url: string;
+  temPortugues?: boolean;
+  embaixadora?: boolean;
 }
 
 export interface IaToolGroup {
@@ -35,6 +37,7 @@ export const iaTools: IaToolGroup[] = [
           "Pergunta geral, estudar um tópico ou gerar um primeiro rascunho.",
         custo: "Freemium",
         url: "https://chatgpt.com/",
+        temPortugues: true,
       },
       {
         nome: "Claude",
@@ -44,6 +47,7 @@ export const iaTools: IaToolGroup[] = [
           "Analisar um arquivo grande, revisar redação ou pedir raciocínio mais cuidadoso.",
         custo: "Freemium",
         url: "https://claude.ai/",
+        temPortugues: true,
       },
       {
         nome: "Gemini",
@@ -52,6 +56,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Dúvidas gerais e uso junto das ferramentas do Google.",
         custo: "Freemium",
         url: "https://gemini.google.com/",
+        temPortugues: true,
       },
       {
         nome: "Grok",
@@ -69,6 +74,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Usar IA dentro do Word, Excel e do navegador Edge.",
         custo: "Freemium",
         url: "https://copilot.microsoft.com/",
+        temPortugues: true,
       },
       {
         nome: "Le Chat",
@@ -131,6 +137,8 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Programar com ajuda de IA dentro do editor.",
         custo: "Freemium",
         url: "https://cursor.com/",
+        temPortugues: true,
+        embaixadora: true,
       },
     ],
   },
@@ -185,6 +193,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar uma ilustração ou mockup simples.",
         custo: "Pago",
         url: "https://openai.com/index/dall-e-3/",
+        temPortugues: true,
       },
       {
         nome: "Midjourney",
@@ -296,6 +305,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar locução para vídeos e podcasts.",
         custo: "Freemium",
         url: "https://elevenlabs.io/",
+        embaixadora: true,
       },
       {
         nome: "Suno",
@@ -342,6 +352,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar posts e materiais visuais rápido.",
         custo: "Freemium",
         url: "https://www.canva.com/magic-studio/",
+        temPortugues: true,
       },
       {
         nome: "Napkin",
@@ -382,6 +393,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Estudar de PDFs e anotações suas.",
         custo: "Freemium",
         url: "https://notebooklm.google.com/",
+        temPortugues: true,
       },
     ],
   },

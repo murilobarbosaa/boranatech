@@ -29,6 +29,7 @@ import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
+import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn, getFaviconUrl, hideBrokenImage } from "@/lib/utils";
@@ -200,23 +201,44 @@ function ToolCard({ tool }: { tool: ToolWithCat }) {
         <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
           {tool.categoria}
         </span>
+        {tool.temPortugues ? (
+          <span className="inline-flex rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] font-black uppercase text-sky-800">
+            PT
+          </span>
+        ) : null}
       </div>
+      {tool.embaixadora ? (
+        <div className="mt-2">
+          <EmbaixadoraBadge program={tool.nome} href={tool.url} />
+        </div>
+      ) : null}
       <p className="mt-3 text-sm text-slate-600">{tool.paraQueServe}</p>
       <p className="mt-2 flex-1 text-sm text-slate-700">
         <span className="font-black">Quando usar:</span> {tool.quandoUsar}
       </p>
       <div className="mt-4 flex items-center gap-2">
-        <a
-          href={tool.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "inline-flex items-center gap-1 text-xs font-black uppercase",
-            ac.link,
-          )}
-        >
-          Site oficial <ExternalLink className="h-3 w-3" />
-        </a>
+        {tool.custo === "Pago" ? (
+          <a
+            href={tool.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "inline-flex items-center gap-1 text-xs font-black uppercase",
+              ac.link,
+            )}
+          >
+            Site oficial <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : (
+          <a
+            href={tool.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+          >
+            Experimente agora <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
         <button
           type="button"
           onClick={copyLink}
