@@ -25,6 +25,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
+import ProGate from "@/components/pro/ProGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
@@ -168,6 +169,8 @@ function CursoQuiz({
   );
 }
 
+const PREVIEW_MS = 15000;
+
 export default function Cursos() {
   const { isPro, loading } = useSubscription();
   const reduce = useReducedMotion() ?? false;
@@ -182,6 +185,15 @@ export default function Cursos() {
   const [aberto, setAberto] = useState(false);
   const [quizAberto, setQuizAberto] = useState(false);
   const [quizAplicado, setQuizAplicado] = useState(false);
+  const [previewExpirado, setPreviewExpirado] = useState(false);
+
+  useEffect(() => {
+    if (isPro || loading) return;
+    const timer = setTimeout(() => setPreviewExpirado(true), PREVIEW_MS);
+    return () => clearTimeout(timer);
+  }, [isPro, loading]);
+
+  const blocked = !isPro && !loading && previewExpirado;
 
   function aplicarQuiz(areaVal: string, nivelVal: string, tipoVal: string) {
     setArea(areaVal);
@@ -538,7 +550,16 @@ export default function Cursos() {
             </div>
           ) : null}
           <div id="cursos-resultados" />
-          {filtered.length === 0 ? (
+          <div className="relative">
+            <div
+              aria-hidden={blocked}
+              className={
+                blocked
+                  ? `pointer-events-none select-none blur-md${reduce ? "" : " transition-[filter] duration-500"}`
+                  : ""
+              }
+            >
+              {filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
               <p className="text-slate-600 font-medium">
@@ -703,6 +724,21 @@ export default function Cursos() {
               ))}
             </div>
           )}
+            </div>
+            {blocked ? (
+              <motion.div
+                className="absolute inset-0 flex items-start justify-center bg-white/40 px-4 pt-10"
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduce ? 0 : 0.4 }}
+              >
+                <ProGate
+                  description="A lista completa de cursos faz parte do Pro. Assine para explorar todos os cursos e filtros sem limite de tempo."
+                  className="w-full max-w-lg"
+                />
+              </motion.div>
+            ) : null}
+          </div>
 
           {/* Disclaimer */}
           <div className="mt-10 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-center">
