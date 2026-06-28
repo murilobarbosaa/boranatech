@@ -802,6 +802,36 @@ router.get("/ai-stats", async (_req, res, next) => {
   }
 });
 
+router.get("/ai-usage-summary", async (req, res, next) => {
+  try {
+    const sinceRaw = typeof req.query.since === "string" ? req.query.since : null;
+    const untilRaw = typeof req.query.until === "string" ? req.query.until : null;
+    const since =
+      sinceRaw && !Number.isNaN(Date.parse(sinceRaw)) ? sinceRaw : null;
+    const until =
+      untilRaw && !Number.isNaN(Date.parse(untilRaw)) ? untilRaw : null;
+    const { data, error } = await supabaseAdmin.rpc(
+      "get_ai_usage_admin_summary",
+      {
+        p_since: since,
+        p_until: until,
+      },
+    );
+    if (error) {
+      return next(
+        createError(
+          500,
+          "ai_usage_summary_failed",
+          "Falha ao agregar uso de IA.",
+        ),
+      );
+    }
+    res.json({ data: data ?? [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/queue-stats", async (_req, res) => {
   try {
     if (!emailQueue) {
