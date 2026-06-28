@@ -87,6 +87,7 @@ import Privacidade from "./pages/Privacidade";
 import TermosDeUso from "./pages/TermosDeUso";
 import DevProBorders from "./pages/dev/ProBordersPlayground";
 import AuthGatePlayground from "./pages/dev/AuthGatePlayground";
+import AgentWidget from "./components/agent/AgentWidget";
 
 function Router() {
   return (
@@ -282,6 +283,7 @@ function App() {
                 <LaunchGate>
                   <Router />
                 </LaunchGate>
+                <AgentWidget />
               </TooltipProvider>
             </SubscriptionProvider>
           </FavoritesProvider>

@@ -191,6 +191,24 @@ async function consumeStream(
   return { content, toolCalls, inputTokens, outputTokens };
 }
 
+// currentRoute vem do cliente, entao e NAO confiavel. So vira contexto se casar
+// esta regex estrita: comeca com barra, apenas caracteres de caminho, sem espaco
+// e sem quebra de linha, no maximo 64 chars. Essa restricao torna injecao de
+// prompt por esse campo inviavel.
+const SAFE_ROUTE_RE = /^\/[A-Za-z0-9/_-]{0,63}$/;
+
+// Monta a mensagem de contexto de rota, ou null se a rota for invalida.
+// IMPORTANTE: currentRoute e DICA DE UX, NUNCA entrada de autorizacao. Nenhuma
+// decisao de acesso ou tier pode depender dele (o tier vem so do req.isPro; as
+// tools usam ctx.userId do JWT). Aqui ele so vira um texto factual de navegacao.
+function buildRouteContextMessage(currentRoute?: string): string | null {
+  if (!currentRoute || !SAFE_ROUTE_RE.test(currentRoute)) {
+    return null;
+  }
+  // TODO(Ana): revisar esta copy de contexto de navegacao.
+  return `Contexto de navegacao: o usuario esta atualmente na pagina ${currentRoute} do BoraNaTech. Voce pode usar isso para ajudar na navegacao, mas nao assuma mais nada sobre o usuario nem afirme acessar dados pessoais dele.`;
+}
+
 // Loop principal do agente: chama a OpenAI em modo stream com a toolset do tier.
 // Acumula conteudo (emitido como tokens) e tool_calls; quando o modelo pede
 // tools, emite status, executa cada uma pelo registry com o AgentContext, anexa
@@ -201,8 +219,12 @@ export async function runAgentLoop(
 ): Promise<RunAgentResult> {
   const { tools, systemPrompt, ctx, apiKey, emit } = params;
 
+  const routeNote = buildRouteContextMessage(ctx.currentRoute);
   const conversation: ChatMessage[] = [
     { role: "system", content: systemPrompt },
+    // Mensagem de contexto logo apos o system prompt principal, quando a rota e
+    // valida. So ajuda de UX; nunca altera tier nem acesso (ver comentario acima).
+    ...(routeNote ? [{ role: "system" as const, content: routeNote }] : []),
     ...params.messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
