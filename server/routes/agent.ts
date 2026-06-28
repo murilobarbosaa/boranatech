@@ -2,6 +2,10 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import {
+  appendMessage,
+  createConversation,
+} from "../lib/agent/conversationStore";
+import {
   AgentStreamEmitter,
   AgentUpstreamError,
   runAgentLoop,
@@ -26,6 +30,11 @@ router.use(checkProStatus);
 
 // Teto de tamanho do historico enviado pelo cliente. Ajustavel. // TODO: calibrar.
 const MAX_INPUT_CHARS = 12_000;
+// Tamanho maximo do titulo (primeira mensagem do usuario truncada). // TODO: calibrar.
+const TITLE_MAX_CHARS = 80;
+// Formato uuid; conversationId malformado no corpo e tratado como ausente.
+const CONVERSATION_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 router.post("/chat/stream", async (req: Request, res: Response, next: NextFunction) => {
   const requestId = crypto.randomUUID();
@@ -121,6 +130,63 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
     }
   }
 
+  // Persistencia do historico: SO para Pro. Free nunca cria conversa nem salva
+  // mensagem (comportamento identico ao de hoje). A identidade vem de userId
+  // (JWT); o conversationId do corpo e NAO confiavel: validado por FORMATO aqui
+  // e por POSSE dentro do store (user_id E id). Best-effort: qualquer falha do
+  // store vira warn e o chat segue normal, nunca interrompe a resposta.
+  const rawConversationId =
+    typeof bodyUnknown.conversationId === "string" ? bodyUnknown.conversationId : "";
+  const providedConversationId = CONVERSATION_ID_RE.test(rawConversationId)
+    ? rawConversationId
+    : null;
+
+  let activeConversationId: string | null = null;
+  if (isPro) {
+    // Persistencia best-effort de VERDADE. Alem de tratar ok:false, este try/catch
+    // e a ultima barreira contra EXCECAO: o store nunca lanca por contrato, mas se
+    // algo aqui lancar (rede, tabela inexistente ate a migration ser aplicada), a
+    // falha vira so um warn e activeConversationId fica null. Nenhuma excecao pode
+    // escapar para antes do flushHeaders e derrubar o chat do Pro.
+    try {
+      if (providedConversationId) {
+        activeConversationId = providedConversationId;
+      } else {
+        // Conversa criada no PRIMEIRO envio. Titulo = primeira mensagem do usuario
+        // truncada (sem geracao por IA neste marco). category fica NULA.
+        const firstUser = cleaned.find((m) => m.role === "user");
+        const title = firstUser ? firstUser.content.slice(0, TITLE_MAX_CHARS) : null;
+        const created = await createConversation(userId, title);
+        if (created.ok) {
+          activeConversationId = created.data.id;
+        } else {
+          console.warn("[agent] createConversation falhou, seguindo sem persistir:", created.error);
+        }
+      }
+
+      if (activeConversationId) {
+        // Persiste a ULTIMA mensagem do usuario (a que originou esta chamada) ANTES
+        // do stream, para ficar salva mesmo se o stream falhar no meio.
+        const lastUser = [...cleaned].reverse().find((m) => m.role === "user");
+        if (lastUser) {
+          const appended = await appendMessage(userId, activeConversationId, "user", lastUser.content);
+          if (!appended.ok) {
+            console.warn("[agent] appendMessage(user) falhou:", appended.error);
+            // not_owner: o conversationId recebido nao e do usuario. Nao salva nada
+            // nessa conversa e nao comunica esse id ao cliente.
+            if (appended.error === "not_owner") {
+              activeConversationId = null;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Estado seguro: sem conversa ativa, o chat segue sem persistir.
+      console.warn("[agent] persistencia pre-stream falhou, seguindo sem salvar:", err);
+      activeConversationId = null;
+    }
+  }
+
   // SSE espelhando os headers e o flush do ai.ts.
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -139,6 +205,12 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
       res.write(`data: ${JSON.stringify({ type: "error", message })}\n\n`);
     },
   };
+
+  // Comunica ao cliente em qual conversa esta sendo salvo (so Pro e quando ha
+  // conversa ativa). O cliente (rodada B) guarda esse id para os proximos envios.
+  if (activeConversationId) {
+    emit.status({ event: "conversation", conversationId: activeConversationId });
+  }
 
   try {
     const result = await runAgentLoop({
@@ -163,6 +235,20 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
       outputTokens: result.outputTokens,
       costEstimate: estimateCost(inputChars, result.outputChars),
     });
+    // Persiste a resposta do assistente apos o stream (so Pro, conversa ativa e
+    // texto nao vazio). Best-effort: falha aqui vira warn, nao afeta o cliente
+    // (o stream ja foi entregue).
+    if (isPro && activeConversationId && result.assistantText.trim().length > 0) {
+      const saved = await appendMessage(
+        userId,
+        activeConversationId,
+        "assistant",
+        result.assistantText,
+      );
+      if (!saved.ok) {
+        console.warn("[agent] appendMessage(assistant) falhou:", saved.error);
+      }
+    }
   } catch (err) {
     const detail = err instanceof AgentUpstreamError ? err.detail : "loop_error";
     if (!(err instanceof AgentUpstreamError)) {

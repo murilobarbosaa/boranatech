@@ -26,6 +26,9 @@ export class AgentUpstreamError extends Error {
 export interface AgentStatusEvent {
   event: string;
   tool?: string;
+  // Usado pelo evento "conversation": comunica ao cliente em qual conversa do
+  // historico (Pro) esta mensagem esta sendo salva. Ausente nos demais eventos.
+  conversationId?: string;
 }
 
 export interface AgentStreamEmitter {
@@ -51,6 +54,10 @@ export interface RunAgentResult {
   outputChars: number;
   inputTokens: number;
   outputTokens: number;
+  // Texto final do assistente, identico ao que foi emitido em tokens (acumulado
+  // ao longo das iteracoes). Usado para persistir a mensagem do assistente no
+  // historico (so Pro); o streaming em si nao muda.
+  assistantText: string;
 }
 
 interface AssistantToolCall {
@@ -241,18 +248,22 @@ export async function runAgentLoop(
   let outputChars = 0;
   let inputTokens = 0;
   let outputTokens = 0;
+  // Acumula o texto emitido (igual ao que vira tokens para o cliente), para
+  // persistir a resposta do assistente. Nao altera o streaming.
+  let assistantText = "";
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     const body = await fetchOpenAIStream(conversation, tools, apiKey);
     const turn = await consumeStream(body, emit);
 
     outputChars += turn.content.length;
+    assistantText += turn.content;
     if (turn.inputTokens > 0) inputTokens = turn.inputTokens;
     outputTokens += turn.outputTokens;
 
     if (turn.toolCalls.length === 0) {
       // Mensagem final, sem tool calls. Fim do loop.
-      return { outputChars, inputTokens, outputTokens };
+      return { outputChars, inputTokens, outputTokens, assistantText };
     }
 
     conversation.push({
@@ -311,5 +322,5 @@ export async function runAgentLoop(
   // Estourou o teto de iteracoes sem mensagem final.
   // TODO(Ana): texto de teto de iteracoes exposto ao usuario.
   emit.error("Nao consegui concluir agora. Tente reformular sua pergunta.");
-  return { outputChars, inputTokens, outputTokens };
+  return { outputChars, inputTokens, outputTokens, assistantText };
 }

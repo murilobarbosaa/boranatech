@@ -16,6 +16,9 @@ export interface AgentStreamHandlers {
   onToken: (delta: string) => void;
   onStatus?: (status: AgentStatusEvent) => void;
   onError?: (message: string) => void;
+  // Chamado quando o backend informa em qual conversa do historico (Pro) a
+  // mensagem esta sendo salva. So dispara para usuario Pro com persistencia.
+  onConversationId?: (conversationId: string) => void;
 }
 
 // Espelha exatamente o aiClient: o JWT vem da sessao do Supabase.
@@ -34,6 +37,7 @@ interface AgentFrame {
   event?: unknown;
   tool?: unknown;
   message?: unknown;
+  conversationId?: unknown;
 }
 
 function readErrorMessage(body: unknown): string | undefined {
@@ -54,6 +58,7 @@ export async function streamAgentChat(
   messages: AgentChatMessage[],
   currentRoute: string | undefined,
   handlers: AgentStreamHandlers,
+  conversationId?: string,
 ): Promise<void> {
   const authHeader = await getAuthHeader();
   const response = await fetch(apiUrl("/api/agent/chat/stream"), {
@@ -63,7 +68,9 @@ export async function streamAgentChat(
       Accept: "text/event-stream",
       ...authHeader,
     },
-    body: JSON.stringify({ messages, currentRoute }),
+    // conversationId opcional: ausente no primeiro envio (o backend cria a
+    // conversa, se Pro) e presente nos seguintes. undefined some no JSON.
+    body: JSON.stringify({ messages, currentRoute, conversationId }),
   });
 
   if (response.status === 401) throw new Error("LOGIN_REQUIRED");
@@ -109,10 +116,15 @@ export async function streamAgentChat(
             handlers.onToken(frame.value);
           }
         } else if (frame.type === "status") {
-          handlers.onStatus?.({
-            event: typeof frame.event === "string" ? frame.event : "",
-            tool: typeof frame.tool === "string" ? frame.tool : undefined,
-          });
+          const event = typeof frame.event === "string" ? frame.event : "";
+          if (event === "conversation" && typeof frame.conversationId === "string") {
+            handlers.onConversationId?.(frame.conversationId);
+          } else {
+            handlers.onStatus?.({
+              event,
+              tool: typeof frame.tool === "string" ? frame.tool : undefined,
+            });
+          }
         } else if (frame.type === "error") {
           handlers.onError?.(
             typeof frame.message === "string"
