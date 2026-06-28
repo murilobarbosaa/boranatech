@@ -93,6 +93,16 @@ export const dicasCategorias = [
   "Primeiro emprego",
   "Código no dia a dia",
   "Mentalidade e comunidade",
+  "Currículo",
+  "Entrevista",
+  "Portfólio",
+  "Networking",
+  "LinkedIn",
+  "Estudo",
+  "Estágio",
+  "Produtividade",
+  "Soft skills",
+  "Comunidades",
 ] as const;
 
 export const dicas: Dica[] = [
@@ -235,6 +245,396 @@ export const dicas: Dica[] = [
     categoria: "Mentalidade e comunidade",
     texto:
       "Descanso faz parte do aprendizado. O cérebro consolida no intervalo, não só no esforço.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Comece cada item de experiência com um verbo de ação e termine com o resultado mensurável que aquilo gerou, como reduzir tempo de build ou aumentar conversão.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Adapte o resumo do topo para a vaga específica em vez de usar um texto genérico que serve para qualquer empresa.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Liste tecnologias que você realmente sabe explicar numa conversa, porque tudo o que estiver no documento pode virar pergunta na entrevista.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Mantenha em uma única página enquanto você tiver menos de cinco anos de experiência e corte projetos antigos que não dizem mais nada sobre você hoje.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Troque frases vagas como responsável por melhorias por números concretos, mesmo que sejam estimativas honestas baseadas no que você observou.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Salve sempre em PDF com nome de arquivo claro contendo seu nome e o cargo, evitando títulos como curriculo-final-versao3.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Evite barras de proficiência que dizem oitenta por cento de uma linguagem, pois ninguém sabe medir isso e o recrutador desconfia.",
+  },
+  {
+    categoria: "Currículo",
+    texto:
+      "Inclua uma linha curta de contexto sobre cada empresa pouco conhecida, já que o leitor pode não saber o tamanho ou o setor dela.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Pense em voz alta durante problemas técnicos, porque o entrevistador quer entender seu raciocínio e não apenas ver a resposta final pronta.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Antes de codar, repita o enunciado com suas palavras e confirme as restrições para evitar resolver o problema errado com perfeição.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Quando travar, descreva onde você está preso em vez de ficar em silêncio, pois muitos entrevistadores dão dicas se entenderem seu bloqueio.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Prepare três histórias flexíveis de projetos seus que possam responder a várias perguntas comportamentais diferentes.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Use a estrutura situação, tarefa, ação e resultado para respostas comportamentais sem parecer um roteiro decorado.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Pesquise o produto da empresa e abra a aplicação antes da conversa, para citar algo concreto que você notou usando.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Tenha perguntas suas no fim, focadas em como o time trabalha no dia a dia, e não só em benefícios.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Se errar uma resposta e perceber depois, é legítimo retomar e corrigir, mostrando que você revisa o próprio trabalho.",
+  },
+  {
+    categoria: "Entrevista",
+    texto:
+      "Teste seu microfone, câmera e conexão minutos antes de entrevistas remotas para não gastar os primeiros instantes resolvendo problema técnico.",
+  },
+  {
+    categoria: "Portfólio",
+    texto:
+      "Mostre poucos projetos bem acabados em vez de muitos pela metade, pois profundidade conta mais que quantidade.",
+  },
+  {
+    categoria: "Portfólio",
+    texto:
+      "Escreva um README que explique o problema resolvido, as decisões técnicas e como rodar o projeto em poucos comandos.",
+  },
+  {
+    categoria: "Portfólio",
+    texto:
+      "Inclua pelo menos um projeto que resolva uma dor real sua ou de alguém próximo, porque isso rende histórias melhores na entrevista.",
+  },
+  {
+    categoria: "Portfólio",
+    texto:
+      "Hospede uma versão funcionando online quando possível, já que um link clicável impressiona mais do que apenas código no repositório.",
+  },
+  {
+    categoria: "Portfólio",
+    texto:
+      "Adicione capturas de tela ou um gif curto no topo do README para quem avalia entender o projeto sem precisar instalar nada.",
+  },
+  {
+    categoria: "Portfólio",
+    texto:
+      "Documente o que você faria diferente hoje, mostrando senso crítico e capacidade de aprender com as próprias escolhas.",
+  },
+  {
+    categoria: "Portfólio",
+    texto:
+      "Evite tutoriais copiados sem mudanças, porque eles aparecem em centenas de portfólios e não revelam nada sobre você.",
+  },
+  {
+    categoria: "Networking",
+    texto:
+      "Ofereça ajuda antes de pedir algo, comentando o trabalho dos outros ou compartilhando recursos úteis sem esperar retorno imediato.",
+  },
+  {
+    categoria: "Networking",
+    texto:
+      "Após eventos, mande uma mensagem curta lembrando do contexto da conversa em vez de só clicar em conectar sem texto.",
+  },
+  {
+    categoria: "Networking",
+    texto:
+      "Mantenha uma lista das pessoas que te ajudaram e atualize-as quando você conseguir resultados, fechando o ciclo de gratidão.",
+  },
+  {
+    categoria: "Networking",
+    texto:
+      "Converse com profissionais um pouco mais experientes que você, e não apenas com quem já está em cargos sênior distantes.",
+  },
+  {
+    categoria: "Networking",
+    texto:
+      "Peça conversas rápidas de quinze minutos para entender uma área, deixando claro que você respeita o tempo da pessoa.",
+  },
+  {
+    categoria: "Networking",
+    texto:
+      "Networking interno também conta, então almoce e converse com times vizinhos quando já estiver empregado.",
+  },
+  {
+    categoria: "LinkedIn",
+    texto:
+      "Use o título do perfil para dizer o que você faz e busca, não apenas o cargo atual, já que é o que mais aparece nas buscas.",
+  },
+  {
+    categoria: "LinkedIn",
+    texto:
+      "Escreva a seção sobre em primeira pessoa, contando sua trajetória de forma humana em vez de listar palavras-chave soltas.",
+  },
+  {
+    categoria: "LinkedIn",
+    texto:
+      "Publique aprendizados de projetos seus de tempos em tempos, pois mostrar processo atrai mais oportunidades do que só repostar conteúdo alheio.",
+  },
+  {
+    categoria: "LinkedIn",
+    texto:
+      "Peça recomendações a colegas logo após entregas bem-sucedidas, enquanto a memória do trabalho ainda está fresca.",
+  },
+  {
+    categoria: "LinkedIn",
+    texto:
+      "Ative o aviso discreto de aberto a oportunidades para recrutadores quando estiver buscando, sem necessariamente exibir isso publicamente.",
+  },
+  {
+    categoria: "LinkedIn",
+    texto:
+      "Use uma foto de perfil com seu rosto visível e iluminado, já que perfis com foto recebem muito mais respostas.",
+  },
+  {
+    categoria: "LinkedIn",
+    texto:
+      "Comente com substância em posts da sua área, porque comentários reflexivos te tornam conhecido mais rápido do que só dar curtidas.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Aprenda construindo algo de verdade em vez de acumular cursos, pois o conhecimento fixa quando você precisa resolver um problema real.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Estude os fundamentos como estruturas de dados e redes, já que frameworks mudam mas a base sustenta toda a sua carreira.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Explique em voz alta ou por escrito o que acabou de aprender, porque ensinar revela rápido o que você ainda não entendeu.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Defina um projeto-meta e aprenda apenas o necessário para avançar nele, evitando se perder em conteúdo infinito sem aplicação.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Leia código de projetos open source maduros para ver como pessoas experientes organizam soluções de verdade.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Reserve blocos curtos e regulares em vez de maratonas raras, pois consistência diária vence intensidade esporádica no aprendizado técnico.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Aprofunde-se em uma stack até ter confiança antes de sair pulando para a próxima tecnologia da moda.",
+  },
+  {
+    categoria: "Estudo",
+    texto:
+      "Pratique ler mensagens de erro com calma, porque saber interpretar erros é uma das habilidades que mais aceleram seu progresso.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Nos primeiros meses, faça muitas perguntas, pois ninguém espera que o recém-chegado já saiba tudo do sistema.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Anote como configurar o ambiente e os processos do time enquanto aprende, e depois transforme isso em documentação útil para o próximo.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Entregue tarefas pequenas com qualidade antes de pedir desafios grandes, construindo confiança aos poucos com o time.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Peça feedback de forma específica perguntando o que melhorar em algo concreto, em vez de aguardar a avaliação formal anual.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Entenda o produto e o cliente, não só o código, porque isso te ajuda a tomar decisões técnicas mais acertadas.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Avise cedo quando perceber que uma tarefa vai atrasar, pois transparência vale mais que silêncio seguido de surpresa.",
+  },
+  {
+    categoria: "Primeiro emprego",
+    texto:
+      "Observe como os colegas mais respeitados se comunicam e resolvem conflitos, e use isso como referência de comportamento.",
+  },
+  {
+    categoria: "Estágio",
+    texto:
+      "Trate o estágio como uma vitrine de atitude, já que muitas contratações efetivas vêm de quem mostrou iniciativa e vontade de aprender.",
+  },
+  {
+    categoria: "Estágio",
+    texto:
+      "Aproveite que é esperado que você erre para experimentar e perguntar bastante enquanto a cobrança ainda é menor.",
+  },
+  {
+    categoria: "Estágio",
+    texto:
+      "Encontre um mentor informal no time e demonstre que você aplica os conselhos recebidos, o que estimula a pessoa a te ajudar mais.",
+  },
+  {
+    categoria: "Estágio",
+    texto:
+      "Ofereça-se para tarefas que ninguém quer fazer, pois elas costumam render aprendizado e visibilidade rápidos.",
+  },
+  {
+    categoria: "Estágio",
+    texto:
+      "Guarde exemplos do que você construiu durante o estágio, com prints e descrições, para alimentar seu currículo e portfólio depois.",
+  },
+  {
+    categoria: "Estágio",
+    texto:
+      "Mostre interesse genuíno pelo negócio fazendo perguntas sobre por que as coisas são feitas de determinada maneira.",
+  },
+  {
+    categoria: "Produtividade",
+    texto:
+      "Divida tarefas grandes em pedaços pequenos e entregáveis, porque progresso visível mantém a motivação e facilita pedir ajuda.",
+  },
+  {
+    categoria: "Produtividade",
+    texto:
+      "Proteja blocos de foco profundo sem notificações, já que trocar de contexto o tempo todo destrói a produtividade em programação.",
+  },
+  {
+    categoria: "Produtividade",
+    texto:
+      "Antes de começar a codar, escreva em uma frase o que você quer alcançar para não se perder no meio da implementação.",
+  },
+  {
+    categoria: "Produtividade",
+    texto:
+      "Estabeleça um limite de tempo para tentar resolver algo sozinho antes de pedir ajuda, equilibrando autonomia e bom uso do tempo do time.",
+  },
+  {
+    categoria: "Produtividade",
+    texto:
+      "Automatize tarefas repetitivas que você faz toda semana, pois o tempo investido no script costuma se pagar rápido.",
+  },
+  {
+    categoria: "Produtividade",
+    texto:
+      "Faça pausas reais longe da tela, porque boa parte das soluções aparece quando o cérebro descansa do problema.",
+  },
+  {
+    categoria: "Produtividade",
+    texto:
+      "Termine o dia anotando o próximo passo concreto, assim você recomeça amanhã sem perder tempo decidindo por onde ir.",
+  },
+  {
+    categoria: "Soft skills",
+    texto:
+      "Aprenda a escrever mensagens claras e objetivas, pois grande parte do trabalho em tech acontece por texto assíncrono.",
+  },
+  {
+    categoria: "Soft skills",
+    texto:
+      "Em revisões de código, comente o código e não a pessoa, e explique o porquê das suas sugestões.",
+  },
+  {
+    categoria: "Soft skills",
+    texto:
+      "Saiba dizer não sei e vou descobrir, porque admitir limites com naturalidade gera mais confiança do que improvisar respostas.",
+  },
+  {
+    categoria: "Soft skills",
+    texto:
+      "Adapte o nível técnico da sua explicação ao público, traduzindo termos quando fala com pessoas de áreas não técnicas.",
+  },
+  {
+    categoria: "Soft skills",
+    texto:
+      "Receba críticas separando o feedback da sua autoestima, focando no que dá para melhorar na próxima entrega.",
+  },
+  {
+    categoria: "Soft skills",
+    texto:
+      "Reconheça publicamente a contribuição dos colegas, pois dar crédito fortalece relações e raramente diminui o seu valor.",
+  },
+  {
+    categoria: "Soft skills",
+    texto:
+      "Desenvolva paciência para entender o contexto antes de propor mudanças, já que muitas decisões estranhas têm uma razão histórica.",
+  },
+  {
+    categoria: "Comunidades",
+    texto:
+      "Participe ativamente de comunidades técnicas respondendo dúvidas que você já sabe, porque ensinar consolida o seu próprio conhecimento.",
+  },
+  {
+    categoria: "Comunidades",
+    texto:
+      "Contribua com projetos open source começando por documentação ou correções pequenas antes de mirar mudanças grandes.",
+  },
+  {
+    categoria: "Comunidades",
+    texto:
+      "Vá a meetups e eventos locais mesmo sem conhecer ninguém, pois aparecer com frequência transforma estranhos em rede de contatos.",
+  },
+  {
+    categoria: "Comunidades",
+    texto:
+      "Ao pedir ajuda em fóruns, mostre o que já tentou e o erro completo, o que aumenta muito a chance de boas respostas.",
+  },
+  {
+    categoria: "Comunidades",
+    texto:
+      "Ofereça-se para palestrar sobre algo que aprendeu, já que apresentar mesmo coisas básicas te destaca e força um aprendizado mais sólido.",
+  },
+  {
+    categoria: "Comunidades",
+    texto:
+      "Seja gentil e paciente com iniciantes nas comunidades, pois a reputação que você constrói viaja mais longe do que imagina.",
   },
 ];
 
@@ -436,6 +836,12 @@ export const bibliotecaFilmes: Filme[] = [
     ano: "2012",
     porque: "Documentário sobre o coletivo hacktivista Anonymous.",
   },
+  {
+    titulo: "Moneyball",
+    ano: "2011",
+    porque:
+      "Prova na prática como dados e estatística derrubam intuição e mudam decisões de um setor inteiro.",
+  },
 ];
 
 export const bibliotecaSeries: Filme[] = [
@@ -508,6 +914,36 @@ export const bibliotecaSeries: Filme[] = [
     titulo: "Years and Years",
     ano: "2019",
     porque: "Uma família e o futuro próximo moldado pela tecnologia.",
+  },
+  {
+    titulo: "WeCrashed",
+    ano: "2022",
+    porque:
+      "Dramatiza a ascensão e queda da WeWork e expõe os perigos de hype, ego e financiamento sem freio.",
+  },
+  {
+    titulo: "Super Pumped: The Battle for Uber",
+    ano: "2022",
+    porque:
+      "Mostra os bastidores da Uber e como cultura agressiva e crescimento a qualquer custo cobram seu preço.",
+  },
+  {
+    titulo: "The Dropout",
+    ano: "2022",
+    porque:
+      "Conta a fraude da Theranos e serve de alerta sobre vender uma tecnologia que ainda não funciona.",
+  },
+  {
+    titulo: "Inventing Anna",
+    ano: "2022",
+    porque:
+      "Explora golpe e construção de imagem no ecossistema de investidores e startups de Nova York.",
+  },
+  {
+    titulo: "Upload",
+    ano: "2020",
+    porque:
+      "Imagina consciências hospedadas na nuvem e brinca com monetização, dados e vida digital pós-morte.",
   },
 ];
 

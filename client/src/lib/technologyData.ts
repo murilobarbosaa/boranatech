@@ -136,8 +136,15 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "Firebase",
     "Supabase",
   ],
-  Ferramentas: ["Vite", "Webpack", "Storybook", "Arduino", "Looker"],
-  Cloud: ["AWS", "Google Cloud", "Azure", "IBM Cloud", "DigitalOcean"],
+  Ferramentas: ["Vite", "Webpack", "Storybook", "Arduino", "Looker", "Gradle"],
+  Cloud: [
+    "AWS",
+    "Google Cloud",
+    "Azure",
+    "IBM Cloud",
+    "DigitalOcean",
+    "Cloudflare",
+  ],
   DevOps: [
     "Docker",
     "Kubernetes",
@@ -158,6 +165,7 @@ const byCategory: Record<TechnologyCategory, string[]> = {
   ],
   "Dados e IA": [
     "Pandas",
+    "Databricks",
     "NumPy",
     "TensorFlow",
     "PyTorch",
@@ -197,7 +205,12 @@ const byCategory: Record<TechnologyCategory, string[]> = {
 };
 
 // Fonte única em shared/techAreas.ts (TECH_AREA_MAP), reusada pelo servidor.
-const areaMap: Record<string, string[]> = TECH_AREA_MAP;
+const areaMap: Record<string, string[]> = {
+  ...TECH_AREA_MAP,
+  Cloudflare: ["cloud", "ciberseguranca"],
+  Databricks: ["dados", "ia", "cloud"],
+  Gradle: ["backend", "mobile", "devops"],
+};
 
 const difficulties: Record<string, DifficultyLabel> = {
   HTML: "Iniciante",
@@ -319,6 +332,9 @@ const difficulties: Record<string, DifficultyLabel> = {
   Nmap: "Avançado",
   "OWASP ZAP": "Avançado",
   Selenium: "Avançado",
+  Cloudflare: "Intermediário",
+  Databricks: "Avançado",
+  Gradle: "Intermediário",
 };
 
 export function slugify(value: string) {
@@ -496,6 +512,9 @@ const names = [
   "Sketch",
   "Canva",
   "Asana",
+  "Cloudflare",
+  "Databricks",
+  "Gradle",
 ];
 
 const logoUrls: Record<string, string> = {
@@ -635,6 +654,98 @@ const logoUrls: Record<string, string> = {
     "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/notion/notion-original.svg",
   Confluence:
     "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/confluence/confluence-original.svg",
+  ".NET MAUI":
+    "https://www.google.com/s2/favicons?domain=dotnet.microsoft.com&sz=128",
+  "ASP.NET Core":
+    "https://www.google.com/s2/favicons?domain=dotnet.microsoft.com&sz=128",
+  Ada: "https://www.google.com/s2/favicons?domain=adacore.com&sz=128",
+  "Adobe XD": "https://www.google.com/s2/favicons?domain=adobe.com&sz=128",
+  Asana: "https://www.google.com/s2/favicons?domain=asana.com&sz=128",
+  Astro: "https://www.google.com/s2/favicons?domain=astro.build&sz=128",
+  Bash: "https://www.google.com/s2/favicons?domain=gnu.org&sz=128",
+  Bootstrap:
+    "https://www.google.com/s2/favicons?domain=getbootstrap.com&sz=128",
+  "Burp Suite":
+    "https://www.google.com/s2/favicons?domain=portswigger.net&sz=128",
+  Canva: "https://www.google.com/s2/favicons?domain=canva.com&sz=128",
+  Cassandra:
+    "https://www.google.com/s2/favicons?domain=cassandra.apache.org&sz=128",
+  Clojure: "https://www.google.com/s2/favicons?domain=clojure.org&sz=128",
+  Dart: "https://www.google.com/s2/favicons?domain=dart.dev&sz=128",
+  DigitalOcean:
+    "https://www.google.com/s2/favicons?domain=digitalocean.com&sz=128",
+  DynamoDB: "https://www.google.com/s2/favicons?domain=aws.amazon.com&sz=128",
+  Elixir: "https://www.google.com/s2/favicons?domain=elixir-lang.org&sz=128",
+  Erlang: "https://www.google.com/s2/favicons?domain=erlang.org&sz=128",
+  "F#": "https://www.google.com/s2/favicons?domain=fsharp.org&sz=128",
+  Firebase:
+    "https://www.google.com/s2/favicons?domain=firebase.google.com&sz=128",
+  Flask: "https://www.google.com/s2/favicons?domain=palletsprojects.com&sz=128",
+  Fortran: "https://www.google.com/s2/favicons?domain=fortran-lang.org&sz=128",
+  "GitLab CI": "https://www.google.com/s2/favicons?domain=gitlab.com&sz=128",
+  Groovy: "https://www.google.com/s2/favicons?domain=groovy-lang.org&sz=128",
+  Hadoop: "https://www.google.com/s2/favicons?domain=hadoop.apache.org&sz=128",
+  Haskell: "https://www.google.com/s2/favicons?domain=haskell.org&sz=128",
+  "Hugging Face":
+    "https://www.google.com/s2/favicons?domain=huggingface.co&sz=128",
+  "IBM Cloud": "https://www.google.com/s2/favicons?domain=ibm.com&sz=128",
+  Ionic: "https://www.google.com/s2/favicons?domain=ionicframework.com&sz=128",
+  JUnit: "https://www.google.com/s2/favicons?domain=junit.org&sz=128",
+  Jest: "https://www.google.com/s2/favicons?domain=jestjs.io&sz=128",
+  "Jetpack Compose":
+    "https://www.google.com/s2/favicons?domain=developer.android.com&sz=128",
+  Julia: "https://www.google.com/s2/favicons?domain=julialang.org&sz=128",
+  "Kali Linux": "https://www.google.com/s2/favicons?domain=kali.org&sz=128",
+  Keras: "https://www.google.com/s2/favicons?domain=keras.io&sz=128",
+  LangChain: "https://www.google.com/s2/favicons?domain=langchain.com&sz=128",
+  Laravel: "https://www.google.com/s2/favicons?domain=laravel.com&sz=128",
+  MATLAB: "https://www.google.com/s2/favicons?domain=mathworks.com&sz=128",
+  MariaDB: "https://www.google.com/s2/favicons?domain=mariadb.org&sz=128",
+  "Material UI": "https://www.google.com/s2/favicons?domain=mui.com&sz=128",
+  Metasploit:
+    "https://www.google.com/s2/favicons?domain=metasploit.com&sz=128",
+  Neo4j: "https://www.google.com/s2/favicons?domain=neo4j.com&sz=128",
+  NestJS: "https://www.google.com/s2/favicons?domain=nestjs.com&sz=128",
+  Nginx: "https://www.google.com/s2/favicons?domain=nginx.org&sz=128",
+  Nmap: "https://www.google.com/s2/favicons?domain=nmap.org&sz=128",
+  Nuxt: "https://www.google.com/s2/favicons?domain=nuxt.com&sz=128",
+  "OWASP ZAP": "https://www.google.com/s2/favicons?domain=zaproxy.org&sz=128",
+  "Objective-C":
+    "https://www.google.com/s2/favicons?domain=developer.apple.com&sz=128",
+  Oracle: "https://www.google.com/s2/favicons?domain=oracle.com&sz=128",
+  Perl: "https://www.google.com/s2/favicons?domain=perl.org&sz=128",
+  Phoenix:
+    "https://www.google.com/s2/favicons?domain=phoenixframework.org&sz=128",
+  PowerShell: "https://www.google.com/s2/favicons?domain=microsoft.com&sz=128",
+  PyTest: "https://www.google.com/s2/favicons?domain=pytest.org&sz=128",
+  Quarkus: "https://www.google.com/s2/favicons?domain=quarkus.io&sz=128",
+  Ruby: "https://www.google.com/s2/favicons?domain=ruby-lang.org&sz=128",
+  "Ruby on Rails":
+    "https://www.google.com/s2/favicons?domain=rubyonrails.org&sz=128",
+  "SQL Server": "https://www.google.com/s2/favicons?domain=microsoft.com&sz=128",
+  SQLite: "https://www.google.com/s2/favicons?domain=sqlite.org&sz=128",
+  Scala: "https://www.google.com/s2/favicons?domain=scala-lang.org&sz=128",
+  Selenium: "https://www.google.com/s2/favicons?domain=selenium.dev&sz=128",
+  Sketch: "https://www.google.com/s2/favicons?domain=sketch.com&sz=128",
+  SolidJS: "https://www.google.com/s2/favicons?domain=solidjs.com&sz=128",
+  Supabase: "https://www.google.com/s2/favicons?domain=supabase.com&sz=128",
+  Svelte: "https://www.google.com/s2/favicons?domain=svelte.dev&sz=128",
+  SwiftUI:
+    "https://www.google.com/s2/favicons?domain=developer.apple.com&sz=128",
+  VMware: "https://www.google.com/s2/favicons?domain=vmware.com&sz=128",
+  "Visual Basic":
+    "https://www.google.com/s2/favicons?domain=microsoft.com&sz=128",
+  Vitest: "https://www.google.com/s2/favicons?domain=vitest.dev&sz=128",
+  "Windows Server":
+    "https://www.google.com/s2/favicons?domain=microsoft.com&sz=128",
+  Wireshark: "https://www.google.com/s2/favicons?domain=wireshark.org&sz=128",
+  "scikit-learn":
+    "https://www.google.com/s2/favicons?domain=scikit-learn.org&sz=128",
+  Cloudflare:
+    "https://www.google.com/s2/favicons?domain=cloudflare.com&sz=128",
+  Databricks:
+    "https://www.google.com/s2/favicons?domain=databricks.com&sz=128",
+  Gradle: "https://www.google.com/s2/favicons?domain=gradle.org&sz=128",
 };
 
 // Logos de ferramentas de apoio que não são tecnologias do catálogo principal.

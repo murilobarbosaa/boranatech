@@ -149,7 +149,7 @@ function GroupItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
   return (
     <div className="my-0.5">
       <div
-        className="flex cursor-pointer select-none items-center gap-3 py-2.5"
+        className="-mx-2 flex cursor-pointer select-none items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-slate-50"
         onClick={() => setOpen((prev) => !prev)}
       >
         <ChevronRight
@@ -165,7 +165,10 @@ function GroupItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
           }`}
         >
           {complete && (
-            <Check className="h-3.5 w-3.5 text-white" strokeWidth={4} />
+            <Check
+              className="h-3.5 w-3.5 text-white motion-safe:animate-in motion-safe:zoom-in-50"
+              strokeWidth={4}
+            />
           )}
           {partial && (
             <Minus className="h-3 w-3 text-slate-900" strokeWidth={4} />
@@ -236,7 +239,11 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
     hasLangResources;
 
   return (
-    <div className="flex items-start gap-3">
+    <div
+      className={`-mx-2 flex items-start gap-3 rounded-xl px-2 transition-colors ${
+        checked ? "bg-emerald-50/70" : "hover:bg-slate-50"
+      }`}
+    >
       <button
         type="button"
         aria-pressed={checked}
@@ -244,12 +251,15 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
           checked ? `Desmarcar ${node.title}` : `Marcar ${node.title}`
         }
         onClick={() => onToggle(node.id)}
-        className={`mt-[9px] grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] ${
+        className={`mt-[9px] grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] border-[2.5px] border-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] active:scale-90 ${
           checked ? "bg-emerald-500 shadow-[2px_2px_0_#047857]" : "bg-white"
         }`}
       >
         {checked && (
-          <Check className="h-3.5 w-3.5 text-white" strokeWidth={4} />
+          <Check
+            className="h-3.5 w-3.5 text-white motion-safe:animate-in motion-safe:zoom-in-50"
+            strokeWidth={4}
+          />
         )}
       </button>
       <div className="min-w-0 flex-1">

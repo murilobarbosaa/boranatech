@@ -344,7 +344,23 @@ export default function Projetos() {
                       key={projeto.id}
                       className="card-brutal bg-white rounded-xl overflow-hidden shadow-[5px_5px_0_#fdba74]"
                     >
-                <div className="w-full flex items-start justify-between p-6 text-left">
+                <div
+                  className="flex w-full cursor-pointer items-start justify-between rounded-xl p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={expanded === projeto.id}
+                  aria-controls={`projeto-detalhe-${projeto.id}`}
+                  onClick={() =>
+                    setExpanded(expanded === projeto.id ? null : projeto.id)
+                  }
+                  onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setExpanded(expanded === projeto.id ? null : projeto.id);
+                    }
+                  }}
+                >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span
@@ -359,52 +375,35 @@ export default function Projetos() {
                       </span>
                     </div>
                     <h3 className="font-display font-bold text-xl text-slate-900">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpanded(expanded === projeto.id ? null : projeto.id)
-                        }
-                        aria-expanded={expanded === projeto.id}
-                        aria-controls={`projeto-detalhe-${projeto.id}`}
-                        className="block w-full rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
-                      >
-                        {projeto.nome}
-                      </button>
+                      {projeto.nome}
                     </h3>
                     <p className="text-sm text-slate-600 mt-1">
                       {projeto.objetivo}
                     </p>
                   </div>
                   <div className="ml-4 flex shrink-0 items-center gap-3">
-                    <FavoriteButton
-                      compact
-                      item={{
-                        id: projeto.id,
-                        type: "projeto",
-                        title: projeto.nome,
-                        subtitle: labelForAreaSlug(projeto.areaSlug),
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpanded(expanded === projeto.id ? null : projeto.id)
-                      }
-                      aria-expanded={expanded === projeto.id}
-                      aria-controls={`projeto-detalhe-${projeto.id}`}
-                      aria-label={
-                        expanded === projeto.id
-                          ? `Recolher ${projeto.nome}`
-                          : `Expandir ${projeto.nome}`
-                      }
-                      className="rounded text-slate-400 transition-colors hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                    <span
+                      className="inline-flex"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
                     >
+                      <FavoriteButton
+                        compact
+                        item={{
+                          id: projeto.id,
+                          type: "projeto",
+                          title: projeto.nome,
+                          subtitle: labelForAreaSlug(projeto.areaSlug),
+                        }}
+                      />
+                    </span>
+                    <span className="text-slate-400" aria-hidden>
                       {expanded === projeto.id ? (
                         <ChevronUp className="w-5 h-5" />
                       ) : (
                         <ChevronDown className="w-5 h-5" />
                       )}
-                    </button>
+                    </span>
                   </div>
                 </div>
 

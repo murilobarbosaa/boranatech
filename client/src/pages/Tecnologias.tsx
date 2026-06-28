@@ -342,12 +342,7 @@ export default function Tecnologias() {
                           ))}
                         </div>
                       </div>
-                      <span
-                        className={cn(
-                          "mt-5 inline-flex items-center gap-2 text-sm font-black group-hover:underline",
-                          ac.link,
-                        )}
-                      >
+                      <span className="mt-5 inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-5 py-2.5 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all group-hover:-translate-y-0.5 group-hover:shadow-[5px_5px_0_#0f172a]">
                         Ver detalhes{" "}
                         <ArrowRight
                           className="h-4 w-4 transition-transform group-hover:translate-x-0.5"

@@ -86,6 +86,16 @@ const TrailStation = forwardRef<HTMLButtonElement, TrailStationProps>(
       };
     }, []);
 
+    const SHAPE_BY_LEVEL: Record<
+      NonNullable<RoadmapSection["level"]>,
+      string
+    > = {
+      iniciante: "rounded-full",
+      intermediario: "rounded-[34%]",
+      avancado: "rounded-[10px]",
+    };
+    const shape = level ? SHAPE_BY_LEVEL[level] : "rounded-full";
+
     function handleClick() {
       if (locked) {
         shake.start({ x: [0, -6, 6, -6, 6, 0], transition: { duration: 0.4 } });
@@ -110,13 +120,13 @@ const TrailStation = forwardRef<HTMLButtonElement, TrailStationProps>(
         className={`relative h-16 w-16 border-none bg-transparent p-0 ${locked ? "cursor-not-allowed" : "cursor-pointer"}`}
       >
         <span
-          className="absolute inset-0 rounded-full transition-[background] duration-300"
+          className={`absolute inset-0 ${shape} transition-[background] duration-300`}
           style={{ background: ringBackground }}
         />
         <span className="absolute inset-[6px]">
           <motion.span
             animate={core}
-            className={`absolute inset-0 rounded-full border-[2.5px] transition-[background,box-shadow] duration-300 ${
+            className={`absolute inset-0 ${shape} border-[2.5px] transition-[background,box-shadow] duration-300 ${
               complete
                 ? "border-slate-900 bg-emerald-500 shadow-[3px_3px_0_#047857]"
                 : locked

@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import {
+  ArrowRight,
   Search,
   ExternalLink,
   Clock,
@@ -16,12 +17,16 @@ import {
   BadgeCheck,
   Award,
   ChevronDown,
+  X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { AiCtaLink } from "@/components/shared/AiCta";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
+import ProGate from "@/components/pro/ProGate";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
 import { youtubeEmbedUrl } from "@/lib/utils";
@@ -57,7 +62,118 @@ const areaTagClass: Record<string, string> = {
   dados: "tag-dados",
 };
 
+// Quiz guiado: atalho que so seta os filtros que a pagina ja tem (area/nivel/preco).
+// Areas reais do catalogo (cursosGratuitos); valor = slug do filtro ou AREA_ALL.
+const QUIZ_AREA_OPCOES: { label: string; value: string }[] = [
+  { label: "Front-end", value: "frontend" },
+  { label: "Back-end", value: "backend" },
+  { label: "Full-stack", value: "fullstack" },
+  { label: "Dados", value: "dados" },
+  { label: "Inteligência Artificial", value: "ia" },
+  { label: "DevOps", value: "devops" },
+  { label: "Mobile", value: "mobile" },
+  { label: "Segurança", value: "ciberseguranca" },
+  { label: "Ainda não sei", value: AREA_ALL },
+];
+const QUIZ_NIVEL_OPCOES: { label: string; value: string }[] = [
+  { label: "Iniciante", value: "Iniciante" },
+  { label: "Intermediário", value: "Intermediário" },
+  { label: "Avançado", value: "Avançado" },
+  { label: "Tanto faz", value: "Todos" },
+];
+const QUIZ_TIPO_OPCOES: { label: string; value: string }[] = [
+  { label: "Só cursos grátis", value: "Gratuito" },
+  { label: "Tanto faz", value: "Todos" },
+];
+
+function CursoQuiz({
+  onApply,
+  onClose,
+}: {
+  onApply: (area: string, nivel: string, tipo: string) => void;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [area, setArea] = useState(AREA_ALL);
+  const [nivel, setNivel] = useState("Todos");
+
+  const steps = [
+    {
+      titulo: "Que área te interessa mais?",
+      opcoes: QUIZ_AREA_OPCOES,
+      escolher: (v: string) => {
+        setArea(v);
+        setStep(1);
+      },
+    },
+    {
+      titulo: "Qual seu nível?",
+      opcoes: QUIZ_NIVEL_OPCOES,
+      escolher: (v: string) => {
+        setNivel(v);
+        setStep(2);
+      },
+    },
+    {
+      titulo: "Prefere cursos grátis?",
+      opcoes: QUIZ_TIPO_OPCOES,
+      escolher: (v: string) => onApply(area, nivel, v),
+    },
+  ];
+  const atual = steps[step];
+  const total = steps.length;
+
+  return (
+    <div
+      id="cursos-quiz"
+      className="card-brutal rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[5px_5px_0_#fbbf24]"
+    >
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-wide text-amber-700">
+            Pergunta {step + 1} de {total}
+          </p>
+          <h3 className="mt-1 font-display text-lg font-black text-slate-950">
+            {atual.titulo}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar quiz"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all motion-safe:hover:-translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+        >
+          <X className="h-4 w-4" aria-hidden />
+          Fechar
+        </button>
+      </div>
+      <div className="mb-4 h-2 w-full overflow-hidden rounded-full border-2 border-slate-900 bg-amber-50">
+        <div
+          className="h-full rounded-full bg-amber-500 transition-all duration-300"
+          style={{ width: `${(step / total) * 100}%` }}
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {atual.opcoes.map((op) => (
+          <button
+            key={op.value}
+            type="button"
+            onClick={() => atual.escolher(op.value)}
+            className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:bg-amber-50 motion-safe:hover:-translate-y-px focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+          >
+            {op.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const PREVIEW_MS = 15000;
+
 export default function Cursos() {
+  const { isPro, loading } = useSubscription();
+  const reduce = useReducedMotion() ?? false;
   const search = useSearch();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
   const [courses, setCourses] = useState(cursosGratuitos);
@@ -67,6 +183,31 @@ export default function Cursos() {
   const [idioma, setIdioma] = useState("Todos");
   const [tipo, setTipo] = useState("Todos");
   const [aberto, setAberto] = useState(false);
+  const [quizAberto, setQuizAberto] = useState(false);
+  const [quizAplicado, setQuizAplicado] = useState(false);
+  const [previewExpirado, setPreviewExpirado] = useState(false);
+
+  useEffect(() => {
+    if (isPro || loading) return;
+    const timer = setTimeout(() => setPreviewExpirado(true), PREVIEW_MS);
+    return () => clearTimeout(timer);
+  }, [isPro, loading]);
+
+  const blocked = !isPro && !loading && previewExpirado;
+
+  function aplicarQuiz(areaVal: string, nivelVal: string, tipoVal: string) {
+    setArea(areaVal);
+    setNivel(nivelVal);
+    setTipo(tipoVal);
+    setQuizAberto(false);
+    setQuizAplicado(true);
+    requestAnimationFrame(() => {
+      document.getElementById("cursos-resultados")?.scrollIntoView({
+        behavior: reduce ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }
   const areaSlugOptions = useMemo<(string | null)[]>(
     () => [AREA_ALL, ...Array.from(new Set(courses.map((c) => c.areaSlug)))],
     [courses],
@@ -342,7 +483,83 @@ export default function Cursos() {
       {/* Grid */}
       <section className="bg-[#fff9e7] py-12">
         <div className="container">
-          {filtered.length === 0 ? (
+          <div className="mb-6">
+            {!quizAberto ? (
+              <button
+                type="button"
+                onClick={() => setQuizAberto(true)}
+                aria-expanded={false}
+                aria-controls="cursos-quiz"
+                className="card-brutal flex w-full items-center gap-4 rounded-2xl border-2 border-slate-900 bg-amber-100 p-5 text-left shadow-[5px_5px_0_#fbbf24] transition-all hover:shadow-[7px_7px_0_#fbbf24] motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-400 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <Sparkles className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  {/* TODO(Ana): copy do botao do quiz guiado */}
+                  <span className="block font-display text-lg font-black text-slate-950">
+                    Não sabe por onde começar?
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-700">
+                    Responda 3 perguntas e a gente filtra os cursos pra você.
+                  </span>
+                </span>
+                <span className="hidden shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-slate-900 px-4 py-2 text-sm font-black text-white sm:inline-flex">
+                  Começar
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </button>
+            ) : (
+              <CursoQuiz
+                onApply={aplicarQuiz}
+                onClose={() => setQuizAberto(false)}
+              />
+            )}
+          </div>
+
+          {quizAplicado ? (
+            <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3">
+              {/* TODO(Ana): copy da mensagem de resultado do quiz */}
+              <p className="text-sm font-bold text-amber-900">
+                Encontramos {filtered.length} curso
+                {filtered.length !== 1 ? "s" : ""} pra você.
+              </p>
+              <button
+                type="button"
+                onClick={() => setQuizAplicado(false)}
+                aria-label="Dispensar mensagem"
+                className="inline-flex shrink-0 items-center rounded-full border-2 border-amber-400 bg-white p-1 text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+          ) : null}
+
+          {!isPro && !loading ? (
+            <div className="mb-8">
+              {/* TODO(Ana): copy da CTA do plano de estudos */}
+              <AiCtaLink
+                href="/estudos"
+                description="A IA monta a ordem certa e o ritmo pra você"
+                accent="amber"
+                className="w-full"
+              >
+                Não sabe quais cursos fazer? Monte um plano de estudos
+                personalizado e descubra a ordem certa
+              </AiCtaLink>
+            </div>
+          ) : null}
+          <div id="cursos-resultados" />
+          <div className="relative">
+            <div
+              aria-hidden={blocked}
+              className={
+                blocked
+                  ? `pointer-events-none select-none blur-md${reduce ? "" : " transition-[filter] duration-500"}`
+                  : ""
+              }
+            >
+              {filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
               <p className="text-slate-600 font-medium">
@@ -507,6 +724,21 @@ export default function Cursos() {
               ))}
             </div>
           )}
+            </div>
+            {blocked ? (
+              <motion.div
+                className="absolute inset-0 flex items-start justify-center bg-white/40 px-4 pt-10"
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: reduce ? 0 : 0.4 }}
+              >
+                <ProGate
+                  description="A lista completa de cursos faz parte do Pro. Assine para explorar todos os cursos e filtros sem limite de tempo."
+                  className="w-full max-w-lg"
+                />
+              </motion.div>
+            ) : null}
+          </div>
 
           {/* Disclaimer */}
           <div className="mt-10 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-center">

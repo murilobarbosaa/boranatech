@@ -110,49 +110,30 @@ export default function TecnologiaMapa() {
             )}
           >
             <div className="flex flex-wrap items-center gap-3">
-              <span className="inline-flex shrink-0 items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-600">
+              <label
+                htmlFor="tech-area-filter"
+                className="inline-flex shrink-0 items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-600"
+              >
                 <Filter className="h-4 w-4 text-teal-700" aria-hidden />
-                Filtrar
-              </span>
-              <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFocusedSlug(null)}
-                  className={cn(
-                    "rounded-full border-2 border-slate-900 px-4 py-2 text-xs font-black transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0",
-                    focusedSlug === null ? ac.filterActive : ac.filterInactive,
-                  )}
-                >
-                  Todas as áreas
-                </button>
-                {areasTI.map((area) => {
-                  const Icon = area.icon;
-                  const pillAc = getPageAccentUi(accentForAreaSlug(area.slug));
-                  const active = focusedSlug === area.slug;
-                  return (
-                    <button
-                      key={area.slug}
-                      type="button"
-                      onClick={() => setFocusedSlug(area.slug)}
-                      title={area.descricaoCurta}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border-2 px-4 py-2 text-xs font-black transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0",
-                        active ? pillAc.filterActive : pillAc.filterInactive,
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          "h-3.5 w-3.5",
-                          active ? "" : pillAc.iconMuted,
-                        )}
-                        strokeWidth={2.5}
-                        aria-hidden
-                      />
-                      {area.nome}
-                    </button>
-                  );
-                })}
-              </div>
+                Filtrar por área
+              </label>
+              <select
+                id="tech-area-filter"
+                value={focusedSlug ?? "__all__"}
+                onChange={(e) =>
+                  setFocusedSlug(
+                    e.target.value === "__all__" ? null : e.target.value,
+                  )
+                }
+                className="w-full rounded-lg border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 sm:w-64"
+              >
+                <option value="__all__">Todas as áreas</option>
+                {areasTI.map((area) => (
+                  <option key={area.slug} value={area.slug}>
+                    {area.nome}
+                  </option>
+                ))}
+              </select>
             </div>
             <p className="mt-3 text-xs font-medium text-slate-600">
               Clique em <span className="font-bold">Ver tecnologias</span> no
@@ -166,7 +147,7 @@ export default function TecnologiaMapa() {
             className={cn(
               "grid items-start gap-6",
               sections.length === 1
-                ? "grid-cols-1"
+                ? "grid-cols-1 sm:max-w-xl"
                 : "md:grid-cols-2 lg:grid-cols-3",
             )}
           >

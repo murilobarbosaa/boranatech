@@ -49,7 +49,7 @@ import {
   type Subarea,
 } from "@/lib/faculdadesSubareas";
 
-const tipos = ["Todos", "Tecnólogo", "Bacharelado"];
+const tipos = ["Todos", "Técnico", "Tecnólogo", "Bacharelado"];
 const matNiveis = ["Todos", "Médio", "Alto", "Médio-Alto"];
 
 const matematicaColor: Record<string, string> = {
@@ -365,6 +365,7 @@ export default function Faculdades() {
   const [grauInst, setGrauInst] = useState("Todos");
   const [redeInst, setRedeInst] = useState("Todas");
   const [openTips, setOpenTips] = useState<Record<string, boolean>>({});
+  const [quizAberto, setQuizAberto] = useState(false);
   const reduce = useReducedMotion();
 
   const handleQuizBeforeAnswer = () => {
@@ -380,18 +381,18 @@ export default function Faculdades() {
     return matchTipo && matchMat;
   });
 
-  const instituicoesFiltradas: FaculdadeCurso[] = faculdadesInstituicoes.filter(
-    (item) => {
-      const matchGrau = grauInst === "Todos" || item.grau === grauInst;
-      const matchRede = redeInst === "Todas" || item.rede === redeInst;
-      const matchUf =
-        selectedUf === "" ||
-        (selectedUf === "__ead__"
-          ? item.uf === "Nacional"
-          : item.uf === selectedUf);
-      return matchGrau && matchRede && matchUf;
-    },
-  );
+  const instituicoesFiltradas: FaculdadeCurso[] =
+    selectedUf === ""
+      ? []
+      : faculdadesInstituicoes.filter((item) => {
+          const matchGrau = grauInst === "Todos" || item.grau === grauInst;
+          const matchRede = redeInst === "Todas" || item.rede === redeInst;
+          const matchUf =
+            selectedUf === "__ead__"
+              ? item.uf === "Nacional"
+              : item.uf === selectedUf;
+          return matchGrau && matchRede && matchUf;
+        });
 
   const subareasRender: { subarea: Subarea; itens: FaculdadeCurso[] }[] =
     SUBAREA_ORDER.map((subarea) => ({
@@ -401,11 +402,13 @@ export default function Faculdades() {
       ),
     })).filter((grupo) => grupo.itens.length > 0);
 
-  const nearby = collegeSuggestions.filter((item) => {
-    if (!selectedUf) return true;
-    if (item.nacional) return true;
-    return item.uf === selectedUf;
-  });
+  const nearby =
+    selectedUf === ""
+      ? []
+      : collegeSuggestions.filter((item) => {
+          if (item.nacional) return true;
+          return item.uf === selectedUf;
+        });
 
   return (
     <Layout>
@@ -502,6 +505,193 @@ export default function Faculdades() {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
+        <div className="container">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex gap-2">
+              {tipos.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTipo(t)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                    tipo === t
+                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
+                      : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
+                  }`}
+                >
+                  {t === "Todos" ? "Todos os tipos" : t}
+                </button>
+              ))}
+            </div>
+            <div className="w-px h-5 bg-slate-200" />
+            <select
+              value={mat}
+              onChange={(e) => setMat(e.target.value)}
+              className="px-3 py-2 border-2 border-violet-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 bg-white"
+            >
+              {matNiveis.map((m) => (
+                <option key={m}>
+                  {m === "Todos" ? "Nível de Matemática" : `Matemática: ${m}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-violet-50 py-12">
+        <div className="container">
+          <div className="grid md:grid-cols-2 gap-6">
+            {filtered.map((curso, i) => (
+              <div
+                key={i}
+                className="card-brutal relative flex flex-col rounded-xl bg-white p-6 transition-colors hover:bg-violet-50/60"
+              >
+                <Link
+                  href={`/faculdades/${slugifyCourse(curso.nome)}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    gateNavigate(`/faculdades/${slugifyCourse(curso.nome)}`);
+                  }}
+                  className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                  aria-label={`Ver detalhes de ${curso.nome}`}
+                />
+                <div className="mb-3 flex items-start justify-between">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
+                      curso.tipo === "Tecnólogo"
+                        ? "bg-violet-100 text-violet-800 border-violet-200"
+                        : "bg-violet-200 text-violet-900 border-violet-400"
+                    }`}
+                  >
+                    {curso.tipo} · {curso.duracao}
+                  </span>
+                  <div className="relative z-20">
+                    <FavoriteButton
+                      compact
+                      item={{
+                        id: slugifyCourse(curso.nome),
+                        type: "faculdade",
+                        title: curso.nome,
+                        subtitle: curso.tipo,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <h3 className="font-display font-bold text-xl text-slate-900 mb-2">
+                  {curso.nome}
+                </h3>
+                <p className="text-sm text-slate-600 mb-4">
+                  {curso.oQueEstuda}
+                </p>
+
+                <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50/90 p-3">
+                  <p className="text-xs text-slate-700">
+                    <strong className="text-slate-900">Para quem é:</strong>{" "}
+                    {curso.perfilIndicado}
+                  </p>
+                </div>
+
+                <div className="flex gap-2 mb-4">
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full font-medium ${matematicaColor[curso.matematica] || "bg-slate-100 text-slate-600"}`}
+                  >
+                    Matemática: {curso.matematica}
+                  </span>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full font-medium ${progColor[curso.programacao] || "bg-slate-100 text-slate-600"}`}
+                  >
+                    Programação: {curso.programacao}
+                  </span>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                    Áreas de atuação
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {curso.areasAtuacao.map((a) => (
+                      <span
+                        key={a}
+                        className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <p className="text-xs font-medium text-blue-700 mb-1.5">
+                      Pontos positivos
+                    </p>
+                    <ul className="space-y-1">
+                      {curso.pontoPositivos.map((p) => (
+                        <li
+                          key={p}
+                          className="flex items-start gap-1 text-xs text-slate-600"
+                        >
+                          <Check className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-red-600 mb-1.5">
+                      Pontos de atenção
+                    </p>
+                    <ul className="space-y-1">
+                      {curso.pontosAtencao.map((p) => (
+                        <li
+                          key={p}
+                          className="flex items-start gap-1 text-xs text-slate-600"
+                        >
+                          <X className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-lg p-3 mt-auto">
+                  <p className="text-xs text-slate-600">
+                    <strong>Diferença dos outros cursos:</strong>{" "}
+                    {curso.diferencas}
+                  </p>
+                </div>
+
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-violet-700">
+                  Ver carreira, salários e conteúdos{" "}
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-3xl mb-3">🎓</p>
+              <p className="text-slate-600 font-medium">
+                Nenhum curso encontrado.
+              </p>
+              <button
+                onClick={() => {
+                  setTipo("Todos");
+                  setMat("Todos");
+                }}
+                className="mt-4 text-violet-700 text-sm font-medium hover:underline"
+              >
+                Limpar filtros
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -777,6 +967,8 @@ export default function Faculdades() {
             </div>
           </div>
 
+          {selectedUf !== "" ? (
+            <>
           <p className="mb-4 text-sm text-slate-500">
             {instituicoesFiltradas.length} curso
             {instituicoesFiltradas.length !== 1 ? "s" : ""}
@@ -942,45 +1134,20 @@ export default function Faculdades() {
               </p>
             </div>
           ) : null}
-        </div>
-      </section>
-
-      <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
-        <div className="container">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex gap-2">
-              {tipos.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTipo(t)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
-                    tipo === t
-                      ? "bg-violet-700 text-white border-slate-900 shadow-[2px_2px_0_#0f172a]"
-                      : "bg-white text-slate-700 border-slate-300 hover:border-violet-400"
-                  }`}
-                >
-                  {t === "Todos" ? "Todos os tipos" : t}
-                </button>
-              ))}
+            </>
+          ) : (
+            <div className="rounded-2xl border-2 border-dashed border-violet-300 bg-white p-8 text-center">
+              <p className="text-sm font-bold text-slate-700">
+                Escolha um estado para ver as faculdades da sua região.
+              </p>
             </div>
-            <div className="w-px h-5 bg-slate-200" />
-            <select
-              value={mat}
-              onChange={(e) => setMat(e.target.value)}
-              className="px-3 py-2 border-2 border-violet-200 rounded-lg text-sm focus:outline-none focus:border-violet-500 bg-white"
-            >
-              {matNiveis.map((m) => (
-                <option key={m}>
-                  {m === "Todos" ? "Nível de Matemática" : `Matemática: ${m}`}
-                </option>
-              ))}
-            </select>
-          </div>
+          )}
         </div>
       </section>
 
       <section className="bg-violet-50 py-12">
         <div className="container">
+          {selectedUf !== "" ? (
           <div className="card-brutal mb-8 rounded-2xl bg-white p-6">
             <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
               <div>
@@ -1032,155 +1199,7 @@ export default function Faculdades() {
               </div>
             </div>
           </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            {filtered.map((curso, i) => (
-              <div
-                key={i}
-                className="card-brutal relative flex flex-col rounded-xl bg-white p-6 transition-colors hover:bg-violet-50/60"
-              >
-                <Link
-                  href={`/faculdades/${slugifyCourse(curso.nome)}`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    gateNavigate(`/faculdades/${slugifyCourse(curso.nome)}`);
-                  }}
-                  className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
-                  aria-label={`Ver detalhes de ${curso.nome}`}
-                />
-                <div className="mb-3 flex items-start justify-between">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
-                      curso.tipo === "Tecnólogo"
-                        ? "bg-violet-100 text-violet-800 border-violet-200"
-                        : "bg-violet-200 text-violet-900 border-violet-400"
-                    }`}
-                  >
-                    {curso.tipo} · {curso.duracao}
-                  </span>
-                  <div className="relative z-20">
-                    <FavoriteButton
-                      compact
-                      item={{
-                        id: slugifyCourse(curso.nome),
-                        type: "faculdade",
-                        title: curso.nome,
-                        subtitle: curso.tipo,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <h3 className="font-display font-bold text-xl text-slate-900 mb-2">
-                  {curso.nome}
-                </h3>
-                <p className="text-sm text-slate-600 mb-4">
-                  {curso.oQueEstuda}
-                </p>
-
-                <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50/90 p-3">
-                  <p className="text-xs text-slate-700">
-                    <strong className="text-slate-900">Para quem é:</strong>{" "}
-                    {curso.perfilIndicado}
-                  </p>
-                </div>
-
-                <div className="flex gap-2 mb-4">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${matematicaColor[curso.matematica] || "bg-slate-100 text-slate-600"}`}
-                  >
-                    Matemática: {curso.matematica}
-                  </span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full font-medium ${progColor[curso.programacao] || "bg-slate-100 text-slate-600"}`}
-                  >
-                    Programação: {curso.programacao}
-                  </span>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                    Áreas de atuação
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {curso.areasAtuacao.map((a) => (
-                      <span
-                        key={a}
-                        className="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full"
-                      >
-                        {a}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <p className="text-xs font-medium text-blue-700 mb-1.5">
-                      Pontos positivos
-                    </p>
-                    <ul className="space-y-1">
-                      {curso.pontoPositivos.map((p) => (
-                        <li
-                          key={p}
-                          className="flex items-start gap-1 text-xs text-slate-600"
-                        >
-                          <Check className="w-3 h-3 text-blue-500 mt-0.5 shrink-0" />
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-red-600 mb-1.5">
-                      Pontos de atenção
-                    </p>
-                    <ul className="space-y-1">
-                      {curso.pontosAtencao.map((p) => (
-                        <li
-                          key={p}
-                          className="flex items-start gap-1 text-xs text-slate-600"
-                        >
-                          <X className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                          {p}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-lg p-3 mt-auto">
-                  <p className="text-xs text-slate-600">
-                    <strong>Diferença dos outros cursos:</strong>{" "}
-                    {curso.diferencas}
-                  </p>
-                </div>
-
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-violet-700">
-                  Ver carreira, salários e conteúdos{" "}
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {filtered.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-3xl mb-3">🎓</p>
-              <p className="text-slate-600 font-medium">
-                Nenhum curso encontrado.
-              </p>
-              <button
-                onClick={() => {
-                  setTipo("Todos");
-                  setMat("Todos");
-                }}
-                className="mt-4 text-violet-700 text-sm font-medium hover:underline"
-              >
-                Limpar filtros
-              </button>
-            </div>
-          )}
+          ) : null}
 
           <div className="mt-6 rounded-xl border-2 border-violet-200 bg-white p-6">
             <h3 className="font-display text-2xl font-black text-slate-950">
@@ -1215,13 +1234,52 @@ export default function Faculdades() {
           </div>
 
           <div className="mt-6">
-            <MiniQuiz
-              titulo="Qual caminho de formação combina com você?"
-              subtitulo="Responda 3 perguntas rápidas."
-              perguntas={caminhoQuizPerguntas}
-              resultados={caminhoQuizResultados}
-              onBeforeAnswer={handleQuizBeforeAnswer}
-            />
+            {!quizAberto ? (
+              <button
+                type="button"
+                onClick={() => setQuizAberto(true)}
+                aria-expanded={false}
+                aria-controls="faculdades-quiz"
+                className="card-brutal flex w-full items-center gap-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-5 text-left shadow-[5px_5px_0_#a78bfa] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#a78bfa] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-600 text-white shadow-[2px_2px_0_#0f172a]">
+                  <Sparkles className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  {/* TODO(Ana): copy do botao que abre o quiz */}
+                  <span className="block font-display text-lg font-black text-slate-950">
+                    Qual caminho de formação combina com você?
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-600">
+                    Responda 3 perguntas rápidas.
+                  </span>
+                </span>
+                <span className="hidden shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[2px_2px_0_#0f172a] sm:inline-flex">
+                  Fazer o quiz
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </button>
+            ) : (
+              <div className="mb-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setQuizAberto(false)}
+                  className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                  Fechar quiz
+                </button>
+              </div>
+            )}
+            <div id="faculdades-quiz" className={quizAberto ? "" : "hidden"}>
+              <MiniQuiz
+                titulo="Qual caminho de formação combina com você?"
+                subtitulo="Responda 3 perguntas rápidas."
+                perguntas={caminhoQuizPerguntas}
+                resultados={caminhoQuizResultados}
+                onBeforeAnswer={handleQuizBeforeAnswer}
+              />
+            </div>
           </div>
 
         </div>

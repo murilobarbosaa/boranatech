@@ -18,6 +18,7 @@ import {
   Route,
   Sparkles,
   TrendingUp,
+  User,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
@@ -28,6 +29,7 @@ import LivrosRecomendados from "@/components/shared/LivrosRecomendados";
 import PageHero, { type PageHeroAccent } from "@/components/shared/PageHero";
 import TermoTooltip from "@/components/shared/TermoTooltip";
 import { areasTI, cursosGratuitos, faculdades, type AreaTI } from "@/lib/data";
+import { areaCreators } from "@/lib/areaCreators";
 import { companies } from "@/lib/companyData";
 import { careerInstitutes } from "@/lib/platformData";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
@@ -48,6 +50,12 @@ const HERO_BLOB: Record<PageHeroAccent, string> = {
   cyan: "bg-cyan-300",
   teal: "bg-teal-300",
 };
+
+const CREATOR_EXAMPLES = [
+  { platform: "YouTube" },
+  { platform: "Instagram" },
+  { platform: "TikTok" },
+];
 
 function AreaHeroDecor({ accent }: { accent: PageHeroAccent }) {
   const blob = HERO_BLOB[accent];
@@ -334,6 +342,7 @@ export default function AreaDetalhe() {
   const accent = accentForAreaSlug(area.slug);
   const ac = getPageAccentUi(accent);
   const comingSoon = area.roadmapStatus === "coming-soon";
+  const creators = areaCreators[area.slug] ?? [];
 
   const cursosDaArea = cursosGratuitos
     .filter((c) => c.areaSlug === area.slug)
@@ -372,20 +381,131 @@ export default function AreaDetalhe() {
           <AreaIconBox icon={area.icon} areaSlug={area.slug} size="lg" />
         }
         actions={
-          <FavoriteButton
-            compact
-            item={{
-              id: area.id,
-              type: "area",
-              title: area.nome,
-              subtitle: area.descricaoCurta,
-            }}
-          />
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-end">
+              <FavoriteButton
+                compact
+                item={{
+                  id: area.id,
+                  type: "area",
+                  title: area.nome,
+                  subtitle: area.descricaoCurta,
+                }}
+              />
+            </div>
+          </div>
         }
       />
 
       <section className={cn(ac.contentBg, "py-10 md:py-12")}>
         <div className="container">
+          {/* Faixa de criadores da area: horizontal, na transicao hero/conteudo */}
+          <div className="area-rise mb-8 w-full rounded-2xl border-2 border-slate-900 bg-white/70 p-4 shadow-[5px_5px_0_rgba(15,23,42,0.18)] sm:p-5">
+            {creators.length > 0 ? (
+              <>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-700">
+                    Criadores
+                  </p>
+                  <p className="font-display text-sm font-bold text-slate-950">
+                    Criadores pra acompanhar
+                  </p>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {creators.map((creator) => (
+                    <a
+                      key={creator.url}
+                      href={creator.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={cn(
+                        "card-brutal flex items-center gap-3 rounded-xl bg-white p-3 transition-transform hover:-translate-y-0.5",
+                        ac.liftShadow,
+                      )}
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-slate-900 bg-white">
+                        {creator.avatarUrl ? (
+                          <img
+                            src={creator.avatarUrl}
+                            alt={`Avatar ${creator.name}`}
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <User
+                            className={cn("h-5 w-5", ac.iconMuted)}
+                            aria-hidden
+                          />
+                        )}
+                      </span>
+                      <span className="min-w-0 text-left">
+                        <span className="block truncate font-display text-sm font-black text-slate-950">
+                          {creator.name}
+                        </span>
+                        <span className="mt-1 flex flex-wrap items-center gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                              ac.tag,
+                            )}
+                          >
+                            {creator.platform}
+                          </span>
+                          {creator.handle ? (
+                            <span className="truncate text-[11px] font-bold text-slate-500">
+                              {creator.handle}
+                            </span>
+                          ) : null}
+                        </span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-700">
+                    Criadores
+                  </p>
+                  <p className="font-display text-sm font-bold text-slate-950">
+                    Em breve: criadores recomendados desta área
+                  </p>
+                  <span className="text-xs font-semibold text-slate-600">
+                    Exemplo de como vai ficar.
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {CREATOR_EXAMPLES.map((exemplo) => (
+                    <div
+                      key={exemplo.platform}
+                      className={cn(
+                        "card-brutal flex items-center gap-3 rounded-xl border-2 border-dashed bg-white p-3",
+                        ac.panelBorder,
+                      )}
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-slate-300 bg-slate-50 text-slate-400">
+                        <User className="h-5 w-5" aria-hidden />
+                      </span>
+                      <span className="min-w-0 text-left">
+                        <span className="block font-display text-sm font-black text-slate-400">
+                          Criador exemplo
+                        </span>
+                        <span className="mt-1 flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+                            {exemplo.platform}
+                          </span>
+                          <span className="text-[11px] font-bold text-slate-400">
+                            perfil em breve
+                          </span>
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
             {/* ======================= MAIN ======================= */}
             <div className="space-y-10">

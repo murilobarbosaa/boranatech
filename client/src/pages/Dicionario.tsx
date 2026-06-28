@@ -129,7 +129,7 @@ export default function Dicionario() {
         </div>
       </section>
 
-      <section className="relative z-40 border-b-2 border-cyan-200 bg-cyan-50 py-4 md:sticky md:top-16">
+      <section className="border-b-2 border-cyan-200 bg-cyan-50 py-4">
         <div className="container">
           <div className="flex flex-col gap-4">
             <div className="relative max-w-xl">

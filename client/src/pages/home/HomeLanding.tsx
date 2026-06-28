@@ -1,3 +1,4 @@
+import CreatorsBand from "@/components/shared/CreatorsBand";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import Hero from "./sections/Hero";
@@ -18,6 +19,7 @@ export default function HomeLanding() {
         description="Plataforma de carreira em TI para iniciantes. Áreas, roadmaps, cursos, projetos, IA, eventos e carreira organizados em uma jornada clara."
         url="/"
       />
+      <CreatorsBand />
       <Hero />
       <LogoLoop />
       <Mapa />

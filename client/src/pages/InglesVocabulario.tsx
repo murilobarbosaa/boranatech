@@ -1,4 +1,4 @@
-import { AlertTriangle, Volume2 } from "lucide-react";
+import { AlertTriangle, Repeat, Volume2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import InglesSubNav from "@/components/shared/InglesSubNav";
 import PageHero from "@/components/shared/PageHero";
@@ -6,6 +6,7 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
   englishFalseFriends,
+  englishPhrasalVerbs,
   englishTechPronunciation,
   englishVocabulary,
 } from "@/lib/careerToolsData";
@@ -135,6 +136,50 @@ export default function InglesVocabulario() {
                   </span>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-5 flex items-start gap-3">
+              <div
+                className={cn(
+                  "rounded-xl border-2 border-sky-700 bg-sky-100 p-3 text-slate-950",
+                  ac.brutalShadow,
+                )}
+              >
+                <Repeat className="h-6 w-6" />
+              </div>
+              <div>
+                <p className={cn("text-xs font-black uppercase", ac.iconMuted)}>
+                  phrasal verbs
+                </p>
+                <h2 className="font-display text-3xl font-black text-slate-950">
+                  Phrasal verbs que aparecem no trabalho
+                </h2>
+                {/* TODO(Ana): revisar a copy do cabecalho desta secao nova */}
+                <p className="mt-1 text-sm text-slate-600">
+                  Verbos compostos comuns no dia a dia tech, com tradução e
+                  exemplo de uso.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {englishPhrasalVerbs.map((item) => (
+                <div
+                  key={item.phrase}
+                  className="card-brutal rounded-2xl bg-white p-5"
+                >
+                  <h3 className="font-display text-xl font-black text-slate-950">
+                    {item.phrase}
+                  </h3>
+                  <p className="mt-1 text-sm font-bold text-slate-700">
+                    {item.meaning_pt}
+                  </p>
+                  <p className="mt-2 text-xs italic text-slate-600">
+                    "{item.example}"
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
