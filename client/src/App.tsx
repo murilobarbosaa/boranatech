@@ -120,13 +120,7 @@ function Router() {
       <Route path="/tecnologias/mapa">
         {() => <Redirect to="/tecnologias/por-area" />}
       </Route>
-      <Route path="/tecnologias/ranking">
-        {() => (
-          <RequireAuth>
-            <TecnologiaRanking />
-          </RequireAuth>
-        )}
-      </Route>
+      <Route path="/tecnologias/ranking" component={TecnologiaRanking} />
       <Route path="/tecnologias/jogos">
         {() => (
           <RequireAuth>
