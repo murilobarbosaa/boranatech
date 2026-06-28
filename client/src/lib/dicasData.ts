@@ -836,6 +836,12 @@ export const bibliotecaFilmes: Filme[] = [
     ano: "2012",
     porque: "Documentário sobre o coletivo hacktivista Anonymous.",
   },
+  {
+    titulo: "Moneyball",
+    ano: "2011",
+    porque:
+      "Prova na prática como dados e estatística derrubam intuição e mudam decisões de um setor inteiro.",
+  },
 ];
 
 export const bibliotecaSeries: Filme[] = [
@@ -908,6 +914,36 @@ export const bibliotecaSeries: Filme[] = [
     titulo: "Years and Years",
     ano: "2019",
     porque: "Uma família e o futuro próximo moldado pela tecnologia.",
+  },
+  {
+    titulo: "WeCrashed",
+    ano: "2022",
+    porque:
+      "Dramatiza a ascensão e queda da WeWork e expõe os perigos de hype, ego e financiamento sem freio.",
+  },
+  {
+    titulo: "Super Pumped: The Battle for Uber",
+    ano: "2022",
+    porque:
+      "Mostra os bastidores da Uber e como cultura agressiva e crescimento a qualquer custo cobram seu preço.",
+  },
+  {
+    titulo: "The Dropout",
+    ano: "2022",
+    porque:
+      "Conta a fraude da Theranos e serve de alerta sobre vender uma tecnologia que ainda não funciona.",
+  },
+  {
+    titulo: "Inventing Anna",
+    ano: "2022",
+    porque:
+      "Explora golpe e construção de imagem no ecossistema de investidores e startups de Nova York.",
+  },
+  {
+    titulo: "Upload",
+    ano: "2020",
+    porque:
+      "Imagina consciências hospedadas na nuvem e brinca com monetização, dados e vida digital pós-morte.",
   },
 ];
 
