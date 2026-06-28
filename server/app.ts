@@ -9,6 +9,7 @@ import { validateSupabaseJwt } from "./middleware/auth";
 import { errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
 import agentRouter from "./routes/agent";
+import agentHistoryRouter from "./routes/agentHistory";
 import aiRouter from "./routes/ai";
 import affiliatesRouter from "./routes/affiliates";
 import avatarsRouter from "./routes/avatars";
@@ -209,6 +210,9 @@ app.use("/api/beta", betaRouter);
 app.use("/api", validateSupabaseJwt);
 
 app.use("/api/ai", aiRouter);
+// agentHistoryRouter ANTES de agentRouter (path mais especifico) para ter sua
+// propria cadeia de middleware sem reexecutar a do agentRouter. Nao reordenar.
+app.use("/api/agent/conversations", agentHistoryRouter);
 app.use("/api/agent", agentRouter);
 app.use("/api/github", githubRouter);
 app.use("/api/linkedin", linkedinRouter);
