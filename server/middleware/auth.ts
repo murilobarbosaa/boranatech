@@ -1,7 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
 import type { Request, Response } from "express";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
 import { env } from "../lib/env";
+import { getCachedProStatus, setCachedProStatus } from "../lib/proStatusCache";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "./error";
 
@@ -50,52 +51,60 @@ function isDevProUser(req: AuthRequest) {
   return env.devProUserIds.includes(req.user.id);
 }
 
+// JWKS remoto do Supabase, construido UMA vez no load do modulo. A `jose` cacheia
+// a chave publica ES256 em memoria pelo kid, entao a verificacao continua local
+// (sem ida a rede por request; so busca o JWKS quando ve um kid desconhecido).
+const JWKS = createRemoteJWKSet(
+  new URL(`${env.supabaseUrl}/auth/v1/.well-known/jwks.json`),
+);
+
+// Verificacao LOCAL do access token (ES256) contra o JWKS do projeto. jwtVerify
+// valida assinatura e expiracao (exp). Fixamos algorithms em ES256 pra evitar
+// ataque de confusao de algoritmo. Tradeoff conhecido: verificacao local nao
+// detecta token revogado no meio da sessao; aceitavel pra token de vida curta.
+// Em qualquer falha retorna null e o request segue anonimo (mesma semantica).
+async function resolveUserFromToken(token: string): Promise<AuthUser | null> {
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      algorithms: ["ES256"],
+      clockTolerance: 5,
+    });
+    if (!payload.sub) {
+      return null;
+    }
+    return {
+      id: payload.sub,
+      email: typeof payload.email === "string" ? payload.email : "",
+      role: typeof payload.role === "string" ? payload.role : "authenticated",
+      userMetadata:
+        payload.user_metadata && typeof payload.user_metadata === "object"
+          ? (payload.user_metadata as Record<string, unknown>)
+          : {},
+    };
+  } catch (err) {
+    // Nao 401 mudo: logamos o motivo (sem vazar o token) pra diagnostico futuro.
+    console.warn("[auth] token verification failed", {
+      reason: err instanceof Error ? err.message : "unknown",
+    });
+    return null;
+  }
+}
+
 export async function validateSupabaseJwt(
   req: AuthRequest,
   _res: Response,
   next: MiddlewareNext,
 ) {
-  try {
-    const authHeader = firstHeaderValue(req.headers.authorization);
-    if (!authHeader?.startsWith("Bearer ")) {
-      return next();
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    const supabaseUrl = env.supabaseUrl || "http://localhost:54321";
-    const supabaseAnonKey = env.supabaseAnonKey || "anon-key-not-configured";
-
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    const {
-      data: { user },
-      error,
-    } = await supabaseClient.auth.getUser();
-
-    if (error || !user) {
-      return next();
-    }
-
-    req.user = {
-      id: user.id,
-      email: user.email || "",
-      role: user.role || "authenticated",
-      userMetadata: user.user_metadata || {},
-    };
-
-    next();
-  } catch {
-    next();
+  const authHeader = firstHeaderValue(req.headers.authorization);
+  if (!authHeader?.startsWith("Bearer ")) {
+    return next();
   }
+  const token = authHeader.split(" ")[1];
+  const user = await resolveUserFromToken(token);
+  if (user) {
+    req.user = user;
+  }
+  next();
 }
 
 export function requireAuth(
@@ -125,14 +134,30 @@ export async function checkProStatus(
     return next();
   }
 
+  const userId = req.user.id;
+
+  // Cache primeiro. null = nao sei, recalcula via RPC (fonte de verdade).
+  const cached = await getCachedProStatus(userId);
+  if (cached !== null) {
+    req.isPro = cached;
+    return next();
+  }
+
   try {
     const [{ data: proData, error: proError }, adminAccess] = await Promise.all(
       [
-        supabaseAdmin.rpc("is_user_pro", { p_user_id: req.user.id }),
-        isAdminUser(req.user.id),
+        supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
+        isAdminUser(userId),
       ],
     );
-    req.isPro = (!proError && proData === true) || adminAccess;
+    const isPro = (!proError && proData === true) || adminAccess;
+    req.isPro = isPro;
+    // So cacheia se a RPC de Pro nao deu erro, pra nao persistir um possivel falso
+    // negativo causado por falha transitoria. Falha do Redis e ignorada dentro do
+    // setCachedProStatus.
+    if (!proError) {
+      await setCachedProStatus(userId, isPro);
+    }
   } catch {
     req.isPro = false;
   }
