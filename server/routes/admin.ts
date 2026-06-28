@@ -194,15 +194,6 @@ const emptyPosthogStats = {
 
 type PosthogEventName = keyof typeof emptyPosthogStats.events;
 
-function pagePath(value: string) {
-  try {
-    const parsed = new URL(value);
-    return parsed.pathname || "/";
-  } catch {
-    return value || "/";
-  }
-}
-
 type PosthogQueryResponse = {
   results: ReadonlyArray<ReadonlyArray<unknown>>;
   columns?: ReadonlyArray<string>;
@@ -323,13 +314,13 @@ router.get("/posthog-stats", async (_req, res) => {
           `select count(distinct person_id) from events where event = '$pageview' and timestamp > ${since}`,
         ),
         runPosthogQuery(
-          `select properties.$current_url as url, count() as views from events where event = '$pageview' and timestamp > ${since} group by url order by views desc limit 10`,
+          `select if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/')) as page, count() as views from events where event = '$pageview' and timestamp > ${since} group by page order by views desc limit 10`,
         ),
         runPosthogQuery(
           `select event, count() as total from events where event in ('user_signed_up','user_signed_in','checkout_started','quiz_completed') and timestamp > ${since} group by event`,
         ),
         runPosthogQuery(
-          `select properties.$referring_domain as domain, count(distinct person_id) as users from events where event = '$pageview' and timestamp > ${since} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
+          `select trimRight(properties.$referring_domain, '/') as domain, count(distinct person_id) as users from events where event = '$pageview' and timestamp > ${since} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
         ),
       ]);
 
@@ -338,7 +329,7 @@ router.get("/posthog-stats", async (_req, res) => {
 
     data.pages = (pages?.results || [])
       .map((row) => ({
-        page: pagePath(String(row[0] ?? "/")),
+        page: String(row[0] ?? "/"),
         views: cellToNumber(row[1]),
       }))
       .filter((item) => item.views > 0)
