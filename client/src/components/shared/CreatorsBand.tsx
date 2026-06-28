@@ -49,6 +49,16 @@ const CREATORS: Creator[] = [
     photo: "/creators/ketlyncode.jpg",
     url: "https://instagram.com/ketlyncode",
   },
+  {
+    handle: "raybyhei",
+    photo: "/creators/raybyhei.jpg",
+    url: "https://instagram.com/raybyhei",
+  },
+  {
+    handle: "dioaugusto.dev",
+    photo: "/creators/dioaugusto-dev.jpg",
+    url: "https://instagram.com/dioaugusto.dev",
+  },
 ];
 
 // Cor de fundo por card, ciclando por posicao. Cores da marca, iguais a landing.
