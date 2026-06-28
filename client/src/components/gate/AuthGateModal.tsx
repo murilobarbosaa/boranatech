@@ -37,11 +37,11 @@ export default function AuthGateModal({
             Entre ou crie sua conta pra continuar de onde parou.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="gap-3 sm:flex-row sm:justify-stretch">
+        <DialogFooter className="gap-3 sm:flex-row">
           <Button
             type="button"
             onClick={onEntrar}
-            className="w-full rounded-full border-2 border-slate-950 bg-[#FFB800] font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:bg-[#FFB800]"
+            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-[#FFB800] font-black text-slate-950 shadow-[3px_3px_0_#0f172a] hover:bg-[#FFB800]"
           >
             {/* TODO(Ana): rotulo do botao de login */}
             Entrar
@@ -50,7 +50,7 @@ export default function AuthGateModal({
             type="button"
             variant="outline"
             onClick={onCriarConta}
-            className="w-full rounded-full border-2 border-slate-950 bg-white font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            className="w-full sm:w-auto sm:flex-1 sm:min-w-0 rounded-full border-2 border-slate-950 bg-white font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
           >
             {/* TODO(Ana): rotulo do botao de cadastro */}
             Criar conta
