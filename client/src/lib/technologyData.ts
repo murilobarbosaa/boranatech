@@ -136,8 +136,15 @@ const byCategory: Record<TechnologyCategory, string[]> = {
     "Firebase",
     "Supabase",
   ],
-  Ferramentas: ["Vite", "Webpack", "Storybook", "Arduino", "Looker"],
-  Cloud: ["AWS", "Google Cloud", "Azure", "IBM Cloud", "DigitalOcean"],
+  Ferramentas: ["Vite", "Webpack", "Storybook", "Arduino", "Looker", "Gradle"],
+  Cloud: [
+    "AWS",
+    "Google Cloud",
+    "Azure",
+    "IBM Cloud",
+    "DigitalOcean",
+    "Cloudflare",
+  ],
   DevOps: [
     "Docker",
     "Kubernetes",
@@ -158,6 +165,7 @@ const byCategory: Record<TechnologyCategory, string[]> = {
   ],
   "Dados e IA": [
     "Pandas",
+    "Databricks",
     "NumPy",
     "TensorFlow",
     "PyTorch",
@@ -197,7 +205,12 @@ const byCategory: Record<TechnologyCategory, string[]> = {
 };
 
 // Fonte única em shared/techAreas.ts (TECH_AREA_MAP), reusada pelo servidor.
-const areaMap: Record<string, string[]> = TECH_AREA_MAP;
+const areaMap: Record<string, string[]> = {
+  ...TECH_AREA_MAP,
+  Cloudflare: ["cloud", "ciberseguranca"],
+  Databricks: ["dados", "ia", "cloud"],
+  Gradle: ["backend", "mobile", "devops"],
+};
 
 const difficulties: Record<string, DifficultyLabel> = {
   HTML: "Iniciante",
@@ -319,6 +332,9 @@ const difficulties: Record<string, DifficultyLabel> = {
   Nmap: "Avançado",
   "OWASP ZAP": "Avançado",
   Selenium: "Avançado",
+  Cloudflare: "Intermediário",
+  Databricks: "Avançado",
+  Gradle: "Intermediário",
 };
 
 export function slugify(value: string) {
@@ -496,6 +512,9 @@ const names = [
   "Sketch",
   "Canva",
   "Asana",
+  "Cloudflare",
+  "Databricks",
+  "Gradle",
 ];
 
 const logoUrls: Record<string, string> = {
@@ -722,6 +741,11 @@ const logoUrls: Record<string, string> = {
   Wireshark: "https://www.google.com/s2/favicons?domain=wireshark.org&sz=128",
   "scikit-learn":
     "https://www.google.com/s2/favicons?domain=scikit-learn.org&sz=128",
+  Cloudflare:
+    "https://www.google.com/s2/favicons?domain=cloudflare.com&sz=128",
+  Databricks:
+    "https://www.google.com/s2/favicons?domain=databricks.com&sz=128",
+  Gradle: "https://www.google.com/s2/favicons?domain=gradle.org&sz=128",
 };
 
 // Logos de ferramentas de apoio que não são tecnologias do catálogo principal.
