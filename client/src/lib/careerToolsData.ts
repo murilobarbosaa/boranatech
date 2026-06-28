@@ -1163,6 +1163,71 @@ export const englishVocabulary = [
   "metric",
   "cache",
   "scalable",
+  // TODO(Ana): revisar/ordenar estes termos novos (lote Cowork); "endpoint" pulado por ja existir.
+  "rollback",
+  "throughput",
+  "scope creep",
+  "edge case",
+  "boilerplate",
+  "technical debt",
+  "refactor",
+  "merge conflict",
+  "hotfix",
+  "staging",
+  "feature flag",
+  "code freeze",
+  "backlog",
+  "blocker",
+  "dependency",
+  "regression",
+  "latency",
+  "downtime",
+  "uptime",
+  "scalability",
+  "bottleneck",
+  "workaround",
+  "root cause",
+  "postmortem",
+  "handoff",
+  "milestone",
+  "stakeholder",
+  "requirement",
+  "spec",
+  "mockup",
+  "wireframe",
+  "payload",
+  "middleware",
+  "race condition",
+  "memory leak",
+  "deprecated",
+  "breaking change",
+  "backward compatible",
+  "changelog",
+  "code smell",
+  "linting",
+  "test coverage",
+  "flaky test",
+  "smoke test",
+  "happy path",
+  "on-call",
+  "incident",
+  "SLA",
+  "MVP",
+  "proof of concept",
+  "tech lead",
+  "individual contributor",
+  "cross-functional",
+  "rubber ducking",
+  "nitpick",
+  "LGTM",
+  "WIP",
+  "EOD",
+  "OOO",
+  "throwaway code",
+  "single source of truth",
+  "guardrail",
+  "dogfooding",
+  "load testing",
 ];
 
 export type EnglishLevel = "Básico" | "Intermediário" | "Avançado";
@@ -1262,6 +1327,189 @@ export const learnEnglishPlatforms: {
     name: "YouGlish",
     url: "https://youglish.com/",
     desc: "Busque uma palavra e ouça como nativos pronunciam em vídeos reais.",
+    cost: "Grátis",
+    level: "Avançado",
+  },
+  // TODO(Ana): revisar acentos das descricoes destes recursos novos (lote Cowork, URLs verificadas 28/06/2026).
+  {
+    name: "BBC Learning English",
+    url: "https://www.youtube.com/@bbclearningenglish",
+    desc: "Licoes curtas de ingles geral, vocabulario e pronuncia.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "Forvo",
+    url: "https://forvo.com/",
+    desc: "Dicionario de pronuncia com audios de falantes nativos.",
+    cost: "Freemium",
+    level: "Básico",
+  },
+  {
+    name: "Cambridge Dictionary",
+    url: "https://dictionary.cambridge.org/",
+    desc: "Dicionario com audio britanico e americano e exemplos reais.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "Oxford Learner's Dictionaries",
+    url: "https://www.oxfordlearnersdictionaries.com/",
+    desc: "Dicionario para estudantes, com pronuncia e nivel CEFR.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "Merriam-Webster",
+    url: "https://www.merriam-webster.com/",
+    desc: "Dicionario de ingles americano com pronuncia e sinonimos.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "Macmillan Dictionary",
+    url: "https://www.macmillandictionary.com/",
+    desc: "Dicionario com tesauro integrado e foco nas palavras mais frequentes.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "Memrise",
+    url: "https://www.memrise.com/",
+    desc: "App com videos reais de nativos e pratica de fala com IA.",
+    cost: "Freemium",
+    level: "Básico",
+  },
+  {
+    name: "Busuu",
+    url: "https://www.busuu.com/",
+    desc: "Cursos por nivel e correcoes por comunidade de nativos.",
+    cost: "Freemium",
+    level: "Básico",
+  },
+  {
+    name: "EnglishClass101",
+    url: "https://www.englishclass101.com/",
+    desc: "Aulas em audio e video com transcricoes.",
+    cost: "Freemium",
+    level: "Básico",
+  },
+  {
+    name: "engVid",
+    url: "https://www.engvid.com/",
+    desc: "Videoaulas gratuitas de professores nativos.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "TalkEnglish",
+    url: "https://www.talkenglish.com/",
+    desc: "Audios e licoes focadas em conversacao e ingles de negocios.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "ego4u",
+    url: "https://www.ego4u.com/",
+    desc: "Exercicios e explicacoes de gramatica e ingles para o trabalho.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "VOA Learning English",
+    url: "https://learningenglish.voanews.com/",
+    desc: "Noticias e podcasts em ingles pausado, bom para listening.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "LingQ",
+    url: "https://www.lingq.com/",
+    desc: "Aprender a partir de conteudo real como podcasts e livros.",
+    cost: "Freemium",
+    level: "Intermediário",
+  },
+  {
+    name: "HelloTalk",
+    url: "https://www.hellotalk.com/",
+    desc: "Conecta a nativos para praticar por mensagem, audio e video.",
+    cost: "Freemium",
+    level: "Intermediário",
+  },
+  {
+    name: "All Ears English",
+    url: "https://www.allearsenglish.com/",
+    desc: "Podcast de fluencia e ingles profissional.",
+    cost: "Freemium",
+    level: "Intermediário",
+  },
+  {
+    name: "Rachel's English",
+    url: "https://rachelsenglish.com/",
+    desc: "Treina pronuncia e sotaque do ingles americano.",
+    cost: "Freemium",
+    level: "Intermediário",
+  },
+  {
+    name: "Speak English With Vanessa",
+    url: "https://www.youtube.com/@SpeakEnglishWithVanessa",
+    desc: "Aulas semanais para falar ingles natural.",
+    cost: "Freemium",
+    level: "Intermediário",
+  },
+  {
+    name: "English Addict with Mr Duncan",
+    url: "https://www.youtube.com/@EnglishAddict",
+    desc: "Aulas de ingles britanico e lives aos domingos.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "Teacher Mike",
+    url: "https://www.youtube.com/@TeacherMike",
+    desc: "Professor nativo com dicas para brasileiros.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "Small Advantages (Gavin Roy)",
+    url: "https://www.youtube.com/@SmallAdvantages",
+    desc: "Ingles para brasileiros comparando os dois idiomas.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "English in Brazil (Carina Fragozo)",
+    url: "https://www.youtube.com/@CarinaFragozo",
+    desc: "Canal brasileiro com base cientifica, pronuncia e gramatica.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "Ingles na Ponta da Lingua",
+    url: "https://www.youtube.com/@inglesnapontadalingua",
+    desc: "Dicas para aprender sozinho com chunks e collocations.",
+    cost: "Grátis",
+    level: "Básico",
+  },
+  {
+    name: "Real Life English",
+    url: "https://www.youtube.com/@RealLifeEnglish",
+    desc: "Aprender ingles de verdade por conversas reais.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "linguamarina",
+    url: "https://www.youtube.com/@LinguaMarina",
+    desc: "Dicas de ingles, vocabulario e preparacao para exames.",
+    cost: "Grátis",
+    level: "Intermediário",
+  },
+  {
+    name: "The Stack Overflow Podcast",
+    url: "https://stackoverflow.blog/podcast/",
+    desc: "Podcast sobre tecnologia e a rotina de quem programa.",
     cost: "Grátis",
     level: "Avançado",
   },
@@ -1418,6 +1666,355 @@ export const englishWorkPhrases: {
       },
     ],
   },
+  // TODO(Ana): revisar acentos e fraseado destas situacoes novas (lote Cowork).
+  {
+    situation: "Sprint planning",
+    phrases: [
+      {
+        en: "I think this story is too big, we should break it down into smaller tasks.",
+        pt: "Acho que essa story esta muito grande, deveriamos quebra-la em tarefas menores.",
+      },
+      {
+        en: "Do we have a clear definition of done for this one?",
+        pt: "Temos um criterio de pronto claro para essa aqui?",
+      },
+      {
+        en: "I'd put this at five points, there's some uncertainty around the third-party API.",
+        pt: "Eu colocaria isso em cinco pontos, ha alguma incerteza por causa da API de terceiros.",
+      },
+      {
+        en: "This depends on the design being ready, so it's a bit risky for this sprint.",
+        pt: "Isso depende do design estar pronto, entao e meio arriscado para esta sprint.",
+      },
+      {
+        en: "Can we pull this into the sprint if we finish early?",
+        pt: "Podemos puxar isso para a sprint se terminarmos antes?",
+      },
+      {
+        en: "Let's not overcommit, our capacity is lower this week.",
+        pt: "Vamos evitar pegar demais, nossa capacidade esta menor esta semana.",
+      },
+    ],
+  },
+  {
+    situation: "Retrospective",
+    phrases: [
+      {
+        en: "One thing that went well is that our reviews were much faster this sprint.",
+        pt: "Uma coisa que foi bem e que nossos reviews ficaram bem mais rapidos nesta sprint.",
+      },
+      {
+        en: "Something we could improve is how we write tickets, they're often unclear.",
+        pt: "Algo que poderiamos melhorar e como escrevemos os tickets, eles costumam ficar pouco claros.",
+      },
+      {
+        en: "I felt we got pulled into too many last-minute requests.",
+        pt: "Senti que fomos puxados para pedidos demais de ultima hora.",
+      },
+      {
+        en: "As an action item, let's agree on a review SLA of one business day.",
+        pt: "Como acao, vamos combinar um prazo de review de um dia util.",
+      },
+      {
+        en: "I want to give a shout-out to Ana for helping me unblock the migration.",
+        pt: "Quero dar um reconhecimento a Ana por me ajudar a destravar a migracao.",
+      },
+      {
+        en: "Let's keep doing the pre-planning, it saved us a lot of time.",
+        pt: "Vamos continuar fazendo o pre-planning, economizou bastante tempo.",
+      },
+    ],
+  },
+  {
+    situation: "1:1 com a pessoa gestora",
+    phrases: [
+      {
+        en: "I'd like to talk about my growth and what the next level looks like.",
+        pt: "Gostaria de falar sobre meu crescimento e como e o proximo nivel.",
+      },
+      {
+        en: "I've been feeling a bit overloaded lately, can we look at my workload?",
+        pt: "Tenho me sentido um pouco sobrecarregado ultimamente, podemos olhar minha carga de trabalho?",
+      },
+      {
+        en: "What's one thing I could be doing better?",
+        pt: "Qual e uma coisa que eu poderia estar fazendo melhor?",
+      },
+      {
+        en: "I'd love to take more ownership of the payments module.",
+        pt: "Eu adoraria assumir mais responsabilidade pelo modulo de pagamentos.",
+      },
+      {
+        en: "Is there anything blocking you that I can help with?",
+        pt: "Tem algo te travando em que eu possa ajudar?",
+      },
+      {
+        en: "Could we set clearer expectations for this quarter?",
+        pt: "Poderiamos definir expectativas mais claras para este trimestre?",
+      },
+    ],
+  },
+  {
+    situation: "Reportar um bug",
+    phrases: [
+      {
+        en: "I'm seeing a 500 error when I submit the form with an empty email.",
+        pt: "Estou vendo um erro 500 quando envio o formulario com o email vazio.",
+      },
+      {
+        en: "It's reproducible: it happens every time on the latest build.",
+        pt: "E reproduzivel: acontece toda vez no build mais recente.",
+      },
+      {
+        en: "Here are the steps to reproduce and the expected versus actual behavior.",
+        pt: "Aqui estao os passos para reproduzir e o comportamento esperado versus o obtido.",
+      },
+      {
+        en: "It looks like a regression, it was working before the last release.",
+        pt: "Parece uma regressao, estava funcionando antes do ultimo release.",
+      },
+      {
+        en: "I've attached the logs and a screenshot to the ticket.",
+        pt: "Anexei os logs e um print ao ticket.",
+      },
+      {
+        en: "I'm not sure of the root cause yet, but it's affecting checkout.",
+        pt: "Ainda nao tenho certeza da causa raiz, mas esta afetando o checkout.",
+      },
+    ],
+  },
+  {
+    situation: "Estimar uma tarefa",
+    phrases: [
+      {
+        en: "I'd estimate roughly two days, assuming the API is stable.",
+        pt: "Eu estimaria mais ou menos dois dias, supondo que a API esteja estavel.",
+      },
+      {
+        en: "It's hard to estimate without more details, can we spike it first?",
+        pt: "E dificil estimar sem mais detalhes, podemos fazer um spike antes?",
+      },
+      {
+        en: "There are a few unknowns, so I'd add some buffer.",
+        pt: "Ha algumas incertezas, entao eu colocaria uma folga.",
+      },
+      {
+        en: "Best case it's quick, worst case it touches a lot of code.",
+        pt: "No melhor cenario e rapido, no pior mexe em muito codigo.",
+      },
+      {
+        en: "I'll timebox the investigation to half a day.",
+        pt: "Vou limitar a investigacao a meio dia.",
+      },
+      {
+        en: "That estimate doesn't include testing and code review.",
+        pt: "Essa estimativa nao inclui testes e code review.",
+      },
+    ],
+  },
+  {
+    situation: "Apresentar uma demo",
+    phrases: [
+      {
+        en: "Today I'll walk you through the new checkout flow.",
+        pt: "Hoje vou mostrar para voces o novo fluxo de checkout.",
+      },
+      {
+        en: "Let me share my screen real quick.",
+        pt: "Deixa eu compartilhar minha tela rapidinho.",
+      },
+      {
+        en: "As you can see, the page now loads noticeably faster.",
+        pt: "Como voces podem ver, a pagina agora carrega bem mais rapido.",
+      },
+      {
+        en: "This part is still a work in progress.",
+        pt: "Essa parte ainda esta em andamento.",
+      },
+      {
+        en: "I'll pause here, any questions so far?",
+        pt: "Vou pausar aqui, alguma duvida ate agora?",
+      },
+      {
+        en: "That's it from my side, happy to dig into any part in more detail.",
+        pt: "E isso do meu lado, posso detalhar qualquer parte se quiserem.",
+      },
+    ],
+  },
+  {
+    situation: "Onboarding nos primeiros dias",
+    phrases: [
+      {
+        en: "Could you point me to the repo and the setup docs?",
+        pt: "Voce pode me indicar o repositorio e a documentacao de setup?",
+      },
+      {
+        en: "Who should I reach out to for access to staging?",
+        pt: "Com quem eu falo para conseguir acesso ao staging?",
+      },
+      {
+        en: "I want to make sure I understand the architecture at a high level.",
+        pt: "Quero garantir que entendi a arquitetura em linhas gerais.",
+      },
+      {
+        en: "Is there a coding style guide I should follow?",
+        pt: "Existe um guia de estilo de codigo que eu deva seguir?",
+      },
+      {
+        en: "What's the usual flow from a ticket to production here?",
+        pt: "Como costuma ser o fluxo de um ticket ate producao aqui?",
+      },
+      {
+        en: "Thanks for being patient while I get up to speed.",
+        pt: "Obrigado pela paciencia enquanto eu me ambiento.",
+      },
+    ],
+  },
+  {
+    situation: "Pair programming",
+    phrases: [
+      {
+        en: "Do you want to drive, or should I?",
+        pt: "Voce quer digitar, ou prefiro eu?",
+      },
+      {
+        en: "Let's start with a failing test and work from there.",
+        pt: "Vamos comecar com um teste que falha e seguir a partir dai.",
+      },
+      {
+        en: "Can you scroll up a bit? I want to check that function.",
+        pt: "Voce pode subir um pouco? Quero ver aquela funcao.",
+      },
+      {
+        en: "Wait, I think there's a simpler way to do this.",
+        pt: "Espera, acho que tem um jeito mais simples de fazer isso.",
+      },
+      {
+        en: "Let's commit this and take a short break.",
+        pt: "Vamos commitar isso e fazer uma pausa rapida.",
+      },
+      {
+        en: "Good catch, I would have missed that.",
+        pt: "Boa, eu teria deixado isso passar.",
+      },
+    ],
+  },
+  {
+    situation: "Plantao (on-call) e incidente",
+    phrases: [
+      {
+        en: "We have an incident in production, I'm looking into it now.",
+        pt: "Temos um incidente em producao, estou investigando agora.",
+      },
+      {
+        en: "I'm rolling back to the previous version to stop the bleeding.",
+        pt: "Vou fazer rollback para a versao anterior para estancar o problema.",
+      },
+      {
+        en: "Can someone double-check the database connections?",
+        pt: "Alguem pode conferir as conexoes com o banco de dados?",
+      },
+      {
+        en: "The issue is mitigated, the error rate is back to normal.",
+        pt: "O problema esta mitigado, a taxa de erro voltou ao normal.",
+      },
+      {
+        en: "I'll write up a postmortem once things settle down.",
+        pt: "Vou escrever um postmortem assim que as coisas acalmarem.",
+      },
+      {
+        en: "Let's keep the incident channel updated every fifteen minutes.",
+        pt: "Vamos manter o canal do incidente atualizado a cada quinze minutos.",
+      },
+    ],
+  },
+  {
+    situation: "Negociar prazo",
+    phrases: [
+      {
+        en: "To hit that date, we'd have to cut some scope, is that an option?",
+        pt: "Para bater essa data, teriamos que cortar escopo, isso e uma opcao?",
+      },
+      {
+        en: "Realistically, I can deliver a first version by Friday.",
+        pt: "Sendo realista, consigo entregar uma primeira versao ate sexta.",
+      },
+      {
+        en: "If we add this requirement, the deadline will need to move.",
+        pt: "Se adicionarmos esse requisito, o prazo vai precisar mudar.",
+      },
+      {
+        en: "What's the actual hard deadline here?",
+        pt: "Qual e o prazo realmente inadiavel aqui?",
+      },
+      {
+        en: "I'd rather ship something solid a bit later than rush it.",
+        pt: "Prefiro entregar algo solido um pouco depois do que entregar correndo.",
+      },
+      {
+        en: "Can we split this into a phase one and a phase two?",
+        pt: "Podemos dividir isso em uma fase um e uma fase dois?",
+      },
+    ],
+  },
+  {
+    situation: "Falar de carreira e promocao",
+    phrases: [
+      {
+        en: "I'd like to understand what's expected for the next level.",
+        pt: "Gostaria de entender o que e esperado para o proximo nivel.",
+      },
+      {
+        en: "Here are a few things I've delivered that show that impact.",
+        pt: "Aqui estao algumas coisas que entreguei que mostram esse impacto.",
+      },
+      {
+        en: "What would you like to see from me before the next cycle?",
+        pt: "O que voce gostaria de ver de mim antes do proximo ciclo?",
+      },
+      {
+        en: "I'm interested in moving toward a tech lead role.",
+        pt: "Tenho interesse em caminhar para um papel de tech lead.",
+      },
+      {
+        en: "Could we set some concrete goals to work toward that?",
+        pt: "Poderiamos definir metas concretas para trabalhar nisso?",
+      },
+      {
+        en: "I'd also like to talk about compensation when the time is right.",
+        pt: "Tambem gostaria de falar sobre remuneracao no momento certo.",
+      },
+    ],
+  },
+  {
+    situation: "Receber feedback",
+    phrases: [
+      {
+        en: "Thanks for the feedback, that's a fair point.",
+        pt: "Obrigado pelo feedback, e um ponto justo.",
+      },
+      {
+        en: "Could you give me an example so I can understand it better?",
+        pt: "Voce pode me dar um exemplo para eu entender melhor?",
+      },
+      {
+        en: "You're right, I'll fix that and push an update.",
+        pt: "Voce tem razao, vou corrigir e subir uma atualizacao.",
+      },
+      {
+        en: "I hadn't thought about it that way, thanks for pointing it out.",
+        pt: "Eu nao tinha pensado por esse angulo, obrigado por apontar.",
+      },
+      {
+        en: "Let me take some time to process this and get back to you.",
+        pt: "Deixa eu pensar um pouco sobre isso e te retorno.",
+      },
+      {
+        en: "I appreciate you being direct with me.",
+        pt: "Agradeco voce ser direto comigo.",
+      },
+    ],
+  },
 ];
 
 export const englishFalseFriends: {
@@ -1465,6 +2062,107 @@ export const englishFalseFriends: {
     right: "I carry out a task.",
     note: "Realize = perceber; para executar, use carry out.",
   },
+  // TODO(Ana): revisar acentos e fraseado destes falsos cognatos novos (lote Cowork).
+  {
+    wrong: "I'll assist the meeting.",
+    right: "I'll attend the meeting.",
+    note: "Assist significa 'ajudar'. Para 'comparecer' use attend.",
+  },
+  {
+    wrong: "Go to the library to buy the book.",
+    right: "Go to the bookstore to buy the book.",
+    note: "Library e biblioteca. Livraria e bookstore.",
+  },
+  {
+    wrong: "It's a costume in our team.",
+    right: "It's a custom in our team.",
+    note: "Costume e 'fantasia'. Para 'costume/habito' use custom.",
+  },
+  {
+    wrong: "I'm very comprehensive with juniors.",
+    right: "I'm very understanding with juniors.",
+    note: "Comprehensive significa 'abrangente'. Para 'compreensivo' use understanding.",
+  },
+  {
+    wrong: "I have 30 years.",
+    right: "I'm 30 years old.",
+    note: "Idade usa o verbo to be, nao to have.",
+  },
+  {
+    wrong: "It depends of the config.",
+    right: "It depends on the config.",
+    note: "A preposicao certa e 'on', nao 'of'.",
+  },
+  {
+    wrong: "I didn't understand nothing.",
+    right: "I didn't understand anything.",
+    note: "Em ingles nao se usa dupla negativa; use anything.",
+  },
+  {
+    wrong: "Many persons use this feature.",
+    right: "Many people use this feature.",
+    note: "O plural usual de pessoa e people.",
+  },
+  {
+    wrong: "I need more informations.",
+    right: "I need more information.",
+    note: "Information e incontavel; nao tem plural com 's'.",
+  },
+  {
+    wrong: "We received good feedbacks.",
+    right: "We received good feedback.",
+    note: "Feedback e incontavel; nao use 'feedbacks'.",
+  },
+  {
+    wrong: "We use three differents softwares.",
+    right: "We use three different software tools.",
+    note: "Software e incontavel; adjetivo nao concorda em numero.",
+  },
+  {
+    wrong: "We need to take a decision.",
+    right: "We need to make a decision.",
+    note: "Decisao a gente 'make', nao 'take'.",
+  },
+  {
+    wrong: "I did a mistake in the query.",
+    right: "I made a mistake in the query.",
+    note: "Erro a gente 'make', nao 'do'.",
+  },
+  {
+    wrong: "This meeting is boring me, I'm boring.",
+    right: "This meeting is boring, I'm bored.",
+    note: "Boring descreve a coisa; bored descreve como voce se sente.",
+  },
+  {
+    wrong: "Can we anticipate the meeting to 2pm?",
+    right: "Can we move the meeting up to 2pm?",
+    note: "Anticipate significa 'prever', nao 'adiantar'. Use move up.",
+  },
+  {
+    wrong: "My parents work in the same company.",
+    right: "My relatives work in the same company.",
+    note: "Parents sao so pai e mae. Para 'parentes' use relatives.",
+  },
+  {
+    wrong: "I'll send you the lecture later.",
+    right: "I'll send you the reading later.",
+    note: "Lecture e 'palestra/aula'. Para 'leitura' use reading.",
+  },
+  {
+    wrong: "We discussed about the architecture.",
+    right: "We discussed the architecture.",
+    note: "Discuss nao leva 'about'; o assunto vem direto.",
+  },
+  {
+    wrong: "I'm responsible for fix the bug.",
+    right: "I'm responsible for fixing the bug.",
+    note: "Apos preposicao, use o verbo com -ing.",
+  },
+  {
+    wrong: "Let me explain about the flow.",
+    right: "Let me explain the flow.",
+    note: "Explain nao leva 'about'; o objeto vem direto.",
+  },
 ];
 
 export const englishTechPronunciation: {
@@ -1506,6 +2204,297 @@ export const englishTechPronunciation: {
   },
   { term: "GUI", say: "gú·i", note: "Soa como 'gooey'." },
   { term: "OAuth", say: "ô·óth", note: "Soa como 'oh-auth'." },
+  // TODO(Ana): revisar acentos e fraseado destes termos novos (lote Cowork).
+  { term: "height", say: "hait", note: "Rima com 'light'; nao fale 'heith'." },
+  { term: "width", say: "uidth", note: "Tem o 'th' no fim; nao e 'widf'." },
+  { term: "depth", say: "depth", note: "Termina com 'th', como em 'think'." },
+  {
+    term: "char",
+    say: "kar",
+    note: "Abreviacao de 'character'; soa com som de 'k'.",
+  },
+  { term: "null", say: "nal", note: "Som curto de 'u', parecido com 'nal'." },
+  {
+    term: "integer",
+    say: "intedjer",
+    note: "O 'g' soa como 'dj'; tonica no inicio.",
+  },
+  {
+    term: "deque",
+    say: "dek",
+    note: "Estrutura double-ended queue; soa como 'deck'.",
+  },
+  {
+    term: "facade",
+    say: "fassad",
+    note: "O 'c' tem som de 'ss'; tonica no fim.",
+  },
+  {
+    term: "niche",
+    say: "nitch",
+    note: "Tambem aceito 'niche'; nao fale 'naiki'.",
+  },
+  {
+    term: "suite",
+    say: "suit",
+    note: "Soa como 'sweet'; nao confunda com 'suit'.",
+  },
+  {
+    term: "route",
+    say: "rut",
+    note: "Comum 'rut' (UK) e 'raut' (US); ambos corretos.",
+  },
+  {
+    term: "async",
+    say: "ei-sinc",
+    note: "De 'asynchronous'; o 'a' soa como 'ei'.",
+  },
+  {
+    term: "latency",
+    say: "leitensi",
+    note: "Tonica no 'lei'; o 'a' soa como 'ei'.",
+  },
+  {
+    term: "throughput",
+    say: "thruput",
+    note: "O 'ough' soa 'u'; comece com o 'th' de 'three'.",
+  },
+  {
+    term: "data",
+    say: "deita",
+    note: "Comum 'deita' (US) e 'data' (UK); ambos valem.",
+  },
+  {
+    term: "label",
+    say: "leibou",
+    note: "O 'a' soa como 'ei'; nao fale 'label'.",
+  },
+  {
+    term: "variable",
+    say: "veriabou",
+    note: "Tonica no 've'; quatro silabas.",
+  },
+  {
+    term: "array",
+    say: "arrei",
+    note: "Tonica no fim; o 'ay' soa como 'ei'.",
+  },
+  {
+    term: "boolean",
+    say: "bulian",
+    note: "De George Boole; tonica no 'bu'.",
+  },
+  { term: "enum", say: "inam", note: "De 'enumeration'; tambem 'enam'." },
+  {
+    term: "regex",
+    say: "redjeks",
+    note: "O 'g' soa como 'dj'; de 'regular expression'.",
+  },
+  {
+    term: "kernel",
+    say: "karnou",
+    note: "Soa como 'colonel'; nao fale 'kernel'.",
+  },
+  {
+    term: "JSON",
+    say: "djei-son",
+    note: "Comum 'djeison'; o 'J' tem som de 'dj'.",
+  },
+  {
+    term: "Linux",
+    say: "linuks",
+    note: "Tonica no 'li'; nao fale 'lainuks'.",
+  },
+  {
+    term: "GIF",
+    say: "guif",
+    note: "O criador prefere 'djif', mas 'guif' e amplamente usado.",
+  },
+  {
+    term: "library",
+    say: "laibreri",
+    note: "Tonica no 'lai'; nao some o 'r' do meio.",
+  },
+  {
+    term: "comment",
+    say: "koment",
+    note: "Tonica no inicio; nao fale 'komeint'.",
+  },
+  {
+    term: "iterate",
+    say: "itereit",
+    note: "Tonica no 'i'; o final soa 'eit'.",
+  },
+  { term: "axis", say: "aksis", note: "Plural 'axes' soa 'aksiz'." },
+  { term: "byte", say: "bait", note: "Soa como 'bite'; diferente de 'bit'." },
+  {
+    term: "thread",
+    say: "thred",
+    note: "Rima com 'red'; comece com o 'th' de 'think'.",
+  },
+  {
+    term: "deploy",
+    say: "diploi",
+    note: "Tonica no fim; o 'oy' soa como 'oi'.",
+  },
+];
+
+// TODO(Ana): secao nova (lote Cowork); revisar acentos das traducoes e exemplos.
+export const englishPhrasalVerbs: {
+  phrase: string;
+  meaning_pt: string;
+  example: string;
+}[] = [
+  {
+    phrase: "spin up",
+    meaning_pt: "subir/criar rapidamente (um servico, ambiente)",
+    example: "Let's spin up a staging environment to test this.",
+  },
+  {
+    phrase: "roll out",
+    meaning_pt: "lancar/liberar gradualmente (uma feature)",
+    example: "We'll roll out the new dashboard to 10 percent of users first.",
+  },
+  {
+    phrase: "roll back",
+    meaning_pt: "reverter para uma versao anterior",
+    example: "The release broke checkout, so we had to roll back.",
+  },
+  {
+    phrase: "break down",
+    meaning_pt: "quebrar em partes menores",
+    example: "Let's break this story down into smaller tasks.",
+  },
+  {
+    phrase: "look into",
+    meaning_pt: "investigar",
+    example: "I'll look into the failing test after lunch.",
+  },
+  {
+    phrase: "figure out",
+    meaning_pt: "descobrir/entender como resolver",
+    example: "It took me a while to figure out the root cause.",
+  },
+  {
+    phrase: "push back",
+    meaning_pt: "questionar/resistir a uma ideia ou prazo",
+    example: "I pushed back on the deadline because the scope grew.",
+  },
+  {
+    phrase: "ramp up",
+    meaning_pt: "aumentar/acelerar gradualmente",
+    example: "We're ramping up the team for the next quarter.",
+  },
+  {
+    phrase: "set up",
+    meaning_pt: "configurar/preparar",
+    example: "Can you help me set up my local environment?",
+  },
+  {
+    phrase: "hook up",
+    meaning_pt: "conectar/integrar (sistemas)",
+    example: "We need to hook up the frontend to the new API.",
+  },
+  {
+    phrase: "ship it",
+    meaning_pt: "colocar em producao/entregar",
+    example: "Tests are green, let's ship it.",
+  },
+  {
+    phrase: "back up",
+    meaning_pt: "fazer copia de seguranca",
+    example: "Make sure you back up the database before the migration.",
+  },
+  {
+    phrase: "kick off",
+    meaning_pt: "dar inicio (a um projeto, reuniao)",
+    example: "Let's kick off the project with a planning session.",
+  },
+  {
+    phrase: "follow up",
+    meaning_pt: "dar continuidade/cobrar retorno",
+    example: "I'll follow up with the client tomorrow.",
+  },
+  {
+    phrase: "reach out",
+    meaning_pt: "entrar em contato",
+    example: "Reach out to the infra team if you need access.",
+  },
+  {
+    phrase: "sign off",
+    meaning_pt: "aprovar formalmente",
+    example: "The manager needs to sign off on this release.",
+  },
+  {
+    phrase: "dig into",
+    meaning_pt: "analisar a fundo",
+    example: "Let's dig into the logs to understand the spike.",
+  },
+  {
+    phrase: "narrow down",
+    meaning_pt: "reduzir/afunilar as possibilidades",
+    example: "We narrowed down the bug to the auth middleware.",
+  },
+  {
+    phrase: "sort out",
+    meaning_pt: "resolver/organizar",
+    example: "I'll sort out the merge conflicts and re-request review.",
+  },
+  {
+    phrase: "run into",
+    meaning_pt: "esbarrar em (um problema)",
+    example: "I ran into a weird CORS error on staging.",
+  },
+  {
+    phrase: "come up with",
+    meaning_pt: "criar/elaborar (uma solucao, ideia)",
+    example: "Can we come up with a simpler approach?",
+  },
+  {
+    phrase: "fall back",
+    meaning_pt: "recorrer a uma alternativa",
+    example: "If the cache fails, we fall back to the database.",
+  },
+  {
+    phrase: "scale up",
+    meaning_pt: "aumentar a capacidade",
+    example: "We scaled up the servers to handle the traffic.",
+  },
+  {
+    phrase: "scale down",
+    meaning_pt: "reduzir a capacidade",
+    example: "We can scale down after the peak hours.",
+  },
+  {
+    phrase: "wrap up",
+    meaning_pt: "finalizar/concluir",
+    example: "Let's wrap up this ticket and move on.",
+  },
+  {
+    phrase: "catch up",
+    meaning_pt: "se atualizar/colocar em dia",
+    example: "Let's catch up on the project status tomorrow.",
+  },
+  {
+    phrase: "sync up",
+    meaning_pt: "alinhar/conversar para alinhar",
+    example: "Let's sync up after standup about the API.",
+  },
+  {
+    phrase: "hand off",
+    meaning_pt: "passar/transferir (uma tarefa)",
+    example: "I'll hand off the on-call to you at 6pm.",
+  },
+  {
+    phrase: "opt in",
+    meaning_pt: "optar por participar/ativar",
+    example: "Users have to opt in to the beta feature.",
+  },
+  {
+    phrase: "phase out",
+    meaning_pt: "descontinuar gradualmente",
+    example: "We're phasing out the legacy API this year.",
+  },
 ];
 
 export const devTools = [
