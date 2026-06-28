@@ -6,6 +6,8 @@ import { createError } from "../middleware/error";
 
 const router = Router();
 
+const NEWS_FEED_MAX_AGE_DAYS = 30; // TODO(Ana): janela de exibição do feed
+
 router.get("/areas", async (req, res, next) => {
   try {
     const { tag, search } = req.query;
@@ -377,6 +379,10 @@ router.get("/news", async (req, res, next) => {
     const level = req.query.level ? String(req.query.level) : "";
     const q = req.query.q ? String(req.query.q).trim() : "";
 
+    const cutoffISO = new Date(
+      Date.now() - NEWS_FEED_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
     let query = supabaseAdmin
       .from("news")
       .select(
@@ -384,7 +390,8 @@ router.get("/news", async (req, res, next) => {
         { count: "exact" },
       )
       .eq("is_published", true)
-      .not("enriched_at", "is", null);
+      .not("enriched_at", "is", null)
+      .gte("published_at", cutoffISO);
 
     if (level && ["iniciante", "intermediario", "avancado"].includes(level)) {
       query = query.eq("level", level);
