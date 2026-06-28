@@ -5,7 +5,9 @@ import { supabaseAdmin } from "./supabaseAdmin";
 /**
  * Rate limit e log de uso de IA, compartilhados entre as rotas que chamam
  * a OpenAI (server/routes/ai.ts e server/routes/github.ts). Extraido sem
- * mudar a logica: mesma RPC, mesmos limites, mesmo fail-open, mesmos campos.
+ * mudar a logica: mesma RPC, mesmos limites, mesmos campos. O rate limit e
+ * FAIL-CLOSED (erro, null ou excecao na verificacao retornam allowed:false);
+ * so o logAiUsage e nao-bloqueante (falha de log vira apenas console.warn).
  */
 
 export interface AiDailyLimitResult {
@@ -42,6 +44,53 @@ export async function checkAiDailyLimit(
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     console.warn(`${logScope} Falha ao verificar rate limit para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  }
+}
+
+// Chave de tool com que as mensagens do agente sao logadas em ai_usage_logs.
+export const AGENT_CHAT_TOOL = "agent-chat";
+
+/**
+ * Rate limit do agente conversacional, separado das ferramentas de IA. O
+ * contador existente get_ai_usage_today conta o TOTAL do dia entre TODAS as
+ * tools, entao reusa-lo faria o chat consumir a quota das tools Pro e vice-versa.
+ * Para dar um teto proprio ao agente sem sobrecarregar aquele contador, esta
+ * funcao usa uma RPC dedicada por ferramenta: get_ai_usage_today_by_tool.
+ *
+ * IMPORTANTE: essa RPC ainda NAO existe no banco. Ela e proposta como migration
+ * minima e aplicada manualmente no SQL Editor (regra do projeto), nunca via db
+ * push. Enquanto nao aplicada, a RPC retorna erro e esta funcao e fail-closed
+ * (verificationFailed -> 503), nunca liberando o acesso. SQL proposto:
+ *
+ *   create or replace function public.get_ai_usage_today_by_tool(
+ *     p_user_id uuid, p_tool text
+ *   ) returns integer language sql stable security definer as $$
+ *     select count(*)::integer from public.ai_usage_logs
+ *     where user_id = p_user_id and tool = p_tool and status = 'success'
+ *       and created_at >= date_trunc('day', now() at time zone 'America/Sao_Paulo');
+ *   $$;
+ */
+export async function checkAgentDailyLimit(
+  userId: string,
+  isPro: boolean,
+  logScope = "[agent]",
+): Promise<AiDailyLimitResult> {
+  const limit = isPro ? env.agentDailyLimitPro : env.agentDailyLimitFree;
+  try {
+    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc(
+      "get_ai_usage_today_by_tool",
+      { p_user_id: userId, p_tool: AGENT_CHAT_TOOL },
+    );
+
+    if (!usageError && usageCount !== null) {
+      return { allowed: usageCount < limit, count: usageCount, limit };
+    }
+
+    console.warn(`${logScope} RPC de rate limit do agente retornou erro/null para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  } catch {
+    console.warn(`${logScope} Falha ao verificar rate limit do agente para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }

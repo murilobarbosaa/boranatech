@@ -49,6 +49,8 @@ warnIfMissing("ASAAS_API_KEY");
 warnIfMissing("ASAAS_WEBHOOK_TOKEN");
 warnIfMissing("AI_DAILY_LIMIT_FREE");
 warnIfMissing("AI_DAILY_LIMIT_PRO");
+warnIfMissing("AGENT_DAILY_LIMIT_FREE");
+warnIfMissing("AGENT_DAILY_LIMIT_PRO");
 warnIfMissing("CRON_SECRET");
 
 export const env = {
@@ -70,6 +72,11 @@ export const env = {
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
+  // Teto diario do agente conversacional, separado das ferramentas de IA para o
+  // chat nao consumir a quota das tools e vice-versa. Defaults ajustaveis.
+  // TODO: calibrar AGENT_DAILY_LIMIT_FREE e AGENT_DAILY_LIMIT_PRO.
+  agentDailyLimitFree: parseInt(process.env.AGENT_DAILY_LIMIT_FREE || "20", 10),
+  agentDailyLimitPro: parseInt(process.env.AGENT_DAILY_LIMIT_PRO || "200", 10),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;

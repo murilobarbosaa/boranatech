@@ -8,6 +8,7 @@ import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
 import { errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
+import agentRouter from "./routes/agent";
 import aiRouter from "./routes/ai";
 import affiliatesRouter from "./routes/affiliates";
 import avatarsRouter from "./routes/avatars";
@@ -208,6 +209,7 @@ app.use("/api/beta", betaRouter);
 app.use("/api", validateSupabaseJwt);
 
 app.use("/api/ai", aiRouter);
+app.use("/api/agent", agentRouter);
 app.use("/api/github", githubRouter);
 app.use("/api/linkedin", linkedinRouter);
 app.use("/api/me/avatar", meAvatarRouter);
