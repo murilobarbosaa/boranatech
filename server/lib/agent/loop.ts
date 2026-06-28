@@ -41,6 +41,10 @@ export interface RunAgentParams {
   ctx: AgentContext;
   apiKey: string;
   emit: AgentStreamEmitter;
+  // Texto de snapshot do usuario JA resolvido pelo endpoint (contexto de
+  // servidor). O loop NAO chama buildUserSnapshot nem conhece userId/Supabase:
+  // recebe o texto pronto. So presente para Pro; ausente/vazio para free.
+  userSnapshot?: string;
 }
 
 export interface RunAgentResult {
@@ -225,6 +229,12 @@ export async function runAgentLoop(
     // Mensagem de contexto logo apos o system prompt principal, quando a rota e
     // valida. So ajuda de UX; nunca altera tier nem acesso (ver comentario acima).
     ...(routeNote ? [{ role: "system" as const, content: routeNote }] : []),
+    // Snapshot do usuario, montado pelo servidor ANTES do loop. Contexto factual
+    // de servidor (nao vem do cliente) e NUNCA entrada de autorizacao. So entra
+    // quando o endpoint o passou (apenas para Pro) e nao esta vazio.
+    ...(params.userSnapshot && params.userSnapshot.length > 0
+      ? [{ role: "system" as const, content: params.userSnapshot }]
+      : []),
     ...params.messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 

@@ -12,6 +12,7 @@ import {
 } from "../lib/agent/systemPrompts";
 import { getToolsForTier } from "../lib/agent/toolRegistry";
 import type { AgentContext } from "../lib/agent/types";
+import { buildUserSnapshot } from "../lib/agent/userSnapshot";
 import { estimateCost } from "../lib/aiTools";
 import { AGENT_CHAT_TOOL, checkAgentDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { env } from "../lib/env";
@@ -99,13 +100,26 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
     return next(createError(503, "upstream_error", "Servico de IA nao configurado."));
   }
 
-  // Toolset e system prompt derivam SO do tier verificado. Nesta fase ambos os
-  // tiers recebem a toolset free (ainda nao ha tools Pro), mas o gating ja esta
-  // correto para a Fase 2 so adicionar tools. O PRO_SYSTEM_PROMPT e um stub
-  // vazio; enquanto vazio, ate o Pro usa o FREE_SYSTEM_PROMPT.
+  // Toolset e system prompt derivam SO do tier verificado (req.isPro), nunca do
+  // corpo. Pro recebe a toolset free + pro e o PRO_SYSTEM_PROMPT; free recebe so
+  // a toolset free e o FREE_SYSTEM_PROMPT (PRO_SYSTEM_PROMPT vazio cai no FREE).
   const tools = getToolsForTier(isPro);
   const systemPrompt = isPro && PRO_SYSTEM_PROMPT.length > 0 ? PRO_SYSTEM_PROMPT : FREE_SYSTEM_PROMPT;
   const ctx: AgentContext = { userId, isPro, currentRoute };
+
+  // Snapshot do usuario: resolvido SO para Pro verificado. Free NUNCA recebe
+  // snapshot. buildUserSnapshot recebe so o userId (do JWT verificado), nunca
+  // nada do corpo. Cinto e suspensorio: buildUserSnapshot ja degrada por dentro,
+  // mas envolvemos em try/catch para que uma falha nele jamais derrube a resposta
+  // do agente; nesse caso seguimos sem snapshot.
+  let userSnapshot: string | undefined;
+  if (isPro) {
+    try {
+      userSnapshot = await buildUserSnapshot(userId);
+    } catch (err) {
+      console.warn("[agent] buildUserSnapshot falhou, seguindo sem snapshot:", err);
+    }
+  }
 
   // SSE espelhando os headers e o flush do ai.ts.
   res.setHeader("Content-Type", "text/event-stream");
@@ -134,6 +148,7 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
       ctx,
       apiKey: env.openaiApiKey,
       emit,
+      userSnapshot,
     });
     res.write("data: [DONE]\n\n");
     res.end();
