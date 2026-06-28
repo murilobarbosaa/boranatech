@@ -11,6 +11,15 @@ import { redisConnection } from "./queue";
 
 const PRO_STATUS_TTL_SECONDS = 60;
 
+// Teto de latencia da LEITURA do cache. Com Redis morto, o ioredis segura o GET
+// na offline queue (maxRetriesPerRequest null, enableOfflineQueue default) em vez
+// de lançar, entao sem isto a rota Pro pendura ate o timeout do request.
+const CACHE_READ_TIMEOUT_MS = 1000;
+
+// Sentinel tipado pro ramo de timeout do Promise.race. Symbol pra nunca colidir
+// com os valores possiveis do GET ("1" / "0" / null).
+const CACHE_READ_TIMEOUT = Symbol("pro-status-cache-read-timeout");
+
 function proStatusKey(userId: string) {
   return `pro_status:${userId}`;
 }
@@ -23,8 +32,25 @@ export async function getCachedProStatus(
   if (!redisConnection) {
     return null;
   }
+  // HOTFIX de latencia: limita SO a leitura do cache via Promise.race contra um
+  // timer curto. Se o GET pendurar (Redis morto na offline queue) ou rejeitar,
+  // retornamos null e o chamador cai pro RPC (fonte de verdade), nunca chuta Pro.
+  // Debito tecnico: a solucao duravel e uma conexao dedicada ao cache com
+  // enableOfflineQueue false (opcao b do levantamento), que tambem cobre set/del
+  // e elimina o crescimento da offline queue sob outage. setCachedProStatus e
+  // invalidateProStatusCache ficam de fora desta mudanca: sao fire-and-forget
+  // fora do caminho de request, entao nao penduram a rota.
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const cached = await redisConnection.get(proStatusKey(userId));
+    const cached = await Promise.race([
+      redisConnection.get(proStatusKey(userId)),
+      new Promise<typeof CACHE_READ_TIMEOUT>((resolve) => {
+        timer = setTimeout(() => resolve(CACHE_READ_TIMEOUT), CACHE_READ_TIMEOUT_MS);
+      }),
+    ]);
+    if (cached === CACHE_READ_TIMEOUT) {
+      return null;
+    }
     if (cached === "1") {
       return true;
     }
@@ -34,6 +60,8 @@ export async function getCachedProStatus(
     return null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
