@@ -14,6 +14,9 @@ export type TechCompactTileProps = {
   fromArea?: string;
   /** Cor do azulejo, alinhada à área de origem. */
   accent?: PageHeroAccent;
+  // Opcional: quando presente e retorna false, bloqueia a navegacao do Link.
+  // Usado por paginas que gateiam o item; ausente = comportamento padrao.
+  onBeforeNavigate?: (href: string) => boolean;
 };
 
 /** Azulejo compacto: logo pequeno + nome completo (várias linhas se precisar). */
@@ -23,18 +26,24 @@ export default function TechCompactTile({
   onNavigate,
   fromArea,
   accent = "teal",
+  onBeforeNavigate,
 }: TechCompactTileProps) {
   const ac = getPageAccentUi(accent);
+  const href = fromArea
+    ? `/tecnologias/${technology.slug}?from=${fromArea}`
+    : `/tecnologias/${technology.slug}`;
   return (
     <Link
-      href={
-        fromArea
-          ? `/tecnologias/${technology.slug}?from=${fromArea}`
-          : `/tecnologias/${technology.slug}`
-      }
+      href={href}
       title={`${technology.name} · ${technology.category}, nível ${technology.difficulty}`}
       style={style}
-      onClick={() => onNavigate?.()}
+      onClick={(event) => {
+        if (onBeforeNavigate && !onBeforeNavigate(href)) {
+          event.preventDefault();
+          return;
+        }
+        onNavigate?.();
+      }}
       className={cn(
         "tech-map-pill flex min-h-0 flex-col items-center justify-start gap-1.5 rounded-lg border bg-slate-50/50 p-2 text-center outline-offset-2 transition-[transform,border-color,background-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-sm active:translate-y-0 active:scale-[0.97] focus-visible:ring-2",
         ac.panelBorder,

@@ -115,13 +115,7 @@ function Router() {
           </RequireAuth>
         )}
       </Route>
-      <Route path="/tecnologias/por-area">
-        {() => (
-          <RequireAuth>
-            <TecnologiaMapa />
-          </RequireAuth>
-        )}
-      </Route>
+      <Route path="/tecnologias/por-area" component={TecnologiaMapa} />
       {/* TODO: remover redirect após 90 dias em prod */}
       <Route path="/tecnologias/mapa">
         {() => <Redirect to="/tecnologias/por-area" />}

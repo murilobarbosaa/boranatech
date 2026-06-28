@@ -5,6 +5,8 @@ import Layout from "@/components/Layout";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import PageHero from "@/components/shared/PageHero";
 import TechCompactTile from "@/components/shared/TechCompactTile";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import { AreaIconBox } from "@/components/areas/AreaIconBox";
 import { accentForAreaSlug } from "@/lib/detailPageAccents";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -32,11 +34,14 @@ const ROADMAP_AREA_SLUGS = new Set([
   "uxui",
 ]);
 
-function roadmapHref(slug: string): string {
-  return ROADMAP_AREA_SLUGS.has(slug) ? `/roadmaps?area=${slug}` : "/roadmaps";
+function roadmapTarget(slug: string): { href: string; gated: boolean } {
+  return ROADMAP_AREA_SLUGS.has(slug)
+    ? { href: `/roadmaps?area=${slug}`, gated: true }
+    : { href: "/roadmaps", gated: false };
 }
 
 export default function TecnologiaMapa() {
+  const { requireAuth, modalProps, status } = useAuthGate();
   const search = useSearch();
   const areaFromUrl = new URLSearchParams(search).get("area");
   const fromTech = new URLSearchParams(search).get("from") === "tecnologias";
@@ -51,6 +56,13 @@ export default function TecnologiaMapa() {
   );
   /** Apenas um painel de tecnologias fica aberto por vez. */
   const [expandedAreaId, setExpandedAreaId] = useState<string | null>(null);
+
+  const handleTileBeforeNavigate = (href: string) => {
+    if (status === "authenticated") return true;
+    if (status === "loading") return false;
+    requireAuth({ destination: href });
+    return false;
+  };
 
   const sections = useMemo(
     () =>
@@ -162,6 +174,7 @@ export default function TecnologiaMapa() {
               const slug = area.slug;
               const cardAccent = accentForAreaSlug(slug);
               const cardAc = getPageAccentUi(cardAccent);
+              const roadmap = roadmapTarget(slug);
               const listExpanded = expandedAreas[slug] ?? false;
               const preview = items.slice(0, PREVIEW_LOGO_COUNT);
               const hasMore = items.length > PREVIEW_LOGO_COUNT;
@@ -251,7 +264,14 @@ export default function TecnologiaMapa() {
                     </button>
 
                     <Link
-                      href={roadmapHref(slug)}
+                      href={roadmap.href}
+                      onClick={(event) => {
+                        if (!roadmap.gated) return;
+                        if (status === "authenticated") return;
+                        event.preventDefault();
+                        if (status === "loading") return;
+                        requireAuth({ destination: roadmap.href });
+                      }}
                       className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-slate-900 bg-violet-600 px-4 py-2.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-[transform,box-shadow] hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
                     >
                       <Map className="h-4 w-4 shrink-0" aria-hidden />
@@ -272,6 +292,7 @@ export default function TecnologiaMapa() {
                               technology={technology}
                               fromArea={slug}
                               accent={cardAccent}
+                              onBeforeNavigate={handleTileBeforeNavigate}
                               style={{
                                 animationDelay: `${Math.min(itemIndex * 22, 400)}ms`,
                               }}
@@ -329,6 +350,8 @@ export default function TecnologiaMapa() {
           </div>
         </div>
       </section>
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }
