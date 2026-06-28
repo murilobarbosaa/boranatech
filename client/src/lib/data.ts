@@ -6116,6 +6116,399 @@ export const roadmaps = [
     proximoPasso:
       "Estude machine learning, embeddings, RAG e boas práticas de produto com IA.",
   },
+  {
+    id: "desenvolvedor-fullstack",
+    nome: "Desenvolvedor Fullstack",
+    areaSlug: "fullstack" as string | null,
+    nivel: "Intermediário",
+    duracaoDias: "16 semanas",
+    descricao:
+      "Trilha para quem já tem noções de frontend ou backend e quer dominar as duas pontas e conectá-las em aplicações completas.",
+    paraQuem:
+      "Quem quer construir produtos do início ao fim, da interface ao banco de dados.",
+    preRequisitos:
+      "Base de HTML, CSS e JavaScript, e noções de lógica de programação.",
+    etapas: [
+      {
+        numero: 1,
+        titulo: "Reforço em JavaScript moderno",
+        descricao:
+          "Domine recursos modernos da linguagem, requisições assíncronas e manipulação de dados em formato JSON.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 2,
+        titulo: "Frontend com framework",
+        descricao:
+          "Aprofunde em React criando interfaces que consomem dados de APIs. Use a documentação oficial e projetos práticos.",
+        tempo: "3-4 semanas",
+      },
+      {
+        numero: 3,
+        titulo: "Backend e APIs",
+        descricao:
+          "Construa APIs REST com Node.js e Express, conectadas a um banco de dados.",
+        tempo: "3-4 semanas",
+      },
+      {
+        numero: 4,
+        titulo: "Integrando as pontas",
+        descricao:
+          "Conecte o frontend ao backend, cuidando de autenticação, estados de carregamento e tratamento de erros.",
+        tempo: "2-3 semanas",
+      },
+      {
+        numero: 5,
+        titulo: "Projeto fullstack completo",
+        descricao:
+          "Construa uma aplicação de verdade, como um blog ou um controle de gastos, com frontend, backend e banco.",
+        tempo: "3 semanas",
+      },
+      {
+        numero: 6,
+        titulo: "Deploy e boas práticas",
+        descricao:
+          "Publique frontend e backend em plataformas gratuitas e organize o projeto com Git e um bom README.",
+        tempo: "1-2 semanas",
+      },
+    ],
+    errosComuns: [
+      "Tentar ser fullstack sem dominar bem nenhuma das duas pontas primeiro.",
+      "Construir frontend e backend que nunca conversam de verdade.",
+      "Esquecer de tratar autenticação e segurança na integração.",
+      "Deixar o projeto só na máquina local, sem deploy.",
+    ],
+    oQueEvitar:
+      "Evite começar projetos gigantes. Construa algo pequeno e completo de ponta a ponta antes de aumentar a complexidade.",
+    proximoPasso:
+      "Aprofunde em testes, performance e deploy, ou siga para roadmaps de DevOps e Cloud para entender a parte de infraestrutura.",
+  },
+  {
+    id: "analise-de-dados-do-zero",
+    nome: "Análise de Dados do Zero",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Iniciante",
+    duracaoDias: "10 semanas",
+    descricao:
+      "Trilha para aprender a coletar, limpar, analisar e visualizar dados para apoiar decisões.",
+    paraQuem:
+      "Quem gosta de números e quer transformar dados em insights, mesmo vindo de outras áreas.",
+    preRequisitos:
+      "Nenhum conhecimento prévio de programação é necessário para começar.",
+    etapas: [
+      {
+        numero: 1,
+        titulo: "Pensamento analítico e Excel ou planilhas",
+        descricao:
+          "Aprenda a organizar e resumir dados em planilhas antes de partir para programação.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 2,
+        titulo: "Fundamentos de Python",
+        descricao:
+          "Aprenda o básico de Python voltado para dados. O Kaggle e o Curso em Vídeo têm trilhas iniciais.",
+        tempo: "2-3 semanas",
+      },
+      {
+        numero: 3,
+        titulo: "Manipulação de dados com Pandas",
+        descricao:
+          "Aprenda a carregar, filtrar e transformar dados com a biblioteca Pandas. O curso de Pandas do Kaggle é ótimo.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 4,
+        titulo: "Visualização de dados",
+        descricao:
+          "Crie gráficos que comunicam bem. Aprenda bibliotecas de visualização e boas práticas de gráficos.",
+        tempo: "1-2 semanas",
+      },
+      {
+        numero: 5,
+        titulo: "SQL para dados",
+        descricao:
+          "Aprenda a consultar bancos de dados com SQL, habilidade essencial no dia a dia da análise.",
+        tempo: "1-2 semanas",
+      },
+      {
+        numero: 6,
+        titulo: "Projeto de análise completo",
+        descricao:
+          "Pegue um dataset público, limpe, analise e apresente conclusões em um notebook ou dashboard.",
+        tempo: "2 semanas",
+      },
+    ],
+    errosComuns: [
+      "Focar só em ferramentas e esquecer de fazer boas perguntas aos dados.",
+      "Pular a etapa de limpeza e analisar dados sujos.",
+      "Criar gráficos confusos que não comunicam nada.",
+      "Não praticar com dados reais e bagunçados.",
+    ],
+    oQueEvitar:
+      "Evite achar que precisa saber matemática avançada para começar. Foque em lógica, organização e clareza na comunicação dos resultados.",
+    proximoPasso:
+      "Avance para o roadmap de Ciência de Dados ou especialize-se em ferramentas de Business Intelligence.",
+  },
+  {
+    id: "machine-learning-na-pratica",
+    nome: "Machine Learning na Prática",
+    areaSlug: "ia" as string | null,
+    nivel: "Intermediário",
+    duracaoDias: "14 semanas",
+    descricao:
+      "Trilha focada em construir, avaliar e colocar modelos de machine learning para resolver problemas reais.",
+    paraQuem:
+      "Quem tem base de Python e dados e quer se aprofundar em modelos de aprendizado de máquina.",
+    preRequisitos: "Python, Pandas e noções de estatística e análise de dados.",
+    etapas: [
+      {
+        numero: 1,
+        titulo: "Fundamentos de aprendizado de máquina",
+        descricao:
+          "Entenda os tipos de aprendizado e o fluxo de um projeto de ML. O Kaggle Learn tem trilhas práticas gratuitas.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 2,
+        titulo: "Preparação de dados para modelos",
+        descricao:
+          "Aprenda a tratar variáveis, lidar com dados faltantes e preparar os dados para o treino.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 3,
+        titulo: "Modelos supervisionados",
+        descricao:
+          "Treine modelos de regressão e classificação e entenda como cada um funciona.",
+        tempo: "3 semanas",
+      },
+      {
+        numero: 4,
+        titulo: "Avaliação e validação",
+        descricao:
+          "Use métricas adequadas e técnicas de validação para confiar nos resultados.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 5,
+        titulo: "Introdução a deep learning",
+        descricao:
+          "Conheça redes neurais com TensorFlow e Keras. O curso Intro to Deep Learning do Kaggle ajuda no início.",
+        tempo: "2-3 semanas",
+      },
+      {
+        numero: 6,
+        titulo: "Projeto e compartilhamento",
+        descricao:
+          "Construa um projeto completo, publique no GitHub e, se quiser, uma demo no Streamlit.",
+        tempo: "3 semanas",
+      },
+    ],
+    errosComuns: [
+      "Treinar modelos sem entender os dados por trás.",
+      "Confundir boa acurácia no treino com bom desempenho real.",
+      "Ignorar o desbalanceamento das classes nos dados.",
+      "Não versionar nem documentar os experimentos.",
+    ],
+    oQueEvitar:
+      "Evite partir direto para deep learning sem dominar modelos mais simples. Muitos problemas se resolvem bem sem redes neurais.",
+    proximoPasso:
+      "Explore especializações como visão computacional, processamento de linguagem natural ou a área de colocar modelos em produção.",
+  },
+  {
+    id: "devops-do-zero",
+    nome: "DevOps do Zero",
+    areaSlug: "devops" as string | null,
+    nivel: "Intermediário",
+    duracaoDias: "14 semanas",
+    descricao:
+      "Trilha para aprender a integrar desenvolvimento e operações, automatizando testes, deploy e infraestrutura.",
+    paraQuem:
+      "Quem já programa e quer cuidar de automação, deploy e confiabilidade de sistemas.",
+    preRequisitos:
+      "Saber programar em alguma linguagem e ter noções de aplicações web.",
+    etapas: [
+      {
+        numero: 1,
+        titulo: "Linux e linha de comando",
+        descricao:
+          "Aprenda a se virar no terminal, gerenciar arquivos e processos. A DIO tem conteúdo gratuito de Linux.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 2,
+        titulo: "Git e fluxos de trabalho",
+        descricao: "Domine versionamento, branches e colaboração em equipe.",
+        tempo: "1-2 semanas",
+      },
+      {
+        numero: 3,
+        titulo: "Containers com Docker",
+        descricao:
+          "Aprenda a empacotar aplicações em containers para rodar em qualquer ambiente. A DIO tem curso de Docker.",
+        tempo: "2-3 semanas",
+      },
+      {
+        numero: 4,
+        titulo: "Integração e entrega contínua",
+        descricao:
+          "Automatize testes e deploy com pipelines de CI/CD usando ferramentas como GitHub Actions.",
+        tempo: "2-3 semanas",
+      },
+      {
+        numero: 5,
+        titulo: "Nuvem e infraestrutura",
+        descricao:
+          "Entenda os serviços básicos de uma nuvem e como publicar e escalar aplicações. O Microsoft Learn tem trilhas gratuitas.",
+        tempo: "3 semanas",
+      },
+      {
+        numero: 6,
+        titulo: "Monitoramento e boas práticas",
+        descricao:
+          "Aprenda a acompanhar logs, métricas e a manter sistemas confiáveis.",
+        tempo: "2 semanas",
+      },
+    ],
+    errosComuns: [
+      "Querer aprender ferramentas sem entender os conceitos por trás.",
+      "Pular a base de Linux e linha de comando.",
+      "Automatizar deploy sem ter testes confiáveis.",
+      "Acumular muitas ferramentas sem dominar nenhuma.",
+    ],
+    oQueEvitar:
+      "Evite decorar comandos sem entender o que fazem. DevOps é mais sobre cultura e processos do que sobre uma ferramenta específica.",
+    proximoPasso:
+      "Aprofunde em uma nuvem específica, em infraestrutura como código ou siga para o roadmap de Cloud.",
+  },
+  {
+    id: "primeiro-emprego-em-tech",
+    nome: "Primeiro Emprego em Tech",
+    areaSlug: null as string | null,
+    nivel: "Iniciante",
+    duracaoDias: "8 semanas",
+    descricao:
+      "Trilha temática para quem já está estudando tech e quer se preparar para conquistar a primeira vaga.",
+    paraQuem:
+      "Pessoas em transição de carreira ou iniciantes que já têm alguma base técnica e querem entrar no mercado.",
+    preRequisitos:
+      "Estar estudando uma área de tech e ter ao menos um projeto em andamento.",
+    etapas: [
+      {
+        numero: 1,
+        titulo: "Defina seu foco de carreira",
+        descricao:
+          "Escolha uma área para se posicionar e direcionar seus estudos e projetos.",
+        tempo: "1 semana",
+      },
+      {
+        numero: 2,
+        titulo: "Monte um portfólio enxuto e forte",
+        descricao:
+          "Reúna de dois a três projetos que mostrem suas habilidades de forma clara.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 3,
+        titulo: "Organize seu GitHub e LinkedIn",
+        descricao:
+          "Deixe seus perfis profissionais atualizados, com bons READMEs e uma apresentação clara.",
+        tempo: "1 semana",
+      },
+      {
+        numero: 4,
+        titulo: "Currículo e candidaturas",
+        descricao:
+          "Escreva um currículo objetivo voltado para a área e comece a se candidatar com consistência.",
+        tempo: "1-2 semanas",
+      },
+      {
+        numero: 5,
+        titulo: "Preparação para entrevistas",
+        descricao:
+          "Treine para entrevistas comportamentais e técnicas, incluindo como falar dos seus projetos.",
+        tempo: "2 semanas",
+      },
+      {
+        numero: 6,
+        titulo: "Networking e comunidade",
+        descricao:
+          "Participe de comunidades, eventos e processos de programas para iniciantes para ampliar suas chances.",
+        tempo: "contínuo",
+      },
+    ],
+    errosComuns: [
+      "Esperar saber tudo antes de começar a se candidatar.",
+      "Enviar o mesmo currículo genérico para tudo.",
+      "Ter um GitHub vazio ou bagunçado.",
+      "Se candidatar só a vagas seniores por insegurança de tentar as juniores.",
+    ],
+    oQueEvitar:
+      "Evite o ciclo de estudar sem fim por medo de se candidatar. A prática de entrevistas e candidaturas também faz parte do aprendizado.",
+    proximoPasso:
+      "Continue construindo projetos, peça feedback nas entrevistas e foque na trilha temática de portfólio e entrevista técnica.",
+  },
+  {
+    id: "montar-um-portfolio-que-impressiona",
+    nome: "Montar um Portfólio que Impressiona",
+    areaSlug: null as string | null,
+    nivel: "Iniciante",
+    duracaoDias: "4 semanas",
+    descricao:
+      "Trilha temática para construir um portfólio que mostra de verdade suas habilidades e te destaca em processos seletivos.",
+    paraQuem:
+      "Quem já tem alguns projetos ou conhecimentos e quer organizá-los de forma profissional.",
+    preRequisitos:
+      "Ter ao menos um ou dois projetos, mesmo que simples, para incluir.",
+    etapas: [
+      {
+        numero: 1,
+        titulo: "Escolha seus melhores projetos",
+        descricao:
+          "Selecione projetos que representam bem a área que você quer seguir, qualidade acima de quantidade.",
+        tempo: "3-4 dias",
+      },
+      {
+        numero: 2,
+        titulo: "Capriche na documentação de cada projeto",
+        descricao:
+          "Escreva READMEs claros com objetivo, tecnologias, como rodar e print ou link da demo.",
+        tempo: "1 semana",
+      },
+      {
+        numero: 3,
+        titulo: "Publique os projetos",
+        descricao:
+          "Coloque seus projetos no ar em plataformas gratuitas para que recrutadores acessem fácil.",
+        tempo: "3-4 dias",
+      },
+      {
+        numero: 4,
+        titulo: "Crie a página do portfólio",
+        descricao:
+          "Monte um site simples reunindo seus projetos, habilidades e contato.",
+        tempo: "1 semana",
+      },
+      {
+        numero: 5,
+        titulo: "Peça feedback e ajuste",
+        descricao:
+          "Mostre para pessoas da área, colete críticas e melhore o que for preciso.",
+        tempo: "3-4 dias",
+      },
+    ],
+    errosComuns: [
+      "Encher o portfólio de projetos copiados de tutoriais idênticos.",
+      "Deixar projetos sem explicação ou sem link funcionando.",
+      "Priorizar quantidade em vez de qualidade.",
+      "Nunca pedir feedback antes de divulgar.",
+    ],
+    oQueEvitar:
+      "Evite incluir projetos que você não sabe explicar. Em uma entrevista, é melhor ter poucos projetos que você domina de verdade.",
+    proximoPasso:
+      "Com o portfólio pronto, foque na trilha de Primeiro Emprego em Tech e comece a se candidatar.",
+  },
 ];
 
 export const cursosGratuitos = [
