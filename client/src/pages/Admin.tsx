@@ -45,7 +45,9 @@ import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
+import { readAdminClaim } from "@/lib/adminClaim";
 import { apiUrl } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 type AdminSession = {
   username: string;
@@ -2166,18 +2168,23 @@ export default function Admin() {
       return;
     }
 
-    setAccessState("loading");
-    adminFetch("/me")
-      .then((json) => {
-        setSession({
-          username: user.email || user.id,
-          displayName: json.data?.user?.email || user.email || "Admin",
-          signedAt: new Date().toISOString(),
-          role: json.data?.role,
-        });
-        setAccessState("allowed");
-        setOverviewLoading(true);
-        return Promise.all([
+    let cancelled = false;
+
+    // Carrega os dados do dashboard. Separado da decisao do gate: a falha aqui
+    // nao deve, no caminho da claim, fechar o gate (so deixa os dados vazios).
+    const loadDashboardData = async () => {
+      setOverviewLoading(true);
+      try {
+        const [
+          dashboardJson,
+          healthJson,
+          aiJson,
+          queueJson,
+          posthogJson,
+          churnRiskJson,
+          affiliatesJson,
+          subscriptionsJson,
+        ] = await Promise.all([
           adminFetch("/dashboard"),
           fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
@@ -2189,62 +2196,102 @@ export default function Admin() {
           adminFetch("/affiliates-stats").catch(() => ({ data: [] })),
           adminFetch("/subscriptions"),
         ]);
-      })
-      .then(
-        ([
-          dashboardJson,
-          healthJson,
-          aiJson,
-          queueJson,
-          posthogJson,
-          churnRiskJson,
-          affiliatesJson,
-          subscriptionsJson,
-        ]) => {
-          setDashboard(dashboardJson.data);
-          setHealth(healthJson);
-          setAuditLogs(
-            Array.isArray(dashboardJson.data?.recent_audit)
-              ? dashboardJson.data.recent_audit
-              : [],
-          );
-          setAiStats(aiJson.data || {});
-          setQueueStats(
-            queueJson.data || {
-              waiting: 0,
-              active: 0,
-              completed: 0,
-              failed: 0,
-            },
-          );
-          setPosthogStats(posthogJson.data || null);
-          setChurnRiskUsers(
-            Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null,
-          );
-          setAffiliates(
-            Array.isArray(affiliatesJson.data) ? affiliatesJson.data : [],
-          );
-          setSubscriptions(
-            Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
-          );
-        },
-      )
-      .catch(() => {
-        setSession(null);
-        setDashboard(null);
-        setHealth(null);
-        setAuditLogs([]);
-        setAiStats({});
-        setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
-        setPosthogStats(null);
-        setChurnRiskUsers(null);
-        setAffiliates([]);
-        setSubscriptions([]);
-        setAccessState("forbidden");
-      })
-      .finally(() => {
-        setOverviewLoading(false);
-      });
+        if (cancelled) return;
+        setDashboard(dashboardJson.data);
+        setHealth(healthJson);
+        setAuditLogs(
+          Array.isArray(dashboardJson.data?.recent_audit)
+            ? dashboardJson.data.recent_audit
+            : [],
+        );
+        setAiStats(aiJson.data || {});
+        setQueueStats(
+          queueJson.data || {
+            waiting: 0,
+            active: 0,
+            completed: 0,
+            failed: 0,
+          },
+        );
+        setPosthogStats(posthogJson.data || null);
+        setChurnRiskUsers(
+          Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null,
+        );
+        setAffiliates(
+          Array.isArray(affiliatesJson.data) ? affiliatesJson.data : [],
+        );
+        setSubscriptions(
+          Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
+        );
+      } finally {
+        if (!cancelled) setOverviewLoading(false);
+      }
+    };
+
+    const resolve = async () => {
+      // Caminho rapido: le a claim admin_role do token (sem rede) e abre o gate
+      // sem flash. O backend continua validando admin via RPC a cada request;
+      // isto e so apresentacao.
+      const {
+        data: { session: authSession },
+      } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
+      const claimRole = authSession?.access_token
+        ? readAdminClaim(authSession.access_token)
+        : null;
+
+      if (cancelled) return;
+
+      if (claimRole) {
+        setSession({
+          username: user.email || user.id,
+          displayName: user.email || "Admin",
+          signedAt: new Date().toISOString(),
+          role: claimRole,
+        });
+        setAccessState("allowed");
+        // Dados carregam em background; falha aqui nao fecha o gate.
+        void loadDashboardData().catch(() => {});
+        return;
+      }
+
+      // Fallback: token sem a claim (sessao antiga) -> comportamento atual,
+      // o gate decide pelo adminFetch("/me").
+      setAccessState("loading");
+      adminFetch("/me")
+        .then((json) => {
+          if (cancelled) return;
+          setSession({
+            username: user.email || user.id,
+            displayName: json.data?.user?.email || user.email || "Admin",
+            signedAt: new Date().toISOString(),
+            role: json.data?.role,
+          });
+          setAccessState("allowed");
+          return loadDashboardData();
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setSession(null);
+          setDashboard(null);
+          setHealth(null);
+          setAuditLogs([]);
+          setAiStats({});
+          setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
+          setPosthogStats(null);
+          setChurnRiskUsers(null);
+          setAffiliates([]);
+          setSubscriptions([]);
+          setAccessState("forbidden");
+        });
+    };
+
+    void resolve();
+
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, user]);
 
   useEffect(() => {
