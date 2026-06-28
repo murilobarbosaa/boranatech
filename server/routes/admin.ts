@@ -178,13 +178,6 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
   return payload;
 }
 
-type PosthogTrendResult = {
-  label?: string;
-  breakdown_value?: string | number | null;
-  aggregated_value?: number | string | null;
-  data?: Array<number | string | null>;
-};
-
 const emptyPosthogStats = {
   configured: false,
   totalPageviews: 0,
@@ -201,18 +194,6 @@ const emptyPosthogStats = {
 
 type PosthogEventName = keyof typeof emptyPosthogStats.events;
 
-function sumTrendValue(result: PosthogTrendResult): number {
-  if (typeof result.aggregated_value === "number")
-    return result.aggregated_value;
-  if (typeof result.aggregated_value === "string")
-    return Number(result.aggregated_value) || 0;
-
-  return (result.data || []).reduce<number>(
-    (sum, value) => sum + (Number(value) || 0),
-    0,
-  );
-}
-
 function pagePath(value: string) {
   try {
     const parsed = new URL(value);
@@ -222,34 +203,50 @@ function pagePath(value: string) {
   }
 }
 
-async function fetchPosthogTrend(params: Record<string, string>) {
-  const url = new URL(
-    `https://us.posthog.com/api/projects/${env.posthogProjectId}/insights/trend/`,
-  );
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
-  }
+type PosthogQueryResponse = {
+  results: ReadonlyArray<ReadonlyArray<unknown>>;
+  columns?: ReadonlyArray<string>;
+};
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${env.posthogApiKey}`,
-      "Content-Type": "application/json",
-    },
-  });
+function cellToNumber(value: unknown): number {
+  return typeof value === "number" ? value : Number(value) || 0;
+}
 
-  if (response.status === 401 || response.status === 403) {
-    console.error(
-      `[posthog] API rejeitou credenciais com status ${response.status}`,
+// Leitura via HogQL no endpoint /query/ (POST). E o caminho que a Personal API
+// Key escopada (phx_) autoriza; o legado /insights/trend/ retornava nao-2xx e o
+// erro era engolido. Aqui, em qualquer nao-2xx, logamos status E corpo da
+// resposta do PostHog (que explica o motivo) e retornamos null.
+async function runPosthogQuery(
+  hogql: string,
+): Promise<PosthogQueryResponse | null> {
+  try {
+    const response = await fetch(
+      `https://us.posthog.com/api/projects/${env.posthogProjectId}/query/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.posthogApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: { kind: "HogQLQuery", query: hogql },
+        }),
+      },
     );
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.error(
+        `[posthog] query falhou status=${response.status} body=${body}`,
+      );
+      return null;
+    }
+
+    return (await response.json()) as PosthogQueryResponse;
+  } catch (err) {
+    console.error("[posthog] erro ao executar query HogQL", err);
     return null;
   }
-
-  if (!response.ok) {
-    console.error(`[posthog] Erro ao buscar trend: ${response.status}`);
-    return null;
-  }
-
-  return response.json() as Promise<{ result?: PosthogTrendResult[] }>;
 }
 
 router.get("/dashboard", async (_req, res, next) => {
@@ -308,6 +305,8 @@ router.get("/posthog-stats", async (_req, res) => {
 
   data.configured = true;
 
+  const since = "now() - interval 30 day";
+
   try {
     const events: PosthogEventName[] = [
       "user_signed_up",
@@ -317,70 +316,45 @@ router.get("/posthog-stats", async (_req, res) => {
     ];
     const [pageviews, uniqueUsers, pages, customEvents, acquisition] =
       await Promise.all([
-        fetchPosthogTrend({
-          date_from: "-30d",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0 },
-          ]),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0, math: "dau" },
-          ]),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          breakdown: "$current_url",
-          breakdown_type: "event",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0 },
-          ]),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          events: JSON.stringify(
-            events.map((event, index) => ({
-              id: event,
-              type: "events",
-              order: index,
-            })),
-          ),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          breakdown: "$referring_domain",
-          breakdown_type: "event",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0, math: "dau" },
-          ]),
-        }),
+        runPosthogQuery(
+          `select count() from events where event = '$pageview' and timestamp > ${since}`,
+        ),
+        runPosthogQuery(
+          `select count(distinct person_id) from events where event = '$pageview' and timestamp > ${since}`,
+        ),
+        runPosthogQuery(
+          `select properties.$current_url as url, count() as views from events where event = '$pageview' and timestamp > ${since} group by url order by views desc limit 10`,
+        ),
+        runPosthogQuery(
+          `select event, count() as total from events where event in ('user_signed_up','user_signed_in','checkout_started','quiz_completed') and timestamp > ${since} group by event`,
+        ),
+        runPosthogQuery(
+          `select properties.$referring_domain as domain, count(distinct person_id) as users from events where event = '$pageview' and timestamp > ${since} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
+        ),
       ]);
 
-    data.totalPageviews = sumTrendValue(pageviews?.result?.[0] || {});
-    data.uniqueUsers = sumTrendValue(uniqueUsers?.result?.[0] || {});
-    data.pages = (pages?.result || [])
-      .map((item) => ({
-        page: pagePath(String(item.breakdown_value || item.label || "/")),
-        views: sumTrendValue(item),
+    data.totalPageviews = cellToNumber(pageviews?.results?.[0]?.[0]);
+    data.uniqueUsers = cellToNumber(uniqueUsers?.results?.[0]?.[0]);
+
+    data.pages = (pages?.results || [])
+      .map((row) => ({
+        page: pagePath(String(row[0] ?? "/")),
+        views: cellToNumber(row[1]),
       }))
       .filter((item) => item.views > 0)
-      .sort((a, b) => b.views - a.views)
       .slice(0, 10);
 
-    for (const item of customEvents?.result || []) {
-      const label = String(item.label || "");
-      const eventName = events.find((event) => label.includes(event));
-      if (eventName) data.events[eventName] = sumTrendValue(item);
+    for (const row of customEvents?.results || []) {
+      const eventName = events.find((event) => event === String(row[0]));
+      if (eventName) data.events[eventName] = cellToNumber(row[1]);
     }
 
-    data.acquisition = (acquisition?.result || [])
-      .map((item) => ({
-        channel: String(item.breakdown_value || item.label || "Direto"),
-        users: sumTrendValue(item),
+    data.acquisition = (acquisition?.results || [])
+      .map((row) => ({
+        channel: String(row[0] ?? "Direto"),
+        users: cellToNumber(row[1]),
       }))
       .filter((item) => item.users > 0)
-      .sort((a, b) => b.users - a.users)
       .slice(0, 6);
   } catch (err) {
     console.error("[posthog] Erro inesperado ao buscar analytics", err);
