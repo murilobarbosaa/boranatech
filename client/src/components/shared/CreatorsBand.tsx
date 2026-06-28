@@ -50,9 +50,9 @@ const CREATORS: Creator[] = [
     url: "https://instagram.com/ketlyncode",
   },
   {
-    handle: "raybyhei",
-    photo: "/creators/raybyhei.jpg",
-    url: "https://instagram.com/raybyhei",
+    handle: "raibyhei",
+    photo: "/creators/raibyhei.jpg",
+    url: "https://instagram.com/raibyhei",
   },
   {
     handle: "dioaugusto.dev",
