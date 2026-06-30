@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import Hero from "./sections/Hero";
 import LogoLoop from "./sections/LogoLoop";
+import ProQuemE from "./sections/ProQuemE";
 import Mapa from "./sections/Mapa";
 import PorOndeComecar from "./sections/PorOndeComecar";
 import TurbineComIA from "./sections/TurbineComIA";
@@ -22,6 +23,7 @@ export default function HomeLanding() {
       <CreatorsBand />
       <Hero />
       <LogoLoop />
+      <ProQuemE />
       <Mapa />
       <PorOndeComecar />
       <TurbineComIA />
