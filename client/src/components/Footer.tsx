@@ -192,6 +192,11 @@ export default function Footer() {
             </Link>
           </div>
         </div>
+
+        {/* TODO(Ana): com CNPJ, trocar "BoraNaTech" pela razao social Bora Ecosystem LTDA */}
+        <div className="pb-8 text-center text-xs text-slate-600">
+          © {year} BoraNaTech. Todos os direitos reservados.
+        </div>
       </div>
     </footer>
   );
