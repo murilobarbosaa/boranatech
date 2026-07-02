@@ -402,6 +402,10 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
 router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunction) => {
   const requestId = crypto.randomUUID();
   const userId = req.user!.id;
+  // Preenchido quando o lock otimista flipou partial -> generating. O catch
+  // final usa isso para restaurar partial em erro inesperado (nunca deixar a
+  // linha presa em generating sem geracao rodando).
+  let lockedRowId: string | null = null;
 
   try {
     const slug = req.params.slug;
@@ -447,6 +451,31 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
     }
 
     if (!(await passesGenerationGate(req, next, requestId))) return;
+
+    // Lock otimista: flipa partial -> generating condicionado ao status ATUAL
+    // ser partial. Zero linhas afetadas = outra retomada ja flipou (ou o
+    // estado mudou): 409, sem gerar nem cobrar. Impede retomadas simultaneas
+    // e a dupla cobranca na conclusao.
+    const { data: lockedRows, error: lockError } = await supabaseAdmin
+      .from("ai_roadmaps")
+      .update({ status: "generating", updated_at: new Date().toISOString() })
+      .eq("id", row.id)
+      .eq("user_id", userId)
+      .eq("status", "partial")
+      .select("id");
+    if (lockError) {
+      // TODO(Ana): mensagem de falha ao iniciar a retomada.
+      return next(
+        createError(503, "resume_lock_failed", "Nao foi possivel iniciar a retomada agora. Tente novamente em instantes."),
+      );
+    }
+    if (!lockedRows || lockedRows.length === 0) {
+      // TODO(Ana): mensagem de retomada ja em andamento.
+      return next(
+        createError(409, "resume_in_progress", "Este roadmap ja esta sendo retomado. Aguarde alguns minutos."),
+      );
+    }
+    lockedRowId = row.id;
 
     const context = await buildGenerationContext(userId, parsedIntake.data);
 
@@ -494,6 +523,11 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
     // Conclusao da retomada cobra a unidade da geracao (nao cobrada antes).
     await finishGeneration(res, userId, row.id, row.slug, requestId, io);
   } catch (err) {
+    // Erro inesperado depois do lock: restaura partial para a retomada nao
+    // ficar presa em generating (o que bloquearia novas retomadas por 409).
+    if (lockedRowId) {
+      await setStatus(lockedRowId, userId, "partial");
+    }
     if (res.headersSent) {
       console.error("[roadmap-ia] erro inesperado na retomada:", err);
       // TODO(Ana): mensagem de erro inesperado na retomada.
