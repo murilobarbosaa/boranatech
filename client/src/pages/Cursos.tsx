@@ -31,6 +31,24 @@ import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
 import { youtubeEmbedUrl } from "@/lib/utils";
 
+// TODO(Ana): revisar a selecao dos 30 cursos expostos no JSON-LD (ordem do catalogo)
+const cursosItemList = {
+  mainEntity: {
+    "@type": "ItemList",
+    numberOfItems: Math.min(cursosGratuitos.length, 30),
+    itemListElement: cursosGratuitos.slice(0, 30).map((curso, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      item: {
+        "@type": "Course",
+        name: curso.titulo,
+        url: curso.link,
+        provider: { "@type": "Organization", name: curso.plataforma },
+      },
+    })),
+  },
+};
+
 const nivelOptions = ["Todos", "Iniciante", "Intermediário", "Avançado"];
 const nivelOrder: Record<string, number> = {
   Iniciante: 0,
@@ -255,6 +273,7 @@ export default function Cursos() {
         ]}
         url="/cursos"
         schemaType="CollectionPage"
+        schemaData={cursosItemList}
       />
       {/* Header */}
       <section className="relative overflow-hidden bg-amber-100 py-12 border-b-2 border-slate-900">
