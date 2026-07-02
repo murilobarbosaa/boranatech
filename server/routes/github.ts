@@ -3,8 +3,10 @@ import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 
 import { resolveAreaSelection } from "../../shared/areas";
+import type { GithubAnalysisResponse } from "../../shared/github/schema";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { analyzeGithub } from "../lib/githubAnalyze";
+import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
   GithubFetchError,
   GithubNotFoundError,
@@ -25,6 +27,36 @@ const BodySchema = z.object({
   input: z.string().min(1),
   area: z.string().optional(),
 });
+
+// Persistencia best-effort em github_analyses, espelhando o padrao do
+// linkedin.ts: falha de escrita vira console.warn e NUNCA quebra a resposta.
+// user_id vem SO do JWT verificado (a rota tem requireAuth no topo). level fica
+// nulo: a analise de GitHub nao produz nivel, so nota (score) e faixa (band).
+async function persistGithubAnalysis(
+  userId: string,
+  rawInput: string,
+  response: GithubAnalysisResponse,
+) {
+  try {
+    const { error } = await supabaseAdmin.from("github_analyses").insert({
+      user_id: userId,
+      area: response.area,
+      level: null,
+      score: response.deterministic.score,
+      faixa: response.deterministic.band,
+      input: { mode: response.mode, input: rawInput, area: response.area },
+      result: response,
+    });
+    if (error) {
+      console.warn(
+        "[github] Falha ao persistir analise (fail-soft):",
+        error.message,
+      );
+    }
+  } catch (err) {
+    console.warn("[github] Erro inesperado ao persistir analise (fail-soft):", err);
+  }
+}
 
 router.post("/analyze", async (req: Request, res: Response, next: NextFunction) => {
   if (!req.isPro) {
@@ -102,6 +134,7 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
       inputChars: aiIo.inputChars,
       outputChars,
     });
+    await persistGithubAnalysis(userId, input, data);
     res.json({ data });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
