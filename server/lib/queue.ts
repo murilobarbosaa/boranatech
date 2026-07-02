@@ -1,8 +1,7 @@
 import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
 
 import type { Gender } from "../../shared/gender";
-import { env } from "./env";
+import { queueConnection } from "./redis";
 import {
   sendCancellationEmail,
   sendCancellationScheduledEmail,
@@ -26,16 +25,10 @@ export type EmailJobData =
   | { type: "newsletter_confirm"; to: string; confirmUrl: string }
   | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string };
 
-export const redisConnection = env.redisUrl
-  ? new IORedis(env.redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    })
-  : null;
-
-redisConnection?.on("error", (err) => {
-  console.error("[queue] Erro na conexão Redis:", err.message);
-});
+// Re-export de compatibilidade: os throttles de waitlist/newsletter/affiliates
+// importam redisConnection daqui. E a conexao de FILA (offline queue ligada);
+// migra-los para a cacheConnection fica para uma fase futura.
+export const redisConnection = queueConnection;
 
 export const emailQueue = redisConnection
   ? new Queue<EmailJobData>("emails", {

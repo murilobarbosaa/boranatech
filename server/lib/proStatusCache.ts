@@ -1,4 +1,4 @@
-import { redisConnection } from "./queue";
+import { cacheConnection } from "./redis";
 
 // Cache de status Pro/admin por usuario, TTL curto. Objetivo: evitar 2 RPCs ao
 // Supabase (is_user_pro + is_user_admin) em todo request protegido. O valor e o
@@ -11,9 +11,9 @@ import { redisConnection } from "./queue";
 
 const PRO_STATUS_TTL_SECONDS = 60;
 
-// Teto de latencia da LEITURA do cache. Com Redis morto, o ioredis segura o GET
-// na offline queue (maxRetriesPerRequest null, enableOfflineQueue default) em vez
-// de lançar, entao sem isto a rota Pro pendura ate o timeout do request.
+// Teto de latencia da LEITURA do cache. Com a cacheConnection (offline queue
+// desligada, commandTimeout 1000) o GET ja falha rapido sozinho; o Promise.race
+// abaixo fica como cinto de seguranca redundante.
 const CACHE_READ_TIMEOUT_MS = 1000;
 
 // Sentinel tipado pro ramo de timeout do Promise.race. Symbol pra nunca colidir
@@ -29,21 +29,15 @@ function proStatusKey(userId: string) {
 export async function getCachedProStatus(
   userId: string,
 ): Promise<boolean | null> {
-  if (!redisConnection) {
+  if (!cacheConnection) {
     return null;
   }
-  // HOTFIX de latencia: limita SO a leitura do cache via Promise.race contra um
-  // timer curto. Se o GET pendurar (Redis morto na offline queue) ou rejeitar,
+  // Se o GET rejeitar (fail-fast da cacheConnection) ou estourar o race,
   // retornamos null e o chamador cai pro RPC (fonte de verdade), nunca chuta Pro.
-  // Debito tecnico: a solucao duravel e uma conexao dedicada ao cache com
-  // enableOfflineQueue false (opcao b do levantamento), que tambem cobre set/del
-  // e elimina o crescimento da offline queue sob outage. setCachedProStatus e
-  // invalidateProStatusCache ficam de fora desta mudanca: sao fire-and-forget
-  // fora do caminho de request, entao nao penduram a rota.
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const cached = await Promise.race([
-      redisConnection.get(proStatusKey(userId)),
+      cacheConnection.get(proStatusKey(userId)),
       new Promise<typeof CACHE_READ_TIMEOUT>((resolve) => {
         timer = setTimeout(() => resolve(CACHE_READ_TIMEOUT), CACHE_READ_TIMEOUT_MS);
       }),
@@ -71,11 +65,11 @@ export async function setCachedProStatus(
   userId: string,
   isPro: boolean,
 ): Promise<void> {
-  if (!redisConnection) {
+  if (!cacheConnection) {
     return;
   }
   try {
-    await redisConnection.set(
+    await cacheConnection.set(
       proStatusKey(userId),
       isPro ? "1" : "0",
       "EX",
@@ -89,11 +83,11 @@ export async function setCachedProStatus(
 // Invalida o cache de um usuario. Chamar sempre que o status Pro mudar. Seguro com
 // Redis nulo. Definida agora; sera usada pelo card 3b em billing.ts e cron.ts.
 export async function invalidateProStatusCache(userId: string): Promise<void> {
-  if (!redisConnection) {
+  if (!cacheConnection) {
     return;
   }
   try {
-    await redisConnection.del(proStatusKey(userId));
+    await cacheConnection.del(proStatusKey(userId));
   } catch {
     // ignora: na pior hipotese o valor antigo expira pelo TTL
   }
