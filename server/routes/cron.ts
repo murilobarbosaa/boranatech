@@ -4,6 +4,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { enrichBacklog } from "../jobs/enrichBacklog";
 import { syncJobs } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
+import { reindexSearchDocuments } from "../lib/searchIndex";
 import {
   cancelAsaasSubscription,
   getAsaasSubscription,
@@ -103,6 +104,18 @@ async function recordSync(
 
 router.use(requireCronSecret);
 
+// Reindexacao fail-soft dos resource_types afetados por um sync. NUNCA falha o
+// job de insercao que a disparou: qualquer erro vira warn e o sync segue ok.
+async function reindexAfterSync(jobName: string, types: string[]) {
+  try {
+    console.log(`[cron] ${jobName}: reindexando tipos ${types.join(", ")}`);
+    const summary = await reindexSearchDocuments(types);
+    console.log(`[cron] ${jobName}: reindex concluida:`, JSON.stringify(summary));
+  } catch (err) {
+    console.warn(`[cron] ${jobName}: reindex pos-sync falhou (fail-soft):`, err);
+  }
+}
+
 router.post("/sync-news", async (_req, res, next) => {
   const startedAt = new Date();
 
@@ -115,6 +128,7 @@ router.post("/sync-news", async (_req, res, next) => {
       startedAt,
       payload: { ...result },
     });
+    await reindexAfterSync("sync-news", ["news"]);
     res.json({ data: result });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -146,6 +160,7 @@ router.post("/sync-jobs", async (_req, res, next) => {
       startedAt,
       payload: { ...result },
     });
+    await reindexAfterSync("sync-jobs", ["job"]);
     res.json({ data: result });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -157,6 +172,35 @@ router.post("/sync-jobs", async (_req, res, next) => {
     );
     await recordCronRun({
       jobName: "sync-jobs",
+      status: "error",
+      startedAt,
+      errorMessage,
+    });
+    next(err);
+  }
+});
+
+// Reindexacao COMPLETA do search_documents (todas as fontes). Agendada diaria
+// via pg_cron (migration 20260702120000) e disponivel para disparo manual. O
+// reindexador ja e fail-soft por fonte: falhas parciais viram status "partial".
+router.post("/reindex-search", async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    console.log("[cron] reindex-search: iniciando reindexacao completa");
+    const summary = await reindexSearchDocuments();
+    console.log("[cron] reindex-search: concluida:", JSON.stringify(summary));
+    await recordCronRun({
+      jobName: "reindex-search",
+      status: summary.falhas.length > 0 ? "partial" : "success",
+      startedAt,
+      payload: { ...summary },
+    });
+    res.json({ data: summary });
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await recordCronRun({
+      jobName: "reindex-search",
       status: "error",
       startedAt,
       errorMessage,
