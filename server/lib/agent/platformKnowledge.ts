@@ -65,6 +65,32 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/estudos/diario", tier: "free", label: "Diario de estudos." },
   // Pagina de assinatura. Publica (qualquer um ve), e o destino dos CTAs do Pro.
   { route: "/planos", tier: "free", label: "Pagina de assinatura do Plano Pro." },
+  // Rotas reais do App.tsx que faltavam no mapa (auditoria do agente free).
+  // Excluidos de proposito: /admin (administrativo), /404, /dev/* (dev-only) e
+  // os redirects (/tecnologias/mapa, /roadmaps-novo, /pro, /pro/sucesso), cujos
+  // destinos canonicos ja estao aqui.
+  // TODO(Ana): revisar os labels deste bloco de rotas adicionadas.
+  { route: "/quiz-carreira/resultado", tier: "free", label: "Resultado do quiz de carreira." },
+  { route: "/tecnologias/por-area", tier: "free", label: "Mapa de tecnologias por area." },
+  { route: "/tecnologias/ranking", tier: "free", label: "Ranking de tecnologias." },
+  { route: "/tecnologias/comparar", tier: "free", label: "Comparador de tecnologias." },
+  { route: "/tecnologias/jogos", tier: "free", label: "Jogos para aprender tecnologias." },
+  { route: "/empresas/ranking-junior", tier: "free", label: "Ranking de empresas para junior." },
+  { route: "/roadmaps/comecar-do-zero", tier: "free", label: "Trilha para comecar do zero." },
+  { route: "/roadmaps/linkedin", tier: "free", label: "Trilha de LinkedIn." },
+  { route: "/carreiras", tier: "free", label: "Vagas de carreira (aba da pagina de vagas)." },
+  { route: "/portifolio", tier: "free", label: "Aba de portfolio da pagina de vagas." },
+  { route: "/planos/sucesso", tier: "free", label: "Confirmacao de assinatura concluida." },
+  { route: "/checkout", tier: "free", label: "Checkout da assinatura do Plano Pro." },
+  { route: "/login", tier: "free", label: "Pagina de login." },
+  { route: "/cadastro", tier: "free", label: "Pagina de criacao de conta." },
+  { route: "/bem-vindo", tier: "free", label: "Boas-vindas apos criar a conta." },
+  { route: "/recuperar-senha", tier: "free", label: "Recuperacao de senha por email." },
+  { route: "/trocar-senha", tier: "free", label: "Troca de senha do usuario logado." },
+  { route: "/redefinir-senha", tier: "free", label: "Redefinicao de senha via link de email." },
+  { route: "/licenca", tier: "free", label: "Licenca do BoraNaTech." },
+  { route: "/privacidade", tier: "free", label: "Politica de privacidade." },
+  { route: "/termos-de-uso", tier: "free", label: "Termos de uso." },
   // Rotas Pro: analise personalizada por IA (server/lib/aiTools.ts requiresPro).
   { route: "/curriculo/analisar", tier: "pro", label: "Analise de curriculo por IA." },
   { route: "/curriculo/gerar", tier: "pro", label: "Geracao de curriculo por IA." },
@@ -74,7 +100,83 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/entrevistas/simulador", tier: "pro", label: "Simulador de entrevista por IA." },
 ];
 
+// Rotas dinamicas reais do App.tsx (detalhe por slug). O parametro nomeado no
+// pattern vira um segmento de slug estrito ([a-z0-9-]{1,64}) na validacao; a
+// existencia do CONTEUDO daquele slug nao e garantida pelo casamento (quem
+// confirma conteudo e a busca; na duvida, a pagina indice e o caminho seguro).
+// TODO(Ana): revisar os labels deste bloco de padroes dinamicos.
+export interface PlatformRoutePattern {
+  pattern: string;
+  tier: AgentTier;
+  label: string;
+}
+
+export const PLATFORM_ROUTE_PATTERNS: PlatformRoutePattern[] = [
+  { pattern: "/areas/:slug", tier: "free", label: "Detalhe de uma area de tecnologia." },
+  { pattern: "/areas/:parent/:subarea", tier: "free", label: "Detalhe de uma subarea de tecnologia." },
+  { pattern: "/tecnologias/:slug", tier: "free", label: "Detalhe de uma tecnologia." },
+  { pattern: "/empresas/:slug", tier: "free", label: "Detalhe de uma empresa de tecnologia." },
+  { pattern: "/roadmaps/:slug", tier: "free", label: "Trilha de aprendizado especifica." },
+  { pattern: "/faculdades/:slug", tier: "free", label: "Detalhe de uma faculdade." },
+];
+
+// Segmento de slug estrito: minusculas, digitos e hifen, ate 64 chars. Mantem a
+// validacao fail-closed: nada de barra extra, espaco, ponto ou maiuscula.
+const SLUG_SEGMENT_SOURCE = "[a-z0-9-]{1,64}";
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Deriva a regex segura do pattern: segmentos ":param" viram slug estrito,
+// segmentos literais sao escapados. Ancorada em inicio e fim.
+function patternToRegex(pattern: string): RegExp {
+  const source = pattern
+    .split("/")
+    .map((segment) =>
+      segment.startsWith(":") ? SLUG_SEGMENT_SOURCE : escapeRegex(segment),
+    )
+    .join("/");
+  return new RegExp(`^${source}$`);
+}
+
+const COMPILED_PATTERNS = PLATFORM_ROUTE_PATTERNS.map((p) => ({
+  ...p,
+  regex: patternToRegex(p.pattern),
+}));
+
+export interface RouteMatch {
+  route: string;
+  tier: AgentTier;
+  label: string;
+  // "static": rota exata do mapa. "pattern": caminho concreto que casou com um
+  // padrao dinamico; a base existe, mas o slug nao foi verificado.
+  kind: "static" | "pattern";
+}
+
 export function findRoute(route: string): PlatformRoute | undefined {
   const normalized = route.trim();
   return PLATFORM_ROUTES.find((r) => r.route === normalized);
+}
+
+// Valida um caminho concreto contra as rotas estaticas e depois os padroes
+// dinamicos. Estatica tem precedencia (ex.: /tecnologias/ranking casa com a
+// rota estatica antes de cair em /tecnologias/:slug). Caminho que nao casa com
+// nada retorna undefined (a tool recusa).
+export function matchRoute(route: string): RouteMatch | undefined {
+  const normalized = route.trim();
+  const exact = findRoute(normalized);
+  if (exact) {
+    return { route: exact.route, tier: exact.tier, label: exact.label, kind: "static" };
+  }
+  const pattern = COMPILED_PATTERNS.find((p) => p.regex.test(normalized));
+  if (pattern) {
+    return {
+      route: normalized,
+      tier: pattern.tier,
+      label: pattern.label,
+      kind: "pattern",
+    };
+  }
+  return undefined;
 }
