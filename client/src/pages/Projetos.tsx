@@ -63,6 +63,22 @@ function labelForAreaSlug(slug: string | null | undefined): string {
   );
 }
 
+// Material de video do projeto: usa o curado se existir; senao monta uma busca
+// do YouTube ESPECIFICA do projeto (titulo + tecnologia principal). Nao inventa
+// URL de video especifico, so uma query de busca boa e relevante.
+function projectHelpVideo(projeto: Projeto): { title: string; url: string } {
+  const curado = projectHelpVideos[projeto.id];
+  if (curado) return curado;
+  const tech = projeto.ferramentas[0] ?? "";
+  const query = `como fazer ${projeto.nome} ${tech} tutorial`
+    .replace(/\s+/g, " ")
+    .trim();
+  return {
+    title: `Como fazer ${projeto.nome}`,
+    url: `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
+  };
+}
+
 const areaColors: Record<string, string> = {
   frontend: "bg-blue-100 text-blue-700",
   uxui: "bg-pink-100 text-pink-700",
@@ -456,12 +472,7 @@ export default function Projetos() {
 
                       <div>
                         <a
-                          href={
-                            (
-                              projectHelpVideos[projeto.id] ||
-                              projectHelpVideos.default
-                            ).url
-                          }
+                          href={projectHelpVideo(projeto).url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="card-brutal mb-4 flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
@@ -472,12 +483,7 @@ export default function Projetos() {
                               Vídeo de ajuda
                             </p>
                             <p className="text-sm font-bold text-slate-900">
-                              {
-                                (
-                                  projectHelpVideos[projeto.id] ||
-                                  projectHelpVideos.default
-                                ).title
-                              }
+                              {projectHelpVideo(projeto).title}
                             </p>
                             <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
                               Assistir referência{" "}
