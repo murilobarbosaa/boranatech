@@ -1,7 +1,8 @@
 import express, { Router, type Response } from "express";
 
 import { env } from "../lib/env";
-import { enqueueEmail, redisConnection } from "../lib/queue";
+import { enqueueEmail } from "../lib/queue";
+import { cacheConnection } from "../lib/redis";
 import { issueSignedToken, verifySignedToken } from "../lib/signedToken";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
@@ -148,13 +149,15 @@ router.post("/signup", async (req, res) => {
 
     // Throttle por IP, mesmo padrao do POST /api/waitlist (INCR + EXPIRE). Janela
     // generosa (CGNAT) e o dado dedupa por e-mail. Fail-open: sem Redis, segue.
+    // cacheConnection (fail-fast): com Redis fora o comando rejeita rapido e o
+    // catch libera; a conexao de fila penduraria a rota na offline queue.
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    if (redisConnection) {
+    if (cacheConnection) {
       try {
         const key = `newsletter:signup:${ip}`;
-        const attempts = await redisConnection.incr(key);
+        const attempts = await cacheConnection.incr(key);
         if (attempts === 1) {
-          await redisConnection.expire(key, SIGNUP_WINDOW_SECONDS);
+          await cacheConnection.expire(key, SIGNUP_WINDOW_SECONDS);
         }
         if (attempts > SIGNUP_MAX_ATTEMPTS) {
           res.status(429).json({

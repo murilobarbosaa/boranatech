@@ -25,14 +25,9 @@ export type EmailJobData =
   | { type: "newsletter_confirm"; to: string; confirmUrl: string }
   | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string };
 
-// Re-export de compatibilidade: os throttles de waitlist/newsletter/affiliates
-// importam redisConnection daqui. E a conexao de FILA (offline queue ligada);
-// migra-los para a cacheConnection fica para uma fase futura.
-export const redisConnection = queueConnection;
-
-export const emailQueue = redisConnection
+export const emailQueue = queueConnection
   ? new Queue<EmailJobData>("emails", {
-      connection: redisConnection,
+      connection: queueConnection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -80,7 +75,7 @@ async function sendDirect(data: EmailJobData) {
 }
 
 export function createEmailWorker() {
-  if (!redisConnection) {
+  if (!queueConnection) {
     console.warn("[queue] REDIS_URL ausente. Worker de e-mail não iniciado.");
     return null;
   }
@@ -93,7 +88,7 @@ export function createEmailWorker() {
       await sendDirect(data);
     },
     {
-      connection: redisConnection,
+      connection: queueConnection,
       concurrency: 5,
     },
   );
@@ -116,6 +111,16 @@ export function createEmailWorker() {
   return worker;
 }
 
+// Teto pro enfileiramento. Com Redis fora, a conexao de fila (offline queue
+// ligada, exigencia do BullMQ) segura o add() indefinidamente em vez de
+// rejeitar, o catch nunca dispara e a rota pendura. Estourado o teto, cai pro
+// envio direto. Trade-off consciente: se o Redis voltar com o processo vivo, o
+// add preso na offline queue ainda pode completar e o e-mail sai duplicado;
+// melhor que pendurar a rota ou perder o e-mail.
+const ENQUEUE_TIMEOUT_MS = 2_000;
+
+const ENQUEUE_TIMEOUT = Symbol("email-enqueue-timeout");
+
 export async function enqueueEmail(data: EmailJobData) {
   if (!emailQueue) {
     console.warn("[queue] REDIS_URL ausente. Enviando e-mail diretamente.");
@@ -123,13 +128,36 @@ export async function enqueueEmail(data: EmailJobData) {
     return;
   }
 
+  // sendDirect fica FORA do try: se rodasse dentro, uma falha dele cairia no
+  // catch e dispararia um segundo envio. Exatamente um sendDirect por chamada;
+  // falha dele propaga ao chamador.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let needsDirectSend = false;
   try {
-    await emailQueue.add(data.type, data);
+    const added = await Promise.race([
+      emailQueue.add(data.type, data),
+      new Promise<typeof ENQUEUE_TIMEOUT>((resolve) => {
+        timer = setTimeout(() => resolve(ENQUEUE_TIMEOUT), ENQUEUE_TIMEOUT_MS);
+        timer.unref();
+      }),
+    ]);
+    if (added === ENQUEUE_TIMEOUT) {
+      console.error(
+        "[queue] Timeout ao enfileirar e-mail. Enviando diretamente.",
+      );
+      needsDirectSend = true;
+    }
   } catch (err) {
     console.error(
       "[queue] Erro ao enfileirar e-mail. Enviando diretamente.",
       err,
     );
+    needsDirectSend = true;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (needsDirectSend) {
     await sendDirect(data);
   }
 }

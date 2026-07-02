@@ -1,6 +1,7 @@
 import { env } from "./env";
 import { fetchProfileData, fetchRepoData } from "./github";
 import { analyzeProfile, analyzeRepo } from "./githubChecks";
+import { fetchWithTimeout } from "./http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 import { areaLabel, type AreaSelection } from "../../shared/areas";
@@ -194,26 +195,30 @@ async function runQualitativeOnce(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
 ): Promise<GithubQualitative> {
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: buildOpenAIHeaders(env.openaiApiKey),
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      temperature: 0.5,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userText },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "github_qualitative",
-          strict: true,
-          schema: QUALITATIVE_JSON_SCHEMA,
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: 0.5,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userText },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "github_qualitative",
+            strict: true,
+            schema: QUALITATIVE_JSON_SCHEMA,
+          },
         },
-      },
-    }),
-  });
+      }),
+    },
+    { service: "openai", timeoutMs: 60_000 },
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");

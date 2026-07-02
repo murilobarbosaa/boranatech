@@ -1,3 +1,4 @@
+import { fetchWithTimeout, isUpstreamTimeoutError } from "../http";
 import {
   buildOpenAIHeaders,
   DEFAULT_MODEL,
@@ -123,14 +124,22 @@ async function fetchOpenAIStream(
 
   let response: globalThis.Response;
   try {
-    response = await fetch(OPENAI_BASE_URL, {
-      method: "POST",
-      headers: buildOpenAIHeaders(apiKey),
-      body: JSON.stringify(body),
-    });
+    // headerTimeoutMs cobre a trava de connect; depois do primeiro byte o SSE
+    // segue por design.
+    response = await fetchWithTimeout(
+      OPENAI_BASE_URL,
+      {
+        method: "POST",
+        headers: buildOpenAIHeaders(apiKey),
+        body: JSON.stringify(body),
+      },
+      { service: "openai-agent", headerTimeoutMs: 20_000 },
+    );
   } catch (err) {
     console.error("[agent] OpenAI fetch error:", err);
-    throw new AgentUpstreamError("network");
+    throw new AgentUpstreamError(
+      isUpstreamTimeoutError(err) ? "timeout" : "network",
+    );
   }
 
   if (!response.ok || !response.body) {

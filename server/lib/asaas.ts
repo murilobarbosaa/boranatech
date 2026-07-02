@@ -1,4 +1,5 @@
 import { env } from "./env";
+import { fetchWithTimeout } from "./http";
 
 const ASAAS_BASE =
   env.asaasEnv === "production"
@@ -6,19 +7,29 @@ const ASAAS_BASE =
     : "https://sandbox.asaas.com";
 const ASAAS_BASE_URL = `${ASAAS_BASE}/api/v3`;
 
+// Teto por chamada. SEM retry de proposito: nem toda chamada de cobranca e
+// idempotente; retry seguro exige idempotency key (fase futura). O checkout
+// encadeia ate 4 chamadas (pior caso ~60s), coberto pelo budget global de
+// rota em fase futura.
+const ASAAS_TIMEOUT_MS = 15_000;
+
 async function asaasRequest(
   method: string,
   path: string,
   body?: Record<string, unknown>,
 ) {
-  const res = await fetch(`${ASAAS_BASE_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      access_token: env.asaasApiKey,
+  const res = await fetchWithTimeout(
+    `${ASAAS_BASE_URL}${path}`,
+    {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        access_token: env.asaasApiKey,
+      },
+      body: body ? JSON.stringify(body) : undefined,
     },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+    { service: "asaas", timeoutMs: ASAAS_TIMEOUT_MS },
+  );
 
   const data = await res.json();
 

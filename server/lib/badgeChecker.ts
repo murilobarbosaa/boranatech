@@ -303,7 +303,16 @@ export async function checkAndPersistBadges(
   });
 
   if (toInsert.length > 0) {
-    const { error } = await supabaseAdmin.from("user_badges").insert(toInsert);
+    // Indice UNIQUE unique_user_badge ON user_badges (user_id, badge_id)
+    // (confirmado em producao via SQL Editor). Com ignoreDuplicates, dois
+    // requests/replicas concorrentes que calculam a mesma badge sao caso
+    // esperado: o perdedor e ignorado em silencio, sem duplicata e sem erro.
+    const { error } = await supabaseAdmin
+      .from("user_badges")
+      .upsert(toInsert, {
+        onConflict: "user_id,badge_id",
+        ignoreDuplicates: true,
+      });
     if (error) {
       console.error("[badges] Erro ao persistir badges desbloqueadas:", error);
     }

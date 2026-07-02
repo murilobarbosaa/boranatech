@@ -13,6 +13,7 @@ import {
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
 import { runLinkedinChecks } from "./linkedinChecks";
+import { fetchWithTimeout } from "./http";
 import { parseLinkedinText, type LinkedinParsed } from "./linkedinParse";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
@@ -159,27 +160,31 @@ async function runQualitativeOnce(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
 ): Promise<LinkedinQualitative> {
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: buildOpenAIHeaders(env.openaiApiKey),
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      temperature: 0.5,
-      max_tokens: MAX_TOKENS,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userText },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "linkedin_qualitative",
-          strict: true,
-          schema: QUALITATIVE_JSON_SCHEMA,
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: 0.5,
+        max_tokens: MAX_TOKENS,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userText },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "linkedin_qualitative",
+            strict: true,
+            schema: QUALITATIVE_JSON_SCHEMA,
+          },
         },
-      },
-    }),
-  });
+      }),
+    },
+    { service: "openai", timeoutMs: 60_000 },
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
