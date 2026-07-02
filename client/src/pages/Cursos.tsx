@@ -62,6 +62,27 @@ const areaTagClass: Record<string, string> = {
   dados: "tag-dados",
 };
 
+// Normaliza (minusculas, sem acento) para comparar niveis de forma tolerante,
+// ja que a API pode devolver caixa/acentuacao diferente do rotulo do filtro.
+function normalizarNivel(valor: string): string {
+  return valor
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+// Mapeia codigos curtos de idioma da API (ex.: "pt-BR", "en") para o rotulo do
+// filtro ("Português" / "Inglês"). Retorna null para valores por extenso, que ja
+// batem via includes.
+function idiomaCurto(raw: string): "Português" | "Inglês" | null {
+  const s = raw.trim().toLowerCase();
+  if (s === "pt" || s.startsWith("pt-") || s.startsWith("pt_"))
+    return "Português";
+  if (s === "en" || s.startsWith("en-") || s.startsWith("en_")) return "Inglês";
+  return null;
+}
+
 // Quiz guiado: atalho que so seta os filtros que a pagina ja tem (area/nivel/preco).
 // Areas reais do catalogo (cursosGratuitos); valor = slug do filtro ou AREA_ALL.
 const QUIZ_AREA_OPCOES: { label: string; value: string }[] = [
@@ -177,6 +198,7 @@ export default function Cursos() {
   const search = useSearch();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
   const [courses, setCourses] = useState(cursosGratuitos);
+  const [loadingCourses, setLoadingCourses] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [area, setArea] = useState(initialAreaFromUrl ?? AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
@@ -216,7 +238,8 @@ export default function Cursos() {
   useEffect(() => {
     getCourses()
       .then(setCourses)
-      .catch(() => setCourses(cursosGratuitos));
+      .catch(() => setCourses(cursosGratuitos))
+      .finally(() => setLoadingCourses(false));
   }, []);
 
   const filtered = courses
@@ -227,8 +250,12 @@ export default function Cursos() {
         c.canal.toLowerCase().includes(searchQuery.toLowerCase()) ||
         slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
       const matchArea = area === AREA_ALL || c.areaSlug === area;
-      const matchNivel = nivel === "Todos" || c.nivel === nivel;
-      const matchIdioma = idioma === "Todos" || c.idioma.includes(idioma);
+      const matchNivel =
+        nivel === "Todos" || normalizarNivel(c.nivel) === normalizarNivel(nivel);
+      const matchIdioma =
+        idioma === "Todos" ||
+        c.idioma.includes(idioma) ||
+        idiomaCurto(c.idioma) === idioma;
       const matchTipo = tipo === "Todos" || (c.tipo || "Gratuito") === tipo;
       return matchSearch && matchArea && matchNivel && matchIdioma && matchTipo;
     })
@@ -559,7 +586,20 @@ export default function Cursos() {
                   : ""
               }
             >
-              {filtered.length === 0 ? (
+              {loadingCourses ? (
+                <div
+                  className="grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+                  aria-busy="true"
+                  aria-label="Carregando cursos"
+                >
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-64 rounded-2xl border-2 border-slate-200 bg-white motion-safe:animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
               <p className="text-slate-600 font-medium">
