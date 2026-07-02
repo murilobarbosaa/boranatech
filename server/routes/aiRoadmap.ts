@@ -51,12 +51,14 @@ interface AiRoadmapListRow {
   title: string;
   status: string;
   created_at: string;
+  // updated_at na lista permite a UI distinguir generating ATIVO (recente) de
+  // geracao que morreu no meio.
+  updated_at: string;
 }
 
 interface AiRoadmapRow extends AiRoadmapListRow {
   inputs: Record<string, unknown>;
   roadmap: RoadmapV2;
-  updated_at: string;
 }
 
 // SSE no padrao do agente (server/routes/agent.ts): mesmos headers e frames.
@@ -545,7 +547,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   const userId = req.user!.id;
   const { data, error } = await supabaseAdmin
     .from("ai_roadmaps")
-    .select("id, slug, title, status, created_at")
+    .select("id, slug, title, status, created_at, updated_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) {

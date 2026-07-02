@@ -15,11 +15,11 @@ export interface AiRoadmapListItem {
   title: string;
   status: AiRoadmapStatus;
   created_at: string;
+  updated_at: string;
 }
 
 export interface AiRoadmapDetail extends AiRoadmapListItem {
   roadmap: RoadmapV2;
-  updated_at: string;
 }
 
 export interface GenerationHandlers {
