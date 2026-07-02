@@ -265,6 +265,19 @@ export async function runAgentLoop(
     ...params.messages.map((m) => ({ role: m.role, content: m.content })),
   ];
 
+  // DIAG: ligado so com AGENT_DIAG=1 (desligado em producao). So contagens e
+  // booleanos, nunca conteudo de mensagem ou snapshot.
+  if (process.env.AGENT_DIAG === "1") {
+    console.log(
+      "[agent/diag] system messages:",
+      conversation.filter((m) => m.role === "system").length,
+      "snapshot incluido?",
+      Boolean(params.userSnapshot && params.userSnapshot.length > 0),
+      "tamanho:",
+      params.userSnapshot?.length ?? 0,
+    );
+  }
+
   let outputChars = 0;
   let inputTokens = 0;
   let outputTokens = 0;

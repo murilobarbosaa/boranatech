@@ -61,7 +61,6 @@ export const env = {
   supabaseUrl: requireEnv("SUPABASE_URL", ["VITE_SUPABASE_URL"]),
   supabaseAnonKey: requireEnv("SUPABASE_ANON_KEY", ["VITE_SUPABASE_ANON_KEY"]),
   supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
-  supabaseJwtSecret: requireEnv("SUPABASE_JWT_SECRET"),
   appPublicUrl: requireEnvWithDefault(
     "APP_PUBLIC_URL",
     "http://localhost:3000",

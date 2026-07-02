@@ -44,6 +44,11 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
   // jamais do corpo da requisicao. Fail-closed: qualquer coisa diferente de true
   // (incluindo indeterminado) e tratada como FREE, nunca como Pro.
   const isPro = req.isPro === true;
+  // DIAG: ligado so com AGENT_DIAG=1 (desligado em producao). Sem PII: nunca
+  // logar o userId inteiro nem conteudo de snapshot.
+  if (process.env.AGENT_DIAG === "1") {
+    console.log("[agent/diag] isPro:", isPro, "hasUserId:", Boolean(userId));
+  }
 
   const usage = await checkAgentDailyLimit(userId, isPro);
   if (!usage.allowed) {
@@ -139,6 +144,15 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
       userSnapshot = await buildUserSnapshot(userId);
     } catch (err) {
       console.warn("[agent] buildUserSnapshot falhou, seguindo sem snapshot:", err);
+    }
+    // DIAG: ligado so com AGENT_DIAG=1. Loga tamanho, nunca o conteudo.
+    if (process.env.AGENT_DIAG === "1") {
+      console.log(
+        "[agent/diag] snapshot resolvido?",
+        userSnapshot !== undefined,
+        "chars:",
+        userSnapshot?.length ?? 0,
+      );
     }
   }
 

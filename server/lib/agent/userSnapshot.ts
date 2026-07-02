@@ -154,18 +154,18 @@ function buildSourceBlocks(pool: UserContextPool): string[][] {
 export async function buildUserSnapshot(userId: string): Promise<string> {
   const pool = await fetchUserContextPool(userId);
 
-  // DIAG (remover apos diagnostico)
-  console.log("[agent/diag] is_user_pro:", {
-    data: pool.plan.ok ? pool.plan.data.isPro : null,
-    error: pool.plan.ok ? null : "source_failed",
-  });
-  // DIAG (remover apos diagnostico)
-  console.log("[agent/diag] quiz query:", {
-    found: pool.quiz.ok && pool.quiz.data !== null,
-    error: pool.quiz.ok ? null : "source_failed",
-    area: pool.quiz.ok && pool.quiz.data ? pool.quiz.data.area : null,
-    level: pool.quiz.ok && pool.quiz.data ? pool.quiz.data.level : null,
-  });
+  // DIAG: ligado so com AGENT_DIAG=1 (desligado em producao). Sem PII: so
+  // booleanos e status de fonte, nunca area/nivel nem conteudo do quiz.
+  if (process.env.AGENT_DIAG === "1") {
+    console.log("[agent/diag] is_user_pro:", {
+      data: pool.plan.ok ? pool.plan.data.isPro : null,
+      error: pool.plan.ok ? null : "source_failed",
+    });
+    console.log("[agent/diag] quiz query:", {
+      hasQuiz: pool.quiz.ok && pool.quiz.data !== null,
+      error: pool.quiz.ok ? null : "source_failed",
+    });
+  }
 
   const blocks = buildSourceBlocks(pool);
 
@@ -193,11 +193,14 @@ export async function buildUserSnapshot(userId: string): Promise<string> {
 
   const text = `${header}\n${lines.join("\n")}`;
 
-  // DIAG (remover apos diagnostico)
-  console.log("[agent/diag] snapshot final:", {
-    chars: text.length,
-    linhas: lines.length,
-  });
+  // DIAG: ligado so com AGENT_DIAG=1. So contagens, nunca o texto do snapshot.
+  if (process.env.AGENT_DIAG === "1") {
+    console.log("[agent/diag] snapshot final:", {
+      chars: text.length,
+      linhas: lines.length,
+      fontes: blocks.length,
+    });
+  }
 
   return text;
 }
