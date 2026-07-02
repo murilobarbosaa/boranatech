@@ -1,5 +1,6 @@
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
 import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
+import { reconcilePendingQuizResult } from "@/services/careerQuizService";
 import type { Profile } from "@/services/contracts";
 import { getMyProfile } from "@/services/profileService";
 import type { Gender } from "@shared/gender";
@@ -120,7 +121,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // refreshProfile vê gen antigo e descarta -> não ressuscita perfil deslogado.
   const generationRef = useRef(0);
 
+  // Reconciliacao do resultado do quiz feito deslogado: dispara quando a sessao
+  // passa a existir, no maximo uma vez por usuario de sessao (o ref guarda o
+  // ultimo id tratado e e zerado no SIGNED_OUT, entao um novo login tenta de
+  // novo). Best-effort e assincrona: nunca bloqueia o fluxo de auth.
+  const quizReconcileUserRef = useRef<string | null>(null);
+
   useEffect(() => {
+    function reconcileQuizForSession(target: Session) {
+      const uid = target.user?.id;
+      if (!uid || quizReconcileUserRef.current === uid) return;
+      quizReconcileUserRef.current = uid;
+      void reconcilePendingQuizResult();
+    }
     let mounted = true;
     let safetyTimer: number | undefined;
     let retryTimer: number | undefined;
@@ -240,6 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (initialSession) {
           startProfileLifecycle(initialSession, "initial");
+          reconcileQuizForSession(initialSession);
         }
 
         // Callback de OAuth em andamento: getSession resolveu null mas a URL ainda
@@ -279,11 +293,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearSafetyTimer();
       setSession(nextSession);
       if (event === "SIGNED_OUT" || !nextSession) {
+        quizReconcileUserRef.current = null;
         cancelProfileLifecycle();
       } else {
         if (nextSession.user) {
           posthog.identify(nextSession.user.id);
         }
+        reconcileQuizForSession(nextSession);
         // Modo 'initial' apenas quando ainda não há perfil cacheado.
         // TOKEN_REFRESHED/USER_UPDATED com perfil presente entram em 'background'
         // e nunca acendem skeleton.

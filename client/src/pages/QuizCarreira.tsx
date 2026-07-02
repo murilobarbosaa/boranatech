@@ -40,7 +40,12 @@ import {
   TECH_QUESTION_COUNT,
   QUIZ_ESTIMATED_MINUTES,
 } from "@/lib/platformData";
-import { persistQuizResult } from "@/services/careerQuizService";
+import {
+  markStoredQuizResultPersisted,
+  persistQuizResult,
+  QUIZ_RESULT_SESSION_KEY,
+  type PersistQuizPayload,
+} from "@/services/careerQuizService";
 
 type QuizPhase =
   | "objective"
@@ -49,8 +54,6 @@ type QuizPhase =
   | "level-reveal"
   | "questions"
   | "completing";
-
-const RESULT_SESSION_KEY = "quiz-carreira.last-result";
 
 // Acentos rotativos para colorir as opções (letra A/B/C/D).
 const OPTION_ACCENTS = ["#7c3aed", "#db2777", "#0e7490", "#d97706"];
@@ -72,6 +75,14 @@ interface StoredResult {
   completedAt: string;
   techKey?: string;
   objective?: QuizObjective;
+}
+
+// Forma efetivamente gravada no sessionStorage. persisted so vira true com
+// confirmacao do backend; enquanto false, persistPayload permite a
+// reconciliacao pos-login reenviar o resultado para career_quiz_attempts.
+interface StoredQuizResult extends StoredResult {
+  persisted: boolean;
+  persistPayload: PersistQuizPayload;
 }
 
 // Tipo minimo aceito pela tela de pergunta. Tanto QuizQuestion quanto
@@ -498,12 +509,6 @@ export default function QuizCarreira() {
     finalAnswers: Record<string, number>,
     top: [string, number][],
   ) => {
-    try {
-      sessionStorage.setItem(RESULT_SESSION_KEY, JSON.stringify(payload));
-    } catch {
-      // sessionStorage indisponível, fallback de /history cobre o caso
-    }
-
     const quizAnswers = questions.flatMap((question) => {
       const optionIndex = finalAnswers[question.id];
       const option =
@@ -519,7 +524,7 @@ export default function QuizCarreira() {
       ];
     });
 
-    void persistQuizResult({
+    const persistPayload: PersistQuizPayload = {
       answers: quizAnswers,
       result_area: payload.resultArea,
       result_area_slug: payload.resultAreaSlug || undefined,
@@ -534,7 +539,29 @@ export default function QuizCarreira() {
         topAreas: payload.topAreas,
         reasons: payload.reasons,
       },
-    });
+    };
+
+    const stored: StoredQuizResult = {
+      ...payload,
+      persisted: false,
+      persistPayload,
+    };
+    try {
+      sessionStorage.setItem(QUIZ_RESULT_SESSION_KEY, JSON.stringify(stored));
+    } catch {
+      // sessionStorage indisponível, fallback de /history cobre o caso
+    }
+
+    // Nao bloqueia a navegacao para o resultado: persisted so vira true com
+    // sucesso confirmado do backend. Sem sessao ou com falha, fica false e a
+    // reconciliacao pos-login (reconcilePendingQuizResult) reenvia depois.
+    persistQuizResult(persistPayload)
+      .then((saved) => {
+        if (saved) markStoredQuizResultPersisted();
+      })
+      .catch(() => {
+        // persistQuizResult nao lanca por contrato; guarda extra, persisted fica false
+      });
 
     posthog.capture("quiz_completed", {
       kind: payload.kind,

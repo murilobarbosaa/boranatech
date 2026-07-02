@@ -2,6 +2,28 @@ import type { CareerQuizAnswer, CareerQuizResult } from "./contracts";
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
+// Chave unica do resultado do quiz no sessionStorage, compartilhada entre o
+// quiz, a pagina de resultado e a reconciliacao pos-login (evita drift entre
+// literais duplicados).
+export const QUIZ_RESULT_SESSION_KEY = "quiz-carreira.last-result";
+
+// Payload aceito pelo POST /api/quiz/attempts/batch. Fica guardado junto do
+// resultado no sessionStorage quando a persistencia ainda nao foi confirmada,
+// para a reconciliacao pos-login reenviar exatamente o mesmo conteudo.
+export interface PersistQuizPayload {
+  answers: Array<{
+    question_id: string;
+    answer_id: string;
+    answer_text: string;
+    area: string;
+  }>;
+  result_area: string;
+  result_area_slug?: string;
+  confidence: number;
+  level?: string;
+  result_json?: unknown;
+}
+
 async function getAuthHeader(): Promise<Record<string, string> | null> {
   const {
     data: { session },
@@ -34,19 +56,9 @@ export async function getCareerQuizResult(
   };
 }
 
-export async function persistQuizResult(payload: {
-  answers: Array<{
-    question_id: string;
-    answer_id: string;
-    answer_text: string;
-    area: string;
-  }>;
-  result_area: string;
-  result_area_slug?: string;
-  confidence: number;
-  level?: string;
-  result_json?: unknown;
-}): Promise<{ id: string; completed_at: string } | null> {
+export async function persistQuizResult(
+  payload: PersistQuizPayload,
+): Promise<{ id: string; completed_at: string } | null> {
   if (!supabase) return null;
   const {
     data: { session },
@@ -73,6 +85,58 @@ export async function persistQuizResult(payload: {
     console.error("Erro ao persistir resultado do quiz:", err);
     return null;
   }
+}
+
+// Marca o resultado guardado no sessionStorage como persistido (gravado em
+// career_quiz_attempts). Silenciosa: sessionStorage indisponivel ou payload
+// corrompido nao lanca.
+export function markStoredQuizResultPersisted(): void {
+  try {
+    const raw = sessionStorage.getItem(QUIZ_RESULT_SESSION_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    sessionStorage.setItem(
+      QUIZ_RESULT_SESSION_KEY,
+      JSON.stringify({ ...parsed, persisted: true }),
+    );
+  } catch {
+    // silencioso
+  }
+}
+
+// Reconciliacao pos-login do quiz feito deslogado: se o sessionStorage tem um
+// resultado com persisted false e o payload de persistencia guardado, reenvia
+// ao backend. Idempotente (sucesso marca persisted true e as proximas chamadas
+// nao fazem nada) e silenciosa em falha (warn, nunca throw): sem sessao ou com
+// falha de rede o persisted continua false e a proxima sessao tenta de novo.
+export async function reconcilePendingQuizResult(): Promise<void> {
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(QUIZ_RESULT_SESSION_KEY);
+  } catch {
+    return;
+  }
+  if (!raw) return;
+
+  let stored: { persisted?: unknown; persistPayload?: PersistQuizPayload };
+  try {
+    stored = JSON.parse(raw) as {
+      persisted?: unknown;
+      persistPayload?: PersistQuizPayload;
+    };
+  } catch {
+    return;
+  }
+  if (stored.persisted !== false || !stored.persistPayload) return;
+
+  const saved = await persistQuizResult(stored.persistPayload);
+  if (!saved) {
+    console.warn(
+      "[quiz] reconciliacao adiada: resultado segue nao persistido na conta.",
+    );
+    return;
+  }
+  markStoredQuizResultPersisted();
 }
 
 export async function getQuizHistory() {
