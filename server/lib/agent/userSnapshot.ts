@@ -72,14 +72,17 @@ function buildSourceBlocks(pool: UserContextPool): string[][] {
     blocks.push(lines);
   }
 
-  // Cursos / trilhas v2 (user_progress course_progress).
+  // Cursos / trilhas v2 (user_progress course_progress). Roadmaps gerados por
+  // IA (slug ia-<hex>) usam o titulo resolvido pelo pool quando presente.
   if (pool.courses.ok && pool.courses.data.length > 0) {
     const lines = pool.courses.data
       .slice(0, MAX_COURSE_LINES)
-      .map(
-        (c) =>
-          `- Trilha ${c.courseSlug}: ${c.completedItems} itens concluidos (ultimo avanco em ${day(c.lastActivityAt)}).`,
-      );
+      .map((c) => {
+        const nome = c.title
+          ? `${c.title} (roadmap gerado por IA)`
+          : c.courseSlug;
+        return `- Trilha ${nome}: ${c.completedItems} itens concluidos (ultimo avanco em ${day(c.lastActivityAt)}).`;
+      });
     blocks.push(lines);
   }
 

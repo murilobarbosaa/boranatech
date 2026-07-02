@@ -1,3 +1,4 @@
+import { AI_ROADMAP_SLUG_RE } from "../../../shared/aiRoadmap";
 import { supabaseAdmin } from "../supabaseAdmin";
 
 // Pool de contexto do usuario: FONTE UNICA de coleta dos dados de estado do
@@ -40,6 +41,11 @@ export interface CourseProgressContext {
   courseSlug: string;
   completedItems: number;
   lastActivityAt: string | null;
+  // Presentes SO quando o slug e de um roadmap gerado por IA (ai_roadmaps do
+  // proprio usuario); trilhas estaticas seguem so com o slug (o titulo delas
+  // vive no conteudo estatico). Resolucao best-effort: falha deixa ausente.
+  title?: string;
+  status?: string;
 }
 
 export interface SkillContext {
@@ -291,6 +297,42 @@ async function fetchCourses(
         lastActivityAt: acc.lastActivityAt,
       }),
     );
+
+    // Slugs ia-<hex> sao roadmaps gerados por IA e nao estao no conteudo
+    // estatico: resolve title/status em UM batch em ai_roadmaps, filtrando por
+    // user_id (barreira de identidade). Best-effort: qualquer falha degrada
+    // para o slug cru, nunca derruba a fonte.
+    const aiSlugs = result
+      .map((c) => c.courseSlug)
+      .filter((slug) => AI_ROADMAP_SLUG_RE.test(slug));
+    if (aiSlugs.length > 0) {
+      try {
+        const { data: aiRows, error: aiError } = await supabaseAdmin
+          .from("ai_roadmaps")
+          .select("slug, title, status")
+          .eq("user_id", userId)
+          .in("slug", aiSlugs);
+        if (!aiError) {
+          const metaBySlug = new Map(
+            ((aiRows ?? []) as Array<{ slug: string; title: string; status: string }>).map(
+              (row) => [row.slug, row],
+            ),
+          );
+          for (const course of result) {
+            const meta = metaBySlug.get(course.courseSlug);
+            if (meta) {
+              course.title = meta.title;
+              course.status = meta.status;
+            }
+          }
+        } else {
+          console.warn("[userContext] resolucao de ai_roadmaps falhou:", aiError.message);
+        }
+      } catch (err) {
+        console.warn("[userContext] resolucao de ai_roadmaps falhou:", err);
+      }
+    }
+
     return { ok: true, data: result };
   } catch (err) {
     return warnSource("courses", err);
