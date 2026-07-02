@@ -11,6 +11,7 @@ import adminRouter from "./routes/admin";
 import agentRouter from "./routes/agent";
 import agentHistoryRouter from "./routes/agentHistory";
 import aiRouter from "./routes/ai";
+import aiRoadmapRouter from "./routes/aiRoadmap";
 import affiliatesRouter from "./routes/affiliates";
 import avatarsRouter from "./routes/avatars";
 import badgesRouter from "./routes/badges";
@@ -209,6 +210,7 @@ app.use("/api/newsletter", newsletterRouter);
 app.use("/api", validateSupabaseJwt);
 
 app.use("/api/ai", aiRouter);
+app.use("/api/roadmaps-ia", aiRoadmapRouter);
 // agentHistoryRouter ANTES de agentRouter (path mais especifico) para ter sua
 // propria cadeia de middleware sem reexecutar a do agentRouter. Nao reordenar.
 app.use("/api/agent/conversations", agentHistoryRouter);
