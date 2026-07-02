@@ -6,13 +6,13 @@ import { defineConfig } from "vite";
 
 const PROJECT_ROOT = import.meta.dirname;
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin()];
+const plugins = [react(), tailwindcss()];
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const envDir = path.resolve(PROJECT_ROOT);
 
   return {
-    plugins,
+    plugins: command === "serve" ? [...plugins, jsxLocPlugin()] : plugins,
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "client", "src"),
