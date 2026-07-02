@@ -3,6 +3,7 @@ import { FileUp, Linkedin, Lightbulb, Shield, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { Spinner } from "@/components/ui/spinner";
 import {
   AiSummary,
@@ -402,6 +403,12 @@ export default function LinkedinAnalisar() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Analisador de LinkedIn com IA"
+        description="Veja como recrutadores encontram (ou não) seu perfil no LinkedIn e receba textos prontos para colar: headline, seção Sobre, experiências e mensagem."
+        url="/linkedin/analisar"
+      />
       <PageHero
         accent="sky"
         eyebrow="revisão com IA"

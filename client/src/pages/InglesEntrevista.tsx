@@ -1,5 +1,6 @@
 import { HelpCircle, ListChecks, Presentation, UserRound } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import InglesSubNav from "@/components/shared/InglesSubNav";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -52,6 +53,12 @@ const questionsToAsk = [
 export default function InglesEntrevista() {
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Inglês para entrevista técnica"
+        description="Estruturas prontas em inglês para se apresentar, responder perguntas comportamentais, narrar um projeto e fazer boas perguntas na entrevista técnica."
+        url="/ingles/entrevista"
+      />
       <PageHero
         accent="sky"
         eyebrow="entrevista técnica"

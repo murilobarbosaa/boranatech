@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
@@ -14,6 +15,12 @@ export default function Entrevistas() {
   const { isPro, loading } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Processo seletivo em tech · Guia de entrevistas"
+        description="Guia do processo seletivo em tecnologia: etapas, o que estudar e como se preparar para entrevistas técnicas e comportamentais desde a primeira vaga."
+        url="/entrevistas"
+      />
       <PageHero
         accent="blue"
         eyebrow="do currículo à proposta"

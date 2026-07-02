@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import CountUp from "@/components/reactbits/CountUp";
@@ -169,6 +170,13 @@ export default function TecnologiaRanking() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Ranking de tecnologias mais usadas"
+        description="Ranking das tecnologias mais usadas em TI, com percentuais do Stack Overflow quando existem e curadoria honesta quando o dado não é comparável."
+        url="/tecnologias/ranking"
+        schemaType="CollectionPage"
+      />
       <PageHero
         accent="amber"
         eyebrow="dados públicos 📊"

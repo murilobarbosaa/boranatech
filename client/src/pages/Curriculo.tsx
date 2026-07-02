@@ -3,6 +3,7 @@ import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,12 @@ export default function Curriculo() {
   const { isPro, loading } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Currículo e LinkedIn para tech"
+        description="Guia de currículo e LinkedIn para tecnologia: como montar um currículo no padrão da área e aparecer para os recrutadores certos desde o início."
+        url="/curriculo"
+      />
       <PageHero
         accent="blue"
         eyebrow="candidatura e visibilidade"

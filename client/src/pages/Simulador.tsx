@@ -16,6 +16,7 @@ import {
 import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { areasTI } from "@/lib/data";
@@ -499,6 +500,12 @@ export default function Simulador() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Simulador de carreira · Prazo até sua meta em TI"
+        description="Responda um diagnóstico rápido sobre sua situação e hábitos e receba uma estimativa de prazo até sua meta em TI, com o que priorizar no caminho."
+        url="/simulador"
+      />
       <PageHero
         accent="fuchsia"
         eyebrow={

@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import AiToolPanel from "@/components/shared/AiToolPanel";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,12 @@ export default function CurriculoAnalisar() {
   const { isPro } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Analisador de currículo com IA"
+        description="Envie seu currículo e receba da IA nota, lacunas, palavras-chave e melhorias por seção, no padrão de quem quer aparecer bem em processos seletivos."
+        url="/curriculo/analisar"
+      />
       <PageHero
         accent="blue"
         eyebrow="recurso com IA"

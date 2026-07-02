@@ -2,6 +2,7 @@ import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import AiToolPanel from "@/components/shared/AiToolPanel";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,12 @@ export default function Empregabilidade() {
   const { isPro } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Análise de empregabilidade com IA"
+        description="Combine a calculadora de prontidão, que cruza a vaga com o seu perfil, com o analisador de vaga, que avalia salário, requisitos e red flags do anúncio."
+        url="/empregabilidade"
+      />
       <PageHero
         accent="amber"
         eyebrow="prontidão para vaga"

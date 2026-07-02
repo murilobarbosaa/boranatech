@@ -1,4 +1,5 @@
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import AiToolPanel from "@/components/shared/AiToolPanel";
 import PageHero from "@/components/shared/PageHero";
@@ -8,6 +9,12 @@ export default function EntrevistaSimulador() {
   const { isPro } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Simulador de entrevista com IA"
+        description="Pratique uma entrevista de emprego em tech com IA e receba um relatório com pontos fortes e melhorias para chegar preparado no processo seletivo."
+        url="/entrevistas/simulador"
+      />
       <PageHero
         title="Simulador de Entrevista com IA"
         subtitle="Pratique uma entrevista e receba um relatório com pontos fortes e melhorias."

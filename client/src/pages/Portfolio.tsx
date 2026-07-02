@@ -15,6 +15,7 @@ import Layout from "@/components/Layout";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { usePortfolioChecklist } from "@/hooks/usePortfolioChecklist";
@@ -111,6 +112,12 @@ export default function Portfolio() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Como montar seu portfólio dev"
+        description="Aprenda a montar um portfólio de tecnologia que mostra seu trabalho do jeito certo: o que incluir, como organizar projetos e como se destacar em vagas."
+        url="/portfolio"
+      />
       <PageHero
         accent="emerald"
         eyebrow="projetos e evidências"

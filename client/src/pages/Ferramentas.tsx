@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import CopyButton from "@/components/shared/CopyButton";
 import PageHero from "@/components/shared/PageHero";
@@ -432,6 +433,13 @@ export default function Ferramentas() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Ferramentas que todo dev usa"
+        description="Monte seu ambiente de desenvolvimento: descubra o que cada ferramenta faz e tenha os atalhos e comandos essenciais sempre à mão para o dia a dia."
+        url="/ferramentas"
+        schemaType="CollectionPage"
+      />
       <div className="print:hidden">
         <motion.div
           initial={{ opacity: 0, y: 16 }}

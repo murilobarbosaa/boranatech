@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import InglesSubNav from "@/components/shared/InglesSubNav";
 import PageHero from "@/components/shared/PageHero";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
@@ -271,6 +272,13 @@ function ChannelCard({ item }: { item: ChannelItem }) {
 export default function InglesOndeEstudar() {
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Onde estudar inglês para tech"
+        description="Plataformas, canais, podcasts e materiais reais para estudar inglês com foco em tecnologia, organizados por nível para criar contato diário."
+        url="/ingles/onde-estudar"
+        schemaType="CollectionPage"
+      />
       <PageHero
         accent="sky"
         eyebrow="onde estudar"

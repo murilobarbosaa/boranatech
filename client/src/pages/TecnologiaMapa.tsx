@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { ChevronDown, ChevronUp, Filter, Map } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import PageHero from "@/components/shared/PageHero";
 import TechCompactTile from "@/components/shared/TechCompactTile";
@@ -78,6 +79,13 @@ export default function TecnologiaMapa() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Tecnologias por área · O que se usa em cada carreira"
+        description="Mapa de tecnologias por área de TI: veja quais linguagens, frameworks e ferramentas aparecem em cada caminho de carreira e o que estudar primeiro."
+        url="/tecnologias/por-area"
+        schemaType="CollectionPage"
+      />
       <PageHero
         accent="emerald"
         eyebrow="por área de TI"

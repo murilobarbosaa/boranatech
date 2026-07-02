@@ -3,6 +3,7 @@ import { ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { Spinner } from "@/components/ui/spinner";
 import {
   AnalysisError,
@@ -255,6 +256,12 @@ export default function PortfolioAnalisar() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Analisador de GitHub com IA"
+        description="Analise seu GitHub com IA: receba uma nota objetiva, um checklist do que falta e melhorias priorizadas para deixar seu perfil pronto para vagas."
+        url="/portfolio/analisar"
+      />
       <PageHero
         accent="violet"
         eyebrow="revisão com IA"

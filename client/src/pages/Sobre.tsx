@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 
 const offerings = [
@@ -67,6 +68,12 @@ export default function Sobre() {
   const { user } = useAuth();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Sobre o Bora na Tech?"
+        description="Conheça o Bora na Tech?: uma plataforma de carreira para quem quer começar em tecnologia, com curadoria completa, ferramentas de IA e clareza."
+        url="/sobre"
+      />
       <main className="bg-[#faf8f4] text-[#1a1a1a]">
         <section className="border-b-2 border-[#1a1a1a] px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">

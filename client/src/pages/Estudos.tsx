@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import AiChatPanel from "@/components/shared/AiChatPanel";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,12 @@ export default function Estudos() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Plano de estudos sob medida para TI"
+        description="Pare de estudar no escuro: monte um plano de estudos sob medida para a sua rotina, organizado semana a semana, até a sua primeira vaga em tecnologia."
+        url="/estudos"
+      />
       <PageHero
         accent="amber"
         eyebrow="estudar melhor"

@@ -12,6 +12,7 @@ import {
 import Layout from "@/components/Layout";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -243,6 +244,12 @@ export default function EstudosDiario() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Diário de estudos"
+        description="Registre suas sessões de estudo e acompanhe sua rotina: cada registro conta como foi a sessão e mostra o que importa para ajustar o seu ritmo."
+        url="/estudos/diario"
+      />
       <PageHero
         accent="fuchsia"
         eyebrow="só pelo perfil"

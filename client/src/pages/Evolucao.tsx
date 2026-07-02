@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,12 @@ export default function Evolucao() {
   const { isPro, loading } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Evolução de carreira em tech"
+        description="Entenda os níveis de carreira em tecnologia, de júnior a sênior: o que se espera em cada um e o que você precisa desenvolver para crescer de nível."
+        url="/evolucao"
+      />
       <PageHero
         accent="emerald"
         eyebrow="crescimento profissional"

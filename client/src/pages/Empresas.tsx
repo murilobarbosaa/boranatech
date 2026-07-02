@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, RotateCcw, Trophy } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,13 @@ export default function Empresas() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Empresas tech no Brasil · Onde trabalhar em TI"
+        description="Conheça empresas de tecnologia que contratam no Brasil: o que cada uma faz, quais tecnologias usa e que perfis costuma contratar. Guia para iniciantes."
+        url="/empresas"
+        schemaType="CollectionPage"
+      />
       <PageHero
         accent="blue"
         eyebrow="mercado brasileiro"

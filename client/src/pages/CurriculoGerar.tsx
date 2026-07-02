@@ -4,6 +4,7 @@ import { CheckCircle2, FileDown, Loader2, RefreshCw } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import CurriculoChatPanel from "@/components/curriculo/CurriculoChatPanel";
 import CurriculoPreview from "@/components/curriculo/preview/CurriculoPreview";
 import { useAuth } from "@/contexts/AuthContext";
@@ -55,6 +56,12 @@ export default function CurriculoGerar() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Gerador de currículo com IA"
+        description="Monte seu currículo conversando com o Natechinho: uma conversa rápida, sem formulário, que gera um currículo no formato certo para a sua vaga."
+        url="/curriculo/gerar"
+      />
       <div className="print-hide">
         <PageHero
           accent="amber"

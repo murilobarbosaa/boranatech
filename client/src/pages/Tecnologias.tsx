@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
 import TechnologyLogo from "@/components/TechnologyLogo";
@@ -140,6 +141,13 @@ export default function Tecnologias() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Tecnologias em TI · Linguagens, frameworks e ferramentas"
+        description="Conheça as tecnologias da área: linguagens, frameworks, bancos de dados, cloud e ferramentas. Veja o que cada uma é, pra que serve e por onde começar."
+        url="/tecnologias"
+        schemaType="CollectionPage"
+      />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
