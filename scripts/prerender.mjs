@@ -11,7 +11,8 @@ if (!process.env.VERCEL && !process.env.FORCE_PRERENDER) {
   process.exit(0);
 }
 
-const { default: puppeteer } = await import("puppeteer");
+const { default: puppeteer } = await import("puppeteer-core");
+const { default: chromium } = await import("@sparticuz/chromium");
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROOT, "dist", "public");
@@ -142,8 +143,9 @@ const base = `http://127.0.0.1:${server.address().port}`;
 // ---------------------------------------------------------------------------
 // Captura com puppeteer: 1 browser, CONCURRENCY abas, posthog bloqueado.
 const browser = await puppeteer.launch({
-  headless: true,
-  args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"],
+  args: await puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
+  executablePath: await chromium.executablePath(),
+  headless: chromium.headless,
 });
 
 let postHogBlocked = 0;
