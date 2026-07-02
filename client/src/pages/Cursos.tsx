@@ -648,7 +648,9 @@ export default function Cursos() {
                       {curso.certificate === "sim" ? (
                         <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800">
                           <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-                          Com certificado
+                          {(curso.tipo || "Gratuito") !== "Pago"
+                            ? "Certificado grátis"
+                            : "Com certificado"}
                         </span>
                       ) : curso.certificate === "nao" ? (
                         <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500">
