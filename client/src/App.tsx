@@ -80,6 +80,7 @@ const RecuperarSenha = lazy(() => import("@/pages/RecuperarSenha"));
 const RedefinirSenha = lazy(() => import("@/pages/RedefinirSenha"));
 const RoadmapCarreira = lazy(() => import("@/pages/RoadmapCarreira"));
 const RoadmapIA = lazy(() => import("@/pages/RoadmapIA"));
+const RoadmapIAView = lazy(() => import("@/pages/RoadmapIAView"));
 const RoadmapsV2 = lazy(() => import("@/pages/RoadmapsV2"));
 const RoadmapsV2Index = lazy(() => import("@/pages/RoadmapsV2Index"));
 const Salarios = lazy(() => import("@/pages/Salarios"));
@@ -214,6 +215,14 @@ function Router() {
           {() => (
             <RequireAuth>
               <RoadmapIA />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Tambem ANTES de /roadmaps/:slug pela mesma razao de ordem acima. */}
+        <Route path="/roadmaps/ia/:slug">
+          {() => (
+            <RequireAuth>
+              <RoadmapIAView />
             </RequireAuth>
           )}
         </Route>
