@@ -96,7 +96,7 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/curriculo/gerar", tier: "pro", label: "Geracao de curriculo por IA." },
   { route: "/curriculo/linkedin", tier: "pro", label: "Otimizacao de LinkedIn por IA." },
   { route: "/linkedin/analisar", tier: "pro", label: "Analise de perfil de LinkedIn por IA." },
-  { route: "/portfolio/analisar", tier: "pro", label: "Analise de portfolio por IA." },
+  { route: "/portfolio/analisar", tier: "pro", label: "Analise de portfolio por IA com base no GitHub (a analise de GitHub)." },
   { route: "/entrevistas/simulador", tier: "pro", label: "Simulador de entrevista por IA." },
 ];
 
