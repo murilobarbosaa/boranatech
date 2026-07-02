@@ -344,6 +344,8 @@ function EventoLogo({ logoUrl, nome }: { logoUrl?: string; nome: string }) {
         <img
           src={logoUrl}
           alt={nome}
+          width={32}
+          height={32}
           className="h-8 w-8 object-contain"
           onError={(e) => {
             // Fallback pra iniciais se favicon externo falhar

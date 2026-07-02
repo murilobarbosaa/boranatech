@@ -1,7 +1,11 @@
+# Crawlers de busca e de IA (GPTBot, ClaudeBot, Claude-Web, anthropic-ai,
+# PerplexityBot, Google-Extended, CCBot, GoogleOther) sao intencionalmente
+# permitidos pela regra geral abaixo. Nao adicionar bloqueios sem alinhar
+# estrategia de GEO.
 User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /perfil
 Disallow: /api/
-Disallow: /pro/sucesso
+
 Sitemap: https://boranatech.com.br/sitemap.xml

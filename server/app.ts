@@ -28,7 +28,6 @@ import profilesRouter from "./routes/profiles";
 import progressRouter from "./routes/progress";
 import quizRouter from "./routes/quiz";
 import searchRouter from "./routes/search";
-import sitemapRouter from "./routes/sitemap";
 import statsRouter from "./routes/stats";
 import studyRouter from "./routes/study";
 import waitlistRouter from "./routes/waitlist";
@@ -199,7 +198,6 @@ app.use("/api/me/avatar", express.json({ limit: "10mb" }));
 
 app.use(express.json({ limit: "2mb" }));
 
-app.use(sitemapRouter);
 app.use("/api/affiliates", affiliatesRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/waitlist", waitlistRouter);

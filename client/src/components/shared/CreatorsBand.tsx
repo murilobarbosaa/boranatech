@@ -107,6 +107,8 @@ function Avatar({
         <img
           src={creator.photo}
           alt=""
+          width={28}
+          height={28}
           decoding="async"
           onError={() => setFailed(true)}
           className="relative z-[1] block h-full w-full object-cover"

@@ -1,5 +1,19 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "redirects": [
+    { "source": "/pro", "destination": "/planos", "permanent": true },
+    {
+      "source": "/pro/sucesso",
+      "destination": "/planos/sucesso",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.boranatech.com.br" }],
+      "destination": "https://boranatech.com.br/:path",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
