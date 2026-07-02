@@ -66,6 +66,7 @@ const Networking = lazy(() => import("@/pages/Networking"));
 const Noticias = lazy(() => import("@/pages/Noticias"));
 const Perfil = lazy(() => import("@/pages/Perfil"));
 const PerfilFavoritos = lazy(() => import("@/pages/PerfilFavoritos"));
+const PerguntasFrequentes = lazy(() => import("@/pages/PerguntasFrequentes"));
 const Plataformas = lazy(() => import("@/pages/Plataformas"));
 const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const PortfolioAnalisar = lazy(() => import("@/pages/PortfolioAnalisar"));
@@ -246,6 +247,7 @@ function Router() {
         <Route path="/perfil/conquistas" component={Conquistas} />
         <Route path="/perfil/favoritos" component={PerfilFavoritos} />
         <Route path="/perfil" component={Perfil} />
+        <Route path="/perguntas-frequentes" component={PerguntasFrequentes} />
         <Route path="/planos/sucesso" component={CheckoutSucesso} />
         <Route path="/planos" component={Checkout} />
         {/* TODO: remover redirect após 90 dias em prod */}

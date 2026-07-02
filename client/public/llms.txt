@@ -23,6 +23,7 @@ O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramenta
 - [Empresas](https://boranatech.com.br/empresas): empresas de tecnologia que contratam no Brasil e o que cada uma usa.
 - [Plano Pro](https://boranatech.com.br/planos): o que o plano pago adiciona sobre a base gratuita.
 - [Sobre](https://boranatech.com.br/sobre): o que é o Bora na Tech? e como a plataforma funciona.
+- [Perguntas frequentes](https://boranatech.com.br/perguntas-frequentes): respostas diretas sobre começar em tecnologia, planos e suporte.
 
 ## Fatos
 
