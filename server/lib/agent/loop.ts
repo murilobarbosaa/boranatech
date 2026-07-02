@@ -48,6 +48,10 @@ export interface RunAgentParams {
   // servidor). O loop NAO chama buildUserSnapshot nem conhece userId/Supabase:
   // recebe o texto pronto. So presente para Pro; ausente/vazio para free.
   userSnapshot?: string;
+  // Bloco de fatos canonicos da plataforma (precos, limites, certificados,
+  // suporte), JA montado pelo endpoint (buildPlatformFacts). Contexto factual
+  // publico, igual para os dois tiers; ausente se a montagem falhou.
+  platformFacts?: string;
 }
 
 export interface RunAgentResult {
@@ -247,6 +251,11 @@ export async function runAgentLoop(
     // Mensagem de contexto logo apos o system prompt principal, quando a rota e
     // valida. So ajuda de UX; nunca altera tier nem acesso (ver comentario acima).
     ...(routeNote ? [{ role: "system" as const, content: routeNote }] : []),
+    // Fatos canonicos da plataforma (publicos, os dois tiers), montados pelo
+    // endpoint ANTES do loop. Depois da nota de rota e antes do snapshot Pro.
+    ...(params.platformFacts && params.platformFacts.length > 0
+      ? [{ role: "system" as const, content: params.platformFacts }]
+      : []),
     // Snapshot do usuario, montado pelo servidor ANTES do loop. Contexto factual
     // de servidor (nao vem do cliente) e NUNCA entrada de autorizacao. So entra
     // quando o endpoint o passou (apenas para Pro) e nao esta vazio.

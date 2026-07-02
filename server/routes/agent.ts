@@ -10,6 +10,7 @@ import {
   AgentUpstreamError,
   runAgentLoop,
 } from "../lib/agent/loop";
+import { buildPlatformFacts } from "../lib/agent/platformFacts";
 import {
   FREE_SYSTEM_PROMPT,
   PRO_SYSTEM_PROMPT,
@@ -116,6 +117,17 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
   const systemPrompt = isPro && PRO_SYSTEM_PROMPT.length > 0 ? PRO_SYSTEM_PROMPT : FREE_SYSTEM_PROMPT;
   const ctx: AgentContext = { userId, isPro, currentRoute };
 
+  // Fatos canonicos da plataforma: publicos e iguais para OS DOIS tiers.
+  // Best-effort igual ao snapshot: buildPlatformFacts ja degrada por dentro
+  // (cache e fallback estatico), mas uma falha aqui jamais derruba o chat;
+  // nesse caso seguimos sem o bloco de fatos.
+  let platformFacts: string | undefined;
+  try {
+    platformFacts = await buildPlatformFacts();
+  } catch (err) {
+    console.warn("[agent] buildPlatformFacts falhou, seguindo sem fatos:", err);
+  }
+
   // Snapshot do usuario: resolvido SO para Pro verificado. Free NUNCA recebe
   // snapshot. buildUserSnapshot recebe so o userId (do JWT verificado), nunca
   // nada do corpo. Cinto e suspensorio: buildUserSnapshot ja degrada por dentro,
@@ -221,6 +233,7 @@ router.post("/chat/stream", async (req: Request, res: Response, next: NextFuncti
       apiKey: env.openaiApiKey,
       emit,
       userSnapshot,
+      platformFacts,
     });
     res.write("data: [DONE]\n\n");
     res.end();
