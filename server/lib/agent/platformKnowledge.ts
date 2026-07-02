@@ -98,6 +98,8 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/linkedin/analisar", tier: "pro", label: "Analise de perfil de LinkedIn por IA." },
   { route: "/portfolio/analisar", tier: "pro", label: "Analise de portfolio por IA com base no GitHub (a analise de GitHub)." },
   { route: "/entrevistas/simulador", tier: "pro", label: "Simulador de entrevista por IA." },
+  // TODO(Ana): revisar o label do Roadmap com IA.
+  { route: "/roadmaps/ia", tier: "pro", label: "Roadmap com IA: gera uma trilha de estudos sob medida." },
 ];
 
 // Rotas dinamicas reais do App.tsx (detalhe por slug). O parametro nomeado no
@@ -116,6 +118,11 @@ export const PLATFORM_ROUTE_PATTERNS: PlatformRoutePattern[] = [
   { pattern: "/areas/:parent/:subarea", tier: "free", label: "Detalhe de uma subarea de tecnologia." },
   { pattern: "/tecnologias/:slug", tier: "free", label: "Detalhe de uma tecnologia." },
   { pattern: "/empresas/:slug", tier: "free", label: "Detalhe de uma empresa de tecnologia." },
+  // ANTES de /roadmaps/:slug por clareza; na pratica nao colidem: o slug
+  // estrito nao aceita barra, entao /roadmaps/ia/<slug> nunca casa com
+  // /roadmaps/:slug (e /roadmaps/ia casa a rota ESTATICA, que tem precedencia).
+  // TODO(Ana): revisar o label do detalhe do Roadmap com IA.
+  { pattern: "/roadmaps/ia/:slug", tier: "pro", label: "Um roadmap gerado por IA do proprio usuario." },
   { pattern: "/roadmaps/:slug", tier: "free", label: "Trilha de aprendizado especifica." },
   { pattern: "/faculdades/:slug", tier: "free", label: "Detalhe de uma faculdade." },
 ];
