@@ -19,7 +19,6 @@ import bookmarksRouter from "./routes/bookmarks";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
 import githubRouter from "./routes/github";
-import launchStateRouter, { betaRouter } from "./routes/launchState";
 import linkedinRouter from "./routes/linkedin";
 import meAvatarRouter from "./routes/meAvatar";
 import meRouter from "./routes/me";
@@ -170,7 +169,7 @@ app.use((req, res, next) => {
   );
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type,Authorization,x-beta-token",
+    "Content-Type,Authorization",
   );
 
   if (req.method === "OPTIONS") {
@@ -202,8 +201,6 @@ app.use("/api/affiliates", affiliatesRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/waitlist", waitlistRouter);
 app.use("/api/newsletter", newsletterRouter);
-app.use("/api/launch-state", launchStateRouter);
-app.use("/api/beta", betaRouter);
 
 app.use("/api", validateSupabaseJwt);
 
