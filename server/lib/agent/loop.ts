@@ -212,9 +212,20 @@ const SAFE_ROUTE_RE = /^\/[A-Za-z0-9/_-]{0,63}$/;
 // IMPORTANTE: currentRoute e DICA DE UX, NUNCA entrada de autorizacao. Nenhuma
 // decisao de acesso ou tier pode depender dele (o tier vem so do req.isPro; as
 // tools usam ctx.userId do JWT). Aqui ele so vira um texto factual de navegacao.
-function buildRouteContextMessage(currentRoute?: string): string | null {
+// A nota tem duas versoes por tier: a FREE proibe assumir dados pessoais; a PRO
+// nao pode repetir essa proibicao, senao ela mina o PRO_SYSTEM_PROMPT (que vem
+// antes) e suprime o uso do snapshot e das tools de dados. Fail-closed igual ao
+// endpoint: qualquer valor diferente de true recebe a versao FREE.
+function buildRouteContextMessage(
+  currentRoute: string | undefined,
+  isPro: boolean,
+): string | null {
   if (!currentRoute || !SAFE_ROUTE_RE.test(currentRoute)) {
     return null;
+  }
+  if (isPro === true) {
+    // TODO(Ana): revisar esta copy de contexto de navegacao (Pro).
+    return `Contexto de navegacao: o usuario esta atualmente na pagina ${currentRoute} do BoraNaTech. Use isso apenas como contexto de navegacao. Os dados pessoais do usuario disponiveis sao os do resumo de contexto e das ferramentas, conforme suas instrucoes principais.`;
   }
   // TODO(Ana): revisar esta copy de contexto de navegacao.
   return `Contexto de navegacao: o usuario esta atualmente na pagina ${currentRoute} do BoraNaTech. Voce pode usar isso para ajudar na navegacao, mas nao assuma mais nada sobre o usuario nem afirme acessar dados pessoais dele.`;
@@ -230,7 +241,7 @@ export async function runAgentLoop(
 ): Promise<RunAgentResult> {
   const { tools, systemPrompt, ctx, apiKey, emit } = params;
 
-  const routeNote = buildRouteContextMessage(ctx.currentRoute);
+  const routeNote = buildRouteContextMessage(ctx.currentRoute, ctx.isPro);
   const conversation: ChatMessage[] = [
     { role: "system", content: systemPrompt },
     // Mensagem de contexto logo apos o system prompt principal, quando a rota e
