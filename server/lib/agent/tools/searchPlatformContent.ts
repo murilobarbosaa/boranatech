@@ -72,7 +72,39 @@ export const searchPlatformContent: AgentTool = {
       });
     }
 
-    const rows = (data ?? []) as SearchRow[];
+    let rows = (data ?? []) as SearchRow[];
+
+    if (rows.length === 0) {
+      // Fallback ilike sobre titulo e descricao (espelha o da rota /api/search):
+      // full-text vazio pode ser stemming ou erro de digitacao. Mesmos filtros
+      // (is_published = true, mesmo teto). Erro do fallback nao vira falha da
+      // tool: o full-text ja respondeu, entao segue como vazio legitimo.
+      // Sanitiza o termo para a sintaxe or() do PostgREST (virgula e parenteses
+      // separariam condicoes).
+      const likeTerm = query.replace(/[,()"]/g, " ").trim();
+      if (likeTerm.length >= 2) {
+        let fallbackQuery = supabaseAdmin
+          .from("search_documents")
+          .select("resource_type, title, url, description")
+          .eq("is_published", true)
+          .or(`title.ilike.%${likeTerm}%,description.ilike.%${likeTerm}%`)
+          .limit(MAX_RESULTS);
+
+        if (resourceType) {
+          fallbackQuery = fallbackQuery.eq("resource_type", resourceType);
+        }
+
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+        if (fallbackError) {
+          console.warn(
+            "[agent/search_platform_content] fallback ilike falhou:",
+            fallbackError.message,
+          );
+        } else {
+          rows = (fallbackData ?? []) as SearchRow[];
+        }
+      }
+    }
     if (rows.length === 0) {
       // TODO(Ana): texto de busca sem resultados.
       return JSON.stringify({
