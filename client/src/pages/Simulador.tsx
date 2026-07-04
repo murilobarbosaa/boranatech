@@ -502,7 +502,7 @@ export default function Simulador() {
       <PageHero
         accent="fuchsia"
         eyebrow={
-          showResults ? "resultado do diagnóstico" : "Simulador de carreira"
+          showResults ? "resultado do diagnóstico" : "Simule sua evolução"
         }
         title={
           showResults
