@@ -2,6 +2,7 @@ import CreatorsBand from "@/components/shared/CreatorsBand";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import Hero from "./sections/Hero";
+import OQueEncontra from "./sections/OQueEncontra";
 import LogoLoop from "./sections/LogoLoop";
 import ProQuemE from "./sections/ProQuemE";
 import Mapa from "./sections/Mapa";
@@ -22,6 +23,7 @@ export default function HomeLanding() {
       />
       <CreatorsBand />
       <Hero />
+      <OQueEncontra />
       <LogoLoop />
       <ProQuemE />
       <Mapa />
