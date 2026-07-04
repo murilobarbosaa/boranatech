@@ -477,11 +477,14 @@ router.get("/sources/status", async (_req, res, next) => {
 
 router.get("/news", async (req, res, next) => {
   try {
+    // Clamp ANTES da chave de cache: valor fora da faixa normaliza pra mesma
+    // entrada (limit invalido ou acima de 50 vira o default da rota).
     const page = Math.max(1, parseInt(String(req.query.page || "1"), 10) || 1);
-    const limit = Math.min(
-      Math.max(parseInt(String(req.query.limit || "21"), 10) || 21, 1),
-      100,
-    );
+    const rawLimit = parseInt(String(req.query.limit || "21"), 10);
+    const limit =
+      Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 50
+        ? rawLimit
+        : 21;
     const level = req.query.level ? String(req.query.level) : "";
     const q = req.query.q ? String(req.query.q).trim() : "";
 
@@ -555,14 +558,18 @@ router.get("/news", async (req, res, next) => {
 
 router.get("/jobs", async (req, res, next) => {
   try {
-    const limit = Math.min(
-      parseInt(String(req.query.limit || "20"), 10) || 20,
-      50,
-    );
-    const offset = Math.max(
-      parseInt(String(req.query.offset || "0"), 10) || 0,
-      0,
-    );
+    // Clamp ANTES da chave de cache: valor fora da faixa normaliza pra mesma
+    // entrada (limit invalido vira o default da rota; offset com teto).
+    const rawLimit = parseInt(String(req.query.limit || "20"), 10);
+    const limit =
+      Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 50
+        ? rawLimit
+        : 20;
+    const rawOffset = parseInt(String(req.query.offset || "0"), 10);
+    const offset =
+      Number.isInteger(rawOffset) && rawOffset >= 0
+        ? Math.min(rawOffset, 5000)
+        : 0;
     const area = req.query.area ? String(req.query.area) : "";
     const seniority = req.query.seniority ? String(req.query.seniority) : "";
 
