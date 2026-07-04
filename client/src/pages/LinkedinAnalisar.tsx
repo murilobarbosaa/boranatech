@@ -10,6 +10,8 @@ import {
   Improvements,
   StrengthsWeaknesses,
 } from "@/components/portfolio/QualitativePanels";
+import { NextStepCard } from "@/components/shared/NextStepCard";
+import NextStepsByArea from "@/components/shared/NextStepsByArea";
 import { HowItWorks, WhatYouGet } from "@/components/linkedin/LinkedinIntro";
 import LinkedinChecklist from "@/components/linkedin/LinkedinChecklist";
 import LinkedinHistory from "@/components/linkedin/LinkedinHistory";
@@ -56,7 +58,9 @@ import {
 const ac = getPageAccentUi("sky");
 
 const STORAGE_KEY = "boranatech:linkedin-analyzer";
-const STORAGE_SHAPE_VERSION = 1;
+// Bump sempre que a forma da resposta mudar. A versao 2 marca o qualitative
+// com proximoPasso: result salvo com shape antigo e descartado no restore.
+const STORAGE_SHAPE_VERSION = 2;
 
 const LEVEL_LABEL = LINKEDIN_LEVEL_LABELS;
 
@@ -281,6 +285,14 @@ export default function LinkedinAnalisar() {
   const [extracting, setExtracting] = useState(false);
   const [analyses, setAnalyses] = useState<LinkedinAnalysisSummary[]>([]);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  // Delta de nota vs a analise IMEDIATAMENTE anterior (toda analise de
+  // LinkedIn e do mesmo perfil da pessoa, entao nao ha alvo a normalizar).
+  const [scoreDelta, setScoreDelta] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
+  // Confirmacao leve da reanalise (consome 1 uso de IA).
+  const [confirmReanalyze, setConfirmReanalyze] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const areaTouched = useRef(false);
 
@@ -353,6 +365,12 @@ export default function LinkedinAnalisar() {
     }
     setLoading(true);
     setError("");
+    setConfirmReanalyze(false);
+
+    // Nota da analise imediatamente anterior, capturada ANTES da nova entrar
+    // no historico (a lista vem em ordem decrescente).
+    const priorScore = analyses[0]?.score ?? null;
+
     try {
       const data = await analyzeLinkedin({
         profileText: form.profileText.trim(),
@@ -368,6 +386,11 @@ export default function LinkedinAnalisar() {
         objetivo: form.objetivo.trim() || undefined,
       });
       setResult(data);
+      setScoreDelta(
+        typeof priorScore === "number"
+          ? { from: priorScore, to: data.deterministic.score }
+          : null,
+      );
       const fresh = await listLinkedinAnalyses();
       setAnalyses(fresh);
     } catch (err) {
@@ -385,6 +408,16 @@ export default function LinkedinAnalisar() {
       if (record) {
         setResult(record.result);
         setError("");
+        setConfirmReanalyze(false);
+        // Anterior = a entrada logo DEPOIS da aberta na lista (desc), pulando
+        // a propria linha.
+        const idx = analyses.findIndex((item) => item.id === id);
+        const prior = idx >= 0 ? (analyses[idx + 1]?.score ?? null) : null;
+        setScoreDelta(
+          typeof prior === "number"
+            ? { from: prior, to: record.result.deterministic.score }
+            : null,
+        );
         if (typeof window !== "undefined") {
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -688,6 +721,19 @@ export default function LinkedinAnalisar() {
               {!loading && result ? (
                 <div className="space-y-8">
                   <ResultHeader response={result} />
+
+                  {scoreDelta ? (
+                    <div className="rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a]">
+                      {/* TODO(Ana): revisar a copy do delta de nota. */}
+                      Sua nota foi de {scoreDelta.from} para {scoreDelta.to}
+                      {scoreDelta.to > scoreDelta.from
+                        ? ". Continua assim!"
+                        : scoreDelta.to === scoreDelta.from
+                          ? "."
+                          : ". Veja abaixo o que priorizar."}
+                    </div>
+                  ) : null}
+
                   <RecruiterFinder
                     deterministic={result.deterministic}
                     mercado={result.mercado}
@@ -698,11 +744,49 @@ export default function LinkedinAnalisar() {
                     pontosFortes={result.qualitative.pontosFortes}
                     pontosFracos={result.qualitative.pontosFracos}
                   />
+                  <NextStepCard
+                    proximoPasso={result.qualitative.proximoPasso}
+                  />
                   <Improvements melhorias={result.qualitative.melhorias} />
                   <ReadyTexts qualitative={result.qualitative} />
                   <SkillsSuggested
                     skills={result.qualitative.skillsSugeridas}
                   />
+
+                  <NextStepsByArea area={result.area} />
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* TODO(Ana): revisar a copy da reanalise. */}
+                    {confirmReanalyze ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void runAnalysis()}
+                          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Confirmar (usa 1 análise do dia)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmReanalyze(false)}
+                          className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmReanalyze(true)}
+                        disabled={form.profileText.trim().length < 200}
+                        className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Apliquei as melhorias, analisar de novo
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : null}
 
