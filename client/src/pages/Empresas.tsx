@@ -117,9 +117,10 @@ export default function Empresas() {
         <div className="container">
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((company) => (
-              <article
+              <Link
                 key={company.slug}
-                className="card-brutal rounded-2xl bg-white p-5"
+                href={`/empresas/${company.slug}`}
+                className="card-brutal group flex flex-col rounded-2xl bg-white p-5 transition-transform duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1"
               >
                 <div className="mb-4 flex items-start gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-white p-2 shadow-[3px_3px_0_#0f172a]">
@@ -166,16 +167,16 @@ export default function Empresas() {
                 <p className="mt-4 text-sm font-bold text-slate-700">
                   Júnior: {company.juniorSalary}
                 </p>
-                <Link
-                  href={`/empresas/${company.slug}`}
+                <span
                   className={cn(
-                    "mt-4 inline-flex items-center gap-2 text-sm font-black hover:underline",
+                    "mt-4 inline-flex items-center gap-2 text-sm font-black",
                     ac.link,
                   )}
                 >
-                  Ver detalhes <ArrowRight className="h-4 w-4" />
-                </Link>
-              </article>
+                  Ver detalhes{" "}
+                  <ArrowRight className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5" />
+                </span>
+              </Link>
             ))}
           </div>
         </div>
