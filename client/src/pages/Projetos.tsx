@@ -20,7 +20,7 @@ import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, projetos } from "@/lib/data";
-import { projectHelpVideos } from "@/lib/platformData";
+import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
 import { getProjects } from "@/services/contentService";
 
 type Projeto = (typeof projetos)[number];
@@ -79,16 +79,6 @@ function projectHelpVideo(projeto: Projeto): { title: string; url: string } {
   };
 }
 
-const areaColors: Record<string, string> = {
-  frontend: "bg-blue-100 text-blue-700",
-  uxui: "bg-pink-100 text-pink-700",
-  dados: "bg-amber-100 text-amber-700",
-  qa: "bg-blue-100 text-blue-700",
-  gestao: "bg-violet-100 text-violet-700",
-  carreira: "bg-amber-100 text-amber-700",
-  backend: "bg-emerald-100 text-emerald-700",
-  devops: "bg-slate-100 text-slate-700",
-};
 
 const nivelColors: Record<string, string> = {
   Iniciante: "bg-emerald-100 text-emerald-700",
@@ -348,9 +338,18 @@ export default function Projetos() {
                 key={grupo.slug ?? "geral"}
                 aria-label={`Projetos de ${labelForAreaSlug(grupo.slug)}`}
               >
-                <h2 className="font-display text-2xl font-black text-slate-950 mb-4">
-                  {labelForAreaSlug(grupo.slug)}{" "}
-                  <span className="text-sm font-bold text-slate-500">
+                <h2 className="mb-4 flex items-center gap-3 font-display text-2xl font-black text-slate-950">
+                  <span
+                    className="h-6 w-1.5 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor: getAreaAccent(
+                        labelForAreaSlug(grupo.slug),
+                      ),
+                    }}
+                    aria-hidden
+                  />
+                  {labelForAreaSlug(grupo.slug)}
+                  <span className="text-sm font-bold text-slate-400">
                     ({grupo.itens.length})
                   </span>
                 </h2>
@@ -358,7 +357,10 @@ export default function Projetos() {
                   {grupo.itens.map((projeto) => (
                     <div
                       key={projeto.id}
-                      className="card-brutal bg-white rounded-xl overflow-hidden shadow-[5px_5px_0_#fdba74]"
+                      style={{
+                        boxShadow: `5px 5px 0 ${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}`,
+                      }}
+                      className="card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5"
                     >
                 <div
                   className="flex w-full cursor-pointer items-start justify-between rounded-xl p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
@@ -380,8 +382,22 @@ export default function Projetos() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-medium ${(projeto.areaSlug && areaColors[projeto.areaSlug]) || "bg-slate-100 text-slate-600"}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold"
+                        style={{
+                          backgroundColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}1a`,
+                          color: getAreaAccent(labelForAreaSlug(projeto.areaSlug)),
+                          borderColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}55`,
+                        }}
                       >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{
+                            backgroundColor: getAreaAccent(
+                              labelForAreaSlug(projeto.areaSlug),
+                            ),
+                          }}
+                          aria-hidden
+                        />
                         {labelForAreaSlug(projeto.areaSlug)}
                       </span>
                       <span
