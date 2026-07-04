@@ -85,6 +85,19 @@ export interface BadgeContext {
   unlockedAt: string | null;
 }
 
+export interface ResumeAnalysisContext {
+  score: number | null;
+  faixa: string | null;
+  targetRole: string | null;
+  createdAt: string | null;
+}
+
+export interface ResumesContext {
+  total: number;
+  latestTitle: string | null;
+  latestCreatedAt: string | null;
+}
+
 export interface UserContextPool {
   plan: SourceResult<PlanContext>;
   // null = usuario nunca concluiu o quiz (vazio legitimo, distinto de falha).
@@ -98,6 +111,9 @@ export interface UserContextPool {
   linkedin: SourceResult<AnalysisSummaryContext | null>;
   github: SourceResult<AnalysisSummaryContext | null>;
   badges: SourceResult<BadgeContext[]>;
+  // null = usuario nunca analisou um curriculo (vazio legitimo).
+  resumeAnalysis: SourceResult<ResumeAnalysisContext | null>;
+  resumes: SourceResult<ResumesContext>;
 }
 
 // Tetos de leitura para nao estourar contexto nem custo. Ajustaveis. // TODO: calibrar.
@@ -532,6 +548,74 @@ async function fetchBadges(
   }
 }
 
+interface ResumeAnalysisRow {
+  score: number | null;
+  faixa: string | null;
+  target_role: string | null;
+  created_at: string | null;
+}
+
+// Ultima analise de curriculo (resume_analyses). Shape proprio (score/faixa/
+// cargo alvo, sem area/level), por isso nao reusa fetchLatestAnalysis.
+async function fetchResumeAnalysis(
+  userId: string,
+): Promise<SourceResult<ResumeAnalysisContext | null>> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("resume_analyses")
+      .select("score, faixa, target_role, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return warnSource("resumeAnalysis", error.message);
+    if (!data) return { ok: true, data: null };
+    const row = data as ResumeAnalysisRow;
+    return {
+      ok: true,
+      data: {
+        score: row.score,
+        faixa: row.faixa,
+        targetRole: row.target_role,
+        createdAt: row.created_at,
+      },
+    };
+  } catch (err) {
+    return warnSource("resumeAnalysis", err);
+  }
+}
+
+interface ResumeRow {
+  title: string | null;
+  created_at: string | null;
+}
+
+// Curriculos criados na plataforma (resumes): total + o mais recente.
+async function fetchResumes(
+  userId: string,
+): Promise<SourceResult<ResumesContext>> {
+  try {
+    const { data, error, count } = await supabaseAdmin
+      .from("resumes")
+      .select("title, created_at", { count: "exact" })
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) return warnSource("resumes", error.message);
+    const rows = (data ?? []) as ResumeRow[];
+    return {
+      ok: true,
+      data: {
+        total: count ?? rows.length,
+        latestTitle: rows[0]?.title ?? null,
+        latestCreatedAt: rows[0]?.created_at ?? null,
+      },
+    };
+  } catch (err) {
+    return warnSource("resumes", err);
+  }
+}
+
 // Cada fonte ja resolve para SourceResult sem lancar; o allSettled e cinto e
 // suspensorio para que nenhuma rejeicao inesperada derrube o pool inteiro.
 function settled<T>(
@@ -557,6 +641,8 @@ export async function fetchUserContextPool(
     linkedin,
     github,
     badges,
+    resumeAnalysis,
+    resumes,
   ] = await Promise.allSettled([
     fetchPlan(userId),
     fetchQuiz(userId),
@@ -569,6 +655,8 @@ export async function fetchUserContextPool(
     fetchLatestAnalysis("linkedin_analyses", "linkedin", userId),
     fetchLatestAnalysis("github_analyses", "github", userId),
     fetchBadges(userId),
+    fetchResumeAnalysis(userId),
+    fetchResumes(userId),
   ]);
 
   return {
@@ -583,5 +671,7 @@ export async function fetchUserContextPool(
     linkedin: settled(linkedin, "linkedin"),
     github: settled(github, "github"),
     badges: settled(badges, "badges"),
+    resumeAnalysis: settled(resumeAnalysis, "resumeAnalysis"),
+    resumes: settled(resumes, "resumes"),
   };
 }

@@ -30,8 +30,9 @@ function day(value: string | null): string {
 }
 
 // Monta as linhas de cada fonte, em ordem de prioridade:
-// plano > quiz > roadmaps > cursos > skills > linkedin > github > diario >
-// perfil > favoritos > badges. Cada bloco e um array de linhas completas.
+// plano > quiz > roadmaps > cursos > skills > linkedin > github > analise de
+// curriculo > curriculo criado > diario > perfil > favoritos > badges. Cada
+// bloco e um array de linhas completas.
 function buildSourceBlocks(pool: UserContextPool): string[][] {
   const blocks: string[][] = [];
 
@@ -109,6 +110,23 @@ function buildSourceBlocks(pool: UserContextPool): string[][] {
     const g = pool.github.data;
     blocks.push([
       `- Analise de GitHub mais recente: area ${g.area ?? "nao registrada"}, nota ${g.score ?? "?"} (faixa ${g.faixa ?? "?"}), em ${day(g.createdAt)}.`,
+    ]);
+  }
+
+  // Analise de curriculo mais recente (resume_analyses).
+  if (pool.resumeAnalysis.ok && pool.resumeAnalysis.data) {
+    const r = pool.resumeAnalysis.data;
+    const cargo = r.targetRole ? `, cargo alvo ${r.targetRole}` : "";
+    blocks.push([
+      `- Analise de curriculo mais recente: nota ${r.score ?? "?"} (faixa ${r.faixa ?? "?"})${cargo}, em ${day(r.createdAt)}.`,
+    ]);
+  }
+
+  // Curriculo criado na plataforma (resumes).
+  if (pool.resumes.ok && pool.resumes.data.total > 0) {
+    const r = pool.resumes.data;
+    blocks.push([
+      `- Curriculo criado na plataforma: "${r.latestTitle ?? "sem titulo"}" em ${day(r.latestCreatedAt)} (${r.total} no total).`,
     ]);
   }
 

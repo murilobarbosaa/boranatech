@@ -229,6 +229,25 @@ export async function buildGenerationContext(
     }
   }
 
+  if (pool.resumeAnalysis.ok && pool.resumeAnalysis.data) {
+    const ra = pool.resumeAnalysis.data;
+    const parts = [
+      typeof ra.score === "number" ? `nota ${ra.score}` : null,
+      ra.faixa ? `faixa ${ra.faixa}` : null,
+      ra.targetRole ? `cargo alvo ${ra.targetRole}` : null,
+    ].filter((p): p is string => p !== null);
+    if (parts.length > 0) {
+      lines.push(`- Analise de curriculo mais recente: ${parts.join(", ")}.`);
+    }
+  }
+
+  if (pool.resumes.ok && pool.resumes.data.total > 0) {
+    const r = pool.resumes.data;
+    lines.push(
+      `- Ja criou curriculo na plataforma: ${r.latestTitle ?? "sem titulo"}, em ${r.latestCreatedAt ? r.latestCreatedAt.slice(0, 10) : "data desconhecida"}.`,
+    );
+  }
+
   return lines.join("\n");
 }
 
