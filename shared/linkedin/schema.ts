@@ -482,16 +482,31 @@ export const LinkedinQualitativeSchema = z.object({
     .describe(
       "Diagnóstico geral do perfil em 2 a 4 frases, com tom calibrado pela faixa da nota.",
     ),
+  // Lembrete de compat: o toOpenAIStrictSchema REMOVE min/max do JSON Schema
+  // enviado a OpenAI, mas o safeParse local os aplica (violacao vira retry,
+  // como no resume-analyzer e no GitHub). Por isso o SYSTEM_PROMPT tambem
+  // declara as quantidades explicitamente.
   pontosFortes: z
     .array(z.string())
+    .min(3)
+    .max(5)
     .describe("3 a 5 pontos fortes observados no perfil."),
   pontosFracos: z
     .array(z.string())
+    .min(3)
+    .max(5)
     .describe("3 a 5 pontos fracos ou lacunas observadas no perfil."),
   melhorias: z
     .array(LinkedinMelhoriaSchema)
+    .min(4)
+    .max(7)
     .describe(
-      "Melhorias priorizadas e acionáveis, da mais alta para a mais baixa prioridade.",
+      "Melhorias priorizadas e acionáveis, da mais alta para a mais baixa prioridade (4 a 7).",
+    ),
+  proximoPasso: z
+    .string()
+    .describe(
+      "A UNICA acao de maior impacto que a pessoa consegue executar hoje, concreta e especifica ao perfil analisado.",
     ),
   headlines: z
     .array(z.string())

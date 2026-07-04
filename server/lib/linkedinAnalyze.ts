@@ -61,7 +61,10 @@ CALIBRAGEM DE TOM: a nota e a faixa indicam o estágio do perfil. Faixa início 
 
 ESTILO: português do Brasil. Proibido travessão e meia-risca, use ponto, vírgula ou parênteses. Sem emojis. Textos reescritos prontos para copiar e colar, na primeira pessoa quando for texto do perfil do usuário.
 
+QUANTIDADES OBRIGATÓRIAS: de 3 a 5 pontosFortes, de 3 a 5 pontosFracos e de 4 a 7 melhorias. Em cada melhoria, comoFazer tem de 2 a 4 frases, começando por um primeiro passo executável HOJE e citando o campo do perfil quando aplicável (headline, Sobre, competências, experiências). proximoPasso: preencha SEMPRE, escolhendo entre as melhorias de prioridade alta a ÚNICA ação de maior impacto que a pessoa consegue executar hoje, concreta e específica ao perfil analisado.
+
 Responda apenas com o JSON do schema.`;
+// TODO(Ana): revisar o bloco de quantidades e proximoPasso do prompt.
 
 export interface AnalyzeAiIo {
   inputChars: number;
@@ -294,6 +297,8 @@ function warmEmptyQualitative(
           "Comece com uma frase de gancho, conte o que você estuda e está construindo, liste sua stack por extenso e termine com um convite ao contato.",
       },
     ],
+    // TODO(Ana): revisar o proximo passo do perfil quase vazio.
+    proximoPasso: `Preencha hoje sua headline com a fórmula cargo e tecnologias, por exemplo: ${cargo} | listando as tecnologias que você estuda.`,
     headlines: [
       `${cargo} | em busca da primeira oportunidade, construindo projetos`,
       `${cargo} | estudando e praticando todos os dias`,
