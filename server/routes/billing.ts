@@ -607,7 +607,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
     if (affiliateCode) {
       const { data: affiliate, error: affiliateError } = await supabaseAdmin
         .from("affiliates")
-        .select("id, code, discount_percent, trials")
+        .select("id, code, discount_percent")
         .eq("code", affiliateCode)
         .eq("status", "active")
         .maybeSingle();
@@ -621,10 +621,11 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
               (1 - Number(affiliate.discount_percent || 0) / 100)
             ).toFixed(2),
           );
-          await supabaseAdmin
-            .from("affiliates")
-            .update({ trials: Number(affiliate.trials || 0) + 1 })
-            .eq("id", affiliate.id);
+          // Incremento atomico via RPC: o read-then-write anterior perdia
+          // updates concorrentes. Retorno ignorado como o update de antes.
+          await supabaseAdmin.rpc("increment_affiliate_trials", {
+            p_affiliate_id: affiliate.id,
+          });
         }
       }
     }
@@ -928,9 +929,7 @@ router.post("/webhook", async (req, res, next) => {
       if (affiliateCode && action === "activate") {
         const { data: affiliate } = await supabaseAdmin
           .from("affiliates")
-          .select(
-            "id, sales, revenue_cents, commission_due_cents, commission_percent",
-          )
+          .select("id")
           .eq("code", affiliateCode)
           .maybeSingle();
 
@@ -938,19 +937,15 @@ router.post("/webhook", async (req, res, next) => {
           const revenueCents = Math.round(
             Number(payment?.value || subscription?.value || 0) * 100,
           );
-          const commissionCents = Math.round(
-            revenueCents * (Number(affiliate.commission_percent || 0) / 100),
-          );
-          await supabaseAdmin
-            .from("affiliates")
-            .update({
-              sales: Number(affiliate.sales || 0) + 1,
-              revenue_cents:
-                Number(affiliate.revenue_cents || 0) + revenueCents,
-              commission_due_cents:
-                Number(affiliate.commission_due_cents || 0) + commissionCents,
-            })
-            .eq("id", affiliate.id);
+          // Incremento atomico via RPC: sales, receita e comissao num unico
+          // UPDATE, com a comissao calculada no banco pelo commission_percent
+          // corrente (o read-then-write anterior perdia updates concorrentes e
+          // usava um percent lido antes da escrita). Retorno ignorado como o
+          // update de antes.
+          await supabaseAdmin.rpc("increment_affiliate_conversion", {
+            p_affiliate_id: affiliate.id,
+            p_revenue_cents: revenueCents,
+          });
         }
       }
 
