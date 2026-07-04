@@ -23,6 +23,9 @@ export const iaAvisos: string[] = [
   "Nunca cole dados sensíveis: senhas, chaves, dados de clientes ou código confidencial.",
 ];
 
+// TODO: adicionar mais ferramentas (curadoria verificada, link oficial real).
+// Basta acrescentar objetos IaTool nos grupos existentes ou criar novos grupos
+// IaToolGroup { grupo, descricao, ferramentas: IaTool[] }. Nao inventar.
 export const iaTools: IaToolGroup[] = [
   {
     grupo: "Conversacional e geral",
