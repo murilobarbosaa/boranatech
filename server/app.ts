@@ -414,10 +414,26 @@ const staticPath = env.isProd
   ? path.resolve(__dirname, "public")
   : path.resolve(__dirname, "..", "dist", "public");
 
-app.use(express.static(staticPath));
+// Assets com hash no nome podem ser imutaveis; index.html e demais arquivos
+// sem hash precisam revalidar a cada deploy (immutable neles quebraria deploy).
+const assetsDir = path.join(staticPath, "assets") + path.sep;
+
+app.use(
+  express.static(staticPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.startsWith(assetsDir)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
+  }),
+);
 
 app.get("*", (_req, res) => {
-  res.sendFile(path.join(staticPath, "index.html"));
+  res.sendFile(path.join(staticPath, "index.html"), {
+    headers: { "Cache-Control": "no-cache" },
+  });
 });
 
 // Captura pro Sentry ANTES do errorHandler, que segue dono da resposta ao
