@@ -14,6 +14,12 @@ const NEWS_FEED_MAX_AGE_DAYS = 30; // TODO(Ana): janela de exibição do feed
 const LIST_TTL_SECONDS = 120;
 const ITEM_TTL_SECONDS = 300;
 
+// Cache-Control HTTP das rotas publicas (sem auth). Browser segura pouco
+// (max-age) e a borda/CDN um pouco mais (s-maxage). Rotas mais dinamicas
+// (news, jobs, sources/status) usam a variante curta.
+const PUBLIC_CACHE_CONTROL = "public, max-age=60, s-maxage=120";
+const DYNAMIC_CACHE_CONTROL = "public, max-age=30, s-maxage=60";
+
 router.get("/areas", async (req, res, next) => {
   try {
     const { tag, search } = req.query;
@@ -39,6 +45,7 @@ router.get("/areas", async (req, res, next) => {
       { bypass: Boolean(search) },
     );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -67,6 +74,7 @@ router.get("/areas/:slug", async (req, res, next) => {
     if (!payload)
       return next(createError(404, "not_found", "Área não encontrada."));
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -97,6 +105,7 @@ router.get("/technologies", async (req, res, next) => {
       { bypass: Boolean(search) },
     );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -121,6 +130,7 @@ router.get("/technologies/ranking", async (_req, res, next) => {
       },
     );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -166,6 +176,7 @@ router.get("/technologies/compare", async (req, res, next) => {
         ),
       );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -193,6 +204,7 @@ router.get("/technologies/:slug", async (req, res, next) => {
     if (!payload)
       return next(createError(404, "not_found", "Tecnologia não encontrada."));
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -225,6 +237,7 @@ router.get("/courses", async (req, res, next) => {
       { bypass: Boolean(search) },
     );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -249,6 +262,7 @@ router.get("/platforms", async (_req, res, next) => {
       },
     );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -278,6 +292,7 @@ router.get("/projects", async (req, res, next) => {
       },
     );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -305,6 +320,7 @@ router.get("/projects/:slug", async (req, res, next) => {
     if (!payload)
       return next(createError(404, "not_found", "Projeto não encontrado."));
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -335,6 +351,7 @@ router.get("/roadmaps", async (req, res, next) => {
       },
     );
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -446,6 +463,7 @@ router.get("/roadmaps/:slug", async (req, res, next) => {
     if (!payload)
       return next(createError(404, "not_found", "Roadmap não encontrado."));
 
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -469,6 +487,7 @@ router.get("/sources/status", async (_req, res, next) => {
       },
     );
 
+    res.set("Cache-Control", DYNAMIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -550,6 +569,7 @@ router.get("/news", async (req, res, next) => {
       { bypass: Boolean(q) },
     );
 
+    res.set("Cache-Control", DYNAMIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
@@ -595,6 +615,7 @@ router.get("/jobs", async (req, res, next) => {
       },
     );
 
+    res.set("Cache-Control", DYNAMIC_CACHE_CONTROL);
     res.json(payload);
   } catch (err) {
     next(err);
