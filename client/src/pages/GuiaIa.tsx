@@ -428,7 +428,19 @@ export default function GuiaIa() {
             </button>
             <button
               type="button"
-              onClick={() => selectTab("Ferramentas")}
+              onClick={() => {
+                selectTab("Ferramentas");
+                requestAnimationFrame(() => {
+                  document.getElementById("guia-abas")?.scrollIntoView({
+                    behavior: window.matchMedia(
+                      "(prefers-reduced-motion: reduce)",
+                    ).matches
+                      ? "auto"
+                      : "smooth",
+                    block: "start",
+                  });
+                });
+              }}
               className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-5 py-3 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[4px_4px_0_#0f172a]"
             >
               <Wrench className="h-4 w-4" />
@@ -495,7 +507,13 @@ export default function GuiaIa() {
             </motion.div>
           </div>
 
-          <div className={cn("sticky top-16 z-30 border-b-2 border-slate-200 py-3", ac.contentBg)}>
+          <div
+            id="guia-abas"
+            className={cn(
+              "sticky top-16 z-30 border-b-2 border-slate-200 py-3",
+              ac.contentBg,
+            )}
+          >
             <div
               role="tablist"
               aria-label="Seções do guia de IA"
