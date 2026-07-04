@@ -27,26 +27,39 @@ export default function Curriculo() {
         title="Currículo e LinkedIn para Tech"
         subtitle="Apareça para os recrutadores certos."
         actions={
-          !isPro && !loading ? (
-            <>
-              <AiCtaLink
-                href="/curriculo/analisar"
-                description="Nota, lacunas e palavras-chave"
-                accent="blue"
-                className="w-full"
-              >
-                Analisar currículo com IA
-              </AiCtaLink>
-              <AiCtaLink
-                href="/curriculo/linkedin"
-                description="Headline, Sobre e visibilidade"
-                accent="blue"
-                className="w-full"
-              >
-                Otimizar LinkedIn com IA
-              </AiCtaLink>
-            </>
-          ) : undefined
+          <>
+            {/* Entry point principal do gerador: visivel para todos (o gate
+                Pro vive na propria pagina /curriculo/gerar). */}
+            {/* TODO(Ana): revisar copy do CTA do gerador de curriculo. */}
+            <AiCtaLink
+              href="/curriculo/gerar"
+              description="Conversa com o Natechinho, currículo pronto e salvo"
+              accent="blue"
+              className="w-full"
+            >
+              Gerar currículo com IA
+            </AiCtaLink>
+            {!isPro && !loading ? (
+              <>
+                <AiCtaLink
+                  href="/curriculo/analisar"
+                  description="Nota, lacunas e palavras-chave"
+                  accent="blue"
+                  className="w-full"
+                >
+                  Analisar currículo com IA
+                </AiCtaLink>
+                <AiCtaLink
+                  href="/curriculo/linkedin"
+                  description="Headline, Sobre e visibilidade"
+                  accent="blue"
+                  className="w-full"
+                >
+                  Otimizar LinkedIn com IA
+                </AiCtaLink>
+              </>
+            ) : null}
+          </>
         }
       />
       <section className={cn(ac.contentBg, "py-12")}>

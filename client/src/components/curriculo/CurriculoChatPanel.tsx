@@ -58,10 +58,21 @@ function clipForReveal(buf: string, streamDone: boolean): string {
 interface CurriculoChatPanelProps {
   initialAssistantMessage: string;
   onCurriculoReady: (curriculo: Curriculo) => void;
-  title?: string;
-  description?: string;
-  placeholder?: string;
 }
+
+// Textos fixos do painel (as antigas props title/description/placeholder
+// nunca eram passadas pelo caller; viraram constantes).
+// TODO(Ana): revisar estes textos do painel do chat.
+const PANEL_TITLE = "Natechinho monta teu currículo";
+const PANEL_DESCRIPTION =
+  "Conversa de uns 10 minutinhos. No fim, teu currículo sai pronto e salvo.";
+const INPUT_PLACEHOLDER = "Manda tua resposta";
+// TODO(Ana): revisar copy do botao de gerar sem o sinal do Natechinho.
+const FALLBACK_BUTTON_LABEL = "Gerar currículo com o que já conversamos";
+
+// A partir de quantas respostas reais do Natechinho (sem contar a saudacao)
+// o fallback de geracao aparece, caso o marcador nunca venha. // TODO: calibrar.
+const FALLBACK_AFTER_REPLIES = 4;
 
 function TypingDots() {
   return (
@@ -79,9 +90,6 @@ function TypingDots() {
 export default function CurriculoChatPanel({
   initialAssistantMessage,
   onCurriculoReady,
-  title = "Natechinho monta teu currículo",
-  description = "Conversa de uns 10 minutinhos. No fim, sai o PDF.",
-  placeholder = "Manda tua resposta",
 }: CurriculoChatPanelProps) {
   // A saudação começa vazia e é preenchida pelo efeito de typewriter abaixo
   // pra dar a mesma sensação visual do streaming das respostas reais.
@@ -207,18 +215,46 @@ export default function CurriculoChatPanel({
         ...afterUser,
         { role: "assistant", content: fullBufferRef.current },
       ];
-      setGenerating(true);
-      try {
-        const { data } = await callAiStructured<Curriculo>("resume-render", {
-          messages: historyForRender,
-        });
-        onCurriculoReady(data);
-      } catch (err) {
-        setError(`Erro ao montar o currículo. ${getAiErrorMessage(err)}`);
-      } finally {
-        setGenerating(false);
-      }
+      await generateFromHistory(historyForRender);
     }
+  }
+
+  // Caminho unico de geracao: usado pelo marcador do Natechinho e pelo botao
+  // de fallback (mesmo endpoint resume-render, mesmo tratamento de erro).
+  async function generateFromHistory(history: AiChatMessage[]) {
+    setGenerating(true);
+    try {
+      const { data } = await callAiStructured<Curriculo>("resume-render", {
+        messages: history,
+      });
+      onCurriculoReady(data);
+    } catch (err) {
+      setError(`Erro ao montar o currículo. ${getAiErrorMessage(err)}`);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  // Fallback do handshake: se o Natechinho nunca emitir o marcador, depois de
+  // FALLBACK_AFTER_REPLIES respostas reais (a saudacao nao conta) aparece um
+  // botao discreto que gera com o historico atual.
+  const assistantReplies = Math.max(
+    0,
+    messages.filter((m) => m.role === "assistant" && m.content.length > 0)
+      .length - 1,
+  );
+  const showFallbackGenerate =
+    assistantReplies >= FALLBACK_AFTER_REPLIES &&
+    greetingDone &&
+    !chatLoading &&
+    !generating;
+
+  function handleFallbackGenerate() {
+    if (chatLoading || generating) return;
+    setError("");
+    void generateFromHistory(
+      messages.filter((m) => m.content.trim().length > 0),
+    );
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -250,10 +286,10 @@ export default function CurriculoChatPanel({
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
-              {title}
+              {PANEL_TITLE}
             </h2>
             <p className="mt-0.5 truncate text-xs font-bold leading-snug text-slate-800 sm:text-sm">
-              {description}
+              {PANEL_DESCRIPTION}
             </p>
           </div>
         </header>
@@ -358,6 +394,18 @@ export default function CurriculoChatPanel({
         ) : null}
 
         <div className="shrink-0 bg-[#faf8f4] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
+          {showFallbackGenerate ? (
+            <div className="mx-auto mb-2 flex w-full max-w-3xl justify-center">
+              <button
+                type="button"
+                onClick={handleFallbackGenerate}
+                className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-slate-950"
+              >
+                <FileText className="h-3.5 w-3.5" aria-hidden />
+                {FALLBACK_BUTTON_LABEL}
+              </button>
+            </div>
+          ) : null}
           <div className="mx-auto flex w-full max-w-3xl items-end gap-2 sm:gap-3">
             <label className="sr-only" htmlFor="curriculo-chat-input">
               Mensagem
@@ -367,7 +415,7 @@ export default function CurriculoChatPanel({
                 id="curriculo-chat-input"
                 rows={1}
                 className="max-h-32 min-h-[48px] w-full resize-y rounded-2xl border-0 bg-transparent px-4 py-3 font-body text-[15px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-500 disabled:opacity-60 sm:py-3.5 sm:text-base"
-                placeholder={placeholder}
+                placeholder={INPUT_PLACEHOLDER}
                 value={input}
                 disabled={inputDisabled}
                 onChange={(e) => setInput(e.target.value)}

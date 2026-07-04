@@ -221,6 +221,13 @@ const menuData: DropdownMenu[] = [
             path: "/curriculo",
           },
           {
+            // TODO(Ana): revisar label e description do gerador de curriculo.
+            label: "Gerar Currículo",
+            description: "Monte seu currículo conversando com IA",
+            path: "/curriculo/gerar",
+            isPro: true,
+          },
+          {
             label: "Networking",
             description: "Conecte-se com as pessoas certas",
             path: "/networking",
