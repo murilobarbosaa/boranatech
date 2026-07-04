@@ -1,4 +1,5 @@
 import CreatorsBand from "@/components/shared/CreatorsBand";
+import DicaDoDia from "./sections/DicaDoDia";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import Hero from "./sections/Hero";
@@ -31,6 +32,7 @@ export default function HomeLanding() {
       <TurbineComIA />
       <Numeros />
       <PraVoce />
+      <DicaDoDia />
       <Pro />
       <CtaFinal />
     </Layout>
