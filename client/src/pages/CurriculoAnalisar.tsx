@@ -614,7 +614,11 @@ function ResultView({ result, onNewAnalysis }: ResultViewProps) {
 
       <div className="flex flex-wrap items-center gap-4">
         <Link
-          href="/curriculo/gerar"
+          href={
+            result.id
+              ? `/curriculo/gerar?rewrite=${result.id}`
+              : "/curriculo/gerar"
+          }
           className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
         >
           <Wand2 className="h-4 w-4" aria-hidden />

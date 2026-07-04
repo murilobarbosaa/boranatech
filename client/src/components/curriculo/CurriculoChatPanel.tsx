@@ -58,6 +58,11 @@ function clipForReveal(buf: string, streamDone: boolean): string {
 interface CurriculoChatPanelProps {
   initialAssistantMessage: string;
   onCurriculoReady: (curriculo: Curriculo) => void;
+  // Primeira mensagem do usuario enviada AUTOMATICAMENTE (e visivel, como
+  // qualquer mensagem) assim que a saudacao terminar. Usada pela ponte
+  // analise -> reescrita (?rewrite=): o curriculo analisado ja entra na
+  // conversa sem a pessoa colar de novo. Enviada UMA vez por montagem.
+  initialUserMessage?: string;
 }
 
 // Textos fixos do painel (as antigas props title/description/placeholder
@@ -90,6 +95,7 @@ function TypingDots() {
 export default function CurriculoChatPanel({
   initialAssistantMessage,
   onCurriculoReady,
+  initialUserMessage,
 }: CurriculoChatPanelProps) {
   // A saudação começa vazia e é preenchida pelo efeito de typewriter abaixo
   // pra dar a mesma sensação visual do streaming das respostas reais.
@@ -111,6 +117,19 @@ export default function CurriculoChatPanel({
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages, chatLoading, generating]);
+
+  // Auto-envio da primeira mensagem (ponte de reescrita): dispara UMA vez por
+  // montagem, so depois da saudacao terminar. O guard interno de sendMessage
+  // protege contra corrida com um envio manual.
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (!initialUserMessage || autoSentRef.current || !greetingDone) return;
+    autoSentRef.current = true;
+    void sendMessage(initialUserMessage);
+    // sendMessage muda a cada render (closure de messages); disparar so na
+    // transicao de greetingDone e o comportamento correto aqui.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [greetingDone, initialUserMessage]);
 
   // Typewriter local pra saudação inicial. Sem chamada de API: o texto é
   // fixo. Mesma cadência do reveal das respostas reais (TYPING_TICK_MS).
@@ -135,6 +154,14 @@ export default function CurriculoChatPanel({
     if (chatLoading || generating || !greetingDone) return;
     const trimmed = input.trim();
     if (!trimmed) return;
+    setInput("");
+    await sendMessage(trimmed);
+  }
+
+  // Caminho unico de envio: usado pelo input e pelo auto-envio da ponte de
+  // reescrita (initialUserMessage).
+  async function sendMessage(trimmed: string) {
+    if (chatLoading || generating || !greetingDone) return;
 
     setError("");
     const afterUser: AiChatMessage[] = [
@@ -142,7 +169,6 @@ export default function CurriculoChatPanel({
       { role: "user", content: trimmed },
     ];
     setMessages([...afterUser, { role: "assistant", content: "" }]);
-    setInput("");
     setChatLoading(true);
 
     // Pipeline de revelação controlada:

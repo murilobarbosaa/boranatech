@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearch } from "wouter";
 import {
   CheckCircle2,
   CloudUpload,
@@ -19,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+import { getResumeAnalysis } from "@/services/resumeAnalysisService";
 import {
   deleteResume,
   getResume,
@@ -52,13 +54,38 @@ Pra gente começar, me conta um pouco sobre você. Em que momento da carreira tu
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Teto do curriculo colado na mensagem automatica da ponte de reescrita.
+// O resume-builder aceita 30k chars de input total (maxInputChars em
+// server/lib/aiTools.ts); 10k deixa folga larga pro restante da conversa.
+const REWRITE_RESUME_MAX_CHARS = 10_000;
+
+// TODO(Ana): revisar o texto da mensagem automatica de reescrita.
+function buildRewriteMessage(score: number, resumeText: string): string {
+  const trimmed = resumeText.slice(0, REWRITE_RESUME_MAX_CHARS);
+  return `Quero reescrever meu currículo. Ele tirou nota ${score} na análise da plataforma. Aqui está ele:\n\n${trimmed}`;
+}
+
 export default function CurriculoGerar() {
   const { isPro } = useSubscription();
   const { profile, loading: authLoading } = useAuth();
+  const search = useSearch();
   const [generated, setGenerated] = useState<Curriculo | null>(null);
   // resetKey força o CurriculoChatPanel a desmontar+remontar (limpando state
   // interno) sem precisar de window.location.reload, evitando flash.
   const [resetKey, setResetKey] = useState(0);
+
+  // Ponte analise -> reescrita: ?rewrite=<analysisId>. Id invalido e tratado
+  // como ausente; analise inexistente/alheia (404 -> null) cai no fluxo
+  // normal sem erro.
+  const rewriteId = useMemo(() => {
+    const params = new URLSearchParams(search);
+    const id = params.get("rewrite");
+    return id && UUID_RE.test(id) ? id : null;
+  }, [search]);
+  const [rewriteSeed, setRewriteSeed] = useState<string | null>(null);
 
   // Persistencia best-effort do curriculo recem-gerado: nunca bloqueia a
   // exibicao (o preview aparece igual; o selo/aviso comunica o estado).
@@ -69,7 +96,29 @@ export default function CurriculoGerar() {
     undefined,
   );
   // Com itens salvos, a pagina abre na lista; "chat" e o fluxo de criar novo.
-  const [mode, setMode] = useState<"list" | "chat">("list");
+  // Com ?rewrite, abre DIRETO no chat (a lista nao interfere na ponte).
+  const [mode, setMode] = useState<"list" | "chat">(
+    rewriteId ? "chat" : "list",
+  );
+
+  // Busca a analise da ponte e monta a primeira mensagem automatica.
+  useEffect(() => {
+    if (!rewriteId || !isPro) return;
+    let cancelled = false;
+    getResumeAnalysis(rewriteId)
+      .then((record) => {
+        if (cancelled || !record) return;
+        setRewriteSeed(
+          buildRewriteMessage(record.result.score, record.input.resumeText),
+        );
+      })
+      .catch(() => {
+        // Falha de carga: segue o fluxo normal, sem mensagem automatica.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rewriteId, isPro]);
 
   const loadSaved = useCallback(() => {
     listResumes()
@@ -123,6 +172,9 @@ export default function CurriculoGerar() {
     setGenerated(null);
     setSaveState("idle");
     setMode("chat");
+    // A ponte de reescrita vale UMA vez: comecar de novo abre um chat limpo,
+    // sem reenvio automatico do curriculo analisado.
+    setRewriteSeed(null);
     setResetKey((k) => k + 1);
   }
 
@@ -177,6 +229,7 @@ export default function CurriculoGerar() {
                   key={resetKey}
                   initialAssistantMessage={greeting}
                   onCurriculoReady={handleCurriculoReady}
+                  initialUserMessage={rewriteSeed ?? undefined}
                 />
               </div>
               <aside className="lg:col-span-2">
