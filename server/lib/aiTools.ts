@@ -22,6 +22,11 @@ export interface AiToolConfig {
   description: string;
   responseFormat?: ResponseFormatConfig;
   injectLoginContext?: boolean;
+  // Entrada SO de referencia de quota/custo: getToolConfig recusa, entao a
+  // rota generica /api/ai NUNCA a serve. A tool roda em rota propria (ex:
+  // resume-analyzer em /api/resume/analyze, com nota deterministica e
+  // persistencia que a rota generica nao tem).
+  internalOnly?: boolean;
 }
 
 const curriculoJsonSchema = toOpenAIStrictSchema(CurriculoSchema);
@@ -43,17 +48,22 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     systemPrompt:
       "Você é uma entrevistadora tech brasileira. Gere perguntas, feedback e próximos passos com linguagem objetiva.",
   },
-  "resume-review": {
-    key: "resume-review",
+  // A antiga "resume-review" (chat placeholder de analise) saiu do registry:
+  // a analise real e a "resume-analyzer" abaixo, servida em /api/resume.
+  // Logs historicos de resume-review em ai_usage_logs ficam intactos.
+  "resume-analyzer": {
+    key: "resume-analyzer",
     requiresPro: true,
     requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 15_000,
-    temperature: 0.7,
+    mode: "tool",
+    // resumeText (12k) + vaga (4k) + breakdown e prompts.
+    maxInputChars: 20_000,
+    temperature: 0.5,
     model: DEFAULT_MODEL,
-    description: "Análise de currículo",
-    systemPrompt:
-      "Você é especialista em currículo tech e ATS. Avalie clareza, impacto, palavras-chave e compatibilidade com vaga.",
+    description: "Análise estruturada de currículo",
+    // O prompt real vive em server/lib/resumeAnalyze.ts (rota propria).
+    systemPrompt: "",
+    internalOnly: true,
   },
   "resume-builder": {
     key: "resume-builder",
@@ -526,7 +536,10 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
 };
 
 export function getToolConfig(toolKey: string): AiToolConfig | null {
-  return AI_TOOLS[toolKey] || null;
+  const config = AI_TOOLS[toolKey] || null;
+  // internalOnly nao e servida pela rota generica (ver comentario no campo).
+  if (config?.internalOnly) return null;
+  return config;
 }
 
 export function estimateCost(inputChars: number, outputChars: number): number {
