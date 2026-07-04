@@ -12,6 +12,7 @@ import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import InglesSubNav from "@/components/shared/InglesSubNav";
 import InglesTrilhaQuiz from "@/components/ingles/InglesTrilhaQuiz";
+import InglesNivelTeste from "@/components/ingles/InglesNivelTeste";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -116,20 +117,27 @@ export default function Ingles() {
         subtitle="Você não precisa ser fluente para começar. Precisa criar contato diário com documentação, erro, vídeo, README e conversa técnica."
       />
       <InglesSubNav />
+      <section className="border-b-2 border-slate-900 bg-gradient-to-b from-sky-100 to-[#faf8f4] py-12">
+        <div className="container">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+              teste de nível
+            </p>
+            <h2 className="font-display text-3xl font-black text-slate-950 sm:text-4xl">
+              Descubra seu nível de inglês
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              15 perguntas rápidas de inglês técnico. No final você recebe seu
+              nível e o próximo passo para evoluir.
+            </p>
+          </div>
+          <div className="mx-auto mt-8 max-w-2xl">
+            <InglesNivelTeste />
+          </div>
+        </div>
+      </section>
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
-          <div className="flex flex-col items-start gap-4">
-            <button
-              type="button"
-              onClick={() => setMostrarQuiz((v) => !v)}
-              aria-expanded={mostrarQuiz}
-              className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
-            >
-              <Target className="h-4 w-4" aria-hidden />
-              {mostrarQuiz ? "Ocultar teste de nível" : "Fazer o teste de nível"}
-            </button>
-            {mostrarQuiz ? <InglesTrilhaQuiz /> : null}
-          </div>
           <div className="grid gap-5 lg:grid-cols-3">
             <div className="card-brutal rounded-2xl bg-white p-6 lg:col-span-2">
               <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
@@ -182,6 +190,35 @@ export default function Ingles() {
                 Inglês técnico cresce por repetição, não por maratona.
               </p>
             </div>
+          </div>
+
+          <div id="montar-trilha" className="scroll-mt-24">
+            <div className="mb-5">
+              <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+                próximo passo
+              </p>
+              <h2 className="font-display text-3xl font-black text-slate-950">
+                Agora monte sua trilha
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Depois de saber seu nível, monte uma trilha sob medida por nível
+                e objetivo.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMostrarQuiz((v) => !v)}
+              aria-expanded={mostrarQuiz}
+              className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            >
+              <Target className="h-4 w-4" aria-hidden />
+              {mostrarQuiz ? "Ocultar montador de trilha" : "Montar minha trilha"}
+            </button>
+            {mostrarQuiz ? (
+              <div className="mt-4">
+                <InglesTrilhaQuiz />
+              </div>
+            ) : null}
           </div>
 
           <div>
