@@ -35,6 +35,54 @@ router.use(requireAuth);
 
 router.get("/", async (req, res, next) => {
   try {
+    // COM page/limit: resposta paginada (novo client). SEM os params:
+    // comportamento legado byte-identico, pro client antigo no ar durante a
+    // janela de deploy (Railway e Vercel deployam separados).
+    const wantsPagination =
+      req.query.page !== undefined || req.query.limit !== undefined;
+
+    if (wantsPagination) {
+      // Clamp ANTES de qualquer uso: invalido cai no default, acima do teto
+      // clampa (mesma politica do /content/news e /content/jobs).
+      const rawPage = parseInt(String(req.query.page ?? ""), 10);
+      const page = Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
+      const rawLimit = parseInt(String(req.query.limit ?? ""), 10);
+      const limit =
+        !Number.isInteger(rawLimit) || rawLimit < 1
+          ? 50
+          : Math.min(rawLimit, 100);
+
+      const from = (page - 1) * limit;
+      const to = from + limit - 1;
+
+      const { data, count, error } = await supabaseAdmin
+        .from("user_bookmarks")
+        .select("*", { count: "exact" })
+        .eq("user_id", req.user!.id)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        return next(createError(500, "db_error", "Erro ao buscar favoritos."));
+      }
+
+      const total = count ?? 0;
+      const total_pages = Math.max(1, Math.ceil(total / limit));
+
+      return res.json({
+        data: data || [],
+        pagination: {
+          page,
+          limit,
+          total,
+          total_pages,
+          has_next: page < total_pages,
+          has_prev: page > 1,
+        },
+      });
+    }
+
     const bookmarks: unknown[] = [];
 
     while (bookmarks.length < BOOKMARKS_MAX_ROWS) {

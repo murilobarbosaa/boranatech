@@ -190,6 +190,39 @@ async function apiFetch(path: string, options?: RequestInit) {
   return res;
 }
 
+// Opcao B da fase 4b: o load busca a lista COMPLETA em paginas de 100 em vez
+// de um payload unico de ate 10k linhas. O estado continua materializado
+// inteiro de proposito: isFavorite, contagens por aba do PerfilFavoritos e o
+// cache localStorage dependem da lista completa. Compatibilidade dos deploys
+// separados: server antigo ignora page/limit e devolve tudo SEM o campo
+// pagination, e o loop para na primeira pagina com a lista inteira.
+const BOOKMARKS_PAGE_LIMIT = 100;
+// Teto duro espelhando o limite legado de 10k linhas do server.
+const BOOKMARKS_MAX_PAGES = 100;
+
+async function fetchAllBookmarks(): Promise<BookmarkItem[]> {
+  const all: BookmarkItem[] = [];
+  let page = 1;
+  for (;;) {
+    const res = await apiFetch(`/?page=${page}&limit=${BOOKMARKS_PAGE_LIMIT}`);
+    if (!res.ok) throw new Error("Erro ao buscar favoritos");
+    const json = (await res.json()) as {
+      data?: BookmarkItem[];
+      pagination?: { has_next?: boolean };
+    };
+    all.push(...(json.data || []));
+    if (!json.pagination?.has_next) break;
+    page += 1;
+    if (page > BOOKMARKS_MAX_PAGES) {
+      console.warn(
+        `[useFavorites] teto de ${BOOKMARKS_MAX_PAGES} paginas atingido; lista pode estar truncada`,
+      );
+      break;
+    }
+  }
+  return all;
+}
+
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
@@ -200,10 +233,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const prevUserIdRef = useRef<string | null>(null);
 
   const refreshFromServer = useCallback(async () => {
-    const res = await apiFetch("/");
-    if (!res.ok) throw new Error("Erro ao buscar favoritos");
-    const json = (await res.json()) as { data?: BookmarkItem[] };
-    setFavorites((json.data || []).map(bookmarkToFavorite));
+    const bookmarks = await fetchAllBookmarks();
+    setFavorites(bookmarks.map(bookmarkToFavorite));
   }, []);
 
   useEffect(() => {
@@ -238,12 +269,10 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           await maybeConsumePendingGateFavorite();
         }
 
-        const res = await apiFetch("/");
-        if (!res.ok) throw new Error("Erro ao buscar favoritos");
-        const json = (await res.json()) as { data?: BookmarkItem[] };
+        const bookmarks = await fetchAllBookmarks();
         if (cancelled) return;
 
-        let nextFavorites = (json.data || []).map(bookmarkToFavorite);
+        let nextFavorites = bookmarks.map(bookmarkToFavorite);
 
         const queued = nextLoadFavoriteRef.current;
         if (queued) {
