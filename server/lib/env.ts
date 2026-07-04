@@ -92,6 +92,19 @@ export const env = {
   redisUrl: process.env.REDIS_URL || "",
   // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.
   sentryDsn: process.env.SENTRY_DSN || "",
+  // Teto do rate limit por IP por minuto. Existe SOMENTE para staging/teste
+  // de carga (k6): producao NAO deve setar esta variavel (default 180).
+  // Invalido (nao inteiro ou < 1) cai no default com warn no boot.
+  rateLimitMaxRequests: (() => {
+    const raw = process.env.RATE_LIMIT_MAX_REQUESTS;
+    if (!raw) return 180;
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 1) return parsed;
+    console.warn(
+      `[env] AVISO: RATE_LIMIT_MAX_REQUESTS invalido ("${raw}"), usando 180`,
+    );
+    return 180;
+  })(),
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",
   // Portao de lancamento. "gated" mantem o portao fechado; "open" libera geral.

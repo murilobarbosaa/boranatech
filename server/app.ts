@@ -72,7 +72,10 @@ app.use(
 );
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 180;
+// Configuravel por env SOMENTE para staging/teste de carga (k6); producao
+// nao seta RATE_LIMIT_MAX_REQUESTS e fica no default 180 (validacao e warn
+// em env.ts).
+const RATE_LIMIT_MAX_REQUESTS = env.rateLimitMaxRequests;
 // TTL da chave no Redis maior que a janela: a chave ja carrega o inicio da
 // janela no nome, o TTL so garbage-colleta.
 const RATE_LIMIT_REDIS_TTL_SECONDS = 120;
