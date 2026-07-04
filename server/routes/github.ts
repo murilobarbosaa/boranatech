@@ -215,7 +215,7 @@ interface GithubAnalysisListRow {
   faixa: string | null;
   area: string | null;
   created_at: string | null;
-  input: { mode?: string } | null;
+  input: { mode?: string; input?: string } | null;
 }
 
 router.get("/analyses", async (req: Request, res: Response, next: NextFunction) => {
@@ -239,6 +239,9 @@ router.get("/analyses", async (req: Request, res: Response, next: NextFunction) 
       area: row.area,
       created_at: row.created_at,
       mode: typeof row.input?.mode === "string" ? row.input.mode : null,
+      // Alvo cru salvo no input: permite ao client comparar analises do MESMO
+      // alvo (delta de nota) sem baixar o result inteiro.
+      raw_input: typeof row.input?.input === "string" ? row.input.input : null,
     })),
   });
 });

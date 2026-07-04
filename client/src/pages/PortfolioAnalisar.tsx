@@ -11,19 +11,28 @@ import {
 } from "@/components/portfolio/AnalysisStates";
 import { HowItWorks, WhatYouGet } from "@/components/portfolio/AnalyzerIntro";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
+import GithubHistory from "@/components/portfolio/GithubHistory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
 import NextStepsByArea from "@/components/portfolio/NextStepsByArea";
 import ScoreCard from "@/components/portfolio/ScoreCard";
 import {
   AiSummary,
   Improvements,
+  NextStepCard,
   ReadmeSuggestion,
   StrengthsWeaknesses,
 } from "@/components/portfolio/QualitativePanels";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI } from "@/lib/data";
-import { analyzeGithub } from "@/lib/githubClient";
+import {
+  analyzeGithub,
+  getGithubAnalysis,
+  listGithubAnalyses,
+  normalizeGithubTarget,
+  type GithubAnalysisSummary,
+} from "@/lib/githubClient";
+import { getQuizHistory } from "@/services/careerQuizService";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { GENERAL_AREA, isAreaSlug, type AreaSelection } from "@shared/areas";
@@ -49,8 +58,8 @@ const STORAGE_KEY = "boranatech:portfolio-analyzer";
 // Versao da forma do payload persistido. Bump sempre que a forma da resposta
 // (GithubAnalysisResponse) mudar. No restore, slots de versao diferente sao
 // descartados, pra nunca reusar um result de shape antigo (ex sem suficiencia
-// ou sem deepSignals). A versao 2 marca o shape com suficiencia e deepSignals.
-const STORAGE_SHAPE_VERSION = 2;
+// ou sem deepSignals). A versao 3 marca o qualitative com proximoPasso.
+const STORAGE_SHAPE_VERSION = 3;
 
 interface ModeSlot {
   input: string;
@@ -181,21 +190,70 @@ export default function PortfolioAnalisar() {
   const [area, setArea] = useState<AreaSelection>(
     bootstrap.area ?? GENERAL_AREA,
   );
-  // Se ja havia area salva, ou o usuario escolher, nao adotamos o default do perfil.
-  const areaTouched = useRef(bootstrap.area !== null);
+  // Origem do valor atual da area, para os defaults nao atropelarem escolha:
+  // "saved" (sessionStorage) e "user" (escolha manual) nunca sao sobrescritos;
+  // o quiz tem precedencia sobre o default do perfil ("profile" -> "quiz").
+  const areaSource = useRef<"saved" | "user" | "profile" | "quiz" | null>(
+    bootstrap.area !== null ? "saved" : null,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Default da area pelo perfil logado, so se o usuario ainda nao escolheu nada
-  // e nada valido estava salvo. Usa o profile ja carregado, sem fetch novo.
+  // Historico de analises (dono). null = ainda carregando ou indisponivel.
+  const [history, setHistory] = useState<GithubAnalysisSummary[] | null>(null);
+  const [historyLoadingId, setHistoryLoadingId] = useState<string | null>(null);
+  // Delta de nota vs a analise ANTERIOR do MESMO alvo (so quando existe).
+  const [scoreDelta, setScoreDelta] = useState<{
+    from: number;
+    to: number;
+  } | null>(null);
+  // Confirmacao leve da reanalise (consome 1 uso de IA).
+  const [confirmReanalyze, setConfirmReanalyze] = useState(false);
+
+  // Default da area pelo perfil logado, so se nada foi salvo/escolhido. Usa o
+  // profile ja carregado, sem fetch novo.
   useEffect(() => {
-    if (areaTouched.current) return;
+    if (areaSource.current !== null) return;
     const fromProfile = profile?.area_interesse;
     if (fromProfile && isAreaSlug(fromProfile)) {
       setArea(fromProfile);
-      areaTouched.current = true;
+      areaSource.current = "profile";
     }
   }, [profile]);
+
+  // Prefill pela area do quiz (best-effort, fallback geral): tem precedencia
+  // sobre o default do perfil, nunca sobre escolha manual ou area salva.
+  useEffect(() => {
+    let alive = true;
+    getQuizHistory()
+      .then((rows: Array<Record<string, unknown>>) => {
+        if (!alive) return;
+        if (areaSource.current === "saved" || areaSource.current === "user") {
+          return;
+        }
+        const slug = rows[0]?.result_area_slug;
+        if (isAreaSlug(slug)) {
+          setArea(slug);
+          areaSource.current = "quiz";
+        }
+      })
+      .catch(() => {
+        // Best-effort: sem quiz, fica o default que ja estiver valendo.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const loadHistory = () => {
+    listGithubAnalyses()
+      .then(setHistory)
+      .catch(() => setHistory(null));
+  };
+  useEffect(() => {
+    if (isPro) loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPro]);
 
   // Persiste slots e area no sessionStorage. Nunca persiste loading nem error.
   useEffect(() => {
@@ -218,7 +276,7 @@ export default function PortfolioAnalisar() {
   }
 
   function changeArea(next: AreaSelection) {
-    areaTouched.current = true;
+    areaSource.current = "user";
     setArea(next);
   }
 
@@ -226,6 +284,30 @@ export default function PortfolioAnalisar() {
     if (next === mode) return;
     setMode(next);
     setError("");
+    setScoreDelta(null);
+    setConfirmReanalyze(false);
+  }
+
+  // Anterior do MESMO alvo no historico (para o delta de nota). skipId pula a
+  // propria linha quando a analise exibida veio do historico.
+  function findPriorScore(rawTarget: string, skipId?: string): number | null {
+    if (!history) return null;
+    const normalized = normalizeGithubTarget(rawTarget);
+    let skipping = skipId !== undefined;
+    for (const item of history) {
+      if (skipping) {
+        if (item.id === skipId) skipping = false;
+        continue;
+      }
+      if (
+        item.raw_input &&
+        typeof item.score === "number" &&
+        normalizeGithubTarget(item.raw_input) === normalized
+      ) {
+        return item.score;
+      }
+    }
+    return null;
   }
 
   async function runAnalysis() {
@@ -235,6 +317,11 @@ export default function PortfolioAnalisar() {
 
     setLoading(true);
     setError("");
+    setConfirmReanalyze(false);
+
+    // Nota anterior do mesmo alvo, capturada ANTES da nova analise entrar no
+    // historico.
+    const priorScore = findPriorScore(trimmed);
 
     try {
       const data = await analyzeGithub(activeMode, trimmed, area);
@@ -242,10 +329,48 @@ export default function PortfolioAnalisar() {
         ...prev,
         [activeMode]: { ...prev[activeMode], result: data },
       }));
+      setScoreDelta(
+        priorScore !== null
+          ? { from: priorScore, to: data.deterministic.score }
+          : null,
+      );
+      loadHistory();
     } catch (err) {
       setError(err instanceof Error ? err.message : "ANALYSIS_FAILED");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Reabre uma analise salva na MESMA tela de resultado (result do jsonb).
+  async function openHistory(id: string) {
+    setHistoryLoadingId(id);
+    try {
+      const record = await getGithubAnalysis(id);
+      if (!record) {
+        loadHistory();
+        return;
+      }
+      const recordMode: AnalysisMode =
+        record.input?.mode === "repo" ? "repo" : "perfil";
+      const rawInput = record.input?.input ?? "";
+      setMode(recordMode);
+      setError("");
+      setConfirmReanalyze(false);
+      setSlots((prev) => ({
+        ...prev,
+        [recordMode]: { input: rawInput, result: record.result },
+      }));
+      const priorScore = rawInput ? findPriorScore(rawInput, id) : null;
+      setScoreDelta(
+        priorScore !== null && typeof record.score === "number"
+          ? { from: priorScore, to: record.score }
+          : null,
+      );
+    } catch {
+      // Falha de carga do detalhe: mantem a tela atual.
+    } finally {
+      setHistoryLoadingId(null);
     }
   }
 
@@ -377,6 +502,18 @@ export default function PortfolioAnalisar() {
                 <div className="space-y-8">
                   <ResultHeader response={result} />
 
+                  {scoreDelta ? (
+                    <div className="rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a]">
+                      {/* TODO(Ana): revisar a copy do delta de nota. */}
+                      Sua nota foi de {scoreDelta.from} para {scoreDelta.to}
+                      {scoreDelta.to > scoreDelta.from
+                        ? ". Continua assim!"
+                        : scoreDelta.to === scoreDelta.from
+                          ? "."
+                          : ". Veja abaixo o que priorizar."}
+                    </div>
+                  ) : null}
+
                   {result.deterministic.suficienciaRazao?.trim() ? (
                     <div className="flex items-start gap-2 rounded-2xl border-2 border-sky-300 bg-sky-50 p-4 text-sm font-medium text-sky-900">
                       <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
@@ -395,6 +532,8 @@ export default function PortfolioAnalisar() {
                     pontosFracos={result.qualitative.pontosFracos}
                   />
 
+                  <NextStepCard proximoPasso={result.qualitative.proximoPasso} />
+
                   <Improvements melhorias={result.qualitative.melhorias} />
 
                   <ReadmeSuggestion
@@ -402,7 +541,47 @@ export default function PortfolioAnalisar() {
                   />
 
                   <NextStepsByArea area={result.area} />
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* TODO(Ana): revisar a copy da reanalise. */}
+                    {confirmReanalyze ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void runAnalysis()}
+                          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Confirmar (usa 1 análise do dia)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmReanalyze(false)}
+                          className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmReanalyze(true)}
+                        className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Apliquei as melhorias, analisar de novo
+                      </button>
+                    )}
+                  </div>
                 </div>
+              ) : null}
+
+              {history && history.length > 0 ? (
+                <GithubHistory
+                  analyses={history}
+                  onOpen={(id) => void openHistory(id)}
+                  loadingId={historyLoadingId}
+                />
               ) : null}
             </div>
           )}

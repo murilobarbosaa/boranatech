@@ -63,11 +63,25 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
   }, [area, isGeneral]);
 
   if (isGeneral) {
+    // Sem area definida, o quiz e o caminho pros proximos passos.
     return (
-      <p className="text-sm font-medium text-slate-500">
-        Escolha uma área alvo no topo pra ver projetos e cursos recomendados pra
-        ela.
-      </p>
+      <div className="card-brutal rounded-2xl border-slate-950 bg-violet-50 p-6">
+        {/* TODO(Ana): revisar a copy do CTA de quiz na area geral. */}
+        <h2 className="font-display text-xl font-black text-slate-950">
+          Descubra sua área para receber próximos passos personalizados
+        </h2>
+        <p className="mt-2 text-sm font-medium text-slate-600">
+          Com a sua área definida, a gente indica projetos e cursos certos pra
+          continuar depois da análise. O quiz leva poucos minutos.
+        </p>
+        <Link
+          href="/quiz-carreira"
+          className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+        >
+          Fazer o quiz de carreira
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
     );
   }
 
