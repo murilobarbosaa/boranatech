@@ -175,12 +175,12 @@ function ToolCard({ tool }: { tool: ToolWithCat }) {
     <motion.div
       {...fadeUp}
       whileHover={{ y: -4 }}
-      className="card-brutal flex flex-col rounded-2xl bg-white p-5 transition-shadow duration-200 hover:shadow-[8px_8px_0_#c4b5fd]"
+      className="card-brutal flex flex-col rounded-2xl border-t-4 border-t-violet-500 bg-white p-6 transition-shadow duration-200 hover:shadow-[10px_10px_0_#c4b5fd]"
     >
       <div className="flex items-center gap-3">
         <BrandLogo url={tool.url} nome={tool.nome} />
         <div className="min-w-0">
-          <h3 className="truncate font-display text-lg font-black text-slate-950">
+          <h3 className="truncate font-display text-xl font-black text-slate-950">
             {tool.nome}
           </h3>
           <p className="truncate text-xs font-bold text-slate-400">
@@ -678,11 +678,15 @@ export default function GuiaIa() {
                 <div className="space-y-8">
                   {iaTools.map((grupo) => (
                     <div key={grupo.grupo} className="space-y-4">
-                      <div className="flex flex-wrap items-baseline gap-2">
-                        <p className="social-badge inline-flex px-3 py-1 text-xs font-black uppercase">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span
+                          className="h-7 w-1.5 shrink-0 rounded-full bg-violet-600"
+                          aria-hidden
+                        />
+                        <h3 className="font-display text-2xl font-black text-slate-950">
                           {grupo.grupo}
-                        </p>
-                        <span className="text-xs font-bold text-slate-400">
+                        </h3>
+                        <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-xs font-black text-violet-800">
                           {grupo.ferramentas.length}{" "}
                           {grupo.ferramentas.length === 1
                             ? "ferramenta"
