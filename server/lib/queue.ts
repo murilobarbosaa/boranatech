@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Queue, Worker, type Job } from "bullmq";
 
 import type { Gender } from "../../shared/gender";
@@ -102,6 +103,11 @@ export function createEmailWorker() {
       `[queue] Job ${job?.id} (${job?.data?.type}) falhou:`,
       err.message,
     );
+    Sentry.withScope((scope) => {
+      scope.setTag("jobName", job?.data?.type ?? "unknown");
+      scope.setTag("jobId", String(job?.id ?? "unknown"));
+      Sentry.captureException(err);
+    });
   });
 
   worker.on("error", (err) => {

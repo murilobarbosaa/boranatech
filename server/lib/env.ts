@@ -90,6 +90,8 @@ export const env = {
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
   resendApiKey: process.env.RESEND_API_KEY || "",
   redisUrl: process.env.REDIS_URL || "",
+  // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.
+  sentryDsn: process.env.SENTRY_DSN || "",
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",
   // Portao de lancamento. "gated" mantem o portao fechado; "open" libera geral.

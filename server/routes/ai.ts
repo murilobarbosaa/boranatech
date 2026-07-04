@@ -17,7 +17,8 @@ router.use(checkProStatus);
 
 router.post("/:tool", async (req: Request, res: Response, next: NextFunction) => {
   const toolKey = req.params.tool;
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const userId = req.user!.id;
   const toolConfig = getToolConfig(toolKey);
 
@@ -243,7 +244,8 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
  */
 router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunction) => {
   const toolKey = req.params.tool;
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const userId = req.user!.id;
   const toolConfig = getToolConfig(toolKey);
 

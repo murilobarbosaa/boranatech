@@ -1,4 +1,6 @@
+import * as Sentry from "@sentry/node";
 import compression from "compression";
+import crypto from "crypto";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -41,6 +43,16 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+
+// Request id unificado, gerado na borda. NAO confiamos em X-Request-Id de
+// entrada (cliente pode forjar; somos a borda). Correlaciona log estruturado,
+// resposta e evento do Sentry.
+app.use((req, res, next) => {
+  const requestId = crypto.randomUUID();
+  res.locals.requestId = requestId;
+  res.setHeader("X-Request-Id", requestId);
+  next();
+});
 
 // Compressao de transporte (gzip/brotli). NUNCA comprimir SSE: compression
 // bufferiza e quebraria os streams do agente, do ai/stream e do roadmap IA.
@@ -177,6 +189,7 @@ app.use((req, res, next) => {
         status: res.statusCode,
         duration_ms: Date.now() - startedAt,
         ip: req.ip,
+        request_id: res.locals.requestId,
       }),
     );
   });
@@ -406,6 +419,33 @@ app.use(express.static(staticPath));
 app.get("*", (_req, res) => {
   res.sendFile(path.join(staticPath, "index.html"));
 });
+
+// Captura pro Sentry ANTES do errorHandler, que segue dono da resposta ao
+// cliente. Equivalente ao setupExpressErrorHandler da lib, feito a mao porque
+// precisamos da tag requestId por request: no bundle esbuild a isolacao de
+// escopo por request do SDK (via instrumentacao http) nao e confiavel, entao
+// withScope + captura explicita e o caminho deterministico. So 5xx: erro de
+// createError com statusCode < 500 e negocio esperado (o beforeSend do
+// sentry.ts descarta esses tambem, dupla protecao).
+app.use(
+  (
+    err: Error & { statusCode?: number },
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    const statusCode =
+      typeof err.statusCode === "number" ? err.statusCode : 500;
+    if (statusCode >= 500) {
+      Sentry.withScope((scope) => {
+        scope.setTag("requestId", String(res.locals.requestId ?? ""));
+        scope.setTag("route", req.path);
+        Sentry.captureException(err);
+      });
+    }
+    next(err);
+  },
+);
 
 app.use(errorHandler);
 

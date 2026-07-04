@@ -38,7 +38,8 @@ const CONVERSATION_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 router.post("/chat/stream", async (req: Request, res: Response, next: NextFunction) => {
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const userId = req.user!.id;
   // CRITICO: o tier vem SO do check server-side (checkProStatus expoe req.isPro),
   // jamais do corpo da requisicao. Fail-closed: qualquer coisa diferente de true

@@ -106,7 +106,8 @@ router.post(
 
     const request = parsedBody.data;
     const userId = req.user!.id;
-    const requestId = crypto.randomUUID();
+    const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
     const usage = await checkAiDailyLimit(userId, !!req.isPro, "[linkedin]");
     if (!usage.allowed) {

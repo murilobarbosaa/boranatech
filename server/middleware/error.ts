@@ -18,7 +18,10 @@ export function errorHandler(
   const code = err.code || "internal_error";
 
   if (statusCode >= 500) {
-    console.error(`[error] ${req.method} ${req.path}`, err);
+    console.error(
+      `[error] ${req.method} ${req.path} (requestId: ${String(res.locals.requestId ?? "n/a")})`,
+      err,
+    );
   }
 
   // 500 inesperado (nao veio de createError): nao vaza err.message ao cliente.

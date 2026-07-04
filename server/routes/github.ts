@@ -96,7 +96,8 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
   }
 
   const userId = req.user!.id;
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const tool = `github-${mode}`;
 
   const usage = await checkAiDailyLimit(userId, !!req.isPro, "[github]");

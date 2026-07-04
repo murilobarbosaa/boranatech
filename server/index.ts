@@ -1,9 +1,37 @@
+// PRIMEIRO import de proposito: o sentry.ts se auto-inicializa na avaliacao
+// do modulo, antes do Express e do resto do app carregarem. Nao reordenar.
+import "./lib/sentry";
+
+import * as Sentry from "@sentry/node";
 import { createServer } from "http";
 
 import app from "./app";
 import { env } from "./lib/env";
 import { createEmailWorker } from "./lib/queue";
 import { cacheConnection, queueConnection } from "./lib/redis";
+
+// Marca erros ja capturados no unhandledRejection pra nao duplicar o evento
+// quando o rethrow cair no uncaughtException.
+const SENTRY_CAPTURED = Symbol("sentryCaptured");
+
+process.on("unhandledRejection", (reason) => {
+  Sentry.captureException(reason);
+  const err =
+    reason instanceof Error ? reason : new Error(`unhandledRejection: ${String(reason)}`);
+  (err as Error & { [SENTRY_CAPTURED]?: boolean })[SENTRY_CAPTURED] = true;
+  // Rethrow preserva o comportamento padrao do Node (crash), que sai pelo
+  // handler de uncaughtException abaixo (flush + exit).
+  throw err;
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[fatal] uncaughtException:", err);
+  if (!(err as Error & { [SENTRY_CAPTURED]?: boolean })[SENTRY_CAPTURED]) {
+    Sentry.captureException(err);
+  }
+  // Teto de 2s pro flush; o crash acontece de qualquer jeito.
+  void Sentry.close(2000).finally(() => process.exit(1));
+});
 
 async function startServer() {
   const server = createServer(app);
@@ -36,6 +64,7 @@ async function startServer() {
     await Promise.allSettled([
       queueConnection?.quit().catch(() => {}),
       cacheConnection?.quit().catch(() => {}),
+      Sentry.close(2000).catch(() => {}),
     ]);
   }
 

@@ -273,7 +273,8 @@ async function passesGenerationGate(
 }
 
 router.post("/generate", async (req: Request, res: Response, next: NextFunction) => {
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const userId = req.user!.id;
 
   try {
@@ -402,7 +403,8 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
 });
 
 router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunction) => {
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const userId = req.user!.id;
   // Preenchido quando o lock otimista flipou partial -> generating. O catch
   // final usa isso para restaurar partial em erro inesperado (nunca deixar a
