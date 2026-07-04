@@ -199,4 +199,73 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
+// Historico do dono, no molde de resumeAnalysis/linkedin: sem gate Pro (dado
+// do dono; um ex-Pro continua vendo o que gerou), user_id do JWT, 404 que nao
+// vaza existencia. O modo vem do input jsonb salvo (input.mode).
+
+// Teto de linhas da lista. Ajustavel. // TODO: calibrar.
+const HISTORY_LIMIT = 20;
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+interface GithubAnalysisListRow {
+  id: string;
+  score: number | null;
+  faixa: string | null;
+  area: string | null;
+  created_at: string | null;
+  input: { mode?: string } | null;
+}
+
+router.get("/analyses", async (req: Request, res: Response, next: NextFunction) => {
+  const userId = req.user!.id;
+  const { data, error } = await supabaseAdmin
+    .from("github_analyses")
+    .select("id, score, faixa, area, created_at, input")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(HISTORY_LIMIT);
+  if (error) {
+    // TODO(Ana): mensagem de falha ao listar analises.
+    return next(createError(500, "list_failed", "Nao foi possivel listar suas analises."));
+  }
+  const rows = (data ?? []) as GithubAnalysisListRow[];
+  res.json({
+    analyses: rows.map((row) => ({
+      id: row.id,
+      score: row.score,
+      faixa: row.faixa,
+      area: row.area,
+      created_at: row.created_at,
+      mode: typeof row.input?.mode === "string" ? row.input.mode : null,
+    })),
+  });
+});
+
+router.get("/analyses/:id", async (req: Request, res: Response, next: NextFunction) => {
+  const userId = req.user!.id;
+  const id = req.params.id;
+  if (!UUID_RE.test(id)) {
+    // TODO(Ana): mensagem de analise nao encontrada.
+    return next(createError(404, "not_found", "Analise nao encontrada."));
+  }
+  const { data, error } = await supabaseAdmin
+    .from("github_analyses")
+    .select("id, score, faixa, area, input, result, created_at")
+    .eq("user_id", userId)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    // TODO(Ana): mensagem de falha ao carregar a analise.
+    return next(createError(500, "load_failed", "Nao foi possivel carregar a analise."));
+  }
+  if (!data) {
+    // 404 tambem para linha de OUTRO usuario: nao vaza existencia.
+    // TODO(Ana): mensagem de analise nao encontrada.
+    return next(createError(404, "not_found", "Analise nao encontrada."));
+  }
+  res.json(data);
+});
+
 export default router;
