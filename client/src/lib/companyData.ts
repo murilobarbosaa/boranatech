@@ -32,6 +32,8 @@ function slugify(value: string) {
     .replace(/\s+/g, "-");
 }
 
+// TODO: adicionar mais empresas via curadoria verificada (nome, segmento, cidade,
+// niveis de contratacao, tecnologias, faixa junior reais). Nao inventar empresas.
 const baseCompanies = [
   [
     "Nubank",
