@@ -39,15 +39,29 @@ function iconDefault(userId: string, name: string | null): ResolvedAvatar {
   };
 }
 
-// Pro do DONO do avatar (nao de quem chama). Fail-closed: erro/excecao -> nao Pro.
-async function isOwnerPro(userId: string): Promise<boolean> {
+// Pro dos DONOS dos avatares em LOTE (nao de quem chama): uma unica query no
+// lugar de 1 RPC is_user_pro por usuario (N+1 da auditoria, secao 5.4).
+// Replica a definicao da RPC is_user_pro (migration 20260517231011): existe
+// subscription de plano nao-free com status active/trialing e periodo vigente
+// (current_period_end nulo ou futuro). MANTER EM SINCRONIA com a RPC se ela
+// mudar. Fail-closed: erro/excecao -> ninguem Pro (mesmo contrato de antes).
+async function fetchProOwners(userIds: string[]): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set();
   try {
-    const { data, error } = await supabaseAdmin.rpc("is_user_pro", {
-      p_user_id: userId,
-    });
-    return !error && data === true;
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id, plans!inner(code)")
+      .in("user_id", userIds)
+      .in("status", ["active", "trialing"])
+      .neq("plans.code", "free")
+      .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`);
+    if (error || !data) return new Set();
+    return new Set(
+      (data as Array<{ user_id: string }>).map((row) => row.user_id),
+    );
   } catch {
-    return false;
+    return new Set();
   }
 }
 
@@ -83,8 +97,8 @@ export async function resolveAvatars(
   const byId = new Map<string, ProfileRow>();
   for (const row of rows) byId.set(row.user_id, row);
 
-  // So checa Pro de quem precisa (poderia exibir foto OU usa borda Pro), pra nao
-  // disparar RPC a toa. Uma linha por usuario, entao nao ha RPC duplicada.
+  // So checa Pro de quem precisa (poderia exibir foto OU usa borda Pro), pra
+  // nao consultar a toa. Uma unica query em lote pra lista inteira.
   const needsProCheck = rows.filter((row) => {
     const photoCandidate =
       row.avatar_mode === "photo" &&
@@ -94,19 +108,16 @@ export async function resolveAvatars(
       row.avatar_border != null && PRO_AVATAR_BORDERS.has(row.avatar_border);
     return photoCandidate || proBorder;
   });
-  const proPairs = await Promise.all(
-    needsProCheck.map(
-      async (row) => [row.user_id, await isOwnerPro(row.user_id)] as const,
-    ),
+  const proOwners = await fetchProOwners(
+    needsProCheck.map((row) => row.user_id),
   );
-  const proById = new Map<string, boolean>(proPairs);
 
   return uniqueIds.map((userId) => {
     const row = byId.get(userId);
     // user_id sem profile: default minimo em icone, pra nao quebrar o lote.
     if (!row) return iconDefault(userId, null);
 
-    const ownerPro = proById.get(userId) === true;
+    const ownerPro = proOwners.has(userId);
     const showPhoto =
       row.avatar_mode === "photo" &&
       !!row.avatar_url &&

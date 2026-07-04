@@ -1,3 +1,4 @@
+import compression from "compression";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -39,6 +40,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+
+// Compressao de transporte (gzip/brotli). NUNCA comprimir SSE: compression
+// bufferiza e quebraria os streams do agente, do ai/stream e do roadmap IA.
+// Dupla guarda: request que aceita event-stream OU resposta ja marcada como
+// event-stream ficam de fora; o resto segue o filtro padrao da lib.
+app.use(
+  compression({
+    threshold: 1024,
+    filter: (req, res) => {
+      const accept = String(req.headers.accept || "");
+      if (accept.includes("text/event-stream")) return false;
+      const contentType = String(res.getHeader("Content-Type") || "");
+      if (contentType.includes("text/event-stream")) return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 180;
