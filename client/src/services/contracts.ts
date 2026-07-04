@@ -50,6 +50,9 @@ export interface Profile {
   onboarding_step: number;
   preferences: Record<string, unknown>;
   gender: Gender | null;
+  // Perfil expandido (colunas ja retornadas por /api/me; opcionais aqui
+  // porque nem todo caller depende delas).
+  career_goal?: string | null;
   created_at: string;
   updated_at: string;
 }
