@@ -194,12 +194,14 @@ function buildProfilePrompt(
 async function runQualitativeOnce(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
+  signal?: AbortSignal,
 ): Promise<GithubQualitative> {
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
     {
       method: "POST",
       headers: buildOpenAIHeaders(env.openaiApiKey),
+      signal,
       body: JSON.stringify({
         model: DEFAULT_MODEL,
         temperature: 0.5,
@@ -260,6 +262,7 @@ async function runQualitativeOnce(
 async function runQualitative(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
+  signal?: AbortSignal,
 ): Promise<GithubQualitative> {
   if (!env.openaiApiKey) {
     throw new Error("Servico de IA nao configurado.");
@@ -268,9 +271,14 @@ async function runQualitative(
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await runQualitativeOnce(userText, onAiIo);
+      return await runQualitativeOnce(userText, onAiIo, signal);
     } catch (err) {
       lastError = err;
+      // Budget global da rota estourado: re-tentar so queimaria tempo, toda
+      // tentativa abortaria na hora.
+      if (signal?.aborted) {
+        throw err;
+      }
       const detail = err instanceof Error ? err.message : String(err);
       console.error(
         `[github-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
@@ -340,12 +348,13 @@ export async function analyzeGithub(
   parsed: ParsedRepo | ParsedProfile,
   area: AreaSelection,
   onAiIo?: (io: AnalyzeAiIo) => void,
+  signal?: AbortSignal,
 ): Promise<GithubAnalysisResponse> {
   const label = areaLabel(area);
 
   if (mode === "repo") {
     const { owner, repo } = parsed as ParsedRepo;
-    const data = await fetchRepoData(owner, repo);
+    const data = await fetchRepoData(owner, repo, signal);
     const deterministic = analyzeRepo(data);
     // Repo essencialmente vazio: atalho deterministico caloroso, sem IA.
     const isEmptyRepo = deterministic.suficiencia === "baixa";
@@ -354,6 +363,7 @@ export async function analyzeGithub(
       : await runQualitative(
           buildRepoPrompt(data, deterministic, label),
           onAiIo,
+          signal,
         );
 
     return {
@@ -379,7 +389,7 @@ export async function analyzeGithub(
   }
 
   const { login } = parsed as ParsedProfile;
-  const data = await fetchProfileData(login);
+  const data = await fetchProfileData(login, signal);
   const deterministic = analyzeProfile(data);
   const topRepos = selectTopRepos(data);
   // Perfil sem nenhum repo autoral (zero repos ou so forks): atalho caloroso, sem IA.
@@ -388,6 +398,7 @@ export async function analyzeGithub(
     ? await runQualitative(
         buildProfilePrompt(data, deterministic, topRepos, label),
         onAiIo,
+        signal,
       )
     : emptyProfileQualitative();
 

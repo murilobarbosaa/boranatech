@@ -207,6 +207,24 @@ router.get("/", async (req, res, next) => {
         .single();
 
       if (insertError) {
+        // 23505: outra requisicao/replica criou o profile entre o select e o
+        // insert. Caso esperado sob corrida, nao erro: devolve o profile que
+        // ja existe. O e-mail de boas-vindas fica por conta do vencedor da
+        // corrida (que acabou de enfileirar), pra nao duplicar o envio.
+        if (insertError.code === "23505") {
+          const { data: existing, error: refetchError } = await supabaseAdmin
+            .from("profiles")
+            .select("*")
+            .eq("user_id", userId)
+            .single();
+
+          if (refetchError || !existing) {
+            return next(createError(500, "db_error", "Erro ao criar perfil."));
+          }
+
+          return res.json({ data: existing });
+        }
+
         return next(createError(500, "db_error", "Erro ao criar perfil."));
       }
 

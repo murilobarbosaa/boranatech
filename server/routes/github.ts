@@ -28,6 +28,12 @@ const BodySchema = z.object({
   area: z.string().optional(),
 });
 
+// Budget global de tempo da rota. O modo perfil soma 15-20 chamadas GitHub
+// (teto de 10s CADA) + OpenAI de 60s; sem teto global o pior caso passa de 3
+// minutos com a conexao aberta. O signal e propagado por analyzeGithub ate
+// cada fetch; os tetos unitarios (10s GitHub, 60s OpenAI) permanecem.
+const ANALYZE_BUDGET_MS = 75_000;
+
 // Persistencia best-effort em github_analyses, espelhando o padrao do
 // linkedin.ts: falha de escrita vira console.warn e NUNCA quebra a resposta.
 // user_id vem SO do JWT verificado (a rota tem requireAuth no topo). level fica
@@ -117,11 +123,20 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
 
   let aiUsed = false;
   let aiIo = { inputChars: 0, outputChars: 0 };
+  const budget = new AbortController();
+  const budgetTimer = setTimeout(() => budget.abort(), ANALYZE_BUDGET_MS);
+  budgetTimer.unref();
   try {
-    const data = await analyzeGithub(mode, parsed, area, (io) => {
-      aiUsed = true;
-      aiIo = io;
-    });
+    const data = await analyzeGithub(
+      mode,
+      parsed,
+      area,
+      (io) => {
+        aiUsed = true;
+        aiIo = io;
+      },
+      budget.signal,
+    );
     const outputChars = JSON.stringify(data).length;
     // So conta no limite diario quando a IA rodou de fato. O caminho
     // deterministico (perfil/repo essencialmente vazio) loga como "skipped",
@@ -139,6 +154,23 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
     await logAiUsage({ userId, tool, requestId, status: "error", errorMessage: message });
+
+    // Budget global estourado: qualquer erro daqui em diante e consequencia do
+    // abort. Nunca devolve resultado parcial como analise: ou terminou inteira
+    // (caminho do try), ou 504 claro.
+    if (budget.signal.aborted) {
+      console.error("[github] Analise estourou o budget global de tempo", {
+        requestId,
+        mode,
+      });
+      return next(
+        createError(
+          504,
+          "analysis_timeout",
+          "A analise demorou mais que o esperado e foi interrompida. Tente novamente em instantes.",
+        ),
+      );
+    }
 
     if (err instanceof GithubNotFoundError) {
       return next(
@@ -161,6 +193,8 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
     return next(
       createError(502, "upstream_error", "Nao foi possivel concluir a analise agora. Tente de novo."),
     );
+  } finally {
+    clearTimeout(budgetTimer);
   }
 });
 
