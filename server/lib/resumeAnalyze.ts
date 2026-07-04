@@ -5,6 +5,7 @@ import {
   type ResumeScoreResult,
 } from "../../shared/resumeAnalysis/schema";
 import { env } from "./env";
+import { fetchWithTimeout } from "./http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
@@ -75,27 +76,31 @@ async function runQualitativeOnce(
   userText: string,
   onAiIo?: (io: ResumeAiIo) => void,
 ): Promise<ResumeAnalysisModel> {
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: buildOpenAIHeaders(env.openaiApiKey),
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      temperature: AI_TEMPERATURE,
-      max_tokens: MAX_TOKENS,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userText },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "resume_analysis",
-          strict: true,
-          schema: ANALYSIS_JSON_SCHEMA,
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: AI_TEMPERATURE,
+        max_tokens: MAX_TOKENS,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userText },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "resume_analysis",
+            strict: true,
+            schema: ANALYSIS_JSON_SCHEMA,
+          },
         },
-      },
-    }),
-  });
+      }),
+    },
+    { service: "openai", timeoutMs: 60_000 },
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");

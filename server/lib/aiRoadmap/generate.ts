@@ -12,6 +12,7 @@ import {
 import { roadmapsV2 } from "../../../shared/roadmapV2/content";
 import type { RoadmapNode, RoadmapV2 } from "../../../shared/roadmapV2/types";
 import { env } from "../env";
+import { fetchWithTimeout } from "../http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../openai";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { fetchUserContextPool } from "../userContext/pool";
@@ -263,27 +264,31 @@ interface StructuredCallParams {
 async function callStructuredOnce(
   params: StructuredCallParams,
 ): Promise<{ content: string; parsed: unknown }> {
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: buildOpenAIHeaders(env.openaiApiKey),
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      temperature: AI_TEMPERATURE,
-      max_tokens: params.maxTokens,
-      messages: [
-        { role: "system", content: params.systemPrompt },
-        { role: "user", content: params.userPrompt },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: params.schemaName,
-          strict: true,
-          schema: params.jsonSchema,
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: AI_TEMPERATURE,
+        max_tokens: params.maxTokens,
+        messages: [
+          { role: "system", content: params.systemPrompt },
+          { role: "user", content: params.userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: params.schemaName,
+            strict: true,
+            schema: params.jsonSchema,
+          },
         },
-      },
-    }),
-  });
+      }),
+    },
+    { service: "openai", timeoutMs: 90_000 },
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
