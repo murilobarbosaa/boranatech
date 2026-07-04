@@ -9,6 +9,7 @@ import {
 } from "../lib/asaas";
 import {
   cancelSubscriptionAtAsaas,
+  cancelSubscriptionImmediatelyAtAsaas,
   reactivateSubscriptionAtAsaas,
 } from "../lib/billing-asaas";
 import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
@@ -167,6 +168,113 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
     const endDate = subscription.current_period_end
       ? new Date(subscription.current_period_end).toISOString().split("T")[0]
       : null;
+
+    // Guard: sem periodo valido => assinatura nunca foi paga. Cancela na hora.
+    if (!endDate) {
+      if (subscription.provider_subscription_id) {
+        try {
+          await cancelSubscriptionImmediatelyAtAsaas(
+            subscription.provider_subscription_id,
+          );
+        } catch (asaasErr) {
+          console.error(
+            `[billing/cancel] Asaas falhou ao encerrar sub sem periodo ${subscription.provider_subscription_id}; banco nao alterado:`,
+            asaasErr,
+          );
+          return next(
+            createError(
+              502,
+              "asaas_error",
+              "Não foi possível cancelar no provedor. Tente novamente.", // TODO(Ana)
+            ),
+          );
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      const { error: cancelError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({ status: "canceled", canceled_at: nowIso })
+        .eq("id", subscription.id);
+
+      if (cancelError) {
+        console.error(
+          `[billing/cancel] update DB falhou no cancelamento imediato (sub ${subscription.id}):`,
+          cancelError,
+        );
+        return next(
+          createError(
+            500,
+            "db_error",
+            "Erro ao registrar cancelamento. Tente novamente.", // TODO(Ana)
+          ),
+        );
+      }
+
+      const { error: auditError } = await supabaseAdmin
+        .from("subscription_cancellations")
+        .insert({
+          user_id: userId,
+          provider_subscription_id:
+            subscription.provider_subscription_id || null,
+          reason_code: reasonCode || null,
+          reason_text: reasonText || null,
+          effective_at: nowIso,
+          // status do cancelamento como processo: imediato ja concluiu, entao
+          // "completed". A tabela subscription_cancellations so aceita
+          // scheduled/completed/reverted (CHECK constraint); "canceled" e valido na
+          // tabela subscriptions, nao aqui.
+          status: "completed",
+        });
+      // Best-effort logado, nao gate: o cancelamento ja aconteceu no Asaas e
+      // na tabela subscriptions; falha de auditoria nao derruba a rota.
+      if (auditError) {
+        console.error(
+          "[billing/cancel] Falha ao registrar auditoria do cancelamento imediato:",
+          auditError,
+        );
+      }
+
+      try {
+        const { data: authData } =
+          await supabaseAdmin.auth.admin.getUserById(userId);
+        const userEmail = authData?.user?.email || "";
+        const userName = String(
+          authData?.user?.user_metadata?.name ||
+            authData?.user?.email?.split("@")[0] ||
+            "usuário",
+        );
+        const { data: profileData } = await supabaseAdmin
+          .from("profiles")
+          .select("gender")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const userGender =
+          (profileData?.gender as Gender | null | undefined) ?? null;
+        if (userEmail) {
+          await enqueueEmail({
+            type: "cancellation",
+            to: userEmail,
+            name: userName,
+            gender: userGender,
+          });
+        }
+      } catch (emailError) {
+        console.error(
+          "[billing/cancel] Erro ao enfileirar e-mail de cancelamento imediato:",
+          emailError,
+        );
+      }
+
+      return res.json({
+        data: {
+          cancel_at_period_end: false,
+          effective_at: nowIso,
+          status: "canceled",
+          message: "Sua assinatura foi cancelada.", // TODO(Ana)
+        },
+      });
+    }
 
     // d + e. Asaas PRIMEIRO; banco depois. Se o Asaas falhar, o banco NAO reflete o
     // cancelamento (estado consistente). Esta etapa e idempotente e segura para retry:
