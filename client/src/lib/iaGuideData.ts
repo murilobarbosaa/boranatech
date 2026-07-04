@@ -9,6 +9,8 @@ export interface IaTool {
   url: string;
   temPortugues?: boolean;
   embaixadora?: boolean;
+  docUrl?: string;
+  videoUrl?: string;
 }
 
 export interface IaToolGroup {
@@ -50,6 +52,7 @@ export const iaTools: IaToolGroup[] = [
           "Analisar um arquivo grande, revisar redação ou pedir raciocínio mais cuidadoso.",
         custo: "Freemium",
         url: "https://claude.ai/",
+        docUrl: "https://docs.anthropic.com/",
         temPortugues: true,
       },
       {
@@ -59,6 +62,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Dúvidas gerais e uso junto das ferramentas do Google.",
         custo: "Freemium",
         url: "https://gemini.google.com/",
+        docUrl: "https://ai.google.dev/gemini-api/docs",
         temPortugues: true,
       },
       {
@@ -69,6 +73,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Dúvidas gerais e acompanhar assuntos recentes.",
         custo: "Freemium",
         url: "https://grok.com/",
+        docUrl: "https://docs.x.ai/",
       },
       {
         nome: "Microsoft Copilot",
@@ -77,6 +82,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Usar IA dentro do Word, Excel e do navegador Edge.",
         custo: "Freemium",
         url: "https://copilot.microsoft.com/",
+        docUrl: "https://support.microsoft.com/copilot",
         temPortugues: true,
       },
       {
@@ -86,6 +92,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Alternativa europeia para dúvidas e escrita.",
         custo: "Freemium",
         url: "https://chat.mistral.ai/",
+        docUrl: "https://docs.mistral.ai/",
       },
       {
         nome: "Meta AI",
@@ -103,6 +110,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Estudar e resolver problemas com um modelo aberto.",
         custo: "Freemium",
         url: "https://chat.deepseek.com/",
+        docUrl: "https://api-docs.deepseek.com/",
       },
     ],
   },
@@ -118,6 +126,7 @@ export const iaTools: IaToolGroup[] = [
           "Quando você precisa de referências para checar a resposta.",
         custo: "Freemium",
         url: "https://www.perplexity.ai/",
+        docUrl: "https://docs.perplexity.ai/",
       },
     ],
   },
@@ -132,6 +141,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Acelerar código repetitivo no dia a dia.",
         custo: "Freemium",
         url: "https://github.com/features/copilot",
+        docUrl: "https://docs.github.com/copilot",
       },
       {
         nome: "Cursor",
@@ -140,6 +150,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Programar com ajuda de IA dentro do editor.",
         custo: "Freemium",
         url: "https://cursor.com/",
+        docUrl: "https://docs.cursor.com/",
         temPortugues: true,
         embaixadora: true,
       },
@@ -157,6 +168,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Prototipar telas rápido.",
         custo: "Freemium",
         url: "https://v0.dev/",
+        docUrl: "https://v0.dev/docs",
       },
       {
         nome: "Bolt",
@@ -165,6 +177,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Tirar uma ideia do zero ao app sem configurar ambiente.",
         custo: "Freemium",
         url: "https://bolt.new/",
+        docUrl: "https://support.bolt.new/",
       },
       {
         nome: "Lovable",
@@ -173,6 +186,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar um produto simples sem programar do zero.",
         custo: "Freemium",
         url: "https://lovable.dev/",
+        docUrl: "https://docs.lovable.dev/",
       },
       {
         nome: "Replit",
@@ -182,6 +196,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Programar, hospedar e compartilhar projetos rápido.",
         custo: "Freemium",
         url: "https://replit.com/",
+        docUrl: "https://docs.replit.com/",
       },
     ],
   },
@@ -196,6 +211,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar uma ilustração ou mockup simples.",
         custo: "Pago",
         url: "https://openai.com/index/dall-e-3/",
+        docUrl: "https://platform.openai.com/docs/guides/images",
         temPortugues: true,
       },
       {
@@ -213,6 +229,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar logos, banners e imagens com palavras legíveis.",
         custo: "Freemium",
         url: "https://ideogram.ai/",
+        docUrl: "https://docs.ideogram.ai/",
       },
       {
         nome: "Adobe Firefly",
@@ -221,6 +238,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar e editar imagens dentro do fluxo da Adobe.",
         custo: "Freemium",
         url: "https://firefly.adobe.com/",
+        docUrl: "https://helpx.adobe.com/firefly.html",
       },
       {
         nome: "Leonardo AI",
@@ -230,6 +248,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar assets visuais com estilo consistente.",
         custo: "Freemium",
         url: "https://leonardo.ai/",
+        docUrl: "https://docs.leonardo.ai/",
       },
       {
         nome: "Krea",
@@ -238,6 +257,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Experimentar variações visuais rápido.",
         custo: "Freemium",
         url: "https://www.krea.ai/",
+        docUrl: "https://docs.krea.ai/",
       },
       {
         nome: "Stable Diffusion",
@@ -246,6 +266,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Rodar geração de imagem localmente ou em serviços que o usam.",
         custo: "Freemium",
         url: "https://stability.ai",
+        docUrl: "https://platform.stability.ai/docs",
       },
     ],
   },
@@ -285,6 +306,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar clipes curtos com movimento realista.",
         custo: "Freemium",
         url: "https://lumalabs.ai/",
+        docUrl: "https://docs.lumalabs.ai/",
       },
       {
         nome: "HeyGen",
@@ -293,6 +315,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Gravar um vídeo sem aparecer na câmera.",
         custo: "Freemium",
         url: "https://www.heygen.com/",
+        docUrl: "https://docs.heygen.com/",
       },
       {
         nome: "Synthesia",
@@ -302,6 +325,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Produzir vídeos corporativos em escala.",
         custo: "Pago",
         url: "https://www.synthesia.io/",
+        docUrl: "https://help.synthesia.io/",
       },
     ],
   },
@@ -316,6 +340,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Criar locução para vídeos e podcasts.",
         custo: "Freemium",
         url: "https://elevenlabs.io/",
+        docUrl: "https://elevenlabs.io/docs",
         embaixadora: true,
       },
       {
@@ -325,6 +350,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Fazer uma trilha ou música por diversão.",
         custo: "Freemium",
         url: "https://suno.com/",
+        docUrl: "https://help.suno.com/",
       },
       {
         nome: "Udio",
@@ -333,6 +359,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Experimentar composições rápidas.",
         custo: "Freemium",
         url: "https://www.udio.com/",
+        docUrl: "https://help.udio.com/",
       },
       {
         nome: "OpenAI Whisper",
@@ -341,6 +368,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Gerar legendas e transcrições de áudio e vídeo.",
         custo: "Grátis",
         url: "https://github.com/openai/whisper",
+        docUrl: "https://platform.openai.com/docs/guides/speech-to-text",
       },
     ],
   },
@@ -355,6 +383,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Montar um slide bonito em minutos.",
         custo: "Freemium",
         url: "https://gamma.app/",
+        docUrl: "https://help.gamma.app/",
       },
       {
         nome: "Notion AI",
@@ -363,6 +392,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Resumir, escrever e organizar notas no Notion.",
         custo: "Freemium",
         url: "https://www.notion.com/product/ai",
+        docUrl: "https://www.notion.com/help/guides/using-notion-ai",
       },
       {
         nome: "Canva Magic Studio",
@@ -405,6 +435,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Revisar textos e e-mails, principalmente em inglês.",
         custo: "Freemium",
         url: "https://www.grammarly.com",
+        docUrl: "https://support.grammarly.com/",
       },
       {
         nome: "DeepL",
@@ -429,6 +460,7 @@ export const iaTools: IaToolGroup[] = [
         quandoUsar: "Estudar de PDFs e anotações suas.",
         custo: "Freemium",
         url: "https://notebooklm.google.com/",
+        docUrl: "https://support.google.com/notebooklm",
         temPortugues: true,
       },
     ],
@@ -445,6 +477,7 @@ export const iaTools: IaToolGroup[] = [
           "Testar modelos abertos e ver o que a comunidade publica.",
         custo: "Freemium",
         url: "https://huggingface.co/",
+        docUrl: "https://huggingface.co/docs",
       },
     ],
   },

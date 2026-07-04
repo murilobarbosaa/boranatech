@@ -223,7 +223,7 @@ function ToolCard({ tool }: { tool: ToolWithCat }) {
       <p className="mt-2 flex-1 text-sm text-slate-700">
         <span className="font-black">Quando usar:</span> {tool.quandoUsar}
       </p>
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         {tool.custo === "Pago" ? (
           <a
             href={tool.url}
@@ -246,6 +246,32 @@ function ToolCard({ tool }: { tool: ToolWithCat }) {
             Experimente agora <ExternalLink className="h-3 w-3" />
           </a>
         )}
+        {tool.docUrl ? (
+          <a
+            href={tool.docUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "inline-flex items-center gap-1 text-xs font-black uppercase",
+              ac.link,
+            )}
+          >
+            <BookOpen className="h-3 w-3" /> Documentação
+          </a>
+        ) : null}
+        {tool.videoUrl ? (
+          <a
+            href={tool.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "inline-flex items-center gap-1 text-xs font-black uppercase",
+              ac.link,
+            )}
+          >
+            <Youtube className="h-3 w-3" /> Ver vídeo
+          </a>
+        ) : null}
         <button
           type="button"
           onClick={copyLink}
@@ -697,42 +723,52 @@ export default function GuiaIa() {
                     Limpar filtros
                   </button>
                 </div>
-              ) : isFiltering ? (
-                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                  {toolsOrdenados.map((tool) => (
-                    <ToolCard key={tool.nome} tool={tool} />
-                  ))}
-                </div>
               ) : (
                 <div className="space-y-8">
-                  {iaTools.map((grupo) => (
-                    <div key={grupo.grupo} className="space-y-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span
-                          className="h-7 w-1.5 shrink-0 rounded-full bg-violet-600"
-                          aria-hidden
-                        />
-                        <h3 className="font-display text-2xl font-black text-slate-950">
-                          {grupo.grupo}
-                        </h3>
-                        <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-xs font-black text-violet-800">
-                          {grupo.ferramentas.length}{" "}
-                          {grupo.ferramentas.length === 1
-                            ? "ferramenta"
-                            : "ferramentas"}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600">{grupo.descricao}</p>
-                      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                        {grupo.ferramentas.map((tool) => (
-                          <ToolCard
-                            key={tool.nome}
-                            tool={{ ...tool, categoria: grupo.grupo }}
+                  {[
+                    {
+                      titulo: "Tem plano gratuito",
+                      descricao: "Dá pra começar sem pagar.",
+                      lista: toolsOrdenados.filter(
+                        (tool) => tool.custo !== "Pago",
+                      ),
+                    },
+                    {
+                      titulo: "Pagas",
+                      descricao: "Precisam de assinatura ou compra pra usar.",
+                      lista: toolsOrdenados.filter(
+                        (tool) => tool.custo === "Pago",
+                      ),
+                    },
+                  ].map((secao) =>
+                    secao.lista.length === 0 ? null : (
+                      <div key={secao.titulo} className="space-y-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span
+                            className="h-7 w-1.5 shrink-0 rounded-full bg-violet-600"
+                            aria-hidden
                           />
-                        ))}
+                          <h3 className="font-display text-2xl font-black text-slate-950">
+                            {secao.titulo}
+                          </h3>
+                          <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-xs font-black text-violet-800">
+                            {secao.lista.length}{" "}
+                            {secao.lista.length === 1
+                              ? "ferramenta"
+                              : "ferramentas"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600">
+                          {secao.descricao}
+                        </p>
+                        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                          {secao.lista.map((tool) => (
+                            <ToolCard key={tool.nome} tool={tool} />
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               )}
 
