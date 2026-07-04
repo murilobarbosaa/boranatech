@@ -109,7 +109,10 @@ export const env = {
   githubToken: process.env.GITHUB_TOKEN || "",
   // Portao de lancamento. "gated" mantem o portao fechado; "open" libera geral.
   waitlistMode: (process.env.WAITLIST_MODE || "gated") as "open" | "gated",
-  // Codigo de acesso beta. Ausente: unlock sempre 401 (fail-closed).
+  // DEPRECATED: codigo unico de acesso beta em env. Substituido por codigos por
+  // pessoa em public.beta_access_codes (POST /api/beta/unlock consulta a tabela).
+  // Mantido sem uso para nao quebrar ambientes que ainda setem a env; remover
+  // depois que todos os deploys estiverem sem WAITLIST_ACCESS_CODE.
   waitlistAccessCode: process.env.WAITLIST_ACCESS_CODE || "",
   // Secret HMAC do token de beta. Ausente: o portao nao emite token, sem crashar.
   waitlistTokenSecret: process.env.WAITLIST_TOKEN_SECRET || "",

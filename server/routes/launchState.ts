@@ -4,11 +4,16 @@ import { Router } from "express";
 
 import { env } from "../lib/env";
 import { cacheConnection } from "../lib/redis";
+import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 
 // Token de beta: payload base64url com expiracao, assinado por HMAC-SHA256 com
 // WAITLIST_TOKEN_SECRET. Independente do auth do Supabase. ~90 dias de validade.
 const TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+// Tamanho maximo do codigo enviado. Corta payload absurdo antes de qualquer
+// consulta e limita o attempted_code gravado no log.
+const MAX_CODE_LENGTH = 64;
 
 // Brute-force do codigo: conta tentativas por IP numa janela curta e bloqueia ao
 // passar do teto. Diferente do throttle one-shot do affiliates (SET NX) de
@@ -24,9 +29,9 @@ function sign(payloadB64: string, secret: string) {
     .digest("base64url");
 }
 
-function issueToken(secret: string) {
+function issueToken(secret: string, label: string) {
   const payload = Buffer.from(
-    JSON.stringify({ exp: Date.now() + TOKEN_TTL_MS }),
+    JSON.stringify({ label, exp: Date.now() + TOKEN_TTL_MS }),
   ).toString("base64url");
   return `${payload}.${sign(payload, secret)}`;
 }
@@ -52,6 +57,28 @@ function verifyToken(token: string, secret: string): boolean {
   }
 }
 
+// Log de tentativa de unlock, best-effort: nunca derruba a resposta. Cobre tanto
+// o erro thrown (rede) quanto o { error } que o supabase-js devolve.
+async function logUnlock(fields: {
+  code_id?: string;
+  label?: string;
+  success: boolean;
+  attempted_code: string;
+  ip: string;
+  user_agent?: string;
+}) {
+  try {
+    const { error } = await supabaseAdmin
+      .from("beta_unlock_logs")
+      .insert(fields);
+    if (error) {
+      console.warn("[beta] Falha ao registrar log de unlock", error);
+    }
+  } catch (err) {
+    console.warn("[beta] Falha ao registrar log de unlock", err);
+  }
+}
+
 // GET /api/launch-state
 // Estado do portao por env runtime (WAITLIST_MODE, default "gated"). Le o header
 // x-beta-token opcional e devolve access=true se o token for valido e nao expirado.
@@ -70,13 +97,22 @@ launchStateRouter.get("/", (req, res) => {
 });
 
 // POST /api/beta/unlock
-// Recebe { code } e, se bater com WAITLIST_ACCESS_CODE (comparacao constant-time),
-// emite um token assinado. Fail-closed: sem env de codigo, sempre 401.
+// Recebe { code }, valida contra public.beta_access_codes (codigo por pessoa) e,
+// se ativo, emite um token assinado e registra o uso. Fail-closed: sem secret ou
+// erro de banco nunca vira acesso.
+//
+// SEGURANCA: o codigo com label "admin" (ou qualquer outro) e APENAS um rotulo de
+// log para a Ana identificar quem entrou. Ele NAO concede papel de admin. Papel
+// de admin continua resolvido exclusivamente por requireAdmin via RPC
+// is_user_admin sobre JWT verificado. Codigo de convite jamais e fonte de
+// privilegio (referencia: incidente all-accounts-Pro).
 export const betaRouter = Router();
 
 betaRouter.post("/unlock", async (req, res, next) => {
   try {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const userAgent = req.get("user-agent") || undefined;
+
     if (cacheConnection) {
       try {
         const key = `beta:unlock:${ip}`;
@@ -102,35 +138,59 @@ betaRouter.post("/unlock", async (req, res, next) => {
     }
 
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const code = typeof body.code === "string" ? body.code.trim() : "";
-    const expected = env.waitlistAccessCode;
+    const raw = typeof body.code === "string" ? body.code : "";
+    const code = raw.trim().toUpperCase();
 
-    // Fail-closed: sem codigo configurado ou sem codigo enviado, nega.
-    if (!expected || !code) {
+    // Input invalido (vazio ou grande demais): 401 seco, sem consultar banco nem
+    // poluir o log com lixo.
+    if (!code || code.length > MAX_CODE_LENGTH) {
       return next(createError(401, "invalid_code", "Codigo invalido."));
     }
 
-    const codeBuf = Buffer.from(code);
-    const expectedBuf = Buffer.from(expected);
-    const match =
-      codeBuf.length === expectedBuf.length &&
-      crypto.timingSafeEqual(codeBuf, expectedBuf);
-    if (!match) {
-      return next(createError(401, "invalid_code", "Codigo invalido."));
-    }
-
-    // Codigo certo, mas sem secret nao da pra assinar token. Nao crasha.
+    // Fail-closed de configuracao: sem secret nao da pra assinar token. Responde
+    // 503 antes de tocar o banco. Segredo ausente nunca vira acesso liberado.
     if (!env.waitlistTokenSecret) {
       return next(
-        createError(
-          503,
-          "gate_unavailable",
-          "Portao indisponivel no momento.",
-        ),
+        createError(503, "gate_unavailable", "Portao indisponivel no momento."),
       );
     }
 
-    res.json({ token: issueToken(env.waitlistTokenSecret) });
+    const { data, error } = await supabaseAdmin
+      .from("beta_access_codes")
+      .select("id, label, active")
+      .eq("code", code)
+      .maybeSingle();
+
+    // Erro de banco: 503. Falha nunca colapsa em acesso valido.
+    if (error) {
+      console.error("[beta] Falha ao consultar codigo de acesso", error);
+      return next(
+        createError(503, "gate_unavailable", "Portao indisponivel no momento."),
+      );
+    }
+
+    // Nao encontrado ou revogado (active false): registra a falha e nega.
+    if (!data || data.active !== true) {
+      await logUnlock({
+        success: false,
+        attempted_code: code,
+        ip,
+        user_agent: userAgent,
+      });
+      return next(createError(401, "invalid_code", "Codigo invalido."));
+    }
+
+    // Codigo valido e ativo: registra o uso e emite token com o label nas claims.
+    await logUnlock({
+      code_id: data.id,
+      label: data.label,
+      success: true,
+      attempted_code: code,
+      ip,
+      user_agent: userAgent,
+    });
+
+    res.json({ token: issueToken(env.waitlistTokenSecret, data.label) });
   } catch (err) {
     next(err);
   }
