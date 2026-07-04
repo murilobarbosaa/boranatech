@@ -14,6 +14,7 @@ import {
 } from "../lib/billing-asaas";
 import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { env } from "../lib/env";
+import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
@@ -210,6 +211,12 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
           ),
         );
       }
+
+      // Virou nao-Pro na hora: invalida o cache DEPOIS da escrita confirmada
+      // (invalidar antes abriria janela pro valor velho ser re-cacheado).
+      // Fire-and-forget: a funcao engole erro; na pior hipotese o TTL de 60s
+      // resolve, que e o comportamento de hoje.
+      void invalidateProStatusCache(userId);
 
       const { error: auditError } = await supabaseAdmin
         .from("subscription_cancellations")
@@ -924,6 +931,15 @@ router.post("/webhook", async (req, res, next) => {
         transitionedTo = "incomplete";
       }
       // action === "skip": estado da subscription inalterado.
+
+      // Toda transicao real muda (ou pode mudar) o boolean Pro do DONO da
+      // subscription (userId vem do externalReference, nao de req.user):
+      // activate liga, past_due/cancel/incomplete desligam. Invalida DEPOIS
+      // da escrita confirmada (cada ramo acima lanca em erro de escrita).
+      // Fire-and-forget: falha de invalidacao nunca falha o webhook.
+      if (transitionedTo) {
+        void invalidateProStatusCache(userId);
+      }
 
       // Afiliado: so quando ativou de fato (dedupe ja protege reentrega).
       if (affiliateCode && action === "activate") {

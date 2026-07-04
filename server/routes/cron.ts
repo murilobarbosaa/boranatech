@@ -13,6 +13,7 @@ import {
 import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { recordCronRun } from "../lib/cron-logs";
 import { env } from "../lib/env";
+import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
@@ -350,6 +351,10 @@ router.post("/process-cancellations", withCronLock("process-cancellations", 600,
 
         if (updateError) throw updateError;
 
+        // Deixou de ser Pro: invalida o cache do dono apos a escrita
+        // confirmada. Fire-and-forget, por usuario afetado (nao em lote).
+        void invalidateProStatusCache(sub.user_id);
+
         await supabaseAdmin
           .from("subscription_cancellations")
           .update({ status: "completed" })
@@ -395,6 +400,7 @@ const PAID_PAYMENT_STATUSES = new Set([
 
 type SubRow = {
   id: string;
+  user_id?: string | null;
   provider_subscription_id: string | null;
   current_period_end?: string | null;
   plans?: { code?: string } | { code?: string }[] | null;
@@ -435,7 +441,7 @@ async function reconcileIncompleteSubscriptions() {
 
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, provider_subscription_id, plans(code)")
+    .select("id, user_id, provider_subscription_id, plans(code)")
     .eq("status", "incomplete")
     .or(
       `last_event_at.lte.${cutoff},and(last_event_at.is.null,created_at.lte.${cutoff})`,
@@ -479,6 +485,9 @@ async function reconcileIncompleteSubscriptions() {
         .eq("id", sub.id);
       if (updateError) throw updateError;
 
+      // incomplete -> active: virou Pro; invalida o cache do dono.
+      if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+
       promoted += 1;
     } catch (err) {
       failed += 1;
@@ -502,7 +511,7 @@ async function reconcileExpiredSubscriptions() {
 
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, provider_subscription_id, current_period_end, plans(code)")
+    .select("id, user_id, provider_subscription_id, current_period_end, plans(code)")
     .eq("status", "active")
     .or("cancel_at_period_end.is.null,cancel_at_period_end.eq.false")
     .lte("current_period_end", cutoff)
@@ -548,6 +557,11 @@ async function reconcileExpiredSubscriptions() {
           .eq("id", sub.id);
         if (updateError) throw updateError;
 
+        // Renovou com periodo que ja tinha vencido (>3d de grace): o
+        // is_user_pro estava false pelo current_period_end; o novo periodo
+        // religa o boolean. Invalida o cache do dono.
+        if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+
         renewed += 1;
       } else {
         // Observabilidade: registra o status real no Asaas (nao decide nada).
@@ -572,6 +586,10 @@ async function reconcileExpiredSubscriptions() {
           })
           .eq("id", sub.id);
         if (updateError) throw updateError;
+
+        // active -> past_due: o boolean ja estava false pelo periodo vencido,
+        // mas invalidar e barato e elimina qualquer janela residual.
+        if (sub.user_id) void invalidateProStatusCache(sub.user_id);
 
         console.warn(
           `[cron/reconcile-subscriptions] downgrade ${sub.id} -> past_due (asaas status: ${asaasStatus})`,
