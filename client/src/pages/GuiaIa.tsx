@@ -114,6 +114,13 @@ function normalize(value: string) {
     .toLowerCase();
 }
 
+// Uma ferramenta e "usavel de graca" se e Gratis OU Freemium (tem versao free).
+// Normaliza pra tolerar variacoes ("Grátis"/"gratis"/"free"/"Freemium").
+function custoEhGratis(custo: string): boolean {
+  const c = normalize(custo).trim();
+  return c === "gratis" || c === "free" || c === "freemium";
+}
+
 function findTool(nome: string) {
   return allTools.find((tool) => tool.nome === nome);
 }
@@ -364,7 +371,11 @@ export default function GuiaIa() {
   const buscaNorm = normalize(busca.trim());
   const toolsFiltrados = allTools.filter((tool) => {
     const matchCategoria = categoria === "Todas" || tool.categoria === categoria;
-    const matchCusto = custoFiltro === "Todos" || tool.custo === custoFiltro;
+    const matchCusto =
+      custoFiltro === "Todos" ||
+      (custoFiltro === "Grátis"
+        ? custoEhGratis(tool.custo)
+        : tool.custo === custoFiltro);
     const matchBusca =
       !buscaNorm ||
       normalize(tool.nome).includes(buscaNorm) ||
