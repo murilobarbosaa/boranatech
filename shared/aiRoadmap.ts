@@ -51,7 +51,7 @@ export const RoadmapSkeletonModelSchema = z.object({
   title: z.string(),
   level: z.string(),
   description: z.string(),
-  sections: z.array(SkeletonSectionSchema).min(5).max(9),
+  sections: z.array(SkeletonSectionSchema).min(7).max(10),
 });
 
 export type RoadmapSkeletonModel = z.infer<typeof RoadmapSkeletonModelSchema>;
@@ -64,14 +64,24 @@ export const RoadmapSkeletonSchema = RoadmapSkeletonModelSchema.extend({
 export type RoadmapSkeleton = z.infer<typeof RoadmapSkeletonSchema>;
 
 // No de conteudo gerado. Espelho de RoadmapNode SEM resources e SEM byLanguage
-// (v1). Campos opcionais sao nullable pelo strict mode (ver topo).
+// (v1). Campos opcionais sao nullable pelo strict mode (ver topo). content e
+// estimatedTime sao OBRIGATORIOS (nao-nullable): todo passo ensina e estima;
+// o describe orienta o modelo e o safeParse pune ausencia com retry.
 const SectionContentChildSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().nullable(),
-  content: z.string().nullable(),
+  content: z
+    .string()
+    .describe(
+      "Markdown de 4 a 8 frases, estruturado em: o que dominar (com subtopicos nomeados), como praticar, e um mini desafio pratico concreto. Profundo o bastante para a pessoa saber exatamente o que estudar e como praticar hoje.",
+    ),
   project: z.string().nullable(),
-  estimatedTime: z.string().nullable(),
+  estimatedTime: z
+    .string()
+    .describe(
+      'Estimativa realista de tempo, sempre preenchida. Exemplos: "2 semanas", "10 horas", "4h a 6h".',
+    ),
   optional: z.boolean().nullable(),
 });
 
@@ -89,7 +99,7 @@ export type RoadmapSectionContentNode = z.infer<
 >;
 
 export const RoadmapSectionContentSchema = z.object({
-  children: z.array(SectionContentNodeSchema).min(4).max(10),
+  children: z.array(SectionContentNodeSchema).min(6).max(10),
 });
 
 export type RoadmapSectionContent = z.infer<typeof RoadmapSectionContentSchema>;
