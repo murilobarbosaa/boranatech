@@ -8,7 +8,7 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
-import { areasTI } from "@/lib/data";
+import { areasCount } from "@/lib/counts";
 
 // Copy desta secao e rascunho da Ana (texto final e dela).
 // TODO(Ana): revisar headline, personas e beneficios antes de publicar.
@@ -39,7 +39,7 @@ const BENEFICIOS = [
 
 export default function ProQuemE() {
   const reduce = useReducedMotion();
-  const totalAreas = areasTI.length;
+  const totalAreas = areasCount;
 
   return (
     <section className="relative overflow-hidden bg-white py-20 md:py-28">

@@ -7,8 +7,8 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { LEVEL_QUESTION_COUNT, dictionaryTerms } from "@/lib/platformData";
-import { roadmaps } from "@/lib/data";
+import { LEVEL_QUESTION_COUNT } from "@/lib/platformData";
+import { dictionaryTermsCount, roadmapsCount } from "@/lib/counts";
 
 // =========================================
 // DADOS DOS NÚMEROS
@@ -26,14 +26,14 @@ interface Stat {
 
 const STATS: Stat[] = [
   {
-    value: dictionaryTerms.length,
+    value: dictionaryTermsCount,
     prefix: "+",
     label: "termos",
     description: "no dicionário de TI",
     color: "amber",
   },
   {
-    value: roadmaps.length,
+    value: roadmapsCount,
     prefix: "+",
     label: "roadmaps",
     description: "prontos pra você seguir",

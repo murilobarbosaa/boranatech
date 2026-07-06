@@ -35,6 +35,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import { createCheckout } from "@/services/subscriptionService";
 import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
+import { areasCount, dictionaryTermsCount } from "@/lib/counts";
 
 const plans = [
   {
@@ -100,13 +101,13 @@ const extraFeatures = PRO_FEATURES.filter((f) => f.group === "extra");
 const extraNames = extraFeatures.map((f) => f.title).join(", ");
 
 const FREE_ITEMS: Array<{ icon: LucideIcon; text: string }> = [
-  { icon: Layers, text: "Catálogo de 12 áreas de TI" },
+  { icon: Layers, text: `Catálogo de ${areasCount} áreas de TI` },
   { icon: Cpu, text: "+60 tecnologias com comparação" },
   { icon: Building2, text: "+20 empresas brasileiras de tech" },
   { icon: GraduationCap, text: "+20 faculdades e cursos" },
   { icon: Calendar, text: "+42 eventos tech" },
   { icon: Code2, text: "+48 projetos pra praticar" },
-  { icon: BookOpen, text: "Dicionário com +250 termos" },
+  { icon: BookOpen, text: `Dicionário com +${dictionaryTermsCount} termos` },
   { icon: Compass, text: "Quiz de carreira completo" },
   { icon: MessageSquare, text: "Banco de perguntas e desafios de entrevista" },
 ];

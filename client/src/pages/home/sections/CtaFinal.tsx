@@ -18,6 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { greet } from "@shared/greeting";
 import type { Profile } from "@/services/contracts";
+import { areasTI } from "@/lib/data";
+import { areasCount } from "@/lib/counts";
 
 const HEADLINE_TEXT = "Sua carreira em TI começa aqui.";
 const EYEBROW_TEXT = "BORA NA TECH?";
@@ -125,10 +127,11 @@ const FREE_COMMANDS: CommandMap = {
     kind: "output",
     content: (
       <div>
-        <div className="mb-1 text-slate-400">12 áreas de TI disponíveis:</div>
+        <div className="mb-1 text-slate-400">
+          {areasCount} áreas de TI disponíveis:
+        </div>
         <div className="text-slate-300">
-          Frontend · Backend · Mobile · Data · DevOps · Cloud · QA · UX/UI ·
-          Cybersec · IA/ML · Game Dev · Embedded
+          {areasTI.map((area) => area.nome).join(" · ")}
         </div>
       </div>
     ),
