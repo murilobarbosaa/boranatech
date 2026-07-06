@@ -216,6 +216,9 @@ function sectionsCriterion(norm: string): ResumeScoreCriterion {
   const missing = SECTION_KEYWORDS.filter((g) => !present.includes(g)).map(
     (g) => g.label,
   );
+  // Transparencia: quando reprova, lista tambem o que FOI encontrado, nao so
+  // o que falta.
+  const foundLabels = present.map((g) => g.label);
   return {
     id: "secoes",
     label: "Secoes essenciais",
@@ -224,7 +227,7 @@ function sectionsCriterion(norm: string): ResumeScoreCriterion {
     detail:
       missing.length === 0
         ? "Todas as secoes essenciais presentes."
-        : `Faltando: ${missing.join(", ")}.`,
+        : `Encontradas: ${foundLabels.length > 0 ? foundLabels.join(", ") : "nenhuma"}. Faltando: ${missing.join(", ")}.`,
   };
 }
 
