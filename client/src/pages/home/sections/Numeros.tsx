@@ -3,10 +3,12 @@ import {
   motion,
   useInView,
   useMotionValue,
+  useReducedMotion,
   useTransform,
   animate,
 } from "framer-motion";
-import { LEVEL_QUESTION_COUNT } from "@/lib/platformData";
+import { LEVEL_QUESTION_COUNT, dictionaryTerms } from "@/lib/platformData";
+import { roadmaps } from "@/lib/data";
 
 // =========================================
 // DADOS DOS NÚMEROS
@@ -24,32 +26,25 @@ interface Stat {
 
 const STATS: Stat[] = [
   {
-    value: 250,
+    value: dictionaryTerms.length,
     prefix: "+",
     label: "termos",
     description: "no dicionário de TI",
     color: "amber",
   },
   {
-    value: 100,
+    value: roadmaps.length,
     prefix: "+",
     label: "roadmaps",
     description: "prontos pra você seguir",
     color: "violet",
   },
   {
-    value: 60,
-    prefix: "+",
-    label: "tecnologias",
-    description: "mapeadas e explicadas",
-    color: "white",
-  },
-  {
     value: LEVEL_QUESTION_COUNT,
     prefix: "",
     label: "perguntas",
     description: "do seu nível no quiz",
-    color: "amber",
+    color: "white",
   },
 ];
 
@@ -68,12 +63,19 @@ function AnimatedNumber({
 }) {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest) => Math.round(latest));
-  const [display, setDisplay] = useState(0);
+  const [display, setDisplay] = useState(value);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (!shouldAnimate) return;
+    // Valor real e o baseline: sem scroll, sem JS ou com reduce-motion, o
+    // numero correto ja aparece. A animacao e so um enriquecimento.
+    if (!shouldAnimate || prefersReducedMotion) {
+      setDisplay(value);
+      return;
+    }
 
     // Conta de 0 até o valor final em 2s, easeOut pra desacelerar no fim
+    count.set(0);
     const controls = animate(count, value, {
       duration: 2,
       ease: "easeOut",
@@ -86,7 +88,7 @@ function AnimatedNumber({
       controls.stop();
       unsubscribe();
     };
-  }, [shouldAnimate, value, count, rounded]);
+  }, [shouldAnimate, prefersReducedMotion, value, count, rounded]);
 
   return (
     <span>
