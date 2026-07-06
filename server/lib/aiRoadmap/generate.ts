@@ -121,7 +121,8 @@ const FORMAT_LABELS: Record<RoadmapIntake["format"], string> = {
 
 // Total aproximado de passos de uma trilha estatica (folhas da arvore), para
 // dar percentual de avanco a IA. Aproximacao: conta folhas, incluindo opcionais.
-function countLeaves(nodes: RoadmapNode[]): number {
+// Exportado para a rota de contexto visivel usar o MESMO percentual.
+export function countLeaves(nodes: RoadmapNode[]): number {
   let total = 0;
   for (const node of nodes) {
     if (node.children && node.children.length > 0) {

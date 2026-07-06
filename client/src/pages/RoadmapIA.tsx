@@ -10,9 +10,11 @@ import {
 } from "@/components/roadmapV2/AiGenerationProgress";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import {
+  getAiRoadmapContext,
   listAiRoadmaps,
   streamGeneration,
   streamResume,
+  type AiRoadmapContext,
   type AiRoadmapListItem,
 } from "@/services/aiRoadmapService";
 import { RoadmapIntakeSchema, type RoadmapIntake } from "@shared/aiRoadmap";
@@ -59,10 +61,16 @@ const COPY = {
   continueGeneration: "Continuar",
   generateNew: "Gerar novo",
   statusReady: "Pronto",
+  statusDone: "Concluido",
   statusPartial: "Incompleto",
   statusFailed: "Falhou",
   statusGenerating: "Em andamento",
   statusStalled: "Interrompido",
+  // TODO(Ana): revisar copy do painel de contexto do intake.
+  contextTitle: "O que ja vamos usar de voce",
+  contextHint: "Algo desatualizado?",
+  contextUpdateProfile: "atualizar no perfil",
+  contextUpdateQuiz: "refazer o quiz",
 } as const;
 
 const INTAKE_QUESTIONS: IntakeQuestion[] = [
@@ -117,6 +125,7 @@ function formatDate(iso: string): string {
 function StatusBadge({ item }: { item: AiRoadmapListItem }) {
   const styles: Record<string, string> = {
     ready: "bg-emerald-100 text-emerald-800",
+    done: "bg-violet-100 text-violet-800",
     partial: "bg-amber-100 text-amber-800",
     failed: "bg-rose-100 text-rose-800",
     generating: "bg-sky-100 text-sky-800",
@@ -124,7 +133,16 @@ function StatusBadge({ item }: { item: AiRoadmapListItem }) {
   };
   let kind: string = item.status;
   let label: string;
-  if (item.status === "ready") label = COPY.statusReady;
+  if (item.status === "ready") {
+    const total = item.totalSteps ?? null;
+    const completed = item.completedSteps ?? null;
+    if (total !== null && completed !== null && total > 0 && completed >= total) {
+      kind = "done";
+      label = COPY.statusDone;
+    } else {
+      label = COPY.statusReady;
+    }
+  }
   else if (item.status === "partial") label = COPY.statusPartial;
   else if (item.status === "failed") label = COPY.statusFailed;
   else if (
@@ -173,6 +191,41 @@ export default function RoadmapIA() {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  // Painel "o que ja vamos usar de voce": best-effort, falha esconde o painel.
+  const [context, setContext] = useState<AiRoadmapContext | null>(null);
+  useEffect(() => {
+    if (!isPro) return;
+    getAiRoadmapContext()
+      .then(setContext)
+      .catch(() => setContext(null));
+  }, [isPro]);
+
+  const contextChips: string[] = [];
+  if (context) {
+    if (context.quiz?.area) {
+      contextChips.push(
+        context.quiz.level
+          ? `Quiz: ${context.quiz.area}, nivel ${context.quiz.level}`
+          : `Quiz: ${context.quiz.area}`,
+      );
+    }
+    for (const skill of context.skills) contextChips.push(skill);
+    for (const trail of context.trails) {
+      contextChips.push(
+        trail.pct !== null ? `${trail.title} (${trail.pct}%)` : trail.title,
+      );
+    }
+    if (context.careerGoal) contextChips.push(`Objetivo: ${context.careerGoal}`);
+    if (context.studyMinutes30d !== null) {
+      const hours = Math.round(context.studyMinutes30d / 60);
+      contextChips.push(
+        hours >= 1
+          ? `${hours}h de estudo nos ultimos 30 dias`
+          : `${context.studyMinutes30d} min de estudo nos ultimos 30 dias`,
+      );
+    }
+  }
 
   // Erro parcial ou bloqueio mudam o estado das linhas: atualiza a lista.
   useEffect(() => {
@@ -244,6 +297,40 @@ export default function RoadmapIA() {
             ) : (
               <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-6 shadow-[4px_4px_0_#FCC700]">
                 <div className="space-y-7">
+                  {contextChips.length > 0 ? (
+                    <div className="rounded-[12px] border-[2px] border-slate-900 bg-violet-50 p-4">
+                      <p className="text-sm font-black uppercase tracking-[0.14em] text-violet-900">
+                        {COPY.contextTitle}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {contextChips.map((chip) => (
+                          <span
+                            key={chip}
+                            className="rounded-full border-[1.5px] border-slate-900 bg-white px-2.5 py-1 text-xs font-bold text-slate-800"
+                          >
+                            {chip}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="mt-3 text-xs font-semibold text-slate-500">
+                        {COPY.contextHint}{" "}
+                        <Link
+                          href="/perfil"
+                          className="font-bold text-violet-800 underline underline-offset-2"
+                        >
+                          {COPY.contextUpdateProfile}
+                        </Link>{" "}
+                        ou{" "}
+                        <Link
+                          href="/quiz-carreira"
+                          className="font-bold text-violet-800 underline underline-offset-2"
+                        >
+                          {COPY.contextUpdateQuiz}
+                        </Link>
+                        .
+                      </p>
+                    </div>
+                  ) : null}
                   {INTAKE_QUESTIONS.map((q) => (
                     <fieldset key={q.key}>
                       <legend className="font-display text-lg font-black text-slate-950">
