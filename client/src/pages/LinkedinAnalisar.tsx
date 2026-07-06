@@ -245,6 +245,11 @@ const ENTRY_COPY = {
   manualTitle: "Seu perfil",
   manualSubtitle:
     "Cole o texto do seu perfil (headline, Sobre, experiências) e preencha os campos abaixo.",
+  checklistTitle: "Falta pouco pra analisar:",
+  checklistChars: (n: number) =>
+    `Texto do perfil com pelo menos 200 caracteres (agora: ${n}).`,
+  checklistSections:
+    "Inclua o Sobre ou as experiências: não detectamos nenhum dos dois no texto.",
 } as const;
 
 type UpdateField = <K extends keyof FormState>(
@@ -672,7 +677,19 @@ export default function LinkedinAnalisar() {
     void runAnalysis();
   }
 
-  const canSubmit = form.profileText.trim().length >= 200 && !loading;
+  const profileChars = form.profileText.trim().length;
+  const canSubmit = profileChars >= 200 && !loading;
+
+  // Checklist de prontidao: o minimo REAL do backend (200 caracteres, o
+  // schema da rota) bloqueia; a ausencia de Sobre e experiencias e aviso (o
+  // server devolve 422 quando o texto nao tem nada aproveitavel).
+  const checklistItems: string[] = [];
+  if (profileChars < 200) {
+    checklistItems.push(ENTRY_COPY.checklistChars(profileChars));
+  }
+  if (parsed !== null && !parsed.sobre && parsed.experiencias.length === 0) {
+    checklistItems.push(ENTRY_COPY.checklistSections);
+  }
 
   return (
     <Layout>
@@ -1001,6 +1018,19 @@ export default function LinkedinAnalisar() {
 
                     <ContextFields form={form} update={update} />
                   </>
+                ) : null}
+
+                {entryPath !== "pdf" && !loading && checklistItems.length > 0 ? (
+                  <div className="rounded-xl border-2 border-slate-950 bg-amber-50 p-3">
+                    <p className="text-sm font-black text-slate-900">
+                      {ENTRY_COPY.checklistTitle}
+                    </p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs font-medium text-slate-700">
+                      {checklistItems.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
 
                 {entryPath !== "pdf" ? (

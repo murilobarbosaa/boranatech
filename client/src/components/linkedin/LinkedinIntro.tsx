@@ -11,18 +11,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// TODO(Ana): revisar os passos do fluxo PDF-primeiro.
 const STEPS: { n: string; text: string }[] = [
   {
     n: "1",
-    text: "No LinkedIn, abra seu perfil, clique em Mais e depois em Salvar como PDF.",
+    text: "No LinkedIn, abra seu perfil, toque em Mais (More) e escolha Salvar como PDF.",
   },
   {
     n: "2",
-    text: "Envie o PDF aqui (ele é lido no seu navegador) ou cole o texto do perfil.",
+    text: "Solte o PDF aqui: ele é lido no seu navegador e preenche seu perfil pra você só revisar.",
   },
   {
     n: "3",
-    text: "Escolha sua área, o mercado-alvo e responda 6 perguntas rápidas sobre o perfil.",
+    text: "Confirme o que o PDF não traz (foto, conexões, atividade) e complete as competências.",
   },
   {
     n: "4",
