@@ -112,6 +112,49 @@
     });
   });
 
+  // Indice lateral: clique rola suave ate a secao (sem o foco de input do
+  // data-scroll). Scrollspy: a secao que cruza a faixa central da viewport
+  // (rootMargin -45%/-45%) vira a ativa; nas secoes decorativas entre elas
+  // nada intersecta e o ultimo item marcado permanece ativo.
+  var tocItems = document.querySelectorAll(".toc-item");
+  if(tocItems.length){
+    var tocById = {};
+    tocItems.forEach(function(item){
+      var id = (item.getAttribute("href") || "").slice(1);
+      tocById[id] = item;
+      item.addEventListener("click", function(e){
+        e.preventDefault();
+        var target = document.getElementById(id);
+        if(target) target.scrollIntoView({behavior:"smooth", block:"start"});
+      });
+    });
+    // Parte do item marcado no HTML (o "Inicio" ja vem com .is-active pro
+    // primeiro paint). Sem isso, um load com scroll restaurado no meio da
+    // pagina deixaria dois itens ativos: o observer marcaria o novo sem
+    // desmarcar o do HTML. setTocActive e idempotente, entao o primeiro
+    // evento do observer no topo nao pisca nem duplica o estado.
+    var tocActive = document.querySelector(".toc-item.is-active");
+    function setTocActive(item){
+      if(item === tocActive) return;
+      if(tocActive){
+        tocActive.classList.remove("is-active");
+        tocActive.removeAttribute("aria-current");
+      }
+      tocActive = item;
+      tocActive.classList.add("is-active");
+      tocActive.setAttribute("aria-current", "true");
+    }
+    var spy = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting && tocById[en.target.id]) setTocActive(tocById[en.target.id]);
+      });
+    }, {rootMargin:"-45% 0px -45% 0px", threshold:0});
+    Object.keys(tocById).forEach(function(id){
+      var sec = document.getElementById(id);
+      if(sec) spy.observe(sec);
+    });
+  }
+
   if(!reduce){
     document.querySelectorAll(".btn-magnetic").forEach(function(b){
       b.addEventListener("mousemove", function(e){
