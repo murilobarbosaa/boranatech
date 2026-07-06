@@ -181,6 +181,8 @@
   .unit{background:var(--ink);color:#fff;border-radius:13px;min-width:74px;padding:14px 8px;text-align:center;box-shadow:3px 3px 0 var(--violet)}
   .unit .n{font-family:var(--font-mono);font-weight:600;font-size:2rem;line-height:1}
   .unit .t{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:#cbd5e1;margin-top:6px}
+  .clock-ended{display:inline-flex;align-items:center;gap:8px;background:var(--yellow);color:var(--ink);border:2px solid var(--ink);border-radius:13px;padding:14px 18px;font-family:var(--font-display);font-weight:700;font-size:1.15rem;box-shadow:3px 3px 0 var(--violet)}
+  .clock-big .clock-ended{background:var(--violet);color:#fff;border-color:var(--yellow);font-size:clamp(1.3rem,4vw,1.8rem);padding:18px 24px;box-shadow:5px 5px 0 var(--yellow)}
 
   /* Journey */
   .journey{display:flex;flex-direction:column;gap:0;position:relative;transition:transform .22s ease;transform-style:preserve-3d}
@@ -1015,6 +1017,52 @@
         });
       }
     }
+  })();
+</script>
+<script>
+  // Contagem regressiva ate o lancamento. Data alvo fixa em horario de Brasilia
+  // (America/Sao_Paulo, UTC-3): 13 de julho de 2026, 00:00 = 03:00 UTC. O timestamp
+  // e fixo, entao nao varia com o fuso do visitante.
+  (function () {
+    var target = Date.UTC(2026, 6, 13, 3, 0, 0);
+    var dEls = document.querySelectorAll(".js-d");
+    var hEls = document.querySelectorAll(".js-h");
+    var mEls = document.querySelectorAll(".js-m");
+    var sEls = document.querySelectorAll(".js-s");
+    var clocks = document.querySelectorAll(".clock, .clock-big");
+    if (!clocks.length) return;
+    var timer = null;
+
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    function setAll(els, value) {
+      for (var i = 0; i < els.length; i++) els[i].textContent = value;
+    }
+    function showEnded() {
+      for (var i = 0; i < clocks.length; i++) {
+        var msg = document.createElement("div");
+        msg.className = "clock-ended";
+        // TODO(Ana): revisar a copy do estado de lancamento no ar.
+        msg.textContent = "Chegou o dia! Já estamos no ar.";
+        clocks[i].textContent = "";
+        clocks[i].appendChild(msg);
+      }
+    }
+    function tick() {
+      var diff = target - Date.now();
+      if (diff <= 0) {
+        if (timer) { clearInterval(timer); timer = null; }
+        showEnded();
+        return;
+      }
+      var totalSec = Math.floor(diff / 1000);
+      setAll(dEls, pad(Math.floor(totalSec / 86400)));
+      setAll(hEls, pad(Math.floor((totalSec % 86400) / 3600)));
+      setAll(mEls, pad(Math.floor((totalSec % 3600) / 60)));
+      setAll(sEls, pad(totalSec % 60));
+    }
+
+    tick();
+    timer = setInterval(tick, 1000);
   })();
 </script>
 <script src="/lancamento.js" defer></script>
