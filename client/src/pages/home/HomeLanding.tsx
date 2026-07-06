@@ -1,5 +1,6 @@
 import CreatorsBand from "@/components/shared/CreatorsBand";
 import DicaDoDia from "./sections/DicaDoDia";
+import ProximosEventos from "./sections/ProximosEventos";
 import UltimaNoticia from "./sections/UltimaNoticia";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
@@ -34,6 +35,7 @@ export default function HomeLanding() {
       <Numeros />
       <PraVoce />
       <UltimaNoticia />
+      <ProximosEventos />
       <DicaDoDia />
       <Pro />
       <CtaFinal />
