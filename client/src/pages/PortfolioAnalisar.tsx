@@ -359,7 +359,8 @@ export default function PortfolioAnalisar() {
             <div className="space-y-8">
               <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                  <span>Área alvo</span>
+                  {/* TODO(Ana): revisar rotulo e helper da area alvo. */}
+                  <span>Área alvo desta análise</span>
                   <select
                     value={area}
                     onChange={(event) =>
@@ -375,6 +376,10 @@ export default function PortfolioAnalisar() {
                     ))}
                   </select>
                 </label>
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                  Vale só para esta análise e direciona as recomendações. Ex:
+                  você pode ser full stack e analisar um projeto de IA.
+                </p>
 
                 <form
                   onSubmit={handleSubmit}
@@ -507,14 +512,20 @@ export default function PortfolioAnalisar() {
                         </button>
                       </>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmReanalyze(true)}
-                        className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        Apliquei as melhorias, analisar de novo
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmReanalyze(true)}
+                          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Apliquei as melhorias, analisar de novo
+                        </button>
+                        <span className="text-xs font-medium text-slate-500">
+                          Roda uma NOVA análise do mesmo alvo. Abrir uma análise
+                          salva no histórico é grátis.
+                        </span>
+                      </>
                     )}
                   </div>
                 </div>

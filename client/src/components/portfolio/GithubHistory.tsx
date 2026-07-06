@@ -18,6 +18,8 @@ const COPY = {
   title: "Minhas análises",
   modePerfil: "Perfil",
   modeRepo: "Repositório",
+  open: "Ver análise salva",
+  openFree: "não usa IA",
 } as const;
 
 function areaLabel(area: string | null): string {
@@ -69,7 +71,15 @@ export default function GithubHistory({
                   {analysis.faixa ? ` · ${analysis.faixa}` : ""}
                 </p>
               </div>
-              <span className="flex items-center gap-2">
+              <span className="flex shrink-0 items-center gap-3">
+                <span className="hidden text-right sm:block">
+                  <span className="block text-xs font-black text-violet-800">
+                    {COPY.open}
+                  </span>
+                  <span className="block text-[11px] font-medium text-slate-500">
+                    {COPY.openFree}
+                  </span>
+                </span>
                 <span className="font-display text-2xl font-black text-slate-950">
                   {analysis.score ?? "?"}
                 </span>
