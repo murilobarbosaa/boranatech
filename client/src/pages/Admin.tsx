@@ -594,7 +594,7 @@ function AdminShell({
             </a>
 
             {session ? (
-              <nav className="hidden flex-1 items-center justify-center gap-1 px-2 py-2 lg:flex">
+              <nav className="hidden min-w-0 flex-1 items-center justify-center-safe gap-1 overflow-x-auto px-2 py-2 lg:flex">
                 {adminNavItems.map((item) => (
                   <button
                     key={item.href}
