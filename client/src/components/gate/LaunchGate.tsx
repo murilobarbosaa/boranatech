@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { apiUrl } from "@/lib/api";
 import { getBetaToken } from "@/lib/betaGate";
+import AgentWidget from "@/components/agent/AgentWidget";
 import Acesso from "@/pages/Acesso";
 
 import LandingFrame from "./LandingFrame";
@@ -93,9 +94,15 @@ export default function LaunchGate({ children }: { children: ReactNode }) {
     return null;
   }
 
-  // d) portao aberto ou token valido -> app.
+  // d) portao aberto ou token valido -> app. O widget do agente monta aqui (e
+  // so aqui) pra nunca flutuar sobre a landing nem sobre /acesso e recuperacao.
   if (state === "open") {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <AgentWidget />
+      </>
+    );
   }
 
   // e) caso contrario -> landing de lancamento (iframe).

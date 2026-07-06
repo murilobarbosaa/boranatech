@@ -14,7 +14,6 @@ import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
 import Home from "./pages/home/HomeLanding";
-import AgentWidget from "./components/agent/AgentWidget";
 
 const Admin = lazy(() => import("@/pages/Admin"));
 const AreaDetalhe = lazy(() => import("@/pages/AreaDetalhe"));
@@ -318,7 +317,6 @@ function App() {
                 <LaunchGate>
                   <Router />
                 </LaunchGate>
-                <AgentWidget />
               </TooltipProvider>
             </SubscriptionProvider>
           </FavoritesProvider>
