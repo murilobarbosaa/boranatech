@@ -132,7 +132,8 @@ type AdminSectionId =
   | "financeiro"
   | "ia"
   | "afiliados"
-  | "newsletter";
+  | "newsletter"
+  | "beta";
 
 type UserProfile = {
   userId?: string;
@@ -333,6 +334,12 @@ const adminNavItems: AdminNavItem[] = [
     href: "#newsletter",
     label: "Newsletter",
     icon: <Mail className="h-4 w-4" />,
+  },
+  {
+    href: "#beta",
+    // TODO(Ana): rótulo da aba de códigos de beta.
+    label: "Beta",
+    icon: <LockKeyhole className="h-4 w-4" />,
   },
 ];
 
@@ -1238,6 +1245,332 @@ function NewsletterAdminSection() {
             >
               Próxima
             </button>
+          </div>
+        </div>
+      ) : null}
+    </AdminSection>
+  );
+}
+
+type BetaCode = {
+  id: string;
+  code: string;
+  label: string;
+  active: boolean;
+  created_at: string;
+  revoked_at: string | null;
+  success_count: number;
+  last_access: string | null;
+};
+
+type BetaLog = {
+  id: string;
+  code_id: string | null;
+  label: string | null;
+  success: boolean;
+  attempted_code: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  created_at: string;
+};
+
+// Parse simples de user agent por substring, so pra exibir dispositivo e
+// navegador no admin. Sem dependencia nova; nao pretende ser exaustivo. Edge e
+// Chrome antes de Safari porque suas UAs tambem contem "Safari"/"Chrome".
+function parseUserAgent(ua: string | null): string {
+  if (!ua) return "-";
+  const device = /iPhone|iPad/.test(ua)
+    ? "iPhone/iPad"
+    : /Android/.test(ua)
+      ? "Android"
+      : /Windows/.test(ua)
+        ? "Windows"
+        : /Macintosh|Mac OS/.test(ua)
+          ? "Mac"
+          : /Linux/.test(ua)
+            ? "Linux"
+            : "Outro";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /Chrome\//.test(ua)
+      ? "Chrome"
+      : /Firefox\//.test(ua)
+        ? "Firefox"
+        : /Safari\//.test(ua)
+          ? "Safari"
+          : "Outro";
+  return `${device} / ${browser}`;
+}
+
+function BetaCodesAdminSection() {
+  const [codes, setCodes] = useState<BetaCode[]>([]);
+  const [logs, setLogs] = useState<BetaLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<BetaCode | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [codesJson, logsJson] = await Promise.all([
+        adminFetch("/beta-codes"),
+        adminFetch("/beta-logs?limit=100"),
+      ]);
+      setCodes(Array.isArray(codesJson.data) ? codesJson.data : []);
+      setLogs(Array.isArray(logsJson.data) ? logsJson.data : []);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Erro ao carregar códigos.",
+      );
+      setCodes([]);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function confirmRevoke() {
+    if (!revokeTarget) return;
+    setBusyId(revokeTarget.id);
+    try {
+      await adminFetch(`/beta-codes/${revokeTarget.id}/revoke`, {
+        method: "POST",
+      });
+      // TODO(Ana): toast de código revogado.
+      toast.success("Código revogado.");
+      setRevokeTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao revogar. Tente de novo.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <AdminSection
+      id="beta"
+      eyebrow="acesso beta"
+      icon={<LockKeyhole className="h-4 w-4" />}
+      // TODO(Ana): título e subtítulo da seção de códigos de beta.
+      title="Códigos de acesso beta"
+      subtitle="Códigos de convite por pessoa e o log de uso do portão de lançamento. O label é só rótulo de log e não concede admin."
+    >
+      {error ? (
+        <p className="rounded-2xl border-2 border-slate-900 bg-white p-6 text-sm font-semibold text-rose-600">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+        {loading && codes.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Carregando códigos...
+          </p>
+        ) : codes.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Nenhum código cadastrado ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                {/* TODO(Ana): cabeçalhos da tabela de códigos. */}
+                <tr className="border-b-2 border-slate-900 bg-slate-50">
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Label
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Código
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Usos
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Último acesso
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Ação
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {codes.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-slate-200 last:border-0"
+                  >
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      {row.label}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-slate-700">
+                      {row.code}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${
+                          row.active
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                            : "border-rose-300 bg-rose-50 text-rose-700"
+                        }`}
+                      >
+                        {/* TODO(Ana): rótulos de status. */}
+                        {row.active ? "Ativo" : "Revogado"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {row.success_count}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {formatNewsletterDate(row.last_access)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.active ? (
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          onClick={() => setRevokeTarget(row)}
+                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1.5 text-xs font-black text-rose-800 disabled:opacity-40"
+                        >
+                          {/* TODO(Ana) */}
+                          Revogar
+                        </button>
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400">
+                          -
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <h3 className="mt-8 font-display text-lg font-black text-slate-950">
+        {/* TODO(Ana): título da tabela de logs. */}
+        Log de tentativas
+      </h3>
+      <div className="mt-3 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+        {logs.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Nenhuma tentativa registrada ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                {/* TODO(Ana): cabeçalhos da tabela de logs. */}
+                <tr className="border-b-2 border-slate-900 bg-slate-50">
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Data
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Label
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    IP
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Dispositivo/navegador
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Resultado
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-slate-200 last:border-0"
+                  >
+                    <td className="px-4 py-3 text-slate-600">
+                      {formatNewsletterDate(row.created_at)}
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      {row.success ? row.label || "-" : "-"}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-slate-700">
+                      {row.ip || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {parseUserAgent(row.user_agent)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.success ? (
+                        <span className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+                          {/* TODO(Ana) */}
+                          Sucesso
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2.5 py-0.5 text-xs font-black text-rose-700">
+                            {/* TODO(Ana) */}
+                            Falha
+                          </span>
+                          {row.attempted_code ? (
+                            <span className="font-mono text-xs text-slate-500">
+                              {row.attempted_code}
+                            </span>
+                          ) : null}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {revokeTarget ? (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+          <div className="card-brutal max-w-md rounded-3xl bg-white p-6">
+            {/* TODO(Ana): copy do modal de confirmação de revogação. */}
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Revogar o código de {revokeTarget.label}?
+            </h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              O código para de funcionar na hora e novas tentativas com ele
+              voltam a ser negadas. O histórico de uso é mantido.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setRevokeTarget(null)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
+                {/* TODO(Ana) */}
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={busyId === revokeTarget.id}
+                onClick={() => void confirmRevoke()}
+                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-40"
+              >
+                {/* TODO(Ana) */}
+                Confirmar revogação
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -3519,6 +3852,8 @@ export default function Admin() {
           ) : null}
 
           {activeSection === "newsletter" ? <NewsletterAdminSection /> : null}
+
+          {activeSection === "beta" ? <BetaCodesAdminSection /> : null}
 
           {activeSection === "afiliados" ? (
             <article

@@ -1062,4 +1062,102 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
   }
 });
 
+// Codigos de beta: lista com agregado de usos com sucesso e ultimo acesso. Os
+// logs sao agregados no servidor (duas queries) porque o supabase-js nao faz
+// group-by sem RPC; volume e pequeno (beta fechado).
+router.get("/beta-codes", async (_req, res, next) => {
+  try {
+    const [codesRes, logsRes] = await Promise.all([
+      supabaseAdmin
+        .from("beta_access_codes")
+        .select("id, code, label, active, created_at, revoked_at")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("beta_unlock_logs")
+        .select("code_id, created_at")
+        .eq("success", true),
+    ]);
+
+    if (codesRes.error)
+      return next(createError(500, "db_error", "Erro ao buscar códigos."));
+
+    // Falha nos logs nao derruba a lista: agregado zera, os codigos aparecem.
+    const usage = new Map<string, { count: number; last: string | null }>();
+    for (const log of logsRes.data || []) {
+      if (!log.code_id) continue;
+      const cur = usage.get(log.code_id) || { count: 0, last: null };
+      cur.count += 1;
+      if (!cur.last || log.created_at > cur.last) cur.last = log.created_at;
+      usage.set(log.code_id, cur);
+    }
+
+    const data = (codesRes.data || []).map((c) => {
+      const u = usage.get(c.id);
+      return {
+        ...c,
+        success_count: u?.count ?? 0,
+        last_access: u?.last ?? null,
+      };
+    });
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Ultimos logs de tentativa de unlock. Teto de 500 por request.
+router.get("/beta-logs", async (req, res, next) => {
+  try {
+    const { limit = "100" } = req.query;
+    const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 100, 1), 500);
+
+    const { data, error } = await supabaseAdmin
+      .from("beta_unlock_logs")
+      .select(
+        "id, code_id, label, success, attempted_code, ip, user_agent, created_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(parsedLimit);
+
+    if (error) return next(createError(500, "db_error", "Erro ao buscar logs."));
+
+    res.json({ data: data || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Revoga um codigo: active false e revoked_at now(). Tentativas futuras com ele
+// voltam a 401. Nao apaga o historico de uso.
+router.post("/beta-codes/:id/revoke", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabaseAdmin
+      .from("beta_access_codes")
+      .update({ active: false, revoked_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("id, code, label, active, created_at, revoked_at")
+      .maybeSingle();
+
+    if (error)
+      return next(createError(500, "db_error", "Erro ao revogar código."));
+    if (!data)
+      return next(createError(404, "not_found", "Código não encontrado."));
+
+    await logAudit({
+      actorUserId: req.user!.id,
+      action: "update",
+      resourceType: "beta_code",
+      resourceId: data.id,
+      after: data,
+    });
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
