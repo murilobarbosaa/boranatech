@@ -291,7 +291,8 @@ function ConversationMockup() {
 
         <div className="mt-6 pt-6 border-t-2 border-slate-200 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium text-slate-600">
-            Esta é uma simulação real do Simulador de Entrevista.
+            Este é um exemplo grátis. No Pro, você simula as suas entrevistas
+            quantas vezes quiser.
           </p>
           <Link href="/entrevistas/simulador">
             <button className="pro-glare relative overflow-hidden group inline-flex items-center gap-2 rounded-xl border-2 border-slate-950 bg-amber-300 px-5 py-2.5 font-display font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:shadow-[5px_5px_0_#0f172a] hover:-translate-y-0.5">
