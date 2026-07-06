@@ -5,7 +5,6 @@ import { Link, useLocation } from "wouter";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import SocialAuthButtons from "@/components/SocialAuthButtons";
-import { GenderSelect } from "@/components/auth/GenderSelect";
 import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,7 +16,6 @@ import {
   signupSchema,
 } from "@/lib/authSchemas";
 import { getMyProfile } from "@/services/profileService";
-import type { Gender } from "@shared/gender";
 import { greet } from "@shared/greeting";
 
 export default function Auth({
@@ -33,14 +31,13 @@ export default function Auth({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [gender, setGender] = useState<Gender | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
   useEffect(() => {
     setError(null);
-  }, [name, email, password, gender]);
+  }, [name, email, password]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,7 +50,6 @@ export default function Auth({
           name,
           email,
           password,
-          gender,
         });
         if (!parsed.success) {
           toast.error(firstIssueMessage(parsed.error));
@@ -163,21 +159,6 @@ export default function Auth({
                     value={name}
                   />
                 </label>
-              )}
-              {isSignup && (
-                <div className="block">
-                  <label
-                    htmlFor="auth-gender"
-                    className="mb-1 block text-xs font-black uppercase text-slate-600"
-                  >
-                    Como você se identifica?
-                  </label>
-                  <GenderSelect
-                    id="auth-gender"
-                    value={gender || undefined}
-                    onChange={(value) => setGender(value as Gender)}
-                  />
-                </div>
               )}
               <label className="block">
                 <span className="mb-1 block text-xs font-black uppercase text-slate-600">

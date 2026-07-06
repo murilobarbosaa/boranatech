@@ -22,9 +22,7 @@ export const signupSchema = z.object({
     .email("Informe um e-mail válido.")
     .max(160, "Use um e-mail mais curto."),
   password: passwordSchema,
-  gender: z.enum(GENDER_VALUES, {
-    message: "Selecione como você se identifica.",
-  }),
+  gender: z.enum(GENDER_VALUES).optional(),
 });
 
 export const loginSchema = z.object({

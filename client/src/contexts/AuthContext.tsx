@@ -19,7 +19,7 @@ interface SignUpInput {
   name: string;
   email: string;
   password: string;
-  gender: Gender;
+  gender?: Gender;
 }
 
 interface SignInInput {
