@@ -11,7 +11,7 @@ import {
   analyzeLinkedin,
   LinkedinUnreadableError,
 } from "../lib/linkedinAnalyze";
-import type { LinkedinParsed } from "../lib/linkedinParse";
+import type { LinkedinParsed } from "../../shared/linkedin/parse";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";

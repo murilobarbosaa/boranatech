@@ -14,7 +14,7 @@ import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
 import { runLinkedinChecks } from "./linkedinChecks";
 import { fetchWithTimeout } from "./http";
-import { parseLinkedinText, type LinkedinParsed } from "./linkedinParse";
+import { parseLinkedinText, type LinkedinParsed } from "../../shared/linkedin/parse";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 

@@ -9,7 +9,7 @@ import {
   type Mercado,
 } from "../../shared/linkedin/schema";
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
-import type { LinkedinParsed } from "./linkedinParse";
+import type { LinkedinParsed } from "../../shared/linkedin/parse";
 import {
   countKnownTechnologies,
   isMostlyEnglish,
