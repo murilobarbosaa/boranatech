@@ -557,26 +557,26 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
   }
 });
 
-// Folhas OBRIGATORIAS da arvore (exclui optional), espelhando o requiredLeaves
-// do client (client/src/lib/roadmapV2/progress.ts): e essa a base do badge
-// Concluido, a mesma do percentual que a view mostra.
-function countRequiredLeaves(nodes: RoadmapNode[]): number {
-  let total = 0;
+// Ids das folhas OBRIGATORIAS da arvore (exclui optional), espelhando o
+// requiredLeaves do client (client/src/lib/roadmapV2/progress.ts): e essa a
+// base do badge Concluido, a mesma do percentual que a view mostra.
+function collectRequiredLeafIds(nodes: RoadmapNode[], into: Set<string>): void {
   for (const node of nodes) {
     if (node.optional === true) continue;
     if (node.children && node.children.length > 0) {
-      total += countRequiredLeaves(node.children);
+      collectRequiredLeafIds(node.children, into);
     } else if (node.children === undefined) {
-      total += 1;
+      into.add(node.id);
     }
   }
-  return total;
 }
 
 // Lista os roadmaps do proprio usuario. Sem gate Pro: dado do dono (um ex-Pro
-// continua vendo o que gerou). Roadmaps ready levam totalSteps (contado do
-// jsonb) e completedSteps (user_progress do dono, uma query agregada) para o
-// client mostrar Concluido; contagem best-effort, falha degrada para null.
+// continua vendo o que gerou). Roadmaps ready levam totalSteps (folhas
+// obrigatorias do jsonb) e completedSteps (user_progress do dono, uma query
+// agregada, contando SO os nodeIds que sao folhas obrigatorias do proprio
+// roadmap, para opcionais/sub-passos marcados nao inflarem o badge); contagem
+// best-effort, falha degrada para null.
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   const userId = req.user!.id;
   const { data, error } = await supabaseAdmin
@@ -590,7 +590,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   }
   const rows = (data ?? []) as Array<AiRoadmapListRow & { roadmap: RoadmapV2 | null }>;
 
-  const completedBySlug = new Map<string, number>();
+  const doneIdsBySlug = new Map<string, Set<string>>();
   let progressFailed = false;
   const hasReady = rows.some((row) => row.status === "ready");
   if (hasReady) {
@@ -611,7 +611,10 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
         const sep = row.item_key.indexOf(":");
         if (sep <= 0) continue;
         const slug = row.item_key.slice(0, sep);
-        completedBySlug.set(slug, (completedBySlug.get(slug) ?? 0) + 1);
+        const nodeId = row.item_key.slice(sep + 1);
+        const ids = doneIdsBySlug.get(slug) ?? new Set<string>();
+        ids.add(nodeId);
+        doneIdsBySlug.set(slug, ids);
       }
     }
   }
@@ -620,13 +623,22 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
     if (row.status !== "ready" || !roadmap || !Array.isArray(roadmap.sections)) {
       return { ...row, totalSteps: null, completedSteps: null };
     }
-    const totalSteps = countRequiredLeaves(
+    const requiredIds = new Set<string>();
+    collectRequiredLeafIds(
       roadmap.sections.flatMap((section) => section.children ?? []),
+      requiredIds,
     );
+    const doneIds = doneIdsBySlug.get(row.slug);
+    let completed = 0;
+    if (doneIds) {
+      doneIds.forEach((id) => {
+        if (requiredIds.has(id)) completed += 1;
+      });
+    }
     return {
       ...row,
-      totalSteps,
-      completedSteps: progressFailed ? null : (completedBySlug.get(row.slug) ?? 0),
+      totalSteps: requiredIds.size,
+      completedSteps: progressFailed ? null : completed,
     };
   });
   res.json({ roadmaps });
