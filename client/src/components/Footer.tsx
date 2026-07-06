@@ -327,12 +327,12 @@ export default function Footer() {
 
         <div className="flex flex-col gap-3 py-6 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
           <div>
-            © {year} BORA NA TECH? Feito{" "}
+            © {year} BoraNaTech. Feito{" "}
             <Heart
               className="inline h-3.5 w-3.5 text-amber-400"
               aria-hidden="true"
             />{" "}
-            pra quem está começando.
+            pra quem está começando. Todos os direitos reservados.
           </div>
           <div>
             Conteúdo original sob{" "}
@@ -343,11 +343,6 @@ export default function Footer() {
               CC BY-NC-SA 4.0
             </Link>
           </div>
-        </div>
-
-        {/* TODO(Ana): com CNPJ, trocar "BoraNaTech" pela razao social Bora Ecosystem LTDA */}
-        <div className="pb-8 text-center text-xs text-slate-600">
-          © {year} BoraNaTech. Todos os direitos reservados.
         </div>
       </div>
     </footer>
