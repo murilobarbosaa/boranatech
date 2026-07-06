@@ -96,6 +96,12 @@
   .btn-violet:hover{background:var(--violet-deep)}
   .btn-pulse{animation:ring 2.6s ease-in-out infinite}
   @keyframes ring{0%,100%{box-shadow:4px 4px 0 var(--ink), 0 0 0 0 rgba(107,31,201,.4)}50%{box-shadow:4px 4px 0 var(--ink), 0 0 0 9px rgba(107,31,201,0)}}
+  /* Estado "ja inscrito" dos CTAs de scroll. Depois de .btn-ink/.btn-violet pra
+     vencer a cascata; transform com !important pra anular o efeito magnetico
+     inline. Fundo cream le bem sobre qualquer fundo de secao (claro ou escuro). */
+  .btn-done{background:var(--cream);color:var(--ink);border:2px solid var(--ink);box-shadow:var(--sh);cursor:pointer;animation:none;transform:none!important}
+  .btn-done:hover{background:var(--cream);box-shadow:var(--sh)}
+  .btn-done:active{box-shadow:var(--sh)}
 
   .card{background:var(--paper);border:2px solid var(--ink);border-radius:16px;box-shadow:var(--sh);padding:24px;transition:transform .16s cubic-bezier(.23,1,.32,1), box-shadow .16s cubic-bezier(.23,1,.32,1)}
   .card:hover{transform:translate(-3px,-3px);box-shadow:var(--sh-lg)}
@@ -471,7 +477,7 @@
     </a>
     <!-- TODO(Ana): data de lancamento ainda nao definida. -->
     <span class="hdr-timer"><span class="dot"></span>Em breve</span>
-    <a class="btn btn-sm header-cta" data-scroll href="#topo">Entrar na lista</a>
+    <a class="btn btn-sm header-cta" data-scroll data-cta-label href="#topo">Entrar na lista</a>
   </div>
 </header>
 
@@ -622,7 +628,7 @@
       <div class="stat"><div class="n"><span class="y" data-count="23">0</span></div><div class="t">trilhas guiadas pra você seguir</div></div>
     </div>
     <div class="r" style="margin-top:30px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
-      <a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero garantir minha vaga na lista</a>
+      <a class="btn btn-xl btn-magnetic" data-scroll data-cta-label href="#topo"><span class="glare"></span>Quero garantir minha vaga na lista</a>
       <span class="src" style="margin-top:0">Fonte: dados de formação e demanda do setor de TI no Brasil.</span>
     </div>
   </div>
@@ -682,7 +688,7 @@
     </div>
     <p class="dilemas-teaser r">Cada uma vai ter resposta aqui. <span class="hl">Quer ser o primeiro a ver?</span></p>
     <div style="text-align:center;margin-top:26px" class="r">
-      <a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero descobrir no lançamento</a>
+      <a class="btn btn-xl btn-magnetic" data-scroll data-cta-label href="#topo"><span class="glare"></span>Quero descobrir no lançamento</a>
     </div>
   </div>
 </section>
@@ -734,7 +740,7 @@
       </div>
     </div>
     <div style="text-align:center;margin-top:44px" class="r">
-      <a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Garantir meu acesso antecipado</a>
+      <a class="btn btn-xl btn-magnetic" data-scroll data-cta-label href="#topo"><span class="glare"></span>Garantir meu acesso antecipado</a>
     </div>
   </div>
 </section>
@@ -774,7 +780,7 @@
       <h3>Tudo isso abre em breve.</h3>
       <p>Não fica de fora. Entre na lista e seja um dos primeiros a usar.</p>
     </div>
-    <a class="btn btn-xl r" data-scroll href="#topo"><span class="glare"></span>Quero meu lugar</a>
+    <a class="btn btn-xl r" data-scroll data-cta-label href="#topo"><span class="glare"></span>Quero meu lugar</a>
   </div>
 </section>
 
@@ -814,7 +820,7 @@
       </div>
     </div>
     <div style="text-align:center;margin-top:42px" class="r">
-      <a class="btn btn-violet btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero acesso no lançamento</a>
+      <a class="btn btn-violet btn-magnetic" data-scroll data-cta-label href="#topo"><span class="glare"></span>Quero acesso no lançamento</a>
     </div>
   </div>
 </section>
@@ -853,7 +859,7 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b1fc9" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         <span><b>Saia do achismo e vá direto pra vaga.</b> Análises com IA feitas pro seu perfil, no seu ritmo.</span>
       </div>
-      <a class="btn btn-violet btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Quero o Pro no lançamento</a>
+      <a class="btn btn-violet btn-magnetic" data-scroll data-cta-label href="#topo"><span class="glare"></span>Quero o Pro no lançamento</a>
     </div>
   </div>
 </section>
@@ -917,7 +923,7 @@
       <h3>Entre na lista e garanta o preço de lançamento do Pro</h3>
       <p>Quem entra na lista de espera tem acesso ao preço de lançamento das ferramentas Pro com IA. Uma condição especial, só pra quem chega primeiro.</p>
     </div>
-    <a class="btn btn-xl r" data-scroll href="#topo"><span class="glare"></span>Quero o preço de lançamento</a>
+    <a class="btn btn-xl r" data-scroll data-cta-label href="#topo"><span class="glare"></span>Quero o preço de lançamento</a>
   </div>
 </section>
 
@@ -937,7 +943,7 @@
       <div class="unit"><div class="n js-m">00</div><div class="t">min</div></div>
       <div class="unit"><div class="n js-s">00</div><div class="t">seg</div></div>
     </div>
-    <div class="r"><a class="btn btn-xl btn-magnetic" data-scroll href="#topo"><span class="glare"></span>Entrar na lista agora</a></div>
+    <div class="r"><a class="btn btn-xl btn-magnetic" data-scroll data-cta-label href="#topo"><span class="glare"></span>Entrar na lista agora</a></div>
   </div>
 </section>
 
@@ -1014,7 +1020,7 @@
 <div class="sticky-cta">
   <!-- TODO(Ana): data de lancamento ainda nao definida. -->
   <div class="mini">Lançamento em breve</div>
-  <a class="btn btn-sm" data-scroll href="#topo">Entrar na lista</a>
+  <a class="btn btn-sm" data-scroll data-cta-label href="#topo">Entrar na lista</a>
 </div>
 
 <script>

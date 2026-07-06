@@ -26,6 +26,16 @@
       if(note) note.style.display = "none";
       if(success) success.classList.add("show");
     });
+    // CTAs de scroll viram confirmacao: texto trocado, visual .btn-done, sem
+    // pulso. Continuam clicaveis e rolando ate #topo, onde o bloco de sucesso
+    // do hero confirma a inscricao. Trocar textContent tambem descarta o span
+    // de glare interno, que nao faz sentido no estado concluido.
+    document.querySelectorAll("[data-cta-label]").forEach(function(cta){
+      cta.textContent = "Você está na lista ✓"; // TODO(Ana)
+      cta.classList.add("btn-done");
+      cta.classList.remove("btn-pulse");
+      cta.setAttribute("aria-label", "Você já está na lista de espera"); // TODO(Ana)
+    });
   }
 
   function confetti(x, y){
@@ -94,9 +104,10 @@
       var hero = document.getElementById("topo");
       hero.scrollIntoView({behavior:"smooth", block:"start"});
       var input = hero.querySelector("[data-email]");
-      // So foca se o input existir e estiver visivel. Pra quem ja se cadastrou
-      // o input do hero esta escondido (data-success no lugar), entao o foco
-      // vira no-op naturalmente.
+      // Ja inscrito: pula o foco de proposito, o scroll leva ate o bloco de
+      // sucesso do hero. Fora isso, so foca se o input existir e estiver
+      // visivel (dupla checagem, o offsetParent cobre outros casos de display).
+      if(hasSignedUp()) return;
       if(input && input.offsetParent !== null){ setTimeout(function(){ input.focus(); }, 500); }
     });
   });
