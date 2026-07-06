@@ -574,7 +574,7 @@ function AdminShell({
   return (
     <div className="min-h-screen bg-[#faf8f4]">
       <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
-        <div className="container">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
             <a
               href="/admin"
@@ -594,7 +594,7 @@ function AdminShell({
             </a>
 
             {session ? (
-              <nav className="hidden min-w-0 flex-1 items-center justify-center-safe gap-1 overflow-x-auto px-2 py-2 lg:flex">
+              <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 px-2 py-2 lg:flex">
                 {adminNavItems.map((item) => (
                   <button
                     key={item.href}
