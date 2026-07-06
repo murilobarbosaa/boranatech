@@ -50,7 +50,13 @@ const FEATURED_AREAS = FEATURED_SLUGS.flatMap((slug) => {
   return area ? [{ ...area, ...FEATURED_OVERRIDES[slug] }] : [];
 });
 
-const HIGHLIGHTS = ["TI de verdade", "carreira em tech", "primeiro emprego"];
+// TODO(Ana): headline e rascunho. Verbo dentro de cada badge pra toda rotacao
+// ficar gramatical ("...precisa pra entrar na TI de verdade" etc.).
+const HIGHLIGHTS = [
+  "entrar na TI de verdade",
+  "construir sua carreira em tech",
+  "conquistar o primeiro emprego",
+];
 
 type CardinalNode = {
   label: string;
@@ -519,7 +525,7 @@ export default function Hero() {
           className="font-display mx-auto mt-4 max-w-4xl font-black leading-tight text-balance text-slate-950"
           style={{ fontSize: "clamp(36px, 6vw, 76px)" }}
         >
-          Cada ferramenta que você precisa pra entrar em{" "}
+          Cada ferramenta que você precisa pra{" "}
           <span className="relative isolate inline-block px-3 py-1">
             <span
               aria-hidden="true"
