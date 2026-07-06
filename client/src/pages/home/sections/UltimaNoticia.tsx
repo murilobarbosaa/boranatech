@@ -84,7 +84,6 @@ export default function UltimaNoticia() {
           </article>
         ) : (
           <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-8 text-center">
-            {/* TODO(Ana): copy do estado vazio de noticias */}
             <p className="font-display text-lg font-black text-slate-950">
               Sem novidades por enquanto
             </p>

@@ -50,8 +50,8 @@ const FEATURED_AREAS = FEATURED_SLUGS.flatMap((slug) => {
   return area ? [{ ...area, ...FEATURED_OVERRIDES[slug] }] : [];
 });
 
-// TODO(Ana): headline e rascunho. Verbo dentro de cada badge pra toda rotacao
-// ficar gramatical ("...precisa pra entrar na TI de verdade" etc.).
+// Verbo dentro de cada badge pra toda rotacao ficar gramatical
+// ("...precisa pra entrar na TI de verdade" etc.).
 const HIGHLIGHTS = [
   "entrar na TI de verdade",
   "construir sua carreira em tech",

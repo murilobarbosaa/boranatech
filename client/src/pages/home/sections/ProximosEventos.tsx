@@ -69,7 +69,6 @@ export default function ProximosEventos() {
           </ul>
         ) : (
           <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-8 text-center">
-            {/* TODO(Ana): copy do estado vazio de eventos */}
             <p className="font-display text-lg font-black text-slate-950">
               Nenhum evento agendado por enquanto
             </p>
