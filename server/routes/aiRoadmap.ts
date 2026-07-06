@@ -591,6 +591,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   const rows = (data ?? []) as Array<AiRoadmapListRow & { roadmap: RoadmapV2 | null }>;
 
   const completedBySlug = new Map<string, number>();
+  let progressFailed = false;
   const hasReady = rows.some((row) => row.status === "ready");
   if (hasReady) {
     const { data: progressRows, error: progressError } = await supabaseAdmin
@@ -600,6 +601,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
       .eq("context", "course_progress")
       .like("item_key", "ia-%");
     if (progressError) {
+      progressFailed = true;
       console.warn(
         "[roadmap-ia] contagem de progresso da lista falhou:",
         progressError.message,
@@ -624,7 +626,7 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
     return {
       ...row,
       totalSteps,
-      completedSteps: completedBySlug.get(row.slug) ?? 0,
+      completedSteps: progressFailed ? null : (completedBySlug.get(row.slug) ?? 0),
     };
   });
   res.json({ roadmaps });
