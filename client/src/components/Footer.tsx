@@ -101,7 +101,7 @@ export default function Footer() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 py-12 sm:grid-cols-3 md:grid-cols-4 md:gap-10 lg:grid-cols-[1fr_1fr_1fr_1fr_1.5fr]">
+        <div className="grid grid-cols-2 gap-8 py-12 sm:grid-cols-3 md:grid-cols-4 md:gap-10 lg:grid-cols-4">
           {Object.values(FOOTER_COLUMNS).map((column) => (
             <nav key={column.title} aria-label={column.title}>
               <h3 className="mb-4 font-display text-xs font-black tracking-widest text-amber-400">
@@ -121,31 +121,6 @@ export default function Footer() {
               </ul>
             </nav>
           ))}
-
-          <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-1">
-            <h3 className="mb-4 font-display text-xs font-black tracking-widest text-amber-400">
-              NEWSLETTER
-            </h3>
-            <p className="mb-4 text-sm text-slate-400">
-              Novidades da tech direto no seu inbox. Em breve.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="seu@email.com"
-                disabled
-                aria-label="Email para newsletter (em breve)"
-                className="min-w-0 flex-1 cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-500 placeholder:text-slate-600"
-              />
-              <button
-                type="button"
-                disabled
-                className="cursor-not-allowed rounded-lg border-2 border-slate-800 bg-slate-800 px-4 py-2 font-display text-xs font-black text-slate-500"
-              >
-                Em breve
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="border-y-2 border-slate-800 py-6">
