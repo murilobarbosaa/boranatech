@@ -36,6 +36,7 @@ import { getQuizHistory } from "@/services/careerQuizService";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { GENERAL_AREA, isAreaSlug, type AreaSelection } from "@shared/areas";
+import { detectGithubTarget } from "@shared/github/detect";
 import type {
   AnalysisMode,
   GithubAnalysisResponse,
@@ -43,10 +44,8 @@ import type {
 
 const ac = getPageAccentUi("violet");
 
-const PLACEHOLDER: Record<AnalysisMode, string> = {
-  perfil: "seu usuario do GitHub",
-  repo: "github.com/usuario/projeto",
-};
+// TODO(Ana): revisar placeholder e descricoes da deteccao automatica.
+const INPUT_PLACEHOLDER = "github.com/usuario ou github.com/usuario/projeto";
 
 const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
   perfil:
@@ -56,38 +55,15 @@ const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
 
 const STORAGE_KEY = "boranatech:portfolio-analyzer";
 // Versao da forma do payload persistido. Bump sempre que a forma da resposta
-// (GithubAnalysisResponse) mudar. No restore, slots de versao diferente sao
-// descartados, pra nunca reusar um result de shape antigo (ex sem suficiencia
-// ou sem deepSignals). A versao 3 marca o qualitative com proximoPasso.
-const STORAGE_SHAPE_VERSION = 3;
-
-interface ModeSlot {
-  input: string;
-  result: GithubAnalysisResponse | null;
-}
-
-type ModeSlots = Record<AnalysisMode, ModeSlot>;
-
-function emptySlots(): ModeSlots {
-  return {
-    perfil: { input: "", result: null },
-    repo: { input: "", result: null },
-  };
-}
-
-function coerceSlot(value: unknown): ModeSlot {
-  if (!value || typeof value !== "object") return { input: "", result: null };
-  const slot = value as { input?: unknown; result?: unknown };
-  const input = typeof slot.input === "string" ? slot.input : "";
-  const result =
-    slot.result && typeof slot.result === "object"
-      ? (slot.result as GithubAnalysisResponse)
-      : null;
-  return { input, result };
-}
+// (GithubAnalysisResponse) ou a forma do estado salvo mudar. No restore,
+// payload de versao diferente e descartado, pra nunca reusar um result de
+// shape antigo. A versao 4 troca os slots por modo por um input/result unico
+// (o alvo e autodetectado do input).
+const STORAGE_SHAPE_VERSION = 4;
 
 interface StoredState {
-  slots: ModeSlots;
+  input: string;
+  result: GithubAnalysisResponse | null;
   // null = nada valido salvo (ainda nao escolhido nesta sessao).
   area: AreaSelection | null;
 }
@@ -99,32 +75,31 @@ function coerceArea(value: unknown): AreaSelection | null {
 }
 
 function loadState(): StoredState {
-  if (typeof window === "undefined") return { slots: emptySlots(), area: null };
+  if (typeof window === "undefined") {
+    return { input: "", result: null, area: null };
+  }
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return { slots: emptySlots(), area: null };
+    if (!raw) return { input: "", result: null, area: null };
     const parsed = JSON.parse(raw) as {
-      perfil?: unknown;
-      repo?: unknown;
+      input?: unknown;
+      result?: unknown;
       area?: unknown;
       version?: unknown;
     };
-    // So restaura os slots (com result) se a versao de shape bater com a atual.
-    // Payload de build antigo (sem version ou com version diferente) cai pra
-    // vazio, evitando reusar um result de forma velha. A area nao depende da
-    // forma da resposta, entao e restaurada de qualquer jeito.
-    const slotsOk = parsed.version === STORAGE_SHAPE_VERSION;
+    // So restaura input/result se a versao de shape bater com a atual. A area
+    // nao depende da forma da resposta, entao e restaurada de qualquer jeito.
+    const ok = parsed.version === STORAGE_SHAPE_VERSION;
     return {
-      slots: slotsOk
-        ? {
-            perfil: coerceSlot(parsed.perfil),
-            repo: coerceSlot(parsed.repo),
-          }
-        : emptySlots(),
+      input: ok && typeof parsed.input === "string" ? parsed.input : "",
+      result:
+        ok && parsed.result && typeof parsed.result === "object"
+          ? (parsed.result as GithubAnalysisResponse)
+          : null,
       area: coerceArea(parsed.area),
     };
   } catch {
-    return { slots: emptySlots(), area: null };
+    return { input: "", result: null, area: null };
   }
 }
 
@@ -184,9 +159,10 @@ export default function PortfolioAnalisar() {
   const { profile } = useAuth();
 
   const [bootstrap] = useState(loadState);
-  const [mode, setMode] = useState<AnalysisMode>("perfil");
-  const [slots, setSlots] = useState<ModeSlots>(bootstrap.slots);
-  // Area e selecao global (vale pros dois modos), nao por modo.
+  const [input, setInput] = useState(bootstrap.input);
+  const [result, setResult] = useState<GithubAnalysisResponse | null>(
+    bootstrap.result,
+  );
   const [area, setArea] = useState<AreaSelection>(
     bootstrap.area ?? GENERAL_AREA,
   );
@@ -255,37 +231,26 @@ export default function PortfolioAnalisar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPro]);
 
-  // Persiste slots e area no sessionStorage. Nunca persiste loading nem error.
+  // Persiste input, result e area no sessionStorage. Nunca persiste loading
+  // nem error.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       window.sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ ...slots, area, version: STORAGE_SHAPE_VERSION }),
+        JSON.stringify({ input, result, area, version: STORAGE_SHAPE_VERSION }),
       );
     } catch {
       // storage cheio ou indisponivel: ignora, segue so em memoria.
     }
-  }, [slots, area]);
+  }, [input, result, area]);
 
-  const input = slots[mode].input;
-  const result = slots[mode].result;
-
-  function setInput(value: string) {
-    setSlots((prev) => ({ ...prev, [mode]: { ...prev[mode], input: value } }));
-  }
+  // Deteccao ao vivo do alvo (perfil ou repo) pela mesma fonte do server.
+  const detection = detectGithubTarget(input);
 
   function changeArea(next: AreaSelection) {
     areaSource.current = "user";
     setArea(next);
-  }
-
-  function changeMode(next: AnalysisMode) {
-    if (next === mode) return;
-    setMode(next);
-    setError("");
-    setScoreDelta(null);
-    setConfirmReanalyze(false);
   }
 
   // Anterior do MESMO alvo no historico (para o delta de nota). skipId pula a
@@ -311,9 +276,9 @@ export default function PortfolioAnalisar() {
   }
 
   async function runAnalysis() {
-    const activeMode = mode;
-    const trimmed = slots[activeMode].input.trim();
-    if (!trimmed || loading) return;
+    const trimmed = input.trim();
+    const target = detectGithubTarget(trimmed);
+    if (target.kind === "invalid" || loading) return;
 
     setLoading(true);
     setError("");
@@ -324,11 +289,9 @@ export default function PortfolioAnalisar() {
     const priorScore = findPriorScore(trimmed);
 
     try {
-      const data = await analyzeGithub(activeMode, trimmed, area);
-      setSlots((prev) => ({
-        ...prev,
-        [activeMode]: { ...prev[activeMode], result: data },
-      }));
+      // O kind vai por compat (o server autodetecta e ignora o mode).
+      const data = await analyzeGithub(target.kind, trimmed, area);
+      setResult(data);
       setScoreDelta(
         priorScore !== null
           ? { from: priorScore, to: data.deterministic.score }
@@ -351,16 +314,11 @@ export default function PortfolioAnalisar() {
         loadHistory();
         return;
       }
-      const recordMode: AnalysisMode =
-        record.input?.mode === "repo" ? "repo" : "perfil";
       const rawInput = record.input?.input ?? "";
-      setMode(recordMode);
       setError("");
       setConfirmReanalyze(false);
-      setSlots((prev) => ({
-        ...prev,
-        [recordMode]: { input: rawInput, result: record.result },
-      }));
+      setInput(rawInput);
+      setResult(record.result);
       const priorScore = rawInput ? findPriorScore(rawInput, id) : null;
       setScoreDelta(
         priorScore !== null && typeof record.score === "number"
@@ -400,56 +358,23 @@ export default function PortfolioAnalisar() {
           ) : (
             <div className="space-y-8">
               <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="inline-flex rounded-full border-2 border-slate-950 bg-white p-1 shadow-[3px_3px_0_#0f172a]">
-                    <button
-                      type="button"
-                      onClick={() => changeMode("perfil")}
-                      className={cn(
-                        "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                        mode === "perfil"
-                          ? "bg-amber-300 text-slate-950"
-                          : "text-slate-600 hover:text-slate-900",
-                      )}
-                    >
-                      Perfil
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => changeMode("repo")}
-                      className={cn(
-                        "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                        mode === "repo"
-                          ? "bg-amber-300 text-slate-950"
-                          : "text-slate-600 hover:text-slate-900",
-                      )}
-                    >
-                      Repositório
-                    </button>
-                  </div>
-
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                    <span className="hidden sm:inline">Área alvo</span>
-                    <select
-                      value={area}
-                      onChange={(event) =>
-                        changeArea(event.target.value as AreaSelection)
-                      }
-                      className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-violet-200"
-                    >
-                      <option value={GENERAL_AREA}>Geral</option>
-                      {areasTI.map((a) => (
-                        <option key={a.slug} value={a.slug}>
-                          {a.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <p className="mt-4 text-sm font-medium text-slate-600">
-                  {MODE_DESCRIPTION[mode]}
-                </p>
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                  <span>Área alvo</span>
+                  <select
+                    value={area}
+                    onChange={(event) =>
+                      changeArea(event.target.value as AreaSelection)
+                    }
+                    className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-violet-200"
+                  >
+                    <option value={GENERAL_AREA}>Geral</option>
+                    {areasTI.map((a) => (
+                      <option key={a.slug} value={a.slug}>
+                        {a.nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
                 <form
                   onSubmit={handleSubmit}
@@ -458,12 +383,12 @@ export default function PortfolioAnalisar() {
                   <input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder={PLACEHOLDER[mode]}
+                    placeholder={INPUT_PLACEHOLDER}
                     className="w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-violet-200"
                   />
                   <button
                     type="submit"
-                    disabled={loading || !input.trim()}
+                    disabled={loading || detection.kind === "invalid"}
                     className="btn-brutal-accent inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {loading ? (
@@ -474,7 +399,26 @@ export default function PortfolioAnalisar() {
                     {loading ? "Analisando..." : "Analisar"}
                   </button>
                 </form>
-                {mode === "repo" ? (
+
+                {/* TODO(Ana): revisar a copy do badge de deteccao. */}
+                {input.trim() !== "" ? (
+                  detection.kind === "invalid" ? (
+                    <p className="mt-3 text-xs font-bold text-rose-700">
+                      {detection.reason}
+                    </p>
+                  ) : (
+                    <p className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 font-black text-slate-900">
+                        <Github className="h-3 w-3" aria-hidden />
+                        {detection.kind === "repo"
+                          ? `Repositório: ${detection.owner}/${detection.repo}`
+                          : `Perfil: ${detection.login}`}
+                      </span>
+                      {MODE_DESCRIPTION[detection.kind]}
+                    </p>
+                  )
+                ) : null}
+                {detection.kind === "repo" ? (
                   <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-500">
                     <Globe className="h-3.5 w-3.5 text-slate-400" />O
                     repositório precisa ser público.
