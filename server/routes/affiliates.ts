@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { redisConnection } from "../lib/queue";
+import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const router = Router();
@@ -62,11 +62,13 @@ router.post("/:code/click", async (req, res) => {
     // ou em erro, registra o clique mesmo assim, sem derrubar pelo cache.
     // SET NX EX e usado no lugar de SETEX puro porque precisamos detectar de
     // forma atomica o primeiro clique da janela (NX) alem de aplicar o TTL.
+    // cacheConnection (fail-fast): com Redis fora o comando rejeita rapido e o
+    // catch libera; a conexao de fila penduraria a rota na offline queue.
     let shouldCount = true;
-    if (redisConnection) {
+    if (cacheConnection) {
       try {
         const key = `affiliate:click:${ip}:${code}`;
-        const result = await redisConnection.set(
+        const result = await cacheConnection.set(
           key,
           "1",
           "EX",

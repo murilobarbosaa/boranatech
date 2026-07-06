@@ -1,14 +1,20 @@
+import * as Sentry from "@sentry/node";
+import compression from "compression";
+import crypto from "crypto";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 
 import { env } from "./lib/env";
-import { redisConnection } from "./lib/queue";
+import { cacheConnection } from "./lib/redis";
 import { supabaseAdmin } from "./lib/supabaseAdmin";
 import { validateSupabaseJwt } from "./middleware/auth";
 import { errorHandler } from "./middleware/error";
 import adminRouter from "./routes/admin";
+import agentRouter from "./routes/agent";
+import agentHistoryRouter from "./routes/agentHistory";
 import aiRouter from "./routes/ai";
+import aiRoadmapRouter from "./routes/aiRoadmap";
 import affiliatesRouter from "./routes/affiliates";
 import avatarsRouter from "./routes/avatars";
 import badgesRouter from "./routes/badges";
@@ -21,11 +27,13 @@ import launchStateRouter, { betaRouter } from "./routes/launchState";
 import linkedinRouter from "./routes/linkedin";
 import meAvatarRouter from "./routes/meAvatar";
 import meRouter from "./routes/me";
+import newsletterRouter from "./routes/newsletter";
 import profilesRouter from "./routes/profiles";
 import progressRouter from "./routes/progress";
 import quizRouter from "./routes/quiz";
+import resumeAnalysisRouter from "./routes/resumeAnalysis";
+import resumesRouter from "./routes/resumes";
 import searchRouter from "./routes/search";
-import sitemapRouter from "./routes/sitemap";
 import statsRouter from "./routes/stats";
 import studyRouter from "./routes/study";
 import waitlistRouter from "./routes/waitlist";
@@ -37,15 +45,51 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
+// Request id unificado, gerado na borda. NAO confiamos em X-Request-Id de
+// entrada (cliente pode forjar; somos a borda). Correlaciona log estruturado,
+// resposta e evento do Sentry.
+app.use((req, res, next) => {
+  const requestId = crypto.randomUUID();
+  res.locals.requestId = requestId;
+  res.setHeader("X-Request-Id", requestId);
+  next();
+});
+
+// Compressao de transporte (gzip/brotli). NUNCA comprimir SSE: compression
+// bufferiza e quebraria os streams do agente, do ai/stream e do roadmap IA.
+// Dupla guarda: request que aceita event-stream OU resposta ja marcada como
+// event-stream ficam de fora; o resto segue o filtro padrao da lib.
+app.use(
+  compression({
+    threshold: 1024,
+    filter: (req, res) => {
+      const accept = String(req.headers.accept || "");
+      if (accept.includes("text/event-stream")) return false;
+      const contentType = String(res.getHeader("Content-Type") || "");
+      if (contentType.includes("text/event-stream")) return false;
+      return compression.filter(req, res);
+    },
+  }),
+);
+
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 180;
-// Teto de seguranca pro numero de chaves vivas no store em memoria.
+// Configuravel por env SOMENTE para staging/teste de carga (k6); producao
+// nao seta RATE_LIMIT_MAX_REQUESTS e fica no default 180 (validacao e warn
+// em env.ts).
+const RATE_LIMIT_MAX_REQUESTS = env.rateLimitMaxRequests;
+// TTL da chave no Redis maior que a janela: a chave ja carrega o inicio da
+// janela no nome, o TTL so garbage-colleta.
+const RATE_LIMIT_REDIS_TTL_SECONDS = 120;
+// Teto de seguranca pro numero de chaves vivas no store de FALLBACK em memoria.
 const RATE_LIMIT_MAX_ENTRIES = 50_000;
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
-// Remove entradas expiradas pra o store nao crescer indefinidamente: sem isso,
-// uma chave por IP que nunca mais volta ficaria pra sempre (vazamento). Roda
-// periodicamente (unref pra nao segurar o processo) e tambem sob demanda
+// Loga a transicao (Redis caiu / voltou) uma unica vez, nao a cada request.
+let rateLimitUsingFallback = false;
+
+// Remove entradas expiradas pra o store de fallback nao crescer indefinidamente:
+// sem isso, uma chave por IP que nunca mais volta ficaria pra sempre (vazamento).
+// Roda periodicamente (unref pra nao segurar o processo) e tambem sob demanda
 // quando o store passa do teto.
 function sweepRateLimitStore(now: number) {
   rateLimitStore.forEach((entry, key) => {
@@ -59,8 +103,39 @@ setInterval(() => sweepRateLimitStore(Date.now()), RATE_LIMIT_WINDOW_MS).unref()
 
 function isRateLimitExempt(pathname: string) {
   return (
-    pathname === "/api/health" || pathname.startsWith("/api/billing/webhook")
+    pathname === "/api/health" ||
+    pathname === "/api/health/live" ||
+    pathname.startsWith("/api/billing/webhook")
   );
+}
+
+// Janela fixa compartilhada entre replicas: INCR + EXPIRE atomicos via multi na
+// cacheConnection (fail-fast). Retorna a contagem da janela, ou null se o Redis
+// falhou/ausente (o chamador cai pro fallback local). Rate limit e protecao de
+// abuso, nao entitlement: fail-open aqui e decisao consciente (disponibilidade
+// acima de limitacao estrita); entitlements Pro seguem fail-closed.
+async function redisRateLimitCount(
+  ip: string,
+  windowStart: number,
+): Promise<number | null> {
+  if (!cacheConnection) {
+    return null;
+  }
+  const key = `ratelimit:${ip}:${windowStart}`;
+  try {
+    const results = await cacheConnection
+      .multi()
+      .incr(key)
+      .expire(key, RATE_LIMIT_REDIS_TTL_SECONDS)
+      .exec();
+    const incr = results?.[0];
+    if (!incr || incr[0]) {
+      return null;
+    }
+    return Number(incr[1]);
+  } catch {
+    return null;
+  }
 }
 
 const CSP_REPORT_ONLY = [
@@ -90,6 +165,10 @@ app.use((req, res, next) => {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+  );
+  res.setHeader(
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains",
   );
@@ -114,19 +193,52 @@ app.use((req, res, next) => {
         status: res.statusCode,
         duration_ms: Date.now() - startedAt,
         ip: req.ip,
+        request_id: res.locals.requestId,
       }),
     );
   });
   next();
 });
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   if (!req.path.startsWith("/api") || isRateLimitExempt(req.path)) {
     return next();
   }
 
   const now = Date.now();
   const key = req.ip || "unknown";
+  const windowStart = now - (now % RATE_LIMIT_WINDOW_MS);
+
+  const redisCount = await redisRateLimitCount(key, windowStart);
+  if (redisCount !== null) {
+    if (rateLimitUsingFallback) {
+      rateLimitUsingFallback = false;
+      console.log(
+        "[ratelimit] Redis voltou. Contagem compartilhada reativada.",
+      );
+    }
+    if (redisCount > RATE_LIMIT_MAX_REQUESTS) {
+      res.setHeader(
+        "Retry-After",
+        String(Math.ceil((windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000)),
+      );
+      return res.status(429).json({
+        error: {
+          code: "rate_limited",
+          message: "Muitas requisições. Tente novamente em instantes.",
+        },
+      });
+    }
+    return next();
+  }
+
+  if (cacheConnection && !rateLimitUsingFallback) {
+    rateLimitUsingFallback = true;
+    console.warn(
+      "[ratelimit] Redis indisponível. Contagem local por instância (fail-open).",
+    );
+  }
+
   const current = rateLimitStore.get(key);
 
   if (!current || current.resetAt <= now) {
@@ -196,18 +308,25 @@ app.use("/api/me/avatar", express.json({ limit: "10mb" }));
 
 app.use(express.json({ limit: "2mb" }));
 
-app.use(sitemapRouter);
 app.use("/api/affiliates", affiliatesRouter);
 app.use("/api/stats", statsRouter);
 app.use("/api/waitlist", waitlistRouter);
+app.use("/api/newsletter", newsletterRouter);
 app.use("/api/launch-state", launchStateRouter);
 app.use("/api/beta", betaRouter);
 
 app.use("/api", validateSupabaseJwt);
 
 app.use("/api/ai", aiRouter);
+app.use("/api/roadmaps-ia", aiRoadmapRouter);
+// agentHistoryRouter ANTES de agentRouter (path mais especifico) para ter sua
+// propria cadeia de middleware sem reexecutar a do agentRouter. Nao reordenar.
+app.use("/api/agent/conversations", agentHistoryRouter);
+app.use("/api/agent", agentRouter);
 app.use("/api/github", githubRouter);
 app.use("/api/linkedin", linkedinRouter);
+app.use("/api/resume", resumeAnalysisRouter);
+app.use("/api/resumes", resumesRouter);
 app.use("/api/me/avatar", meAvatarRouter);
 app.use("/api/me", meRouter);
 app.use("/api/avatars", avatarsRouter);
@@ -223,8 +342,19 @@ app.use("/api/admin", adminRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/cron", cronRouter);
 
+// Liveness pura pro healthcheck do Railway: nao toca banco nem Redis, so prova
+// que o processo aceita conexoes. O /api/health completo fica pra monitoramento.
+app.get("/api/health/live", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+// Guarda redundante do ping: a cacheConnection ja falha rapido (commandTimeout
+// 1000, offline queue desligada), o race garante que o health NUNCA pendura.
+const HEALTH_REDIS_PING_TIMEOUT_MS = 1500;
+const HEALTH_PING_TIMEOUT = Symbol("health-redis-ping-timeout");
+
 app.get("/api/health", async (_req, res) => {
-  const checks: Record<string, "ok" | "error"> = {};
+  const checks: Record<string, string> = {};
   const startTime = Date.now();
 
   try {
@@ -240,17 +370,31 @@ app.get("/api/health", async (_req, res) => {
   checks.openai = env.openaiApiKey ? "ok" : "error";
   checks.currents = env.currentsApiKey ? "ok" : "error";
   checks.jooble = env.joobleApiKey ? "ok" : "error";
-  if (redisConnection) {
+  if (cacheConnection) {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      await redisConnection.ping();
-      checks.redis = "ok";
+      const pong = await Promise.race([
+        cacheConnection.ping(),
+        new Promise<typeof HEALTH_PING_TIMEOUT>((resolve) => {
+          timer = setTimeout(
+            () => resolve(HEALTH_PING_TIMEOUT),
+            HEALTH_REDIS_PING_TIMEOUT_MS,
+          );
+        }),
+      ]);
+      checks.redis = pong === "PONG" ? "ok" : "degraded";
     } catch {
-      checks.redis = "error";
+      checks.redis = "degraded";
+    } finally {
+      clearTimeout(timer);
     }
   } else {
-    checks.redis = "error";
+    checks.redis = "not_configured";
   }
 
+  // Redis e componente opcional (cache/fila tem fallback): o status HTTP
+  // reflete APENAS o banco, pra um outage de Redis nao derrubar a replica
+  // no healthcheck.
   const status = checks.database === "ok" ? "ok" : "degraded";
 
   res.status(status === "ok" ? 200 : 503).json({
@@ -276,11 +420,54 @@ const staticPath = env.isProd
   ? path.resolve(__dirname, "public")
   : path.resolve(__dirname, "..", "dist", "public");
 
-app.use(express.static(staticPath));
+// Assets com hash no nome podem ser imutaveis; index.html e demais arquivos
+// sem hash precisam revalidar a cada deploy (immutable neles quebraria deploy).
+const assetsDir = path.join(staticPath, "assets") + path.sep;
+
+app.use(
+  express.static(staticPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.startsWith(assetsDir)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "no-cache");
+      }
+    },
+  }),
+);
 
 app.get("*", (_req, res) => {
-  res.sendFile(path.join(staticPath, "index.html"));
+  res.sendFile(path.join(staticPath, "index.html"), {
+    headers: { "Cache-Control": "no-cache" },
+  });
 });
+
+// Captura pro Sentry ANTES do errorHandler, que segue dono da resposta ao
+// cliente. Equivalente ao setupExpressErrorHandler da lib, feito a mao porque
+// precisamos da tag requestId por request: no bundle esbuild a isolacao de
+// escopo por request do SDK (via instrumentacao http) nao e confiavel, entao
+// withScope + captura explicita e o caminho deterministico. So 5xx: erro de
+// createError com statusCode < 500 e negocio esperado (o beforeSend do
+// sentry.ts descarta esses tambem, dupla protecao).
+app.use(
+  (
+    err: Error & { statusCode?: number },
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    const statusCode =
+      typeof err.statusCode === "number" ? err.statusCode : 500;
+    if (statusCode >= 500) {
+      Sentry.withScope((scope) => {
+        scope.setTag("requestId", String(res.locals.requestId ?? ""));
+        scope.setTag("route", req.path);
+        Sentry.captureException(err);
+      });
+    }
+    next(err);
+  },
+);
 
 app.use(errorHandler);
 

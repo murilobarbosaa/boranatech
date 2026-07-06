@@ -13,6 +13,7 @@ import {
 import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
 import { runLinkedinChecks } from "./linkedinChecks";
+import { fetchWithTimeout } from "./http";
 import { parseLinkedinText, type LinkedinParsed } from "./linkedinParse";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
@@ -60,7 +61,10 @@ CALIBRAGEM DE TOM: a nota e a faixa indicam o estágio do perfil. Faixa início 
 
 ESTILO: português do Brasil. Proibido travessão e meia-risca, use ponto, vírgula ou parênteses. Sem emojis. Textos reescritos prontos para copiar e colar, na primeira pessoa quando for texto do perfil do usuário.
 
+QUANTIDADES OBRIGATÓRIAS: de 3 a 5 pontosFortes, de 3 a 5 pontosFracos e de 4 a 7 melhorias. Em cada melhoria, comoFazer tem de 2 a 4 frases, começando por um primeiro passo executável HOJE e citando o campo do perfil quando aplicável (headline, Sobre, competências, experiências). proximoPasso: preencha SEMPRE, escolhendo entre as melhorias de prioridade alta a ÚNICA ação de maior impacto que a pessoa consegue executar hoje, concreta e específica ao perfil analisado.
+
 Responda apenas com o JSON do schema.`;
+// TODO(Ana): revisar o bloco de quantidades e proximoPasso do prompt.
 
 export interface AnalyzeAiIo {
   inputChars: number;
@@ -159,27 +163,31 @@ async function runQualitativeOnce(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
 ): Promise<LinkedinQualitative> {
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: buildOpenAIHeaders(env.openaiApiKey),
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      temperature: 0.5,
-      max_tokens: MAX_TOKENS,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userText },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "linkedin_qualitative",
-          strict: true,
-          schema: QUALITATIVE_JSON_SCHEMA,
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: 0.5,
+        max_tokens: MAX_TOKENS,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userText },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "linkedin_qualitative",
+            strict: true,
+            schema: QUALITATIVE_JSON_SCHEMA,
+          },
         },
-      },
-    }),
-  });
+      }),
+    },
+    { service: "openai", timeoutMs: 60_000 },
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -289,6 +297,8 @@ function warmEmptyQualitative(
           "Comece com uma frase de gancho, conte o que você estuda e está construindo, liste sua stack por extenso e termine com um convite ao contato.",
       },
     ],
+    // TODO(Ana): revisar o proximo passo do perfil quase vazio.
+    proximoPasso: `Preencha hoje sua headline com a fórmula cargo e tecnologias, por exemplo: ${cargo} | listando as tecnologias que você estuda.`,
     headlines: [
       `${cargo} | em busca da primeira oportunidade, construindo projetos`,
       `${cargo} | estudando e praticando todos os dias`,

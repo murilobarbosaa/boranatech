@@ -118,6 +118,13 @@ const menuData: DropdownMenu[] = [
             path: "/roadmaps",
           },
           {
+            // TODO(Ana): revisar label e description do Roadmap com IA.
+            label: "Roadmap com IA",
+            description: "Sua trilha sob medida, gerada pra você",
+            path: "/roadmaps/ia",
+            isPro: true,
+          },
+          {
             label: "Plano de Estudos",
             description: "Monte sua rotina personalizada",
             path: "/estudos",
@@ -213,6 +220,13 @@ const menuData: DropdownMenu[] = [
             label: "Currículo",
             description: "Apareça para os recrutadores certos",
             path: "/curriculo",
+          },
+          {
+            // TODO(Ana): revisar label e description do gerador de curriculo.
+            label: "Gerar Currículo",
+            description: "Monte seu currículo conversando com IA",
+            path: "/curriculo/gerar",
+            isPro: true,
           },
           {
             label: "Networking",

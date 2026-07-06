@@ -8,8 +8,8 @@ import {
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
 
-import AuthModal from "@/components/auth/AuthModal";
-import { useAuth } from "@/contexts/AuthContext";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import { type FavoriteItem, useFavorites } from "@/hooks/useFavorites";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { showActionToast } from "@/lib/notify";
@@ -35,12 +35,9 @@ export default function FavoriteButton({
   className,
   compact = false,
 }: FavoriteButtonProps) {
-  const { user } = useAuth();
-  const { isFavorite, toggleFavorite, pendingAuthFavorite, clearPendingAuth } =
-    useFavorites();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const { requireAuth, modalProps } = useAuthGate();
 
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const authJustSucceededRef = useRef(false);
   const active = isFavorite(item);
 
   const reduceMotion = usePrefersReducedMotion();
@@ -60,19 +57,30 @@ export default function FavoriteButton({
     }
   }, [active, reduceMotion]);
 
-  useEffect(() => {
-    if (pendingAuthFavorite && !user) {
-      setAuthModalOpen(true);
-    }
-  }, [pendingAuthFavorite, user]);
-
   async function handleClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
 
     const result = await toggleFavorite(item);
 
-    if (result.requiresAuth) return;
+    if (result.requiresAuth) {
+      requireAuth({
+        intent: {
+          kind: "domain",
+          domain: "favorite",
+          payload: {
+            type: item.type,
+            itemKey: item.id,
+            snapshot: {
+              title: item.title,
+              subtitle: item.subtitle,
+              url: item.url,
+            },
+          },
+        },
+      });
+      return;
+    }
 
     if (!result.ok) {
       toast.error("Não foi possível salvar. Tente novamente.");
@@ -93,39 +101,6 @@ export default function FavoriteButton({
       showActionToast({ message: "Removido dos favoritos." });
     }
   }
-
-  function handleModalOpenChange(open: boolean) {
-    setAuthModalOpen(open);
-    if (!open) {
-      if (authJustSucceededRef.current) {
-        authJustSucceededRef.current = false;
-        return;
-      }
-      clearPendingAuth();
-    }
-  }
-
-  function handleAuthenticated() {
-    authJustSucceededRef.current = true;
-    showActionToast({
-      message: "Salvo em Favoritos",
-      action: {
-        label: "Ver",
-        onClick: () => {
-          window.location.href = "/perfil/favoritos";
-        },
-      },
-    });
-  }
-
-  const pendingIntent = pendingAuthFavorite
-    ? {
-        kind: "favorite" as const,
-        type: pendingAuthFavorite.type,
-        itemKey: pendingAuthFavorite.itemKey,
-        snapshot: pendingAuthFavorite.snapshot,
-      }
-    : undefined;
 
   return (
     <>
@@ -180,19 +155,7 @@ export default function FavoriteButton({
         {!compact && <span>{active ? "Favorito" : "Favoritar"}</span>}
       </button>
 
-      <AuthModal
-        open={authModalOpen}
-        onOpenChange={handleModalOpenChange}
-        onAuthenticated={handleAuthenticated}
-        title={
-          <>
-            Faça login pra salvar nos seus{" "}
-            <span className="text-amber-700">Favoritos</span>
-          </>
-        }
-        description="Seus favoritos ficam salvos na sua conta."
-        pendingIntent={pendingIntent}
-      />
+      <AuthGateModal {...modalProps} />
     </>
   );
 }

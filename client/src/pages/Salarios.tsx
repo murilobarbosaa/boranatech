@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
 import CountUp from "@/components/reactbits/CountUp";
@@ -272,6 +273,12 @@ export default function Salarios() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Salários em TI · Quanto ganha cada área e nível"
+        description="Explore salários de tecnologia por área, nível e cidade. Veja quanto você pode ganhar como júnior e como a remuneração evolui ao longo da carreira."
+        url="/salarios"
+      />
       <PageHero
         accent="emerald"
         eyebrow="referência de mercado"

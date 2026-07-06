@@ -2,6 +2,7 @@ import Layout from "@/components/Layout";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { technicalChallenges } from "@/lib/careerToolsData";
 
@@ -9,6 +10,13 @@ export default function EntrevistaDesafios() {
   const { isPro, loading } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Banco de desafios técnicos para praticar"
+        description="Pratique desafios técnicos parecidos com os de processos seletivos reais e chegue mais preparado para a etapa prática das entrevistas em tecnologia."
+        url="/entrevistas/desafios"
+        schemaType="CollectionPage"
+      />
       <PageHero
         title="Banco de Desafios Técnicos"
         subtitle="Pratique desafios parecidos com processos seletivos reais."

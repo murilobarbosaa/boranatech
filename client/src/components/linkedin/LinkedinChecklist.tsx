@@ -3,8 +3,18 @@ import { cn } from "@/lib/utils";
 import {
   LINKEDIN_CATEGORIES,
   LINKEDIN_CATEGORY_LABELS,
+  LINKEDIN_CHECK_CATALOG,
   type LinkedinCheckResult,
 } from "@shared/linkedin/schema";
+
+// Hints do catalogo (fonte unica em shared): renderizados como "como
+// resolver" nos checks reprovados. Lookup por id, sem duplicar textos.
+const HINT_BY_ID = new Map(
+  LINKEDIN_CHECK_CATALOG.filter((entry) => entry.hint).map((entry) => [
+    entry.id,
+    entry.hint as string,
+  ]),
+);
 
 interface LinkedinChecklistProps {
   checks: LinkedinCheckResult[];
@@ -42,6 +52,15 @@ export default function LinkedinChecklist({ checks }: LinkedinChecklistProps) {
                       {check.label}
                     </p>
                     <p className="text-sm text-slate-500">{check.detail}</p>
+                    {!check.aprovado && HINT_BY_ID.has(check.id) ? (
+                      <p className="mt-0.5 text-xs font-medium text-slate-400">
+                        {/* TODO(Ana): revisar o rotulo "como resolver". */}
+                        <span className="font-bold text-slate-500">
+                          como resolver:
+                        </span>{" "}
+                        {HINT_BY_ID.get(check.id)}
+                      </p>
+                    ) : null}
                   </div>
                 </li>
               );

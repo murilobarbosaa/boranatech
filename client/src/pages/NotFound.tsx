@@ -1,10 +1,13 @@
 import { Link } from "wouter";
 import { ArrowLeft, Rocket } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 
 export default function NotFound() {
   return (
     <Layout>
+      {/* TODO(Ana): validar copy do title de 404 */}
+      <SEO title="Página não encontrada" noindex />
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center max-w-md px-4">
           <div className="w-20 h-20 bg-violet-100 border-2 border-violet-300 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[4px_4px_0_#0f172a]">

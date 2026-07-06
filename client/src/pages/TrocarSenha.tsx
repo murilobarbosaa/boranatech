@@ -8,6 +8,7 @@ import { PasswordRequirements } from "@/components/auth/PasswordRequirements";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { firstIssueMessage, passwordSchema } from "@/lib/authSchemas";
+import { supabase } from "@/lib/supabase";
 
 const trocarSenhaSchema = z
   .object({
@@ -24,13 +25,17 @@ const trocarSenhaSchema = z
     path: ["password"],
   });
 
+type ChangeOutcome = "form" | "success" | "partial";
+
 export default function TrocarSenha() {
   const [, setLocation] = useLocation();
-  const { user, loading, signIn, updatePassword, signOut } = useAuth();
+  const { user, loading, signIn, updatePassword } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRetryingOthers, setIsRetryingOthers] = useState(false);
+  const [outcome, setOutcome] = useState<ChangeOutcome>("form");
   const [passwordFocused, setPasswordFocused] = useState(false);
 
   useEffect(() => {
@@ -38,6 +43,26 @@ export default function TrocarSenha() {
       setLocation("/login", { replace: true });
     }
   }, [loading, user, setLocation]);
+
+  // Encerra apenas as OUTRAS sessoes, mantendo o dispositivo atual logado. Mesma
+  // forma usada em RedefinirSenha.tsx. signOut retorna { error: AuthError | null };
+  // tratamos erro retornado e excecao inesperada como "nao confirmado".
+  async function endOtherSessions(): Promise<boolean> {
+    if (!supabase) {
+      return false;
+    }
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "others" });
+      if (error) {
+        console.warn("[TrocarSenha] signOut others failed", error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.warn("[TrocarSenha] signOut others threw", err);
+      return false;
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,6 +83,7 @@ export default function TrocarSenha() {
 
     setIsSubmitting(true);
 
+    // a) reauth falhou: nada foi alterado.
     try {
       await signIn({
         email: user.email,
@@ -69,6 +95,7 @@ export default function TrocarSenha() {
       return;
     }
 
+    // b) updatePassword falhou: a senha NAO foi alterada.
     try {
       await updatePassword(parsed.data.password);
     } catch {
@@ -77,14 +104,22 @@ export default function TrocarSenha() {
       return;
     }
 
-    try {
-      await signOut();
-    } catch (err) {
-      console.warn("[TrocarSenha] signOut after update failed", err);
-    }
+    // c) senha alterada, mas as outras sessoes nao foram confirmadas como
+    // encerradas -> estado parcial. d) tudo ok -> sucesso. Nunca redireciona pro
+    // login: o dispositivo atual segue logado.
+    const othersEnded = await endOtherSessions();
+    setIsSubmitting(false);
+    setOutcome(othersEnded ? "success" : "partial");
+  }
 
-    toast.success("Senha trocada. Entre com a nova senha.");
-    setLocation("/login", { replace: true });
+  // Re-executa SOMENTE o encerramento das outras sessoes, nunca o updatePassword.
+  async function handleRetryEndOthers() {
+    setIsRetryingOthers(true);
+    const othersEnded = await endOtherSessions();
+    setIsRetryingOthers(false);
+    if (othersEnded) {
+      setOutcome("success");
+    }
   }
 
   if (loading || !user) {
@@ -94,6 +129,85 @@ export default function TrocarSenha() {
         <section className="hero-pattern py-16">
           <div className="container">
             <p className="text-sm text-slate-500">Carregando…</p>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
+  if (outcome === "success") {
+    return (
+      <Layout>
+        <SEO title="Trocar senha · Bora na Tech?" url="/trocar-senha" noindex />
+        <section className="hero-pattern py-16">
+          <div className="container">
+            <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
+              {/* TODO(Ana): copy provisoria do estado de sucesso */}
+              <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">
+                tudo certo
+              </p>
+              {/* TODO(Ana): copy provisoria */}
+              <h1 className="font-display text-3xl font-black text-slate-950">
+                Senha alterada.
+              </h1>
+              {/* TODO(Ana): copy provisoria */}
+              <p className="mt-2 text-sm text-slate-600">
+                Sua senha foi alterada e as outras sessões foram encerradas. Você
+                continua conectado neste dispositivo.
+              </p>
+              {/* TODO(Ana): copy provisoria do link */}
+              <Link
+                href="/perfil"
+                className="mt-6 block text-center text-sm font-bold text-violet-700"
+              >
+                Voltar para o perfil
+              </Link>
+            </div>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
+  if (outcome === "partial") {
+    return (
+      <Layout>
+        <SEO title="Trocar senha · Bora na Tech?" url="/trocar-senha" noindex />
+        <section className="hero-pattern py-16">
+          <div className="container">
+            <div className="card-brutal mx-auto max-w-lg rounded-3xl bg-white p-8">
+              {/* TODO(Ana): copy provisoria do estado parcial */}
+              <p className="social-badge mb-4 inline-flex px-3 py-1 text-xs font-black uppercase">
+                quase la
+              </p>
+              {/* TODO(Ana): copy provisoria */}
+              <h1 className="font-display text-3xl font-black text-slate-950">
+                Senha alterada.
+              </h1>
+              {/* TODO(Ana): copy provisoria */}
+              <p className="mt-2 text-sm text-slate-600">
+                Sua senha foi alterada, mas não foi possível encerrar as outras
+                sessões agora. Você continua conectado neste dispositivo.
+              </p>
+              {/* TODO(Ana): copy provisoria do botao de retry */}
+              <button
+                className="btn-brutal-accent mt-6 inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isRetryingOthers}
+                onClick={handleRetryEndOthers}
+                type="button"
+              >
+                {isRetryingOthers
+                  ? "Encerrando..."
+                  : "Tentar encerrar outras sessões"}
+              </button>
+              {/* TODO(Ana): copy provisoria do link */}
+              <Link
+                href="/perfil"
+                className="mt-4 block text-center text-sm font-bold text-violet-700"
+              >
+                Voltar para o perfil
+              </Link>
+            </div>
           </div>
         </section>
       </Layout>

@@ -3,6 +3,7 @@ import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import ProGate from "@/components/pro/ProGate";
 import AiToolPanel from "@/components/shared/AiToolPanel";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,12 @@ export default function Networking() {
   const { isPro } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Networking em tech · Conexões que abrem portas"
+        description="Aprenda networking em tecnologia: como construir conexões que abrem portas, se apresentar bem e gerar mensagens de contato com a ajuda da IA."
+        url="/networking"
+      />
       <PageHero
         accent="emerald"
         eyebrow="relacionamentos úteis"

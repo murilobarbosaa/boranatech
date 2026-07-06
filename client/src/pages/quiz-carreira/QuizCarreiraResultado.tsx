@@ -11,9 +11,11 @@ import {
   getTechRecommendation,
   techRecommendations,
 } from "@/lib/platformData";
-import { getQuizHistory } from "@/services/careerQuizService";
-
-const RESULT_SESSION_KEY = "quiz-carreira.last-result";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  getQuizHistory,
+  QUIZ_RESULT_SESSION_KEY,
+} from "@/services/careerQuizService";
 
 interface AreaScore {
   area: string;
@@ -31,6 +33,9 @@ interface QuizResult {
   reasons: string[];
   completedAt: string;
   techKey?: string;
+  // Presente so quando o resultado veio do sessionStorage: false indica que a
+  // gravacao em career_quiz_attempts ainda nao foi confirmada.
+  persisted?: boolean;
 }
 
 interface HistoryEntry {
@@ -87,9 +92,13 @@ function descForItem(kind: "area" | "tech", name: string): string {
 
 export default function QuizCarreiraResultado() {
   const [, setLocation] = useLocation();
+  const { user, loading: authLoading } = useAuth();
   const [result, setResult] = useState<QuizResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // true quando o resultado exibido veio do sessionStorage com persisted false
+  // (quiz concluido sem a gravacao na conta confirmada).
+  const [unsavedLocally, setUnsavedLocally] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,7 +107,7 @@ export default function QuizCarreiraResultado() {
       try {
         let fromSession: string | null = null;
         try {
-          fromSession = sessionStorage.getItem(RESULT_SESSION_KEY);
+          fromSession = sessionStorage.getItem(QUIZ_RESULT_SESSION_KEY);
         } catch {
           // sessionStorage indisponível
         }
@@ -107,6 +116,7 @@ export default function QuizCarreiraResultado() {
           const parsed = JSON.parse(fromSession) as QuizResult;
           if (!cancelled) {
             setResult({ ...parsed, kind: parsed.kind ?? "area" });
+            setUnsavedLocally(parsed.persisted === false);
             setIsLoading(false);
           }
           return;
@@ -201,6 +211,16 @@ export default function QuizCarreiraResultado() {
             <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
             Refazer quiz
           </Link>
+
+          {unsavedLocally && !authLoading && !user && (
+            <div className="mb-6 rounded-2xl border-2 border-[#1a1a1a] bg-white px-5 py-4 shadow-[2px_2px_0_#0f172a]">
+              {/* TODO(Ana): copy do aviso de resultado nao salvo na conta. */}
+              <p className="text-sm font-semibold text-slate-700">
+                Seu resultado ainda não está salvo na sua conta. Entre para não
+                perder.
+              </p>
+            </div>
+          )}
 
           <ResultHero result={result} accent={accent} />
 

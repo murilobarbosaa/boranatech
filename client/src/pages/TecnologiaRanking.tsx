@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import BackToTechnologies from "@/components/shared/BackToTechnologies";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import CountUp from "@/components/reactbits/CountUp";
@@ -24,6 +25,8 @@ import {
 } from "@/lib/technologyData";
 import { STACK_OVERFLOW_SURVEY, GITHUB_OCTOVERSE } from "@/lib/surveyData2025";
 import { getTechnologyRanking } from "@/services/contentService";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 const ac = getPageAccentUi("amber");
 
@@ -131,6 +134,7 @@ function RankingDoodles() {
 }
 
 export default function TecnologiaRanking() {
+  const { gateNavigate, modalProps } = useAuthGate();
   const search = useSearch();
   const fromTech = new URLSearchParams(search).get("from") === "tecnologias";
   const [ranking, setRanking] = useState(technologyRanking);
@@ -166,6 +170,13 @@ export default function TecnologiaRanking() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Ranking de tecnologias mais usadas"
+        description="Ranking das tecnologias mais usadas em TI, com percentuais do Stack Overflow quando existem e curadoria honesta quando o dado não é comparável."
+        url="/tecnologias/ranking"
+        schemaType="CollectionPage"
+      />
       <PageHero
         accent="amber"
         eyebrow="dados públicos 📊"
@@ -184,6 +195,10 @@ export default function TecnologiaRanking() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/tecnologias/comparar?from=tecnologias"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/comparar?from=tecnologias");
+              }}
               className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
             >
               Comparar
@@ -325,6 +340,10 @@ export default function TecnologiaRanking() {
                         />
                         <Link
                           href={`/tecnologias/${technology.slug}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            gateNavigate(`/tecnologias/${technology.slug}`);
+                          }}
                           className="font-display text-lg font-black text-violet-900 underline-offset-4 hover:underline"
                         >
                           {technology.name}
@@ -407,6 +426,10 @@ export default function TecnologiaRanking() {
                               <div className="min-w-0">
                                 <Link
                                   href={`/tecnologias/${technology.slug}`}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    gateNavigate(`/tecnologias/${technology.slug}`);
+                                  }}
                                   className="font-bold text-violet-900 underline-offset-4 hover:underline"
                                 >
                                   {technology.name}
@@ -514,6 +537,10 @@ export default function TecnologiaRanking() {
                         <div className="min-w-0 flex-1">
                           <Link
                             href={`/tecnologias/${technology.slug}`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              gateNavigate(`/tecnologias/${technology.slug}`);
+                            }}
                             className="font-display text-base font-black text-violet-900 underline-offset-4 hover:underline"
                           >
                             {technology.name}
@@ -587,6 +614,8 @@ export default function TecnologiaRanking() {
           )}
         </div>
       </section>
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }

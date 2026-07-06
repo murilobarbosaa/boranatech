@@ -353,7 +353,9 @@ export const GithubMelhoriaSchema = z.object({
   titulo: z.string().describe("Título curto e direto da melhoria sugerida."),
   comoFazer: z
     .string()
-    .describe("Passo prático e acionável de como aplicar a melhoria."),
+    .describe(
+      "Como aplicar a melhoria em 2 a 4 frases, comecando por um primeiro passo executavel hoje e citando nome de arquivo ou configuracao quando aplicavel.",
+    ),
 });
 
 export const GithubQualitativeSchema = z.object({
@@ -362,16 +364,33 @@ export const GithubQualitativeSchema = z.object({
     .describe(
       "Resumo geral em uma ou duas frases sobre o estado do perfil ou repositório.",
     ),
+  // Lembrete de compat: o toOpenAIStrictSchema REMOVE min/max do JSON Schema
+  // enviado a OpenAI, mas o safeParse local os aplica (violacao vira retry,
+  // como no resume-analyzer). Por isso o SYSTEM_PROMPT tambem declara as
+  // quantidades explicitamente.
   pontosFortes: z
     .array(z.string())
-    .describe("Pontos fortes observados no perfil ou repositório."),
+    .min(3)
+    .max(6)
+    .describe("Pontos fortes observados no perfil ou repositório (3 a 6)."),
   pontosFracos: z
     .array(z.string())
-    .describe("Pontos fracos ou lacunas observadas no perfil ou repositório."),
+    .min(3)
+    .max(6)
+    .describe(
+      "Pontos fracos ou lacunas observadas no perfil ou repositório (3 a 6).",
+    ),
   melhorias: z
     .array(GithubMelhoriaSchema)
+    .min(4)
+    .max(7)
     .describe(
-      "Melhorias priorizadas e acionáveis, da mais alta para a mais baixa prioridade.",
+      "Melhorias priorizadas e acionáveis, da mais alta para a mais baixa prioridade (4 a 7).",
+    ),
+  proximoPasso: z
+    .string()
+    .describe(
+      "A UNICA acao de maior impacto que a pessoa consegue executar hoje, concreta e especifica ao perfil/repo analisado.",
     ),
   readmeSugestao: z
     .string()

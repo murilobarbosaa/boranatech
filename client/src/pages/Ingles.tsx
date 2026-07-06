@@ -14,6 +14,7 @@ import InglesSubNav from "@/components/shared/InglesSubNav";
 import InglesTrilhaQuiz from "@/components/ingles/InglesTrilhaQuiz";
 import InglesNivelTeste from "@/components/ingles/InglesNivelTeste";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { ENGLISH_LEVELS, type EnglishLevel } from "@/lib/careerToolsData";
@@ -110,6 +111,12 @@ export default function Ingles() {
   const [mostrarQuiz, setMostrarQuiz] = useState(false);
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Inglês para tech · Comece sem ser fluente"
+        description="Você não precisa ser fluente para começar em TI: crie contato diário com documentação, vídeos, README e conversa técnica com um guia por nível."
+        url="/ingles"
+      />
       <PageHero
         accent="sky"
         eyebrow="inglês no trabalho"

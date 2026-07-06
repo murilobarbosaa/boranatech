@@ -29,6 +29,9 @@ interface MiniQuizProps {
   resultados: Record<string, MiniQuizResultado>;
   alternativas?: number;
   porque?: string;
+  // Opcional: quando presente e retorna false, bloqueia o avanco da resposta.
+  // Usado por paginas que gateiam o quiz; ausente = comportamento padrao.
+  onBeforeAnswer?: () => boolean;
 }
 
 function ResultadoLogo({
@@ -65,6 +68,7 @@ export default function MiniQuiz({
   resultados,
   alternativas,
   porque,
+  onBeforeAnswer,
 }: MiniQuizProps) {
   const [step, setStep] = useState(0);
   const [pontos, setPontos] = useState<Record<string, number>>({});
@@ -74,6 +78,7 @@ export default function MiniQuiz({
   const perguntaAtual = perguntas[step];
 
   function escolher(opcao: MiniQuizOpcao) {
+    if (onBeforeAnswer && !onBeforeAnswer()) return;
     setPontos((prev) => {
       const next = { ...prev };
       opcao.pontosPara.forEach((chave) => {

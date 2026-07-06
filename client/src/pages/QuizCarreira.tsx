@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight,
@@ -18,6 +18,9 @@ import posthog from "posthog-js";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ResetQuizConfirmModal } from "@/components/profile/ResetQuizConfirmModal";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
+import { consumePendingGate, peekPendingGate } from "@/lib/authGate";
 import { areasTI } from "@/lib/data";
 import {
   triageQuestions,
@@ -37,7 +40,12 @@ import {
   TECH_QUESTION_COUNT,
   QUIZ_ESTIMATED_MINUTES,
 } from "@/lib/platformData";
-import { persistQuizResult } from "@/services/careerQuizService";
+import {
+  markStoredQuizResultPersisted,
+  persistQuizResult,
+  QUIZ_RESULT_SESSION_KEY,
+  type PersistQuizPayload,
+} from "@/services/careerQuizService";
 
 type QuizPhase =
   | "objective"
@@ -46,8 +54,6 @@ type QuizPhase =
   | "level-reveal"
   | "questions"
   | "completing";
-
-const RESULT_SESSION_KEY = "quiz-carreira.last-result";
 
 // Acentos rotativos para colorir as opções (letra A/B/C/D).
 const OPTION_ACCENTS = ["#7c3aed", "#db2777", "#0e7490", "#d97706"];
@@ -69,6 +75,14 @@ interface StoredResult {
   completedAt: string;
   techKey?: string;
   objective?: QuizObjective;
+}
+
+// Forma efetivamente gravada no sessionStorage. persisted so vira true com
+// confirmacao do backend; enquanto false, persistPayload permite a
+// reconciliacao pos-login reenviar o resultado para career_quiz_attempts.
+interface StoredQuizResult extends StoredResult {
+  persisted: boolean;
+  persistPayload: PersistQuizPayload;
 }
 
 // Tipo minimo aceito pela tela de pergunta. Tanto QuizQuestion quanto
@@ -126,12 +140,20 @@ function clearProgress() {
   }
 }
 
+function isQuizGatePayload(
+  p: unknown,
+): p is { objective?: string; resume?: boolean } {
+  return typeof p === "object" && p !== null;
+}
+
 // A triagem agora é só o nivelamento (3 perguntas). Objetivo virou a tela de
 // entrada; motivo deixou de ser uma etapa separada.
 const triageSteps = triageQuestions;
 
 export default function QuizCarreira() {
   const [, setLocation] = useLocation();
+  const { gateAction, modalProps, status } = useAuthGate();
+  const hasConsumedGateRef = useRef(false);
   const [phase, setPhase] = useState<QuizPhase>("objective");
   const [objective, setObjective] = useState<QuizObjective | null>(null);
   const [level, setLevel] = useState<QuizLevel | null>(null);
@@ -229,6 +251,57 @@ export default function QuizCarreira() {
     setCurrentIndex(saved.currentIndex);
     setPhase(saved.phase);
   };
+
+  const handleSelectObjectiveGated = (id: QuizObjective) => {
+    gateAction({
+      intent: { kind: "domain", domain: "quiz", payload: { objective: id } },
+      run: () => handleSelectObjective(id),
+      destination: "/quiz-carreira",
+    });
+  };
+
+  const handleResumeGated = () => {
+    gateAction({
+      intent: { kind: "domain", domain: "quiz", payload: { resume: true } },
+      run: () => handleResume(),
+      destination: "/quiz-carreira",
+    });
+  };
+
+  useEffect(() => {
+    // Replay de intent de quiz pos-login. Roda UMA vez por mount, so autenticado.
+    // Territorio do BUG 2: consome (remove) em vez de peek-e-deixa, e o ref guard
+    // impede re-disparo (StrictMode monta/desmonta/remonta em dev).
+    if (status !== "authenticated") return;
+    if (hasConsumedGateRef.current) return;
+
+    const gate = peekPendingGate();
+    const intent = gate?.intent;
+    // Ownership: so processa intent de quiz; deixa os outros (ex.: favorito) intactos.
+    if (!intent || intent.kind !== "domain" || intent.domain !== "quiz") return;
+
+    hasConsumedGateRef.current = true;
+    consumePendingGate();
+
+    const payload = intent.payload;
+    if (!isQuizGatePayload(payload)) {
+      console.warn("[quiz] pending_gate payload malformado", payload);
+      return;
+    }
+    if (
+      typeof payload.objective === "string" &&
+      objectiveTracks.some((track) => track.id === payload.objective)
+    ) {
+      handleSelectObjective(payload.objective as QuizObjective);
+    } else if (payload.resume === true) {
+      handleResume();
+    } else {
+      console.warn(
+        "[quiz] pending_gate de quiz sem objective valido nem resume",
+        payload,
+      );
+    }
+  }, [status]);
 
   const handleTriageAnswer = (optionIndex: number) => {
     const step = triageSteps[triageIndex];
@@ -436,12 +509,6 @@ export default function QuizCarreira() {
     finalAnswers: Record<string, number>,
     top: [string, number][],
   ) => {
-    try {
-      sessionStorage.setItem(RESULT_SESSION_KEY, JSON.stringify(payload));
-    } catch {
-      // sessionStorage indisponível, fallback de /history cobre o caso
-    }
-
     const quizAnswers = questions.flatMap((question) => {
       const optionIndex = finalAnswers[question.id];
       const option =
@@ -457,7 +524,7 @@ export default function QuizCarreira() {
       ];
     });
 
-    void persistQuizResult({
+    const persistPayload: PersistQuizPayload = {
       answers: quizAnswers,
       result_area: payload.resultArea,
       result_area_slug: payload.resultAreaSlug || undefined,
@@ -472,7 +539,29 @@ export default function QuizCarreira() {
         topAreas: payload.topAreas,
         reasons: payload.reasons,
       },
-    });
+    };
+
+    const stored: StoredQuizResult = {
+      ...payload,
+      persisted: false,
+      persistPayload,
+    };
+    try {
+      sessionStorage.setItem(QUIZ_RESULT_SESSION_KEY, JSON.stringify(stored));
+    } catch {
+      // sessionStorage indisponível, fallback de /history cobre o caso
+    }
+
+    // Nao bloqueia a navegacao para o resultado: persisted so vira true com
+    // sucesso confirmado do backend. Sem sessao ou com falha, fica false e a
+    // reconciliacao pos-login (reconcilePendingQuizResult) reenvia depois.
+    persistQuizResult(persistPayload)
+      .then((saved) => {
+        if (saved) markStoredQuizResultPersisted();
+      })
+      .catch(() => {
+        // persistQuizResult nao lanca por contrato; guarda extra, persisted fica false
+      });
 
     posthog.capture("quiz_completed", {
       kind: payload.kind,
@@ -528,8 +617,8 @@ export default function QuizCarreira() {
           {phase === "objective" && (
             <ObjectiveScreen
               key="objective"
-              onSelect={handleSelectObjective}
-              onResume={resumeAvailable ? handleResume : undefined}
+              onSelect={handleSelectObjectiveGated}
+              onResume={resumeAvailable ? handleResumeGated : undefined}
             />
           )}
 
@@ -593,6 +682,8 @@ export default function QuizCarreira() {
         onClose={() => setResetModalOpen(false)}
         onConfirm={handleResetConfirmed}
       />
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }

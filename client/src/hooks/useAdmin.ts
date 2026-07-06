@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { readAdminClaim } from "@/lib/adminClaim";
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 
@@ -33,6 +34,18 @@ export function useAdmin() {
           return;
         }
 
+        // Caminho rapido: le a claim admin_role do token (sem rede). O backend
+        // continua validando admin via RPC a cada request; isto e so para a UI.
+        const claimRole = readAdminClaim(session.access_token);
+        if (claimRole) {
+          if (!cancelled) {
+            setIsAdmin(true);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Fallback: token sem a claim (sessao antiga) -> comportamento atual.
         const res = await fetch(apiUrl("/api/admin/me"), {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });

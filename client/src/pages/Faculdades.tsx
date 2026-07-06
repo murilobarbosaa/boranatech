@@ -30,6 +30,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
@@ -356,6 +358,7 @@ for (const cursoGenerico of faculdades.cursos) {
 }
 
 export default function Faculdades() {
+  const { gateNavigate, requireAuth, modalProps, status } = useAuthGate();
   const [tipo, setTipo] = useState("Todos");
   const [mat, setMat] = useState("Todos");
   const [selectedUf, setSelectedUf] = useState("");
@@ -364,6 +367,13 @@ export default function Faculdades() {
   const [openTips, setOpenTips] = useState<Record<string, boolean>>({});
   const [quizAberto, setQuizAberto] = useState(false);
   const reduce = useReducedMotion();
+
+  const handleQuizBeforeAnswer = () => {
+    if (status === "authenticated") return true;
+    if (status === "loading") return false;
+    requireAuth({ destination: "/faculdades" });
+    return false;
+  };
 
   const filtered = faculdades.cursos.filter((c) => {
     const matchTipo = tipo === "Todos" || c.tipo === tipo;
@@ -542,6 +552,10 @@ export default function Faculdades() {
               >
                 <Link
                   href={`/faculdades/${slugifyCourse(curso.nome)}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    gateNavigate(`/faculdades/${slugifyCourse(curso.nome)}`);
+                  }}
                   className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-200"
                   aria-label={`Ver detalhes de ${curso.nome}`}
                 />
@@ -1263,12 +1277,15 @@ export default function Faculdades() {
                 subtitulo="Responda 3 perguntas rápidas."
                 perguntas={caminhoQuizPerguntas}
                 resultados={caminhoQuizResultados}
+                onBeforeAnswer={handleQuizBeforeAnswer}
               />
             </div>
           </div>
 
         </div>
       </section>
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }

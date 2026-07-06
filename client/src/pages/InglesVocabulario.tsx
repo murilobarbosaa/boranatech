@@ -1,5 +1,6 @@
 import { AlertTriangle, Repeat, Volume2 } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import InglesSubNav from "@/components/shared/InglesSubNav";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -16,6 +17,12 @@ const ac = getPageAccentUi("sky");
 export default function InglesVocabulario() {
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Vocabulário de inglês para tech"
+        description="Os erros clássicos de quem fala português, como pronunciar termos técnicos e o vocabulário de inglês que mais aparece em vagas e projetos reais."
+        url="/ingles/vocabulario"
+      />
       <PageHero
         accent="sky"
         eyebrow="vocabulário"

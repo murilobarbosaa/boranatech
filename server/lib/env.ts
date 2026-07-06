@@ -49,6 +49,8 @@ warnIfMissing("ASAAS_API_KEY");
 warnIfMissing("ASAAS_WEBHOOK_TOKEN");
 warnIfMissing("AI_DAILY_LIMIT_FREE");
 warnIfMissing("AI_DAILY_LIMIT_PRO");
+warnIfMissing("AGENT_DAILY_LIMIT_FREE");
+warnIfMissing("AGENT_DAILY_LIMIT_PRO");
 warnIfMissing("CRON_SECRET");
 
 export const env = {
@@ -59,7 +61,6 @@ export const env = {
   supabaseUrl: requireEnv("SUPABASE_URL", ["VITE_SUPABASE_URL"]),
   supabaseAnonKey: requireEnv("SUPABASE_ANON_KEY", ["VITE_SUPABASE_ANON_KEY"]),
   supabaseServiceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
-  supabaseJwtSecret: requireEnv("SUPABASE_JWT_SECRET"),
   appPublicUrl: requireEnvWithDefault(
     "APP_PUBLIC_URL",
     "http://localhost:3000",
@@ -70,6 +71,11 @@ export const env = {
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
+  // Teto diario do agente conversacional, separado das ferramentas de IA para o
+  // chat nao consumir a quota das tools e vice-versa. Defaults ajustaveis.
+  // TODO: calibrar AGENT_DAILY_LIMIT_FREE e AGENT_DAILY_LIMIT_PRO.
+  agentDailyLimitFree: parseInt(process.env.AGENT_DAILY_LIMIT_FREE || "20", 10),
+  agentDailyLimitPro: parseInt(process.env.AGENT_DAILY_LIMIT_PRO || "200", 10),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;
@@ -84,14 +90,42 @@ export const env = {
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
   resendApiKey: process.env.RESEND_API_KEY || "",
   redisUrl: process.env.REDIS_URL || "",
+  // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.
+  sentryDsn: process.env.SENTRY_DSN || "",
+  // Teto do rate limit por IP por minuto. Existe SOMENTE para staging/teste
+  // de carga (k6): producao NAO deve setar esta variavel (default 180).
+  // Invalido (nao inteiro ou < 1) cai no default com warn no boot.
+  rateLimitMaxRequests: (() => {
+    const raw = process.env.RATE_LIMIT_MAX_REQUESTS;
+    if (!raw) return 180;
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 1) return parsed;
+    console.warn(
+      `[env] AVISO: RATE_LIMIT_MAX_REQUESTS invalido ("${raw}"), usando 180`,
+    );
+    return 180;
+  })(),
   cronSecret: process.env.CRON_SECRET || "",
   githubToken: process.env.GITHUB_TOKEN || "",
   // Portao de lancamento. "gated" mantem o portao fechado; "open" libera geral.
   waitlistMode: (process.env.WAITLIST_MODE || "gated") as "open" | "gated",
-  // Codigo de acesso beta. Ausente: unlock sempre 401 (fail-closed).
+  // DEPRECATED: codigo unico de acesso beta em env. Substituido por codigos por
+  // pessoa em public.beta_access_codes (POST /api/beta/unlock consulta a tabela).
+  // Mantido sem uso para nao quebrar ambientes que ainda setem a env; remover
+  // depois que todos os deploys estiverem sem WAITLIST_ACCESS_CODE.
   waitlistAccessCode: process.env.WAITLIST_ACCESS_CODE || "",
   // Secret HMAC do token de beta. Ausente: o portao nao emite token, sem crashar.
   waitlistTokenSecret: process.env.WAITLIST_TOKEN_SECRET || "",
+  // Captura de newsletter. "off" mantem a captura desligada; "on" libera.
+  newsletterCaptureMode: (process.env.NEWSLETTER_CAPTURE_MODE || "off") as
+    | "on"
+    | "off",
+  // Secret HMAC dos tokens de newsletter (confirmacao/descadastro). Ausente: deny.
+  newsletterTokenSecret: process.env.NEWSLETTER_TOKEN_SECRET || "",
+  // Base URL absoluta do BACKEND para montar os links de confirm/unsubscribe nos
+  // e-mails (ex.: https://api.boranatech.com.br). Vazia = captura fechada (nao da
+  // pra montar link valido). Nao reutiliza appPublicUrl, que aponta pro frontend.
+  newsletterPublicBaseUrl: process.env.NEWSLETTER_PUBLIC_BASE_URL || "",
   // Allowlist dev-only de user ids que enxergam como Pro fora de producao.
   // Ignorada quando NODE_ENV === "production". Nunca prefixar com VITE_.
   devProUserIds: (process.env.DEV_PRO_USER_IDS || "")

@@ -46,6 +46,7 @@ export const FOOTER_COLUMNS: Record<string, FooterColumn> = {
     title: "PROJETO",
     links: [
       { label: "Sobre o Projeto", href: "/sobre" },
+      { label: "Perguntas frequentes", href: "/perguntas-frequentes" },
       { label: "Comparador", href: "/comparador" },
       { label: "Missão e Valores", href: "/sobre#missao" },
       { label: "Licença Creative Commons", href: "/licenca" },

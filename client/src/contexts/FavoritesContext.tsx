@@ -13,6 +13,10 @@ import posthog from "posthog-js";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiUrl } from "@/lib/api";
 import {
+  consumePendingGate,
+  peekPendingGate,
+} from "@/lib/authGate";
+import {
   consumePendingIntent,
   savePendingIntent,
   type FavoriteIntent,
@@ -76,9 +80,6 @@ export interface FavoritesContextValue {
   ) => boolean;
   toggleFavorite: (item: FavoriteItem) => Promise<ToggleResult>;
   getFavoritesByType: (resourceType: FavoriteType) => FavoriteItem[];
-  pendingAuthFavorite: PendingAuthFavorite | null;
-  clearPendingAuth: () => void;
-  queueFavoriteOnNextLoad: (pending: PendingAuthFavorite) => void;
 }
 
 const LEGACY_FAVORITES_KEY = "bora-na-tech:favorites";
@@ -189,22 +190,51 @@ async function apiFetch(path: string, options?: RequestInit) {
   return res;
 }
 
+// Opcao B da fase 4b: o load busca a lista COMPLETA em paginas de 100 em vez
+// de um payload unico de ate 10k linhas. O estado continua materializado
+// inteiro de proposito: isFavorite, contagens por aba do PerfilFavoritos e o
+// cache localStorage dependem da lista completa. Compatibilidade dos deploys
+// separados: server antigo ignora page/limit e devolve tudo SEM o campo
+// pagination, e o loop para na primeira pagina com a lista inteira.
+const BOOKMARKS_PAGE_LIMIT = 100;
+// Teto duro espelhando o limite legado de 10k linhas do server.
+const BOOKMARKS_MAX_PAGES = 100;
+
+async function fetchAllBookmarks(): Promise<BookmarkItem[]> {
+  const all: BookmarkItem[] = [];
+  let page = 1;
+  for (;;) {
+    const res = await apiFetch(`/?page=${page}&limit=${BOOKMARKS_PAGE_LIMIT}`);
+    if (!res.ok) throw new Error("Erro ao buscar favoritos");
+    const json = (await res.json()) as {
+      data?: BookmarkItem[];
+      pagination?: { has_next?: boolean };
+    };
+    all.push(...(json.data || []));
+    if (!json.pagination?.has_next) break;
+    page += 1;
+    if (page > BOOKMARKS_MAX_PAGES) {
+      console.warn(
+        `[useFavorites] teto de ${BOOKMARKS_MAX_PAGES} paginas atingido; lista pode estar truncada`,
+      );
+      break;
+    }
+  }
+  return all;
+}
+
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingAuthFavorite, setPendingAuthFavorite] =
-    useState<PendingAuthFavorite | null>(null);
   const nextLoadFavoriteRef = useRef<PendingAuthFavorite | null>(null);
   const prevUserIdRef = useRef<string | null>(null);
 
   const refreshFromServer = useCallback(async () => {
-    const res = await apiFetch("/");
-    if (!res.ok) throw new Error("Erro ao buscar favoritos");
-    const json = (await res.json()) as { data?: BookmarkItem[] };
-    setFavorites((json.data || []).map(bookmarkToFavorite));
+    const bookmarks = await fetchAllBookmarks();
+    setFavorites(bookmarks.map(bookmarkToFavorite));
   }, []);
 
   useEffect(() => {
@@ -221,10 +251,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     prevUserIdRef.current = user.id;
     const justSignedIn = !prevUserId;
 
-    if (justSignedIn) {
-      setPendingAuthFavorite(null);
-    }
-
     const cached = readCache(user.id);
     if (cached.length > 0) {
       setFavorites(cached);
@@ -240,14 +266,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         if (justSignedIn) {
           await maybeMigrateLegacyBookmarks(user!.id);
           await maybeConsumeOAuthFavorite();
+          await maybeConsumePendingGateFavorite();
         }
 
-        const res = await apiFetch("/");
-        if (!res.ok) throw new Error("Erro ao buscar favoritos");
-        const json = (await res.json()) as { data?: BookmarkItem[] };
+        const bookmarks = await fetchAllBookmarks();
         if (cancelled) return;
 
-        let nextFavorites = (json.data || []).map(bookmarkToFavorite);
+        let nextFavorites = bookmarks.map(bookmarkToFavorite);
 
         const queued = nextLoadFavoriteRef.current;
         if (queued) {
@@ -352,7 +377,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
             url: normalizedItem.url,
           },
         };
-        setPendingAuthFavorite(pending);
         nextLoadFavoriteRef.current = pending;
         return { ok: false, requiresAuth: true };
       }
@@ -415,15 +439,6 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     [favorites],
   );
 
-  const queueFavoriteOnNextLoad = useCallback((pending: PendingAuthFavorite) => {
-    nextLoadFavoriteRef.current = pending;
-  }, []);
-
-  const clearPendingAuth = useCallback(() => {
-    setPendingAuthFavorite(null);
-    nextLoadFavoriteRef.current = null;
-  }, []);
-
   const value = useMemo<FavoritesContextValue>(
     () => ({
       favorites,
@@ -431,20 +446,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
       isFavorite,
       toggleFavorite,
       getFavoritesByType,
-      pendingAuthFavorite,
-      clearPendingAuth,
-      queueFavoriteOnNextLoad,
     }),
-    [
-      favorites,
-      loading,
-      isFavorite,
-      toggleFavorite,
-      getFavoritesByType,
-      pendingAuthFavorite,
-      clearPendingAuth,
-      queueFavoriteOnNextLoad,
-    ],
+    [favorites, loading, isFavorite, toggleFavorite, getFavoritesByType],
   );
 
   return (
@@ -518,5 +521,67 @@ async function maybeConsumeOAuthFavorite(): Promise<void> {
     });
   } catch (err) {
     console.error("[useFavorites] oauth favorite apply failed", err);
+  }
+}
+
+function isFavoriteGatePayload(p: unknown): p is {
+  type: string;
+  itemKey: string;
+  snapshot?: { title?: string; subtitle?: string; url?: string };
+} {
+  if (!p || typeof p !== "object") return false;
+  const candidate = p as { type?: unknown; itemKey?: unknown };
+  return (
+    typeof candidate.type === "string" && typeof candidate.itemKey === "string"
+  );
+}
+
+// Replay novo (Fase 2a): re-executa um favorito persistido pelo useAuthGate no
+// pending_gate. Espelha maybeConsumeOAuthFavorite (mesmo POST, mesma telemetria,
+// sem dedup, igual ao caminho OAuth). Inerte ate o FavoriteButton passar a
+// escrever DomainIntent de favorito no pending_gate (Fase 2b). Ownership por
+// dominio: so processa intent.kind === "domain" && domain === "favorite".
+async function maybeConsumePendingGateFavorite(): Promise<void> {
+  const gate = peekPendingGate();
+  const intent = gate?.intent;
+
+  // Nao e nosso (ausente, navegacao, ou outro dominio): nao consome.
+  if (!intent || intent.kind !== "domain" || intent.domain !== "favorite") {
+    return;
+  }
+
+  const payload = intent.payload;
+  if (!isFavoriteGatePayload(payload)) {
+    // E nosso, mas inutil: consome (limpa) sem POST.
+    consumePendingGate();
+    console.warn(
+      "[useFavorites] pending_gate favorite payload malformado; descartado sem POST",
+    );
+    return;
+  }
+
+  consumePendingGate();
+
+  const favoriteItem: FavoriteItem = {
+    id: payload.itemKey,
+    type: payload.type as FavoriteType,
+    title: payload.snapshot?.title ?? "",
+    subtitle: payload.snapshot?.subtitle,
+    url: payload.snapshot?.url,
+  };
+
+  try {
+    await apiFetch("/", {
+      method: "POST",
+      body: JSON.stringify(favoriteToBookmark(favoriteItem)),
+    });
+    posthog.capture("favorite_toggled", {
+      action: "added",
+      resource_type: favoriteItem.type,
+      resource_title: payload.snapshot?.title || payload.itemKey,
+      via: "gate_intent",
+    });
+  } catch (err) {
+    console.error("[useFavorites] pending_gate favorite apply failed", err);
   }
 }

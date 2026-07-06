@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BookOpen, ExternalLink, PlayCircle } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import FilterPills from "@/components/shared/FilterPills";
@@ -23,6 +24,13 @@ export default function EntrevistaPerguntas() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Banco de perguntas de entrevista em TI"
+        description="Banco de perguntas de entrevista em tecnologia: questões técnicas, comportamentais e de lógica para praticar antes do processo seletivo, sem sustos."
+        url="/entrevistas/perguntas"
+        schemaType="CollectionPage"
+      />
       <PageHero
         title="Banco de Perguntas de Entrevista"
         subtitle="Perguntas técnicas, comportamentais e de lógica para praticar."

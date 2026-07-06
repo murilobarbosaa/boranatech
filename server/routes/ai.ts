@@ -5,6 +5,7 @@ import { env } from "../lib/env";
 import { estimateCost, getToolConfig } from "../lib/aiTools";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { buildLoginContextMessage } from "../lib/loginContext";
+import { fetchWithTimeout } from "../lib/http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../lib/openai";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -16,7 +17,8 @@ router.use(checkProStatus);
 
 router.post("/:tool", async (req: Request, res: Response, next: NextFunction) => {
   const toolKey = req.params.tool;
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const userId = req.user!.id;
   const toolConfig = getToolConfig(toolKey);
 
@@ -131,11 +133,15 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
   }
 
   try {
-    const response = await fetch(OPENAI_BASE_URL, {
-      method: "POST",
-      headers: buildOpenAIHeaders(env.openaiApiKey),
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetchWithTimeout(
+      OPENAI_BASE_URL,
+      {
+        method: "POST",
+        headers: buildOpenAIHeaders(env.openaiApiKey),
+        body: JSON.stringify(requestBody),
+      },
+      { service: "openai", timeoutMs: 60_000 },
+    );
 
     if (!response.ok) {
       const text = await response.text();
@@ -238,7 +244,8 @@ router.post("/:tool", async (req: Request, res: Response, next: NextFunction) =>
  */
 router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunction) => {
   const toolKey = req.params.tool;
-  const requestId = crypto.randomUUID();
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
   const userId = req.user!.id;
   const toolConfig = getToolConfig(toolKey);
 
@@ -328,17 +335,23 @@ router.post("/:tool/stream", async (req: Request, res: Response, next: NextFunct
 
   let openaiResponse: globalThis.Response;
   try {
-    openaiResponse = await fetch(OPENAI_BASE_URL, {
-      method: "POST",
-      headers: buildOpenAIHeaders(env.openaiApiKey),
-      body: JSON.stringify({
-        model: toolConfig.model || DEFAULT_MODEL,
-        temperature: toolConfig.temperature,
-        messages: [...systemMessages, ...cleaned],
-        stream: true,
-        stream_options: { include_usage: true },
-      }),
-    });
+    // headerTimeoutMs cobre a trava de connect; depois do primeiro byte o SSE
+    // segue por design.
+    openaiResponse = await fetchWithTimeout(
+      OPENAI_BASE_URL,
+      {
+        method: "POST",
+        headers: buildOpenAIHeaders(env.openaiApiKey),
+        body: JSON.stringify({
+          model: toolConfig.model || DEFAULT_MODEL,
+          temperature: toolConfig.temperature,
+          messages: [...systemMessages, ...cleaned],
+          stream: true,
+          stream_options: { include_usage: true },
+        }),
+      },
+      { service: "openai-stream", headerTimeoutMs: 20_000 },
+    );
   } catch (err) {
     console.error("[ai/stream] OpenAI fetch error:", err);
     await logAiUsage({ userId, tool: toolKey, requestId, status: "error", errorMessage: "Network error", inputChars, model: toolConfig.model });

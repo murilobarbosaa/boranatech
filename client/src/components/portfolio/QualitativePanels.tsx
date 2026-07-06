@@ -32,6 +32,10 @@ export function AiSummary({ resumo }: { resumo: string }) {
   );
 }
 
+// Re-export fino: o NextStepCard vive em components/shared (usado pelos
+// analisadores de GitHub e LinkedIn). Mantido aqui para nao quebrar imports.
+export { NextStepCard } from "@/components/shared/NextStepCard";
+
 export function StrengthsWeaknesses({
   pontosFortes,
   pontosFracos,

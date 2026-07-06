@@ -18,6 +18,8 @@ import {
   Users,
 } from "lucide-react";
 import FavoriteButton from "@/components/FavoriteButton";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
@@ -132,6 +134,7 @@ function SkeletonAreaCard() {
 
 export default function Areas() {
   const reduce = useReducedMotion() ?? false;
+  const { gateNavigate, modalProps } = useAuthGate();
   const [areas, setAreas] = useState<AreaTI[] | null>(null);
   const [search, setSearch] = useState("");
   const [perfil, setPerfil] = useState("todos");
@@ -297,6 +300,10 @@ export default function Areas() {
                 href={`/areas/${area.slug}`}
                 aria-hidden={dup}
                 tabIndex={dup ? -1 : undefined}
+                onClick={(event) => {
+                  event.preventDefault();
+                  gateNavigate(`/areas/${area.slug}`);
+                }}
                 className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3.5 py-1.5 font-display text-sm font-bold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
               >
                 <span
@@ -527,6 +534,10 @@ export default function Areas() {
                     {area.href ? (
                       <Link
                         href={area.href}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          gateNavigate(area.href!);
+                        }}
                         className="group flex h-full flex-col rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[4px_4px_0_#fbbf24] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#fbbf24] motion-safe:focus-visible:-translate-y-1 motion-safe:focus-visible:shadow-[6px_6px_0_#fbbf24]"
                       >
                         {inner}
@@ -543,6 +554,8 @@ export default function Areas() {
           )}
         </div>
       </section>
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  cancelAsaasSubscription,
   deleteAsaasPayment,
   getAsaasSubscriptionPayments,
   updateAsaasSubscription,
@@ -64,4 +65,21 @@ export async function reactivateSubscriptionAtAsaas(
   providerSubscriptionId: string,
 ) {
   await updateAsaasSubscription(providerSubscriptionId, { endDate: null });
+}
+
+// Encerra a assinatura no Asaas de imediato (DELETE /subscriptions/{id}). Para
+// assinaturas sem periodo valido (nunca pagas), onde nao ha endDate a agendar.
+// Idempotente: 404 (assinatura ja nao existe no Asaas) conta como sucesso, mesma
+// filosofia do DELETE de cobranca. NAO toca no banco; quem chama controla a ordem.
+export async function cancelSubscriptionImmediatelyAtAsaas(
+  providerSubscriptionId: string,
+) {
+  try {
+    await cancelAsaasSubscription(providerSubscriptionId);
+  } catch (err) {
+    if (err instanceof Error && /error 404/i.test(err.message)) {
+      return;
+    }
+    throw err;
+  }
 }

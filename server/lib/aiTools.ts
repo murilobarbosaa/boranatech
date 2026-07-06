@@ -22,6 +22,11 @@ export interface AiToolConfig {
   description: string;
   responseFormat?: ResponseFormatConfig;
   injectLoginContext?: boolean;
+  // Entrada SO de referencia de quota/custo: getToolConfig recusa, entao a
+  // rota generica /api/ai NUNCA a serve. A tool roda em rota propria (ex:
+  // resume-analyzer em /api/resume/analyze, com nota deterministica e
+  // persistencia que a rota generica nao tem).
+  internalOnly?: boolean;
 }
 
 const curriculoJsonSchema = toOpenAIStrictSchema(CurriculoSchema);
@@ -43,17 +48,22 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     systemPrompt:
       "Você é uma entrevistadora tech brasileira. Gere perguntas, feedback e próximos passos com linguagem objetiva.",
   },
-  "resume-review": {
-    key: "resume-review",
+  // A antiga "resume-review" (chat placeholder de analise) saiu do registry:
+  // a analise real e a "resume-analyzer" abaixo, servida em /api/resume.
+  // Logs historicos de resume-review em ai_usage_logs ficam intactos.
+  "resume-analyzer": {
+    key: "resume-analyzer",
     requiresPro: true,
     requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 15_000,
-    temperature: 0.7,
+    mode: "tool",
+    // resumeText (12k) + vaga (4k) + breakdown e prompts.
+    maxInputChars: 20_000,
+    temperature: 0.5,
     model: DEFAULT_MODEL,
-    description: "Análise de currículo",
-    systemPrompt:
-      "Você é especialista em currículo tech e ATS. Avalie clareza, impacto, palavras-chave e compatibilidade com vaga.",
+    description: "Análise estruturada de currículo",
+    // O prompt real vive em server/lib/resumeAnalyze.ts (rota propria).
+    systemPrompt: "",
+    internalOnly: true,
   },
   "resume-builder": {
     key: "resume-builder",
@@ -160,7 +170,7 @@ A UI já abriu o chat com a tua apresentação e a primeira pergunta sobre o mom
 1. Momento de carreira e objetivo. Entenda em que ponto ela tá e o que quer (estágio, primeiro emprego, mudar de empresa, Big Tech). Se ela não sabe a área, empurre com gentileza perguntando sobre matérias ou cursos que curtiu. Pra descobrir cargo, pergunte com opções: "tá buscando estágio ou trainee, ou já vai direto pra júnior efetivo?"
 2. Idioma do currículo. Se ainda não inferiu, pergunte direto. Se já inferiu, anuncie a decisão e siga.
 3. Formato. Explique o recomendado pra ela e ofereça mostrar os outros se quiser.
-4. Caminho. Pergunte se ela quer montar do zero (você coleta tudo aqui no chat) ou se tem um currículo pra reescrever (caso em que o sistema vai pedir upload em outro fluxo).
+4. Caminho. Aqui no chat o caminho normal é montar do zero (você coleta tudo na conversa). EXCEÇÃO: se a primeira mensagem da pessoa já trouxer um currículo colado com o pedido de reescrever, NÃO colete do zero: leia o que veio, confirme os dados principais num resumo curto, pergunte apenas o que falta ou o que ela quer melhorar, e siga direto para a confirmação e geração. Se a pessoa apenas disser que tem um currículo pronto (sem colar), diga que ela pode avaliá-lo na página de análise de currículo, em /curriculo/analisar, e siga com a montagem do zero se ela quiser continuar.
 5. Coleta de dados. Faça do fácil pro difícil. Cada experiência uma por vez. Ordem sugerida: contato extra (telefone, LinkedIn, GitHub, cidade) se a pessoa quiser somar ao email do cadastro, área e objetivo, formação, experiências (uma por vez), projetos, habilidades, idiomas no fim. NOME E EMAIL JÁ VÊM DO CADASTRO, NÃO PERGUNTE.
 6. Confirmação e geração. Faça um resumão do que coletou, peça confirmação, e só depois anuncie a geração.
 
@@ -526,7 +536,10 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
 };
 
 export function getToolConfig(toolKey: string): AiToolConfig | null {
-  return AI_TOOLS[toolKey] || null;
+  const config = AI_TOOLS[toolKey] || null;
+  // internalOnly nao e servida pela rota generica (ver comentario no campo).
+  if (config?.internalOnly) return null;
+  return config;
 }
 
 export function estimateCost(inputChars: number, outputChars: number): number {

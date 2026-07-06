@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, BookOpen, Users } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import PageHero from "@/components/shared/PageHero";
 import ProGate from "@/components/pro/ProGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -104,6 +105,13 @@ export default function Mentorias() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Mentorias e ebooks para carreira em tech"
+        description="Mentorias com profissionais da área e ebooks selecionados para acelerar sua carreira em tecnologia, do primeiro passo até a sua primeira vaga."
+        url="/mentorias"
+        schemaType="CollectionPage"
+      />
       <PageHero
         accent="amber"
         eyebrow="conteúdo premium"

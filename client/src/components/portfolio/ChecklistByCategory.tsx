@@ -6,11 +6,21 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type {
-  CheckCategory,
-  CheckStatus,
-  GithubCheckResult,
+import {
+  CHECK_CATALOG,
+  type CheckCategory,
+  type CheckStatus,
+  type GithubCheckResult,
 } from "@shared/github/schema";
+
+// Hints do catalogo (fonte unica em shared): renderizados como "como
+// resolver" nos checks warn/fail. Lookup por id, sem duplicar textos.
+const HINT_BY_ID = new Map(
+  CHECK_CATALOG.filter((entry) => entry.hint).map((entry) => [
+    entry.id,
+    entry.hint as string,
+  ]),
+);
 
 const CATEGORY_ORDER: CheckCategory[] = [
   "essenciais",
@@ -71,6 +81,16 @@ export default function ChecklistByCategory({
                       {check.label}
                     </p>
                     <p className="text-sm text-slate-500">{check.detail}</p>
+                    {(check.status === "warn" || check.status === "fail") &&
+                    HINT_BY_ID.has(check.id) ? (
+                      <p className="mt-0.5 text-xs font-medium text-slate-400">
+                        {/* TODO(Ana): revisar o rotulo "como resolver". */}
+                        <span className="font-bold text-slate-500">
+                          como resolver:
+                        </span>{" "}
+                        {HINT_BY_ID.get(check.id)}
+                      </p>
+                    ) : null}
                   </div>
                 </li>
               );

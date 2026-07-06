@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import AiToolPanel from "@/components/shared/AiToolPanel";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,12 @@ export default function CurriculoLinkedin() {
   const { isPro } = useSubscription();
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Otimizador de LinkedIn com IA"
+        description="Otimize seu LinkedIn com IA: melhore headline, seção Sobre, palavras-chave e visibilidade para ser encontrado pelos recrutadores de tecnologia."
+        url="/curriculo/linkedin"
+      />
       <PageHero
         accent="blue"
         eyebrow="recurso com IA"

@@ -5,13 +5,16 @@ import {
   createAsaasCheckout,
   getAsaasSubscriptionPayments,
   getOrCreateAsaasCustomer,
+  updateAsaasPaymentValue,
 } from "../lib/asaas";
 import {
   cancelSubscriptionAtAsaas,
+  cancelSubscriptionImmediatelyAtAsaas,
   reactivateSubscriptionAtAsaas,
 } from "../lib/billing-asaas";
 import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { env } from "../lib/env";
+import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
@@ -166,6 +169,119 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
     const endDate = subscription.current_period_end
       ? new Date(subscription.current_period_end).toISOString().split("T")[0]
       : null;
+
+    // Guard: sem periodo valido => assinatura nunca foi paga. Cancela na hora.
+    if (!endDate) {
+      if (subscription.provider_subscription_id) {
+        try {
+          await cancelSubscriptionImmediatelyAtAsaas(
+            subscription.provider_subscription_id,
+          );
+        } catch (asaasErr) {
+          console.error(
+            `[billing/cancel] Asaas falhou ao encerrar sub sem periodo ${subscription.provider_subscription_id}; banco nao alterado:`,
+            asaasErr,
+          );
+          return next(
+            createError(
+              502,
+              "asaas_error",
+              "Não foi possível cancelar no provedor. Tente novamente.", // TODO(Ana)
+            ),
+          );
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      const { error: cancelError } = await supabaseAdmin
+        .from("subscriptions")
+        .update({ status: "canceled", canceled_at: nowIso })
+        .eq("id", subscription.id);
+
+      if (cancelError) {
+        console.error(
+          `[billing/cancel] update DB falhou no cancelamento imediato (sub ${subscription.id}):`,
+          cancelError,
+        );
+        return next(
+          createError(
+            500,
+            "db_error",
+            "Erro ao registrar cancelamento. Tente novamente.", // TODO(Ana)
+          ),
+        );
+      }
+
+      // Virou nao-Pro na hora: invalida o cache DEPOIS da escrita confirmada
+      // (invalidar antes abriria janela pro valor velho ser re-cacheado).
+      // Fire-and-forget: a funcao engole erro; na pior hipotese o TTL de 60s
+      // resolve, que e o comportamento de hoje.
+      void invalidateProStatusCache(userId);
+
+      const { error: auditError } = await supabaseAdmin
+        .from("subscription_cancellations")
+        .insert({
+          user_id: userId,
+          provider_subscription_id:
+            subscription.provider_subscription_id || null,
+          reason_code: reasonCode || null,
+          reason_text: reasonText || null,
+          effective_at: nowIso,
+          // status do cancelamento como processo: imediato ja concluiu, entao
+          // "completed". A tabela subscription_cancellations so aceita
+          // scheduled/completed/reverted (CHECK constraint); "canceled" e valido na
+          // tabela subscriptions, nao aqui.
+          status: "completed",
+        });
+      // Best-effort logado, nao gate: o cancelamento ja aconteceu no Asaas e
+      // na tabela subscriptions; falha de auditoria nao derruba a rota.
+      if (auditError) {
+        console.error(
+          "[billing/cancel] Falha ao registrar auditoria do cancelamento imediato:",
+          auditError,
+        );
+      }
+
+      try {
+        const { data: authData } =
+          await supabaseAdmin.auth.admin.getUserById(userId);
+        const userEmail = authData?.user?.email || "";
+        const userName = String(
+          authData?.user?.user_metadata?.name ||
+            authData?.user?.email?.split("@")[0] ||
+            "usuário",
+        );
+        const { data: profileData } = await supabaseAdmin
+          .from("profiles")
+          .select("gender")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const userGender =
+          (profileData?.gender as Gender | null | undefined) ?? null;
+        if (userEmail) {
+          await enqueueEmail({
+            type: "cancellation",
+            to: userEmail,
+            name: userName,
+            gender: userGender,
+          });
+        }
+      } catch (emailError) {
+        console.error(
+          "[billing/cancel] Erro ao enfileirar e-mail de cancelamento imediato:",
+          emailError,
+        );
+      }
+
+      return res.json({
+        data: {
+          cancel_at_period_end: false,
+          effective_at: nowIso,
+          status: "canceled",
+          message: "Sua assinatura foi cancelada.", // TODO(Ana)
+        },
+      });
+    }
 
     // d + e. Asaas PRIMEIRO; banco depois. Se o Asaas falhar, o banco NAO reflete o
     // cancelamento (estado consistente). Esta etapa e idempotente e segura para retry:
@@ -476,35 +592,48 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       );
     }
 
+    const { data: priorActivated } = await supabaseAdmin
+      .from("subscriptions")
+      .select("id")
+      .eq("user_id", userId)
+      .not("current_period_start", "is", null)
+      .limit(1)
+      .maybeSingle();
+    const isFirstPurchase = !priorActivated;
+
     const customer = await getOrCreateAsaasCustomer({
       userId,
       name: profile.name || profile.email || req.user!.email,
       email: profile.email || req.user!.email,
     });
 
-    let checkoutValue = PLAN_VALUES[planId];
+    const fullValue = PLAN_VALUES[planId];
     let validAffiliateCode = "";
+    let firstPaymentValue: number | null = null;
 
     if (affiliateCode) {
       const { data: affiliate, error: affiliateError } = await supabaseAdmin
         .from("affiliates")
-        .select("id, code, discount_percent, trials")
+        .select("id, code, discount_percent")
         .eq("code", affiliateCode)
         .eq("status", "active")
         .maybeSingle();
 
       if (!affiliateError && affiliate) {
-        validAffiliateCode = affiliate.code;
-        checkoutValue = Number(
-          (
-            checkoutValue *
-            (1 - Number(affiliate.discount_percent || 0) / 100)
-          ).toFixed(2),
-        );
-        await supabaseAdmin
-          .from("affiliates")
-          .update({ trials: Number(affiliate.trials || 0) + 1 })
-          .eq("id", affiliate.id);
+        validAffiliateCode = affiliate.code; // atribuicao/comissao inalterada
+        if (isFirstPurchase) {
+          firstPaymentValue = Number(
+            (
+              fullValue *
+              (1 - Number(affiliate.discount_percent || 0) / 100)
+            ).toFixed(2),
+          );
+          // Incremento atomico via RPC: o read-then-write anterior perdia
+          // updates concorrentes. Retorno ignorado como o update de antes.
+          await supabaseAdmin.rpc("increment_affiliate_trials", {
+            p_affiliate_id: affiliate.id,
+          });
+        }
       }
     }
 
@@ -512,15 +641,27 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       customerId: customer.id,
       userId,
       planCode: planId,
-      value: checkoutValue,
+      value: fullValue,
       cycle: PLAN_CYCLES[planId],
       affiliateCode: validAffiliateCode || undefined,
       successUrl: `${env.appPublicUrl}/planos/sucesso`,
     });
     const payments = await getAsaasSubscriptionPayments(asaasSubscription.id);
-    const firstPayment = Array.isArray(payments?.data)
-      ? payments.data[0]
-      : undefined;
+    const all = Array.isArray(payments?.data) ? payments.data : [];
+    const pending = all.filter(
+      (p: { status?: string }) => p?.status === "PENDING",
+    );
+    let firstPayment = (pending.length ? pending : all)
+      .slice()
+      .sort((a: { dueDate?: string }, b: { dueDate?: string }) =>
+        String(a?.dueDate || "").localeCompare(String(b?.dueDate || "")),
+      )[0];
+    if (firstPaymentValue !== null && firstPayment?.id) {
+      firstPayment = await updateAsaasPaymentValue(
+        firstPayment.id,
+        firstPaymentValue,
+      );
+    }
     const checkoutUrl =
       firstPayment?.invoiceUrl ||
       firstPayment?.paymentLink ||
@@ -791,13 +932,20 @@ router.post("/webhook", async (req, res, next) => {
       }
       // action === "skip": estado da subscription inalterado.
 
+      // Toda transicao real muda (ou pode mudar) o boolean Pro do DONO da
+      // subscription (userId vem do externalReference, nao de req.user):
+      // activate liga, past_due/cancel/incomplete desligam. Invalida DEPOIS
+      // da escrita confirmada (cada ramo acima lanca em erro de escrita).
+      // Fire-and-forget: falha de invalidacao nunca falha o webhook.
+      if (transitionedTo) {
+        void invalidateProStatusCache(userId);
+      }
+
       // Afiliado: so quando ativou de fato (dedupe ja protege reentrega).
       if (affiliateCode && action === "activate") {
         const { data: affiliate } = await supabaseAdmin
           .from("affiliates")
-          .select(
-            "id, sales, revenue_cents, commission_due_cents, commission_percent",
-          )
+          .select("id")
           .eq("code", affiliateCode)
           .maybeSingle();
 
@@ -805,19 +953,15 @@ router.post("/webhook", async (req, res, next) => {
           const revenueCents = Math.round(
             Number(payment?.value || subscription?.value || 0) * 100,
           );
-          const commissionCents = Math.round(
-            revenueCents * (Number(affiliate.commission_percent || 0) / 100),
-          );
-          await supabaseAdmin
-            .from("affiliates")
-            .update({
-              sales: Number(affiliate.sales || 0) + 1,
-              revenue_cents:
-                Number(affiliate.revenue_cents || 0) + revenueCents,
-              commission_due_cents:
-                Number(affiliate.commission_due_cents || 0) + commissionCents,
-            })
-            .eq("id", affiliate.id);
+          // Incremento atomico via RPC: sales, receita e comissao num unico
+          // UPDATE, com a comissao calculada no banco pelo commission_percent
+          // corrente (o read-then-write anterior perdia updates concorrentes e
+          // usava um percent lido antes da escrita). Retorno ignorado como o
+          // update de antes.
+          await supabaseAdmin.rpc("increment_affiliate_conversion", {
+            p_affiliate_id: affiliate.id,
+            p_revenue_cents: revenueCents,
+          });
         }
       }
 

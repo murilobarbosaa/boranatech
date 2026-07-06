@@ -21,12 +21,25 @@ function isRecoveryPath() {
   return RECOVERY_PATHS.includes(window.location.pathname);
 }
 
+// Prerender: o postbuild (scripts/prerender.mjs) roda puppeteer headless sobre o
+// SPA e snapshota as rotas do sitemap. O chromium headless expoe
+// navigator.webdriver === true, sinal que usamos pra renderizar o app direto e
+// nao trancar os snapshots atras da landing. Portao de UX, NAO de seguranca:
+// dado real continua atras de auth server-side, entao liberar o shell no
+// prerender nao expoe nada sensivel.
+function isPrerender() {
+  return typeof navigator !== "undefined" && navigator.webdriver === true;
+}
+
 // Envolve o app. Decide entre mostrar o app (portao aberto ou token valido) e a
 // landing (placeholder por enquanto). Token-based, independente do auth Supabase.
 export default function LaunchGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<GateState>("loading");
 
   useEffect(() => {
+    // Prerender nao resolve o portao: o render abaixo ja libera o app.
+    if (isPrerender()) return;
+
     // /acesso e as rotas de recuperacao renderizam sempre, antes de tudo: nao
     // precisam resolver o portao.
     if (isAcessoPath() || isRecoveryPath()) return;
@@ -60,26 +73,31 @@ export default function LaunchGate({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // a) /acesso sempre acessivel, mesmo com portao fechado.
+  // a) prerender: sempre o app, antes de qualquer decisao de portao.
+  if (isPrerender()) {
+    return <>{children}</>;
+  }
+
+  // b) /acesso sempre acessivel, mesmo com portao fechado.
   if (isAcessoPath()) {
     return <Acesso />;
   }
 
-  // a.2) rotas de recuperacao de senha: sempre o app, nunca a landing.
+  // b.2) rotas de recuperacao de senha: sempre o app, nunca a landing.
   if (isRecoveryPath()) {
     return <>{children}</>;
   }
 
-  // b) enquanto resolve, splash neutro pra nao piscar app-depois-landing.
+  // c) enquanto resolve, splash neutro pra nao piscar app-depois-landing.
   if (state === "loading") {
     return null;
   }
 
-  // c) portao aberto ou token valido -> app.
+  // d) portao aberto ou token valido -> app.
   if (state === "open") {
     return <>{children}</>;
   }
 
-  // d) caso contrario -> landing de lancamento (iframe).
+  // e) caso contrario -> landing de lancamento (iframe).
   return <LandingFrame />;
 }

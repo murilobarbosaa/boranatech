@@ -178,13 +178,6 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
   return payload;
 }
 
-type PosthogTrendResult = {
-  label?: string;
-  breakdown_value?: string | number | null;
-  aggregated_value?: number | string | null;
-  data?: Array<number | string | null>;
-};
-
 const emptyPosthogStats = {
   configured: false,
   totalPageviews: 0,
@@ -201,55 +194,50 @@ const emptyPosthogStats = {
 
 type PosthogEventName = keyof typeof emptyPosthogStats.events;
 
-function sumTrendValue(result: PosthogTrendResult): number {
-  if (typeof result.aggregated_value === "number")
-    return result.aggregated_value;
-  if (typeof result.aggregated_value === "string")
-    return Number(result.aggregated_value) || 0;
+type PosthogQueryResponse = {
+  results: ReadonlyArray<ReadonlyArray<unknown>>;
+  columns?: ReadonlyArray<string>;
+};
 
-  return (result.data || []).reduce<number>(
-    (sum, value) => sum + (Number(value) || 0),
-    0,
-  );
+function cellToNumber(value: unknown): number {
+  return typeof value === "number" ? value : Number(value) || 0;
 }
 
-function pagePath(value: string) {
+// Leitura via HogQL no endpoint /query/ (POST). E o caminho que a Personal API
+// Key escopada (phx_) autoriza; o legado /insights/trend/ retornava nao-2xx e o
+// erro era engolido. Aqui, em qualquer nao-2xx, logamos status E corpo da
+// resposta do PostHog (que explica o motivo) e retornamos null.
+async function runPosthogQuery(
+  hogql: string,
+): Promise<PosthogQueryResponse | null> {
   try {
-    const parsed = new URL(value);
-    return parsed.pathname || "/";
-  } catch {
-    return value || "/";
-  }
-}
-
-async function fetchPosthogTrend(params: Record<string, string>) {
-  const url = new URL(
-    `https://us.posthog.com/api/projects/${env.posthogProjectId}/insights/trend/`,
-  );
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
-  }
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${env.posthogApiKey}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    console.error(
-      `[posthog] API rejeitou credenciais com status ${response.status}`,
+    const response = await fetch(
+      `https://us.posthog.com/api/projects/${env.posthogProjectId}/query/`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.posthogApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: { kind: "HogQLQuery", query: hogql },
+        }),
+      },
     );
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      console.error(
+        `[posthog] query falhou status=${response.status} body=${body}`,
+      );
+      return null;
+    }
+
+    return (await response.json()) as PosthogQueryResponse;
+  } catch (err) {
+    console.error("[posthog] erro ao executar query HogQL", err);
     return null;
   }
-
-  if (!response.ok) {
-    console.error(`[posthog] Erro ao buscar trend: ${response.status}`);
-    return null;
-  }
-
-  return response.json() as Promise<{ result?: PosthogTrendResult[] }>;
 }
 
 router.get("/dashboard", async (_req, res, next) => {
@@ -308,6 +296,8 @@ router.get("/posthog-stats", async (_req, res) => {
 
   data.configured = true;
 
+  const since = "now() - interval 30 day";
+
   try {
     const events: PosthogEventName[] = [
       "user_signed_up",
@@ -317,70 +307,45 @@ router.get("/posthog-stats", async (_req, res) => {
     ];
     const [pageviews, uniqueUsers, pages, customEvents, acquisition] =
       await Promise.all([
-        fetchPosthogTrend({
-          date_from: "-30d",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0 },
-          ]),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0, math: "dau" },
-          ]),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          breakdown: "$current_url",
-          breakdown_type: "event",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0 },
-          ]),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          events: JSON.stringify(
-            events.map((event, index) => ({
-              id: event,
-              type: "events",
-              order: index,
-            })),
-          ),
-        }),
-        fetchPosthogTrend({
-          date_from: "-30d",
-          breakdown: "$referring_domain",
-          breakdown_type: "event",
-          events: JSON.stringify([
-            { id: "$pageview", type: "events", order: 0, math: "dau" },
-          ]),
-        }),
+        runPosthogQuery(
+          `select count() from events where event = '$pageview' and timestamp > ${since}`,
+        ),
+        runPosthogQuery(
+          `select count(distinct person_id) from events where event = '$pageview' and timestamp > ${since}`,
+        ),
+        runPosthogQuery(
+          `select if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/')) as page, count() as views from events where event = '$pageview' and timestamp > ${since} group by page order by views desc limit 10`,
+        ),
+        runPosthogQuery(
+          `select event, count() as total from events where event in ('user_signed_up','user_signed_in','checkout_started','quiz_completed') and timestamp > ${since} group by event`,
+        ),
+        runPosthogQuery(
+          `select trimRight(properties.$referring_domain, '/') as domain, count(distinct person_id) as users from events where event = '$pageview' and timestamp > ${since} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
+        ),
       ]);
 
-    data.totalPageviews = sumTrendValue(pageviews?.result?.[0] || {});
-    data.uniqueUsers = sumTrendValue(uniqueUsers?.result?.[0] || {});
-    data.pages = (pages?.result || [])
-      .map((item) => ({
-        page: pagePath(String(item.breakdown_value || item.label || "/")),
-        views: sumTrendValue(item),
+    data.totalPageviews = cellToNumber(pageviews?.results?.[0]?.[0]);
+    data.uniqueUsers = cellToNumber(uniqueUsers?.results?.[0]?.[0]);
+
+    data.pages = (pages?.results || [])
+      .map((row) => ({
+        page: String(row[0] ?? "/"),
+        views: cellToNumber(row[1]),
       }))
       .filter((item) => item.views > 0)
-      .sort((a, b) => b.views - a.views)
       .slice(0, 10);
 
-    for (const item of customEvents?.result || []) {
-      const label = String(item.label || "");
-      const eventName = events.find((event) => label.includes(event));
-      if (eventName) data.events[eventName] = sumTrendValue(item);
+    for (const row of customEvents?.results || []) {
+      const eventName = events.find((event) => event === String(row[0]));
+      if (eventName) data.events[eventName] = cellToNumber(row[1]);
     }
 
-    data.acquisition = (acquisition?.result || [])
-      .map((item) => ({
-        channel: String(item.breakdown_value || item.label || "Direto"),
-        users: sumTrendValue(item),
+    data.acquisition = (acquisition?.results || [])
+      .map((row) => ({
+        channel: String(row[0] ?? "Direto"),
+        users: cellToNumber(row[1]),
       }))
       .filter((item) => item.users > 0)
-      .sort((a, b) => b.users - a.users)
       .slice(0, 6);
   } catch (err) {
     console.error("[posthog] Erro inesperado ao buscar analytics", err);
@@ -802,6 +767,36 @@ router.get("/ai-stats", async (_req, res, next) => {
   }
 });
 
+router.get("/ai-usage-summary", async (req, res, next) => {
+  try {
+    const sinceRaw = typeof req.query.since === "string" ? req.query.since : null;
+    const untilRaw = typeof req.query.until === "string" ? req.query.until : null;
+    const since =
+      sinceRaw && !Number.isNaN(Date.parse(sinceRaw)) ? sinceRaw : null;
+    const until =
+      untilRaw && !Number.isNaN(Date.parse(untilRaw)) ? untilRaw : null;
+    const { data, error } = await supabaseAdmin.rpc(
+      "get_ai_usage_admin_summary",
+      {
+        p_since: since,
+        p_until: until,
+      },
+    );
+    if (error) {
+      return next(
+        createError(
+          500,
+          "ai_usage_summary_failed",
+          "Falha ao agregar uso de IA.",
+        ),
+      );
+    }
+    res.json({ data: data ?? [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/queue-stats", async (_req, res) => {
   try {
     if (!emailQueue) {
@@ -978,6 +973,188 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
       return next(createError(500, "db_error", "Erro ao fechar denúncias."));
 
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Visao somente leitura dos assinantes da newsletter, por status. Sem mutacao:
+// nao entra no CRUD generico de /content/:type. Filtro de status opcional,
+// paginacao por limit/offset. Tudo via supabaseAdmin (bypassa RLS).
+router.get("/newsletter/subscribers", async (req, res, next) => {
+  try {
+    const NEWSLETTER_STATUSES = [
+      "pending_confirmation",
+      "confirmed",
+      "unsubscribed",
+    ] as const;
+    type NewsletterStatus = (typeof NEWSLETTER_STATUSES)[number];
+
+    const statusParam =
+      typeof req.query.status === "string" ? req.query.status : undefined;
+    if (
+      statusParam !== undefined &&
+      !NEWSLETTER_STATUSES.includes(statusParam as NewsletterStatus)
+    ) {
+      return next(createError(400, "invalid_status", "Status inválido."));
+    }
+    const statusFilter = statusParam as NewsletterStatus | undefined;
+
+    const parsedLimit = parseInt(String(req.query.limit ?? "50"), 10);
+    const limit = Math.min(
+      Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 50, 1),
+      200,
+    );
+    const parsedOffset = parseInt(String(req.query.offset ?? "0"), 10);
+    const offset = Math.max(
+      Number.isFinite(parsedOffset) ? parsedOffset : 0,
+      0,
+    );
+
+    // Counts por status (head + count exato), um por status. Usa o indice
+    // newsletter_subscribers_status_idx.
+    const countResults = await Promise.all(
+      NEWSLETTER_STATUSES.map((s) =>
+        supabaseAdmin
+          .from("newsletter_subscribers")
+          .select("*", { count: "exact", head: true })
+          .eq("status", s),
+      ),
+    );
+    for (const result of countResults) {
+      if (result.error)
+        return next(createError(500, "db_error", "Erro ao contar assinantes."));
+    }
+    const counts = {
+      pending_confirmation: countResults[0].count ?? 0,
+      confirmed: countResults[1].count ?? 0,
+      unsubscribed: countResults[2].count ?? 0,
+      total: 0,
+    };
+    counts.total =
+      counts.pending_confirmation + counts.confirmed + counts.unsubscribed;
+
+    // Lista paginada. O count exato DESSA query (mesmo filtro) e o total da
+    // paginacao.
+    let listQuery = supabaseAdmin
+      .from("newsletter_subscribers")
+      .select("email, status, created_at, confirmed_at, unsubscribed_at", {
+        count: "exact",
+      })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (statusFilter) listQuery = listQuery.eq("status", statusFilter);
+
+    const { data, count, error } = await listQuery;
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar assinantes."));
+
+    res.json({
+      data: {
+        counts,
+        subscribers: data || [],
+        pagination: { limit, offset, total: count ?? 0 },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Codigos de beta: lista com agregado de usos com sucesso e ultimo acesso. Os
+// logs sao agregados no servidor (duas queries) porque o supabase-js nao faz
+// group-by sem RPC; volume e pequeno (beta fechado).
+router.get("/beta-codes", async (_req, res, next) => {
+  try {
+    const [codesRes, logsRes] = await Promise.all([
+      supabaseAdmin
+        .from("beta_access_codes")
+        .select("id, code, label, active, created_at, revoked_at")
+        .order("created_at", { ascending: false }),
+      supabaseAdmin
+        .from("beta_unlock_logs")
+        .select("code_id, created_at")
+        .eq("success", true),
+    ]);
+
+    if (codesRes.error)
+      return next(createError(500, "db_error", "Erro ao buscar códigos."));
+
+    // Falha nos logs nao derruba a lista: agregado zera, os codigos aparecem.
+    const usage = new Map<string, { count: number; last: string | null }>();
+    for (const log of logsRes.data || []) {
+      if (!log.code_id) continue;
+      const cur = usage.get(log.code_id) || { count: 0, last: null };
+      cur.count += 1;
+      if (!cur.last || log.created_at > cur.last) cur.last = log.created_at;
+      usage.set(log.code_id, cur);
+    }
+
+    const data = (codesRes.data || []).map((c) => {
+      const u = usage.get(c.id);
+      return {
+        ...c,
+        success_count: u?.count ?? 0,
+        last_access: u?.last ?? null,
+      };
+    });
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Ultimos logs de tentativa de unlock. Teto de 500 por request.
+router.get("/beta-logs", async (req, res, next) => {
+  try {
+    const { limit = "100" } = req.query;
+    const parsedLimit = Math.min(Math.max(parseInt(String(limit), 10) || 100, 1), 500);
+
+    const { data, error } = await supabaseAdmin
+      .from("beta_unlock_logs")
+      .select(
+        "id, code_id, label, success, attempted_code, ip, user_agent, created_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(parsedLimit);
+
+    if (error) return next(createError(500, "db_error", "Erro ao buscar logs."));
+
+    res.json({ data: data || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Revoga um codigo: active false e revoked_at now(). Tentativas futuras com ele
+// voltam a 401. Nao apaga o historico de uso.
+router.post("/beta-codes/:id/revoke", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabaseAdmin
+      .from("beta_access_codes")
+      .update({ active: false, revoked_at: new Date().toISOString() })
+      .eq("id", id)
+      .select("id, code, label, active, created_at, revoked_at")
+      .maybeSingle();
+
+    if (error)
+      return next(createError(500, "db_error", "Erro ao revogar código."));
+    if (!data)
+      return next(createError(404, "not_found", "Código não encontrado."));
+
+    await logAudit({
+      actorUserId: req.user!.id,
+      action: "update",
+      resourceType: "beta_code",
+      resourceId: data.id,
+      after: data,
+    });
+
+    res.json({ data });
   } catch (err) {
     next(err);
   }

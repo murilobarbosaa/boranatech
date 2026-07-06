@@ -12,11 +12,14 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import FilterPills from "@/components/shared/FilterPills";
 import PageHero from "@/components/shared/PageHero";
 import TechnologyLogo from "@/components/TechnologyLogo";
 import AnimatedContent from "@/components/reactbits/AnimatedContent";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
+import AuthGateModal from "@/components/gate/AuthGateModal";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -62,9 +65,11 @@ const ROADMAP_AREA_SLUGS = new Set([
   "uxui",
 ]);
 
-function roadmapHref(areas: string[]): string {
+function roadmapTarget(areas: string[]): { href: string; gated: boolean } {
   const match = areas.find((area) => ROADMAP_AREA_SLUGS.has(area));
-  return match ? `/roadmaps?area=${match}` : "/roadmaps";
+  return match
+    ? { href: `/roadmaps?area=${match}`, gated: true }
+    : { href: "/roadmaps", gated: false };
 }
 
 const DOODLES = [
@@ -108,6 +113,7 @@ export default function Tecnologias() {
   const [technologyItems, setTechnologyItems] = useState(technologies);
   const [category, setCategory] = useState("Todas");
   const [query, setQuery] = useState("");
+  const { gateNavigate, modalProps } = useAuthGate();
 
   useEffect(() => {
     getTechnologies()
@@ -135,6 +141,13 @@ export default function Tecnologias() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Tecnologias em TI · Linguagens, frameworks e ferramentas"
+        description="Conheça as tecnologias da área: linguagens, frameworks, bancos de dados, cloud e ferramentas. Veja o que cada uma é, pra que serve e por onde começar."
+        url="/tecnologias"
+        schemaType="CollectionPage"
+      />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -166,6 +179,10 @@ export default function Tecnologias() {
                 href={`/tecnologias/${technology.slug}`}
                 aria-label={technology.name}
                 className="group shrink-0"
+                onClick={(event) => {
+                  event.preventDefault();
+                  gateNavigate(`/tecnologias/${technology.slug}`);
+                }}
               >
                 <TechnologyLogo
                   name={technology.name}
@@ -215,24 +232,40 @@ export default function Tecnologias() {
             <Link
               href="/tecnologias/comparar?from=tecnologias"
               className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/comparar?from=tecnologias");
+              }}
             >
               Comparar tecnologias
             </Link>
             <Link
               href="/tecnologias/por-area?from=tecnologias"
               className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/por-area?from=tecnologias");
+              }}
             >
               Tecnologias por área
             </Link>
             <Link
               href="/tecnologias/ranking?from=tecnologias"
               className="btn-brutal-primary rounded-full bg-white px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/ranking?from=tecnologias");
+              }}
             >
               Ranking de demanda
             </Link>
             <Link
               href="/tecnologias/jogos"
               className="btn-brutal-primary rounded-full bg-fuchsia-300 px-4 py-2 text-sm font-black"
+              onClick={(event) => {
+                event.preventDefault();
+                gateNavigate("/tecnologias/jogos");
+              }}
             >
               🎮 Como os jogos foram feitos
             </Link>
@@ -241,6 +274,7 @@ export default function Tecnologias() {
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map((technology, index) => {
               const curiosity = technologyCuriosities[technology.name];
+              const roadmap = roadmapTarget(technology.areas);
               return (
                 <AnimatedContent
                   key={technology.slug}
@@ -260,6 +294,10 @@ export default function Tecnologias() {
                     <Link
                       href={`/tecnologias/${technology.slug}`}
                       className="group block flex-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-violet-300"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        gateNavigate(`/tecnologias/${technology.slug}`);
+                      }}
                     >
                       <div className="mb-4 flex items-start justify-between gap-3">
                         <TechnologyLogo
@@ -339,8 +377,14 @@ export default function Tecnologias() {
                     ) : null}
 
                     <Link
-                      href={roadmapHref(technology.areas)}
+                      href={roadmap.href}
                       className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-0.5"
+                      onClick={(event) => {
+                        if (roadmap.gated) {
+                          event.preventDefault();
+                          gateNavigate(roadmap.href);
+                        }
+                      }}
                     >
                       <Map className="h-4 w-4" aria-hidden />
                       Ver roadmap
@@ -352,6 +396,8 @@ export default function Tecnologias() {
           </div>
         </div>
       </section>
+
+      <AuthGateModal {...modalProps} />
     </Layout>
   );
 }

@@ -43,6 +43,10 @@ function resolveError(error: string): string {
   if (error === "INVALID_REQUEST") {
     return "Confira os campos do formulário e tente de novo.";
   }
+  // TODO(Ana): copy do estado de falha ao verificar o limite de uso (503).
+  if (error === "LINKEDIN_BUSY") {
+    return "Não conseguimos verificar seu limite de uso agora. Tente em instantes.";
+  }
   if (error === "ANALYSIS_FAILED") {
     return "Não consegui completar a análise agora. Tente de novo.";
   }

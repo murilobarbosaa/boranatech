@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Layout from "@/components/Layout";
 import PageHero from "@/components/shared/PageHero";
+import SEO from "@/components/SEO";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { Button } from "@/components/ui/button";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -91,6 +92,12 @@ export default function Freelance() {
 
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Freelance em tech antes do primeiro emprego"
+        description="Como ganhar dinheiro com tecnologia antes do primeiro emprego: caminhos reais para começar no freelance e usar essa experiência na sua carreira."
+        url="/freelance"
+      />
       <PageHero
         accent="orange"
         eyebrow="renda antes do CLT"

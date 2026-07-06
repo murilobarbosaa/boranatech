@@ -45,7 +45,9 @@ import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
+import { readAdminClaim } from "@/lib/adminClaim";
 import { apiUrl } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
 
 type AdminSession = {
   username: string;
@@ -129,7 +131,9 @@ type AdminSectionId =
   | "seo"
   | "financeiro"
   | "ia"
-  | "afiliados";
+  | "afiliados"
+  | "newsletter"
+  | "beta";
 
 type UserProfile = {
   userId?: string;
@@ -325,6 +329,17 @@ const adminNavItems: AdminNavItem[] = [
     href: "#afiliados",
     label: "Afiliados",
     icon: <Handshake className="h-4 w-4" />,
+  },
+  {
+    href: "#newsletter",
+    label: "Newsletter",
+    icon: <Mail className="h-4 w-4" />,
+  },
+  {
+    href: "#beta",
+    // TODO(Ana): rótulo da aba de códigos de beta.
+    label: "Beta",
+    icon: <LockKeyhole className="h-4 w-4" />,
   },
 ];
 
@@ -559,7 +574,7 @@ function AdminShell({
   return (
     <div className="min-h-screen bg-[#faf8f4]">
       <header className="sticky top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
-        <div className="container">
+        <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center justify-between gap-4">
             <a
               href="/admin"
@@ -579,7 +594,7 @@ function AdminShell({
             </a>
 
             {session ? (
-              <nav className="hidden flex-1 items-center justify-center gap-1 px-2 py-2 lg:flex">
+              <nav className="hidden min-w-0 flex-1 flex-wrap items-center justify-center gap-1 px-2 py-2 lg:flex">
                 {adminNavItems.map((item) => (
                   <button
                     key={item.href}
@@ -973,6 +988,594 @@ function contentPayload(
     is_pro: Boolean(form.is_pro),
     is_published: Boolean(form.is_published),
   };
+}
+
+type NewsletterSubscriberRow = {
+  email: string;
+  status: "pending_confirmation" | "confirmed" | "unsubscribed";
+  created_at: string;
+  confirmed_at: string | null;
+  unsubscribed_at: string | null;
+};
+
+type NewsletterAdminData = {
+  counts: {
+    pending_confirmation: number;
+    confirmed: number;
+    unsubscribed: number;
+    total: number;
+  };
+  subscribers: NewsletterSubscriberRow[];
+  pagination: { limit: number; offset: number; total: number };
+};
+
+type NewsletterStatusFilter =
+  | "all"
+  | "pending_confirmation"
+  | "confirmed"
+  | "unsubscribed";
+
+const NEWSLETTER_PAGE_SIZE = 50;
+
+const NEWSLETTER_STATUS_META: Record<
+  NewsletterSubscriberRow["status"],
+  { label: string; className: string }
+> = {
+  confirmed: {
+    label: "Confirmado",
+    className: "border-emerald-600 bg-emerald-50 text-emerald-700",
+  },
+  pending_confirmation: {
+    label: "Pendente",
+    className: "border-amber-500 bg-amber-50 text-amber-700",
+  },
+  unsubscribed: {
+    label: "Cancelado",
+    className: "border-slate-400 bg-slate-100 text-slate-600",
+  },
+};
+
+const NEWSLETTER_FILTERS: Array<{ id: NewsletterStatusFilter; label: string }> =
+  [
+    { id: "all", label: "Todos" },
+    { id: "confirmed", label: "Confirmados" },
+    { id: "pending_confirmation", label: "Pendentes" },
+    { id: "unsubscribed", label: "Cancelados" },
+  ];
+
+function formatNewsletterDate(value: string | null) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function NewsletterAdminSection() {
+  const [data, setData] = useState<NewsletterAdminData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] =
+    useState<NewsletterStatusFilter>("all");
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        params.set("limit", String(NEWSLETTER_PAGE_SIZE));
+        params.set("offset", String(offset));
+        if (statusFilter !== "all") params.set("status", statusFilter);
+        const json = await adminFetch(
+          `/newsletter/subscribers?${params.toString()}`,
+        );
+        if (cancelled) return;
+        setData(json.data as NewsletterAdminData);
+      } catch (err) {
+        if (cancelled) return;
+        setError(
+          err instanceof Error ? err.message : "Erro ao carregar assinantes.",
+        );
+        setData(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [statusFilter, offset]);
+
+  function changeFilter(next: NewsletterStatusFilter) {
+    setStatusFilter(next);
+    setOffset(0);
+  }
+
+  const counts = data?.counts;
+  const pagination = data?.pagination;
+  const subscribers = data?.subscribers ?? [];
+  const canPrev = offset > 0;
+  const canNext = pagination
+    ? offset + pagination.limit < pagination.total
+    : false;
+
+  const countCards = [
+    { label: "Confirmados", value: counts?.confirmed ?? 0 },
+    { label: "Pendentes", value: counts?.pending_confirmation ?? 0 },
+    { label: "Cancelados", value: counts?.unsubscribed ?? 0 },
+    { label: "Total", value: counts?.total ?? 0 },
+  ];
+
+  return (
+    <AdminSection
+      id="newsletter"
+      eyebrow="newsletter"
+      icon={<Mail className="h-4 w-4" />}
+      title="Assinantes da newsletter"
+      subtitle="Visão somente leitura de quem entrou na newsletter, por status. Sem edição."
+    >
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {countCards.map((card) => (
+          <div
+            key={card.label}
+            className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+          >
+            <p className="text-xs font-black uppercase text-slate-500">
+              {card.label}
+            </p>
+            <p className="font-display text-3xl font-black text-slate-950">
+              {card.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {NEWSLETTER_FILTERS.map((filter) => (
+          <button
+            key={filter.id}
+            type="button"
+            onClick={() => changeFilter(filter.id)}
+            className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors ${
+              statusFilter === filter.id
+                ? "bg-slate-950 text-white"
+                : "bg-white text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+        {loading && !data ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            Carregando assinantes...
+          </p>
+        ) : error ? (
+          <p className="p-6 text-sm font-semibold text-rose-600">{error}</p>
+        ) : subscribers.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            Nenhum assinante ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b-2 border-slate-900 bg-slate-50">
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    E-mail
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Inscrição
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Confirmação
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {subscribers.map((row) => {
+                  const meta = NEWSLETTER_STATUS_META[row.status];
+                  return (
+                    <tr
+                      key={row.email}
+                      className="border-b border-slate-200 last:border-0"
+                    >
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        {row.email}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${meta.className}`}
+                        >
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatNewsletterDate(row.created_at)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatNewsletterDate(row.confirmed_at)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {pagination && pagination.total > 0 ? (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="text-xs font-bold text-slate-500">
+            {Math.min(offset + 1, pagination.total)} a{" "}
+            {Math.min(offset + pagination.limit, pagination.total)} de{" "}
+            {pagination.total}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!canPrev || loading}
+              onClick={() =>
+                setOffset((prev) => Math.max(prev - NEWSLETTER_PAGE_SIZE, 0))
+              }
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Anterior
+            </button>
+            <button
+              type="button"
+              disabled={!canNext || loading}
+              onClick={() => setOffset((prev) => prev + NEWSLETTER_PAGE_SIZE)}
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </AdminSection>
+  );
+}
+
+type BetaCode = {
+  id: string;
+  code: string;
+  label: string;
+  active: boolean;
+  created_at: string;
+  revoked_at: string | null;
+  success_count: number;
+  last_access: string | null;
+};
+
+type BetaLog = {
+  id: string;
+  code_id: string | null;
+  label: string | null;
+  success: boolean;
+  attempted_code: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  created_at: string;
+};
+
+// Parse simples de user agent por substring, so pra exibir dispositivo e
+// navegador no admin. Sem dependencia nova; nao pretende ser exaustivo. Edge e
+// Chrome antes de Safari porque suas UAs tambem contem "Safari"/"Chrome".
+function parseUserAgent(ua: string | null): string {
+  if (!ua) return "-";
+  const device = /iPhone|iPad/.test(ua)
+    ? "iPhone/iPad"
+    : /Android/.test(ua)
+      ? "Android"
+      : /Windows/.test(ua)
+        ? "Windows"
+        : /Macintosh|Mac OS/.test(ua)
+          ? "Mac"
+          : /Linux/.test(ua)
+            ? "Linux"
+            : "Outro";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /Chrome\//.test(ua)
+      ? "Chrome"
+      : /Firefox\//.test(ua)
+        ? "Firefox"
+        : /Safari\//.test(ua)
+          ? "Safari"
+          : "Outro";
+  return `${device} / ${browser}`;
+}
+
+function BetaCodesAdminSection() {
+  const [codes, setCodes] = useState<BetaCode[]>([]);
+  const [logs, setLogs] = useState<BetaLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<BetaCode | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [codesJson, logsJson] = await Promise.all([
+        adminFetch("/beta-codes"),
+        adminFetch("/beta-logs?limit=100"),
+      ]);
+      setCodes(Array.isArray(codesJson.data) ? codesJson.data : []);
+      setLogs(Array.isArray(logsJson.data) ? logsJson.data : []);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Erro ao carregar códigos.",
+      );
+      setCodes([]);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function confirmRevoke() {
+    if (!revokeTarget) return;
+    setBusyId(revokeTarget.id);
+    try {
+      await adminFetch(`/beta-codes/${revokeTarget.id}/revoke`, {
+        method: "POST",
+      });
+      // TODO(Ana): toast de código revogado.
+      toast.success("Código revogado.");
+      setRevokeTarget(null);
+      await load();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao revogar. Tente de novo.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <AdminSection
+      id="beta"
+      eyebrow="acesso beta"
+      icon={<LockKeyhole className="h-4 w-4" />}
+      // TODO(Ana): título e subtítulo da seção de códigos de beta.
+      title="Códigos de acesso beta"
+      subtitle="Códigos de convite por pessoa e o log de uso do portão de lançamento. O label é só rótulo de log e não concede admin."
+    >
+      {error ? (
+        <p className="rounded-2xl border-2 border-slate-900 bg-white p-6 text-sm font-semibold text-rose-600">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+        {loading && codes.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Carregando códigos...
+          </p>
+        ) : codes.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Nenhum código cadastrado ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                {/* TODO(Ana): cabeçalhos da tabela de códigos. */}
+                <tr className="border-b-2 border-slate-900 bg-slate-50">
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Label
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Código
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Usos
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Último acesso
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Ação
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {codes.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-slate-200 last:border-0"
+                  >
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      {row.label}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-slate-700">
+                      {row.code}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${
+                          row.active
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                            : "border-rose-300 bg-rose-50 text-rose-700"
+                        }`}
+                      >
+                        {/* TODO(Ana): rótulos de status. */}
+                        {row.active ? "Ativo" : "Revogado"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {row.success_count}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {formatNewsletterDate(row.last_access)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.active ? (
+                        <button
+                          type="button"
+                          disabled={busyId === row.id}
+                          onClick={() => setRevokeTarget(row)}
+                          className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1.5 text-xs font-black text-rose-800 disabled:opacity-40"
+                        >
+                          {/* TODO(Ana) */}
+                          Revogar
+                        </button>
+                      ) : (
+                        <span className="text-xs font-bold text-slate-400">
+                          -
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <h3 className="mt-8 font-display text-lg font-black text-slate-950">
+        {/* TODO(Ana): título da tabela de logs. */}
+        Log de tentativas
+      </h3>
+      <div className="mt-3 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+        {logs.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Nenhuma tentativa registrada ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                {/* TODO(Ana): cabeçalhos da tabela de logs. */}
+                <tr className="border-b-2 border-slate-900 bg-slate-50">
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Data
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Label
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    IP
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Dispositivo/navegador
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Resultado
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-slate-200 last:border-0"
+                  >
+                    <td className="px-4 py-3 text-slate-600">
+                      {formatNewsletterDate(row.created_at)}
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      {row.success ? row.label || "-" : "-"}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-slate-700">
+                      {row.ip || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {parseUserAgent(row.user_agent)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.success ? (
+                        <span className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+                          {/* TODO(Ana) */}
+                          Sucesso
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2.5 py-0.5 text-xs font-black text-rose-700">
+                            {/* TODO(Ana) */}
+                            Falha
+                          </span>
+                          {row.attempted_code ? (
+                            <span className="font-mono text-xs text-slate-500">
+                              {row.attempted_code}
+                            </span>
+                          ) : null}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {revokeTarget ? (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+          <div className="card-brutal max-w-md rounded-3xl bg-white p-6">
+            {/* TODO(Ana): copy do modal de confirmação de revogação. */}
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Revogar o código de {revokeTarget.label}?
+            </h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              O código para de funcionar na hora e novas tentativas com ele
+              voltam a ser negadas. O histórico de uso é mantido.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setRevokeTarget(null)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
+                {/* TODO(Ana) */}
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={busyId === revokeTarget.id}
+                onClick={() => void confirmRevoke()}
+                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-40"
+              >
+                {/* TODO(Ana) */}
+                Confirmar revogação
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </AdminSection>
+  );
 }
 
 function ContentAdminSection() {
@@ -1898,18 +2501,23 @@ export default function Admin() {
       return;
     }
 
-    setAccessState("loading");
-    adminFetch("/me")
-      .then((json) => {
-        setSession({
-          username: user.email || user.id,
-          displayName: json.data?.user?.email || user.email || "Admin",
-          signedAt: new Date().toISOString(),
-          role: json.data?.role,
-        });
-        setAccessState("allowed");
-        setOverviewLoading(true);
-        return Promise.all([
+    let cancelled = false;
+
+    // Carrega os dados do dashboard. Separado da decisao do gate: a falha aqui
+    // nao deve, no caminho da claim, fechar o gate (so deixa os dados vazios).
+    const loadDashboardData = async () => {
+      setOverviewLoading(true);
+      try {
+        const [
+          dashboardJson,
+          healthJson,
+          aiJson,
+          queueJson,
+          posthogJson,
+          churnRiskJson,
+          affiliatesJson,
+          subscriptionsJson,
+        ] = await Promise.all([
           adminFetch("/dashboard"),
           fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
@@ -1921,62 +2529,102 @@ export default function Admin() {
           adminFetch("/affiliates-stats").catch(() => ({ data: [] })),
           adminFetch("/subscriptions"),
         ]);
-      })
-      .then(
-        ([
-          dashboardJson,
-          healthJson,
-          aiJson,
-          queueJson,
-          posthogJson,
-          churnRiskJson,
-          affiliatesJson,
-          subscriptionsJson,
-        ]) => {
-          setDashboard(dashboardJson.data);
-          setHealth(healthJson);
-          setAuditLogs(
-            Array.isArray(dashboardJson.data?.recent_audit)
-              ? dashboardJson.data.recent_audit
-              : [],
-          );
-          setAiStats(aiJson.data || {});
-          setQueueStats(
-            queueJson.data || {
-              waiting: 0,
-              active: 0,
-              completed: 0,
-              failed: 0,
-            },
-          );
-          setPosthogStats(posthogJson.data || null);
-          setChurnRiskUsers(
-            Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null,
-          );
-          setAffiliates(
-            Array.isArray(affiliatesJson.data) ? affiliatesJson.data : [],
-          );
-          setSubscriptions(
-            Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
-          );
-        },
-      )
-      .catch(() => {
-        setSession(null);
-        setDashboard(null);
-        setHealth(null);
-        setAuditLogs([]);
-        setAiStats({});
-        setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
-        setPosthogStats(null);
-        setChurnRiskUsers(null);
-        setAffiliates([]);
-        setSubscriptions([]);
-        setAccessState("forbidden");
-      })
-      .finally(() => {
-        setOverviewLoading(false);
-      });
+        if (cancelled) return;
+        setDashboard(dashboardJson.data);
+        setHealth(healthJson);
+        setAuditLogs(
+          Array.isArray(dashboardJson.data?.recent_audit)
+            ? dashboardJson.data.recent_audit
+            : [],
+        );
+        setAiStats(aiJson.data || {});
+        setQueueStats(
+          queueJson.data || {
+            waiting: 0,
+            active: 0,
+            completed: 0,
+            failed: 0,
+          },
+        );
+        setPosthogStats(posthogJson.data || null);
+        setChurnRiskUsers(
+          Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null,
+        );
+        setAffiliates(
+          Array.isArray(affiliatesJson.data) ? affiliatesJson.data : [],
+        );
+        setSubscriptions(
+          Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
+        );
+      } finally {
+        if (!cancelled) setOverviewLoading(false);
+      }
+    };
+
+    const resolve = async () => {
+      // Caminho rapido: le a claim admin_role do token (sem rede) e abre o gate
+      // sem flash. O backend continua validando admin via RPC a cada request;
+      // isto e so apresentacao.
+      const {
+        data: { session: authSession },
+      } = supabase
+        ? await supabase.auth.getSession()
+        : { data: { session: null } };
+      const claimRole = authSession?.access_token
+        ? readAdminClaim(authSession.access_token)
+        : null;
+
+      if (cancelled) return;
+
+      if (claimRole) {
+        setSession({
+          username: user.email || user.id,
+          displayName: user.email || "Admin",
+          signedAt: new Date().toISOString(),
+          role: claimRole,
+        });
+        setAccessState("allowed");
+        // Dados carregam em background; falha aqui nao fecha o gate.
+        void loadDashboardData().catch(() => {});
+        return;
+      }
+
+      // Fallback: token sem a claim (sessao antiga) -> comportamento atual,
+      // o gate decide pelo adminFetch("/me").
+      setAccessState("loading");
+      adminFetch("/me")
+        .then((json) => {
+          if (cancelled) return;
+          setSession({
+            username: user.email || user.id,
+            displayName: json.data?.user?.email || user.email || "Admin",
+            signedAt: new Date().toISOString(),
+            role: json.data?.role,
+          });
+          setAccessState("allowed");
+          return loadDashboardData();
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setSession(null);
+          setDashboard(null);
+          setHealth(null);
+          setAuditLogs([]);
+          setAiStats({});
+          setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
+          setPosthogStats(null);
+          setChurnRiskUsers(null);
+          setAffiliates([]);
+          setSubscriptions([]);
+          setAccessState("forbidden");
+        });
+    };
+
+    void resolve();
+
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, user]);
 
   useEffect(() => {
@@ -3202,6 +3850,10 @@ export default function Admin() {
               </div>
             </AdminSection>
           ) : null}
+
+          {activeSection === "newsletter" ? <NewsletterAdminSection /> : null}
+
+          {activeSection === "beta" ? <BetaCodesAdminSection /> : null}
 
           {activeSection === "afiliados" ? (
             <article

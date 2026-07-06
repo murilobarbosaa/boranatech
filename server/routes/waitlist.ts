@@ -1,6 +1,7 @@
 import { Router } from "express";
 
-import { enqueueEmail, redisConnection } from "../lib/queue";
+import { enqueueEmail } from "../lib/queue";
+import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 
 const router = Router();
@@ -44,13 +45,15 @@ router.post("/", async (req, res) => {
     // EXPIRE). Janela generosa porque CGNAT poe varios usuarios legitimos no mesmo
     // IP e o dado ja dedupa por e-mail: o throttle so barra flood, nao cadastro
     // legitimo repetido. Fail-open: sem Redis ou em erro, segue sem throttle.
+    // cacheConnection (fail-fast): com Redis fora o comando rejeita rapido e o
+    // catch libera; a conexao de fila penduraria a rota na offline queue.
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    if (redisConnection) {
+    if (cacheConnection) {
       try {
         const key = `waitlist:signup:${ip}`;
-        const attempts = await redisConnection.incr(key);
+        const attempts = await cacheConnection.incr(key);
         if (attempts === 1) {
-          await redisConnection.expire(key, SIGNUP_WINDOW_SECONDS);
+          await cacheConnection.expire(key, SIGNUP_WINDOW_SECONDS);
         }
         if (attempts > SIGNUP_MAX_ATTEMPTS) {
           res.status(429).json({

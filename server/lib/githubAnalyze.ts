@@ -1,6 +1,7 @@
 import { env } from "./env";
 import { fetchProfileData, fetchRepoData } from "./github";
 import { analyzeProfile, analyzeRepo } from "./githubChecks";
+import { fetchWithTimeout } from "./http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 import { areaLabel, type AreaSelection } from "../../shared/areas";
@@ -43,7 +44,13 @@ const SYSTEM_PROMPT =
   "Tom de treinador: encorajador, gentil e honesto. Calibre pela nota e pela faixa: quanto mais baixa a nota, mais encorajador voce fica, sem suavizar a ponto de esconder o que falta. Reconheca o que ja existe antes de apontar o que falta. Nunca desmotive quem esta comecando. Nao prometa emprego nem dinheiro facil. " +
   "Enquadre cada melhoria como um proximo passo, nao como defeito ou erro. Em pontosFracos, escreva como lacunas a preencher, em tom suave, nunca como criticas duras. Em melhorias, inclua SEMPRE pelo menos um primeiro passo concreto e simples, algo que a pessoa consegue fazer hoje. " +
   "Quando a suficiencia da leitura for media ou baixa, diga com gentileza que a leitura e parcial por ter pouco material pra avaliar, e foque os proximos passos em gerar esse material (criar repositorio, adicionar README, descrever projetos), sem penalizar a pessoa por isso. " +
-  "Portugues do Brasil. Nao use travessao nem meia-risca em nenhum texto, use ponto, virgula ou parenteses. No modo repo, foque em: o README deixa claro o que o projeto faz, por que existe e como rodar, e se o projeto se apresenta bem pra outro dev ou recrutador. No modo perfil, foque em: o README de perfil vende bem quem a pessoa e, no que trabalha e como contatar, e se os projetos em destaque comunicam valor. Responda apenas com o JSON do schema.";
+  "Portugues do Brasil. Nao use travessao nem meia-risca em nenhum texto, use ponto, virgula ou parenteses. No modo repo, foque em: o README deixa claro o que o projeto faz, por que existe e como rodar, e se o projeto se apresenta bem pra outro dev ou recrutador. No modo perfil, foque em: o README de perfil vende bem quem a pessoa e, no que trabalha e como contatar, e se os projetos em destaque comunicam valor. " +
+  // TODO(Ana): revisar o bloco de quantidades e profundidade do prompt.
+  "QUANTIDADES OBRIGATORIAS: de 3 a 6 pontosFortes, de 3 a 6 pontosFracos e de 4 a 7 melhorias. " +
+  "Em cada melhoria, comoFazer tem de 2 a 4 frases, comecando por um primeiro passo executavel HOJE e citando nome de arquivo ou configuracao quando aplicavel (por exemplo README.md, About do repositorio, pin de repositorios). " +
+  "proximoPasso: preencha SEMPRE, escolhendo entre as melhorias de prioridade alta a UNICA acao de maior impacto que a pessoa consegue executar hoje, concreta e especifica ao que foi analisado. " +
+  "readmeSugestao e OBRIGATORIA (nunca null) nestes casos: no modo repo, quando a checagem repo_readme_present ou a repo_readme_substance nao estiver aprovada; no modo perfil, quando a checagem profile_readme_present nao estiver aprovada. Nos demais casos, deixe null. A sugestao usa SOMENTE fatos presentes na entrada e marca com placeholders claros, como <descreva aqui>, tudo que depender de dado que nao veio. " +
+  "Responda apenas com o JSON do schema.";
 
 export interface AnalyzeAiIo {
   inputChars: number;
@@ -193,27 +200,33 @@ function buildProfilePrompt(
 async function runQualitativeOnce(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
+  signal?: AbortSignal,
 ): Promise<GithubQualitative> {
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: buildOpenAIHeaders(env.openaiApiKey),
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      temperature: 0.5,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userText },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "github_qualitative",
-          strict: true,
-          schema: QUALITATIVE_JSON_SCHEMA,
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      signal,
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: 0.5,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userText },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "github_qualitative",
+            strict: true,
+            schema: QUALITATIVE_JSON_SCHEMA,
+          },
         },
-      },
-    }),
-  });
+      }),
+    },
+    { service: "openai", timeoutMs: 60_000 },
+  );
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
@@ -255,6 +268,7 @@ async function runQualitativeOnce(
 async function runQualitative(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
+  signal?: AbortSignal,
 ): Promise<GithubQualitative> {
   if (!env.openaiApiKey) {
     throw new Error("Servico de IA nao configurado.");
@@ -263,9 +277,14 @@ async function runQualitative(
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await runQualitativeOnce(userText, onAiIo);
+      return await runQualitativeOnce(userText, onAiIo, signal);
     } catch (err) {
       lastError = err;
+      // Budget global da rota estourado: re-tentar so queimaria tempo, toda
+      // tentativa abortaria na hora.
+      if (signal?.aborted) {
+        throw err;
+      }
       const detail = err instanceof Error ? err.message : String(err);
       console.error(
         `[github-analyze] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
@@ -305,6 +324,9 @@ function emptyProfileQualitative(): GithubQualitative {
           "Crie um repositório com o mesmo nome do seu usuário e adicione um README.md contando quem você é e no que está estudando ou trabalhando.",
       },
     ],
+    // TODO(Ana): revisar o proximo passo do perfil vazio.
+    proximoPasso:
+      "Publique hoje seu primeiro repositório próprio, mesmo que seja um projeto pequeno ou de estudo.",
     readmeSugestao: null,
   };
 }
@@ -326,6 +348,9 @@ function emptyRepoQualitative(): GithubQualitative {
           "Crie um README.md explicando em poucas linhas o que o projeto faz, por que existe e como rodar. É a primeira coisa que recrutadores e outros devs olham.",
       },
     ],
+    // TODO(Ana): revisar o proximo passo do repositorio vazio.
+    proximoPasso:
+      "Crie hoje o README.md deste repositório explicando o que o projeto faz e como rodar.",
     readmeSugestao: null,
   };
 }
@@ -335,12 +360,13 @@ export async function analyzeGithub(
   parsed: ParsedRepo | ParsedProfile,
   area: AreaSelection,
   onAiIo?: (io: AnalyzeAiIo) => void,
+  signal?: AbortSignal,
 ): Promise<GithubAnalysisResponse> {
   const label = areaLabel(area);
 
   if (mode === "repo") {
     const { owner, repo } = parsed as ParsedRepo;
-    const data = await fetchRepoData(owner, repo);
+    const data = await fetchRepoData(owner, repo, signal);
     const deterministic = analyzeRepo(data);
     // Repo essencialmente vazio: atalho deterministico caloroso, sem IA.
     const isEmptyRepo = deterministic.suficiencia === "baixa";
@@ -349,6 +375,7 @@ export async function analyzeGithub(
       : await runQualitative(
           buildRepoPrompt(data, deterministic, label),
           onAiIo,
+          signal,
         );
 
     return {
@@ -374,7 +401,7 @@ export async function analyzeGithub(
   }
 
   const { login } = parsed as ParsedProfile;
-  const data = await fetchProfileData(login);
+  const data = await fetchProfileData(login, signal);
   const deterministic = analyzeProfile(data);
   const topRepos = selectTopRepos(data);
   // Perfil sem nenhum repo autoral (zero repos ou so forks): atalho caloroso, sem IA.
@@ -383,6 +410,7 @@ export async function analyzeGithub(
     ? await runQualitative(
         buildProfilePrompt(data, deterministic, topRepos, label),
         onAiIo,
+        signal,
       )
     : emptyProfileQualitative();
 

@@ -1,7 +1,13 @@
 import OpenAI from "openai";
 import { env } from "./env";
 
-const openai = new OpenAI({ apiKey: env.openaiApiKey });
+// Sem config explicita o SDK herda timeout de 600s e 2 retries; 120s/1 retry
+// e teto suficiente pra um enrichment de 500 tokens e encurta o job de cron.
+const openai = new OpenAI({
+  apiKey: env.openaiApiKey,
+  timeout: 120_000,
+  maxRetries: 1,
+});
 
 const VALID_LEVELS = ["iniciante", "intermediario", "avancado"] as const;
 type Level = (typeof VALID_LEVELS)[number];

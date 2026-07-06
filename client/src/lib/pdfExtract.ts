@@ -2,11 +2,14 @@ import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 /**
- * Extração de texto do PDF do perfil do LinkedIn, 100% no navegador.
+ * Extração de texto de PDF, 100% no navegador.
  *
  * O arquivo NUNCA é enviado ao servidor: lemos o texto aqui e só o texto vai
  * para a análise. Valida tipo e tamanho antes de processar e exige um mínimo
  * de texto para não seguir silenciosamente com uma extração vazia.
+ *
+ * Usada pelo analisador de LinkedIn (via alias extractLinkedinPdf) e pelo
+ * analisador de currículo.
  */
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -29,11 +32,11 @@ export class PdfExtractError extends Error {
   }
 }
 
-export async function extractLinkedinPdf(file: File): Promise<string> {
+export async function extractPdfText(file: File): Promise<string> {
   if (file.type !== "application/pdf") {
     throw new PdfExtractError(
       "wrong_type",
-      "O arquivo precisa ser um PDF do seu perfil do LinkedIn.",
+      "O arquivo precisa ser um PDF.",
     );
   }
   if (file.size > MAX_PDF_BYTES) {
@@ -61,7 +64,7 @@ export async function extractLinkedinPdf(file: File): Promise<string> {
   } catch {
     throw new PdfExtractError(
       "read_failed",
-      "Não consegui ler o PDF. Tente colar o texto do perfil manualmente.",
+      "Não consegui ler o PDF. Tente colar o texto manualmente.",
     );
   }
 
@@ -69,8 +72,11 @@ export async function extractLinkedinPdf(file: File): Promise<string> {
   if (trimmed.length < MIN_TEXT_CHARS) {
     throw new PdfExtractError(
       "too_little_text",
-      "Quase não encontrei texto nesse PDF. Cole o texto do perfil manualmente.",
+      "Quase não encontrei texto nesse PDF. Cole o texto manualmente.",
     );
   }
   return trimmed;
 }
+
+// Alias fino mantido para o fluxo do LinkedIn (mesmas validações e erros).
+export const extractLinkedinPdf = extractPdfText;

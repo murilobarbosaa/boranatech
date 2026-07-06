@@ -4,6 +4,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { enrichBacklog } from "../jobs/enrichBacklog";
 import { syncJobs } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
+import { reindexSearchDocuments } from "../lib/searchIndex";
 import {
   cancelAsaasSubscription,
   getAsaasSubscription,
@@ -12,6 +13,8 @@ import {
 import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { recordCronRun } from "../lib/cron-logs";
 import { env } from "../lib/env";
+import { invalidateProStatusCache } from "../lib/proStatusCache";
+import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 
@@ -103,7 +106,104 @@ async function recordSync(
 
 router.use(requireCronSecret);
 
-router.post("/sync-news", async (_req, res, next) => {
+// Lock distribuido dos jobs longos (auditoria, secao 2): sem ele, uma execucao
+// que passa da janela do pg_cron pode se sobrepor a proxima em OUTRA replica.
+// SET NX EX com token proprio; release so apaga se o token for o dono (Lua
+// compare-and-del, nunca DEL cego, pra nao soltar o lock de uma execucao mais
+// nova depois que o TTL do dono expirou).
+// Redis fora = roda SEM lock com warn (fail-open): todos os jobs abaixo sao
+// idempotentes por natureza (upserts, reindex, estado derivado do Asaas;
+// cancelamento duplo no Asaas falha no segundo e e contado por item), entao
+// um double-run esporadico e melhor que nunca rodar.
+const RELEASE_LOCK_LUA = `if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end`;
+
+type CronLock = { token: string } | "locked" | "no_redis";
+
+async function acquireCronLock(
+  jobName: string,
+  ttlSeconds: number,
+): Promise<CronLock> {
+  if (!cacheConnection) return "no_redis";
+  const token = crypto.randomUUID();
+  try {
+    const result = await cacheConnection.set(
+      `lock:cron:${jobName}`,
+      token,
+      "EX",
+      ttlSeconds,
+      "NX",
+    );
+    return result === "OK" ? { token } : "locked";
+  } catch (err) {
+    console.warn(
+      `[cron] ${jobName}: Redis indisponivel pro lock, rodando sem lock (fail-open):`,
+      err instanceof Error ? err.message : String(err),
+    );
+    return "no_redis";
+  }
+}
+
+async function releaseCronLock(jobName: string, token: string) {
+  if (!cacheConnection) return;
+  try {
+    await cacheConnection.eval(
+      RELEASE_LOCK_LUA,
+      1,
+      `lock:cron:${jobName}`,
+      token,
+    );
+  } catch (err) {
+    console.warn(
+      `[cron] ${jobName}: falha ao liberar lock (expira pelo TTL):`,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+}
+
+type CronHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => Promise<void>;
+
+function withCronLock(
+  jobName: string,
+  ttlSeconds: number,
+  handler: CronHandler,
+): CronHandler {
+  return async (req, res, next) => {
+    const lock = await acquireCronLock(jobName, ttlSeconds);
+    if (lock === "locked") {
+      // Nao e erro: com replicas ou overlap de agenda, pular e o desejado.
+      console.log(`[cron] ${jobName}: lock ocupado, execucao pulada`);
+      res.json({ skipped: "locked" });
+      return;
+    }
+    try {
+      await handler(req, res, next);
+    } finally {
+      if (typeof lock === "object") {
+        await releaseCronLock(jobName, lock.token);
+      }
+    }
+  };
+}
+
+// Reindexacao fail-soft dos resource_types afetados por um sync. NUNCA falha o
+// job de insercao que a disparou: qualquer erro vira warn e o sync segue ok.
+async function reindexAfterSync(jobName: string, types: string[]) {
+  try {
+    console.log(`[cron] ${jobName}: reindexando tipos ${types.join(", ")}`);
+    const summary = await reindexSearchDocuments(types);
+    console.log(`[cron] ${jobName}: reindex concluida:`, JSON.stringify(summary));
+  } catch (err) {
+    console.warn(`[cron] ${jobName}: reindex pos-sync falhou (fail-soft):`, err);
+  }
+}
+
+// TTL 1200s: 4 fetches Currents + enriquecimento OpenAI artigo a artigo,
+// duracao tipica de minutos; 2x com folga.
+router.post("/sync-news", withCronLock("sync-news", 1200, async (_req, res, next) => {
   const startedAt = new Date();
 
   try {
@@ -115,6 +215,7 @@ router.post("/sync-news", async (_req, res, next) => {
       startedAt,
       payload: { ...result },
     });
+    await reindexAfterSync("sync-news", ["news"]);
     res.json({ data: result });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -132,9 +233,11 @@ router.post("/sync-news", async (_req, res, next) => {
     });
     next(err);
   }
-});
+}));
 
-router.post("/sync-jobs", async (_req, res, next) => {
+// TTL 600s: 3 chamadas Jooble (teto 15s cada) + upserts, tipico abaixo de
+// 1min; aplicado o minimo de 10min.
+router.post("/sync-jobs", withCronLock("sync-jobs", 600, async (_req, res, next) => {
   const startedAt = new Date();
 
   try {
@@ -146,6 +249,7 @@ router.post("/sync-jobs", async (_req, res, next) => {
       startedAt,
       payload: { ...result },
     });
+    await reindexAfterSync("sync-jobs", ["job"]);
     res.json({ data: result });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -163,7 +267,38 @@ router.post("/sync-jobs", async (_req, res, next) => {
     });
     next(err);
   }
-});
+}));
+
+// Reindexacao COMPLETA do search_documents (todas as fontes). Agendada diaria
+// via pg_cron (migration 20260702120000) e disponivel para disparo manual. O
+// reindexador ja e fail-soft por fonte: falhas parciais viram status "partial".
+// TTL 1200s: reindex completo de todas as fontes em paginas de 1000, cresce
+// com o catalogo; 20min cobre com folga.
+router.post("/reindex-search", withCronLock("reindex-search", 1200, async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    console.log("[cron] reindex-search: iniciando reindexacao completa");
+    const summary = await reindexSearchDocuments();
+    console.log("[cron] reindex-search: concluida:", JSON.stringify(summary));
+    await recordCronRun({
+      jobName: "reindex-search",
+      status: summary.falhas.length > 0 ? "partial" : "success",
+      startedAt,
+      payload: { ...summary },
+    });
+    res.json({ data: summary });
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    await recordCronRun({
+      jobName: "reindex-search",
+      status: "error",
+      startedAt,
+      errorMessage,
+    });
+    next(err);
+  }
+}));
 
 // NOTA (redesenho billing, abordagem C): desde que POST /billing/cancel passou a
 // avisar o Asaas na hora (endDate + DELETE das pendentes futuras), o cancelAsaasSubscription
@@ -171,7 +306,9 @@ router.post("/sync-jobs", async (_req, res, next) => {
 // ja para sozinho via endDate. Este cron agora vale como RECONCILIADOR / rede de seguranca:
 // finaliza o status no banco (active -> canceled) no vencimento e cobre casos em que o /cancel
 // falhou no meio ou subs legadas sem endDate. Desligar/ajustar e o passo 7 do plano, nao agora.
-router.post("/process-cancellations", async (_req, res, next) => {
+// TTL 600s: N subs vencidas x chamadas Asaas (teto 15s cada), tipico de
+// segundos; aplicado o minimo de 10min.
+router.post("/process-cancellations", withCronLock("process-cancellations", 600, async (_req, res, next) => {
   const startedAt = new Date();
 
   try {
@@ -214,6 +351,10 @@ router.post("/process-cancellations", async (_req, res, next) => {
 
         if (updateError) throw updateError;
 
+        // Deixou de ser Pro: invalida o cache do dono apos a escrita
+        // confirmada. Fire-and-forget, por usuario afetado (nao em lote).
+        void invalidateProStatusCache(sub.user_id);
+
         await supabaseAdmin
           .from("subscription_cancellations")
           .update({ status: "completed" })
@@ -249,7 +390,7 @@ router.post("/process-cancellations", async (_req, res, next) => {
     });
     next(err);
   }
-});
+}));
 
 const PAID_PAYMENT_STATUSES = new Set([
   "CONFIRMED",
@@ -259,6 +400,7 @@ const PAID_PAYMENT_STATUSES = new Set([
 
 type SubRow = {
   id: string;
+  user_id?: string | null;
   provider_subscription_id: string | null;
   current_period_end?: string | null;
   plans?: { code?: string } | { code?: string }[] | null;
@@ -299,7 +441,7 @@ async function reconcileIncompleteSubscriptions() {
 
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, provider_subscription_id, plans(code)")
+    .select("id, user_id, provider_subscription_id, plans(code)")
     .eq("status", "incomplete")
     .or(
       `last_event_at.lte.${cutoff},and(last_event_at.is.null,created_at.lte.${cutoff})`,
@@ -343,6 +485,9 @@ async function reconcileIncompleteSubscriptions() {
         .eq("id", sub.id);
       if (updateError) throw updateError;
 
+      // incomplete -> active: virou Pro; invalida o cache do dono.
+      if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+
       promoted += 1;
     } catch (err) {
       failed += 1;
@@ -366,7 +511,7 @@ async function reconcileExpiredSubscriptions() {
 
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, provider_subscription_id, current_period_end, plans(code)")
+    .select("id, user_id, provider_subscription_id, current_period_end, plans(code)")
     .eq("status", "active")
     .or("cancel_at_period_end.is.null,cancel_at_period_end.eq.false")
     .lte("current_period_end", cutoff)
@@ -412,6 +557,11 @@ async function reconcileExpiredSubscriptions() {
           .eq("id", sub.id);
         if (updateError) throw updateError;
 
+        // Renovou com periodo que ja tinha vencido (>3d de grace): o
+        // is_user_pro estava false pelo current_period_end; o novo periodo
+        // religa o boolean. Invalida o cache do dono.
+        if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+
         renewed += 1;
       } else {
         // Observabilidade: registra o status real no Asaas (nao decide nada).
@@ -437,6 +587,10 @@ async function reconcileExpiredSubscriptions() {
           .eq("id", sub.id);
         if (updateError) throw updateError;
 
+        // active -> past_due: o boolean ja estava false pelo periodo vencido,
+        // mas invalidar e barato e elimina qualquer janela residual.
+        if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+
         console.warn(
           `[cron/reconcile-subscriptions] downgrade ${sub.id} -> past_due (asaas status: ${asaasStatus})`,
         );
@@ -456,7 +610,9 @@ async function reconcileExpiredSubscriptions() {
   return { processed: subs.length, renewed, downgraded, failed, failures };
 }
 
-router.post("/reconcile-subscriptions", async (_req, res, next) => {
+// TTL 900s: 2 fases x ate 25 subscriptions x ate 2 chamadas Asaas cada
+// (teto 15s por chamada); pior caso teorico na casa dos minutos.
+router.post("/reconcile-subscriptions", withCronLock("reconcile-subscriptions", 900, async (_req, res, next) => {
   const startedAt = new Date();
 
   try {
@@ -495,9 +651,11 @@ router.post("/reconcile-subscriptions", async (_req, res, next) => {
     });
     next(err);
   }
-});
+}));
 
-router.post("/enrich-backlog", async (_req, res, next) => {
+// TTL 1800s: backlog de enriquecimento OpenAI (teto de 120s por chamada do
+// SDK), o job potencialmente mais longo do conjunto.
+router.post("/enrich-backlog", withCronLock("enrich-backlog", 1800, async (_req, res, next) => {
   const startedAt = new Date();
 
   try {
@@ -519,7 +677,7 @@ router.post("/enrich-backlog", async (_req, res, next) => {
     });
     next(err);
   }
-});
+}));
 
 router.get("/status", async (_req, res, next) => {
   try {

@@ -1,11 +1,13 @@
+import * as Sentry from "@sentry/node";
 import { Queue, Worker, type Job } from "bullmq";
-import IORedis from "ioredis";
 
 import type { Gender } from "../../shared/gender";
-import { env } from "./env";
+import { queueConnection } from "./redis";
 import {
   sendCancellationEmail,
   sendCancellationScheduledEmail,
+  sendNewsletterConfirmEmail,
+  sendNewsletterWelcomeEmail,
   sendPaymentFailedEmail,
   sendProUpgradeEmail,
   sendWaitlistConfirmationEmail,
@@ -20,22 +22,13 @@ export type EmailJobData =
   | ({ type: "cancellation" } & Recipient)
   | ({ type: "cancellation_scheduled"; effectiveAt: string } & Recipient)
   | ({ type: "payment_failed" } & Recipient)
-  | ({ type: "waitlist_confirmation" } & Recipient);
+  | ({ type: "waitlist_confirmation" } & Recipient)
+  | { type: "newsletter_confirm"; to: string; confirmUrl: string }
+  | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string };
 
-export const redisConnection = env.redisUrl
-  ? new IORedis(env.redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    })
-  : null;
-
-redisConnection?.on("error", (err) => {
-  console.error("[queue] Erro na conexão Redis:", err.message);
-});
-
-export const emailQueue = redisConnection
+export const emailQueue = queueConnection
   ? new Queue<EmailJobData>("emails", {
-      connection: redisConnection,
+      connection: queueConnection,
       defaultJobOptions: {
         attempts: 3,
         backoff: {
@@ -73,11 +66,17 @@ async function sendDirect(data: EmailJobData) {
     case "waitlist_confirmation":
       await sendWaitlistConfirmationEmail(data.to, data.name);
       break;
+    case "newsletter_confirm":
+      await sendNewsletterConfirmEmail(data.to, data.confirmUrl);
+      break;
+    case "newsletter_welcome":
+      await sendNewsletterWelcomeEmail(data.to, data.unsubscribeUrl);
+      break;
   }
 }
 
 export function createEmailWorker() {
-  if (!redisConnection) {
+  if (!queueConnection) {
     console.warn("[queue] REDIS_URL ausente. Worker de e-mail não iniciado.");
     return null;
   }
@@ -90,7 +89,7 @@ export function createEmailWorker() {
       await sendDirect(data);
     },
     {
-      connection: redisConnection,
+      connection: queueConnection,
       concurrency: 5,
     },
   );
@@ -104,6 +103,11 @@ export function createEmailWorker() {
       `[queue] Job ${job?.id} (${job?.data?.type}) falhou:`,
       err.message,
     );
+    Sentry.withScope((scope) => {
+      scope.setTag("jobName", job?.data?.type ?? "unknown");
+      scope.setTag("jobId", String(job?.id ?? "unknown"));
+      Sentry.captureException(err);
+    });
   });
 
   worker.on("error", (err) => {
@@ -113,6 +117,16 @@ export function createEmailWorker() {
   return worker;
 }
 
+// Teto pro enfileiramento. Com Redis fora, a conexao de fila (offline queue
+// ligada, exigencia do BullMQ) segura o add() indefinidamente em vez de
+// rejeitar, o catch nunca dispara e a rota pendura. Estourado o teto, cai pro
+// envio direto. Trade-off consciente: se o Redis voltar com o processo vivo, o
+// add preso na offline queue ainda pode completar e o e-mail sai duplicado;
+// melhor que pendurar a rota ou perder o e-mail.
+const ENQUEUE_TIMEOUT_MS = 2_000;
+
+const ENQUEUE_TIMEOUT = Symbol("email-enqueue-timeout");
+
 export async function enqueueEmail(data: EmailJobData) {
   if (!emailQueue) {
     console.warn("[queue] REDIS_URL ausente. Enviando e-mail diretamente.");
@@ -120,13 +134,36 @@ export async function enqueueEmail(data: EmailJobData) {
     return;
   }
 
+  // sendDirect fica FORA do try: se rodasse dentro, uma falha dele cairia no
+  // catch e dispararia um segundo envio. Exatamente um sendDirect por chamada;
+  // falha dele propaga ao chamador.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let needsDirectSend = false;
   try {
-    await emailQueue.add(data.type, data);
+    const added = await Promise.race([
+      emailQueue.add(data.type, data),
+      new Promise<typeof ENQUEUE_TIMEOUT>((resolve) => {
+        timer = setTimeout(() => resolve(ENQUEUE_TIMEOUT), ENQUEUE_TIMEOUT_MS);
+        timer.unref();
+      }),
+    ]);
+    if (added === ENQUEUE_TIMEOUT) {
+      console.error(
+        "[queue] Timeout ao enfileirar e-mail. Enviando diretamente.",
+      );
+      needsDirectSend = true;
+    }
   } catch (err) {
     console.error(
       "[queue] Erro ao enfileirar e-mail. Enviando diretamente.",
       err,
     );
+    needsDirectSend = true;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (needsDirectSend) {
     await sendDirect(data);
   }
 }

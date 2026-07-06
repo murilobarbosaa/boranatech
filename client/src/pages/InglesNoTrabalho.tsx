@@ -1,5 +1,6 @@
 import { MessageSquareText } from "lucide-react";
 import Layout from "@/components/Layout";
+import SEO from "@/components/SEO";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import InglesSubNav from "@/components/shared/InglesSubNav";
 import PageHero from "@/components/shared/PageHero";
@@ -81,6 +82,12 @@ const practicePlan = [
 export default function InglesNoTrabalho() {
   return (
     <Layout>
+      {/* TODO(Ana): validar title e description */}
+      <SEO
+        title="Inglês no trabalho em tech"
+        description="O inglês real do dia a dia em tecnologia: o que estudar por área e as frases que realmente aparecem em PR, daily, Slack e conversas com o time."
+        url="/ingles/no-trabalho"
+      />
       <PageHero
         accent="sky"
         eyebrow="inglês no trabalho"

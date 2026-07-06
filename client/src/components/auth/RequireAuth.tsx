@@ -2,14 +2,6 @@ import type { ReactNode } from "react";
 import { Redirect, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 
-export function sanitizeReturnTo(raw: string | null): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith("/")) return null;
-  if (raw.startsWith("//")) return null;
-  if (raw.startsWith("/\\")) return null;
-  return raw;
-}
-
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const [location] = useLocation();

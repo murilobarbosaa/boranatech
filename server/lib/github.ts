@@ -147,13 +147,19 @@ function buildHeaders(): Record<string, string> {
   return headers;
 }
 
+// outerSignal (opcional) e o budget global da rota, encadeado via
+// AbortSignal.any SEM remover o teto de 10s por chamada.
 async function withTimeout<T>(
   run: (signal: AbortSignal) => Promise<T>,
+  outerSignal?: AbortSignal,
 ): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const signal = outerSignal
+    ? AbortSignal.any([outerSignal, controller.signal])
+    : controller.signal;
   try {
-    return await run(controller.signal);
+    return await run(signal);
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
       throw new GithubFetchError(0, "Tempo de resposta do GitHub esgotado.");
@@ -176,7 +182,10 @@ function isRateLimited(response: Response): boolean {
  * - 403 com rate limit zerado: GithubRateLimitError.
  * - resto: GithubFetchError.
  */
-async function apiGet<T>(path: string): Promise<T | null> {
+async function apiGet<T>(
+  path: string,
+  outerSignal?: AbortSignal,
+): Promise<T | null> {
   return withTimeout(async (signal) => {
     const response = await fetch(`${API_BASE}${path}`, {
       method: "GET",
@@ -193,7 +202,7 @@ async function apiGet<T>(path: string): Promise<T | null> {
       );
     }
     return (await response.json()) as T;
-  });
+  }, outerSignal);
 }
 
 /**
@@ -292,12 +301,13 @@ function pickLicense(license: GithubApiRepo["license"]): string | null {
 export async function fetchRepoData(
   owner: string,
   repo: string,
+  signal?: AbortSignal,
 ): Promise<GithubRepoData> {
   if (!isValidOwner(owner) || !isValidRepo(repo)) {
     throw new GithubFetchError(0, "owner ou repo em formato invalido.");
   }
 
-  const meta = await apiGet<GithubApiRepo>(`/repos/${owner}/${repo}`);
+  const meta = await apiGet<GithubApiRepo>(`/repos/${owner}/${repo}`, signal);
   if (!meta) {
     throw new GithubNotFoundError(
       "Repositorio nao encontrado ou nao e publico.",
@@ -305,9 +315,12 @@ export async function fetchRepoData(
   }
 
   const [languages, readme, rootContents] = await Promise.all([
-    apiGet<Record<string, number>>(`/repos/${owner}/${repo}/languages`),
-    apiGet<GithubApiReadme>(`/repos/${owner}/${repo}/readme`),
-    apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents`),
+    apiGet<Record<string, number>>(
+      `/repos/${owner}/${repo}/languages`,
+      signal,
+    ),
+    apiGet<GithubApiReadme>(`/repos/${owner}/${repo}/readme`, signal),
+    apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents`, signal),
   ]);
 
   const root = Array.isArray(rootContents) ? rootContents : [];
@@ -330,6 +343,7 @@ export async function fetchRepoData(
       .map(async (dir) => {
         const listing = await apiGet<GithubApiContentEntry[]>(
           `/repos/${owner}/${repo}/contents/${dir}`,
+          signal,
         );
         const names = Array.isArray(listing)
           ? listing
@@ -349,6 +363,7 @@ export async function fetchRepoData(
   if (rootDirs.has(".github")) {
     const workflows = await apiGet<GithubApiContentEntry[]>(
       `/repos/${owner}/${repo}/contents/.github/workflows`,
+      signal,
     );
     ci = Array.isArray(workflows) && workflows.some((e) => e.type === "file");
   }
@@ -433,10 +448,11 @@ function detectDeployFiles(entries: GithubApiContentEntry[]): boolean {
 async function fetchProfileRepoSignals(
   owner: string,
   repo: string,
+  signal?: AbortSignal,
 ): Promise<ProfileRepoSignals> {
   const [meta, contents] = await Promise.all([
-    apiGet<GithubApiRepo>(`/repos/${owner}/${repo}`),
-    apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents`),
+    apiGet<GithubApiRepo>(`/repos/${owner}/${repo}`, signal),
+    apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents`, signal),
   ]);
 
   const entries = Array.isArray(contents) ? contents : [];
@@ -449,6 +465,7 @@ async function fetchProfileRepoSignals(
   if (rootDirs.has(".github")) {
     const workflows = await apiGet<GithubApiContentEntry[]>(
       `/repos/${owner}/${repo}/contents/.github/workflows`,
+      signal,
     );
     hasCI =
       Array.isArray(workflows) && workflows.some((e) => e.type === "file");
@@ -476,11 +493,12 @@ async function fetchProfileRepoSignals(
 async function aggregateDeepSignals(
   login: string,
   ownRepos: GithubApiUserRepo[],
+  signal?: AbortSignal,
 ): Promise<GithubDeepSignals | undefined> {
   if (ownRepos.length === 0) return undefined;
 
   const settled = await Promise.allSettled(
-    ownRepos.map((repo) => fetchProfileRepoSignals(login, repo.name)),
+    ownRepos.map((repo) => fetchProfileRepoSignals(login, repo.name, signal)),
   );
   const ok = settled
     .filter(
@@ -508,20 +526,22 @@ async function aggregateDeepSignals(
 
 export async function fetchProfileData(
   login: string,
+  signal?: AbortSignal,
 ): Promise<GithubProfileData> {
   if (!isValidOwner(login)) {
     throw new GithubFetchError(0, "login em formato invalido.");
   }
 
-  const user = await apiGet<GithubApiUser>(`/users/${login}`);
+  const user = await apiGet<GithubApiUser>(`/users/${login}`, signal);
   if (!user) {
     throw new GithubNotFoundError("Perfil nao encontrado.");
   }
 
   const [readme, repos] = await Promise.all([
-    apiGet<GithubApiReadme>(`/repos/${login}/${login}/readme`),
+    apiGet<GithubApiReadme>(`/repos/${login}/${login}/readme`, signal),
     apiGet<GithubApiUserRepo[]>(
       `/users/${login}/repos?per_page=100&sort=pushed&type=owner`,
+      signal,
     ),
   ]);
 
@@ -536,7 +556,7 @@ export async function fetchProfileData(
   const topOwnRepos = repoList
     .filter((repo) => !repo.fork)
     .slice(0, PROFILE_DEEP_REPOS);
-  const deepSignals = await aggregateDeepSignals(login, topOwnRepos);
+  const deepSignals = await aggregateDeepSignals(login, topOwnRepos, signal);
 
   return {
     login: user.login,

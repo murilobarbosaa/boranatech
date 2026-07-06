@@ -1,30 +1,52 @@
 import { Router } from "express";
 
+import { cacheKey, getOrCompute } from "../lib/cache";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 
 const router = Router();
 
+const NEWS_FEED_MAX_AGE_DAYS = 30; // TODO(Ana): janela de exibição do feed
+
+// TTLs do cache publico. Requests com busca de texto livre (search/q) fazem
+// bypass do cache: cardinalidade de chave ilimitada poluiria o Redis.
+const LIST_TTL_SECONDS = 120;
+const ITEM_TTL_SECONDS = 300;
+
+// Cache-Control HTTP das rotas publicas (sem auth). Browser segura pouco
+// (max-age) e a borda/CDN um pouco mais (s-maxage). Rotas mais dinamicas
+// (news, jobs, sources/status) usam a variante curta.
+const PUBLIC_CACHE_CONTROL = "public, max-age=60, s-maxage=120";
+const DYNAMIC_CACHE_CONTROL = "public, max-age=30, s-maxage=60";
+
 router.get("/areas", async (req, res, next) => {
   try {
     const { tag, search } = req.query;
-    let query = supabaseAdmin
-      .from("areas")
-      .select(
-        "id, slug, name, short_description, tag, tag_class, icon, color, is_pro, sort_order, profile_indicated, skills, roles",
-      )
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true });
+    const payload = await getOrCompute(
+      cacheKey("content:areas", { tag }),
+      LIST_TTL_SECONDS,
+      async () => {
+        let query = supabaseAdmin
+          .from("areas")
+          .select(
+            "id, slug, name, short_description, tag, tag_class, icon, color, is_pro, sort_order, profile_indicated, skills, roles",
+          )
+          .eq("is_published", true)
+          .order("sort_order", { ascending: true });
 
-    if (tag) query = query.eq("tag", tag);
-    if (search) query = query.ilike("name", `%${search}%`);
+        if (tag) query = query.eq("tag", tag);
+        if (search) query = query.ilike("name", `%${search}%`);
 
-    const { data, error } = await query;
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar áreas."));
+        const { data, error } = await query;
+        if (error) throw createError(500, "db_error", "Erro ao buscar áreas.");
+        return { data: data || [] };
+      },
+      { bypass: Boolean(search) },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -32,17 +54,28 @@ router.get("/areas", async (req, res, next) => {
 
 router.get("/areas/:slug", async (req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("areas")
-      .select("*")
-      .eq("slug", req.params.slug)
-      .eq("is_published", true)
-      .single();
+    const payload = await getOrCompute(
+      cacheKey("content:areas-item", { slug: req.params.slug }),
+      ITEM_TTL_SECONDS,
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from("areas")
+          .select("*")
+          .eq("slug", req.params.slug)
+          .eq("is_published", true)
+          .single();
 
-    if (error || !data)
+        // null = not found: devolvido sem cachear (so sucesso entra no cache)
+        if (error || !data) return null;
+        return { data };
+      },
+    );
+
+    if (!payload)
       return next(createError(404, "not_found", "Área não encontrada."));
 
-    res.json({ data });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -51,20 +84,29 @@ router.get("/areas/:slug", async (req, res, next) => {
 router.get("/technologies", async (req, res, next) => {
   try {
     const { category, search } = req.query;
-    let query = supabaseAdmin
-      .from("technologies")
-      .select("*")
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true });
+    const payload = await getOrCompute(
+      cacheKey("content:technologies", { category }),
+      LIST_TTL_SECONDS,
+      async () => {
+        let query = supabaseAdmin
+          .from("technologies")
+          .select("*")
+          .eq("is_published", true)
+          .order("sort_order", { ascending: true });
 
-    if (category) query = query.eq("category", category);
-    if (search) query = query.ilike("name", `%${search}%`);
+        if (category) query = query.eq("category", category);
+        if (search) query = query.ilike("name", `%${search}%`);
 
-    const { data, error } = await query;
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar tecnologias."));
+        const { data, error } = await query;
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar tecnologias.");
+        return { data: data || [] };
+      },
+      { bypass: Boolean(search) },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -72,16 +114,24 @@ router.get("/technologies", async (req, res, next) => {
 
 router.get("/technologies/ranking", async (_req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("technologies")
-      .select("*")
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true });
+    const payload = await getOrCompute(
+      cacheKey("content:technologies-ranking"),
+      LIST_TTL_SECONDS,
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from("technologies")
+          .select("*")
+          .eq("is_published", true)
+          .order("sort_order", { ascending: true });
 
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar ranking."));
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar ranking.");
+        return { data: data || [] };
+      },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -100,17 +150,24 @@ router.get("/technologies/compare", async (req, res, next) => {
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("technologies")
-      .select("*")
-      .in("slug", [String(left), String(right)])
-      .eq("is_published", true);
+    const payload = await getOrCompute(
+      cacheKey("content:technologies-compare", { left, right }),
+      ITEM_TTL_SECONDS,
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from("technologies")
+          .select("*")
+          .in("slug", [String(left), String(right)])
+          .eq("is_published", true);
 
-    if (error)
-      return next(
-        createError(500, "db_error", "Erro ao comparar tecnologias."),
-      );
-    if (!data || data.length < 2)
+        if (error)
+          throw createError(500, "db_error", "Erro ao comparar tecnologias.");
+        if (!data || data.length < 2) return null;
+        return { data };
+      },
+    );
+
+    if (!payload)
       return next(
         createError(
           404,
@@ -119,7 +176,8 @@ router.get("/technologies/compare", async (req, res, next) => {
         ),
       );
 
-    res.json({ data });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -127,17 +185,27 @@ router.get("/technologies/compare", async (req, res, next) => {
 
 router.get("/technologies/:slug", async (req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("technologies")
-      .select("*")
-      .eq("slug", req.params.slug)
-      .eq("is_published", true)
-      .single();
+    const payload = await getOrCompute(
+      cacheKey("content:technologies-item", { slug: req.params.slug }),
+      ITEM_TTL_SECONDS,
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from("technologies")
+          .select("*")
+          .eq("slug", req.params.slug)
+          .eq("is_published", true)
+          .single();
 
-    if (error || !data)
+        if (error || !data) return null;
+        return { data };
+      },
+    );
+
+    if (!payload)
       return next(createError(404, "not_found", "Tecnologia não encontrada."));
 
-    res.json({ data });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -146,22 +214,31 @@ router.get("/technologies/:slug", async (req, res, next) => {
 router.get("/courses", async (req, res, next) => {
   try {
     const { area, is_free, level, search } = req.query;
-    let query = supabaseAdmin
-      .from("courses")
-      .select("*")
-      .eq("is_published", true)
-      .order("created_at", { ascending: false });
+    const payload = await getOrCompute(
+      cacheKey("content:courses", { area, is_free, level }),
+      LIST_TTL_SECONDS,
+      async () => {
+        let query = supabaseAdmin
+          .from("courses")
+          .select("*")
+          .eq("is_published", true)
+          .order("created_at", { ascending: false });
 
-    if (area) query = query.eq("area_slug", area);
-    if (is_free !== undefined) query = query.eq("is_free", is_free === "true");
-    if (level) query = query.eq("level", level);
-    if (search) query = query.ilike("title", `%${search}%`);
+        if (area) query = query.eq("area_slug", area);
+        if (is_free !== undefined)
+          query = query.eq("is_free", is_free === "true");
+        if (level) query = query.eq("level", level);
+        if (search) query = query.ilike("title", `%${search}%`);
 
-    const { data, error } = await query;
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar cursos."));
+        const { data, error } = await query;
+        if (error) throw createError(500, "db_error", "Erro ao buscar cursos.");
+        return { data: data || [] };
+      },
+      { bypass: Boolean(search) },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -169,16 +246,24 @@ router.get("/courses", async (req, res, next) => {
 
 router.get("/platforms", async (_req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("platforms")
-      .select("*")
-      .eq("is_published", true)
-      .order("name", { ascending: true });
+    const payload = await getOrCompute(
+      cacheKey("content:platforms"),
+      LIST_TTL_SECONDS,
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from("platforms")
+          .select("*")
+          .eq("is_published", true)
+          .order("name", { ascending: true });
 
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar plataformas."));
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar plataformas.");
+        return { data: data || [] };
+      },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -187,20 +272,28 @@ router.get("/platforms", async (_req, res, next) => {
 router.get("/projects", async (req, res, next) => {
   try {
     const { area, level } = req.query;
-    let query = supabaseAdmin
-      .from("projects")
-      .select("*")
-      .eq("is_published", true)
-      .order("created_at", { ascending: false });
+    const payload = await getOrCompute(
+      cacheKey("content:projects", { area, level }),
+      LIST_TTL_SECONDS,
+      async () => {
+        let query = supabaseAdmin
+          .from("projects")
+          .select("*")
+          .eq("is_published", true)
+          .order("created_at", { ascending: false });
 
-    if (area) query = query.eq("area_slug", area);
-    if (level) query = query.eq("level", level);
+        if (area) query = query.eq("area_slug", area);
+        if (level) query = query.eq("level", level);
 
-    const { data, error } = await query;
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar projetos."));
+        const { data, error } = await query;
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar projetos.");
+        return { data: data || [] };
+      },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -208,17 +301,27 @@ router.get("/projects", async (req, res, next) => {
 
 router.get("/projects/:slug", async (req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("projects")
-      .select("*")
-      .eq("slug", req.params.slug)
-      .eq("is_published", true)
-      .single();
+    const payload = await getOrCompute(
+      cacheKey("content:projects-item", { slug: req.params.slug }),
+      ITEM_TTL_SECONDS,
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from("projects")
+          .select("*")
+          .eq("slug", req.params.slug)
+          .eq("is_published", true)
+          .single();
 
-    if (error || !data)
+        if (error || !data) return null;
+        return { data };
+      },
+    );
+
+    if (!payload)
       return next(createError(404, "not_found", "Projeto não encontrado."));
 
-    res.json({ data });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -227,21 +330,29 @@ router.get("/projects/:slug", async (req, res, next) => {
 router.get("/roadmaps", async (req, res, next) => {
   try {
     const { area } = req.query;
-    let query = supabaseAdmin
-      .from("roadmaps")
-      .select(
-        "id, slug, title, description, area_slug, level, estimated_duration_weeks, is_pro, sort_order",
-      )
-      .eq("is_published", true)
-      .order("sort_order", { ascending: true });
+    const payload = await getOrCompute(
+      cacheKey("content:roadmaps", { area }),
+      LIST_TTL_SECONDS,
+      async () => {
+        let query = supabaseAdmin
+          .from("roadmaps")
+          .select(
+            "id, slug, title, description, area_slug, level, estimated_duration_weeks, is_pro, sort_order",
+          )
+          .eq("is_published", true)
+          .order("sort_order", { ascending: true });
 
-    if (area) query = query.eq("area_slug", area);
+        if (area) query = query.eq("area_slug", area);
 
-    const { data, error } = await query;
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar roadmaps."));
+        const { data, error } = await query;
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar roadmaps.");
+        return { data: data || [] };
+      },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -329,21 +440,31 @@ router.post("/roadmaps/:slug/progress", requireAuth, async (req, res, next) => {
 
 router.get("/roadmaps/:slug", async (req, res, next) => {
   try {
-    const { data: roadmap, error } = await supabaseAdmin
-      .from("roadmaps")
-      .select("*, roadmap_steps(*)")
-      .eq("slug", req.params.slug)
-      .eq("is_published", true)
-      .order("order_index", {
-        referencedTable: "roadmap_steps",
-        ascending: true,
-      })
-      .single();
+    const payload = await getOrCompute(
+      cacheKey("content:roadmaps-item", { slug: req.params.slug }),
+      ITEM_TTL_SECONDS,
+      async () => {
+        const { data: roadmap, error } = await supabaseAdmin
+          .from("roadmaps")
+          .select("*, roadmap_steps(*)")
+          .eq("slug", req.params.slug)
+          .eq("is_published", true)
+          .order("order_index", {
+            referencedTable: "roadmap_steps",
+            ascending: true,
+          })
+          .single();
 
-    if (error || !roadmap)
+        if (error || !roadmap) return null;
+        return { data: roadmap };
+      },
+    );
+
+    if (!payload)
       return next(createError(404, "not_found", "Roadmap não encontrado."));
 
-    res.json({ data: roadmap });
+    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -351,17 +472,23 @@ router.get("/roadmaps/:slug", async (req, res, next) => {
 
 router.get("/sources/status", async (_req, res, next) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("content_sources")
-      .select("code, name, type, status, last_sync_at")
-      .order("code");
+    const payload = await getOrCompute(
+      cacheKey("content:sources-status"),
+      LIST_TTL_SECONDS,
+      async () => {
+        const { data, error } = await supabaseAdmin
+          .from("content_sources")
+          .select("code, name, type, status, last_sync_at")
+          .order("code");
 
-    if (error)
-      return next(
-        createError(500, "db_error", "Erro ao buscar status das fontes."),
-      );
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar status das fontes.");
+        return { data: data || [] };
+      },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", DYNAMIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -369,60 +496,81 @@ router.get("/sources/status", async (_req, res, next) => {
 
 router.get("/news", async (req, res, next) => {
   try {
+    // Clamp ANTES da chave de cache: valor fora da faixa normaliza pra mesma
+    // entrada (limit invalido ou acima de 50 vira o default da rota).
     const page = Math.max(1, parseInt(String(req.query.page || "1"), 10) || 1);
-    const limit = Math.min(
-      Math.max(parseInt(String(req.query.limit || "21"), 10) || 21, 1),
-      100,
-    );
+    const rawLimit = parseInt(String(req.query.limit || "21"), 10);
+    const limit =
+      Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 50
+        ? rawLimit
+        : 21;
     const level = req.query.level ? String(req.query.level) : "";
     const q = req.query.q ? String(req.query.q).trim() : "";
 
-    let query = supabaseAdmin
-      .from("news")
-      .select(
-        "id, slug, title, title_pt_br, summary, summary_pt_br, level, why_it_matters, url, image_url, source, author, published_at, tags, enriched_at",
-        { count: "exact" },
-      )
-      .eq("is_published", true)
-      .not("enriched_at", "is", null);
+    const payload = await getOrCompute(
+      cacheKey("content:news", { page, limit, level }),
+      LIST_TTL_SECONDS,
+      async () => {
+        const cutoffISO = new Date(
+          Date.now() - NEWS_FEED_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+        ).toISOString();
 
-    if (level && ["iniciante", "intermediario", "avancado"].includes(level)) {
-      query = query.eq("level", level);
-    }
+        let query = supabaseAdmin
+          .from("news")
+          .select(
+            "id, slug, title, title_pt_br, summary, summary_pt_br, level, why_it_matters, url, image_url, source, author, published_at, tags, enriched_at",
+            { count: "exact" },
+          )
+          .eq("is_published", true)
+          .not("enriched_at", "is", null)
+          .gte("published_at", cutoffISO);
 
-    if (q) {
-      const safe = q.replace(/[%,()]/g, " ");
-      const term = `%${safe}%`;
-      query = query.or(
-        `title_pt_br.ilike.${term},summary_pt_br.ilike.${term},why_it_matters.ilike.${term}`,
-      );
-    }
+        if (
+          level &&
+          ["iniciante", "intermediario", "avancado"].includes(level)
+        ) {
+          query = query.eq("level", level);
+        }
 
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-    query = query
-      .order("published_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: false })
-      .range(from, to);
+        if (q) {
+          const safe = q.replace(/[%,()]/g, " ");
+          const term = `%${safe}%`;
+          query = query.or(
+            `title_pt_br.ilike.${term},summary_pt_br.ilike.${term},why_it_matters.ilike.${term}`,
+          );
+        }
 
-    const { data, count, error } = await query;
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar notícias."));
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+        query = query
+          .order("published_at", { ascending: false, nullsFirst: false })
+          .order("id", { ascending: false })
+          .range(from, to);
 
-    const total = count ?? 0;
-    const total_pages = Math.max(1, Math.ceil(total / limit));
+        const { data, count, error } = await query;
+        if (error)
+          throw createError(500, "db_error", "Erro ao buscar notícias.");
 
-    res.json({
-      data: data || [],
-      pagination: {
-        page,
-        limit,
-        total,
-        total_pages,
-        has_next: page < total_pages,
-        has_prev: page > 1,
+        const total = count ?? 0;
+        const total_pages = Math.max(1, Math.ceil(total / limit));
+
+        return {
+          data: data || [],
+          pagination: {
+            page,
+            limit,
+            total,
+            total_pages,
+            has_next: page < total_pages,
+            has_prev: page > 1,
+          },
+        };
       },
-    });
+      { bypass: Boolean(q) },
+    );
+
+    res.set("Cache-Control", DYNAMIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
@@ -430,34 +578,45 @@ router.get("/news", async (req, res, next) => {
 
 router.get("/jobs", async (req, res, next) => {
   try {
-    const limit = Math.min(
-      parseInt(String(req.query.limit || "20"), 10) || 20,
-      50,
-    );
-    const offset = Math.max(
-      parseInt(String(req.query.offset || "0"), 10) || 0,
-      0,
-    );
+    // Clamp ANTES da chave de cache: valor fora da faixa normaliza pra mesma
+    // entrada (limit invalido vira o default da rota; offset com teto).
+    const rawLimit = parseInt(String(req.query.limit || "20"), 10);
+    const limit =
+      Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 50
+        ? rawLimit
+        : 20;
+    const rawOffset = parseInt(String(req.query.offset || "0"), 10);
+    const offset =
+      Number.isInteger(rawOffset) && rawOffset >= 0
+        ? Math.min(rawOffset, 5000)
+        : 0;
     const area = req.query.area ? String(req.query.area) : "";
     const seniority = req.query.seniority ? String(req.query.seniority) : "";
 
-    let query = supabaseAdmin
-      .from("external_jobs")
-      .select(
-        "id, title, company, location, remote, seniority, url, area_slug, published_at",
-      )
-      .eq("is_published", true)
-      .order("published_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    const payload = await getOrCompute(
+      cacheKey("content:jobs", { limit, offset, area, seniority }),
+      LIST_TTL_SECONDS,
+      async () => {
+        let query = supabaseAdmin
+          .from("external_jobs")
+          .select(
+            "id, title, company, location, remote, seniority, url, area_slug, published_at",
+          )
+          .eq("is_published", true)
+          .order("published_at", { ascending: false })
+          .range(offset, offset + limit - 1);
 
-    if (area) query = query.eq("area_slug", area);
-    if (seniority) query = query.eq("seniority", seniority);
+        if (area) query = query.eq("area_slug", area);
+        if (seniority) query = query.eq("seniority", seniority);
 
-    const { data, error } = await query;
-    if (error)
-      return next(createError(500, "db_error", "Erro ao buscar vagas."));
+        const { data, error } = await query;
+        if (error) throw createError(500, "db_error", "Erro ao buscar vagas.");
+        return { data: data || [] };
+      },
+    );
 
-    res.json({ data: data || [] });
+    res.set("Cache-Control", DYNAMIC_CACHE_CONTROL);
+    res.json(payload);
   } catch (err) {
     next(err);
   }
