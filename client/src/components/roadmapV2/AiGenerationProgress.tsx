@@ -20,9 +20,16 @@ const MESSAGES = {
   unavailable: "O servico de IA esta indisponivel agora. Tente novamente em instantes.",
   preparing: "Montando seu roadmap...",
   step: (done: number, total: number) => `Gerando etapa ${done} de ${total}`,
+  // TODO(Ana): revisar copy do tempo estimado e do aviso de background.
+  eta: (minutes: number) => `tempo estimado: ~${minutes} min`,
+  background:
+    "Pode sair desta tela; a geracao continua e o roadmap aparece na sua lista.",
   resume: "Retomar de onde parou",
   retry: "Tentar de novo",
 } as const;
+
+// Estimativa de ~25s por secao gerada, arredondada pra cima em minutos.
+const SECTION_ETA_SECONDS = 25;
 
 // Traduz o codigo de bloqueio pre-SSE do backend (quota, geracao em andamento,
 // Pro, indisponibilidade) para a mensagem da UI.
@@ -166,6 +173,15 @@ export function AiGenerationProgressCard({
               {state.total > 0
                 ? MESSAGES.step(Math.min(state.completed + 1, state.total), state.total)
                 : MESSAGES.preparing}
+              {state.total > 0 ? (
+                <span className="font-semibold text-slate-500">
+                  {" "}
+                  ·{" "}
+                  {MESSAGES.eta(
+                    Math.ceil((state.total * SECTION_ETA_SECONDS) / 60),
+                  )}
+                </span>
+              ) : null}
             </p>
           </div>
         </div>
@@ -175,6 +191,11 @@ export function AiGenerationProgressCard({
             style={{ width: `${Math.max(pct, 6)}%` }}
           />
         </div>
+        {state.total > 0 ? (
+          <p className="mt-3 text-xs font-semibold text-slate-500">
+            {MESSAGES.background}
+          </p>
+        ) : null}
       </div>
     );
   }

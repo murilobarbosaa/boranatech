@@ -37,6 +37,10 @@ type UseRoadmapProgressResult = {
 
 export function useRoadmapProgress(slug: string): UseRoadmapProgressResult {
   const { user, loading: authLoading } = useAuth();
+  // Chaveia pelo id, nunca pelo objeto: o supabase re-emite a sessao (objeto
+  // novo) ao voltar o foco da aba (TOKEN_REFRESHED/SIGNED_IN) e um dep no
+  // objeto derrubava `ready` e remontava a trilha sem nada ter mudado.
+  const userId = user?.id ?? null;
   const [done, setDone] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
   const doneRef = useRef<Set<string>>(done);
@@ -51,13 +55,12 @@ export function useRoadmapProgress(slug: string): UseRoadmapProgressResult {
     let cancelled = false;
 
     const prevUser = prevUserRef.current;
-    const currUser = user?.id ?? null;
-    prevUserRef.current = currUser;
-    const justSignedIn = !prevUser && !!currUser;
+    prevUserRef.current = userId;
+    const justSignedIn = !prevUser && !!userId;
 
     async function run() {
       // Anonimo: fonte e o localStorage; pronto na hora.
-      if (!user) {
+      if (!userId) {
         setDone(loadProgress(slug));
         setReady(true);
         return;
@@ -103,7 +106,7 @@ export function useRoadmapProgress(slug: string): UseRoadmapProgressResult {
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, slug]);
+  }, [userId, authLoading, slug]);
 
   const toggle = useCallback(
     (nodeId: string) => {
@@ -114,7 +117,7 @@ export function useRoadmapProgress(slug: string): UseRoadmapProgressResult {
       setDone(next);
       doneRef.current = next;
 
-      if (!user) {
+      if (!userId) {
         saveProgress(slug, next);
         return;
       }
@@ -135,7 +138,7 @@ export function useRoadmapProgress(slug: string): UseRoadmapProgressResult {
         });
       });
     },
-    [user, slug],
+    [userId, slug],
   );
 
   return { done, toggle, ready };

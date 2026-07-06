@@ -70,13 +70,24 @@ function sseInit(res: Response): void {
   res.flushHeaders?.();
 }
 
+// Emits fail-soft: cliente que fechou a aba mata o socket, mas a geracao segue
+// gerando e persistindo por secao ate ready/partial. Um throw de write aqui
+// NAO pode abortar o loop (cairia no catch de runSections e marcaria partial).
 function sseSend(res: Response, payload: Record<string, unknown>): void {
-  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  try {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  } catch (err) {
+    console.warn("[roadmap-ia] emit SSE falhou (cliente desconectado?):", err);
+  }
 }
 
 function sseDone(res: Response): void {
-  res.write("data: [DONE]\n\n");
-  res.end();
+  try {
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (err) {
+    console.warn("[roadmap-ia] fechamento SSE falhou (cliente desconectado?):", err);
+  }
 }
 
 async function setStatus(
