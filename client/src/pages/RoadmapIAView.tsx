@@ -10,6 +10,7 @@ import {
 import RoadmapTrail from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { useRoadmapProgress } from "@/hooks/useRoadmapProgress";
+import { useTrailCelebration } from "@/hooks/useTrailCelebration";
 import { nodeProgress } from "@/lib/roadmapV2/progress";
 import {
   getAiRoadmap,
@@ -82,6 +83,16 @@ export default function RoadmapIAView() {
       (section) => section.children && section.children.length > 0,
     );
   }, [roadmap]);
+
+  // Mesma orquestracao de conclusao das trilhas estaticas: drawer fecha,
+  // confete na estacao e walk() destrava a proxima ao vivo (sem F5).
+  const trailRef = useTrailCelebration({
+    sections: visibleSections,
+    done,
+    ready,
+    openSectionId,
+    onCloseDrawer: () => setOpenSectionId(null),
+  });
 
   const overall = useMemo(() => {
     return visibleSections.reduce(
@@ -211,6 +222,7 @@ export default function RoadmapIAView() {
 
               {ready ? (
                 <RoadmapTrail
+                  ref={trailRef}
                   sections={visibleSections}
                   done={done}
                   onOpenSection={setOpenSectionId}
