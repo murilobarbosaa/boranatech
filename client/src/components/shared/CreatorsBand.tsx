@@ -148,12 +148,13 @@ export default function CreatorsBand() {
 
   return (
     <section
-      aria-label="Creators que apoiam o projeto"
+      aria-label="Creators de conteúdo em tech"
       className="sticky top-16 z-40 overflow-hidden border-b-2 border-slate-950 bg-[#6b1fc9] py-2"
     >
-      {/* TODO(Ana): revisar a copy do titulo da faixa de creators */}
+      {/* TODO(Ana): confirmar a relacao (apoiam? parceiros?) e ajustar a copy;
+          rotulo neutro por ora pra nao afirmar endosso nao verificado */}
       <p className="mb-1 hidden text-center font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-[#FCC700] sm:block">
-        Creators que apoiam
+        Creators de conteúdo em tech
       </p>
 
       {reduce ? (
