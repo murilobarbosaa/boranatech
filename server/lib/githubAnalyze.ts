@@ -27,6 +27,8 @@ import {
 
 const README_LIMIT = 6000;
 const TOP_REPOS_LIMIT = 8;
+// Teto de entradas da raiz listadas no prompt (repos raros passam disso).
+const ROOT_ENTRIES_LIMIT = 40;
 
 // Retry da chamada da IA pra matar 502 intermitente.
 const AI_MAX_ATTEMPTS = 3;
@@ -49,7 +51,10 @@ const SYSTEM_PROMPT =
   "QUANTIDADES OBRIGATORIAS: de 3 a 6 pontosFortes, de 3 a 6 pontosFracos e de 4 a 7 melhorias. " +
   "Em cada melhoria, comoFazer tem de 2 a 4 frases, comecando por um primeiro passo executavel HOJE e citando nome de arquivo ou configuracao quando aplicavel (por exemplo README.md, About do repositorio, pin de repositorios). " +
   "proximoPasso: preencha SEMPRE, escolhendo entre as melhorias de prioridade alta a UNICA acao de maior impacto que a pessoa consegue executar hoje, concreta e especifica ao que foi analisado. " +
-  "readmeSugestao e OBRIGATORIA (nunca null) nestes casos: no modo repo, quando a checagem repo_readme_present ou a repo_readme_substance nao estiver aprovada; no modo perfil, quando a checagem profile_readme_present nao estiver aprovada. Nos demais casos, deixe null. A sugestao usa SOMENTE fatos presentes na entrada e marca com placeholders claros, como <descreva aqui>, tudo que depender de dado que nao veio. " +
+  "readmeSugestao e OBRIGATORIA (nunca null) nestes casos: no modo repo, quando a checagem repo_readme_present ou a repo_readme_substance nao estiver aprovada; no modo perfil, quando a checagem profile_readme_present nao estiver aprovada. Nos demais casos, deixe null. " +
+  // TODO(Ana): revisar as instrucoes de estrutura do README sugerido.
+  "Quando obrigatoria, a readmeSugestao e um README COMPLETO em markdown, pronto pra colar, montado com os fatos da entrada. No modo repo, estruture nesta ordem: titulo com o nome real do repositorio; um paragrafo do que o projeto faz (a partir da descricao e dos arquivos reais); a stack real (linguagens e dependencias que aparecem na entrada); como rodar (dos scripts ou arquivos reais quando presentes na entrada, senao um placeholder claro dizendo o que preencher); features ou estrutura observadas nos arquivos e pastas listados; e uma secao final de roadmap com as melhorias que voce sugeriu. No modo perfil, siga o molde equivalente: quem sou (a partir de nome e bio reais), stack real observada nos repositorios lidos, destaques reais (os repositorios em destaque da entrada) e uma secao de contato com placeholder quando o dado nao veio. " +
+  "Em qualquer modo, a sugestao usa SOMENTE fatos presentes na entrada e marca com placeholders claros, como <descreva aqui>, tudo que depender de dado que nao veio; nunca invente dependencia, comando ou feature. " +
   "Responda apenas com o JSON do schema.";
 
 export interface AnalyzeAiIo {
@@ -109,12 +114,14 @@ function buildRepoPrompt(
     ...areaLines,
     `Repositorio: ${data.fullName}`,
     `URL: ${data.htmlUrl}`,
+    `Descricao: ${data.description ?? "nenhuma"}`,
     `Linguagem principal: ${data.primaryLanguage ?? "nao informada"}`,
     `Linguagens detectadas: ${languages.length > 0 ? languages.join(", ") : "nenhuma"}`,
     `Estrelas: ${data.stars} | Forks: ${data.forks} | Issues abertas: ${data.openIssues}`,
     `Ultimo push: ${data.pushedAt ?? "desconhecido"}`,
     `Topics: ${data.topics.length > 0 ? data.topics.join(", ") : "nenhum"}`,
     `Licenca: ${data.license ?? "nenhuma"}`,
+    `Arquivos e pastas na raiz: ${data.rootEntries.length > 0 ? data.rootEntries.slice(0, ROOT_ENTRIES_LIMIT).join(", ") : "vazio"}`,
     "",
     "Checagens automaticas ja calculadas (sao fatos, nao reavalie nem contradiga):",
     checksBlock(deterministic),
