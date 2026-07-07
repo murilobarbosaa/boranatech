@@ -28,7 +28,7 @@ const REASONS: Array<{ code: CancelReasonCode; label: string }> = [
 ];
 
 const BENEFITS: Array<{ icon: string; text: string }> = [
-  { icon: "🤖", text: "8 ferramentas de IA pra acelerar a carreira" },
+  { icon: "🤖", text: "Ferramentas de IA pra acelerar a carreira" }, // TODO(Ana): revisar copy sem contagem
   { icon: "📚", text: "Roadmaps completos com plano de estudos personalizado" },
   { icon: "🎯", text: "Analisador de currículo, LinkedIn e portfólio com IA" },
   { icon: "💬", text: "Simulador de entrevistas técnicas e comportamentais" },

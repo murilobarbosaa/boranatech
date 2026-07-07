@@ -1676,7 +1676,9 @@ export default function Perfil() {
                     </h2>
 
                     <p className="mt-3 text-sm font-semibold text-slate-600">
-                      Desbloqueie 8 ferramentas de IA pra acelerar sua carreira.
+                      {/* TODO(Ana): revisar copy sem contagem de ferramentas */}
+                      Desbloqueie as ferramentas de IA pra acelerar sua
+                      carreira.
                     </p>
 
                     <Link

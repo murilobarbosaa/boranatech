@@ -92,7 +92,7 @@ const NODES: MapNode[] = [
       { name: "Projetos", href: "/projetos" },
       { name: "Portfólio", href: "/portfolio" },
       { name: "Freelance", href: "/freelance" },
-      { name: "Diário de Estudos", href: "/estudos-diario" },
+      { name: "Diário de Estudos", href: "/estudos/diario" },
       { name: "Evolução", href: "/evolucao" },
     ],
     otherCount: 0,

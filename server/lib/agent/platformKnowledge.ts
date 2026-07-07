@@ -41,7 +41,7 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/ingles/vocabulario", tier: "free", label: "Vocabulario de ingles." },
   { route: "/ferramentas", tier: "free", label: "Diretorio de ferramentas." },
   { route: "/ia", tier: "free", label: "Guia de IA." },
-  { route: "/mentorias", tier: "free", label: "Mentorias." },
+  { route: "/mentorias", tier: "free", label: "Mentorias e ebooks de parceiros (em breve)." },
   { route: "/roadmaps", tier: "free", label: "Indice de roadmaps de aprendizado." },
   { route: "/cursos", tier: "free", label: "Diretorio de cursos." },
   { route: "/plataformas", tier: "free", label: "Diretorio de plataformas de estudo." },
