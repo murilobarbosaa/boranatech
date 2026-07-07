@@ -64,6 +64,21 @@ const CREATORS: Creator[] = [
     photo: "/creators/devnicolelobo.jpg",
     url: "https://instagram.com/devnicolelobo",
   },
+  {
+    handle: "andrebrito.dev",
+    photo: "/creators/andrebrito-dev.jpg",
+    url: "https://instagram.com/andrebrito.dev",
+  },
+  {
+    handle: "vua_nessa",
+    photo: "/creators/vua_nessa.jpg",
+    url: "https://instagram.com/vua_nessa",
+  },
+  {
+    handle: "monihillman",
+    photo: "/creators/monihillman.jpg",
+    url: "https://instagram.com/monihillman",
+  },
 ];
 
 // Cor de fundo por card, ciclando por posicao. Cores da marca, iguais a landing.
