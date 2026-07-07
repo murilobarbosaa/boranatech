@@ -869,12 +869,16 @@ router.post(
     const capped = questionCount >= QUESTION_CAP;
     const shouldClose = prepared || capped;
 
-    // Persiste o turno avaliado antes de qualquer fechamento: a resposta e a
-    // avaliacao valem por si.
+    // Persiste o turno avaliado antes de qualquer fechamento. Quando a sessao
+    // vai fechar, a proxima pergunta nunca sera feita e ficaria pendurada no
+    // historico recarregado: o content do turno vira o feedback da avaliacao
+    // (a evaluation jsonb segue anexada). No fluxo normal o content e a
+    // proxima pergunta.
+    const assistantContent = shouldClose ? evaluation.feedback : nextQuestion;
     const wroteUser = await insertTurn(session.id, "user", answer, null);
     const wroteAssistant =
       wroteUser &&
-      (await insertTurn(session.id, "assistant", nextQuestion, evaluation));
+      (await insertTurn(session.id, "assistant", assistantContent, evaluation));
     const wroteCounters =
       wroteAssistant &&
       (await updateSession(userId, session.id, {
