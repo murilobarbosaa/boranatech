@@ -214,7 +214,64 @@
   }, {threshold:.3});
   if(statsBox) io2.observe(statsBox);
 
-  // Countdown desativado: a data de lancamento ainda nao esta definida. Os
-  // relogios (js-d/js-h/js-m/js-s/js-days) ficam estaticos em 00 no HTML e
-  // nada os atualiza. // TODO(Ana): religar com a data real quando definida.
+  // Countdown unico da pagina (o antigo script inline do HTML foi removido).
+  // Alvo com offset explicito: meio-dia de Brasilia (UTC-3), todo visitante
+  // conta pro mesmo instante independente do fuso. Um so intervalo alimenta
+  // os relogios do hero e da band (.js-d/.js-h/.js-m/.js-s) e o chip compacto
+  // do header ([data-hdr-timer]).
+  (function(){
+    var LAUNCH_AT = new Date("2026-07-14T12:00:00-03:00");
+    var dEls = document.querySelectorAll(".js-d");
+    var hEls = document.querySelectorAll(".js-h");
+    var mEls = document.querySelectorAll(".js-m");
+    var sEls = document.querySelectorAll(".js-s");
+    var clocks = document.querySelectorAll(".clock, .clock-big");
+    var hdrTimer = document.querySelector("[data-hdr-timer]");
+    if(!clocks.length && !hdrTimer) return;
+    var timer = null;
+
+    function pad(n){ return (n < 10 ? "0" : "") + n; }
+    function setAll(els, value){
+      for(var i = 0; i < els.length; i++) els[i].textContent = value;
+    }
+    function showEnded(){
+      for(var i = 0; i < clocks.length; i++){
+        var msg = document.createElement("div");
+        msg.className = "clock-ended";
+        // TODO(Ana): revisar a copy do estado de lancamento no ar.
+        msg.textContent = "Chegou o dia! Já estamos no ar.";
+        clocks[i].textContent = "";
+        clocks[i].appendChild(msg);
+      }
+      if(hdrTimer) hdrTimer.textContent = "No ar!"; // TODO(Ana)
+    }
+    function tick(){
+      var diff = LAUNCH_AT.getTime() - Date.now();
+      // Checa <= 0 antes de qualquer calculo: nunca renderiza numero negativo.
+      if(diff <= 0){
+        if(timer){ clearInterval(timer); timer = null; }
+        showEnded();
+        return;
+      }
+      var totalSec = Math.floor(diff / 1000);
+      var d = Math.floor(totalSec / 86400);
+      var h = Math.floor((totalSec % 86400) / 3600);
+      var m = Math.floor((totalSec % 3600) / 60);
+      var s = totalSec % 60;
+      setAll(dEls, pad(d));
+      setAll(hEls, pad(h));
+      setAll(mEls, pad(m));
+      setAll(sEls, pad(s));
+      // TODO(Ana): formato compacto do header ("7d 14h 32min"; abaixo de 24h,
+      // "14h 32min 05s").
+      if(hdrTimer){
+        hdrTimer.textContent = d > 0
+          ? d + "d " + h + "h " + m + "min"
+          : h + "h " + m + "min " + pad(s) + "s";
+      }
+    }
+
+    tick();
+    timer = setInterval(tick, 1000);
+  })();
 })();

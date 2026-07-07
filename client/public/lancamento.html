@@ -532,8 +532,9 @@
       <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>
       <span class="logo-text">BORA NA TECH<span class="q">?</span></span>
     </a>
-    <!-- TODO(Ana): data de lancamento ainda nao definida. -->
-    <span class="hdr-timer"><span class="dot"></span>Em breve</span>
+    <!-- Data definida: 14/07/2026 12:00 BRT (LAUNCH_AT no lancamento.js). -->
+    <!-- TODO(Ana): revisar o formato do contador compacto e a copy "No ar!". -->
+    <span class="hdr-timer"><span class="dot"></span><span data-hdr-timer>Em breve</span></span>
     <a class="btn btn-sm header-cta" data-scroll data-cta-label href="#topo">Entrar na lista</a>
   </div>
 </header>
@@ -1027,7 +1028,7 @@
     <span class="eyebrow r">É agora ou na próxima leva</span>
     <h2 class="r" style="margin-top:16px">Garanta seu lugar no lançamento.</h2>
     <!-- TODO(Ana): revisar a reescrita abrangente. -->
-    <p class="r">Entre na lista hoje e entre antes de todo mundo quando a plataforma abrir.</p>
+    <p class="r">Garanta seu lugar hoje e entre antes de todo mundo quando a plataforma abrir.</p>
 
     <div class="r" style="width:100%;display:flex;flex-direction:column;align-items:center">
       <div class="signup" data-signup>
@@ -1089,7 +1090,8 @@
 </footer>
 
 <div class="sticky-cta">
-  <!-- TODO(Ana): data de lancamento ainda nao definida. -->
+  <!-- TODO(Ana): data definida (14/07/2026 12:00 BRT); avaliar se a copy
+       "Lançamento em breve" ganha a data real. -->
   <div class="mini">Lançamento em breve</div>
   <a class="btn btn-sm" data-scroll data-cta-label href="#topo">Entrar na lista</a>
 </div>
@@ -1191,52 +1193,6 @@
         });
       }
     }
-  })();
-</script>
-<script>
-  // Contagem regressiva ate o lancamento. Data alvo fixa em horario de Brasilia
-  // (America/Sao_Paulo, UTC-3): 13 de julho de 2026, 00:00 = 03:00 UTC. O timestamp
-  // e fixo, entao nao varia com o fuso do visitante.
-  (function () {
-    var target = Date.UTC(2026, 6, 13, 3, 0, 0);
-    var dEls = document.querySelectorAll(".js-d");
-    var hEls = document.querySelectorAll(".js-h");
-    var mEls = document.querySelectorAll(".js-m");
-    var sEls = document.querySelectorAll(".js-s");
-    var clocks = document.querySelectorAll(".clock, .clock-big");
-    if (!clocks.length) return;
-    var timer = null;
-
-    function pad(n) { return (n < 10 ? "0" : "") + n; }
-    function setAll(els, value) {
-      for (var i = 0; i < els.length; i++) els[i].textContent = value;
-    }
-    function showEnded() {
-      for (var i = 0; i < clocks.length; i++) {
-        var msg = document.createElement("div");
-        msg.className = "clock-ended";
-        // TODO(Ana): revisar a copy do estado de lancamento no ar.
-        msg.textContent = "Chegou o dia! Já estamos no ar.";
-        clocks[i].textContent = "";
-        clocks[i].appendChild(msg);
-      }
-    }
-    function tick() {
-      var diff = target - Date.now();
-      if (diff <= 0) {
-        if (timer) { clearInterval(timer); timer = null; }
-        showEnded();
-        return;
-      }
-      var totalSec = Math.floor(diff / 1000);
-      setAll(dEls, pad(Math.floor(totalSec / 86400)));
-      setAll(hEls, pad(Math.floor((totalSec % 86400) / 3600)));
-      setAll(mEls, pad(Math.floor((totalSec % 3600) / 60)));
-      setAll(sEls, pad(totalSec % 60));
-    }
-
-    tick();
-    timer = setInterval(tick, 1000);
   })();
 </script>
 <script src="/lancamento.js" defer></script>
