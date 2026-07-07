@@ -1,6 +1,9 @@
 import type { ComponentType } from "react";
 import { FileCode2, Gauge, ListChecks, Sparkles } from "lucide-react";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+
+const ac = getPageAccentUi("violet");
 
 const STEPS: { n: string; text: string }[] = [
   {
@@ -59,7 +62,7 @@ export function HowItWorks() {
         {STEPS.map((step) => (
           <div
             key={step.n}
-            className="card-brutal rounded-2xl border-slate-950 bg-white p-5"
+            className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_#0f172a]">
               {step.n}
@@ -84,7 +87,7 @@ export function WhatYouGet() {
         {ITEMS.map((item) => (
           <div
             key={item.title}
-            className="card-brutal rounded-2xl border-slate-950 bg-white p-5"
+            className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}
           >
             <span
               className={cn(

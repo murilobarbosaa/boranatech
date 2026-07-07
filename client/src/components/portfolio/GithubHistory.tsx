@@ -1,7 +1,11 @@
 import { History } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import type { GithubAnalysisSummary } from "@/lib/githubClient";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { cn } from "@/lib/utils";
 import { AREA_LABELS, isAreaSlug } from "@shared/areas";
+
+const ac = getPageAccentUi("violet");
 
 // Historico de analises de GitHub, no molde do LinkedinHistory: lista com
 // nota/faixa/area/data e reabertura na mesma tela de resultado. O delta de
@@ -46,7 +50,7 @@ export default function GithubHistory({
   if (analyses.length === 0) return null;
 
   return (
-    <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
+    <div className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-6", ac.liftShadow)}>
       <h3 className="mb-4 flex items-center gap-2 font-display text-xl font-black text-slate-950">
         <History className="h-5 w-5 text-violet-700" />
         {COPY.title}

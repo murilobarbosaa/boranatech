@@ -5,6 +5,7 @@ import {
   MinusCircle,
   XCircle,
 } from "lucide-react";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
   CHECK_CATALOG,
@@ -12,6 +13,8 @@ import {
   type CheckStatus,
   type GithubCheckResult,
 } from "@shared/github/schema";
+
+const ac = getPageAccentUi("violet");
 
 // Hints do catalogo (fonte unica em shared): renderizados como "como
 // resolver" nos checks warn/fail. Lookup por id, sem duplicar textos.
@@ -63,7 +66,10 @@ export default function ChecklistByCategory({
       {groups.map((group) => (
         <div
           key={group.category}
-          className="card-brutal rounded-2xl border-slate-950 bg-white p-5"
+          className={cn(
+            "card-brutal rounded-2xl border-slate-950 bg-white p-5",
+            ac.liftShadow,
+          )}
         >
           <h3 className="mb-4 font-display text-lg font-black text-slate-950">
             {CATEGORY_LABEL[group.category]}

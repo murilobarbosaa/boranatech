@@ -1,20 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
+import { ArrowLeft, ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
+import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
+import AnalysisSkeleton from "@/components/shared/AnalysisSkeleton";
+import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import PageHero from "@/components/shared/PageHero";
+import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
+import ScoreCard, { type ScoreBandUi } from "@/components/shared/ScoreCard";
+import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import SEO from "@/components/SEO";
-import { Spinner } from "@/components/ui/spinner";
-import {
-  AnalysisError,
-  AnalysisSkeleton,
-} from "@/components/portfolio/AnalysisStates";
+import { AnalysisError } from "@/components/portfolio/AnalysisStates";
 import { HowItWorks, WhatYouGet } from "@/components/portfolio/AnalyzerIntro";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import GithubHistory from "@/components/portfolio/GithubHistory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
 import NextStepsByArea from "@/components/portfolio/NextStepsByArea";
-import ScoreCard from "@/components/portfolio/ScoreCard";
 import {
   AiSummary,
   Improvements,
@@ -40,9 +41,48 @@ import { detectGithubTarget } from "@shared/github/detect";
 import type {
   AnalysisMode,
   GithubAnalysisResponse,
+  ScoreBand,
 } from "@shared/github/schema";
 
 const ac = getPageAccentUi("violet");
+
+// Mapa faixa->cor preservado byte a byte do antigo ScoreCard do portfolio; a
+// anatomia agora vive no ScoreCard compartilhado.
+const BAND_UI: Record<ScoreBand, ScoreBandUi> = {
+  comecando: { label: "Começando", cardBg: "bg-red-100", chipBg: "bg-red-300" },
+  evoluindo: {
+    label: "Evoluindo",
+    cardBg: "bg-amber-100",
+    chipBg: "bg-amber-300",
+  },
+  bom: { label: "Bom", cardBg: "bg-sky-100", chipBg: "bg-sky-300" },
+  destaque: {
+    label: "Destaque",
+    cardBg: "bg-emerald-100",
+    chipBg: "bg-emerald-300",
+  },
+};
+
+// Decor do hero no padrao das paginas de area (blobs de baixa opacidade com
+// animate-gentle-float; reduced-motion coberto pelo CSS global da classe).
+function AnalyzerHeroDecor() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      <div className="animate-gentle-float absolute -right-12 -top-16 h-48 w-48 rounded-full bg-violet-300 opacity-40 blur-3xl" />
+      <div
+        className="animate-gentle-float absolute right-1/4 top-1/3 h-28 w-28 rounded-full bg-violet-300 opacity-30 blur-3xl"
+        style={{ animationDelay: "1.4s" }}
+      />
+      <div
+        className="animate-gentle-float absolute -bottom-16 left-1/4 h-40 w-40 rounded-full bg-violet-300 opacity-25 blur-3xl"
+        style={{ animationDelay: "0.7s" }}
+      />
+    </div>
+  );
+}
 
 // TODO(Ana): revisar placeholder e descricoes da deteccao automatica.
 const INPUT_PLACEHOLDER = "github.com/usuario ou github.com/usuario/projeto";
@@ -111,7 +151,12 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
       : `@${target.login}`;
 
   return (
-    <div className="card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white">
+    <div
+      className={cn(
+        "card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white",
+        ac.liftShadow,
+      )}
+    >
       <div className="flex flex-col md:flex-row">
         <div className="flex min-w-0 flex-1 flex-col p-6">
           <div className="flex min-w-0 items-start justify-between gap-3">
@@ -145,7 +190,8 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
         <div className="border-t-2 border-slate-950 md:w-56 md:border-l-2 md:border-t-0">
           <ScoreCard
             score={deterministic.score}
-            band={deterministic.band}
+            band={BAND_UI[deterministic.band]}
+            title="Nota do portfólio"
             variant="panel"
           />
         </div>
@@ -345,11 +391,39 @@ export default function PortfolioAnalisar() {
         description="Analise seu GitHub com IA: receba uma nota objetiva, um checklist do que falta e melhorias priorizadas para deixar seu perfil pronto para vagas."
         url="/portfolio/analisar"
       />
+      {/* TODO(Ana): validar eyebrow e label do link de volta do hero */}
       <PageHero
         accent="violet"
-        eyebrow="revisão com IA"
+        eyebrow="Análise Pro"
         title="Analisador de GitHub"
         subtitle="Receba uma nota objetiva, um checklist do que falta e melhorias priorizadas pra deixar seu GitHub pronto pra vagas."
+        backgroundSlot={<AnalyzerHeroDecor />}
+        topSlot={
+          <Link
+            href="/portfolio"
+            className={cn(
+              "inline-flex items-center gap-2 text-sm font-bold",
+              ac.link,
+              ac.linkHover,
+            )}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Guia de portfólio
+          </Link>
+        }
+        titlePrefix={
+          <span
+            className={cn(
+              "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 shadow-[3px_3px_0_currentColor]",
+              ac.panelBorder,
+              ac.panelSoft,
+              ac.iconMuted,
+            )}
+            aria-hidden
+          >
+            <Github className="h-8 w-8" />
+          </span>
+        }
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
@@ -357,7 +431,12 @@ export default function PortfolioAnalisar() {
             <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
           ) : (
             <div className="space-y-8">
-              <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
+              <div
+                className={cn(
+                  "card-brutal area-rise rounded-2xl border-slate-950 bg-white p-6",
+                  ac.liftShadow,
+                )}
+              >
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
                   {/* TODO(Ana): revisar rotulo e helper da area alvo. */}
                   <span>Área alvo desta análise</span>
@@ -366,7 +445,11 @@ export default function PortfolioAnalisar() {
                     onChange={(event) =>
                       changeArea(event.target.value as AreaSelection)
                     }
-                    className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-violet-200"
+                    className={cn(
+                      "rounded-xl border-2 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none",
+                      ac.input,
+                      ac.cardFocusRing,
+                    )}
                   >
                     <option value={GENERAL_AREA}>Geral</option>
                     {areasTI.map((a) => (
@@ -389,20 +472,22 @@ export default function PortfolioAnalisar() {
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     placeholder={INPUT_PLACEHOLDER}
-                    className="w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-violet-200"
-                  />
-                  <button
-                    type="submit"
-                    disabled={loading || detection.kind === "invalid"}
-                    className="btn-brutal-accent inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {loading ? (
-                      <Spinner className="h-4 w-4" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
+                    className={cn(
+                      "w-full rounded-xl border-2 bg-white p-3 text-sm outline-none",
+                      ac.input,
+                      ac.cardFocusRing,
                     )}
+                  />
+                  <BrutalActionButton
+                    variant="ai"
+                    type="submit"
+                    disabled={detection.kind === "invalid"}
+                    loading={loading}
+                    icon={<Sparkles className="h-4 w-4" aria-hidden />}
+                    className="shrink-0 px-6 py-3"
+                  >
                     {loading ? "Analisando..." : "Analisar"}
-                  </button>
+                  </BrutalActionButton>
                 </form>
 
                 {/* TODO(Ana): revisar a copy do badge de deteccao. */}
@@ -413,7 +498,12 @@ export default function PortfolioAnalisar() {
                     </p>
                   ) : (
                     <p className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 font-black text-slate-900">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-black",
+                          ac.tag,
+                        )}
+                      >
                         <Github className="h-3 w-3" aria-hidden />
                         {detection.kind === "repo"
                           ? `Repositório: ${detection.owner}/${detection.repo}`
@@ -441,30 +531,31 @@ export default function PortfolioAnalisar() {
               ) : null}
 
               {!loading && !result ? (
-                <div className="space-y-8">
+                <div
+                  className="area-rise space-y-8"
+                  style={{ animationDelay: "0.08s" }}
+                >
                   <HowItWorks />
                   <WhatYouGet />
                 </div>
               ) : null}
 
               {!loading && !error && result ? (
-                <div className="space-y-8">
+                <div
+                  className="area-rise space-y-8"
+                  style={{ animationDelay: "0.08s" }}
+                >
                   <ResultHeader response={result} />
 
                   {scoreDelta ? (
-                    <div className="rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a]">
-                      {/* TODO(Ana): revisar a copy do delta de nota. */}
-                      Sua nota foi de {scoreDelta.from} para {scoreDelta.to}
-                      {scoreDelta.to > scoreDelta.from
-                        ? ". Continua assim!"
-                        : scoreDelta.to === scoreDelta.from
-                          ? "."
-                          : ". Veja abaixo o que priorizar."}
-                    </div>
+                    <ScoreDeltaBanner
+                      from={scoreDelta.from}
+                      to={scoreDelta.to}
+                    />
                   ) : null}
 
                   {result.deterministic.suficienciaRazao?.trim() ? (
-                    <div className="flex items-start gap-2 rounded-2xl border-2 border-sky-300 bg-sky-50 p-4 text-sm font-medium text-sky-900">
+                    <div className="flex items-start gap-2 rounded-2xl border-2 border-slate-900 bg-sky-50 p-4 text-sm font-medium text-sky-900 shadow-[3px_3px_0_#0f172a]">
                       <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
                       <span>{result.deterministic.suficienciaRazao}</span>
                     </div>
@@ -491,52 +582,26 @@ export default function PortfolioAnalisar() {
 
                   <NextStepsByArea area={result.area} />
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* TODO(Ana): revisar a copy da reanalise. */}
-                    {confirmReanalyze ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => void runAnalysis()}
-                          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-                        >
-                          <Sparkles className="h-4 w-4" />
-                          Confirmar (usa 1 análise do dia)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmReanalyze(false)}
-                          className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmReanalyze(true)}
-                          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-                        >
-                          <Sparkles className="h-4 w-4" />
-                          Apliquei as melhorias, analisar de novo
-                        </button>
-                        <span className="text-xs font-medium text-slate-500">
-                          Roda uma NOVA análise do mesmo alvo. Abrir uma análise
-                          salva no histórico é grátis.
-                        </span>
-                      </>
-                    )}
-                  </div>
+                  <ReanalyzeCta
+                    confirming={confirmReanalyze}
+                    onStart={() => setConfirmReanalyze(true)}
+                    onConfirm={() => void runAnalysis()}
+                    onCancel={() => setConfirmReanalyze(false)}
+                  />
                 </div>
               ) : null}
 
               {history && history.length > 0 ? (
-                <GithubHistory
-                  analyses={history}
-                  onOpen={(id) => void openHistory(id)}
-                  loadingId={historyLoadingId}
-                />
+                <div
+                  className="area-rise"
+                  style={{ animationDelay: "0.16s" }}
+                >
+                  <GithubHistory
+                    analyses={history}
+                    onOpen={(id) => void openHistory(id)}
+                    loadingId={historyLoadingId}
+                  />
+                </div>
               ) : null}
             </div>
           )}

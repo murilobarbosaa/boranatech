@@ -8,11 +8,15 @@ import {
   Star,
   Users,
 } from "lucide-react";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { cn } from "@/lib/utils";
 import type {
   GithubAnalysisResponse,
   ProfileMetadata,
   RepoMetadata,
 } from "@shared/github/schema";
+
+const ac = getPageAccentUi("violet");
 
 function formatDate(iso: string | null): string {
   if (!iso) return "sem data";
@@ -84,7 +88,10 @@ export function TopRepos({ response }: MetadataProps) {
         {m.topRepos.map((repo) => (
           <div
             key={repo.name}
-            className="card-brutal rounded-2xl border-slate-950 bg-white p-4"
+            className={cn(
+              "card-brutal rounded-2xl border-slate-950 bg-white p-4",
+              ac.liftShadow,
+            )}
           >
             <div className="flex items-center justify-between gap-2">
               <p className="truncate font-display text-base font-black text-slate-950">
