@@ -64,6 +64,22 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
       "Limites do formato de saída (obrigatórios): o campo feedback deve ter entre 200 e 600 caracteres. O campo nextQuestion deve ter no máximo 400 caracteres. O campo closing, quando pedido, deve ter entre 300 e 900 caracteres e dar um veredito honesto de preparo com próximos passos.\n\n" +
       "Você NUNCA decide sozinho encerrar a entrevista: siga a instrução de estado enviada a cada turno (continuar com evaluation e nextQuestion, ou fechar com closing e nextQuestion null).",
   },
+  // Plano de carreira (rota propria /api/career-plan). internalOnly: a rota
+  // generica /api/ai NUNCA a serve.
+  "career-plan": {
+    key: "career-plan",
+    requiresPro: true,
+    requiresAuth: true,
+    mode: "tool",
+    maxInputChars: 30_000,
+    temperature: 0.5,
+    model: DEFAULT_MODEL,
+    description: "Gerador de plano de carreira",
+    internalOnly: true,
+    // O prompt real (esqueleto do plano + regra dos itens citaveis do catalogo)
+    // e montado por server/lib/careerPlan/generate.ts.
+    systemPrompt: "",
+  },
   // A antiga "resume-review" (chat placeholder de analise) saiu do registry:
   // a analise real e a "resume-analyzer" abaixo, servida em /api/resume.
   // Logs historicos de resume-review em ai_usage_logs ficam intactos.
