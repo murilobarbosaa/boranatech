@@ -1195,6 +1195,11 @@
     }
   })();
 </script>
+<!-- canvas-confetti 1.9.4, build UMD vendorizado de
+     node_modules/canvas-confetti/dist/confetti.browser.js (copia byte a byte,
+     expoe window.confetti). Carregado antes do lancamento.js, que degrada sem
+     confetti se este script nao carregar. -->
+<script src="/confetti.browser.js" defer></script>
 <script src="/lancamento.js" defer></script>
 </body>
 </html>
