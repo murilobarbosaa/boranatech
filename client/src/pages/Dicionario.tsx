@@ -43,6 +43,56 @@ type EnrichedTerm = (typeof dictionaryTerms)[number] & {
   example: string;
 };
 
+const TAG_GROUPS: { label: string; tags: string[] }[] = [
+  {
+    label: "Programação",
+    tags: [
+      "Programação",
+      "Lógica",
+      "POO",
+      "Estrutura de dados",
+      "Framework",
+      "Python",
+      "Qualidade",
+      "API",
+      "Arquitetura",
+    ],
+  },
+  {
+    label: "Front-end e Design",
+    tags: [
+      "Front-end",
+      "Web",
+      "React",
+      "Design",
+      "UX",
+      "Acessibilidade",
+      "Design System",
+      "SEO",
+    ],
+  },
+  { label: "Back-end", tags: ["Back-end", "SQL"] },
+  { label: "Dados e IA", tags: ["Dados", "IA", "Estatística", "BI", "Finanças"] },
+  {
+    label: "DevOps, Cloud e Infra",
+    tags: ["DevOps", "Cloud", "Infra", "Performance", "Redes", "Hardware"],
+  },
+  { label: "Segurança e QA", tags: ["Segurança", "QA"] },
+  {
+    label: "Carreira e Produto",
+    tags: [
+      "Carreira",
+      "Produto",
+      "Gestão",
+      "Portfólio",
+      "Produtividade",
+      "Comunidade",
+    ],
+  },
+  { label: "Ferramentas", tags: ["Ferramentas"] },
+  { label: "Mobile, Games e Áudio", tags: ["Mobile", "Games", "Áudio"] },
+];
+
 export default function Dicionario() {
   const search = useSearch();
   const termoParam = new URLSearchParams(search).get("termo");
@@ -53,10 +103,16 @@ export default function Dicionario() {
   const [tag, setTag] = useState("Todas");
   const [level, setLevel] = useState<DictionaryLevel | "Todos">("Todos");
 
-  const tags = [
-    "Todas",
-    ...Array.from(new Set(dictionaryTerms.flatMap((item) => item.tags))),
-  ];
+  const tagGroups = useMemo(
+    () =>
+      TAG_GROUPS.map((group) => ({
+        label: group.label,
+        count: dictionaryTerms.filter((item) =>
+          item.tags.some((itemTag) => group.tags.includes(itemTag)),
+        ).length,
+      })).filter((group) => group.count > 0),
+    [],
+  );
 
   const enriched = useMemo<EnrichedTerm[]>(
     () =>
@@ -71,17 +127,20 @@ export default function Dicionario() {
     [],
   );
 
-  const matchesFilters = useMemo(
-    () =>
-      enriched.filter((item) => {
-        const searchableText =
-          `${item.term} ${item.category} ${item.tags.join(" ")} ${item.meaning} ${item.example}`.toLowerCase();
-        const matchesSearch = searchableText.includes(query.toLowerCase());
-        const matchesTag = tag === "Todas" || item.tags.includes(tag);
-        return matchesSearch && matchesTag;
-      }),
-    [enriched, query, tag],
-  );
+  const matchesFilters = useMemo(() => {
+    const activeGroup = TAG_GROUPS.find((group) => group.label === tag);
+    return enriched.filter((item) => {
+      const searchableText =
+        `${item.term} ${item.category} ${item.tags.join(" ")} ${item.meaning} ${item.example}`.toLowerCase();
+      const matchesSearch = searchableText.includes(query.toLowerCase());
+      const matchesTag =
+        tag === "Todas" ||
+        (activeGroup
+          ? item.tags.some((itemTag) => activeGroup.tags.includes(itemTag))
+          : false);
+      return matchesSearch && matchesTag;
+    });
+  }, [enriched, query, tag]);
 
   const levelCounts = useMemo(() => {
     const counts: Record<DictionaryLevel, number> = {
@@ -182,20 +241,31 @@ export default function Dicionario() {
             <div
               className="flex flex-wrap gap-2"
               role="group"
-              aria-label="Filtrar por tag"
+              aria-label="Filtrar por área"
             >
-              {tags.map((item) => (
+              <button
+                onClick={() => setTag("Todas")}
+                aria-pressed={tag === "Todas"}
+                className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
+                  tag === "Todas"
+                    ? "border-slate-900 bg-cyan-300 shadow-[2px_2px_0_#0f172a]"
+                    : "border-cyan-200 bg-white hover:bg-cyan-100"
+                }`}
+              >
+                Todas as áreas
+              </button>
+              {tagGroups.map((group) => (
                 <button
-                  key={item}
-                  onClick={() => setTag(item)}
-                  aria-pressed={tag === item}
+                  key={group.label}
+                  onClick={() => setTag(group.label)}
+                  aria-pressed={tag === group.label}
                   className={`rounded-full border-2 px-3 py-1.5 text-xs font-bold ${
-                    tag === item
+                    tag === group.label
                       ? "border-slate-900 bg-cyan-300 shadow-[2px_2px_0_#0f172a]"
                       : "border-cyan-200 bg-white hover:bg-cyan-100"
                   }`}
                 >
-                  {item === "Todas" ? "Todas as tags" : item}
+                  {group.label} ({group.count})
                 </button>
               ))}
             </div>
