@@ -98,6 +98,28 @@ export interface ResumesContext {
   latestCreatedAt: string | null;
 }
 
+export interface InterviewContext {
+  kind: string | null;
+  area: string | null;
+  level: string | null;
+  status: string | null;
+  questionCount: number;
+  goodCount: number;
+  verdict: { result: string } | null;
+  updatedAt: string | null;
+}
+
+export interface CareerPlanPoolContext {
+  area: string | null;
+  // Objetivo do intake, truncado (teto abaixo) para nao inchar o pool.
+  goal: string | null;
+  createdAt: string | null;
+  checklistTotal: number;
+  // null = contagem de progresso indisponivel (padrao progressFailed do
+  // projeto): erro ao contar NUNCA vira 0. O plano em si segue ok.
+  checklistDone: number | null;
+}
+
 export interface UserContextPool {
   plan: SourceResult<PlanContext>;
   // null = usuario nunca concluiu o quiz (vazio legitimo, distinto de falha).
@@ -114,6 +136,10 @@ export interface UserContextPool {
   // null = usuario nunca analisou um curriculo (vazio legitimo).
   resumeAnalysis: SourceResult<ResumeAnalysisContext | null>;
   resumes: SourceResult<ResumesContext>;
+  // null = usuario nunca fez entrevista simulada (vazio legitimo).
+  interview: SourceResult<InterviewContext | null>;
+  // null = sem plano de carreira ativo (vazio legitimo).
+  careerPlan: SourceResult<CareerPlanPoolContext | null>;
 }
 
 // Tetos de leitura para nao estourar contexto nem custo. Ajustaveis. // TODO: calibrar.
@@ -123,6 +149,7 @@ const MAX_SKILLS = 50;
 const MAX_BADGES = 50;
 const RECENT_BOOKMARKS = 5;
 const STUDY_WINDOW_DAYS = 30;
+const CAREER_GOAL_MAX_CHARS = 140;
 
 function warnSource(source: string, detail: unknown): { ok: false } {
   console.warn(`[userContext] fonte ${source} falhou:`, detail);
@@ -616,6 +643,121 @@ async function fetchResumes(
   }
 }
 
+interface InterviewSessionRow {
+  kind: string | null;
+  area: string | null;
+  level: string | null;
+  status: string | null;
+  question_count: number | null;
+  good_count: number | null;
+  verdict: { result?: unknown } | null;
+  updated_at: string | null;
+}
+
+// Ultima sessao de entrevista simulada (interview_sessions). Sem sessao:
+// vazio legitimo (data null), distinto de erro de query (ok: false).
+async function fetchInterview(
+  userId: string,
+): Promise<SourceResult<InterviewContext | null>> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("interview_sessions")
+      .select("kind, area, level, status, question_count, good_count, verdict, updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return warnSource("interview", error.message);
+    if (!data) return { ok: true, data: null };
+    const row = data as InterviewSessionRow;
+    return {
+      ok: true,
+      data: {
+        kind: row.kind,
+        area: row.area,
+        level: row.level,
+        status: row.status,
+        questionCount: row.question_count ?? 0,
+        goodCount: row.good_count ?? 0,
+        verdict:
+          row.verdict && typeof row.verdict.result === "string"
+            ? { result: row.verdict.result }
+            : null,
+        updatedAt: row.updated_at,
+      },
+    };
+  } catch (err) {
+    return warnSource("interview", err);
+  }
+}
+
+interface CareerPlanRow {
+  id: string;
+  intake: { area?: unknown; goal?: unknown } | null;
+  result: { checklist?: unknown } | null;
+  created_at: string | null;
+}
+
+// Plano de carreira ativo (career_plans). Sem plano: vazio legitimo (data
+// null). A contagem do checklist e uma query SEPARADA: erro nela NAO derruba a
+// fonte, mas checklistDone fica null (progresso indisponivel), NUNCA 0.
+async function fetchCareerPlan(
+  userId: string,
+): Promise<SourceResult<CareerPlanPoolContext | null>> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("career_plans")
+      .select("id, intake, result, created_at")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return warnSource("careerPlan", error.message);
+    if (!data) return { ok: true, data: null };
+    const row = data as CareerPlanRow;
+
+    const checklist = Array.isArray(row.result?.checklist)
+      ? row.result.checklist
+      : [];
+
+    let checklistDone: number | null = null;
+    try {
+      const { count, error: progressError } = await supabaseAdmin
+        .from("user_progress")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("context", "career_plan")
+        .like("item_key", `${row.id}:%`)
+        .contains("state", { checked: true });
+      if (!progressError && typeof count === "number") {
+        checklistDone = count;
+      } else if (progressError) {
+        console.warn(
+          "[userContext] contagem do checklist do plano falhou:",
+          progressError.message,
+        );
+      }
+    } catch (err) {
+      console.warn("[userContext] contagem do checklist do plano lancou:", err);
+    }
+
+    const goal = typeof row.intake?.goal === "string" ? row.intake.goal : null;
+    return {
+      ok: true,
+      data: {
+        area: typeof row.intake?.area === "string" ? row.intake.area : null,
+        goal: goal ? goal.slice(0, CAREER_GOAL_MAX_CHARS) : null,
+        createdAt: row.created_at,
+        checklistTotal: checklist.length,
+        checklistDone,
+      },
+    };
+  } catch (err) {
+    return warnSource("careerPlan", err);
+  }
+}
+
 // Cada fonte ja resolve para SourceResult sem lancar; o allSettled e cinto e
 // suspensorio para que nenhuma rejeicao inesperada derrube o pool inteiro.
 function settled<T>(
@@ -643,6 +785,8 @@ export async function fetchUserContextPool(
     badges,
     resumeAnalysis,
     resumes,
+    interview,
+    careerPlan,
   ] = await Promise.allSettled([
     fetchPlan(userId),
     fetchQuiz(userId),
@@ -657,6 +801,8 @@ export async function fetchUserContextPool(
     fetchBadges(userId),
     fetchResumeAnalysis(userId),
     fetchResumes(userId),
+    fetchInterview(userId),
+    fetchCareerPlan(userId),
   ]);
 
   return {
@@ -673,5 +819,7 @@ export async function fetchUserContextPool(
     badges: settled(badges, "badges"),
     resumeAnalysis: settled(resumeAnalysis, "resumeAnalysis"),
     resumes: settled(resumes, "resumes"),
+    interview: settled(interview, "interview"),
+    careerPlan: settled(careerPlan, "careerPlan"),
   };
 }

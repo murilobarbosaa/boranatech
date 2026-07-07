@@ -231,6 +231,15 @@ async function buildUserContext(
     }
   }
 
+  // Sinal de prontidao real. A fonte careerPlan NAO entra aqui de proposito:
+  // o plano anterior sera arquivado e nao deve ancorar o novo.
+  if (pool.interview.ok && pool.interview.data) {
+    const i = pool.interview.data;
+    lines.push(
+      `- Última entrevista simulada: área ${i.area ?? "não registrada"}, ${i.goodCount} de ${i.questionCount} respostas boas (sinal de prontidão real).`,
+    );
+  }
+
   return lines.join("\n");
 }
 

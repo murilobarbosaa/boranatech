@@ -24,6 +24,16 @@ const CERTIFICATES_FACT =
 const CANCELLATION_FACT =
   "Cancelamento: a assinatura pode ser cancelada a qualquer momento na pagina /perfil; em caso de duvida, o suporte resolve.";
 
+// Fatos das ferramentas Pro (atualizados na frente de features Pro de 2026-07).
+const PRO_TOOLS_FACT =
+  "Ferramentas Pro atuais: analise de curriculo (/curriculo/analisar), geracao de curriculo (/curriculo/gerar), otimizacao de LinkedIn (/curriculo/linkedin), analise de LinkedIn (/linkedin/analisar), analise de portfolio com base no GitHub (/portfolio/analisar), treino de entrevista com IA (/entrevistas), plano de carreira com IA (/plano-carreira) e Roadmap com IA (/roadmaps/ia).";
+const INTERVIEW_FACT =
+  "Entrevistas: a pagina /entrevistas reune o guia gratuito do processo seletivo (com banco de perguntas e desafios) e o treino de entrevista com IA (Pro), com feedback por resposta e veredito de preparo. O antigo simulador separado foi unificado nessa pagina.";
+const CAREER_PLAN_FACT =
+  "Plano de carreira: a pagina /plano-carreira gera com IA a rota da carreira da pessoa (degraus ordenados, certificacoes com preco de referencia e cronograma) com checklist de progresso. Substituiu o antigo plano de estudos (/estudos).";
+const MENTORIAS_FACT =
+  "Mentorias e ebooks: a pagina /mentorias esta em modo em breve, com parcerias sendo fechadas; sem data prometida.";
+
 // TODO(Ana): so entra em producao quando a caixa de email existir; incluir no
 // texto final apenas se a constante nao for vazia.
 const SUPPORT_FACT =
@@ -100,11 +110,15 @@ function buildLimitsFacts(): string[] {
   return facts;
 }
 
-// Ordem editorial fixa: o que e, precos e limites (dinamicos), certificados,
-// suporte (condicional) e cancelamento.
+// Ordem editorial fixa: o que e, ferramentas Pro e features, precos e limites
+// (dinamicos), certificados, suporte (condicional) e cancelamento.
 function composeFacts(dynamicFacts: string[]): string {
   const facts = [
     WHAT_IS_FACT,
+    PRO_TOOLS_FACT,
+    INTERVIEW_FACT,
+    CAREER_PLAN_FACT,
+    MENTORIAS_FACT,
     ...dynamicFacts,
     CERTIFICATES_FACT,
     ...(SUPPORT_FACT.length > 0 ? [SUPPORT_FACT] : []),

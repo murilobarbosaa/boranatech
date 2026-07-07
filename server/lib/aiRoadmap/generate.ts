@@ -351,6 +351,20 @@ export async function buildGenerationContext(
     );
   }
 
+  if (pool.interview.ok && pool.interview.data) {
+    const i = pool.interview.data;
+    lines.push(
+      `- Ultima entrevista simulada: area ${i.area ?? "nao registrada"}, ${i.goodCount} de ${i.questionCount} respostas boas.`,
+    );
+  }
+
+  if (pool.careerPlan.ok && pool.careerPlan.data) {
+    const p = pool.careerPlan.data;
+    lines.push(
+      `- Plano de carreira ativo na plataforma: area ${p.area ?? "nao registrada"}${p.goal ? `, objetivo "${p.goal}"` : ""}. Use so como sinal de direcao; NAO reproduza o plano de carreira na trilha.`,
+    );
+  }
+
   if (completedTitles.length > 0) {
     lines.push(
       `- Etapas que a pessoa JA CONCLUIU na plataforma: ${completedTitles.join("; ")}.`,
