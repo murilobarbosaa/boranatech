@@ -1,41 +1,9 @@
 import { AlertCircle, RefreshCw } from "lucide-react";
 import ProGate from "@/components/pro/ProGate";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export function AnalysisSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white">
-        <div className="flex flex-col md:flex-row">
-          <div className="flex-1 p-6">
-            <div className="flex items-start gap-3">
-              <Skeleton className="h-12 w-12 shrink-0 rounded-xl bg-slate-200" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-3 w-24 bg-slate-200" />
-                <Skeleton className="h-6 w-48 bg-slate-200" />
-                <Skeleton className="h-6 w-32 rounded-full bg-slate-200" />
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Skeleton className="h-7 w-28 rounded-full bg-slate-200" />
-              <Skeleton className="h-7 w-24 rounded-full bg-slate-200" />
-              <Skeleton className="h-7 w-28 rounded-full bg-slate-200" />
-            </div>
-          </div>
-          <div className="border-t-2 border-slate-950 md:w-56 md:border-l-2 md:border-t-0">
-            <div className="flex h-full flex-col items-center justify-center gap-3 p-6">
-              <Skeleton className="h-14 w-24 bg-slate-200" />
-              <Skeleton className="h-6 w-24 rounded-full bg-slate-200" />
-            </div>
-          </div>
-        </div>
-      </div>
-      <Skeleton className="h-28 w-full rounded-2xl bg-slate-200" />
-      <Skeleton className="h-40 w-full rounded-2xl bg-slate-200" />
-      <Skeleton className="h-40 w-full rounded-2xl bg-slate-200" />
-    </div>
-  );
-}
+// O skeleton foi promovido para components/shared (fundacao do redesign);
+// o re-export mantem o caminho antigo funcionando.
+export { default as AnalysisSkeleton } from "@/components/shared/AnalysisSkeleton";
 
 function resolveError(error: string): string {
   if (error === "LOGIN_REQUIRED") return "Faça login pra usar a análise.";
