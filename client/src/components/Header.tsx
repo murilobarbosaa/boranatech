@@ -229,12 +229,6 @@ const menuData: DropdownMenu[] = [
             isPro: true,
           },
           {
-            label: "Networking",
-            description: "Conecte-se com as pessoas certas",
-            path: "/networking",
-            isPro: true,
-          },
-          {
             label: "Portfólio",
             description: "Monte um portfólio que gera entrevistas",
             path: "/portfolio",
@@ -284,12 +278,6 @@ const menuData: DropdownMenu[] = [
             label: "Salários",
             description: "Tabela salarial e calculadoras",
             path: "/salarios",
-          },
-          {
-            label: "Empregabilidade",
-            description: "Prontidão vaga × perfil e análise crítica do anúncio",
-            path: "/empregabilidade",
-            isPro: true,
           },
           {
             label: "Ranking",

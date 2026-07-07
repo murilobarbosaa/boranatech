@@ -43,7 +43,7 @@ Quando houver conflito, esta página vence.
 
 **Trajeto profissional macro:** vagas, currículo, entrevistas, salários, transição de área.
 
-- **Páginas relacionadas:** `/empregabilidade`, `/curriculo`, `/entrevistas`, `/salarios`, `/freelance`, `/estagio`.
+- **Páginas relacionadas:** `/curriculo`, `/entrevistas`, `/salarios`, `/freelance`, `/estagio`.
 - **NÃO sobrepor com:** área. Carreira é o caminho; área é o destino.
 
 ### Tecnologia

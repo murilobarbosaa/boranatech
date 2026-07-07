@@ -213,18 +213,6 @@ const PRO_TOOLS: ProTool[] = [
     route: "/portfolio/analisar",
     desc: "Analisa seu portfólio do GitHub",
   },
-  {
-    label: "networking",
-    title: "Networking",
-    route: "/networking",
-    desc: "Gera mensagens de networking",
-  },
-  {
-    label: "empregabilidade",
-    title: "Empregabilidade",
-    route: "/empregabilidade",
-    desc: "Análise da sua empregabilidade",
-  },
 ];
 
 const PRO_SIDEBAR_SECTIONS: CommandSection[] = [

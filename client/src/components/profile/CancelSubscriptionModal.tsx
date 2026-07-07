@@ -32,7 +32,7 @@ const BENEFITS: Array<{ icon: string; text: string }> = [
   { icon: "📚", text: "Roadmaps completos com plano de estudos personalizado" },
   { icon: "🎯", text: "Analisador de currículo, LinkedIn e portfólio com IA" },
   { icon: "💬", text: "Simulador de entrevistas técnicas e comportamentais" },
-  { icon: "📈", text: "Análise de empregabilidade personalizada" },
+  { icon: "📈", text: "Análise de GitHub com IA" }, // TODO(Ana): revisar beneficio substituto
 ];
 
 export function CancelSubscriptionModal({

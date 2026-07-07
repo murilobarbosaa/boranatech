@@ -10,8 +10,6 @@ import {
   type LucideIcon,
   Map,
   Mic,
-  Send,
-  TrendingUp,
 } from "lucide-react";
 
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
@@ -57,31 +55,14 @@ const STARS: ConstellationStar[] = [
     icon: Mic,
     position: { x: 22, y: 85 },
   },
-  {
-    id: "empregabilidade",
-    name: "Empregabilidade",
-    icon: TrendingUp,
-    position: { x: 58, y: 82 },
-  },
-  {
-    id: "networking",
-    name: "Networking",
-    icon: Send,
-    position: { x: 92, y: 92 },
-  },
 ];
 
 const CONNECTIONS: ReadonlyArray<readonly [string, string]> = [
   ["roadmaps", "estudos"],
-  ["roadmaps", "empregabilidade"],
   ["estudos", "portfolio"],
   ["curriculo", "linkedin"],
   ["curriculo", "portfolio"],
   ["portfolio", "entrevistas"],
-  ["portfolio", "empregabilidade"],
-  ["entrevistas", "empregabilidade"],
-  ["linkedin", "networking"],
-  ["empregabilidade", "networking"],
 ];
 
 const VIEWBOX_W = 1400;

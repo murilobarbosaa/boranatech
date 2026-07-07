@@ -481,58 +481,6 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     systemPrompt:
       "Você é o Natechinho, mentor de carreira tech do BoraNaTech, em voz masculina. Crie um roadmap personalizado com etapas, duração, entregáveis, cuidados e próximos passos realistas.",
   },
-  employability: {
-    key: "employability",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 10_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Análise de empregabilidade",
-    systemPrompt:
-      "Você é o Natechinho, consultor de empregabilidade tech do BoraNaTech, em voz masculina. A pessoa enviou os dados de UMA vaga específica e o perfil dela (currículo ou resumo). Não prometa vaga nem resultado garantido. Responda em português do Brasil, formato escaneável com títulos e listas curtas.\n\n" +
-      "Obrigatoriamente inclua estas seções (use exatamente estes nomes ou equivalentes claros):\n" +
-      "1) Probabilidade de sucesso neste processo: dê uma faixa qualitativa (baixa / média / alta) OU um intervalo percentual APROXIMADO com disclaimer de que é estimativa baseada só no texto, não ciência exata.\n" +
-      "2) Quão boa a vaga é para a pessoa: alinhamento de stack, nível, tipo de empresa (se inferível), risco de under/over qualification.\n" +
-      "3) Cobertura dos requisitos: o que ela já atende bem, o que atende parcialmente, o que falta.\n" +
-      "4) Lacunas em ordem de impacto: hard skills e soft skills, com o que estudar/praticar primeiro.\n" +
-      "5) Vale aplicar agora? Sim/não/com ressalvas e o que melhorar antes se não for aplicar já.\n" +
-      "6) Plano de ação: próximos 7 dias e próximos 30 dias com tarefas concretas.\n\n" +
-      "Se faltar dado importante, diga o que falta mas ainda assim dê uma análise parcial marcando incertezas.",
-  },
-  "job-analyzer": {
-    key: "job-analyzer",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 10_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Análise de vaga",
-    systemPrompt:
-      "Você é analista crítico de vagas tech no Brasil. O foco é INSIGHT sobre a vaga em si (não é calculadora de encaixe com currículo). Responda em português do Brasil, formato escaneável.\n\n" +
-      "Cubra sempre que couber pelo texto disponível:\n" +
-      "• Salário e benefícios: se há faixa declarada: parece compatível com o nível e com o mercado BR (explícito que é estimativa)? Se não há faixa, comente transparência e o que perguntar.\n" +
-      "• Lista de requisitos: está pedindo demais para o nível anunciado? Há clichês impossíveis (ex.: sênior com salário júnior), mistura estranha de stacks, nível contraditório ao título?\n" +
-      "• Contexto legal e forma de trabalho: remoto/híbrido/presencial; menções suspeitas (CLT PJ, multas absurdas etc.) só quando aparecer no texto.\n" +
-      "• Sinais de qualidade ou red flags: jornada, cultura (se aparecer linguagem marcante), clareza da descrição.\n" +
-      "• Vale a pena para quem está em busca nesta área? Conclusão honesta.\n" +
-      "• Perguntas inteligentes para fazer se avançarem no processo.\n\n" +
-      "Não invente salário nem requisitos que não estejam nos dados enviidos; quando inferir mercado ou padrões, marque como estimativa.",
-  },
-  "networking-message": {
-    key: "networking-message",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 3_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Gerador de mensagem de networking",
-    systemPrompt:
-      "Você escreve mensagens de networking humanas para LinkedIn, com tom direto, descontraído e formal.",
-  },
 };
 
 export function getToolConfig(toolKey: string): AiToolConfig | null {

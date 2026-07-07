@@ -91,30 +91,8 @@ export const PRO_FEATURES: ProFeature[] = [
     group: "extra",
   },
   {
-    id: "empregabilidade",
-    number: "07",
-    iconName: "TrendingUp",
-    title: "Empregabilidade",
-    label: "Análise de empregabilidade com IA",
-    description:
-      "Onde você tá hoje vs onde o mercado quer. Métricas reais, plano de ação.",
-    color: "fuchsia",
-    group: "extra",
-  },
-  {
-    id: "networking",
-    number: "08",
-    iconName: "Send",
-    title: "Networking",
-    label: "Gerador de mensagens de networking",
-    description:
-      "Mensagens personalizadas pra LinkedIn, eventos, processos seletivos.",
-    color: "pink",
-    group: "extra",
-  },
-  {
     id: "comunidade",
-    number: "09",
+    number: "07",
     iconName: "Users",
     title: "Comunidade",
     label: "Comunidade exclusiva Pro",

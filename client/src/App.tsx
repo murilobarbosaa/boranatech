@@ -35,7 +35,6 @@ const Cursos = lazy(() => import("@/pages/Cursos"));
 const DevProBorders = lazy(() => import("@/pages/dev/ProBordersPlayground"));
 const Dicas = lazy(() => import("@/pages/Dicas"));
 const Dicionario = lazy(() => import("@/pages/Dicionario"));
-const Empregabilidade = lazy(() => import("@/pages/Empregabilidade"));
 const EmpresaDetalhe = lazy(() => import("@/pages/EmpresaDetalhe"));
 const EmpresaRankingJunior = lazy(() => import("@/pages/EmpresaRankingJunior"));
 const Empresas = lazy(() => import("@/pages/Empresas"));
@@ -62,7 +61,6 @@ const Licenca = lazy(() => import("@/pages/Licenca"));
 const LinkedinAnalisar = lazy(() => import("@/pages/LinkedinAnalisar"));
 const Mentorias = lazy(() => import("@/pages/Mentorias"));
 const Mulheres = lazy(() => import("@/pages/Mulheres"));
-const Networking = lazy(() => import("@/pages/Networking"));
 const Noticias = lazy(() => import("@/pages/Noticias"));
 const Perfil = lazy(() => import("@/pages/Perfil"));
 const PerfilFavoritos = lazy(() => import("@/pages/PerfilFavoritos"));
@@ -179,8 +177,12 @@ function Router() {
         <Route path="/linkedin/analisar" component={LinkedinAnalisar} />
         <Route path="/estudos" component={Estudos} />
         <Route path="/estudos/diario" component={EstudosDiario} />
-        <Route path="/empregabilidade" component={Empregabilidade} />
-        <Route path="/networking" component={Networking} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/empregabilidade">
+          {() => <Redirect to="/entrevistas" />}
+        </Route>
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/networking">{() => <Redirect to="/comunidades" />}</Route>
         <Route path="/freelance" component={Freelance} />
         <Route path="/evolucao" component={Evolucao} />
         <Route path="/simulador" component={Simulador} />

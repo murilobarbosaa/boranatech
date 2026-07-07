@@ -10,7 +10,6 @@ import {
   Linkedin,
   type LucideIcon,
   Mic,
-  Send,
   Sparkles,
 } from "lucide-react";
 
@@ -27,7 +26,6 @@ const PRO_BENEFICIOS: { icon: LucideIcon; label: string }[] = [
   { icon: CalendarCheck, label: "Plano de estudos" },
   { icon: Mic, label: "Simulador de entrevista" },
   { icon: Code2, label: "Análise de portfólio" },
-  { icon: Send, label: "Mensagens de networking" },
   { icon: Sparkles, label: "Ferramentas exclusivas" },
 ];
 

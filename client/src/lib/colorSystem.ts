@@ -93,7 +93,6 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
   portfolio: "technical",
   evolucao: "technical",
   "tecnologias/por-area": "technical",
-  networking: "technical",
   comparador: "technical",
   plataformas: "technical",
   "tecnologias/comparar": "technical",
@@ -106,7 +105,6 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
   mentorias: "market",
   dicas: "market",
   estudos: "market",
-  empregabilidade: "market",
 
   // application
   curriculo: "application",

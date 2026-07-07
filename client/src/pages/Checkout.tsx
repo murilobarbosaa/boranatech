@@ -21,9 +21,7 @@ import {
   Map,
   MessageSquare,
   Mic,
-  Send,
   Sparkles,
-  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -79,8 +77,6 @@ const PRO_FEATURE_ICONS: Record<string, LucideIcon> = {
   CalendarCheck,
   Linkedin,
   Github,
-  TrendingUp,
-  Send,
   Users,
 };
 
@@ -173,9 +169,10 @@ export default function Checkout() {
 
   return (
     <Layout>
+      {/* TODO(Ana): revisar meta description do plano Pro apos remocao de ferramentas */}
       <SEO
         title="Plano Pro · Bora na Tech?"
-        description="Desbloqueie 8 ferramentas com IA pra entrar em TI: roadmaps, plano de estudos, análise de currículo, LinkedIn, portfólio, entrevista, empregabilidade e networking. A partir de R$ 14,99/mês no plano anual."
+        description="Desbloqueie as ferramentas com IA pra entrar em TI: roadmaps, plano de estudos, análise de currículo, LinkedIn, portfólio e entrevista. A partir de R$ 14,99/mês no plano anual."
         keywords={[
           "plano pro bora na tech",
           "ia carreira ti",

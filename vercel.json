@@ -4,6 +4,16 @@
   "redirects": [
     { "source": "/pro", "destination": "/planos", "permanent": true },
     {
+      "source": "/empregabilidade",
+      "destination": "/entrevistas",
+      "permanent": true
+    },
+    {
+      "source": "/networking",
+      "destination": "/comunidades",
+      "permanent": true
+    },
+    {
       "source": "/pro/sucesso",
       "destination": "/planos/sucesso",
       "permanent": true
