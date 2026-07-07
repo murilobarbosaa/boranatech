@@ -40,7 +40,7 @@ const EmpresaRankingJunior = lazy(() => import("@/pages/EmpresaRankingJunior"));
 const Empresas = lazy(() => import("@/pages/Empresas"));
 const EntrevistaDesafios = lazy(() => import("@/pages/EntrevistaDesafios"));
 const EntrevistaPerguntas = lazy(() => import("@/pages/EntrevistaPerguntas"));
-const EntrevistaSimulador = lazy(() => import("@/pages/EntrevistaSimulador"));
+const EntrevistaSessao = lazy(() => import("@/pages/EntrevistaSessao"));
 const Entrevistas = lazy(() => import("@/pages/Entrevistas"));
 const Estagio = lazy(() => import("@/pages/Estagio"));
 const Estudos = lazy(() => import("@/pages/Estudos"));
@@ -166,7 +166,17 @@ function Router() {
         <Route path="/salarios" component={Salarios} />
         <Route path="/entrevistas" component={Entrevistas} />
         <Route path="/entrevistas/perguntas" component={EntrevistaPerguntas} />
-        <Route path="/entrevistas/simulador" component={EntrevistaSimulador} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/entrevistas/simulador">
+          {() => <Redirect to="/entrevistas" />}
+        </Route>
+        <Route path="/entrevistas/sessao/:id">
+          {() => (
+            <RequireAuth>
+              <EntrevistaSessao />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/entrevistas/desafios" component={EntrevistaDesafios} />
         <Route path="/portfolio" component={Portfolio} />
         <Route path="/portfolio/analisar" component={PortfolioAnalisar} />

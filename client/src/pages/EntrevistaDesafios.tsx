@@ -63,7 +63,7 @@ export default function EntrevistaDesafios() {
         <section className="container pb-16">
           {/* TODO(Ana): copy da CTA do simulador (momento de dor pos-desafios) */}
           <AiCtaLink
-            href="/entrevistas/simulador"
+            href="/entrevistas"
             description="Treine a entrevista completa e receba feedback"
             accent="blue"
             className="w-full"

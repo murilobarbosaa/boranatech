@@ -207,14 +207,9 @@ const menuData: DropdownMenu[] = [
         items: [
           {
             label: "Entrevista",
-            description: "Prepare-se para processos seletivos",
+            // TODO(Ana): validar description da entrada unificada
+            description: "Preparação para vaga e treino com IA",
             path: "/entrevistas",
-            isPro: true,
-          },
-          {
-            label: "Simulador de Entrevista",
-            description: "Treine com IA e receba feedback",
-            path: "/entrevistas/simulador",
             isPro: true,
           },
           {

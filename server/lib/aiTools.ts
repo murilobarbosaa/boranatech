@@ -36,18 +36,10 @@ export const COST_PER_1K_OUTPUT_TOKENS = 0.0034;
 export const CHARS_PER_TOKEN = 4;
 
 export const AI_TOOLS: Record<string, AiToolConfig> = {
-  interview: {
-    key: "interview",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 8_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Simulador de entrevista técnica",
-    systemPrompt:
-      "Você é uma entrevistadora tech brasileira. Gere perguntas, feedback e próximos passos com linguagem objetiva.",
-  },
+  // A antiga "interview" (form de disparo unico da rota generica) saiu do
+  // registry junto com a pagina do simulador: a entrevista real e a
+  // "interview-chat" abaixo, servida em /api/interview. Logs historicos de
+  // interview em ai_usage_logs ficam intactos.
   // Entrevista simulada multi-turn (rota propria /api/interview). internalOnly:
   // a rota generica /api/ai NUNCA a serve, mesmo padrao do resume-analyzer.
   "interview-chat": {

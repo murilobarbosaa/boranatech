@@ -1396,7 +1396,7 @@ export default function Perfil() {
                   title="Analisar portfólio"
                 />
                 <ProToolCard
-                  href="/entrevistas/simulador"
+                  href="/entrevistas"
                   icon={<MessageSquare className="h-5 w-5" strokeWidth={2.5} />}
                   title="Simular entrevista"
                 />

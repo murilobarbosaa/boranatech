@@ -14,6 +14,11 @@
       "permanent": true
     },
     {
+      "source": "/entrevistas/simulador",
+      "destination": "/entrevistas",
+      "permanent": true
+    },
+    {
       "source": "/pro/sucesso",
       "destination": "/planos/sucesso",
       "permanent": true

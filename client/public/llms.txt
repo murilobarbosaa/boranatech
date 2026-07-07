@@ -16,7 +16,7 @@ O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramenta
 - [Salários](https://boranatech.com.br/salarios): faixas salariais de tecnologia por área, nível e cidade.
 - [Dicionário](https://boranatech.com.br/dicionario): termos técnicos de TI explicados sem complicação.
 - [Inglês para tech](https://boranatech.com.br/ingles): guia de inglês técnico por nível, do vocabulário de vagas ao inglês de entrevista.
-- [Entrevistas](https://boranatech.com.br/entrevistas): guia do processo seletivo em tecnologia, com banco de perguntas e desafios técnicos.
+- [Entrevistas](https://boranatech.com.br/entrevistas): guia do processo seletivo em tecnologia, com banco de perguntas, desafios técnicos e treino de entrevista com IA (plano Pro).
 - [Currículo e LinkedIn](https://boranatech.com.br/curriculo): como montar um currículo no padrão da área e aparecer para os recrutadores certos.
 - [Portfólio](https://boranatech.com.br/portfolio): o que incluir e como organizar projetos para se destacar em vagas.
 - [Vagas e estágio](https://boranatech.com.br/estagio): vagas de estágio e júnior em tecnologia, com guia de candidatura.

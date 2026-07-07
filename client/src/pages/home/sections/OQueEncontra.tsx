@@ -61,9 +61,10 @@ const ITENS: Item[] = [
     href: "/comunidades",
   },
   {
-    nome: "Simulador de entrevista",
-    desc: "Treine entrevista técnica com a IA.",
-    href: "/entrevistas/simulador",
+    // TODO(Ana): copy do item de treino de entrevista
+    nome: "Treino de entrevista",
+    desc: "Treine entrevista com IA e feedback por resposta.",
+    href: "/entrevistas",
     pro: true,
   },
   {

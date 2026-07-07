@@ -25,7 +25,7 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/tecnologias", tier: "free", label: "Lista de tecnologias." },
   { route: "/empresas", tier: "free", label: "Empresas de tecnologia." },
   { route: "/salarios", tier: "free", label: "Dados de salarios em tecnologia." },
-  { route: "/entrevistas", tier: "free", label: "Hub de preparacao para entrevistas." },
+  { route: "/entrevistas", tier: "free", label: "Hub de preparacao para entrevistas; inclui o treino de entrevista com IA (Pro)." },
   { route: "/entrevistas/perguntas", tier: "free", label: "Banco de perguntas de entrevista." },
   { route: "/entrevistas/desafios", tier: "free", label: "Desafios de entrevista." },
   { route: "/portfolio", tier: "free", label: "Guia de portfolio." },
@@ -95,7 +95,6 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/curriculo/linkedin", tier: "pro", label: "Otimizacao de LinkedIn por IA." },
   { route: "/linkedin/analisar", tier: "pro", label: "Analise de perfil de LinkedIn por IA." },
   { route: "/portfolio/analisar", tier: "pro", label: "Analise de portfolio por IA com base no GitHub (a analise de GitHub)." },
-  { route: "/entrevistas/simulador", tier: "pro", label: "Simulador de entrevista por IA." },
   // TODO(Ana): revisar o label do Roadmap com IA.
   { route: "/roadmaps/ia", tier: "pro", label: "Roadmap com IA: gera uma trilha de estudos sob medida." },
 ];

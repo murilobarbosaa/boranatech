@@ -51,9 +51,10 @@ export const PRO_FEATURES: ProFeature[] = [
     number: "03",
     iconName: "Mic",
     title: "Entrevistas",
-    label: "Simulador de entrevistas com IA",
+    // TODO(Ana): validar label e description da feature unificada
+    label: "Treino de entrevista com IA",
     description:
-      "Simulação por chat de entrevistas reais com feedback instantâneo. Treina antes de precisar.",
+      "Entrevista simulada por chat, calibrada pela vaga ou pela sua área, com feedback a cada resposta e veredito de preparo.",
     color: "amber",
     group: "main",
   },

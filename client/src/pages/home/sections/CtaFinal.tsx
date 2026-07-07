@@ -192,8 +192,9 @@ const PRO_TOOLS: ProTool[] = [
   {
     label: "entrevista",
     title: "Entrevistas",
-    route: "/entrevistas/simulador",
-    desc: "Simulador de entrevistas com IA",
+    route: "/entrevistas",
+    // TODO(Ana): copy do card de entrevistas
+    desc: "Treino de entrevistas com IA",
   },
   {
     label: "estudos",

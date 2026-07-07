@@ -227,16 +227,16 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
               </p>
             </Link>
             <Link
-              href="/entrevistas/simulador"
+              href="/entrevistas"
               className="card-brutal block rounded-2xl border-2 border-slate-950 bg-white p-5"
             >
               <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-1 text-xs font-black text-slate-950">
                 <Star className="h-3 w-3 fill-[#FFB800] text-slate-950" />
                 Plano Pro
               </span>
-              {/* TODO(Ana): copy do card do simulador de entrevista */}
+              {/* TODO(Ana): copy do card de treino de entrevista */}
               <h2 className="font-display text-xl font-black text-slate-950">
-                Simulador de Entrevista
+                Treino de Entrevista com IA
               </h2>
               <p className="mt-2 text-sm text-slate-600">
                 Treine a entrevista com IA e receba feedback do que melhorar
@@ -252,7 +252,7 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                 <div className="mb-10">
                   {/* TODO(Ana): copy da CTA de treino de entrevista */}
                   <AiCtaLink
-                    href="/entrevistas/simulador"
+                    href="/entrevistas"
                     description="Simule a entrevista e receba feedback"
                     accent="amber"
                     className="w-full"
