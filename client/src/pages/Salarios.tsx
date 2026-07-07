@@ -232,6 +232,96 @@ const fadeUp = {
   transition: { duration: 0.25 },
 };
 
+// TODO(Ana): revisar a copy do titulo, subtitulo e rodape da tabela salarial.
+const TABELA_TITULO = "Quanto ganha cada área e nível";
+const TABELA_SUBTITULO =
+  "Filtre por área, nível e cidade e veja a faixa de CLT a PJ de cada vaga.";
+
+const LEVEL_RANK: Record<string, number> = {
+  Estágio: 0,
+  Trainee: 1,
+  Júnior: 2,
+  Pleno: 3,
+  Sênior: 4,
+  Especialista: 5,
+};
+
+function formatBRL(value: number) {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
+}
+
+type SalaryRow = (typeof salaryRows)[number];
+
+function SalaryRangeCard({
+  row,
+  maxSalary,
+  type,
+}: {
+  row: SalaryRow;
+  maxSalary: number;
+  type: string;
+}) {
+  const clt = Number(row.clt);
+  const pj = Number(row.pj);
+  const leftPct = maxSalary > 0 ? (clt / maxSalary) * 100 : 0;
+  const rightPct = maxSalary > 0 ? 100 - (pj / maxSalary) * 100 : 0;
+  return (
+    <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-shadow duration-200 hover:shadow-[5px_5px_0_#6ee7b7]">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="rounded-full border-2 border-slate-900 bg-emerald-100 px-2.5 py-0.5 text-xs font-black">
+          {String(row.area)}
+        </span>
+        <span className="text-sm font-black text-slate-900">
+          {String(row.level)}
+        </span>
+        <span className="text-xs font-bold text-slate-500">
+          {String(row.city)}
+        </span>
+      </div>
+      <div
+        className="relative mt-3 h-3 w-full rounded-full bg-slate-100"
+        role="img"
+        aria-label={`Faixa de ${String(row.area)} ${String(row.level)} em ${String(row.city)}: CLT ${formatBRL(clt)} a PJ ${formatBRL(pj)}`}
+      >
+        <div
+          className="absolute inset-y-0 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 motion-reduce:transition-none"
+          style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-between text-sm">
+        <span
+          className={cn(
+            "font-black",
+            type === "PJ"
+              ? "text-slate-400"
+              : type === "CLT"
+                ? "text-emerald-700"
+                : "text-slate-700",
+          )}
+        >
+          CLT {formatBRL(clt)}
+        </span>
+        <span
+          className={cn(
+            "font-black",
+            type === "CLT"
+              ? "text-slate-400"
+              : type === "PJ"
+                ? "text-emerald-700"
+                : "text-slate-700",
+          )}
+        >
+          PJ {formatBRL(pj)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Salarios() {
   const reduce = useReducedMotion();
   const [aba, setAba] = useState("Tabela salarial");
@@ -257,6 +347,19 @@ export default function Salarios() {
       ),
     [area, city, level],
   );
+  const ordered = useMemo(
+    () =>
+      [...filtered].sort(
+        (a, b) =>
+          String(a.area).localeCompare(String(b.area)) ||
+          (LEVEL_RANK[String(a.level)] ?? 99) -
+            (LEVEL_RANK[String(b.level)] ?? 99),
+      ),
+    [filtered],
+  );
+  const maxSalary = filtered.length
+    ? Math.max(...filtered.map((row) => Number(row.pj)))
+    : 0;
   const cltEquivalent = Math.round(pj * 0.68);
   const negAreaOptions = areas.filter((option) => option !== "Todas");
   const negLevelOptions = levels.filter((option) => option !== "Todos");
@@ -324,8 +427,9 @@ export default function Salarios() {
               <>
               <div className="card-brutal rounded-2xl bg-white p-6">
                 <h2 className="font-display text-2xl font-black">
-                  Tabela salarial interativa
+                  {TABELA_TITULO}
                 </h2>
+                <p className="mt-1 text-sm text-slate-600">{TABELA_SUBTITULO}</p>
                 <div className="mt-4 grid gap-3 md:grid-cols-4">
                   {[
                     ["Área", area, setArea, areas],
@@ -352,60 +456,33 @@ export default function Salarios() {
                     </label>
                   ))}
                 </div>
-                <div className="mt-6 overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-sm">
-                    <thead className={cn(ac.tableBanner)}>
-                      <tr>
-                        <th className="p-3 text-left">Área</th>
-                        <th className="p-3 text-left">Nível</th>
-                        <th className="p-3 text-left">Cidade</th>
-                        <th className="p-3 text-left">CLT Médio</th>
-                        <th className="p-3 text-left">PJ Médio</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.length === 0 ? (
-                        <tr className="border-t">
-                          <td
-                            colSpan={5}
-                            className="p-6 text-center text-sm font-bold text-slate-500"
-                          >
-                            Nenhum dado salarial para esse recorte. Tente
-                            ampliar a área, o nível ou a cidade.
-                          </td>
-                        </tr>
-                      ) : (
-                        filtered.map((row) => (
-                          <tr
-                            key={`${row.area}-${row.level}-${row.city}`}
-                            className="border-t"
-                          >
-                            <td className="p-3">{row.area}</td>
-                            <td className="p-3">{row.level}</td>
-                            <td className="p-3">{row.city}</td>
-                            <td className="p-3">
-                              {Number(row.clt).toLocaleString("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              })}
-                            </td>
-                            <td className="p-3">
-                              {Number(row.pj).toLocaleString("pt-BR", {
-                                style: "currency",
-                                currency: "BRL",
-                              })}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                <div
+                  className={cn(
+                    "mt-6 grid gap-3",
+                    area === "Todas" ? "sm:grid-cols-2" : "grid-cols-1",
+                  )}
+                >
+                  {ordered.length === 0 ? (
+                    <div className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center text-sm font-bold text-slate-500 sm:col-span-2">
+                      Nenhuma faixa pra esse recorte. Tente ampliar a área, o
+                      nível ou a cidade.
+                    </div>
+                  ) : (
+                    ordered.map((row) => (
+                      <SalaryRangeCard
+                        key={`${String(row.area)}-${String(row.level)}-${String(row.city)}`}
+                        row={row}
+                        maxSalary={maxSalary}
+                        type={type}
+                      />
+                    ))
+                  )}
                 </div>
-                {type !== "Todos" && (
-                  <p className="mt-3 text-xs font-bold text-slate-500">
-                    Filtro de tipo selecionado: {type}.
-                  </p>
-                )}
+                <p className="mt-4 text-xs font-bold text-slate-500">
+                  {ordered.length} {ordered.length === 1 ? "faixa" : "faixas"} ·
+                  valores de referência, variam por empresa, região e momento do
+                  mercado.
+                </p>
               </div>
               <div className="card-brutal rounded-2xl bg-white p-6">
                 <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
