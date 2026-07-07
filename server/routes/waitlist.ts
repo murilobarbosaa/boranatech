@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Router } from "express";
 
 import { enqueueEmail } from "../lib/queue";
@@ -93,18 +94,22 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    // E-mail de confirmacao best-effort: nao derruba o cadastro se o enqueue ou
-    // o envio sincrono (fallback sem Redis) falhar.
-    try {
-      await enqueueEmail({ type: "waitlist_confirmation", to: email, name: "" });
-    } catch (err) {
+    // Responde ANTES do e-mail: o enqueue (e o fallback de envio direto, que
+    // pode levar segundos) sai do caminho critico da resposta. Fire-and-forget
+    // best-effort: falha vira log + Sentry, nunca derruba o cadastro.
+    res.json({ ok: true });
+
+    void enqueueEmail({
+      type: "waitlist_confirmation",
+      to: email,
+      name: "",
+    }).catch((err) => {
       console.error(
         "[waitlist] Falha ao enfileirar e-mail de confirmacao",
         err,
       );
-    }
-
-    res.json({ ok: true });
+      Sentry.captureException(err);
+    });
   } catch (err) {
     console.error("[waitlist] Erro inesperado", err);
     res.status(500).json({

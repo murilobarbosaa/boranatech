@@ -282,6 +282,9 @@ app.use((req, res, next) => {
     "Access-Control-Allow-Headers",
     "Content-Type,Authorization,x-beta-token",
   );
+  // Preflight cacheado por 10 minutos: sem isso o navegador refaz o OPTIONS a
+  // cada POST cross-origin (landing -> api.), pagando um round-trip extra.
+  res.setHeader("Access-Control-Max-Age", "600");
 
   if (req.method === "OPTIONS") {
     res.sendStatus(204);
