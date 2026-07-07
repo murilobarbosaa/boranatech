@@ -23,7 +23,7 @@ const PRO_BENEFICIOS: { icon: LucideIcon; label: string }[] = [
   { icon: Github, label: "Análise de GitHub" },
   { icon: Linkedin, label: "Otimização de LinkedIn" },
   { icon: FileText, label: "Análise de currículo" },
-  { icon: CalendarCheck, label: "Plano de estudos" },
+  { icon: CalendarCheck, label: "Plano de carreira" }, // TODO(Ana): validar label
   { icon: Mic, label: "Simulador de entrevista" },
   { icon: Code2, label: "Análise de portfólio" },
   { icon: Sparkles, label: "Ferramentas exclusivas" },

@@ -172,7 +172,7 @@ export default function Checkout() {
       {/* TODO(Ana): revisar meta description do plano Pro apos remocao de ferramentas */}
       <SEO
         title="Plano Pro · Bora na Tech?"
-        description="Desbloqueie as ferramentas com IA pra entrar em TI: roadmaps, plano de estudos, análise de currículo, LinkedIn, portfólio e entrevista. A partir de R$ 14,99/mês no plano anual."
+        description="Desbloqueie as ferramentas com IA pra entrar em TI: roadmaps, plano de carreira, análise de currículo, LinkedIn, portfólio e entrevista. A partir de R$ 14,99/mês no plano anual."
         keywords={[
           "plano pro bora na tech",
           "ia carreira ti",

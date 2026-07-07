@@ -27,7 +27,8 @@ const STARS: ConstellationStar[] = [
   { id: "roadmaps", name: "Roadmaps", icon: Map, position: { x: 8, y: 15 } },
   {
     id: "estudos",
-    name: "Plano de estudos",
+    // TODO(Ana): validar nome da estrela do plano de carreira
+    name: "Plano de Carreira",
     icon: CalendarCheck,
     position: { x: 18, y: 45 },
   },

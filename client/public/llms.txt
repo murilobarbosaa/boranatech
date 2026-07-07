@@ -4,7 +4,7 @@
 
 Plataforma brasileira de orientação de carreira para quem quer começar em tecnologia.
 
-O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramentas que um iniciante em TI precisa para escolher uma área e chegar na primeira vaga: quiz de carreira, roadmaps de estudo por área, curadoria de cursos, dicionário de termos técnicos, guias de inglês e de entrevistas, e ferramentas de análise com IA (currículo, LinkedIn, GitHub e plano de estudos). A descoberta é gratuita com conta free; as análises personalizadas por IA fazem parte do plano Pro, por assinatura.
+O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramentas que um iniciante em TI precisa para escolher uma área e chegar na primeira vaga: quiz de carreira, roadmaps de estudo por área, curadoria de cursos, dicionário de termos técnicos, guias de inglês e de entrevistas, e ferramentas de análise com IA (currículo, LinkedIn, GitHub e plano de carreira). A descoberta é gratuita com conta free; as análises personalizadas por IA fazem parte do plano Pro, por assinatura.
 
 ## Páginas principais
 
@@ -31,5 +31,5 @@ O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramenta
 - O público principal são pessoas iniciantes em tecnologia, antes ou no começo da primeira vaga.
 - O acesso ao conteúdo de descoberta (quiz, roadmaps, curadoria de cursos, dicionário, guias) é gratuito com conta free.
 - A curadoria de cursos tem mais de 190 cursos de tecnologia, com plataforma, nível, duração e idioma identificados.
-- As ferramentas de análise personalizada com IA (currículo, LinkedIn, GitHub, entrevista, plano de estudos) fazem parte do plano Pro, uma assinatura paga.
+- As ferramentas de análise personalizada com IA (currículo, LinkedIn, GitHub, entrevista, plano de carreira) fazem parte do plano Pro, uma assinatura paga.
 - O site oficial é https://boranatech.com.br e a conta gratuita é criada em https://boranatech.com.br/cadastro.

@@ -43,7 +43,6 @@ const EntrevistaPerguntas = lazy(() => import("@/pages/EntrevistaPerguntas"));
 const EntrevistaSessao = lazy(() => import("@/pages/EntrevistaSessao"));
 const Entrevistas = lazy(() => import("@/pages/Entrevistas"));
 const Estagio = lazy(() => import("@/pages/Estagio"));
-const Estudos = lazy(() => import("@/pages/Estudos"));
 const EstudosDiario = lazy(() => import("@/pages/EstudosDiario"));
 const Eventos = lazy(() => import("@/pages/Eventos"));
 const Evolucao = lazy(() => import("@/pages/Evolucao"));
@@ -65,6 +64,7 @@ const Noticias = lazy(() => import("@/pages/Noticias"));
 const Perfil = lazy(() => import("@/pages/Perfil"));
 const PerfilFavoritos = lazy(() => import("@/pages/PerfilFavoritos"));
 const PerguntasFrequentes = lazy(() => import("@/pages/PerguntasFrequentes"));
+const PlanoCarreira = lazy(() => import("@/pages/PlanoCarreira"));
 const Plataformas = lazy(() => import("@/pages/Plataformas"));
 const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const PortfolioAnalisar = lazy(() => import("@/pages/PortfolioAnalisar"));
@@ -185,7 +185,9 @@ function Router() {
         <Route path="/curriculo/gerar" component={CurriculoGerar} />
         <Route path="/curriculo/linkedin" component={CurriculoLinkedin} />
         <Route path="/linkedin/analisar" component={LinkedinAnalisar} />
-        <Route path="/estudos" component={Estudos} />
+        <Route path="/plano-carreira" component={PlanoCarreira} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/estudos">{() => <Redirect to="/plano-carreira" />}</Route>
         <Route path="/estudos/diario" component={EstudosDiario} />
         {/* TODO: remover redirect após 90 dias em prod */}
         <Route path="/empregabilidade">

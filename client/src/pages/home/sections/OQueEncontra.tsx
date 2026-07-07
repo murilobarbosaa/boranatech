@@ -68,9 +68,10 @@ const ITENS: Item[] = [
     pro: true,
   },
   {
-    nome: "Plano de estudos",
-    desc: "A IA monta a ordem certa e o ritmo pra você.",
-    href: "/estudos",
+    // TODO(Ana): copy do item de plano de carreira
+    nome: "Plano de carreira",
+    desc: "A IA monta a rota da sua carreira, com ordem e certificações.",
+    href: "/plano-carreira",
     pro: true,
   },
   {

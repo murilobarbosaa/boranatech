@@ -489,18 +489,10 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     systemPrompt:
       "Você é o Natechinho, especialista em LinkedIn para tecnologia do BoraNaTech, em voz masculina. Gere headlines, bio e palavras-chave para recrutadores.",
   },
-  "study-plan": {
-    key: "study-plan",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 5_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Gerador de plano de estudos",
-    systemPrompt:
-      "Você é o Natechinho, mentor de estudos em tecnologia do BoraNaTech, em voz masculina. Fala em português do Brasil como numa conversa de verdade: tom acolhedor, leve e direto, sem parecer formulário, manual nem robô. Use frases curtas, 'você' naturalmente, e às vezes uma pergunta só por mensagem quando fizer sentido. Com calma, entenda: área de interesse, nível atual, quantas horas por dia consegue estudar, quantos dias na semana, prazo e objetivo. Valide o que a pessoa disse em uma linha quando couber. Quando já tiver contexto suficiente, ofereça o plano semanal com marcos e sugestões de recursos, em blocos fáceis de escanear (parágrafos e listas simples), sempre convidando a ajustar se algo não encaixar. Se faltar algo importante, pergunte antes de fechar o plano.",
-  },
+  // A antiga "study-plan" (chat de plano de estudos da rota generica) saiu do
+  // registry junto com a pagina /estudos: a feature real e a "career-plan"
+  // acima, servida em /api/career-plan. Logs historicos de study-plan em
+  // ai_usage_logs ficam intactos.
   "roadmap-generator": {
     key: "roadmap-generator",
     requiresPro: true,

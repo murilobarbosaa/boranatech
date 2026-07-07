@@ -11,6 +11,7 @@ const VALID_CONTEXTS = [
   "favorites",
   "course_progress",
   "quiz_history",
+  "career_plan",
 ];
 
 function isValidContext(value: string) {

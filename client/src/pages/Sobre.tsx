@@ -23,7 +23,8 @@ const offerings = [
   {
     icon: Bot,
     title: "IA para sua carreira",
-    description: "Análise de currículo, LinkedIn, plano de estudos e mais.",
+    // TODO(Ana): validar copy apos troca do plano de estudos
+    description: "Análise de currículo, LinkedIn, plano de carreira e mais.",
   },
   {
     icon: Newspaper,

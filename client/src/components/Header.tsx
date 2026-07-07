@@ -126,9 +126,10 @@ const menuData: DropdownMenu[] = [
             isPro: true,
           },
           {
-            label: "Plano de Estudos",
-            description: "Monte sua rotina personalizada",
-            path: "/estudos",
+            label: "Plano de Carreira",
+            // TODO(Ana): validar description (diferenciar do Roadmap com IA)
+            description: "A rota da carreira: ordem, certificações e prazos",
+            path: "/plano-carreira",
             isPro: true,
           },
           {

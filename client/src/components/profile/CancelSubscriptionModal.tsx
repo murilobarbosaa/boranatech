@@ -29,7 +29,7 @@ const REASONS: Array<{ code: CancelReasonCode; label: string }> = [
 
 const BENEFITS: Array<{ icon: string; text: string }> = [
   { icon: "🤖", text: "Ferramentas de IA pra acelerar a carreira" }, // TODO(Ana): revisar copy sem contagem
-  { icon: "📚", text: "Roadmaps completos com plano de estudos personalizado" },
+  { icon: "📚", text: "Roadmaps completos e plano de carreira personalizado" }, // TODO(Ana): validar copy
   { icon: "🎯", text: "Analisador de currículo, LinkedIn e portfólio com IA" },
   { icon: "💬", text: "Simulador de entrevistas técnicas e comportamentais" },
   { icon: "📈", text: "Análise de GitHub com IA" }, // TODO(Ana): revisar beneficio substituto

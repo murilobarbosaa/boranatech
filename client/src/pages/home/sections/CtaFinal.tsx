@@ -197,10 +197,11 @@ const PRO_TOOLS: ProTool[] = [
     desc: "Treino de entrevistas com IA",
   },
   {
-    label: "estudos",
-    title: "Plano de estudos",
-    route: "/estudos",
-    desc: "Plano de estudos personalizado",
+    // TODO(Ana): copy do card de plano de carreira
+    label: "carreira",
+    title: "Plano de carreira",
+    route: "/plano-carreira",
+    desc: "A rota da sua carreira com IA",
   },
   {
     label: "linkedin",

@@ -59,13 +59,14 @@ export const PRO_FEATURES: ProFeature[] = [
     group: "main",
   },
   {
-    id: "plano-estudos",
+    id: "plano-carreira",
     number: "04",
     iconName: "CalendarCheck",
-    title: "Plano de estudos",
-    label: "Plano de estudos personalizado",
+    // TODO(Ana): validar title, label e description da feature nova
+    title: "Plano de carreira",
+    label: "Plano de carreira com IA",
     description:
-      "Sua semana planejada com base no seu tempo e nos seus objetivos. Sem improviso.",
+      "A rota da sua carreira: degraus na ordem certa, certificações que valem o preço e cronograma no seu ritmo.",
     color: "blue",
     group: "extra",
   },
