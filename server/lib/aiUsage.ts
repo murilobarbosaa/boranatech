@@ -95,6 +95,42 @@ export async function checkAgentDailyLimit(
   }
 }
 
+// Chaves de tool com que a entrevista simulada loga em ai_usage_logs. A criacao
+// de sessao conta 1 unidade na quota GLOBAL (get_ai_usage_today); os turnos tem
+// teto proprio via get_ai_usage_today_by_tool, espelhando o agent-chat, e sao
+// excluidos da global pela migration 20260707121000_split_interview_turn_quota.
+export const INTERVIEW_SESSION_TOOL = "interview-session";
+export const INTERVIEW_TURN_TOOL = "interview-turn";
+
+/**
+ * Rate limit dos turnos da entrevista simulada, espelhando checkAgentDailyLimit:
+ * mesma RPC generica por tool, mesma janela (dia America/Sao_Paulo via RPC),
+ * mesmo fail-closed (erro/null/excecao = allowed:false + verificationFailed).
+ * Sem variante free: a feature e Pro-only e o gate barra antes.
+ */
+export async function checkInterviewTurnDailyLimit(
+  userId: string,
+  logScope = "[interview]",
+): Promise<AiDailyLimitResult> {
+  const limit = env.interviewDailyTurnLimitPro;
+  try {
+    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc(
+      "get_ai_usage_today_by_tool",
+      { p_user_id: userId, p_tool: INTERVIEW_TURN_TOOL },
+    );
+
+    if (!usageError && usageCount !== null) {
+      return { allowed: usageCount < limit, count: usageCount, limit };
+    }
+
+    console.warn(`${logScope} RPC de rate limit de turnos retornou erro/null para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  } catch {
+    console.warn(`${logScope} Falha ao verificar rate limit de turnos para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  }
+}
+
 export interface LogAiUsageParams {
   userId: string;
   tool: string;

@@ -76,6 +76,13 @@ export const env = {
   // TODO: calibrar AGENT_DAILY_LIMIT_FREE e AGENT_DAILY_LIMIT_PRO.
   agentDailyLimitFree: parseInt(process.env.AGENT_DAILY_LIMIT_FREE || "20", 10),
   agentDailyLimitPro: parseInt(process.env.AGENT_DAILY_LIMIT_PRO || "200", 10),
+  // Teto diario de turnos da entrevista simulada. Sem variante free: a feature
+  // e Pro-only e o gate barra antes de qualquer chamada.
+  // TODO: calibrar INTERVIEW_DAILY_TURN_LIMIT_PRO.
+  interviewDailyTurnLimitPro: parseInt(
+    process.env.INTERVIEW_DAILY_TURN_LIMIT_PRO || "150",
+    10,
+  ),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;
