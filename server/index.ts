@@ -7,7 +7,10 @@ import { createServer } from "http";
 
 import app from "./app";
 import { env } from "./lib/env";
-import { createEmailCampaignWorker } from "./lib/emailCampaignQueue";
+import {
+  createEmailCampaignWorker,
+  reconcileEmailCampaignBatches,
+} from "./lib/emailCampaignQueue";
 import { createEmailWorker } from "./lib/queue";
 import { cacheConnection, queueConnection } from "./lib/redis";
 
@@ -59,6 +62,17 @@ async function startServer() {
         }
       })()
     : null;
+  // Reconciliacao dos lotes agendados: Postgres e a fonte de verdade, o Redis
+  // so guarda o gatilho. Roda em background pra nao atrasar o listen; jobIds
+  // deterministicos tornam a recriacao idempotente.
+  if (emailCampaignWorker) {
+    void reconcileEmailCampaignBatches().catch((err) => {
+      console.error(
+        "[email-campaign] Erro na reconciliacao de lotes no boot:",
+        err,
+      );
+    });
+  }
 
   async function shutdown() {
     await Promise.allSettled([

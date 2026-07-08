@@ -2,8 +2,11 @@ import { Router } from "express";
 
 import { sendCampaignEmail } from "../lib/email";
 import {
+  ELIGIBLE_WAITLIST_STATUSES,
+  dispatchCampaignBatch,
   emailCampaignQueue,
-  enqueueCampaignRecipients,
+  scheduleBatchDispatchJob,
+  tryCompleteCampaign,
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -21,10 +24,12 @@ const router = Router();
 const CAMPAIGN_COLUMNS =
   "id, subject, body, image_url, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
 
-// Status da waitlist elegiveis pra receber campanha. Nunca 'unsubscribed'.
-const ELIGIBLE_WAITLIST_STATUSES = ["pending", "notified"];
+const BATCH_COLUMNS =
+  "id, campaign_id, mode, batch_limit, scheduled_for, status, dispatched_at, created_at";
 
-const PAGE_SIZE = 1000;
+const MAX_SELECTED_PER_BATCH = 500;
+const SCHEDULE_PAST_TOLERANCE_MS = 60_000;
+const SCHEDULE_MAX_AHEAD_MS = 30 * 24 * 60 * 60 * 1000; // 30d
 
 function isAllowedImageUrl(value: string): boolean {
   let parsed: URL;
@@ -42,7 +47,7 @@ function isAllowedImageUrl(value: string): boolean {
   );
 }
 
-// Pre-requisitos de envio (teste ou massa). Checa ANTES de qualquer mutacao
+// Pre-requisitos de envio (teste ou lote). Checa ANTES de qualquer mutacao
 // pra falha de configuracao nao deixar campanha em estado intermediario.
 function sendPreconditionError(needQueue: boolean) {
   if (!env.resendApiKey) {
@@ -190,7 +195,96 @@ router.get("/waitlist-count", async (_req, res, next) => {
   }
 });
 
-// GET /api/admin/email-campaigns/:id: detalhe com contadores pro polling.
+// GET /api/admin/email-campaigns/waitlist-recipients: lista paginada da
+// waitlist elegivel pra UI de selecao, com busca por e-mail e flag de quem ja
+// e recipient da campanha (campaignId obrigatorio). Maximo 100 por pagina.
+router.get("/waitlist-recipients", async (req, res, next) => {
+  try {
+    const campaignId =
+      typeof req.query.campaignId === "string" ? req.query.campaignId : "";
+    if (!campaignId) {
+      return next(
+        createError(400, "invalid_campaign", "campaignId é obrigatório."),
+      );
+    }
+    const search =
+      typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const rawLimit = parseInt(String(req.query.limit ?? ""), 10);
+    const limit =
+      Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 100
+        ? rawLimit
+        : 50;
+    const rawOffset = parseInt(String(req.query.offset ?? ""), 10);
+    const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    let query = supabaseAdmin
+      .from("waitlist")
+      .select("email, created_at, status", { count: "exact" })
+      .in("status", ELIGIBLE_WAITLIST_STATUSES)
+      .order("created_at", { ascending: true })
+      .range(offset, offset + limit - 1);
+    if (search) {
+      // Escapa curingas do LIKE pra busca literal.
+      const escaped = search.replace(/[\\%_]/g, (match) => `\\${match}`);
+      query = query.ilike("email", `%${escaped}%`);
+    }
+
+    const { data, error, count } = await query;
+    if (error) {
+      console.error("[email-campaign] Falha ao listar waitlist", error);
+      return next(
+        createError(
+          500,
+          "campaign_error",
+          "Não foi possível listar a waitlist.",
+        ),
+      );
+    }
+
+    const rows = data ?? [];
+    let recipientSet = new Set<string>();
+    if (rows.length > 0) {
+      const { data: recipients, error: recipientsError } = await supabaseAdmin
+        .from("email_campaign_recipients")
+        .select("email")
+        .eq("campaign_id", campaignId)
+        .in(
+          "email",
+          rows.map((row) => row.email),
+        );
+      if (recipientsError) {
+        console.error(
+          "[email-campaign] Falha ao buscar recipients da campanha",
+          recipientsError,
+        );
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível verificar os destinatários da campanha.",
+          ),
+        );
+      }
+      recipientSet = new Set((recipients ?? []).map((row) => row.email));
+    }
+
+    res.json({
+      data: {
+        items: rows.map((row) => ({
+          email: row.email,
+          created_at: row.created_at,
+          status: row.status,
+          already_recipient: recipientSet.has(row.email),
+        })),
+        pagination: { total: count ?? 0, limit, offset },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/email-campaigns/:id: detalhe com contadores e lotes.
 router.get("/:id", async (req, res, next) => {
   try {
     const { data, error } = await fetchCampaign(req.params.id);
@@ -203,7 +297,34 @@ router.get("/:id", async (req, res, next) => {
     if (!data) {
       return next(createError(404, "not_found", "Campanha não encontrada."));
     }
-    res.json({ data });
+
+    const { data: batches, error: batchesError } = await supabaseAdmin
+      .from("email_campaign_batches")
+      .select(BATCH_COLUMNS)
+      .eq("campaign_id", req.params.id)
+      .order("created_at", { ascending: true });
+    if (batchesError) {
+      console.error("[email-campaign] Falha ao buscar lotes", batchesError);
+      return next(
+        createError(500, "campaign_error", "Não foi possível buscar os lotes."),
+      );
+    }
+
+    const withCounts = await Promise.all(
+      (batches ?? []).map(async (batch) => {
+        if (batch.mode !== "selected") {
+          return { ...batch, selected_count: null };
+        }
+        const { count, error: countError } = await supabaseAdmin
+          .from("email_campaign_batch_recipients")
+          .select("email", { count: "exact", head: true })
+          .eq("batch_id", batch.id);
+        // Erro na contagem vira null (desconhecido), nunca zero.
+        return { ...batch, selected_count: countError ? null : count };
+      }),
+    );
+
+    res.json({ data: { ...data, batches: withCounts } });
   } catch (err) {
     next(err);
   }
@@ -264,45 +385,27 @@ router.post("/:id/test", async (req, res, next) => {
   }
 });
 
-// Busca ids dos recipients pending em ordem de posicao, paginando (o PostgREST
-// corta em 1000 linhas por resposta). limit null = todos.
-async function fetchPendingRecipientIds(
-  campaignId: string,
-  limit: number | null,
-): Promise<string[]> {
-  const ids: string[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const remaining = limit === null ? PAGE_SIZE : limit - ids.length;
-    if (remaining <= 0) break;
-    const to = from + Math.min(PAGE_SIZE, remaining) - 1;
-    const { data, error } = await supabaseAdmin
-      .from("email_campaign_recipients")
-      .select("id")
-      .eq("campaign_id", campaignId)
-      .eq("status", "pending")
-      .order("position", { ascending: true })
-      .range(from, to);
-    if (error) {
-      throw new Error(`Falha ao buscar destinatários: ${error.message}`);
-    }
-    const rows = data ?? [];
-    ids.push(...rows.map((row) => row.id));
-    if (rows.length < to - from + 1) break;
-  }
-  return ids;
-}
-
-// POST /api/admin/email-campaigns/:id/send: dispara (ou continua) o envio.
-// Body opcional { limit }: enfileira so os proximos N pendings, permitindo
-// enviar 100 hoje e o restante amanha.
-router.post("/:id/send", async (req, res, next) => {
+// POST /api/admin/email-campaigns/:id/batches: cria um lote de envio.
+// scheduledFor ausente = dispara agora; presente = grava pending no Postgres
+// (fonte de verdade) e agenda o gatilho atrasado na fila.
+router.post("/:id/batches", async (req, res, next) => {
   try {
     const preconditionError = sendPreconditionError(true);
     if (preconditionError) return next(preconditionError);
+    if (!req.user) {
+      return next(createError(401, "unauthorized", "Autenticação necessária."));
+    }
 
     const body = (req.body ?? {}) as Record<string, unknown>;
+    const mode = body.mode;
+    if (mode !== "next" && mode !== "selected") {
+      return next(
+        createError(400, "invalid_mode", "Modo de lote inválido."),
+      );
+    }
+
     let limit: number | null = null;
-    if (body.limit !== undefined && body.limit !== null) {
+    if (mode === "next" && body.limit !== undefined && body.limit !== null) {
       if (
         typeof body.limit !== "number" ||
         !Number.isInteger(body.limit) ||
@@ -317,6 +420,77 @@ router.post("/:id/send", async (req, res, next) => {
         );
       }
       limit = body.limit;
+    }
+
+    let emails: string[] = [];
+    if (mode === "selected") {
+      if (!Array.isArray(body.emails) || body.emails.length === 0) {
+        return next(
+          createError(
+            400,
+            "invalid_emails",
+            "Selecione ao menos um e-mail para o lote.",
+          ),
+        );
+      }
+      const normalized = new Set<string>();
+      for (const raw of body.emails) {
+        if (typeof raw !== "string" || !raw.trim()) {
+          return next(
+            createError(400, "invalid_emails", "Lista de e-mails inválida."),
+          );
+        }
+        normalized.add(raw.trim().toLowerCase());
+      }
+      emails = Array.from(normalized);
+      if (emails.length > MAX_SELECTED_PER_BATCH) {
+        return next(
+          createError(
+            400,
+            "too_many_emails",
+            `Máximo de ${MAX_SELECTED_PER_BATCH} e-mails por lote.`,
+          ),
+        );
+      }
+    }
+
+    let scheduledFor: string | null = null;
+    if (
+      body.scheduledFor !== undefined &&
+      body.scheduledFor !== null &&
+      body.scheduledFor !== ""
+    ) {
+      if (typeof body.scheduledFor !== "string") {
+        return next(
+          createError(400, "invalid_schedule", "Data de agendamento inválida."),
+        );
+      }
+      const timestamp = new Date(body.scheduledFor).getTime();
+      if (!Number.isFinite(timestamp)) {
+        return next(
+          createError(400, "invalid_schedule", "Data de agendamento inválida."),
+        );
+      }
+      const now = Date.now();
+      if (timestamp < now - SCHEDULE_PAST_TOLERANCE_MS) {
+        return next(
+          createError(
+            400,
+            "invalid_schedule",
+            "O agendamento precisa ser no futuro.",
+          ),
+        );
+      }
+      if (timestamp > now + SCHEDULE_MAX_AHEAD_MS) {
+        return next(
+          createError(
+            400,
+            "invalid_schedule",
+            "O agendamento pode ser de no máximo 30 dias à frente.",
+          ),
+        );
+      }
+      scheduledFor = new Date(timestamp).toISOString();
     }
 
     const campaignId = req.params.id;
@@ -341,134 +515,174 @@ router.post("/:id/send", async (req, res, next) => {
       );
     }
 
-    let startedNow = false;
-    if (campaign.status === "draft") {
-      // Snapshot dos elegiveis em ordem de created_at da waitlist. Paginado:
-      // o PostgREST corta em 1000 linhas por resposta.
-      const emails: string[] = [];
-      for (let from = 0; ; from += PAGE_SIZE) {
-        const { data, error } = await supabaseAdmin
-          .from("waitlist")
-          .select("email")
-          .in("status", ELIGIBLE_WAITLIST_STATUSES)
-          .order("created_at", { ascending: true })
-          .range(from, from + PAGE_SIZE - 1);
-        if (error) {
-          console.error("[email-campaign] Falha ao buscar waitlist", error);
-          return next(
-            createError(
-              500,
-              "campaign_error",
-              "Não foi possível buscar a waitlist.",
-            ),
-          );
-        }
-        const rows = data ?? [];
-        emails.push(...rows.map((row) => row.email));
-        if (rows.length < PAGE_SIZE) break;
-      }
-
-      if (emails.length === 0) {
-        return next(
-          createError(
-            409,
-            "no_recipients",
-            "Nenhum destinatário elegível na waitlist.",
-          ),
-        );
-      }
-
-      // Upsert com ignoreDuplicates: re-disparo apos falha parcial do seed nao
-      // duplica nem quebra no unique (campaign_id, email).
-      const rows = emails.map((email, index) => ({
+    const { data: batch, error: batchError } = await supabaseAdmin
+      .from("email_campaign_batches")
+      .insert({
         campaign_id: campaignId,
-        email,
-        position: index + 1,
-      }));
-      const CHUNK = 500;
-      for (let i = 0; i < rows.length; i += CHUNK) {
-        const { error } = await supabaseAdmin
-          .from("email_campaign_recipients")
-          .upsert(rows.slice(i, i + CHUNK), {
-            onConflict: "campaign_id,email",
-            ignoreDuplicates: true,
-          });
-        if (error) {
-          console.error(
-            "[email-campaign] Falha ao inserir destinatários",
-            error,
-          );
-          return next(
-            createError(
-              500,
-              "campaign_error",
-              "Não foi possível preparar os destinatários.",
-            ),
-          );
-        }
-      }
-
-      // CAS draft -> sending: disparo concorrente nao seta started_at duas
-      // vezes nem sobrescreve total_recipients.
-      const { error: updateError } = await supabaseAdmin
-        .from("email_campaigns")
-        .update({
-          status: "sending",
-          total_recipients: emails.length,
-          started_at: new Date().toISOString(),
-        })
-        .eq("id", campaignId)
-        .eq("status", "draft");
-      if (updateError) {
-        console.error(
-          "[email-campaign] Falha ao marcar campanha como sending",
-          updateError,
-        );
-        return next(
-          createError(
-            500,
-            "campaign_error",
-            "Não foi possível iniciar a campanha.",
-          ),
-        );
-      }
-      startedNow = true;
+        mode,
+        batch_limit: limit,
+        scheduled_for: scheduledFor,
+        created_by: req.user.id,
+      })
+      .select(BATCH_COLUMNS)
+      .single();
+    if (batchError) {
+      console.error("[email-campaign] Falha ao criar lote", batchError);
+      return next(
+        createError(500, "campaign_error", "Não foi possível criar o lote."),
+      );
     }
 
-    let recipientIds: string[];
-    try {
-      recipientIds = await fetchPendingRecipientIds(campaignId, limit);
-      await enqueueCampaignRecipients(campaignId, recipientIds);
-    } catch (enqueueErr) {
-      console.error("[email-campaign] Falha ao enfileirar", enqueueErr);
-      // Campanha recem-transicionada e sem nenhum resultado registrado volta
-      // pra draft: enfileiramento falhou, a campanha NAO muda de status na
-      // pratica. Best-effort (condicoes evitam desfazer progresso real).
-      if (startedNow) {
+    if (mode === "selected") {
+      const { error: recipientsError } = await supabaseAdmin
+        .from("email_campaign_batch_recipients")
+        .insert(emails.map((email) => ({ batch_id: batch.id, email })));
+      if (recipientsError) {
+        console.error(
+          "[email-campaign] Falha ao gravar e-mails do lote",
+          recipientsError,
+        );
+        // Lote sem os e-mails gravados nao pode ficar pending (dispararia
+        // vazio): cancela antes de reportar o erro.
         await supabaseAdmin
-          .from("email_campaigns")
-          .update({ status: "draft", total_recipients: null, started_at: null })
-          .eq("id", campaignId)
-          .eq("status", "sending")
-          .eq("sent_count", 0)
-          .eq("failed_count", 0);
+          .from("email_campaign_batches")
+          .update({ status: "canceled" })
+          .eq("id", batch.id)
+          .eq("status", "pending");
+        return next(
+          createError(500, "campaign_error", "Não foi possível criar o lote."),
+        );
       }
+    }
+
+    if (!scheduledFor) {
+      try {
+        const result = await dispatchCampaignBatch(batch.id);
+        const { data: fresh } = await fetchCampaign(campaignId);
+        res.json({
+          data: {
+            scheduled: false,
+            enqueued: result.enqueued,
+            batch: { ...batch, status: "dispatched" },
+            campaign: fresh ?? campaign,
+          },
+        });
+      } catch (dispatchErr) {
+        console.error(
+          "[email-campaign] Falha ao disparar lote imediato",
+          dispatchErr,
+        );
+        // Sem cancelar, o batch pending seria disparado pela reconciliacao no
+        // proximo boot, surpreendendo o admin que viu erro aqui.
+        await supabaseAdmin
+          .from("email_campaign_batches")
+          .update({ status: "canceled" })
+          .eq("id", batch.id)
+          .eq("status", "pending");
+        return next(
+          createError(
+            502,
+            "batch_dispatch_failed",
+            "Falha ao disparar o lote. Nenhum lote ficou ativo, tente de novo.",
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      await scheduleBatchDispatchJob(batch.id, scheduledFor);
+    } catch (scheduleErr) {
+      console.error("[email-campaign] Falha ao agendar lote", scheduleErr);
+      await supabaseAdmin
+        .from("email_campaign_batches")
+        .update({ status: "canceled" })
+        .eq("id", batch.id)
+        .eq("status", "pending");
       return next(
         createError(
           502,
-          "enqueue_failed",
-          "Falha ao enfileirar os envios. Nada foi disparado, tente de novo.",
+          "batch_schedule_failed",
+          "Falha ao agendar o lote. Nada foi agendado, tente de novo.",
         ),
       );
     }
 
-    const { data: fresh } = await fetchCampaign(campaignId);
-    res.json({
-      data: {
-        campaign: fresh ?? campaign,
-        enqueued: recipientIds.length,
-      },
-    });
+    res.json({ data: { scheduled: true, batch } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/email-campaigns/:id/batches/:batchId: cancela lote pending.
+router.delete("/:id/batches/:batchId", async (req, res, next) => {
+  try {
+    const { data: canceled, error } = await supabaseAdmin
+      .from("email_campaign_batches")
+      .update({ status: "canceled" })
+      .eq("id", req.params.batchId)
+      .eq("campaign_id", req.params.id)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      console.error("[email-campaign] Falha ao cancelar lote", error);
+      return next(
+        createError(500, "campaign_error", "Não foi possível cancelar o lote."),
+      );
+    }
+    if (!canceled) {
+      const { data: existing, error: existingError } = await supabaseAdmin
+        .from("email_campaign_batches")
+        .select("id, status")
+        .eq("id", req.params.batchId)
+        .eq("campaign_id", req.params.id)
+        .maybeSingle();
+      if (existingError) {
+        console.error(
+          "[email-campaign] Falha ao buscar lote",
+          existingError,
+        );
+        return next(
+          createError(500, "campaign_error", "Não foi possível buscar o lote."),
+        );
+      }
+      if (!existing) {
+        return next(createError(404, "not_found", "Lote não encontrado."));
+      }
+      return next(
+        createError(
+          409,
+          "batch_not_pending",
+          "Este lote já foi disparado ou cancelado.",
+        ),
+      );
+    }
+
+    // Remove o gatilho atrasado. Best-effort: se falhar (Redis fora, job
+    // ativo), o CAS acima ja garante que o gatilho remanescente vira no-op.
+    if (emailCampaignQueue) {
+      try {
+        await emailCampaignQueue.remove(`batch:${req.params.batchId}`);
+      } catch (removeErr) {
+        console.warn(
+          "[email-campaign] Falha ao remover gatilho do lote cancelado",
+          removeErr,
+        );
+      }
+    }
+
+    // O cancelamento pode ter sido o ultimo pending segurando o completed.
+    try {
+      await tryCompleteCampaign(req.params.id);
+    } catch (completeErr) {
+      console.error(
+        "[email-campaign] Falha ao verificar fechamento apos cancelamento",
+        completeErr,
+      );
+    }
+
+    res.json({ data: { canceled: true } });
   } catch (err) {
     next(err);
   }
