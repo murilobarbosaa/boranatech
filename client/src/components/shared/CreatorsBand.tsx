@@ -1,87 +1,14 @@
 import { useState } from "react";
 import { useReducedMotion } from "framer-motion";
+import { Link } from "wouter";
+import { creators as CREATORS, type Creator } from "@/lib/creatorsData";
 
-// Faixa de creators que apoiam o projeto. Espelha a faixa da landing estatica
-// (client/public/lancamento.html) como componente React, reusando as MESMAS
-// fotos em /creators e a mesma lista. Marquee em loop, pausa no hover, fade nas
-// pontas; em prefers-reduced-motion vira um wrap estatico com todos visiveis.
+// Faixa de creators que apoiam o projeto. Le a fonte unica em lib/creatorsData
+// e leva pra pagina /creators (o Instagram fica no detalhe de cada creator, pra
+// dar credibilidade antes de sair pra rede). Marquee em loop, pausa no hover,
+// fade nas pontas; em prefers-reduced-motion vira um wrap estatico visivel. A
+// landing estatica (client/public/lancamento.html) mantem a propria copia.
 
-interface Creator {
-  handle: string;
-  photo: string;
-  url: string;
-}
-
-// TODO(Ana): conferir os @ e adicionar/remover creators aqui (espelha a landing).
-const CREATORS: Creator[] = [
-  {
-    handle: "grazi.tech",
-    photo: "/creators/grazi-tech.jpg",
-    url: "https://instagram.com/grazi.tech",
-  },
-  {
-    handle: "jess.data",
-    photo: "/creators/jess-data.jpg",
-    url: "https://instagram.com/jess.data",
-  },
-  {
-    handle: "gama18k",
-    photo: "/creators/gama18k.jpg",
-    url: "https://instagram.com/gama18k",
-  },
-  {
-    handle: "gabrielsm.dev",
-    photo: "/creators/gabrielsm-dev.jpg",
-    url: "https://instagram.com/gabrielsm.dev",
-  },
-  {
-    handle: "carolpaier.tech",
-    photo: "/creators/carolpaier.jpg",
-    url: "https://instagram.com/carolpaier.tech",
-  },
-  {
-    handle: "code.evelyn",
-    photo: "/creators/code-evelyn.jpg",
-    url: "https://instagram.com/code.evelyn",
-  },
-  {
-    handle: "ketlyncode",
-    photo: "/creators/ketlyncode.jpg",
-    url: "https://instagram.com/ketlyncode",
-  },
-  {
-    handle: "raibyhei",
-    photo: "/creators/raibyhei.jpg",
-    url: "https://instagram.com/raibyhei",
-  },
-  {
-    handle: "dioaugusto.dev",
-    photo: "/creators/dioaugusto-dev.jpg",
-    url: "https://instagram.com/dioaugusto.dev",
-  },
-  {
-    handle: "devnicolelobo",
-    photo: "/creators/devnicolelobo.jpg",
-    url: "https://instagram.com/devnicolelobo",
-  },
-  {
-    handle: "andrebrito.dev",
-    photo: "/creators/andrebrito-dev.jpg",
-    url: "https://instagram.com/andrebrito.dev",
-  },
-  {
-    handle: "vua_nessa",
-    photo: "/creators/vua_nessa.jpg",
-    url: "https://instagram.com/vua_nessa",
-  },
-  {
-    handle: "monihillman",
-    photo: "/creators/monihillman.jpg",
-    url: "https://instagram.com/monihillman",
-  },
-];
-
-// Cor de fundo por card, ciclando por posicao. Cores da marca, iguais a landing.
 const CARD_COLORS = [
   { bg: "#FCC700", text: "#0F172A", avatarBorder: "#0F172A" }, // yellow
   { bg: "#5719a6", text: "#ffffff", avatarBorder: "#ffffff" }, // violet-deep
@@ -144,11 +71,9 @@ function Chip({
 }) {
   const color = CARD_COLORS[index % CARD_COLORS.length];
   return (
-    <a
-      href={creator.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Instagram de @${creator.handle}`}
+    <Link
+      href="/creators"
+      aria-label={`Ver ${creator.name} na página de creators`}
       aria-hidden={duplicated}
       tabIndex={duplicated ? -1 : undefined}
       className="mr-3 inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border-2 border-slate-950 py-1 pl-1 pr-3 font-display text-[0.8rem] font-bold shadow-[3px_3px_0_#0f172a] transition-all duration-150 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[5px_5px_0_#0f172a]"
@@ -156,7 +81,7 @@ function Chip({
     >
       <Avatar creator={creator} borderColor={color.avatarBorder} />
       <span>@{creator.handle}</span>
-    </a>
+    </Link>
   );
 }
 

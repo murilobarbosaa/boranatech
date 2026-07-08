@@ -1071,10 +1071,8 @@
       CREATORS.forEach(function (creator) {
         var link = document.createElement("a");
         link.className = "creator";
-        link.href = creator.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.setAttribute("aria-label", "Instagram de @" + creator.handle);
+        link.href = "/creators";
+        link.setAttribute("aria-label", "Ver " + creator.name + " na pagina de creators");
         var ava = document.createElement("span");
         ava.className = "ava";
         fillAvatar(ava, creator);
@@ -1093,10 +1091,8 @@
       function buildChip(creator, idx) {
         var link = document.createElement("a");
         link.className = "cchip " + CARD_COLORS[idx % CARD_COLORS.length];
-        link.href = creator.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.setAttribute("aria-label", "Instagram de @" + creator.handle);
+        link.href = "/creators";
+        link.setAttribute("aria-label", "Ver " + creator.name + " na pagina de creators");
         var ava = document.createElement("span");
         ava.className = "ava " + AV_COLORS[idx % AV_COLORS.length];
         fillAvatar(ava, creator);

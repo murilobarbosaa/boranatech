@@ -28,6 +28,7 @@ const CheckoutSucesso = lazy(() => import("@/pages/CheckoutSucesso"));
 const Comparador = lazy(() => import("@/pages/Comparador"));
 const Comunidades = lazy(() => import("@/pages/Comunidades"));
 const Conquistas = lazy(() => import("@/pages/conquistas/Conquistas"));
+const Creators = lazy(() => import("@/pages/Creators"));
 const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
 const CurriculoGerar = lazy(() => import("@/pages/CurriculoGerar"));
 const CurriculoLinkedin = lazy(() => import("@/pages/CurriculoLinkedin"));
@@ -106,6 +107,7 @@ function Router() {
     >
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/creators" component={Creators} />
         <Route path="/areas" component={Areas} />
         <Route path="/areas/:parent/:subarea">
           {() => (
