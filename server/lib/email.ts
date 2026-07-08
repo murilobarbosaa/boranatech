@@ -1,5 +1,9 @@
 import { Resend } from "resend";
 
+import {
+  escapeCampaignHtml,
+  renderCampaignBodyHtml,
+} from "../../shared/emailCampaignBody";
 import type { Gender } from "../../shared/gender";
 import { getProBenefitLabels } from "../../shared/proFeatures";
 import { env } from "./env";
@@ -200,7 +204,10 @@ async function sendEmail(params: {
   }
 
   // List-Unsubscribe (so mailto por enquanto) vale para todos os envios.
-  await resend.emails.send({
+  // Retorna o resultado do Resend (erro de API vem no campo error, sem throw)
+  // pra quem precisa distinguir sucesso de falha (campanhas). Os transacionais
+  // existentes ignoram o retorno, comportamento inalterado.
+  return resend.emails.send({
     ...params,
     headers: {
       "List-Unsubscribe": "<mailto:oi@boranatech.com.br?subject=unsubscribe>",
@@ -419,6 +426,90 @@ export async function sendCancellationEmail(
     subject: title,
     html: layout(theme, title, body),
   });
+}
+
+// Layout das campanhas para a waitlist: nome no topo, titulo, imagem opcional
+// logo apos o titulo, corpo renderizado (shared/emailCampaignBody) e rodape com
+// link de descadastro e endereco do remetente.
+function campaignLayout(opts: {
+  title: string;
+  bodyHtml: string;
+  imageUrl: string | null;
+  unsubscribeUrl: string;
+}) {
+  const imageHtml = opts.imageUrl
+    ? `
+        <tr><td style="padding:18px 40px 0 40px;">
+          <img src="${escapeCampaignHtml(opts.imageUrl)}" alt="" style="display:block;width:100%;max-width:100%;height:auto;border:0;">
+        </td></tr>`
+    : "";
+  return `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F1F5F9;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;">
+    <tr><td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#FFFFFF;border:4px solid #0F172A;">
+        <tr><td style="padding:26px 40px 0 40px;">
+          <div style="font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:17px;font-weight:700;color:#0F172A;">BORA NA TECH</div>
+        </td></tr>
+        <tr><td style="padding:18px 40px 0 40px;">
+          <h1 style="margin:0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:26px;line-height:1.2;font-weight:700;color:#0F172A;">${opts.title}</h1>
+        </td></tr>
+        ${imageHtml}
+        <tr><td style="padding:18px 40px 8px 40px;">${opts.bodyHtml}</td></tr>
+        <tr><td style="padding:8px 40px 0 40px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:2px solid #E2E8F0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
+        </td></tr>
+        <tr><td style="padding:18px 40px 30px 40px;text-align:center;">
+          <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#94A3B8;">Voce esta recebendo este e-mail porque entrou na lista de espera do Bora na Tech.</p>
+          <p style="margin:0 0 8px;font-size:12px;line-height:1.5;">
+            <a href="${opts.unsubscribeUrl}" style="color:#64748B;">Nao quero mais receber estes e-mails</a>
+          </p>
+          <p style="margin:0;font-size:12px;line-height:1.5;color:#94A3B8;">Enviado por Bora na Tech (oi@boranatech.com.br)</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>`;
+}
+// TODO(Ana): textos fixos do template de campanha acima (nome no topo e rodape).
+
+// Envio de campanha: diferente dos transacionais, falha NUNCA colapsa em
+// sucesso. Sem Resend configurado ou com erro de API, lanca; o worker da fila
+// marca o destinatario como failed apos esgotar as tentativas.
+export async function sendCampaignEmail(params: {
+  to: string;
+  subject: string;
+  body: string;
+  imageUrl: string | null;
+  unsubscribeUrl: string;
+}) {
+  if (!env.resendApiKey || !resend) {
+    throw new Error("RESEND_API_KEY ausente. Envio de campanha requer Resend.");
+  }
+  const title = escapeCampaignHtml(params.subject);
+  const html = campaignLayout({
+    title,
+    bodyHtml: renderCampaignBodyHtml(params.body),
+    imageUrl: params.imageUrl,
+    unsubscribeUrl: params.unsubscribeUrl,
+  });
+  const result = await sendEmail({
+    to: params.to,
+    from: FROM_RELATIONSHIP,
+    subject: params.subject,
+    html,
+    headers: {
+      // Alem do mailto padrao, a URL de descadastro da campanha. O header
+      // List-Unsubscribe-Post habilita o one-click dos provedores (POST direto
+      // na URL, sem body; a rota aceita token via query string).
+      "List-Unsubscribe": `<${params.unsubscribeUrl}>, <mailto:oi@boranatech.com.br?subject=unsubscribe>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  });
+  if (!result) {
+    throw new Error("Envio de campanha nao executado (Resend indisponivel).");
+  }
+  if (result.error) {
+    throw new Error(result.error.message || "Erro do Resend ao enviar.");
+  }
 }
 
 export async function sendPaymentFailedEmail(

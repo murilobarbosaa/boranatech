@@ -7,6 +7,7 @@ import { createServer } from "http";
 
 import app from "./app";
 import { env } from "./lib/env";
+import { createEmailCampaignWorker } from "./lib/emailCampaignQueue";
 import { createEmailWorker } from "./lib/queue";
 import { cacheConnection, queueConnection } from "./lib/redis";
 
@@ -45,9 +46,25 @@ async function startServer() {
         }
       })()
     : null;
+  const emailCampaignWorker = env.redisUrl
+    ? (() => {
+        try {
+          return createEmailCampaignWorker();
+        } catch (err) {
+          console.error(
+            "[email-campaign] Erro ao iniciar worker de campanha:",
+            err,
+          );
+          return null;
+        }
+      })()
+    : null;
 
   async function shutdown() {
-    await emailWorker?.close();
+    await Promise.allSettled([
+      emailWorker?.close(),
+      emailCampaignWorker?.close(),
+    ]);
     server.close(() => {
       process.exit(0);
     });

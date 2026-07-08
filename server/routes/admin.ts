@@ -7,11 +7,15 @@ import { emailQueue } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import emailCampaignsRouter from "./adminEmailCampaigns";
 
 const router = Router();
 
 router.use(requireAuth);
 router.use(requireAdmin);
+
+// Campanhas de e-mail pra waitlist (aba Emails). Depois dos guards de admin.
+router.use("/email-campaigns", emailCampaignsRouter);
 
 const EDITABLE_TABLES: Record<string, string[]> = {
   news: [
