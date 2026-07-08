@@ -1609,6 +1609,7 @@ type EmailCampaignBatch = {
   id: string;
   mode: "next" | "selected";
   batch_limit: number | null;
+  exclude_other_campaigns: boolean;
   selected_count: number | null;
   scheduled_for: string | null;
   status: EmailCampaignBatchStatus;
@@ -1750,6 +1751,7 @@ function EmailCampaignsAdminSection() {
 
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchMode, setBatchMode] = useState<"next" | "selected">("next");
+  const [excludeOther, setExcludeOther] = useState(true);
   const [whenMode, setWhenMode] = useState<"now" | "schedule">("now");
   const [scheduleText, setScheduleText] = useState("");
   const [confirmText, setConfirmText] = useState("");
@@ -2027,10 +2029,33 @@ function EmailCampaignsAdminSection() {
     }
   }
 
+  const loadEligibleCount = useCallback(
+    async (campaignId: string, exclude: boolean) => {
+      setEligibleCount(null);
+      setEligibleError(null);
+      try {
+        const params = new URLSearchParams();
+        params.set("campaignId", campaignId);
+        if (exclude) params.set("excludeOtherCampaigns", "true");
+        const json = await adminFetch(
+          `/email-campaigns/waitlist-count?${params.toString()}`,
+        );
+        setEligibleCount((json.data as { count: number }).count);
+      } catch (err) {
+        // Erro de contagem é exibido como erro, nunca como zero.
+        setEligibleError(
+          err instanceof Error ? err.message : "Erro ao contar a waitlist.",
+        );
+      }
+    },
+    [],
+  );
+
   function openBatchModal() {
     if (!detail) return;
     setBatchModalOpen(true);
     setBatchMode("next");
+    setExcludeOther(true);
     setWhenMode("now");
     setScheduleText("");
     setConfirmText("");
@@ -2040,19 +2065,14 @@ function EmailCampaignsAdminSection() {
     setPickerSearchInput("");
     setPickerSearch("");
     setPickerError(null);
-    setEligibleCount(null);
-    setEligibleError(null);
-    void (async () => {
-      try {
-        const json = await adminFetch("/email-campaigns/waitlist-count");
-        setEligibleCount((json.data as { count: number }).count);
-      } catch (err) {
-        // Erro de contagem é exibido como erro, nunca como zero.
-        setEligibleError(
-          err instanceof Error ? err.message : "Erro ao contar a waitlist.",
-        );
-      }
-    })();
+    void loadEligibleCount(detail.id, true);
+  }
+
+  function toggleExcludeOther() {
+    if (!detail) return;
+    const next = !excludeOther;
+    setExcludeOther(next);
+    void loadEligibleCount(detail.id, next);
   }
 
   useEffect(() => {
@@ -2153,11 +2173,17 @@ function EmailCampaignsAdminSection() {
     try {
       const payload =
         batchMode === "next"
-          ? { mode: "next", limit, scheduledFor }
+          ? {
+              mode: "next",
+              limit,
+              scheduledFor,
+              excludeOtherCampaigns: excludeOther,
+            }
           : {
               mode: "selected",
               emails: Array.from(selectedEmails),
               scheduledFor,
+              excludeOtherCampaigns: excludeOther,
             };
       const json = await adminFetch(`/email-campaigns/${detail.id}/batches`, {
         method: "POST",
@@ -2872,6 +2898,17 @@ function EmailCampaignsAdminSection() {
                   : `${eligibleCount} pessoas elegíveis na waitlist.`}
               </p>
             )}
+
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={excludeOther}
+                onChange={toggleExcludeOther}
+                className="h-4 w-4 accent-slate-950"
+              />
+              {/* TODO(Ana): rótulo do filtro entre campanhas. */}
+              Pular quem já recebeu outra campanha
+            </label>
 
             <div className="mt-4">
               {/* TODO(Ana): rótulos dos modos. */}

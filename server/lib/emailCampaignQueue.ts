@@ -121,7 +121,7 @@ export async function cleanupCanceledBatch(batchId: string) {
   }
 }
 
-async function fetchCampaignRecipientEmailSet(
+export async function fetchCampaignRecipientEmailSet(
   campaignId: string,
 ): Promise<Set<string>> {
   const emails = new Set<string>();
@@ -143,13 +143,44 @@ async function fetchCampaignRecipientEmailSet(
   return emails;
 }
 
+// E-mails com status sent em QUALQUER campanha que nao seja a atual, em
+// minusculas (comparacao case-insensitive; a waitlist ja indexa lower(email)).
+// Só sent: failed/pending de outra campanha nao contam como "ja recebeu".
+export async function fetchSentEmailSetFromOtherCampaigns(
+  excludingCampaignId: string,
+): Promise<Set<string>> {
+  const emails = new Set<string>();
+  for (let from = 0; ; from += DB_PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("email_campaign_recipients")
+      .select("email")
+      .eq("status", "sent")
+      .neq("campaign_id", excludingCampaignId)
+      .range(from, from + DB_PAGE - 1);
+    if (error) {
+      throw new Error(
+        `Falha ao buscar enviados de outras campanhas: ${error.message}`,
+      );
+    }
+    const rows = data ?? [];
+    rows.forEach((row) => emails.add(row.email.toLowerCase()));
+    if (rows.length < DB_PAGE) break;
+  }
+  return emails;
+}
+
 // mode 'next': proximos N elegiveis da waitlist em ordem de cadastro,
-// excluindo quem ja e recipient da campanha. limit null = todos os restantes.
+// excluindo quem ja e recipient da campanha (e, com excludeOtherCampaigns,
+// quem ja recebeu qualquer outra campanha). limit null = todos os restantes.
 async function selectNextEligibleEmails(
   campaignId: string,
   limit: number | null,
+  excludeOtherCampaigns: boolean,
 ): Promise<string[]> {
   const existing = await fetchCampaignRecipientEmailSet(campaignId);
+  const sentElsewhere = excludeOtherCampaigns
+    ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
+    : null;
   const selected: string[] = [];
   for (let from = 0; ; from += DB_PAGE) {
     const { data, error } = await supabaseAdmin
@@ -164,6 +195,7 @@ async function selectNextEligibleEmails(
     const rows = data ?? [];
     for (const row of rows) {
       if (existing.has(row.email)) continue;
+      if (sentElsewhere?.has(row.email.toLowerCase())) continue;
       selected.push(row.email);
       if (limit !== null && selected.length >= limit) return selected;
     }
@@ -178,6 +210,7 @@ async function selectNextEligibleEmails(
 async function selectBatchEligibleEmails(
   campaignId: string,
   batchId: string,
+  excludeOtherCampaigns: boolean,
 ): Promise<string[]> {
   const { data, error } = await supabaseAdmin
     .from("email_campaign_batch_recipients")
@@ -207,8 +240,14 @@ async function selectBatchEligibleEmails(
     }
     (rows ?? []).forEach((row) => eligible.add(row.email));
   }
+  const sentElsewhere = excludeOtherCampaigns
+    ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
+    : null;
   return wanted.filter(
-    (email) => eligible.has(email) && !existing.has(email),
+    (email) =>
+      eligible.has(email) &&
+      !existing.has(email) &&
+      !sentElsewhere?.has(email.toLowerCase()),
   );
 }
 
@@ -250,7 +289,7 @@ export async function dispatchCampaignBatch(
     .update({ status: "dispatched", dispatched_at: new Date().toISOString() })
     .eq("id", batchId)
     .eq("status", "pending")
-    .select("id, campaign_id, mode, batch_limit")
+    .select("id, campaign_id, mode, batch_limit, exclude_other_campaigns")
     .maybeSingle();
   if (casError) {
     throw new Error(`Falha ao marcar lote como dispatched: ${casError.message}`);
@@ -272,12 +311,18 @@ export async function dispatchCampaignBatch(
       return { dispatched: true, enqueued: previous.pendingIds.length };
     }
 
+    const excludeOtherCampaigns = batch.exclude_other_campaigns === true;
     const emails =
       batch.mode === "selected"
-        ? await selectBatchEligibleEmails(batch.campaign_id, batch.id)
+        ? await selectBatchEligibleEmails(
+            batch.campaign_id,
+            batch.id,
+            excludeOtherCampaigns,
+          )
         : await selectNextEligibleEmails(
             batch.campaign_id,
             batch.batch_limit ?? null,
+            excludeOtherCampaigns,
           );
 
     if (emails.length === 0) {

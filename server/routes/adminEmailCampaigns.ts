@@ -7,6 +7,8 @@ import {
   cleanupCanceledBatch,
   dispatchCampaignBatch,
   emailCampaignQueue,
+  fetchCampaignRecipientEmailSet,
+  fetchSentEmailSetFromOtherCampaigns,
   scheduleBatchDispatchJob,
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
@@ -26,7 +28,7 @@ const CAMPAIGN_COLUMNS =
   "id, subject, body, image_url, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
 
 const BATCH_COLUMNS =
-  "id, campaign_id, mode, batch_limit, scheduled_for, status, dispatched_at, created_at";
+  "id, campaign_id, mode, batch_limit, exclude_other_campaigns, scheduled_for, status, dispatched_at, created_at";
 
 const MAX_SELECTED_PER_BATCH = 500;
 const SCHEDULE_PAST_TOLERANCE_MS = 60_000;
@@ -193,23 +195,77 @@ router.get("/", async (_req, res, next) => {
 });
 
 // GET /api/admin/email-campaigns/waitlist-count: total de elegiveis pro modal
-// de confirmacao. Erro e erro (500), nunca colapsa em zero.
-router.get("/waitlist-count", async (_req, res, next) => {
+// de confirmacao. Com campaignId e/ou excludeOtherCampaigns=true, aplica os
+// MESMOS filtros da selecao do lote (dedup da propria campanha e sent em
+// outras campanhas) pro numero exibido bater com o que sera enviado. Erro e
+// erro (500), nunca colapsa em zero.
+router.get("/waitlist-count", async (req, res, next) => {
   try {
-    const { count, error } = await supabaseAdmin
-      .from("waitlist")
-      .select("id", { count: "exact", head: true })
-      .in("status", ELIGIBLE_WAITLIST_STATUSES);
-    if (error || count === null) {
-      console.error("[email-campaign] Falha ao contar waitlist", error);
+    const campaignId =
+      typeof req.query.campaignId === "string" ? req.query.campaignId : "";
+    const excludeOther = req.query.excludeOtherCampaigns === "true";
+
+    if (!campaignId && !excludeOther) {
+      const { count, error } = await supabaseAdmin
+        .from("waitlist")
+        .select("id", { count: "exact", head: true })
+        .in("status", ELIGIBLE_WAITLIST_STATUSES);
+      if (error || count === null) {
+        console.error("[email-campaign] Falha ao contar waitlist", error);
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível contar a waitlist.",
+          ),
+        );
+      }
+      res.json({ data: { count } });
+      return;
+    }
+
+    if (excludeOther && !campaignId) {
       return next(
         createError(
-          500,
-          "campaign_error",
-          "Não foi possível contar a waitlist.",
+          400,
+          "invalid_campaign",
+          "campaignId é obrigatório com excludeOtherCampaigns.",
         ),
       );
     }
+
+    const existing = await fetchCampaignRecipientEmailSet(campaignId);
+    const sentElsewhere = excludeOther
+      ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
+      : null;
+
+    const PAGE = 1000;
+    let count = 0;
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabaseAdmin
+        .from("waitlist")
+        .select("email")
+        .in("status", ELIGIBLE_WAITLIST_STATUSES)
+        .range(from, from + PAGE - 1);
+      if (error) {
+        console.error("[email-campaign] Falha ao contar waitlist", error);
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível contar a waitlist.",
+          ),
+        );
+      }
+      const rows = data ?? [];
+      for (const row of rows) {
+        if (existing.has(row.email)) continue;
+        if (sentElsewhere?.has(row.email.toLowerCase())) continue;
+        count += 1;
+      }
+      if (rows.length < PAGE) break;
+    }
+
     res.json({ data: { count } });
   } catch (err) {
     next(err);
@@ -779,6 +835,23 @@ router.post("/:id/batches", async (req, res, next) => {
       }
     }
 
+    let excludeOtherCampaigns = false;
+    if (
+      body.excludeOtherCampaigns !== undefined &&
+      body.excludeOtherCampaigns !== null
+    ) {
+      if (typeof body.excludeOtherCampaigns !== "boolean") {
+        return next(
+          createError(
+            400,
+            "invalid_exclude_flag",
+            "excludeOtherCampaigns precisa ser booleano.",
+          ),
+        );
+      }
+      excludeOtherCampaigns = body.excludeOtherCampaigns;
+    }
+
     let scheduledFor: string | null = null;
     if (
       body.scheduledFor !== undefined &&
@@ -846,6 +919,7 @@ router.post("/:id/batches", async (req, res, next) => {
         campaign_id: campaignId,
         mode,
         batch_limit: limit,
+        exclude_other_campaigns: excludeOtherCampaigns,
         scheduled_for: scheduledFor,
         created_by: req.user.id,
       })
