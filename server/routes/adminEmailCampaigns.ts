@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { sendCampaignEmail } from "../lib/email";
+import { batchJobId } from "../lib/emailCampaignJobIds";
 import {
   ELIGIBLE_WAITLIST_STATUSES,
   dispatchCampaignBatch,
@@ -663,7 +664,7 @@ router.delete("/:id/batches/:batchId", async (req, res, next) => {
     // ativo), o CAS acima ja garante que o gatilho remanescente vira no-op.
     if (emailCampaignQueue) {
       try {
-        await emailCampaignQueue.remove(`batch:${req.params.batchId}`);
+        await emailCampaignQueue.remove(batchJobId(req.params.batchId));
       } catch (removeErr) {
         console.warn(
           "[email-campaign] Falha ao remover gatilho do lote cancelado",

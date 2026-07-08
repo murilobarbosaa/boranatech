@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { Queue, Worker, type Job } from "bullmq";
 
 import { sendCampaignEmail } from "./email";
+import { batchJobId, recipientJobId } from "./emailCampaignJobIds";
 import { env } from "./env";
 import { queueConnection } from "./redis";
 import { supabaseAdmin } from "./supabaseAdmin";
@@ -65,13 +66,13 @@ export async function enqueueCampaignRecipients(
       chunk.map((recipientId) => ({
         name: "send",
         data: { campaignId, recipientId },
-        opts: { jobId: `ecr:${recipientId}` },
+        opts: { jobId: recipientJobId(recipientId) },
       })),
     );
   }
 }
 
-// Gatilho do lote: job atrasado com jobId deterministico batch:{id}. Se o job
+// Gatilho do lote: job atrasado com jobId deterministico batch-{id}. Se o job
 // ainda existir no Redis (delayed/waiting), o add e no-op, entao a
 // reconciliacao no boot pode chamar isto pra todo batch pending sem duplicar.
 export async function scheduleBatchDispatchJob(
@@ -87,7 +88,7 @@ export async function scheduleBatchDispatchJob(
   await emailCampaignQueue.add(
     "dispatch-batch",
     { batchId },
-    { jobId: `batch:${batchId}`, delay },
+    { jobId: batchJobId(batchId), delay },
   );
 }
 
