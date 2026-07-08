@@ -191,7 +191,7 @@ const menuData: DropdownMenu[] = [
             path: "/estagio",
           },
           {
-            label: "Empresas Tech",
+            label: "Empresas",
             description: "Conheça quem contrata",
             path: "/empresas",
           },
