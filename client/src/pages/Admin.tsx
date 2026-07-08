@@ -2129,51 +2129,53 @@ function EmailCampaignsAdminSection() {
           {/* TODO(Ana): título do preview. */}
           <h3 className="font-display text-2xl font-black">Preview do e-mail</h3>
           <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-[#F1F5F9] p-4">
-            <div className="mx-auto max-w-md border-4 border-slate-950 bg-white p-5">
-              <p className="font-display text-xs font-black text-slate-950">
-                BORA NA TECH
-              </p>
-              <h4 className="font-display mt-3 text-xl font-black text-slate-950">
-                {subject.trim() || "Assunto da campanha"}
-              </h4>
-              {trimmedImageUrl ? (
-                imageBroken ? (
-                  <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">
+            <div className="mx-auto max-w-md border-4 border-slate-950 bg-white">
+              {trimmedImageUrl && !imageBroken ? (
+                <img
+                  src={trimmedImageUrl}
+                  // TODO(Ana): alt text generico do hero da campanha.
+                  alt="Imagem da campanha do Bora na Tech"
+                  onError={() => setImageBroken(true)}
+                  className="block w-full max-w-full"
+                />
+              ) : null}
+              <div className="p-5">
+                {trimmedImageUrl && imageBroken ? (
+                  <p className="mb-3 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">
                     {/* TODO(Ana): erro de imagem no preview. */}
                     Não foi possível carregar a imagem dessa URL.
                   </p>
-                ) : (
-                  <img
-                    src={trimmedImageUrl}
-                    alt=""
-                    onError={() => setImageBroken(true)}
-                    className="mt-3 w-full max-w-full"
+                ) : null}
+                <p className="font-display text-xs font-black text-slate-950">
+                  BORA NA TECH
+                </p>
+                <h4 className="font-display mt-3 text-xl font-black text-slate-950">
+                  {subject.trim() || "Assunto da campanha"}
+                </h4>
+                {bodyText.trim() ? (
+                  <div
+                    className="mt-3"
+                    dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
                   />
-                )
-              ) : null}
-              {bodyText.trim() ? (
-                <div
-                  className="mt-3"
-                  dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
-                />
-              ) : (
-                <p className="mt-3 text-sm font-semibold text-slate-400">
-                  {/* TODO(Ana): placeholder do preview vazio. */}O corpo da
-                  campanha aparece aqui.
-                </p>
-              )}
-              <div className="mt-4 border-t-2 border-slate-200 pt-3 text-center text-[11px] font-semibold text-slate-400">
-                {/* TODO(Ana): rodapé do preview. */}
-                <p>
-                  Você está recebendo este e-mail porque entrou na lista de
-                  espera do Bora na Tech.
-                </p>
-                <p className="mt-1 underline">
-                  Não quero mais receber estes e-mails
-                </p>
-                <p className="mt-1">
-                  Enviado por Bora na Tech (oi@boranatech.com.br)
-                </p>
+                ) : (
+                  <p className="mt-3 text-sm font-semibold text-slate-400">
+                    {/* TODO(Ana): placeholder do preview vazio. */}O corpo da
+                    campanha aparece aqui.
+                  </p>
+                )}
+                <div className="mt-4 border-t-2 border-slate-200 pt-3 text-center text-[11px] font-semibold text-slate-400">
+                  {/* TODO(Ana): rodapé do preview. */}
+                  <p>
+                    Você está recebendo este e-mail porque entrou na lista de
+                    espera do Bora na Tech.
+                  </p>
+                  <p className="mt-1 underline">
+                    Não quero mais receber estes e-mails
+                  </p>
+                  <p className="mt-1">
+                    Enviado por Bora na Tech (oi@boranatech.com.br)
+                  </p>
+                </div>
               </div>
             </div>
           </div>

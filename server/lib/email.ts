@@ -428,32 +428,34 @@ export async function sendCancellationEmail(
   });
 }
 
-// Layout das campanhas para a waitlist: nome no topo, titulo, imagem opcional
-// logo apos o titulo, corpo renderizado (shared/emailCampaignBody) e rodape com
-// link de descadastro e endereco do remetente.
+// Layout das campanhas para a waitlist: imagem opcional como hero no topo do
+// card (mesmo padrao do waitlistLayout: primeira linha da tabela, sem padding,
+// largura total), nome, titulo, corpo renderizado (shared/emailCampaignBody) e
+// rodape com link de descadastro e endereco do remetente.
 function campaignLayout(opts: {
   title: string;
   bodyHtml: string;
   imageUrl: string | null;
   unsubscribeUrl: string;
 }) {
-  const imageHtml = opts.imageUrl
+  // TODO(Ana): alt text generico do hero da campanha.
+  const heroHtml = opts.imageUrl
     ? `
-        <tr><td style="padding:18px 40px 0 40px;">
-          <img src="${escapeCampaignHtml(opts.imageUrl)}" alt="" style="display:block;width:100%;max-width:100%;height:auto;border:0;">
+        <tr><td style="padding:0;font-size:0;line-height:0;">
+          <img src="${escapeCampaignHtml(opts.imageUrl)}" width="600" alt="Imagem da campanha do Bora na Tech" style="display:block;width:100%;max-width:600px;height:auto;border:0;">
         </td></tr>`
     : "";
   return `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F1F5F9;margin:0;padding:28px 12px;font-family:Arial,Helvetica,sans-serif;">
     <tr><td align="center">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;background:#FFFFFF;border:4px solid #0F172A;">
+        ${heroHtml}
         <tr><td style="padding:26px 40px 0 40px;">
           <div style="font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:17px;font-weight:700;color:#0F172A;">BORA NA TECH</div>
         </td></tr>
         <tr><td style="padding:18px 40px 0 40px;">
           <h1 style="margin:0;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:26px;line-height:1.2;font-weight:700;color:#0F172A;">${opts.title}</h1>
         </td></tr>
-        ${imageHtml}
         <tr><td style="padding:18px 40px 8px 40px;">${opts.bodyHtml}</td></tr>
         <tr><td style="padding:8px 40px 0 40px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:2px solid #E2E8F0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
