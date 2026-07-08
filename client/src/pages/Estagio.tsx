@@ -23,11 +23,24 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { vagasInfo } from "@/lib/data";
+import { areasTI, vagasInfo } from "@/lib/data";
 import { careerInstitutes } from "@/lib/platformData";
 import { getJobs } from "@/services/contentService";
 
 const tabs = ["Vagas, Estágio e Trainee", "Institutos"];
+
+const areaLabel = (slug: string) =>
+  areasTI.find((a) => a.slug === slug)?.nome ?? "Diversas áreas";
+
+const instituteGroups = careerInstitutes.reduce<
+  { slug: string; items: (typeof careerInstitutes)[number][] }[]
+>((groups, institute) => {
+  const slug = institute.areas?.[0] ?? "geral";
+  const existing = groups.find((g) => g.slug === slug);
+  if (existing) existing.items.push(institute);
+  else groups.push({ slug, items: [institute] });
+  return groups;
+}, []);
 
 type EstagioProps = {
   initialTab?: number;
@@ -360,26 +373,49 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                   mentorias, certificações e oportunidades.
                 </p>
               </div>
-              <div className="grid gap-5 md:grid-cols-3">
-                {careerInstitutes.map((institute) => (
-                  <a
-                    key={institute.name}
-                    href={institute.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="card-invite rounded-2xl bg-white p-6"
-                  >
-                    <h3 className="font-display text-xl font-black text-slate-950">
-                      {institute.name}
-                    </h3>
-                    <p className="mt-2 text-sm text-slate-600">
-                      {institute.desc}
+              <div className="space-y-10">
+                {instituteGroups.map((group) => (
+                  <div key={group.slug}>
+                    <div className="mb-3 flex items-center gap-3">
+                      <span
+                        className="h-6 w-1.5 shrink-0 rounded-full bg-amber-500"
+                        aria-hidden
+                      />
+                      <h3 className="font-display text-2xl font-black text-slate-950">
+                        {areaLabel(group.slug)}
+                      </h3>
+                      <span className="rounded-full border-2 border-slate-900 bg-amber-100 px-2.5 py-0.5 text-xs font-black text-amber-800">
+                        {group.items.length}
+                      </span>
+                    </div>
+                    {/* TODO(Ana): copy de contexto por grupo de institutos */}
+                    <p className="mb-5 max-w-2xl text-sm text-slate-600">
+                      Referências reconhecidas para quem quer crescer em{" "}
+                      {areaLabel(group.slug).toLowerCase()}.
                     </p>
-                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-amber-700">
-                      Conhecer instituto{" "}
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </span>
-                  </a>
+                    <div className="grid gap-5 md:grid-cols-3">
+                      {group.items.map((institute) => (
+                        <a
+                          key={institute.name}
+                          href={institute.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="card-invite rounded-2xl bg-white p-6"
+                        >
+                          <h3 className="font-display text-xl font-black text-slate-950">
+                            {institute.name}
+                          </h3>
+                          <p className="mt-2 text-sm text-slate-600">
+                            {institute.desc}
+                          </p>
+                          <span className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-amber-700">
+                            Conhecer instituto{" "}
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
