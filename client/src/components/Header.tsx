@@ -229,11 +229,6 @@ const menuData: DropdownMenu[] = [
             path: "/networking",
             isPro: true,
           },
-          {
-            label: "Portfólio",
-            description: "Monte um portfólio que gera entrevistas",
-            path: "/portfolio",
-          },
         ],
       },
       {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
+import PortfolioFreeGuide from "@/components/portfolio/PortfolioFreeGuide";
 import PageHero from "@/components/shared/PageHero";
 import SEO from "@/components/SEO";
 import { Spinner } from "@/components/ui/spinner";
@@ -396,7 +397,10 @@ export default function PortfolioAnalisar() {
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
           {!isPro ? (
-            <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
+            <div className="space-y-10">
+              <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
+              <PortfolioFreeGuide />
+            </div>
           ) : (
             <div className="space-y-8">
               <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">

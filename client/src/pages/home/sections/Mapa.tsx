@@ -90,7 +90,7 @@ const NODES: MapNode[] = [
     subtitle: "Aplique conhecimento e construa sua vitrine.",
     tools: [
       { name: "Projetos", href: "/projetos" },
-      { name: "Portfólio", href: "/portfolio" },
+      { name: "Analisar portfólio", href: "/portfolio/analisar" },
       { name: "Freelance", href: "/freelance" },
       { name: "Networking", href: "/networking" },
       { name: "Diário de Estudos", href: "/estudos-diario" },

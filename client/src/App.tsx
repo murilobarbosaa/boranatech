@@ -68,7 +68,6 @@ const Perfil = lazy(() => import("@/pages/Perfil"));
 const PerfilFavoritos = lazy(() => import("@/pages/PerfilFavoritos"));
 const PerguntasFrequentes = lazy(() => import("@/pages/PerguntasFrequentes"));
 const Plataformas = lazy(() => import("@/pages/Plataformas"));
-const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const PortfolioAnalisar = lazy(() => import("@/pages/PortfolioAnalisar"));
 const Privacidade = lazy(() => import("@/pages/Privacidade"));
 const Projetos = lazy(() => import("@/pages/Projetos"));
@@ -170,7 +169,9 @@ function Router() {
         <Route path="/entrevistas/perguntas" component={EntrevistaPerguntas} />
         <Route path="/entrevistas/simulador" component={EntrevistaSimulador} />
         <Route path="/entrevistas/desafios" component={EntrevistaDesafios} />
-        <Route path="/portfolio" component={Portfolio} />
+        <Route path="/portfolio">
+          {() => <Redirect to="/portfolio/analisar" />}
+        </Route>
         <Route path="/portfolio/analisar" component={PortfolioAnalisar} />
         <Route path="/curriculo">
           {() => <Redirect to="/curriculo/analisar" />}
