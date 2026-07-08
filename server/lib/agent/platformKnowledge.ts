@@ -29,7 +29,6 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/entrevistas/perguntas", tier: "free", label: "Banco de perguntas de entrevista." },
   { route: "/entrevistas/desafios", tier: "free", label: "Desafios de entrevista." },
   { route: "/portfolio", tier: "free", label: "Guia de portfolio." },
-  { route: "/curriculo", tier: "free", label: "Guia de curriculo." },
   { route: "/estudos", tier: "free", label: "Hub de recursos de estudo." },
   { route: "/empregabilidade", tier: "free", label: "Conteudo de empregabilidade." },
   { route: "/networking", tier: "free", label: "Guia de networking." },

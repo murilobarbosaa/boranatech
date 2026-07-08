@@ -115,7 +115,7 @@ const NODES: MapNode[] = [
       { name: "Empresas", href: "/empresas" },
       { name: "Vagas Estágio", href: "/estagio" },
       { name: "Salários", href: "/salarios" },
-      { name: "Currículo", href: "/curriculo" },
+      { name: "Currículo", href: "/curriculo/analisar" },
       { name: "Entrevistas", href: "/entrevistas" },
       { name: "Simulador de Carreira", href: "/simulador" },
     ],

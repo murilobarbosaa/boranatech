@@ -28,7 +28,6 @@ const CheckoutSucesso = lazy(() => import("@/pages/CheckoutSucesso"));
 const Comparador = lazy(() => import("@/pages/Comparador"));
 const Comunidades = lazy(() => import("@/pages/Comunidades"));
 const Conquistas = lazy(() => import("@/pages/conquistas/Conquistas"));
-const Curriculo = lazy(() => import("@/pages/Curriculo"));
 const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
 const CurriculoGerar = lazy(() => import("@/pages/CurriculoGerar"));
 const CurriculoLinkedin = lazy(() => import("@/pages/CurriculoLinkedin"));
@@ -173,7 +172,9 @@ function Router() {
         <Route path="/entrevistas/desafios" component={EntrevistaDesafios} />
         <Route path="/portfolio" component={Portfolio} />
         <Route path="/portfolio/analisar" component={PortfolioAnalisar} />
-        <Route path="/curriculo" component={Curriculo} />
+        <Route path="/curriculo">
+          {() => <Redirect to="/curriculo/analisar" />}
+        </Route>
         <Route path="/curriculo/analisar" component={CurriculoAnalisar} />
         <Route path="/curriculo/gerar" component={CurriculoGerar} />
         <Route path="/curriculo/linkedin" component={CurriculoLinkedin} />

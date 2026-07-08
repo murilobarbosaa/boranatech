@@ -225,7 +225,7 @@ export default function Simulador() {
     jobMaterialsDiscounts[jobMaterials] < 2
       ? {
           text: "Organizar currículo, LinkedIn e apresentação curta antes de aplicar em volume.",
-          href: "/curriculo",
+          href: "/curriculo/analisar",
           cta: "Arrumar currículo",
         }
       : null,
