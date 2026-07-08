@@ -1603,6 +1603,62 @@ type EmailCampaign = {
   completed_at: string | null;
 };
 
+type EmailCampaignBatchStatus = "pending" | "dispatched" | "canceled";
+
+type EmailCampaignBatch = {
+  id: string;
+  mode: "next" | "selected";
+  batch_limit: number | null;
+  selected_count: number | null;
+  scheduled_for: string | null;
+  status: EmailCampaignBatchStatus;
+  dispatched_at: string | null;
+  created_at: string;
+};
+
+type EmailCampaignDetail = EmailCampaign & {
+  batches: EmailCampaignBatch[];
+};
+
+type WaitlistPickerItem = {
+  email: string;
+  created_at: string;
+  status: string;
+  already_recipient: boolean;
+};
+
+// TODO(Ana): rótulos de status dos lotes.
+const EMAIL_BATCH_STATUS_META: Record<
+  EmailCampaignBatchStatus,
+  { label: string; className: string }
+> = {
+  pending: {
+    label: "Agendado",
+    className: "border-amber-500 bg-amber-100 text-amber-800",
+  },
+  dispatched: {
+    label: "Disparado",
+    className: "border-emerald-500 bg-emerald-100 text-emerald-800",
+  },
+  canceled: {
+    label: "Cancelado",
+    className: "border-slate-400 bg-slate-100 text-slate-600",
+  },
+};
+
+const EMAIL_BATCH_MAX_SELECTED = 500;
+const EMAIL_BATCH_PICKER_PAGE_SIZE = 20;
+
+function formatBatchDateTime(value: string | null) {
+  if (!value) return "Imediato";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data inválida";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
 // TODO(Ana): rótulos de status das campanhas.
 const EMAIL_CAMPAIGN_STATUS_META: Record<
   EmailCampaignStatus,
@@ -1640,7 +1696,7 @@ function EmailCampaignsAdminSection() {
   const [listLoading, setListLoading] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<EmailCampaign | null>(null);
+  const [detail, setDetail] = useState<EmailCampaignDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
 
   const [subject, setSubject] = useState("");
@@ -1650,13 +1706,32 @@ function EmailCampaignsAdminSection() {
 
   const [creating, setCreating] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
-  const [sendBusy, setSendBusy] = useState(false);
 
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchMode, setBatchMode] = useState<"next" | "selected">("next");
+  const [whenMode, setWhenMode] = useState<"now" | "schedule">("now");
+  const [scheduleText, setScheduleText] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [limitText, setLimitText] = useState("");
+  const [batchBusy, setBatchBusy] = useState(false);
   const [eligibleCount, setEligibleCount] = useState<number | null>(null);
   const [eligibleError, setEligibleError] = useState<string | null>(null);
+
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [pickerItems, setPickerItems] = useState<WaitlistPickerItem[]>([]);
+  const [pickerTotal, setPickerTotal] = useState<number | null>(null);
+  const [pickerOffset, setPickerOffset] = useState(0);
+  const [pickerSearchInput, setPickerSearchInput] = useState("");
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerError, setPickerError] = useState<string | null>(null);
+
+  const [cancelTarget, setCancelTarget] = useState<EmailCampaignBatch | null>(
+    null,
+  );
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const loadCampaigns = useCallback(async () => {
     setListLoading(true);
@@ -1676,7 +1751,7 @@ function EmailCampaignsAdminSection() {
   const loadDetail = useCallback(async (id: string) => {
     try {
       const json = await adminFetch(`/email-campaigns/${id}`);
-      setDetail(json.data as EmailCampaign);
+      setDetail(json.data as EmailCampaignDetail);
       setDetailError(null);
     } catch (err) {
       // progressFailed: erro é erro e fica visível; NUNCA zera os contadores.
@@ -1732,7 +1807,7 @@ function EmailCampaignsAdminSection() {
       // TODO(Ana): toasts da criação de campanha.
       toast.success("Campanha criada como rascunho.");
       setSelectedId(created.id);
-      setDetail(created);
+      setDetail({ ...created, batches: [] });
       setSubject("");
       setBodyText("");
       setImageUrl("");
@@ -1765,61 +1840,180 @@ function EmailCampaignsAdminSection() {
     }
   }
 
-  function openConfirm() {
+  function openBatchModal() {
     if (!detail) return;
-    setConfirmOpen(true);
+    setBatchModalOpen(true);
+    setBatchMode("next");
+    setWhenMode("now");
+    setScheduleText("");
     setConfirmText("");
     setLimitText("");
+    setSelectedEmails(new Set());
+    setPickerOffset(0);
+    setPickerSearchInput("");
+    setPickerSearch("");
+    setPickerError(null);
     setEligibleCount(null);
     setEligibleError(null);
-    if (detail.status === "draft") {
-      void (async () => {
-        try {
-          const json = await adminFetch("/email-campaigns/waitlist-count");
-          setEligibleCount((json.data as { count: number }).count);
-        } catch (err) {
-          // Erro de contagem é exibido como erro, nunca como zero.
-          setEligibleError(
-            err instanceof Error ? err.message : "Erro ao contar a waitlist.",
-          );
-        }
-      })();
-    } else {
-      setEligibleCount(campaignPendingCount(detail));
-    }
+    void (async () => {
+      try {
+        const json = await adminFetch("/email-campaigns/waitlist-count");
+        setEligibleCount((json.data as { count: number }).count);
+      } catch (err) {
+        // Erro de contagem é exibido como erro, nunca como zero.
+        setEligibleError(
+          err instanceof Error ? err.message : "Erro ao contar a waitlist.",
+        );
+      }
+    })();
   }
 
-  async function confirmSend() {
+  useEffect(() => {
+    if (!batchModalOpen || batchMode !== "selected" || !selectedId) return;
+    let cancelled = false;
+    async function loadPicker() {
+      setPickerLoading(true);
+      setPickerError(null);
+      try {
+        const params = new URLSearchParams();
+        params.set("campaignId", selectedId ?? "");
+        params.set("limit", String(EMAIL_BATCH_PICKER_PAGE_SIZE));
+        params.set("offset", String(pickerOffset));
+        if (pickerSearch) params.set("search", pickerSearch);
+        const json = await adminFetch(
+          `/email-campaigns/waitlist-recipients?${params.toString()}`,
+        );
+        if (cancelled) return;
+        const data = json.data as {
+          items: WaitlistPickerItem[];
+          pagination: { total: number };
+        };
+        setPickerItems(data.items);
+        setPickerTotal(data.pagination.total);
+      } catch (err) {
+        if (cancelled) return;
+        setPickerError(
+          err instanceof Error ? err.message : "Erro ao listar a waitlist.",
+        );
+        setPickerItems([]);
+        setPickerTotal(null);
+      } finally {
+        if (!cancelled) setPickerLoading(false);
+      }
+    }
+    void loadPicker();
+    return () => {
+      cancelled = true;
+    };
+  }, [batchModalOpen, batchMode, selectedId, pickerOffset, pickerSearch]);
+
+  function toggleSelectedEmail(email: string) {
+    setSelectedEmails((prev) => {
+      const nextSet = new Set(prev);
+      if (nextSet.has(email)) {
+        nextSet.delete(email);
+        return nextSet;
+      }
+      if (nextSet.size >= EMAIL_BATCH_MAX_SELECTED) {
+        // TODO(Ana): aviso de limite de seleção.
+        toast.error(
+          `Máximo de ${EMAIL_BATCH_MAX_SELECTED} e-mails por lote.`,
+        );
+        return prev;
+      }
+      nextSet.add(email);
+      return nextSet;
+    });
+  }
+
+  async function submitBatch() {
     if (!detail) return;
-    const trimmedLimit = limitText.trim();
+
     let limit: number | undefined;
-    if (trimmedLimit) {
-      const parsed = Number(trimmedLimit);
-      if (!Number.isInteger(parsed) || parsed < 1) {
-        // TODO(Ana): mensagem de limite inválido.
-        toast.error("O limite precisa ser um número inteiro maior que zero.");
+    if (batchMode === "next") {
+      const trimmedLimit = limitText.trim();
+      if (trimmedLimit) {
+        const parsed = Number(trimmedLimit);
+        if (!Number.isInteger(parsed) || parsed < 1) {
+          // TODO(Ana): mensagem de limite inválido.
+          toast.error("O limite precisa ser um número inteiro maior que zero.");
+          return;
+        }
+        limit = parsed;
+      }
+    } else if (selectedEmails.size === 0) {
+      // TODO(Ana): mensagem de seleção vazia.
+      toast.error("Selecione ao menos um e-mail para o lote.");
+      return;
+    }
+
+    let scheduledFor: string | undefined;
+    if (whenMode === "schedule") {
+      if (!scheduleText) {
+        // TODO(Ana): mensagem de agendamento sem data.
+        toast.error("Escolha a data e a hora do agendamento.");
         return;
       }
-      limit = parsed;
+      const date = new Date(scheduleText);
+      if (Number.isNaN(date.getTime())) {
+        toast.error("Data de agendamento inválida.");
+        return;
+      }
+      scheduledFor = date.toISOString();
     }
-    setSendBusy(true);
+
+    setBatchBusy(true);
     try {
-      const json = await adminFetch(`/email-campaigns/${detail.id}/send`, {
+      const payload =
+        batchMode === "next"
+          ? { mode: "next", limit, scheduledFor }
+          : {
+              mode: "selected",
+              emails: Array.from(selectedEmails),
+              scheduledFor,
+            };
+      const json = await adminFetch(`/email-campaigns/${detail.id}/batches`, {
         method: "POST",
-        body: JSON.stringify(limit ? { limit } : {}),
+        body: JSON.stringify(payload),
       });
-      const data = json.data as { campaign: EmailCampaign; enqueued: number };
-      // TODO(Ana): toast do disparo.
-      toast.success(`${data.enqueued} envios enfileirados.`);
-      setConfirmOpen(false);
-      setDetail(data.campaign);
+      const data = json.data as { scheduled: boolean; enqueued?: number };
+      // TODO(Ana): toasts do lote.
+      toast.success(
+        data.scheduled
+          ? "Lote agendado."
+          : `${data.enqueued ?? 0} envios enfileirados.`,
+      );
+      setBatchModalOpen(false);
+      void loadDetail(detail.id);
       void loadCampaigns();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Erro ao disparar a campanha.",
+        err instanceof Error ? err.message : "Erro ao criar o lote.",
       );
     } finally {
-      setSendBusy(false);
+      setBatchBusy(false);
+    }
+  }
+
+  async function confirmCancelBatch() {
+    if (!detail || !cancelTarget) return;
+    setCancelBusy(true);
+    try {
+      await adminFetch(
+        `/email-campaigns/${detail.id}/batches/${cancelTarget.id}`,
+        { method: "DELETE" },
+      );
+      // TODO(Ana): toast do cancelamento de lote.
+      toast.success("Lote cancelado.");
+      setCancelTarget(null);
+      void loadDetail(detail.id);
+      void loadCampaigns();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao cancelar o lote.",
+      );
+    } finally {
+      setCancelBusy(false);
     }
   }
 
@@ -1837,7 +2031,6 @@ function EmailCampaignsAdminSection() {
           100,
         )
       : 0;
-  const confirmCount = detail?.status === "draft" ? eligibleCount : pending;
 
   return (
     <AdminSection
@@ -1997,24 +2190,16 @@ function EmailCampaignsAdminSection() {
                   {testBusy ? "Enviando teste..." : "Enviar teste para mim"}
                 </button>
               ) : null}
-              {detail.status === "draft" ? (
+              {detail.status === "draft" || detail.status === "sending" ? (
                 <button
                   type="button"
-                  onClick={openConfirm}
+                  onClick={openBatchModal}
                   className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
                 >
                   {/* TODO(Ana) */}
-                  Enviar para a waitlist
-                </button>
-              ) : null}
-              {detail.status === "sending" && pending !== null && pending > 0 ? (
-                <button
-                  type="button"
-                  onClick={openConfirm}
-                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
-                >
-                  {/* TODO(Ana) */}
-                  Enviar restantes
+                  {detail.status === "draft"
+                    ? "Enviar para a waitlist"
+                    : "Novo lote"}
                 </button>
               ) : null}
             </div>
@@ -2062,6 +2247,87 @@ function EmailCampaignsAdminSection() {
                     className="h-full bg-emerald-500 transition-[width] duration-500 motion-reduce:transition-none"
                     style={{ width: `${progressPercent}%` }}
                   />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {detail.batches.length > 0 ? (
+            <div className="mt-5">
+              {/* TODO(Ana): título da seção de lotes. */}
+              <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                Lotes
+              </h4>
+              <div className="mt-2 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-slate-900 bg-slate-50">
+                        {/* TODO(Ana): cabeçalhos da tabela de lotes. */}
+                        <th className="px-4 py-3 font-black uppercase text-slate-600">
+                          Modo
+                        </th>
+                        <th className="px-4 py-3 font-black uppercase text-slate-600">
+                          Quantidade
+                        </th>
+                        <th className="px-4 py-3 font-black uppercase text-slate-600">
+                          Agendado para
+                        </th>
+                        <th className="px-4 py-3 font-black uppercase text-slate-600">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 font-black uppercase text-slate-600">
+                          Ações
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detail.batches.map((batch) => {
+                        const meta = EMAIL_BATCH_STATUS_META[batch.status];
+                        return (
+                          <tr
+                            key={batch.id}
+                            className="border-b border-slate-200 last:border-0"
+                          >
+                            <td className="px-4 py-3 font-semibold text-slate-900">
+                              {/* TODO(Ana): rótulos dos modos de lote. */}
+                              {batch.mode === "next"
+                                ? "Próximos da fila"
+                                : "Selecionados"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {batch.mode === "next"
+                                ? (batch.batch_limit ?? "Todos os restantes")
+                                : (batch.selected_count ?? "?")}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
+                              {formatBatchDateTime(batch.scheduled_for)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${meta.className}`}
+                              >
+                                {meta.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {batch.status === "pending" &&
+                              batch.scheduled_for ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setCancelTarget(batch)}
+                                  className="rounded-full border-2 border-slate-900 bg-rose-100 px-3 py-1 text-xs font-black uppercase text-rose-800 hover:bg-rose-200"
+                                >
+                                  {/* TODO(Ana) */}
+                                  Cancelar
+                                </button>
+                              ) : null}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -2150,12 +2416,12 @@ function EmailCampaignsAdminSection() {
         )}
       </div>
 
-      {confirmOpen && detail ? (
+      {batchModalOpen && detail ? (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
-          <div className="card-brutal w-full max-w-md rounded-3xl bg-white p-6">
-            {/* TODO(Ana): copy do modal de confirmação de disparo. */}
+          <div className="card-brutal max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6">
+            {/* TODO(Ana): copy do modal de novo lote. */}
             <h3 className="font-display text-2xl font-black text-slate-950">
-              Enviar para a waitlist?
+              Novo lote de envio
             </h3>
             {eligibleError ? (
               <p className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
@@ -2163,32 +2429,244 @@ function EmailCampaignsAdminSection() {
               </p>
             ) : (
               <p className="mt-3 text-sm font-semibold text-slate-600">
-                {confirmCount === null
-                  ? "Contando destinatários..."
-                  : detail.status === "draft"
-                    ? `${confirmCount} pessoas elegíveis vão receber este e-mail.`
-                    : `${confirmCount} destinatários ainda pendentes.`}
+                {eligibleCount === null
+                  ? "Contando destinatários elegíveis..."
+                  : `${eligibleCount} pessoas elegíveis na waitlist.`}
               </p>
             )}
+
             <div className="mt-4">
-              <label
-                htmlFor="email-campaign-limit"
-                className="text-xs font-black uppercase text-slate-500"
-              >
-                {/* TODO(Ana) */}
-                Limite de envios agora (opcional)
-              </label>
-              <input
-                id="email-campaign-limit"
-                type="number"
-                min={1}
-                value={limitText}
-                onChange={(event) => setLimitText(event.target.value)}
-                // TODO(Ana): placeholder do limite.
-                placeholder="Vazio envia para todos os pendentes"
-                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
-              />
+              {/* TODO(Ana): rótulos dos modos. */}
+              <p className="text-xs font-black uppercase text-slate-500">
+                Destinatários
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  { id: "next" as const, label: "Próximos da fila" },
+                  { id: "selected" as const, label: "Selecionar e-mails" },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setBatchMode(option.id)}
+                    className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
+                      batchMode === option.id
+                        ? "bg-slate-950 text-white"
+                        : "bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {batchMode === "next" ? (
+              <div className="mt-4">
+                <label
+                  htmlFor="email-batch-limit"
+                  className="text-xs font-black uppercase text-slate-500"
+                >
+                  {/* TODO(Ana) */}
+                  Quantidade (opcional)
+                </label>
+                <input
+                  id="email-batch-limit"
+                  type="number"
+                  min={1}
+                  value={limitText}
+                  onChange={(event) => setLimitText(event.target.value)}
+                  // TODO(Ana): placeholder da quantidade.
+                  placeholder="Vazio envia para todos os restantes"
+                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+                />
+              </div>
+            ) : (
+              <div className="mt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-black uppercase text-slate-500">
+                    {/* TODO(Ana): contador de selecionados. */}
+                    {selectedEmails.size} de {EMAIL_BATCH_MAX_SELECTED}{" "}
+                    selecionados
+                  </p>
+                  {selectedEmails.size >= EMAIL_BATCH_MAX_SELECTED ? (
+                    <p className="text-xs font-bold text-amber-700">
+                      {/* TODO(Ana): aviso de limite atingido. */}
+                      Limite de {EMAIL_BATCH_MAX_SELECTED} por lote atingido.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="text"
+                    value={pickerSearchInput}
+                    onChange={(event) =>
+                      setPickerSearchInput(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        setPickerOffset(0);
+                        setPickerSearch(pickerSearchInput.trim());
+                      }
+                    }}
+                    // TODO(Ana): placeholder da busca.
+                    placeholder="Buscar por e-mail"
+                    className="w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPickerOffset(0);
+                      setPickerSearch(pickerSearchInput.trim());
+                    }}
+                    className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-700 hover:bg-slate-100"
+                  >
+                    {/* TODO(Ana) */}
+                    Buscar
+                  </button>
+                </div>
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border-2 border-slate-900">
+                  {pickerLoading ? (
+                    <p className="p-4 text-sm font-semibold text-slate-600">
+                      {/* TODO(Ana) */}
+                      Carregando waitlist...
+                    </p>
+                  ) : pickerError ? (
+                    <p className="p-4 text-sm font-semibold text-rose-600">
+                      {pickerError}
+                    </p>
+                  ) : pickerItems.length === 0 ? (
+                    <p className="p-4 text-sm font-semibold text-slate-600">
+                      {/* TODO(Ana) */}
+                      Nenhum e-mail encontrado.
+                    </p>
+                  ) : (
+                    <ul>
+                      {pickerItems.map((item) => (
+                        <li
+                          key={item.email}
+                          className="border-b border-slate-200 last:border-0"
+                        >
+                          <label
+                            className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold ${
+                              item.already_recipient
+                                ? "cursor-not-allowed text-slate-400"
+                                : "cursor-pointer text-slate-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              disabled={item.already_recipient}
+                              checked={selectedEmails.has(item.email)}
+                              onChange={() => toggleSelectedEmail(item.email)}
+                              className="h-4 w-4 accent-slate-950"
+                            />
+                            <span className="min-w-0 flex-1 truncate">
+                              {item.email}
+                            </span>
+                            {item.already_recipient ? (
+                              <span className="shrink-0 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-500">
+                                {/* TODO(Ana) */}
+                                Já na campanha
+                              </span>
+                            ) : null}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {pickerTotal !== null && pickerTotal > 0 ? (
+                  <div className="mt-2 flex items-center justify-between gap-3">
+                    <p className="text-xs font-bold text-slate-500">
+                      {Math.min(pickerOffset + 1, pickerTotal)} a{" "}
+                      {Math.min(
+                        pickerOffset + EMAIL_BATCH_PICKER_PAGE_SIZE,
+                        pickerTotal,
+                      )}{" "}
+                      de {pickerTotal}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={pickerOffset === 0 || pickerLoading}
+                        onClick={() =>
+                          setPickerOffset((prev) =>
+                            Math.max(prev - EMAIL_BATCH_PICKER_PAGE_SIZE, 0),
+                          )
+                        }
+                        className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {/* TODO(Ana) */}
+                        Anterior
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          pickerLoading ||
+                          pickerOffset + EMAIL_BATCH_PICKER_PAGE_SIZE >=
+                            pickerTotal
+                        }
+                        onClick={() =>
+                          setPickerOffset(
+                            (prev) => prev + EMAIL_BATCH_PICKER_PAGE_SIZE,
+                          )
+                        }
+                        className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {/* TODO(Ana) */}
+                        Próxima
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            <div className="mt-4">
+              {/* TODO(Ana): rótulos de quando enviar. */}
+              <p className="text-xs font-black uppercase text-slate-500">
+                Quando enviar
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  { id: "now" as const, label: "Agora" },
+                  { id: "schedule" as const, label: "Agendar" },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setWhenMode(option.id)}
+                    className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
+                      whenMode === option.id
+                        ? "bg-slate-950 text-white"
+                        : "bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {whenMode === "schedule" ? (
+                <div className="mt-3">
+                  <label
+                    htmlFor="email-batch-schedule"
+                    className="text-xs font-black uppercase text-slate-500"
+                  >
+                    {/* TODO(Ana): rótulo do agendamento com fuso. */}
+                    Data e hora (horário de Brasília)
+                  </label>
+                  <input
+                    id="email-batch-schedule"
+                    type="datetime-local"
+                    value={scheduleText}
+                    onChange={(event) => setScheduleText(event.target.value)}
+                    className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+                  />
+                </div>
+              ) : null}
+            </div>
+
             <div className="mt-4">
               <label
                 htmlFor="email-campaign-confirm"
@@ -2208,7 +2686,7 @@ function EmailCampaignsAdminSection() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setConfirmOpen(false)}
+                onClick={() => setBatchModalOpen(false)}
                 className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
               >
                 {/* TODO(Ana) */}
@@ -2216,12 +2694,51 @@ function EmailCampaignsAdminSection() {
               </button>
               <button
                 type="button"
-                disabled={confirmText !== "ENVIAR" || sendBusy}
-                onClick={() => void confirmSend()}
+                disabled={confirmText !== "ENVIAR" || batchBusy}
+                onClick={() => void submitBatch()}
                 className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-40"
               >
                 {/* TODO(Ana) */}
-                {sendBusy ? "Disparando..." : "Confirmar envio"}
+                {batchBusy
+                  ? "Enviando..."
+                  : whenMode === "schedule"
+                    ? "Agendar lote"
+                    : "Disparar agora"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cancelTarget && detail ? (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+          <div className="card-brutal w-full max-w-md rounded-3xl bg-white p-6">
+            {/* TODO(Ana): copy do modal de cancelamento de lote. */}
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Cancelar este lote agendado?
+            </h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              Agendado para {formatBatchDateTime(cancelTarget.scheduled_for)}.
+              O lote não será disparado e os destinatários dele não recebem o
+              e-mail.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelTarget(null)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
+                {/* TODO(Ana) */}
+                Voltar
+              </button>
+              <button
+                type="button"
+                disabled={cancelBusy}
+                onClick={() => void confirmCancelBatch()}
+                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-40"
+              >
+                {/* TODO(Ana) */}
+                {cancelBusy ? "Cancelando..." : "Cancelar lote"}
               </button>
             </div>
           </div>
