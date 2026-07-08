@@ -91,7 +91,7 @@ const NODES: MapNode[] = [
     tools: [
       { name: "Projetos", href: "/projetos" },
       { name: "Analisar portfólio", href: "/portfolio/analisar" },
-      { name: "Freelance", href: "/freelance" },
+      { name: "Freelance", href: "/estagio/freelance" },
       { name: "Networking", href: "/networking" },
       { name: "Diário de Estudos", href: "/estudos-diario" },
       { name: "Evolução", href: "/evolucao" },

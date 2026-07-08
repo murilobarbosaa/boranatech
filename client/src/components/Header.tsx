@@ -196,11 +196,6 @@ const menuData: DropdownMenu[] = [
             path: "/empresas",
           },
           {
-            label: "Freelance",
-            description: "Como ganhar dinheiro com tech",
-            path: "/freelance",
-          },
-          {
             // TODO(Ana): rotulo provisorio, decidir nome final (a ferramenta estima o prazo ate a sua meta)
             label: "Simule sua evolução",
             description: "Quanto tempo até sua primeira vaga",

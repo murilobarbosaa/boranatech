@@ -21,13 +21,14 @@ import {
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import FreelanceGuide from "@/components/estagio/FreelanceGuide";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, vagasInfo } from "@/lib/data";
 import { careerInstitutes } from "@/lib/platformData";
 import { getJobs } from "@/services/contentService";
 
-const tabs = ["Vagas, Estágio e Trainee", "Institutos"];
+const tabs = ["Vagas, Estágio e Trainee", "Institutos", "Freelance"];
 
 const areaLabel = (slug: string) =>
   areasTI.find((a) => a.slug === slug)?.nome ?? "Diversas áreas";
@@ -418,6 +419,21 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {tab === 2 && (
+            <div>
+              {/* TODO(Ana): revisar a copy da aba de freelance */}
+              <div className="mb-6">
+                <h2 className="font-display text-2xl font-black text-slate-950">
+                  Freelance em Tech
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Como ganhar dinheiro com tecnologia antes do primeiro emprego.
+                </p>
+              </div>
+              <FreelanceGuide />
             </div>
           )}
         </div>

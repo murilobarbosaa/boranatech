@@ -52,7 +52,6 @@ const Evolucao = lazy(() => import("@/pages/Evolucao"));
 const FaculdadeDetalhe = lazy(() => import("@/pages/FaculdadeDetalhe"));
 const Faculdades = lazy(() => import("@/pages/Faculdades"));
 const Ferramentas = lazy(() => import("@/pages/Ferramentas"));
-const Freelance = lazy(() => import("@/pages/Freelance"));
 const GuiaIa = lazy(() => import("@/pages/GuiaIa"));
 const Ingles = lazy(() => import("@/pages/Ingles"));
 const InglesEntrevista = lazy(() => import("@/pages/InglesEntrevista"));
@@ -186,7 +185,9 @@ function Router() {
         <Route path="/estudos/diario" component={EstudosDiario} />
         <Route path="/empregabilidade" component={Empregabilidade} />
         <Route path="/networking" component={Networking} />
-        <Route path="/freelance" component={Freelance} />
+        <Route path="/freelance">
+          {() => <Redirect to="/estagio/freelance" />}
+        </Route>
         <Route path="/evolucao" component={Evolucao} />
         <Route path="/simulador" component={Simulador} />
         <Route path="/ingles" component={Ingles} />
@@ -254,6 +255,9 @@ function Router() {
         <Route path="/faculdades" component={Faculdades} />
         <Route path="/eventos" component={Eventos} />
         <Route path="/projetos" component={Projetos} />
+        <Route path="/estagio/freelance">
+          {() => <Estagio initialTab={2} />}
+        </Route>
         <Route path="/estagio">{() => <Estagio />}</Route>
         <Route path="/carreiras">
           {() => <Redirect to="/curriculo/linkedin" />}
