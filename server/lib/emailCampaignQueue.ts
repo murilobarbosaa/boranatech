@@ -103,6 +103,24 @@ export async function tryCompleteCampaign(campaignId: string) {
   }
 }
 
+// Limpeza obrigatoria apos QUALQUER cancelamento de lote: deleta os recipients
+// pending que o lote inseriu (sent/failed sao historico e ficam), decrementa
+// total_recipients e reavalia a campanha (fechamento, ou volta pra draft se
+// zerou). Sem isso, um dispatch que falhou depois de inserir deixa orfaos que
+// a reconciliacao do boot reenviaria sem acao do admin (incidente dos 100
+// e-mails).
+export async function cleanupCanceledBatch(batchId: string) {
+  const { error } = await supabaseAdmin.rpc(
+    "email_campaign_cleanup_canceled_batch",
+    { p_batch_id: batchId },
+  );
+  if (error) {
+    throw new Error(
+      `Falha ao limpar recipients do lote cancelado: ${error.message}`,
+    );
+  }
+}
+
 async function fetchCampaignRecipientEmailSet(
   campaignId: string,
 ): Promise<Set<string>> {
@@ -366,6 +384,22 @@ export async function reconcileEmailCampaignBatches() {
   }
   for (const campaign of sendingCampaigns ?? []) {
     try {
+      // Dupla protecao do incidente dos 100 e-mails: so reenfileira pending
+      // cujo lote esta DISPATCHED. Pending de lote canceled e orfao de falha
+      // de dispatch (a limpeza do cancelamento ja deleta; este filtro segura
+      // qualquer sobra) e pending de lote pending ainda nem devia existir.
+      const { data: dispatchedBatches, error: batchesError } =
+        await supabaseAdmin
+          .from("email_campaign_batches")
+          .select("id")
+          .eq("campaign_id", campaign.id)
+          .eq("status", "dispatched");
+      if (batchesError) {
+        throw new Error(batchesError.message);
+      }
+      const batchIds = (dispatchedBatches ?? []).map((row) => row.id);
+      if (batchIds.length === 0) continue;
+
       const pendingIds: string[] = [];
       for (let from = 0; ; from += DB_PAGE) {
         const { data, error: pendingError } = await supabaseAdmin
@@ -373,6 +407,7 @@ export async function reconcileEmailCampaignBatches() {
           .select("id")
           .eq("campaign_id", campaign.id)
           .eq("status", "pending")
+          .in("batch_id", batchIds)
           .order("position", { ascending: true })
           .range(from, from + DB_PAGE - 1);
         if (pendingError) {

@@ -4,10 +4,10 @@ import { sendCampaignEmail } from "../lib/email";
 import { batchJobId } from "../lib/emailCampaignJobIds";
 import {
   ELIGIBLE_WAITLIST_STATUSES,
+  cleanupCanceledBatch,
   dispatchCampaignBatch,
   emailCampaignQueue,
   scheduleBatchDispatchJob,
-  tryCompleteCampaign,
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -81,6 +81,26 @@ async function fetchCampaign(id: string) {
     .select(CAMPAIGN_COLUMNS)
     .eq("id", id)
     .maybeSingle();
+}
+
+// Todo cancelamento de lote (rota DELETE ou automatico apos falha) passa por
+// aqui: cancela e LIMPA os recipients pending que o lote inseriu (deleta,
+// decrementa total_recipients e reavalia a campanha na RPC). Sem a limpeza,
+// os orfaos seriam reenviados pela reconciliacao do proximo boot.
+async function cancelBatchWithCleanup(batchId: string) {
+  await supabaseAdmin
+    .from("email_campaign_batches")
+    .update({ status: "canceled" })
+    .eq("id", batchId)
+    .eq("status", "pending");
+  try {
+    await cleanupCanceledBatch(batchId);
+  } catch (cleanupErr) {
+    console.error(
+      "[email-campaign] Falha na limpeza do lote cancelado",
+      cleanupErr,
+    );
+  }
 }
 
 // POST /api/admin/email-campaigns: cria campanha em draft.
@@ -331,6 +351,310 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
+// PATCH /api/admin/email-campaigns/:id: edita subject, body e image_url
+// APENAS em draft. Campanha que ja iniciou envio nao e editavel: o historico
+// do que foi enviado precisa refletir a verdade.
+router.patch("/:id", async (req, res, next) => {
+  try {
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const subject = typeof body.subject === "string" ? body.subject.trim() : "";
+    const bodyText = typeof body.body === "string" ? body.body.trim() : "";
+    if (!subject || !bodyText) {
+      return next(
+        createError(
+          400,
+          "invalid_campaign",
+          "Assunto e corpo são obrigatórios.",
+        ),
+      );
+    }
+
+    let imageUrl: string | null = null;
+    const rawImageUrl = body.image_url;
+    if (
+      rawImageUrl !== undefined &&
+      rawImageUrl !== null &&
+      rawImageUrl !== ""
+    ) {
+      if (
+        typeof rawImageUrl !== "string" ||
+        !isAllowedImageUrl(rawImageUrl.trim())
+      ) {
+        return next(
+          createError(
+            400,
+            "invalid_image_url",
+            "A imagem precisa ser uma URL https do Supabase Storage público do projeto.",
+          ),
+        );
+      }
+      imageUrl = rawImageUrl.trim();
+    }
+
+    const { data: campaign, error } = await fetchCampaign(req.params.id);
+    if (error) {
+      console.error("[email-campaign] Falha ao buscar campanha", error);
+      return next(
+        createError(500, "campaign_error", "Não foi possível buscar a campanha."),
+      );
+    }
+    if (!campaign) {
+      return next(createError(404, "not_found", "Campanha não encontrada."));
+    }
+    if (campaign.status !== "draft") {
+      return next(
+        createError(
+          409,
+          "campaign_not_editable",
+          "Campanha que já iniciou envio não pode ser editada.",
+        ),
+      );
+    }
+
+    // CAS no update: se a campanha saiu de draft entre a checagem e o update
+    // (disparo concorrente), nada e alterado.
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from("email_campaigns")
+      .update({ subject, body: bodyText, image_url: imageUrl })
+      .eq("id", req.params.id)
+      .eq("status", "draft")
+      .select(CAMPAIGN_COLUMNS)
+      .maybeSingle();
+    if (updateError) {
+      console.error("[email-campaign] Falha ao editar campanha", updateError);
+      return next(
+        createError(500, "campaign_error", "Não foi possível editar a campanha."),
+      );
+    }
+    if (!updated) {
+      return next(
+        createError(
+          409,
+          "campaign_not_editable",
+          "Campanha que já iniciou envio não pode ser editada.",
+        ),
+      );
+    }
+
+    res.json({ data: updated });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/email-campaigns/:id: exclui APENAS draft puro (sem nenhum
+// recipient sent). Campanha com envios fica permanente no historico.
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const { data: campaign, error } = await fetchCampaign(req.params.id);
+    if (error) {
+      console.error("[email-campaign] Falha ao buscar campanha", error);
+      return next(
+        createError(500, "campaign_error", "Não foi possível buscar a campanha."),
+      );
+    }
+    if (!campaign) {
+      return next(createError(404, "not_found", "Campanha não encontrada."));
+    }
+    if (campaign.status !== "draft") {
+      return next(
+        createError(
+          409,
+          "campaign_not_deletable",
+          "Campanha com envios fica no histórico e não pode ser excluída.",
+        ),
+      );
+    }
+
+    // Checagem defensiva do "draft puro": draft com sent nao deveria existir,
+    // mas se existir o historico vence e a exclusao e negada.
+    const { count: sentCount, error: sentError } = await supabaseAdmin
+      .from("email_campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaign.id)
+      .eq("status", "sent");
+    if (sentError) {
+      console.error("[email-campaign] Falha ao contar enviados", sentError);
+      return next(
+        createError(500, "campaign_error", "Não foi possível excluir a campanha."),
+      );
+    }
+    if ((sentCount ?? 0) > 0) {
+      return next(
+        createError(
+          409,
+          "campaign_not_deletable",
+          "Campanha com envios fica no histórico e não pode ser excluída.",
+        ),
+      );
+    }
+
+    const { data: batches, error: batchesError } = await supabaseAdmin
+      .from("email_campaign_batches")
+      .select("id, status")
+      .eq("campaign_id", campaign.id);
+    if (batchesError) {
+      console.error("[email-campaign] Falha ao buscar lotes", batchesError);
+      return next(
+        createError(500, "campaign_error", "Não foi possível excluir a campanha."),
+      );
+    }
+
+    // Remove gatilhos agendados best-effort: se sobrar job no Redis, o
+    // dispatch acha o batch deletado (CAS sem linha) e vira no-op.
+    for (const batch of batches ?? []) {
+      if (batch.status === "pending" && emailCampaignQueue) {
+        try {
+          await emailCampaignQueue.remove(batchJobId(batch.id));
+        } catch (removeErr) {
+          console.warn(
+            "[email-campaign] Falha ao remover gatilho na exclusão",
+            removeErr,
+          );
+        }
+      }
+    }
+
+    // Filhos primeiro (FKs sem cascade): recipients, e-mails dos lotes, lotes
+    // e por fim a campanha.
+    const batchIds = (batches ?? []).map((batch) => batch.id);
+    const { error: recipientsDeleteError } = await supabaseAdmin
+      .from("email_campaign_recipients")
+      .delete()
+      .eq("campaign_id", campaign.id);
+    if (recipientsDeleteError) {
+      console.error(
+        "[email-campaign] Falha ao excluir recipients",
+        recipientsDeleteError,
+      );
+      return next(
+        createError(500, "campaign_error", "Não foi possível excluir a campanha."),
+      );
+    }
+    if (batchIds.length > 0) {
+      const { error: batchRecipientsDeleteError } = await supabaseAdmin
+        .from("email_campaign_batch_recipients")
+        .delete()
+        .in("batch_id", batchIds);
+      if (batchRecipientsDeleteError) {
+        console.error(
+          "[email-campaign] Falha ao excluir e-mails dos lotes",
+          batchRecipientsDeleteError,
+        );
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível excluir a campanha.",
+          ),
+        );
+      }
+      const { error: batchesDeleteError } = await supabaseAdmin
+        .from("email_campaign_batches")
+        .delete()
+        .eq("campaign_id", campaign.id);
+      if (batchesDeleteError) {
+        console.error(
+          "[email-campaign] Falha ao excluir lotes",
+          batchesDeleteError,
+        );
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível excluir a campanha.",
+          ),
+        );
+      }
+    }
+    const { error: campaignDeleteError } = await supabaseAdmin
+      .from("email_campaigns")
+      .delete()
+      .eq("id", campaign.id);
+    if (campaignDeleteError) {
+      console.error(
+        "[email-campaign] Falha ao excluir campanha",
+        campaignDeleteError,
+      );
+      return next(
+        createError(500, "campaign_error", "Não foi possível excluir a campanha."),
+      );
+    }
+
+    res.json({ data: { deleted: true } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const RECIPIENT_STATUS_FILTERS = ["sent", "failed", "pending"];
+
+// GET /api/admin/email-campaigns/:id/recipients: quem recebeu (ou vai
+// receber), paginado com busca e filtro por status. Erro e erro (500), nunca
+// colapsa em lista vazia.
+router.get("/:id/recipients", async (req, res, next) => {
+  try {
+    const search =
+      typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const rawStatus = req.query.status;
+    let statusFilter: string | null = null;
+    if (rawStatus !== undefined && rawStatus !== "") {
+      if (
+        typeof rawStatus !== "string" ||
+        !RECIPIENT_STATUS_FILTERS.includes(rawStatus)
+      ) {
+        return next(
+          createError(400, "invalid_status", "Filtro de status inválido."),
+        );
+      }
+      statusFilter = rawStatus;
+    }
+    const rawLimit = parseInt(String(req.query.limit ?? ""), 10);
+    const limit =
+      Number.isInteger(rawLimit) && rawLimit >= 1 && rawLimit <= 100
+        ? rawLimit
+        : 50;
+    const rawOffset = parseInt(String(req.query.offset ?? ""), 10);
+    const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+    let query = supabaseAdmin
+      .from("email_campaign_recipients")
+      .select("email, status, sent_at, error", { count: "exact" })
+      .eq("campaign_id", req.params.id)
+      .order("position", { ascending: true })
+      .range(offset, offset + limit - 1);
+    if (statusFilter) query = query.eq("status", statusFilter);
+    if (search) {
+      const escaped = search.replace(/[\\%_]/g, (match) => `\\${match}`);
+      query = query.ilike("email", `%${escaped}%`);
+    }
+
+    const { data, error, count } = await query;
+    if (error) {
+      console.error(
+        "[email-campaign] Falha ao listar destinatários",
+        error,
+      );
+      return next(
+        createError(
+          500,
+          "campaign_error",
+          "Não foi possível listar os destinatários.",
+        ),
+      );
+    }
+
+    res.json({
+      data: {
+        items: data ?? [],
+        pagination: { total: count ?? 0, limit, offset },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /api/admin/email-campaigns/:id/test: envia UM e-mail de teste para o
 // admin autenticado. E-mail vem do JWT, nunca do body. Nao altera status.
 router.post("/:id/test", async (req, res, next) => {
@@ -545,11 +869,7 @@ router.post("/:id/batches", async (req, res, next) => {
         );
         // Lote sem os e-mails gravados nao pode ficar pending (dispararia
         // vazio): cancela antes de reportar o erro.
-        await supabaseAdmin
-          .from("email_campaign_batches")
-          .update({ status: "canceled" })
-          .eq("id", batch.id)
-          .eq("status", "pending");
+        await cancelBatchWithCleanup(batch.id);
         return next(
           createError(500, "campaign_error", "Não foi possível criar o lote."),
         );
@@ -574,12 +894,10 @@ router.post("/:id/batches", async (req, res, next) => {
           dispatchErr,
         );
         // Sem cancelar, o batch pending seria disparado pela reconciliacao no
-        // proximo boot, surpreendendo o admin que viu erro aqui.
-        await supabaseAdmin
-          .from("email_campaign_batches")
-          .update({ status: "canceled" })
-          .eq("id", batch.id)
-          .eq("status", "pending");
+        // proximo boot, surpreendendo o admin que viu erro aqui. A limpeza
+        // dentro do helper remove os pending que o dispatch chegou a inserir
+        // (causa raiz do incidente dos 100 e-mails).
+        await cancelBatchWithCleanup(batch.id);
         return next(
           createError(
             502,
@@ -595,11 +913,7 @@ router.post("/:id/batches", async (req, res, next) => {
       await scheduleBatchDispatchJob(batch.id, scheduledFor);
     } catch (scheduleErr) {
       console.error("[email-campaign] Falha ao agendar lote", scheduleErr);
-      await supabaseAdmin
-        .from("email_campaign_batches")
-        .update({ status: "canceled" })
-        .eq("id", batch.id)
-        .eq("status", "pending");
+      await cancelBatchWithCleanup(batch.id);
       return next(
         createError(
           502,
@@ -673,13 +987,14 @@ router.delete("/:id/batches/:batchId", async (req, res, next) => {
       }
     }
 
-    // O cancelamento pode ter sido o ultimo pending segurando o completed.
+    // Limpa os pending que o lote inseriu e reavalia a campanha (fechamento
+    // ou volta pra draft) na mesma RPC.
     try {
-      await tryCompleteCampaign(req.params.id);
-    } catch (completeErr) {
+      await cleanupCanceledBatch(req.params.batchId);
+    } catch (cleanupErr) {
       console.error(
-        "[email-campaign] Falha ao verificar fechamento apos cancelamento",
-        completeErr,
+        "[email-campaign] Falha na limpeza apos cancelamento",
+        cleanupErr,
       );
     }
 
