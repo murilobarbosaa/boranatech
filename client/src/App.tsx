@@ -255,8 +255,10 @@ function Router() {
         <Route path="/eventos" component={Eventos} />
         <Route path="/projetos" component={Projetos} />
         <Route path="/estagio">{() => <Estagio />}</Route>
-        <Route path="/carreiras">{() => <Estagio initialTab={1} />}</Route>
-        <Route path="/portifolio">{() => <Estagio initialTab={2} />}</Route>
+        <Route path="/carreiras">
+          {() => <Redirect to="/curriculo/linkedin" />}
+        </Route>
+        <Route path="/portifolio">{() => <Redirect to="/portfolio" />}</Route>
         <Route path="/noticias" component={Noticias} />
         <Route path="/comunidades" component={Comunidades} />
         <Route path="/sobre" component={Sobre} />
