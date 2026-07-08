@@ -1648,6 +1648,46 @@ const EMAIL_BATCH_STATUS_META: Record<
 
 const EMAIL_BATCH_MAX_SELECTED = 500;
 const EMAIL_BATCH_PICKER_PAGE_SIZE = 20;
+const EMAIL_RECIPIENTS_PAGE_SIZE = 20;
+
+type EmailRecipientStatus = "sent" | "failed" | "pending";
+
+type EmailCampaignRecipientRow = {
+  email: string;
+  status: EmailRecipientStatus;
+  sent_at: string | null;
+  error: string | null;
+};
+
+// TODO(Ana): rótulos de status dos destinatários.
+const EMAIL_RECIPIENT_STATUS_META: Record<
+  EmailRecipientStatus,
+  { label: string; className: string }
+> = {
+  sent: {
+    label: "Enviado",
+    className: "border-emerald-500 bg-emerald-100 text-emerald-800",
+  },
+  failed: {
+    label: "Falhou",
+    className: "border-rose-500 bg-rose-100 text-rose-800",
+  },
+  pending: {
+    label: "Pendente",
+    className: "border-amber-500 bg-amber-100 text-amber-800",
+  },
+};
+
+// TODO(Ana): rótulos dos filtros de destinatários.
+const EMAIL_RECIPIENT_FILTERS: Array<{
+  id: "all" | EmailRecipientStatus;
+  label: string;
+}> = [
+  { id: "all", label: "Todos" },
+  { id: "sent", label: "Enviados" },
+  { id: "failed", label: "Falhas" },
+  { id: "pending", label: "Pendentes" },
+];
 
 function formatBatchDateTime(value: string | null) {
   if (!value) return "Imediato";
@@ -1734,6 +1774,22 @@ function EmailCampaignsAdminSection() {
   );
   const [cancelBusy, setCancelBusy] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<EmailCampaign | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const [recItems, setRecItems] = useState<EmailCampaignRecipientRow[]>([]);
+  const [recTotal, setRecTotal] = useState<number | null>(null);
+  const [recOffset, setRecOffset] = useState(0);
+  const [recFilter, setRecFilter] = useState<"all" | EmailRecipientStatus>(
+    "all",
+  );
+  const [recSearchInput, setRecSearchInput] = useState("");
+  const [recSearch, setRecSearch] = useState("");
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recTick, setRecTick] = useState(0);
+
   const loadCampaigns = useCallback(async () => {
     setListLoading(true);
     setListError(null);
@@ -1786,8 +1842,52 @@ function EmailCampaignsAdminSection() {
       setDetailError(null);
       return;
     }
+    setRecOffset(0);
+    setRecFilter("all");
+    setRecSearchInput("");
+    setRecSearch("");
     void loadDetail(selectedId);
   }, [selectedId, loadDetail]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    let cancelled = false;
+    async function loadRecipients() {
+      setRecLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("limit", String(EMAIL_RECIPIENTS_PAGE_SIZE));
+        params.set("offset", String(recOffset));
+        if (recFilter !== "all") params.set("status", recFilter);
+        if (recSearch) params.set("search", recSearch);
+        const json = await adminFetch(
+          `/email-campaigns/${selectedId}/recipients?${params.toString()}`,
+        );
+        if (cancelled) return;
+        const data = json.data as {
+          items: EmailCampaignRecipientRow[];
+          pagination: { total: number };
+        };
+        setRecItems(data.items);
+        setRecTotal(data.pagination.total);
+        setRecError(null);
+      } catch (err) {
+        if (cancelled) return;
+        // Erro é erro na tela, nunca lista vazia.
+        setRecError(
+          err instanceof Error
+            ? err.message
+            : "Erro ao listar os destinatários.",
+        );
+      } finally {
+        if (!cancelled) setRecLoading(false);
+      }
+    }
+    void loadRecipients();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, recFilter, recSearch, recOffset, recTick]);
 
   const polling = detail?.status === "sending";
 
@@ -1796,6 +1896,7 @@ function EmailCampaignsAdminSection() {
     const timer = window.setInterval(() => {
       void loadDetail(selectedId);
       void loadCampaigns();
+      setRecTick((tick) => tick + 1);
     }, 4000);
     return () => {
       window.clearInterval(timer);
@@ -1833,6 +1934,77 @@ function EmailCampaignsAdminSection() {
       );
     } finally {
       setCreating(false);
+    }
+  }
+
+  function startEdit() {
+    if (!detail || detail.status !== "draft") return;
+    setEditingId(detail.id);
+    setSubject(detail.subject);
+    setBodyText(detail.body);
+    setImageUrl(detail.image_url ?? "");
+    setImageBroken(false);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setSubject("");
+    setBodyText("");
+    setImageUrl("");
+    setImageBroken(false);
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    if (!subject.trim() || !bodyText.trim()) {
+      // TODO(Ana): mensagens de validação do formulário de campanha.
+      toast.error("Preencha assunto e corpo antes de salvar.");
+      return;
+    }
+    setCreating(true);
+    try {
+      await adminFetch(`/email-campaigns/${editingId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          subject: subject.trim(),
+          body: bodyText.trim(),
+          image_url: imageUrl.trim() || null,
+        }),
+      });
+      // TODO(Ana): toast da edição.
+      toast.success("Campanha atualizada.");
+      const savedId = editingId;
+      cancelEdit();
+      void loadDetail(savedId);
+      void loadCampaigns();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao salvar a campanha.",
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function confirmDeleteCampaign() {
+    if (!deleteTarget) return;
+    setDeleteBusy(true);
+    try {
+      await adminFetch(`/email-campaigns/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      // TODO(Ana): toast da exclusão.
+      toast.success("Campanha excluída.");
+      if (editingId === deleteTarget.id) cancelEdit();
+      setDeleteTarget(null);
+      setSelectedId(null);
+      void loadCampaigns();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao excluir a campanha.",
+      );
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -2059,7 +2231,9 @@ function EmailCampaignsAdminSection() {
       <div className="grid gap-5 lg:grid-cols-2">
         <article className="card-brutal rounded-3xl bg-white p-6">
           {/* TODO(Ana): rótulos do formulário de campanha. */}
-          <h3 className="font-display text-2xl font-black">Nova campanha</h3>
+          <h3 className="font-display text-2xl font-black">
+            {editingId ? "Editar campanha" : "Nova campanha"}
+          </h3>
           <div className="mt-4 space-y-4">
             <div>
               <label
@@ -2113,15 +2287,33 @@ function EmailCampaignsAdminSection() {
                 className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
               />
             </div>
-            <button
-              type="button"
-              disabled={creating}
-              onClick={() => void createCampaign()}
-              className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-40"
-            >
-              {/* TODO(Ana) */}
-              {creating ? "Criando..." : "Criar campanha"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={creating}
+                onClick={() =>
+                  void (editingId ? saveEdit() : createCampaign())
+                }
+                className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-40"
+              >
+                {/* TODO(Ana) */}
+                {creating
+                  ? "Salvando..."
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Criar campanha"}
+              </button>
+              {editingId ? (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="rounded-full border-2 border-slate-900 bg-white px-5 py-2 text-sm font-black uppercase text-slate-700 hover:bg-slate-100"
+                >
+                  {/* TODO(Ana) */}
+                  Cancelar edição
+                </button>
+              ) : null}
+            </div>
           </div>
         </article>
 
@@ -2219,8 +2411,35 @@ function EmailCampaignsAdminSection() {
               >
                 {EMAIL_CAMPAIGN_STATUS_META[detail.status].label}
               </span>
+              {detail.status !== "draft" ? (
+                <p className="mt-2 text-xs font-bold text-slate-500">
+                  {/* TODO(Ana): aviso de campanha imutável. */}
+                  Campanha que já iniciou envio não pode ser editada nem
+                  excluída.
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
+              {detail.status === "draft" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={startEdit}
+                    className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-700 hover:bg-slate-100"
+                  >
+                    {/* TODO(Ana) */}
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(detail)}
+                    className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-xs font-black uppercase text-rose-800 hover:bg-rose-200"
+                  >
+                    {/* TODO(Ana) */}
+                    Excluir
+                  </button>
+                </>
+              ) : null}
               {detail.status === "draft" || detail.status === "sending" ? (
                 <button
                   type="button"
@@ -2372,6 +2591,177 @@ function EmailCampaignsAdminSection() {
                   </table>
                 </div>
               </div>
+            </div>
+          ) : null}
+
+          {detail.status !== "draft" ? (
+            <div className="mt-5">
+              {/* TODO(Ana): título da seção de destinatários. */}
+              <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                Destinatários
+              </h4>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {EMAIL_RECIPIENT_FILTERS.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => {
+                      setRecFilter(filter.id);
+                      setRecOffset(0);
+                    }}
+                    className={`rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
+                      recFilter === filter.id
+                        ? "bg-slate-950 text-white"
+                        : "bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {filter.label}
+                    {filter.id === "sent"
+                      ? ` (${detail.sent_count})`
+                      : filter.id === "failed"
+                        ? ` (${detail.failed_count})`
+                        : filter.id === "pending"
+                          ? ` (${pending ?? "?"})`
+                          : ""}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={recSearchInput}
+                  onChange={(event) => setRecSearchInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      setRecOffset(0);
+                      setRecSearch(recSearchInput.trim());
+                    }
+                  }}
+                  // TODO(Ana): placeholder da busca de destinatários.
+                  placeholder="Buscar por e-mail"
+                  className="w-full max-w-sm rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecOffset(0);
+                    setRecSearch(recSearchInput.trim());
+                  }}
+                  className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-700 hover:bg-slate-100"
+                >
+                  {/* TODO(Ana) */}
+                  Buscar
+                </button>
+              </div>
+              <div className="mt-2 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+                {recError ? (
+                  <p className="p-4 text-sm font-semibold text-rose-600">
+                    {recError}
+                  </p>
+                ) : recLoading && recItems.length === 0 ? (
+                  <p className="p-4 text-sm font-semibold text-slate-600">
+                    {/* TODO(Ana) */}
+                    Carregando destinatários...
+                  </p>
+                ) : recItems.length === 0 ? (
+                  <p className="p-4 text-sm font-semibold text-slate-600">
+                    {/* TODO(Ana) */}
+                    Nenhum destinatário nesse filtro.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="border-b-2 border-slate-900 bg-slate-50">
+                          {/* TODO(Ana): cabeçalhos da tabela de destinatários. */}
+                          <th className="px-4 py-3 font-black uppercase text-slate-600">
+                            E-mail
+                          </th>
+                          <th className="px-4 py-3 font-black uppercase text-slate-600">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 font-black uppercase text-slate-600">
+                            Enviado em
+                          </th>
+                          <th className="px-4 py-3 font-black uppercase text-slate-600">
+                            Erro
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recItems.map((row) => {
+                          const meta = EMAIL_RECIPIENT_STATUS_META[row.status];
+                          return (
+                            <tr
+                              key={row.email}
+                              className="border-b border-slate-200 last:border-0"
+                            >
+                              <td className="px-4 py-3 font-semibold text-slate-900">
+                                {row.email}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${meta.className}`}
+                                >
+                                  {meta.label}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-600">
+                                {row.sent_at
+                                  ? formatBatchDateTime(row.sent_at)
+                                  : "-"}
+                              </td>
+                              <td className="max-w-[16rem] truncate px-4 py-3 text-slate-600">
+                                {row.error ?? "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              {recTotal !== null && recTotal > 0 ? (
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold text-slate-500">
+                    {Math.min(recOffset + 1, recTotal)} a{" "}
+                    {Math.min(recOffset + EMAIL_RECIPIENTS_PAGE_SIZE, recTotal)}{" "}
+                    de {recTotal}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={recOffset === 0 || recLoading}
+                      onClick={() =>
+                        setRecOffset((prev) =>
+                          Math.max(prev - EMAIL_RECIPIENTS_PAGE_SIZE, 0),
+                        )
+                      }
+                      className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {/* TODO(Ana) */}
+                      Anterior
+                    </button>
+                    <button
+                      type="button"
+                      disabled={
+                        recLoading ||
+                        recOffset + EMAIL_RECIPIENTS_PAGE_SIZE >= recTotal
+                      }
+                      onClick={() =>
+                        setRecOffset(
+                          (prev) => prev + EMAIL_RECIPIENTS_PAGE_SIZE,
+                        )
+                      }
+                      className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black uppercase text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {/* TODO(Ana) */}
+                      Próxima
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </article>
@@ -2787,6 +3177,41 @@ function EmailCampaignsAdminSection() {
               >
                 {/* TODO(Ana) */}
                 {cancelBusy ? "Cancelando..." : "Cancelar lote"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+          <div className="card-brutal w-full max-w-md rounded-3xl bg-white p-6">
+            {/* TODO(Ana): copy do modal de exclusão de campanha. */}
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Excluir a campanha?
+            </h3>
+            <p className="mt-3 text-sm font-semibold text-slate-600">
+              O rascunho &quot;{deleteTarget.subject}&quot; será excluído de
+              forma definitiva, junto com os lotes agendados dele. Nada foi
+              enviado por esta campanha.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
+                {/* TODO(Ana) */}
+                Voltar
+              </button>
+              <button
+                type="button"
+                disabled={deleteBusy}
+                onClick={() => void confirmDeleteCampaign()}
+                className="rounded-full border-2 border-slate-900 bg-rose-100 px-4 py-2 text-sm font-black text-rose-800 disabled:opacity-40"
+              >
+                {/* TODO(Ana) */}
+                {deleteBusy ? "Excluindo..." : "Excluir campanha"}
               </button>
             </div>
           </div>
