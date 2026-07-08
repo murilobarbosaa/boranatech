@@ -1698,6 +1698,7 @@ function EmailCampaignsAdminSection() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<EmailCampaignDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const [subject, setSubject] = useState("");
   const [bodyText, setBodyText] = useState("");
@@ -1749,6 +1750,7 @@ function EmailCampaignsAdminSection() {
   }, []);
 
   const loadDetail = useCallback(async (id: string) => {
+    setDetailLoading(true);
     try {
       const json = await adminFetch(`/email-campaigns/${id}`);
       setDetail(json.data as EmailCampaignDetail);
@@ -1758,8 +1760,21 @@ function EmailCampaignsAdminSection() {
       setDetailError(
         err instanceof Error ? err.message : "Erro ao carregar a campanha.",
       );
+    } finally {
+      setDetailLoading(false);
     }
   }, []);
+
+  // Clique na mesma campanha refaz o fetch: sem isso, um detalhe que falhou
+  // no primeiro clique nunca teria retry (o effect so dispara quando o id
+  // muda) e o clique pareceria morto.
+  function openCampaign(id: string) {
+    if (id === selectedId) {
+      void loadDetail(id);
+      return;
+    }
+    setSelectedId(id);
+  }
 
   useEffect(() => {
     void loadCampaigns();
@@ -2165,6 +2180,31 @@ function EmailCampaignsAdminSection() {
         </article>
       </div>
 
+      {selectedId && !detail && (detailLoading || detailError) ? (
+        <article className="card-brutal mt-5 rounded-3xl bg-white p-6">
+          {detailLoading ? (
+            <p className="text-sm font-semibold text-slate-600">
+              {/* TODO(Ana) */}
+              Carregando campanha...
+            </p>
+          ) : (
+            <div>
+              <p className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+                {detailError}
+              </p>
+              <button
+                type="button"
+                onClick={() => void loadDetail(selectedId)}
+                className="mt-3 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-700 hover:bg-slate-100"
+              >
+                {/* TODO(Ana) */}
+                Tentar de novo
+              </button>
+            </div>
+          )}
+        </article>
+      ) : null}
+
       {detail ? (
         <article className="card-brutal mt-5 rounded-3xl bg-white p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2380,13 +2420,19 @@ function EmailCampaignsAdminSection() {
                   return (
                     <tr
                       key={campaign.id}
-                      onClick={() => setSelectedId(campaign.id)}
+                      onClick={() => openCampaign(campaign.id)}
                       className={`cursor-pointer border-b border-slate-200 last:border-0 hover:bg-slate-50 ${
                         selectedId === campaign.id ? "bg-amber-50" : ""
                       }`}
                     >
-                      <td className="max-w-[16rem] truncate px-4 py-3 font-semibold text-slate-900">
-                        {campaign.subject}
+                      <td className="max-w-[16rem] px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => openCampaign(campaign.id)}
+                          className="block w-full truncate text-left font-semibold text-slate-900 underline-offset-2 hover:underline"
+                        >
+                          {campaign.subject}
+                        </button>
                       </td>
                       <td className="px-4 py-3">
                         <span
