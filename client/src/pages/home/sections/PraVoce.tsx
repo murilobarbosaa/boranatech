@@ -140,7 +140,9 @@ export default function PraVoce() {
             className="mt-4 font-display font-black text-slate-950 leading-[1.05]"
             style={{ fontSize: "clamp(40px, 6vw, 72px)" }}
           >
-            Conteúdo curado pra{" "}
+            {/* TODO(Ana): confirmar a palavra final (selecionado, pronto, ou
+                outra). "curado" soava estranho pra parte dos usuarios. */}
+            Conteúdo selecionado pra{" "}
             {/* Text-stroke transparente em "começar.", palavra curta isolada
                 lê melhor com outline 2px do que duas palavras com stroke. */}
             <span className="text-[#0369a1] sm:text-transparent sm:[-webkit-text-stroke:2.5px_#0369a1]">
