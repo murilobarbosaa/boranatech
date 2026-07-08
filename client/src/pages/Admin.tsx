@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   Activity,
@@ -29,6 +29,7 @@ import {
   PlusCircle,
   RefreshCcw,
   Search,
+  Send,
   Server,
   ShieldCheck,
   Sparkles,
@@ -45,6 +46,7 @@ import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
+import { renderCampaignBodyHtml } from "@shared/emailCampaignBody";
 import { readAdminClaim } from "@/lib/adminClaim";
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
@@ -133,6 +135,7 @@ type AdminSectionId =
   | "ia"
   | "afiliados"
   | "newsletter"
+  | "emails"
   | "beta";
 
 type UserProfile = {
@@ -334,6 +337,12 @@ const adminNavItems: AdminNavItem[] = [
     href: "#newsletter",
     label: "Newsletter",
     icon: <Mail className="h-4 w-4" />,
+  },
+  {
+    href: "#emails",
+    // TODO(Ana): rótulo da aba de campanhas de e-mail.
+    label: "Emails",
+    icon: <Send className="h-4 w-4" />,
   },
   {
     href: "#beta",
@@ -1569,6 +1578,650 @@ function BetaCodesAdminSection() {
               >
                 {/* TODO(Ana) */}
                 Confirmar revogação
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </AdminSection>
+  );
+}
+
+type EmailCampaignStatus = "draft" | "sending" | "completed" | "failed";
+
+type EmailCampaign = {
+  id: string;
+  subject: string;
+  body: string;
+  image_url: string | null;
+  status: EmailCampaignStatus;
+  total_recipients: number | null;
+  sent_count: number;
+  failed_count: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+// TODO(Ana): rótulos de status das campanhas.
+const EMAIL_CAMPAIGN_STATUS_META: Record<
+  EmailCampaignStatus,
+  { label: string; className: string }
+> = {
+  draft: {
+    label: "Rascunho",
+    className: "border-slate-400 bg-slate-100 text-slate-700",
+  },
+  sending: {
+    label: "Enviando",
+    className: "border-amber-500 bg-amber-100 text-amber-800",
+  },
+  completed: {
+    label: "Concluída",
+    className: "border-emerald-500 bg-emerald-100 text-emerald-800",
+  },
+  failed: {
+    label: "Falhou",
+    className: "border-rose-500 bg-rose-100 text-rose-800",
+  },
+};
+
+function campaignPendingCount(campaign: EmailCampaign): number | null {
+  if (campaign.total_recipients === null) return null;
+  return Math.max(
+    campaign.total_recipients - campaign.sent_count - campaign.failed_count,
+    0,
+  );
+}
+
+function EmailCampaignsAdminSection() {
+  const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
+  const [listError, setListError] = useState<string | null>(null);
+  const [listLoading, setListLoading] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<EmailCampaign | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const [subject, setSubject] = useState("");
+  const [bodyText, setBodyText] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageBroken, setImageBroken] = useState(false);
+
+  const [creating, setCreating] = useState(false);
+  const [testBusy, setTestBusy] = useState(false);
+  const [sendBusy, setSendBusy] = useState(false);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [limitText, setLimitText] = useState("");
+  const [eligibleCount, setEligibleCount] = useState<number | null>(null);
+  const [eligibleError, setEligibleError] = useState<string | null>(null);
+
+  const loadCampaigns = useCallback(async () => {
+    setListLoading(true);
+    setListError(null);
+    try {
+      const json = await adminFetch("/email-campaigns");
+      setCampaigns(Array.isArray(json.data) ? (json.data as EmailCampaign[]) : []);
+    } catch (err) {
+      setListError(
+        err instanceof Error ? err.message : "Erro ao carregar campanhas.",
+      );
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
+
+  const loadDetail = useCallback(async (id: string) => {
+    try {
+      const json = await adminFetch(`/email-campaigns/${id}`);
+      setDetail(json.data as EmailCampaign);
+      setDetailError(null);
+    } catch (err) {
+      // progressFailed: erro é erro e fica visível; NUNCA zera os contadores.
+      setDetailError(
+        err instanceof Error ? err.message : "Erro ao carregar a campanha.",
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCampaigns();
+  }, [loadCampaigns]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setDetail(null);
+      setDetailError(null);
+      return;
+    }
+    void loadDetail(selectedId);
+  }, [selectedId, loadDetail]);
+
+  const polling = detail?.status === "sending";
+
+  useEffect(() => {
+    if (!selectedId || !polling) return;
+    const timer = window.setInterval(() => {
+      void loadDetail(selectedId);
+      void loadCampaigns();
+    }, 4000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [selectedId, polling, loadDetail, loadCampaigns]);
+
+  async function createCampaign() {
+    if (!subject.trim() || !bodyText.trim()) {
+      // TODO(Ana): mensagens de validação do formulário de campanha.
+      toast.error("Preencha assunto e corpo antes de criar.");
+      return;
+    }
+    setCreating(true);
+    try {
+      const json = await adminFetch("/email-campaigns", {
+        method: "POST",
+        body: JSON.stringify({
+          subject: subject.trim(),
+          body: bodyText.trim(),
+          image_url: imageUrl.trim() || null,
+        }),
+      });
+      const created = json.data as EmailCampaign;
+      // TODO(Ana): toasts da criação de campanha.
+      toast.success("Campanha criada como rascunho.");
+      setSelectedId(created.id);
+      setDetail(created);
+      setSubject("");
+      setBodyText("");
+      setImageUrl("");
+      void loadCampaigns();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao criar a campanha.",
+      );
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function sendTest() {
+    if (!detail) return;
+    setTestBusy(true);
+    try {
+      const json = await adminFetch(`/email-campaigns/${detail.id}/test`, {
+        method: "POST",
+      });
+      const to = (json.data as { to?: string }).to;
+      // TODO(Ana): toasts do envio de teste.
+      toast.success(to ? `Teste enviado para ${to}.` : "Teste enviado.");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao enviar o teste.",
+      );
+    } finally {
+      setTestBusy(false);
+    }
+  }
+
+  function openConfirm() {
+    if (!detail) return;
+    setConfirmOpen(true);
+    setConfirmText("");
+    setLimitText("");
+    setEligibleCount(null);
+    setEligibleError(null);
+    if (detail.status === "draft") {
+      void (async () => {
+        try {
+          const json = await adminFetch("/email-campaigns/waitlist-count");
+          setEligibleCount((json.data as { count: number }).count);
+        } catch (err) {
+          // Erro de contagem é exibido como erro, nunca como zero.
+          setEligibleError(
+            err instanceof Error ? err.message : "Erro ao contar a waitlist.",
+          );
+        }
+      })();
+    } else {
+      setEligibleCount(campaignPendingCount(detail));
+    }
+  }
+
+  async function confirmSend() {
+    if (!detail) return;
+    const trimmedLimit = limitText.trim();
+    let limit: number | undefined;
+    if (trimmedLimit) {
+      const parsed = Number(trimmedLimit);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        // TODO(Ana): mensagem de limite inválido.
+        toast.error("O limite precisa ser um número inteiro maior que zero.");
+        return;
+      }
+      limit = parsed;
+    }
+    setSendBusy(true);
+    try {
+      const json = await adminFetch(`/email-campaigns/${detail.id}/send`, {
+        method: "POST",
+        body: JSON.stringify(limit ? { limit } : {}),
+      });
+      const data = json.data as { campaign: EmailCampaign; enqueued: number };
+      // TODO(Ana): toast do disparo.
+      toast.success(`${data.enqueued} envios enfileirados.`);
+      setConfirmOpen(false);
+      setDetail(data.campaign);
+      void loadCampaigns();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao disparar a campanha.",
+      );
+    } finally {
+      setSendBusy(false);
+    }
+  }
+
+  const previewBodyHtml = renderCampaignBodyHtml(bodyText);
+  const trimmedImageUrl = imageUrl.trim();
+  const pending = detail ? campaignPendingCount(detail) : null;
+  const progressPercent =
+    detail && detail.total_recipients
+      ? Math.min(
+          Math.round(
+            ((detail.sent_count + detail.failed_count) /
+              detail.total_recipients) *
+              100,
+          ),
+          100,
+        )
+      : 0;
+  const confirmCount = detail?.status === "draft" ? eligibleCount : pending;
+
+  return (
+    <AdminSection
+      id="emails"
+      eyebrow="emails"
+      icon={<Send className="h-4 w-4" />}
+      // TODO(Ana): título e subtítulo da aba Emails.
+      title="Campanhas de e-mail para a waitlist"
+      subtitle="Crie uma campanha, envie um teste para você e dispare para a lista de espera com fila e limite de velocidade."
+    >
+      <div className="grid gap-5 lg:grid-cols-2">
+        <article className="card-brutal rounded-3xl bg-white p-6">
+          {/* TODO(Ana): rótulos do formulário de campanha. */}
+          <h3 className="font-display text-2xl font-black">Nova campanha</h3>
+          <div className="mt-4 space-y-4">
+            <div>
+              <label
+                htmlFor="email-campaign-subject"
+                className="text-xs font-black uppercase text-slate-500"
+              >
+                Assunto
+              </label>
+              <input
+                id="email-campaign-subject"
+                type="text"
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="email-campaign-body"
+                className="text-xs font-black uppercase text-slate-500"
+              >
+                Corpo
+              </label>
+              <textarea
+                id="email-campaign-body"
+                value={bodyText}
+                onChange={(event) => setBodyText(event.target.value)}
+                rows={8}
+                // TODO(Ana): placeholder do corpo.
+                placeholder="Quebra de linha dupla vira parágrafo."
+                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="email-campaign-image"
+                className="text-xs font-black uppercase text-slate-500"
+              >
+                URL da imagem (opcional)
+              </label>
+              <input
+                id="email-campaign-image"
+                type="url"
+                value={imageUrl}
+                onChange={(event) => {
+                  setImageUrl(event.target.value);
+                  setImageBroken(false);
+                }}
+                // TODO(Ana): placeholder da URL de imagem.
+                placeholder="URL pública do Supabase Storage"
+                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={creating}
+              onClick={() => void createCampaign()}
+              className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-2 text-sm font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a] disabled:opacity-40"
+            >
+              {/* TODO(Ana) */}
+              {creating ? "Criando..." : "Criar campanha"}
+            </button>
+          </div>
+        </article>
+
+        <article className="card-brutal rounded-3xl bg-white p-6">
+          {/* TODO(Ana): título do preview. */}
+          <h3 className="font-display text-2xl font-black">Preview do e-mail</h3>
+          <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-[#F1F5F9] p-4">
+            <div className="mx-auto max-w-md border-4 border-slate-950 bg-white p-5">
+              <p className="font-display text-xs font-black text-slate-950">
+                BORA NA TECH
+              </p>
+              <h4 className="font-display mt-3 text-xl font-black text-slate-950">
+                {subject.trim() || "Assunto da campanha"}
+              </h4>
+              {trimmedImageUrl ? (
+                imageBroken ? (
+                  <p className="mt-3 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-700">
+                    {/* TODO(Ana): erro de imagem no preview. */}
+                    Não foi possível carregar a imagem dessa URL.
+                  </p>
+                ) : (
+                  <img
+                    src={trimmedImageUrl}
+                    alt=""
+                    onError={() => setImageBroken(true)}
+                    className="mt-3 w-full max-w-full"
+                  />
+                )
+              ) : null}
+              {bodyText.trim() ? (
+                <div
+                  className="mt-3"
+                  dangerouslySetInnerHTML={{ __html: previewBodyHtml }}
+                />
+              ) : (
+                <p className="mt-3 text-sm font-semibold text-slate-400">
+                  {/* TODO(Ana): placeholder do preview vazio. */}O corpo da
+                  campanha aparece aqui.
+                </p>
+              )}
+              <div className="mt-4 border-t-2 border-slate-200 pt-3 text-center text-[11px] font-semibold text-slate-400">
+                {/* TODO(Ana): rodapé do preview. */}
+                <p>
+                  Você está recebendo este e-mail porque entrou na lista de
+                  espera do Bora na Tech.
+                </p>
+                <p className="mt-1 underline">
+                  Não quero mais receber estes e-mails
+                </p>
+                <p className="mt-1">
+                  Enviado por Bora na Tech (oi@boranatech.com.br)
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      {detail ? (
+        <article className="card-brutal mt-5 rounded-3xl bg-white p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h3 className="font-display truncate text-2xl font-black">
+                {detail.subject}
+              </h3>
+              <span
+                className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${EMAIL_CAMPAIGN_STATUS_META[detail.status].className}`}
+              >
+                {EMAIL_CAMPAIGN_STATUS_META[detail.status].label}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {detail.status === "draft" || detail.status === "sending" ? (
+                <button
+                  type="button"
+                  disabled={testBusy}
+                  onClick={() => void sendTest()}
+                  className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-xs font-black uppercase text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+                >
+                  {/* TODO(Ana) */}
+                  {testBusy ? "Enviando teste..." : "Enviar teste para mim"}
+                </button>
+              ) : null}
+              {detail.status === "draft" ? (
+                <button
+                  type="button"
+                  onClick={openConfirm}
+                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                >
+                  {/* TODO(Ana) */}
+                  Enviar para a waitlist
+                </button>
+              ) : null}
+              {detail.status === "sending" && pending !== null && pending > 0 ? (
+                <button
+                  type="button"
+                  onClick={openConfirm}
+                  className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
+                >
+                  {/* TODO(Ana) */}
+                  Enviar restantes
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {detailError ? (
+            <p className="mt-4 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+              {detailError}
+            </p>
+          ) : null}
+
+          {detail.status !== "draft" ? (
+            <div className="mt-5">
+              <div className="grid gap-4 sm:grid-cols-3">
+                {/* TODO(Ana): rótulos dos contadores de progresso. */}
+                {[
+                  { label: "Enviados", value: detail.sent_count },
+                  { label: "Falhas", value: detail.failed_count },
+                  { label: "Pendentes", value: pending },
+                ].map((card) => (
+                  <div
+                    key={card.label}
+                    className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#0f172a]"
+                  >
+                    <p className="text-xs font-black uppercase text-slate-500">
+                      {card.label}
+                    </p>
+                    <p className="font-display text-3xl font-black text-slate-950">
+                      {card.value ?? "?"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4">
+                <div className="mb-1 flex justify-between text-xs font-black uppercase text-slate-500">
+                  {/* TODO(Ana): rótulo da barra de progresso. */}
+                  <span>Progresso</span>
+                  <span>
+                    {detail.sent_count + detail.failed_count} de{" "}
+                    {detail.total_recipients ?? "?"}
+                  </span>
+                </div>
+                <div className="h-4 overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100">
+                  <div
+                    className="h-full bg-emerald-500 transition-[width] duration-500 motion-reduce:transition-none"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </article>
+      ) : null}
+
+      <div className="mt-5 overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+        {listLoading && campaigns.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Carregando campanhas...
+          </p>
+        ) : listError ? (
+          <p className="p-6 text-sm font-semibold text-rose-600">{listError}</p>
+        ) : campaigns.length === 0 ? (
+          <p className="p-6 text-sm font-semibold text-slate-600">
+            {/* TODO(Ana) */}
+            Nenhuma campanha ainda.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b-2 border-slate-900 bg-slate-50">
+                  {/* TODO(Ana): cabeçalhos da tabela de campanhas. */}
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Assunto
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Enviados
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Falhas
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Total
+                  </th>
+                  <th className="px-4 py-3 font-black uppercase text-slate-600">
+                    Criada em
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaigns.map((campaign) => {
+                  const meta = EMAIL_CAMPAIGN_STATUS_META[campaign.status];
+                  return (
+                    <tr
+                      key={campaign.id}
+                      onClick={() => setSelectedId(campaign.id)}
+                      className={`cursor-pointer border-b border-slate-200 last:border-0 hover:bg-slate-50 ${
+                        selectedId === campaign.id ? "bg-amber-50" : ""
+                      }`}
+                    >
+                      <td className="max-w-[16rem] truncate px-4 py-3 font-semibold text-slate-900">
+                        {campaign.subject}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${meta.className}`}
+                        >
+                          {meta.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {campaign.sent_count}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {campaign.failed_count}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {campaign.total_recipients ?? "-"}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatAdminDate(campaign.created_at)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {confirmOpen && detail ? (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4">
+          <div className="card-brutal w-full max-w-md rounded-3xl bg-white p-6">
+            {/* TODO(Ana): copy do modal de confirmação de disparo. */}
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Enviar para a waitlist?
+            </h3>
+            {eligibleError ? (
+              <p className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+                {eligibleError}
+              </p>
+            ) : (
+              <p className="mt-3 text-sm font-semibold text-slate-600">
+                {confirmCount === null
+                  ? "Contando destinatários..."
+                  : detail.status === "draft"
+                    ? `${confirmCount} pessoas elegíveis vão receber este e-mail.`
+                    : `${confirmCount} destinatários ainda pendentes.`}
+              </p>
+            )}
+            <div className="mt-4">
+              <label
+                htmlFor="email-campaign-limit"
+                className="text-xs font-black uppercase text-slate-500"
+              >
+                {/* TODO(Ana) */}
+                Limite de envios agora (opcional)
+              </label>
+              <input
+                id="email-campaign-limit"
+                type="number"
+                min={1}
+                value={limitText}
+                onChange={(event) => setLimitText(event.target.value)}
+                // TODO(Ana): placeholder do limite.
+                placeholder="Vazio envia para todos os pendentes"
+                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+              />
+            </div>
+            <div className="mt-4">
+              <label
+                htmlFor="email-campaign-confirm"
+                className="text-xs font-black uppercase text-slate-500"
+              >
+                {/* TODO(Ana) */}
+                Digite ENVIAR para confirmar
+              </label>
+              <input
+                id="email-campaign-confirm"
+                type="text"
+                value={confirmText}
+                onChange={(event) => setConfirmText(event.target.value)}
+                className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black"
+              >
+                {/* TODO(Ana) */}
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={confirmText !== "ENVIAR" || sendBusy}
+                onClick={() => void confirmSend()}
+                className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-sm font-black text-slate-950 disabled:opacity-40"
+              >
+                {/* TODO(Ana) */}
+                {sendBusy ? "Disparando..." : "Confirmar envio"}
               </button>
             </div>
           </div>
@@ -3852,6 +4505,8 @@ export default function Admin() {
           ) : null}
 
           {activeSection === "newsletter" ? <NewsletterAdminSection /> : null}
+
+          {activeSection === "emails" ? <EmailCampaignsAdminSection /> : null}
 
           {activeSection === "beta" ? <BetaCodesAdminSection /> : null}
 
