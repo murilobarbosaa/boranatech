@@ -1,14 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
+import confetti from "canvas-confetti";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ExternalLink,
+  Github,
+  Globe,
+  Info,
+  Sparkles,
+} from "lucide-react";
 import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
-import AnalysisSkeleton from "@/components/shared/AnalysisSkeleton";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import PageHero from "@/components/shared/PageHero";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
-import ScoreCard, { type ScoreBandUi } from "@/components/shared/ScoreCard";
+import { type ScoreBandUi } from "@/components/shared/ScoreCard";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import SEO from "@/components/SEO";
 import { AnalysisError } from "@/components/portfolio/AnalysisStates";
@@ -170,12 +178,175 @@ function loadState(): StoredState {
   }
 }
 
-function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
+// TODO(Ana): revisar os rotulos do scan. Eles descrevem o pipeline REAL do
+// server (fetch publico do GitHub + checagens deterministicas + 1 chamada de
+// IA) e rodam em loop rotativo, sem prometer conclusao de etapa nem
+// porcentagem: a resposta e unica e o client nao sabe em que etapa o server
+// esta de verdade.
+const SCAN_STEPS = [
+  "Lendo os dados públicos do GitHub...",
+  "Rodando as checagens automáticas...",
+  "Consultando a análise da IA...",
+];
+
+// Card de scan do estado de analise: alvo no topo, shimmer INDETERMINADO
+// (nunca porcentagem) e rotulo rotativo a cada 2.5s. reduce: barra estatica e
+// troca de texto sem fade.
+function ScanCard({
+  owner,
+  display,
+  reduce,
+}: {
+  owner: string | null;
+  display: string | null;
+  reduce: boolean;
+}) {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(
+      () => setStep((s) => (s + 1) % SCAN_STEPS.length),
+      2500,
+    );
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div
+      role="status"
+      className="card-brutal mx-auto max-w-3xl rounded-2xl border-slate-950 bg-white p-8 text-center"
+    >
+      <div className="flex flex-col items-center gap-3">
+        {owner ? (
+          <TargetAvatar key={owner} owner={owner} />
+        ) : (
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]"
+            aria-hidden
+          >
+            <Github className="h-6 w-6" />
+          </span>
+        )}
+        {display ? (
+          <p className="truncate font-display text-xl font-black text-slate-950">
+            {display}
+          </p>
+        ) : null}
+      </div>
+      <div className="mx-auto mt-6 h-3 w-full max-w-sm overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100">
+        {reduce ? (
+          <div className="h-full w-full bg-violet-300" />
+        ) : (
+          <motion.div
+            className="h-full w-1/3 rounded-full bg-violet-500"
+            animate={{ x: ["-110%", "320%"] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
+      </div>
+      <div className="mt-4 min-h-[1.5rem] text-sm font-bold text-slate-600">
+        {reduce ? (
+          <p>{SCAN_STEPS[step]}</p>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={step}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {SCAN_STEPS[step]}
+            </motion.p>
+          </AnimatePresence>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const RING_RADIUS = 52;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+// Contador da nota: rAF de ~1s com ease-out cubico, de `from` ate `target`.
+// reduce pula direto ao valor final.
+function useCountUp(target: number, from: number, reduce: boolean): number {
+  const [value, setValue] = useState(reduce ? target : from);
+  useEffect(() => {
+    if (reduce) {
+      setValue(target);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const duration = 1000;
+    const stepFrame = (ts: number) => {
+      const p = Math.min((ts - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(Math.round(from + (target - from) * eased));
+      if (p < 1) raf = requestAnimationFrame(stepFrame);
+    };
+    raf = requestAnimationFrame(stepFrame);
+    return () => cancelAnimationFrame(raf);
+  }, [target, from, reduce]);
+  return value;
+}
+
+// Paleta do confete da plataforma (proConfetti.ts), reusada no burst
+// localizado do delta que subiu.
+const CONFETTI_COLORS = ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"];
+
+// Nota-hero: a nota e o protagonista (contador + anel SVG preenchendo junto +
+// carimbo da faixa), com alvo e link reorganizados ao lado. BAND_UI intacto
+// para as cores. Delta de reanalise: contador anima DA nota antiga PARA a
+// nova, a antiga aparece riscada, e subir dispara um burst de confete
+// localizado (reduce desliga contador, carimbo e confete).
+function ScoreHero({
+  response,
+  scoreDelta,
+  reduce,
+}: {
+  response: GithubAnalysisResponse;
+  scoreDelta: { from: number; to: number } | null;
+  reduce: boolean;
+}) {
   const { target, deterministic } = response;
+  const band = BAND_UI[deterministic.band];
   const display =
     target.kind === "repo"
       ? `${target.login}/${target.repo}`
       : `@${target.login}`;
+  // Delta valido para ESTE resultado: anima da nota antiga pra nova.
+  const delta =
+    scoreDelta && scoreDelta.to === deterministic.score ? scoreDelta : null;
+  const value = useCountUp(deterministic.score, delta ? delta.from : 0, reduce);
+  const ringOffset = RING_CIRCUMFERENCE * (1 - value / 100);
+
+  const scoreRef = useRef<HTMLDivElement>(null);
+
+  // Burst localizado quando a reanalise SUBIU a nota, sincronizado com a
+  // chegada do contador. reduce nao dispara nada.
+  useEffect(() => {
+    if (reduce || !delta || delta.to <= delta.from) return;
+    const timer = window.setTimeout(() => {
+      const rect = scoreRef.current?.getBoundingClientRect();
+      const origin = rect
+        ? {
+            x: (rect.left + rect.width / 2) / window.innerWidth,
+            y: (rect.top + rect.height / 2) / window.innerHeight,
+          }
+        : { x: 0.5, y: 0.35 };
+      confetti({
+        particleCount: 90,
+        spread: 100,
+        origin,
+        colors: CONFETTI_COLORS,
+        scalar: 0.9,
+        ticks: 140,
+        gravity: 0.85,
+      });
+    }, 950);
+    return () => window.clearTimeout(timer);
+  }, [delta, reduce]);
 
   return (
     <div
@@ -185,12 +356,74 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
       )}
     >
       <div className="flex flex-col md:flex-row">
+        <div
+          ref={scoreRef}
+          className={cn(
+            "flex flex-col items-center justify-center gap-3 border-b-2 border-slate-950 p-8 text-center md:w-72 md:shrink-0 md:border-b-0 md:border-r-2",
+            band.cardBg,
+          )}
+        >
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-700">
+            Nota do portfólio
+          </p>
+          <div className="relative h-[132px] w-[132px]">
+            <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+              <circle
+                cx="60"
+                cy="60"
+                r={RING_RADIUS}
+                fill="none"
+                stroke="#0f172a"
+                strokeOpacity="0.15"
+                strokeWidth="8"
+              />
+              <circle
+                cx="60"
+                cy="60"
+                r={RING_RADIUS}
+                fill="none"
+                stroke="#0f172a"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={RING_CIRCUMFERENCE}
+                strokeDashoffset={ringOffset}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="font-display text-4xl font-black leading-none text-slate-950">
+                {value}
+              </span>
+              <span className="text-xs font-black text-slate-500">/100</span>
+            </div>
+          </div>
+          {delta ? (
+            <p className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
+              <span className="line-through opacity-60">{delta.from}</span>
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              <span>{delta.to}</span>
+            </p>
+          ) : null}
+          <motion.span
+            initial={reduce ? false : { opacity: 0, scale: 1.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : { delay: 0.85, duration: 0.3, ease: "backOut" }
+            }
+            className={cn(
+              "inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]",
+              band.chipBg,
+            )}
+          >
+            {band.label}
+          </motion.span>
+        </div>
+
         <div className="flex min-w-0 flex-1 flex-col p-6">
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]">
-                <Github className="h-6 w-6" />
-              </span>
+              <TargetAvatar key={target.login} owner={target.login} />
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
                   {target.kind === "repo" ? "Repositório" : "Perfil"}
@@ -213,14 +446,6 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
           <div className="mt-auto pt-6">
             <MetadataChips response={response} />
           </div>
-        </div>
-        <div className="border-t-2 border-slate-950 md:w-56 md:border-l-2 md:border-t-0">
-          <ScoreCard
-            score={deterministic.score}
-            band={BAND_UI[deterministic.band]}
-            title="Nota do portfólio"
-            variant="panel"
-          />
         </div>
       </div>
     </div>
@@ -595,7 +820,25 @@ export default function PortfolioAnalisar() {
                 ) : null}
               </div>
 
-              {loading ? <AnalysisSkeleton /> : null}
+              {loading ? (
+                <ScanCard
+                  owner={
+                    detection.kind === "repo"
+                      ? detection.owner
+                      : detection.kind === "perfil"
+                        ? detection.login
+                        : null
+                  }
+                  display={
+                    detection.kind === "repo"
+                      ? `${detection.owner}/${detection.repo}`
+                      : detection.kind === "perfil"
+                        ? `@${detection.login}`
+                        : null
+                  }
+                  reduce={reduce}
+                />
+              ) : null}
 
               {!loading && error ? (
                 <AnalysisError
@@ -616,7 +859,11 @@ export default function PortfolioAnalisar() {
                   className="area-rise space-y-8"
                   style={{ animationDelay: "0.08s" }}
                 >
-                  <ResultHeader response={result} />
+                  <ScoreHero
+                    response={result}
+                    scoreDelta={scoreDelta}
+                    reduce={reduce}
+                  />
 
                   {scoreDelta ? (
                     <ScoreDeltaBanner
