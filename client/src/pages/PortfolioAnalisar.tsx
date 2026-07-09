@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ExternalLink,
   FileCode2,
+  Plus,
   FolderGit2,
   GitCommitHorizontal,
   GitFork,
@@ -748,6 +749,20 @@ export default function PortfolioAnalisar() {
     void runAnalysis();
   }
 
+  // Saida do estado de resultado: reset SO de UI (nenhuma funcao B3 muda).
+  // Mantem input e area (a pessoa pode analisar o mesmo alvo editado ou
+  // outro; o historico segue oferecendo as salvas). O resultado persistido
+  // some junto pelo proprio effect de persistencia (que passa a gravar
+  // result: null), entao sair e voltar depois disso cai na ENTRADA, sem
+  // mudanca de forma nem bump de versao do storage.
+  function startNewAnalysis() {
+    setResult(null);
+    setError("");
+    setScoreDelta(null);
+    setConfirmReanalyze(false);
+    setActiveTab("checklist");
+  }
+
   return (
     <Layout>
       {/* TODO(Ana): validar title e description */}
@@ -998,6 +1013,18 @@ export default function PortfolioAnalisar() {
                   className="area-rise space-y-8"
                   style={{ animationDelay: "0.08s" }}
                 >
+                  {/* Saida visivel do resultado, alinhada ao cabecalho.
+                      TODO(Ana): revisar o rotulo do botao de nova analise. */}
+                  <div className="flex justify-end">
+                    <BrutalActionButton
+                      variant="primary"
+                      icon={<Plus className="h-4 w-4" aria-hidden />}
+                      onClick={startNewAnalysis}
+                    >
+                      Nova análise
+                    </BrutalActionButton>
+                  </div>
+
                   <ScoreHero
                     response={result}
                     scoreDelta={scoreDelta}
@@ -1141,6 +1168,20 @@ export default function PortfolioAnalisar() {
                     />
                   </div>
                 </details>
+              ) : null}
+
+              {/* Mesma saida no rodape do resultado, apos o historico.
+                  TODO(Ana): revisar o rotulo do botao de nova analise. */}
+              {!loading && !error && result ? (
+                <div className="flex justify-center">
+                  <BrutalActionButton
+                    variant="primary"
+                    icon={<Plus className="h-4 w-4" aria-hidden />}
+                    onClick={startNewAnalysis}
+                  >
+                    Nova análise
+                  </BrutalActionButton>
+                </div>
               ) : null}
             </div>
           )}
