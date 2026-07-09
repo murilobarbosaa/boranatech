@@ -6,7 +6,7 @@ import { batchJobId, recipientJobId } from "./emailCampaignJobIds";
 import { env } from "./env";
 import { queueConnection } from "./redis";
 import { supabaseAdmin } from "./supabaseAdmin";
-import { buildWaitlistUnsubscribeUrl } from "./waitlistUnsubscribe";
+import { buildCampaignUnsubscribeUrl } from "./waitlistUnsubscribe";
 
 // Dois tipos de job na mesma fila: envio de UM destinatario e gatilho de
 // dispatch de um lote (imediato ou agendado via delay). O gatilho passa pelo
@@ -27,6 +27,23 @@ export type EmailCampaignJobData =
 
 // Status da waitlist elegiveis pra receber campanha. Nunca 'unsubscribed'.
 export const ELIGIBLE_WAITLIST_STATUSES = ["pending", "notified"];
+
+// Origens de destinatarios de um lote. 'users' existe no schema mas fica
+// desabilitada (sem campo de consentimento de marketing em profiles ainda).
+export type EmailCampaignBatchSource =
+  | "waitlist"
+  | "newsletter"
+  | "custom"
+  | "users";
+
+// Origens com tabela propria pra selecao/validacao de elegibilidade.
+export const TABLE_BACKED_SOURCES = ["waitlist", "newsletter"] as const;
+export type TableBackedSource = (typeof TABLE_BACKED_SOURCES)[number];
+
+// Newsletter: so quem confirmou o double opt-in. Quem se descadastrou dela
+// fica fora naturalmente (decisao: descadastro de newsletter NAO entra na
+// supressao global, e escopo newsletter).
+export const NEWSLETTER_ELIGIBLE_STATUSES = ["confirmed"];
 
 const QUEUE_NAME = "email-campaign";
 const CAMPAIGN_ATTEMPTS = 3;
@@ -169,32 +186,64 @@ export async function fetchSentEmailSetFromOtherCampaigns(
   return emails;
 }
 
-// mode 'next': proximos N elegiveis da waitlist em ordem de cadastro,
-// excluindo quem ja e recipient da campanha (e, com excludeOtherCampaigns,
-// quem ja recebeu qualquer outra campanha). limit null = todos os restantes.
+// Supressao GLOBAL: e-mails que nunca recebem campanha, de qualquer origem
+// (descadastro de campanha, bounce, insercao manual). Em minusculas.
+export async function fetchSuppressedEmailSet(): Promise<Set<string>> {
+  const emails = new Set<string>();
+  for (let from = 0; ; from += DB_PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("email_suppressions")
+      .select("email")
+      .range(from, from + DB_PAGE - 1);
+    if (error) {
+      throw new Error(`Falha ao buscar supressoes: ${error.message}`);
+    }
+    const rows = data ?? [];
+    rows.forEach((row) => emails.add(row.email.toLowerCase()));
+    if (rows.length < DB_PAGE) break;
+  }
+  return emails;
+}
+
+function sourceTableQuery(source: TableBackedSource) {
+  if (source === "newsletter") {
+    return supabaseAdmin
+      .from("newsletter_subscribers")
+      .select("email")
+      .in("status", NEWSLETTER_ELIGIBLE_STATUSES);
+  }
+  return supabaseAdmin
+    .from("waitlist")
+    .select("email")
+    .in("status", ELIGIBLE_WAITLIST_STATUSES);
+}
+
+// mode 'next': proximos N elegiveis da origem em ordem de cadastro, excluindo
+// suprimidos, quem ja e recipient da campanha e (com excludeOtherCampaigns)
+// quem ja recebeu qualquer outra campanha. limit null = todos os restantes.
 async function selectNextEligibleEmails(
   campaignId: string,
   limit: number | null,
   excludeOtherCampaigns: boolean,
+  source: TableBackedSource,
 ): Promise<string[]> {
   const existing = await fetchCampaignRecipientEmailSet(campaignId);
+  const suppressed = await fetchSuppressedEmailSet();
   const sentElsewhere = excludeOtherCampaigns
     ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
     : null;
   const selected: string[] = [];
   for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("waitlist")
-      .select("email")
-      .in("status", ELIGIBLE_WAITLIST_STATUSES)
+    const { data, error } = await sourceTableQuery(source)
       .order("created_at", { ascending: true })
       .range(from, from + DB_PAGE - 1);
     if (error) {
-      throw new Error(`Falha ao buscar waitlist: ${error.message}`);
+      throw new Error(`Falha ao buscar a origem ${source}: ${error.message}`);
     }
     const rows = data ?? [];
     for (const row of rows) {
       if (existing.has(row.email)) continue;
+      if (suppressed.has(row.email.toLowerCase())) continue;
       if (sentElsewhere?.has(row.email.toLowerCase())) continue;
       selected.push(row.email);
       if (limit !== null && selected.length >= limit) return selected;
@@ -204,13 +253,16 @@ async function selectNextEligibleEmails(
   return selected;
 }
 
-// mode 'selected': e-mails escolhidos a dedo, com elegibilidade revalidada NA
-// HORA do dispatch (quem se descadastrou entre o agendamento e o disparo nao
-// recebe), excluindo quem ja e recipient da campanha.
+// mode 'selected' (e origem custom): e-mails escolhidos a dedo ou colados,
+// com elegibilidade revalidada NA HORA do dispatch (quem se descadastrou
+// entre o agendamento e o disparo nao recebe), excluindo suprimidos e quem ja
+// e recipient da campanha. Origem custom nao tem tabela pra revalidar: a
+// lista vale por si, filtrada pela supressao global e pelos dedups.
 async function selectBatchEligibleEmails(
   campaignId: string,
   batchId: string,
   excludeOtherCampaigns: boolean,
+  source: EmailCampaignBatchSource,
 ): Promise<string[]> {
   const { data, error } = await supabaseAdmin
     .from("email_campaign_batch_recipients")
@@ -224,29 +276,34 @@ async function selectBatchEligibleEmails(
   if (wanted.length === 0) return [];
 
   const existing = await fetchCampaignRecipientEmailSet(campaignId);
-  const eligible = new Set<string>();
-  const CHUNK = 100;
-  for (let i = 0; i < wanted.length; i += CHUNK) {
-    const chunk = wanted.slice(i, i + CHUNK);
-    const { data: rows, error: waitlistError } = await supabaseAdmin
-      .from("waitlist")
-      .select("email")
-      .in("status", ELIGIBLE_WAITLIST_STATUSES)
-      .in("email", chunk);
-    if (waitlistError) {
-      throw new Error(
-        `Falha ao validar elegibilidade do lote: ${waitlistError.message}`,
-      );
+  const suppressed = await fetchSuppressedEmailSet();
+
+  let eligible: Set<string> | null = null;
+  if (source === "waitlist" || source === "newsletter") {
+    eligible = new Set<string>();
+    const CHUNK = 100;
+    for (let i = 0; i < wanted.length; i += CHUNK) {
+      const chunk = wanted.slice(i, i + CHUNK);
+      const { data: rows, error: sourceError } = await sourceTableQuery(
+        source,
+      ).in("email", chunk);
+      if (sourceError) {
+        throw new Error(
+          `Falha ao validar elegibilidade do lote: ${sourceError.message}`,
+        );
+      }
+      (rows ?? []).forEach((row) => eligible?.add(row.email));
     }
-    (rows ?? []).forEach((row) => eligible.add(row.email));
   }
+
   const sentElsewhere = excludeOtherCampaigns
     ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
     : null;
   return wanted.filter(
     (email) =>
-      eligible.has(email) &&
+      (eligible === null || eligible.has(email)) &&
       !existing.has(email) &&
+      !suppressed.has(email.toLowerCase()) &&
       !sentElsewhere?.has(email.toLowerCase()),
   );
 }
@@ -289,7 +346,9 @@ export async function dispatchCampaignBatch(
     .update({ status: "dispatched", dispatched_at: new Date().toISOString() })
     .eq("id", batchId)
     .eq("status", "pending")
-    .select("id, campaign_id, mode, batch_limit, exclude_other_campaigns")
+    .select(
+      "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source",
+    )
     .maybeSingle();
   if (casError) {
     throw new Error(`Falha ao marcar lote como dispatched: ${casError.message}`);
@@ -312,17 +371,25 @@ export async function dispatchCampaignBatch(
     }
 
     const excludeOtherCampaigns = batch.exclude_other_campaigns === true;
+    const source = (batch.source ?? "waitlist") as EmailCampaignBatchSource;
+    // 'users' nao tem envio implementado (sem consentimento de marketing em
+    // profiles); a rota bloqueia na criacao, este guard e a segunda linha.
+    if (source === "users") {
+      throw new Error("Origem users nao habilitada (exige opt-in).");
+    }
     const emails =
-      batch.mode === "selected"
+      batch.mode === "selected" || source === "custom"
         ? await selectBatchEligibleEmails(
             batch.campaign_id,
             batch.id,
             excludeOtherCampaigns,
+            source,
           )
         : await selectNextEligibleEmails(
             batch.campaign_id,
             batch.batch_limit ?? null,
             excludeOtherCampaigns,
+            source,
           );
 
     if (emails.length === 0) {
@@ -524,7 +591,7 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
     throw new Error(`Campanha ${campaignId} nao encontrada.`);
   }
 
-  const unsubscribeUrl = buildWaitlistUnsubscribeUrl(recipient.email);
+  const unsubscribeUrl = buildCampaignUnsubscribeUrl(recipient.email);
   await sendCampaignEmail({
     to: recipient.email,
     subject: campaign.subject,

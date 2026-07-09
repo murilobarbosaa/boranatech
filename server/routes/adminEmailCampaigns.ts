@@ -4,17 +4,20 @@ import { sendCampaignEmail } from "../lib/email";
 import { batchJobId } from "../lib/emailCampaignJobIds";
 import {
   ELIGIBLE_WAITLIST_STATUSES,
+  NEWSLETTER_ELIGIBLE_STATUSES,
   cleanupCanceledBatch,
   dispatchCampaignBatch,
   emailCampaignQueue,
   fetchCampaignRecipientEmailSet,
   fetchSentEmailSetFromOtherCampaigns,
+  fetchSuppressedEmailSet,
   scheduleBatchDispatchJob,
+  type TableBackedSource,
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import {
-  buildWaitlistUnsubscribeUrl,
+  buildCampaignUnsubscribeUrl,
   waitlistUnsubscribeReady,
 } from "../lib/waitlistUnsubscribe";
 import { createError } from "../middleware/error";
@@ -28,9 +31,36 @@ const CAMPAIGN_COLUMNS =
   "id, subject, body, image_url, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
 
 const BATCH_COLUMNS =
-  "id, campaign_id, mode, batch_limit, exclude_other_campaigns, scheduled_for, status, dispatched_at, created_at";
+  "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source, scheduled_for, status, dispatched_at, created_at";
 
 const MAX_SELECTED_PER_BATCH = 500;
+
+// Mesma validacao do POST /api/waitlist: presenca de local, arroba e dominio
+// com ponto. Usada na lista avulsa (custom), unica origem sem tabela por tras.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+
+const BATCH_SOURCES = ["waitlist", "newsletter", "custom", "users"] as const;
+type BatchSource = (typeof BATCH_SOURCES)[number];
+
+function isTableBackedSource(value: string): value is TableBackedSource {
+  return value === "waitlist" || value === "newsletter";
+}
+
+// Query paginavel de elegiveis da origem (mesmos filtros da selecao do lote).
+function audienceQuery(source: TableBackedSource, withCount = false) {
+  const options = withCount ? { count: "exact" as const } : undefined;
+  if (source === "newsletter") {
+    return supabaseAdmin
+      .from("newsletter_subscribers")
+      .select("email, created_at, status", options)
+      .in("status", NEWSLETTER_ELIGIBLE_STATUSES);
+  }
+  return supabaseAdmin
+    .from("waitlist")
+    .select("email, created_at, status", options)
+    .in("status", ELIGIBLE_WAITLIST_STATUSES);
+}
 const SCHEDULE_PAST_TOLERANCE_MS = 60_000;
 const SCHEDULE_MAX_AHEAD_MS = 30 * 24 * 60 * 60 * 1000; // 30d
 
@@ -194,47 +224,35 @@ router.get("/", async (_req, res, next) => {
   }
 });
 
-// GET /api/admin/email-campaigns/waitlist-count: total de elegiveis pro modal
-// de confirmacao. Com campaignId e/ou excludeOtherCampaigns=true, aplica os
-// MESMOS filtros da selecao do lote (dedup da propria campanha e sent em
-// outras campanhas) pro numero exibido bater com o que sera enviado. Erro e
-// erro (500), nunca colapsa em zero.
-router.get("/waitlist-count", async (req, res, next) => {
+// GET /api/admin/email-campaigns/audience-count: total de elegiveis da origem
+// pro modal de novo lote, com os MESMOS filtros da selecao (supressao global,
+// dedup da propria campanha e, com excludeOtherCampaigns=true, sent em outras
+// campanhas) pro numero exibido bater com o que sera enviado. Erro e erro
+// (500), nunca colapsa em zero.
+router.get("/audience-count", async (req, res, next) => {
   try {
     const campaignId =
       typeof req.query.campaignId === "string" ? req.query.campaignId : "";
-    const excludeOther = req.query.excludeOtherCampaigns === "true";
-
-    if (!campaignId && !excludeOther) {
-      const { count, error } = await supabaseAdmin
-        .from("waitlist")
-        .select("id", { count: "exact", head: true })
-        .in("status", ELIGIBLE_WAITLIST_STATUSES);
-      if (error || count === null) {
-        console.error("[email-campaign] Falha ao contar waitlist", error);
-        return next(
-          createError(
-            500,
-            "campaign_error",
-            "Não foi possível contar a waitlist.",
-          ),
-        );
-      }
-      res.json({ data: { count } });
-      return;
+    if (!campaignId) {
+      return next(
+        createError(400, "invalid_campaign", "campaignId é obrigatório."),
+      );
     }
-
-    if (excludeOther && !campaignId) {
+    const source =
+      typeof req.query.source === "string" ? req.query.source : "waitlist";
+    if (!isTableBackedSource(source)) {
       return next(
         createError(
           400,
-          "invalid_campaign",
-          "campaignId é obrigatório com excludeOtherCampaigns.",
+          "invalid_source",
+          "Contagem disponível apenas para waitlist e newsletter.",
         ),
       );
     }
+    const excludeOther = req.query.excludeOtherCampaigns === "true";
 
     const existing = await fetchCampaignRecipientEmailSet(campaignId);
+    const suppressed = await fetchSuppressedEmailSet();
     const sentElsewhere = excludeOther
       ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
       : null;
@@ -242,24 +260,24 @@ router.get("/waitlist-count", async (req, res, next) => {
     const PAGE = 1000;
     let count = 0;
     for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabaseAdmin
-        .from("waitlist")
-        .select("email")
-        .in("status", ELIGIBLE_WAITLIST_STATUSES)
-        .range(from, from + PAGE - 1);
+      const { data, error } = await audienceQuery(source).range(
+        from,
+        from + PAGE - 1,
+      );
       if (error) {
-        console.error("[email-campaign] Falha ao contar waitlist", error);
+        console.error("[email-campaign] Falha ao contar a origem", error);
         return next(
           createError(
             500,
             "campaign_error",
-            "Não foi possível contar a waitlist.",
+            "Não foi possível contar os elegíveis.",
           ),
         );
       }
       const rows = data ?? [];
       for (const row of rows) {
         if (existing.has(row.email)) continue;
+        if (suppressed.has(row.email.toLowerCase())) continue;
         if (sentElsewhere?.has(row.email.toLowerCase())) continue;
         count += 1;
       }
@@ -272,16 +290,28 @@ router.get("/waitlist-count", async (req, res, next) => {
   }
 });
 
-// GET /api/admin/email-campaigns/waitlist-recipients: lista paginada da
-// waitlist elegivel pra UI de selecao, com busca por e-mail e flag de quem ja
-// e recipient da campanha (campaignId obrigatorio). Maximo 100 por pagina.
-router.get("/waitlist-recipients", async (req, res, next) => {
+// GET /api/admin/email-campaigns/audience-recipients: lista paginada dos
+// elegiveis da origem (waitlist ou newsletter) pra UI de selecao, com busca
+// por e-mail e flags de quem ja e recipient da campanha e de quem esta na
+// supressao global (campaignId obrigatorio). Maximo 100 por pagina.
+router.get("/audience-recipients", async (req, res, next) => {
   try {
     const campaignId =
       typeof req.query.campaignId === "string" ? req.query.campaignId : "";
     if (!campaignId) {
       return next(
         createError(400, "invalid_campaign", "campaignId é obrigatório."),
+      );
+    }
+    const source =
+      typeof req.query.source === "string" ? req.query.source : "waitlist";
+    if (!isTableBackedSource(source)) {
+      return next(
+        createError(
+          400,
+          "invalid_source",
+          "Seleção disponível apenas para waitlist e newsletter.",
+        ),
       );
     }
     const search =
@@ -294,10 +324,7 @@ router.get("/waitlist-recipients", async (req, res, next) => {
     const rawOffset = parseInt(String(req.query.offset ?? ""), 10);
     const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
-    let query = supabaseAdmin
-      .from("waitlist")
-      .select("email, created_at, status", { count: "exact" })
-      .in("status", ELIGIBLE_WAITLIST_STATUSES)
+    let query = audienceQuery(source, true)
       .order("created_at", { ascending: true })
       .range(offset, offset + limit - 1);
     if (search) {
@@ -308,31 +335,39 @@ router.get("/waitlist-recipients", async (req, res, next) => {
 
     const { data, error, count } = await query;
     if (error) {
-      console.error("[email-campaign] Falha ao listar waitlist", error);
+      console.error("[email-campaign] Falha ao listar a origem", error);
       return next(
         createError(
           500,
           "campaign_error",
-          "Não foi possível listar a waitlist.",
+          "Não foi possível listar os elegíveis.",
         ),
       );
     }
 
     const rows = data ?? [];
     let recipientSet = new Set<string>();
+    let suppressedSet = new Set<string>();
     if (rows.length > 0) {
-      const { data: recipients, error: recipientsError } = await supabaseAdmin
-        .from("email_campaign_recipients")
-        .select("email")
-        .eq("campaign_id", campaignId)
-        .in(
-          "email",
-          rows.map((row) => row.email),
-        );
-      if (recipientsError) {
+      const emails = rows.map((row) => row.email);
+      const [recipientsResult, suppressionsResult] = await Promise.all([
+        supabaseAdmin
+          .from("email_campaign_recipients")
+          .select("email")
+          .eq("campaign_id", campaignId)
+          .in("email", emails),
+        supabaseAdmin
+          .from("email_suppressions")
+          .select("email")
+          .in(
+            "email",
+            emails.map((email) => email.toLowerCase()),
+          ),
+      ]);
+      if (recipientsResult.error || suppressionsResult.error) {
         console.error(
-          "[email-campaign] Falha ao buscar recipients da campanha",
-          recipientsError,
+          "[email-campaign] Falha ao verificar flags dos elegíveis",
+          recipientsResult.error ?? suppressionsResult.error,
         );
         return next(
           createError(
@@ -342,7 +377,12 @@ router.get("/waitlist-recipients", async (req, res, next) => {
           ),
         );
       }
-      recipientSet = new Set((recipients ?? []).map((row) => row.email));
+      recipientSet = new Set(
+        (recipientsResult.data ?? []).map((row) => row.email),
+      );
+      suppressedSet = new Set(
+        (suppressionsResult.data ?? []).map((row) => row.email),
+      );
     }
 
     res.json({
@@ -352,6 +392,7 @@ router.get("/waitlist-recipients", async (req, res, next) => {
           created_at: row.created_at,
           status: row.status,
           already_recipient: recipientSet.has(row.email),
+          suppressed: suppressedSet.has(row.email.toLowerCase()),
         })),
         pagination: { total: count ?? 0, limit, offset },
       },
@@ -745,7 +786,7 @@ router.post("/:id/test", async (req, res, next) => {
         subject: campaign.subject,
         body: campaign.body,
         imageUrl: campaign.image_url,
-        unsubscribeUrl: buildWaitlistUnsubscribeUrl(req.user.email),
+        unsubscribeUrl: buildCampaignUnsubscribeUrl(req.user.email),
       });
     } catch (sendErr) {
       console.error("[email-campaign] Falha no envio de teste", sendErr);
@@ -778,10 +819,41 @@ router.post("/:id/batches", async (req, res, next) => {
     }
 
     const body = (req.body ?? {}) as Record<string, unknown>;
+
+    const rawSource = body.source ?? "waitlist";
+    if (
+      typeof rawSource !== "string" ||
+      !BATCH_SOURCES.includes(rawSource as BatchSource)
+    ) {
+      return next(
+        createError(400, "invalid_source", "Origem de destinatários inválida."),
+      );
+    }
+    const source = rawSource as BatchSource;
+    if (source === "users") {
+      return next(
+        createError(
+          400,
+          "source_requires_opt_in",
+          "Envio para usuários da plataforma exige opt-in de comunicação, ainda não implementado.",
+        ),
+      );
+    }
+
     const mode = body.mode;
     if (mode !== "next" && mode !== "selected") {
       return next(
         createError(400, "invalid_mode", "Modo de lote inválido."),
+      );
+    }
+    // Lista avulsa nao tem "proximos da fila": e sempre a lista colada.
+    if (source === "custom" && mode !== "selected") {
+      return next(
+        createError(
+          400,
+          "invalid_mode",
+          "Lista avulsa exige a lista de e-mails (modo selected).",
+        ),
       );
     }
 
@@ -821,7 +893,22 @@ router.post("/:id/batches", async (req, res, next) => {
             createError(400, "invalid_emails", "Lista de e-mails inválida."),
           );
         }
-        normalized.add(raw.trim().toLowerCase());
+        const email = raw.trim().toLowerCase();
+        // Lista avulsa e a unica origem sem tabela por tras: valida o formato
+        // aqui (picker de waitlist/newsletter ja vem de dados validados).
+        if (
+          source === "custom" &&
+          (email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email))
+        ) {
+          return next(
+            createError(
+              400,
+              "invalid_emails",
+              `E-mail inválido na lista: ${email.slice(0, 80)}`,
+            ),
+          );
+        }
+        normalized.add(email);
       }
       emails = Array.from(normalized);
       if (emails.length > MAX_SELECTED_PER_BATCH) {
@@ -920,6 +1007,7 @@ router.post("/:id/batches", async (req, res, next) => {
         mode,
         batch_limit: limit,
         exclude_other_campaigns: excludeOtherCampaigns,
+        source,
         scheduled_for: scheduledFor,
         created_by: req.user.id,
       })

@@ -6,7 +6,10 @@ import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { verifySignedToken } from "../lib/signedToken";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { WAITLIST_UNSUBSCRIBE_PURPOSE } from "../lib/waitlistUnsubscribe";
+import {
+  EMAIL_UNSUBSCRIBE_PURPOSE,
+  WAITLIST_UNSUBSCRIBE_PURPOSE,
+} from "../lib/waitlistUnsubscribe";
 
 const router = Router();
 
@@ -223,29 +226,43 @@ router.post(
         typeof req.query.token === "string" ? req.query.token : "";
       const token = formToken || queryToken;
 
+      // Aceita o purpose atual (email-unsubscribe) e o legado
+      // (waitlist-unsubscribe): ha tokens de 60 dias emitidos antes da
+      // generalizacao que precisam continuar funcionando.
       const claims = env.newsletterTokenSecret
-        ? verifySignedToken<UnsubscribeTokenClaims>({
+        ? (verifySignedToken<UnsubscribeTokenClaims>({
+            token,
+            secret: env.newsletterTokenSecret,
+            expectedPurpose: EMAIL_UNSUBSCRIBE_PURPOSE,
+          }) ??
+          verifySignedToken<UnsubscribeTokenClaims>({
             token,
             secret: env.newsletterTokenSecret,
             expectedPurpose: WAITLIST_UNSUBSCRIBE_PURPOSE,
-          })
+          }))
         : null;
 
       if (claims) {
-        // Idempotente: ja unsubscribed (ou e-mail fora da waitlist) cai no
-        // mesmo sucesso, resultado final identico.
-        const { error } = await supabaseAdmin
-          .from("waitlist")
-          .update({
-            status: "unsubscribed",
-            unsubscribed_at: new Date().toISOString(),
-          })
-          .eq("email", claims.email)
-          .neq("status", "unsubscribed");
-        if (error) {
+        const email = claims.email.toLowerCase();
+
+        // Efeito principal: supressao GLOBAL. Vale pra qualquer origem,
+        // inclusive lista avulsa cujo e-mail nao esta em tabela nenhuma.
+        // Upsert idempotente; falha aqui e erro de verdade (sem supressao o
+        // descadastro nao vale pra proxima campanha).
+        const { error: suppressionError } = await supabaseAdmin
+          .from("email_suppressions")
+          .upsert(
+            {
+              email,
+              reason: "unsubscribed",
+              source: "campaign-unsubscribe",
+            },
+            { onConflict: "email", ignoreDuplicates: true },
+          );
+        if (suppressionError) {
           console.error(
-            "[waitlist] Falha ao marcar descadastro na waitlist",
-            error,
+            "[waitlist] Falha ao gravar supressao global",
+            suppressionError,
           );
           // TODO(Ana): copy da pagina de erro do descadastro.
           sendUnsubscribePage(
@@ -258,6 +275,38 @@ router.post(
             }),
           );
           return;
+        }
+
+        // Adicionalmente marca as origens onde o e-mail existir. Best-effort
+        // e idempotente: a supressao global acima ja garante que a pessoa nao
+        // recebe mais campanha mesmo se um destes updates falhar.
+        const { error: waitlistError } = await supabaseAdmin
+          .from("waitlist")
+          .update({
+            status: "unsubscribed",
+            unsubscribed_at: new Date().toISOString(),
+          })
+          .eq("email", email)
+          .neq("status", "unsubscribed");
+        if (waitlistError) {
+          console.error(
+            "[waitlist] Falha ao marcar descadastro na waitlist",
+            waitlistError,
+          );
+        }
+        const { error: newsletterError } = await supabaseAdmin
+          .from("newsletter_subscribers")
+          .update({
+            status: "unsubscribed",
+            unsubscribed_at: new Date().toISOString(),
+          })
+          .eq("email", email)
+          .neq("status", "unsubscribed");
+        if (newsletterError) {
+          console.error(
+            "[waitlist] Falha ao marcar descadastro na newsletter",
+            newsletterError,
+          );
         }
       }
 
