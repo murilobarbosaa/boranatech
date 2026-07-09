@@ -28,7 +28,7 @@ export function AiSummary({ resumo }: { resumo: string }) {
         <Sparkles className="h-3.5 w-3.5" />
         análise da IA
       </span>
-      <p className="mt-4 text-lg font-medium leading-relaxed text-slate-900">
+      <p className="mt-4 max-w-prose text-lg font-medium leading-relaxed text-slate-900">
         {resumo}
       </p>
     </div>

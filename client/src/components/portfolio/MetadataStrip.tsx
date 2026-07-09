@@ -72,8 +72,12 @@ export function MetadataChips({ response }: MetadataProps) {
   );
 }
 
-/** Grid de repositórios em destaque, só no modo perfil. Seção própria. */
-export function TopRepos({ response }: MetadataProps) {
+/** Grid de repositórios em destaque, só no modo perfil. Seção própria.
+ * compact: coluna unica (trilho lateral do resultado); default mantem o atual. */
+export function TopRepos({
+  response,
+  compact = false,
+}: MetadataProps & { compact?: boolean }) {
   if (response.mode !== "perfil") return null;
 
   const m = response.metadata as ProfileMetadata;
@@ -84,7 +88,12 @@ export function TopRepos({ response }: MetadataProps) {
       <p className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-slate-600">
         Repositórios em destaque
       </p>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-3",
+          compact ? undefined : "md:grid-cols-2",
+        )}
+      >
         {m.topRepos.map((repo) => (
           <div
             key={repo.name}

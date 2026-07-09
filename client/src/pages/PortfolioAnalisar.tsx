@@ -22,6 +22,7 @@ import ProGate from "@/components/pro/ProGate";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
+import SectionLabel from "@/components/shared/SectionLabel";
 import SEO from "@/components/SEO";
 import { AnalysisError } from "@/components/portfolio/AnalysisStates";
 import {
@@ -380,75 +381,28 @@ function useCountUp(target: number, from: number, reduce: boolean): number {
 // localizado do delta que subiu.
 const CONFETTI_COLORS = ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"];
 
-// Trilha de diagnostico: o corpo do resultado organizado em tabs acessiveis.
-type DiagnosticTab = "checklist" | "ia" | "plano" | "readme";
-
-// TODO(Ana): revisar os rotulos das tabs do diagnostico.
-const TAB_LABELS: Record<DiagnosticTab, string> = {
-  checklist: "Checklist",
-  ia: "Análise da IA",
-  plano: "Plano de ação",
-  readme: "README",
-};
-
-// Tablist acessivel (setas, Home/End, roving tabindex) com o visual Dialeto 2
-// do OptionToggle (que e aria-pressed e nao serve de tab).
-function DiagnosticTabs({
-  tabs,
-  active,
-  onChange,
+// Entrada padrao dos blocos do corpo revista do resultado: whileInView uma
+// vez, stagger curto via delay; reduce pula direto.
+function Reveal({
+  children,
+  className,
+  delay = 0,
 }: {
-  tabs: DiagnosticTab[];
-  active: DiagnosticTab;
-  onChange: (tab: DiagnosticTab) => void;
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
 }) {
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-
-  function onKeyDown(event: React.KeyboardEvent, index: number) {
-    let next: number | null = null;
-    if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
-    else if (event.key === "ArrowLeft")
-      next = (index - 1 + tabs.length) % tabs.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = tabs.length - 1;
-    if (next === null) return;
-    event.preventDefault();
-    onChange(tabs[next]);
-    refs.current[next]?.focus();
-  }
-
+  const reduce = useReducedMotion() ?? false;
   return (
-    <div
-      role="tablist"
-      aria-label="Diagnóstico da análise"
-      className="flex flex-wrap gap-2.5"
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.35, delay }}
+      className={className}
     >
-      {tabs.map((tab, i) => {
-        const selected = tab === active;
-        return (
-          <button
-            key={tab}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
-            type="button"
-            role="tab"
-            id={`diag-tab-${tab}`}
-            aria-selected={selected}
-            aria-controls={`diag-panel-${tab}`}
-            tabIndex={selected ? 0 : -1}
-            onClick={() => onChange(tab)}
-            onKeyDown={(event) => onKeyDown(event, i)}
-            className={cn(
-              "rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]",
-              selected ? "bg-[#FFB800] text-slate-950" : "bg-white text-slate-600",
-            )}
-          >
-            {TAB_LABELS[tab]}
-          </button>
-        );
-      })}
-    </div>
+      {children}
+    </motion.div>
   );
 }
 
@@ -649,9 +603,6 @@ export default function PortfolioAnalisar() {
   } | null>(null);
   // Confirmacao leve da reanalise (consome 1 uso de IA).
   const [confirmReanalyze, setConfirmReanalyze] = useState(false);
-  // Tab ativa da trilha de diagnostico. Estado local (sem URL nesta fase);
-  // nova analise e reabrir do historico voltam pra Checklist.
-  const [activeTab, setActiveTab] = useState<DiagnosticTab>("checklist");
 
   // Default da area pelo perfil logado, so se nada foi salvo/escolhido. Usa o
   // profile ja carregado, sem fetch novo.
@@ -771,7 +722,6 @@ export default function PortfolioAnalisar() {
       // O kind vai por compat (o server autodetecta e ignora o mode).
       const data = await analyzeGithub(target.kind, trimmed, area);
       setResult(data);
-      setActiveTab("checklist");
       setScoreDelta(
         priorScore !== null
           ? { from: priorScore, to: data.deterministic.score }
@@ -799,7 +749,6 @@ export default function PortfolioAnalisar() {
       setConfirmReanalyze(false);
       setInput(rawInput);
       setResult(record.result);
-      setActiveTab("checklist");
       const priorScore = rawInput ? findPriorScore(rawInput, id) : null;
       setScoreDelta(
         priorScore !== null && typeof record.score === "number"
@@ -829,7 +778,6 @@ export default function PortfolioAnalisar() {
     setError("");
     setScoreDelta(null);
     setConfirmReanalyze(false);
-    setActiveTab("checklist");
   }
 
   return (
@@ -1132,75 +1080,65 @@ export default function PortfolioAnalisar() {
                     />
                   </motion.div>
 
-                  {(() => {
-                    const availableTabs: DiagnosticTab[] = result.qualitative
-                      .readmeSugestao
-                      ? ["checklist", "ia", "plano", "readme"]
-                      : ["checklist", "ia", "plano"];
-                    // Guarda: resultado sem README com a tab README ativa cai
-                    // pra Checklist sem estado invalido.
-                    const tab = availableTabs.includes(activeTab)
-                      ? activeTab
-                      : "checklist";
-                    return (
-                      // Respiro dedicado entre o hero/spotlight e a zona densa
-                      // do diagnostico, coerente com a entrada.
-                      <div className="mt-14 space-y-6">
-                        <DiagnosticTabs
-                          tabs={availableTabs}
-                          active={tab}
-                          onChange={setActiveTab}
+                  {/* Corpo revista: coluna narrativa (7) + trilho lateral
+                      consultavel (5). No mobile os wrappers viram display
+                      contents e as classes order-* definem a ordem de leitura
+                      empilhada: resumo, fortes/fracos, checklist, melhorias,
+                      repos, readme, next steps, reanalise. */}
+                  <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+                    <div className="contents lg:col-span-7 lg:block lg:space-y-8">
+                      <Reveal className="order-1 lg:order-none">
+                        <AiSummary resumo={result.qualitative.resumo} />
+                      </Reveal>
+                      <Reveal className="order-2 lg:order-none" delay={0.05}>
+                        <StrengthsWeaknesses
+                          pontosFortes={result.qualitative.pontosFortes}
+                          pontosFracos={result.qualitative.pontosFracos}
                         />
-                        <motion.div
-                          key={tab}
-                          role="tabpanel"
-                          id={`diag-panel-${tab}`}
-                          aria-labelledby={`diag-tab-${tab}`}
-                          initial={reduce ? false : { opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.25, ease: "easeOut" }}
-                          className="space-y-8"
-                        >
-                          {tab === "checklist" ? (
-                            <>
-                              <TopRepos response={result} />
-                              <ChecklistByCategory
-                                checks={result.deterministic.checks}
-                              />
-                            </>
-                          ) : null}
-                          {tab === "ia" ? (
-                            <>
-                              <AiSummary resumo={result.qualitative.resumo} />
-                              <StrengthsWeaknesses
-                                pontosFortes={result.qualitative.pontosFortes}
-                                pontosFracos={result.qualitative.pontosFracos}
-                              />
-                            </>
-                          ) : null}
-                          {tab === "plano" ? (
-                            <>
-                              <Improvements
-                                melhorias={result.qualitative.melhorias}
-                              />
-                              <NextStepsByArea area={result.area} />
-                              <ReanalyzeCta
-                                confirming={confirmReanalyze}
-                                onStart={() => setConfirmReanalyze(true)}
-                                onConfirm={() => void runAnalysis()}
-                                onCancel={() => setConfirmReanalyze(false)}
-                              />
-                            </>
-                          ) : null}
-                          {tab === "readme" ? (
-                            <ReadmeSuggestion
-                              markdown={result.qualitative.readmeSugestao}
-                            />
-                          ) : null}
-                        </motion.div>
-                      </div>
-                    );
-                  })()}
+                      </Reveal>
+                      <Reveal className="order-4 lg:order-none" delay={0.05}>
+                        <Improvements
+                          melhorias={result.qualitative.melhorias}
+                        />
+                      </Reveal>
+                      {result.qualitative.readmeSugestao ? (
+                        <Reveal className="order-6 lg:order-none">
+                          <ReadmeSuggestion
+                            markdown={result.qualitative.readmeSugestao}
+                          />
+                        </Reveal>
+                      ) : null}
+                      <Reveal className="order-8 lg:order-none">
+                        <ReanalyzeCta
+                          confirming={confirmReanalyze}
+                          onStart={() => setConfirmReanalyze(true)}
+                          onConfirm={() => void runAnalysis()}
+                          onCancel={() => setConfirmReanalyze(false)}
+                        />
+                      </Reveal>
+                    </div>
+
+                    <div className="contents lg:col-span-5 lg:block lg:space-y-8">
+                      <Reveal className="order-3 lg:order-none" delay={0.1}>
+                        <div className="space-y-4">
+                          {/* TODO(Ana): revisar o rotulo do trilho lateral. */}
+                          <SectionLabel ac={ac}>Raio-X completo</SectionLabel>
+                          <ChecklistByCategory
+                            checks={result.deterministic.checks}
+                            compact
+                          />
+                        </div>
+                      </Reveal>
+                      {result.mode === "perfil" ? (
+                        <Reveal className="order-5 lg:order-none">
+                          <TopRepos response={result} compact />
+                        </Reveal>
+                      ) : null}
+                      <Reveal className="order-7 lg:order-none">
+                        <NextStepsByArea area={result.area} />
+                      </Reveal>
+                    </div>
+                  </div>
                 </div>
               ) : null}
 
