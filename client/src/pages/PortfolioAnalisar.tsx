@@ -6,11 +6,16 @@ import {
   ArrowRight,
   ChevronDown,
   ExternalLink,
+  FileCode2,
+  FolderGit2,
+  GitCommitHorizontal,
+  GitFork,
   Github,
   Globe,
   History,
   Info,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { Link } from "wouter";
 import Layout from "@/components/Layout";
@@ -22,7 +27,11 @@ import { type ScoreBandUi } from "@/components/shared/ScoreCard";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import SEO from "@/components/SEO";
 import { AnalysisError } from "@/components/portfolio/AnalysisStates";
-import { HowItWorks, WhatYouGet } from "@/components/portfolio/AnalyzerIntro";
+import {
+  BenefitPills,
+  HowItWorksTimeline,
+  ResultShowcase,
+} from "@/components/portfolio/AnalyzerIntro";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import GithubHistory from "@/components/portfolio/GithubHistory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
@@ -103,6 +112,59 @@ const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
     "Analisa seu README de perfil, bio, links de contato, repositórios e atividade.",
   repo: "Analisa README, descrição, licença, topics, arquivos de segurança e a organização do projeto.",
 };
+
+// Doodles tematicos de GitHub do cenario de entrada, no padrao exato dos
+// HERO_DOODLES do RoadmapsV2Index (loop lento de y/rotate; reduce para tudo).
+const ENTRY_DOODLES = [
+  { Icon: Github, cls: "left-[4%] top-[6%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", rot: 6, dur: 7, delay: 0 },
+  { Icon: Star, cls: "right-[6%] top-[8%] text-amber-500 opacity-[0.15]", size: "h-10 w-10", rot: -6, dur: 8, delay: 0.5 },
+  { Icon: GitFork, cls: "left-[14%] top-[30%] text-purple-500 opacity-[0.13]", size: "h-9 w-9", rot: 8, dur: 7.5, delay: 0.3 },
+  { Icon: FileCode2, cls: "right-[12%] top-[34%] text-violet-600 opacity-[0.14]", size: "h-10 w-10", rot: -7, dur: 6.5, delay: 1.1 },
+  { Icon: GitCommitHorizontal, cls: "left-[6%] top-[58%] text-violet-400 opacity-[0.13]", size: "h-10 w-10", rot: 7, dur: 7, delay: 0.8 },
+  { Icon: FolderGit2, cls: "right-[5%] top-[62%] text-purple-600 opacity-[0.14]", size: "h-11 w-11", rot: -5, dur: 8, delay: 1.4 },
+  { Icon: Star, cls: "left-[10%] top-[84%] text-violet-500 opacity-[0.12]", size: "h-8 w-8", rot: 9, dur: 6, delay: 0.6 },
+  { Icon: Github, cls: "right-[15%] top-[86%] text-purple-500 opacity-[0.12]", size: "h-9 w-9", rot: -8, dur: 6.5, delay: 1 },
+];
+
+// Cenario vivo do estado de ENTRADA: overlay de gradiente de marca (o mesmo
+// do RoadmapsV2Index) na regiao superior com fade pro fundo + doodles
+// flutuantes. Renderizado SO na entrada; scan e resultado ficam limpos.
+function AnalyzerBackdrop({ reduce }: { reduce: boolean }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden
+    >
+      <div className="absolute inset-x-0 top-0 h-[540px] bg-gradient-to-br from-violet-300/45 via-fuchsia-200/35 to-amber-200/45 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]" />
+      {ENTRY_DOODLES.map((doodle, i) => {
+        const Icon = doodle.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute ${doodle.cls}`}
+            animate={
+              reduce
+                ? undefined
+                : { y: [0, -10, 0], rotate: [0, doodle.rot, 0] }
+            }
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: doodle.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: doodle.delay,
+                  }
+            }
+          >
+            <Icon className={doodle.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
 
 // Avatar publico do GitHub (github.com/<owner>.png, redirect oficial, sem
 // API). onError cai pro icone; key={owner} no call-site zera o estado de erro
@@ -769,9 +831,11 @@ export default function PortfolioAnalisar() {
         }
       />
       {/* Cenario do Dialeto 2 (padrao exato do RoadmapsV2Index) dentro da
-          secao de conteudo; o PageHero violet permanece acima. */}
-      <section className="bg-[#faf8f4] py-12 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
-        <div className="container">
+          secao de conteudo; o PageHero violet permanece acima. O backdrop
+          vivo (gradiente + doodles) so existe no estado de entrada. */}
+      <section className="relative overflow-hidden bg-[#faf8f4] py-12 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        {!loading && !result ? <AnalyzerBackdrop reduce={reduce} /> : null}
+        <div className="container relative z-10">
           {!isPro ? (
             <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
           ) : (
@@ -927,9 +991,12 @@ export default function PortfolioAnalisar() {
               ) : null}
 
               {!loading && !result ? (
-                <div className="space-y-8">
-                  <HowItWorks />
-                  <WhatYouGet />
+                <div className="mx-auto max-w-5xl space-y-10">
+                  <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-center">
+                    <HowItWorksTimeline />
+                    <ResultShowcase />
+                  </div>
+                  <BenefitPills />
                 </div>
               ) : null}
 
