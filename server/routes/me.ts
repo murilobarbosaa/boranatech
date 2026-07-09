@@ -257,6 +257,25 @@ router.patch("/", checkProStatus, async (req, res, next) => {
       }
     }
 
+    // Fora da whitelist de proposito: o carimbo de quando a pessoa consentiu
+    // (marketing_opt_in_at) e gravado pelo SERVER, nunca vindo do cliente.
+    // Desmarcar zera o consentimento e o carimbo. Nao toca a supressao global
+    // (email_suppressions), que e outra camada e vale acima do opt-in.
+    if ("marketing_opt_in" in body) {
+      const value = body.marketing_opt_in;
+      if (typeof value !== "boolean") {
+        return next(
+          createError(
+            400,
+            "invalid_marketing_opt_in",
+            "Valor inválido para marketing_opt_in.",
+          ),
+        );
+      }
+      updates.marketing_opt_in = value;
+      updates.marketing_opt_in_at = value ? new Date().toISOString() : null;
+    }
+
     for (const field of Object.keys(AVATAR_VALUES) as Array<
       keyof typeof AVATAR_VALUES
     >) {

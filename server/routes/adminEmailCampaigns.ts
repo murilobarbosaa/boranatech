@@ -5,14 +5,19 @@ import { batchJobId } from "../lib/emailCampaignJobIds";
 import {
   ELIGIBLE_WAITLIST_STATUSES,
   NEWSLETTER_ELIGIBLE_STATUSES,
+  USER_SEGMENTS,
   cleanupCanceledBatch,
   dispatchCampaignBatch,
   emailCampaignQueue,
   fetchCampaignRecipientEmailSet,
+  fetchProStatusSets,
   fetchSentEmailSetFromOtherCampaigns,
   fetchSuppressedEmailSet,
   scheduleBatchDispatchJob,
+  userMatchesSegment,
+  type EmailCampaignCategory,
   type TableBackedSource,
+  type UserSegment,
 } from "../lib/emailCampaignQueue";
 import { env } from "../lib/env";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -28,10 +33,15 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 const CAMPAIGN_COLUMNS =
-  "id, subject, body, image_url, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
+  "id, subject, body, image_url, category, status, total_recipients, sent_count, failed_count, created_by, created_at, started_at, completed_at";
 
 const BATCH_COLUMNS =
-  "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source, scheduled_for, status, dispatched_at, created_at";
+  "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source, user_segment, scheduled_for, status, dispatched_at, created_at";
+
+// Categoria declarada pelo admin, obrigatoria na criacao e edicao.
+function parseCategory(value: unknown): EmailCampaignCategory | null {
+  return value === "product" || value === "promotional" ? value : null;
+}
 
 const MAX_SELECTED_PER_BATCH = 500;
 
@@ -173,6 +183,17 @@ router.post("/", async (req, res, next) => {
       imageUrl = rawImageUrl.trim();
     }
 
+    const category = parseCategory(body.category);
+    if (!category) {
+      return next(
+        createError(
+          400,
+          "invalid_category",
+          "Categoria da campanha é obrigatória: produto ou promocional.",
+        ),
+      );
+    }
+
     if (!req.user) {
       return next(createError(401, "unauthorized", "Autenticação necessária."));
     }
@@ -183,6 +204,7 @@ router.post("/", async (req, res, next) => {
         subject,
         body: bodyText,
         image_url: imageUrl,
+        category,
         created_by: req.user.id,
       })
       .select(CAMPAIGN_COLUMNS)
@@ -240,48 +262,118 @@ router.get("/audience-count", async (req, res, next) => {
     }
     const source =
       typeof req.query.source === "string" ? req.query.source : "waitlist";
-    if (!isTableBackedSource(source)) {
+    if (!isTableBackedSource(source) && source !== "users") {
       return next(
-        createError(
-          400,
-          "invalid_source",
-          "Contagem disponível apenas para waitlist e newsletter.",
-        ),
+        createError(400, "invalid_source", "Origem inválida para contagem."),
       );
     }
     const excludeOther = req.query.excludeOtherCampaigns === "true";
+
+    // Origem users: a contagem aplica a regra de consentimento da categoria
+    // da campanha (promotional exige opt-in) e o segmento, iguais a selecao.
+    let segment: UserSegment = "all";
+    let needOptIn = false;
+    if (source === "users") {
+      const rawSegment =
+        typeof req.query.segment === "string" ? req.query.segment : "all";
+      if (!USER_SEGMENTS.includes(rawSegment as UserSegment)) {
+        return next(
+          createError(400, "invalid_segment", "Segmento de usuários inválido."),
+        );
+      }
+      segment = rawSegment as UserSegment;
+      const { data: campaign, error: campaignError } =
+        await fetchCampaign(campaignId);
+      if (campaignError) {
+        console.error(
+          "[email-campaign] Falha ao buscar campanha",
+          campaignError,
+        );
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível buscar a campanha.",
+          ),
+        );
+      }
+      if (!campaign) {
+        return next(createError(404, "not_found", "Campanha não encontrada."));
+      }
+      needOptIn = campaign.category === "promotional";
+    }
 
     const existing = await fetchCampaignRecipientEmailSet(campaignId);
     const suppressed = await fetchSuppressedEmailSet();
     const sentElsewhere = excludeOther
       ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
       : null;
+    const proSets =
+      source === "users" && segment !== "all"
+        ? await fetchProStatusSets()
+        : null;
 
     const PAGE = 1000;
     let count = 0;
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await audienceQuery(source).range(
-        from,
-        from + PAGE - 1,
-      );
-      if (error) {
-        console.error("[email-campaign] Falha ao contar a origem", error);
-        return next(
-          createError(
-            500,
-            "campaign_error",
-            "Não foi possível contar os elegíveis.",
-          ),
+    if (source === "users") {
+      const seen = new Set<string>();
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, email, marketing_opt_in")
+          .range(from, from + PAGE - 1);
+        if (error) {
+          console.error("[email-campaign] Falha ao contar usuários", error);
+          return next(
+            createError(
+              500,
+              "campaign_error",
+              "Não foi possível contar os elegíveis.",
+            ),
+          );
+        }
+        const rows = data ?? [];
+        for (const row of rows) {
+          if (!row.email) continue;
+          const email = row.email.toLowerCase();
+          if (seen.has(email)) continue;
+          seen.add(email);
+          if (needOptIn && row.marketing_opt_in !== true) continue;
+          if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+            continue;
+          }
+          if (existing.has(email)) continue;
+          if (suppressed.has(email)) continue;
+          if (sentElsewhere?.has(email)) continue;
+          count += 1;
+        }
+        if (rows.length < PAGE) break;
+      }
+    } else {
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await audienceQuery(source).range(
+          from,
+          from + PAGE - 1,
         );
+        if (error) {
+          console.error("[email-campaign] Falha ao contar a origem", error);
+          return next(
+            createError(
+              500,
+              "campaign_error",
+              "Não foi possível contar os elegíveis.",
+            ),
+          );
+        }
+        const rows = data ?? [];
+        for (const row of rows) {
+          if (existing.has(row.email)) continue;
+          if (suppressed.has(row.email.toLowerCase())) continue;
+          if (sentElsewhere?.has(row.email.toLowerCase())) continue;
+          count += 1;
+        }
+        if (rows.length < PAGE) break;
       }
-      const rows = data ?? [];
-      for (const row of rows) {
-        if (existing.has(row.email)) continue;
-        if (suppressed.has(row.email.toLowerCase())) continue;
-        if (sentElsewhere?.has(row.email.toLowerCase())) continue;
-        count += 1;
-      }
-      if (rows.length < PAGE) break;
     }
 
     res.json({ data: { count } });
@@ -305,13 +397,9 @@ router.get("/audience-recipients", async (req, res, next) => {
     }
     const source =
       typeof req.query.source === "string" ? req.query.source : "waitlist";
-    if (!isTableBackedSource(source)) {
+    if (!isTableBackedSource(source) && source !== "users") {
       return next(
-        createError(
-          400,
-          "invalid_source",
-          "Seleção disponível apenas para waitlist e newsletter.",
-        ),
+        createError(400, "invalid_source", "Origem inválida para seleção."),
       );
     }
     const search =
@@ -324,28 +412,114 @@ router.get("/audience-recipients", async (req, res, next) => {
     const rawOffset = parseInt(String(req.query.offset ?? ""), 10);
     const offset = Number.isInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
-    let query = audienceQuery(source, true)
-      .order("created_at", { ascending: true })
-      .range(offset, offset + limit - 1);
-    if (search) {
-      // Escapa curingas do LIKE pra busca literal.
-      const escaped = search.replace(/[\\%_]/g, (match) => `\\${match}`);
-      query = query.ilike("email", `%${escaped}%`);
-    }
+    let rows: Array<{ email: string; created_at: string; status: string }> =
+      [];
+    let total = 0;
 
-    const { data, error, count } = await query;
-    if (error) {
-      console.error("[email-campaign] Falha ao listar a origem", error);
-      return next(
-        createError(
-          500,
-          "campaign_error",
-          "Não foi possível listar os elegíveis.",
-        ),
-      );
-    }
+    if (source === "users") {
+      const rawSegment =
+        typeof req.query.segment === "string" ? req.query.segment : "all";
+      if (!USER_SEGMENTS.includes(rawSegment as UserSegment)) {
+        return next(
+          createError(400, "invalid_segment", "Segmento de usuários inválido."),
+        );
+      }
+      const segment = rawSegment as UserSegment;
+      const { data: campaign, error: campaignError } =
+        await fetchCampaign(campaignId);
+      if (campaignError) {
+        console.error(
+          "[email-campaign] Falha ao buscar campanha",
+          campaignError,
+        );
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível buscar a campanha.",
+          ),
+        );
+      }
+      if (!campaign) {
+        return next(createError(404, "not_found", "Campanha não encontrada."));
+      }
+      const needOptIn = campaign.category === "promotional";
+      const proSets =
+        segment === "all" ? null : await fetchProStatusSets();
 
-    const rows = data ?? [];
+      // Filtro em memoria: segmento e opt-in por categoria nao sao
+      // filtraveis via PostgREST (dependem de subscriptions). Na escala
+      // atual (dezenas de usuarios) e barato; paginacao aplicada no slice.
+      const searchLower = search.toLowerCase();
+      const seen = new Set<string>();
+      const filtered: Array<{
+        email: string;
+        created_at: string;
+        status: string;
+      }> = [];
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, email, marketing_opt_in, created_at")
+          .order("created_at", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) {
+          console.error("[email-campaign] Falha ao listar usuários", error);
+          return next(
+            createError(
+              500,
+              "campaign_error",
+              "Não foi possível listar os elegíveis.",
+            ),
+          );
+        }
+        const pageRows = data ?? [];
+        for (const row of pageRows) {
+          if (!row.email) continue;
+          const email = row.email.toLowerCase();
+          if (seen.has(email)) continue;
+          seen.add(email);
+          if (needOptIn && row.marketing_opt_in !== true) continue;
+          if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+            continue;
+          }
+          if (searchLower && !email.includes(searchLower)) continue;
+          filtered.push({
+            email: row.email,
+            created_at: row.created_at,
+            // TODO(Ana): rotulo de status do usuario na selecao.
+            status: row.marketing_opt_in ? "opt_in" : "sem_opt_in",
+          });
+        }
+        if (pageRows.length < PAGE) break;
+      }
+      total = filtered.length;
+      rows = filtered.slice(offset, offset + limit);
+    } else {
+      let query = audienceQuery(source, true)
+        .order("created_at", { ascending: true })
+        .range(offset, offset + limit - 1);
+      if (search) {
+        // Escapa curingas do LIKE pra busca literal.
+        const escaped = search.replace(/[\\%_]/g, (match) => `\\${match}`);
+        query = query.ilike("email", `%${escaped}%`);
+      }
+
+      const { data, error, count } = await query;
+      if (error) {
+        console.error("[email-campaign] Falha ao listar a origem", error);
+        return next(
+          createError(
+            500,
+            "campaign_error",
+            "Não foi possível listar os elegíveis.",
+          ),
+        );
+      }
+      rows = data ?? [];
+      total = count ?? 0;
+    }
     let recipientSet = new Set<string>();
     let suppressedSet = new Set<string>();
     if (rows.length > 0) {
@@ -394,7 +568,7 @@ router.get("/audience-recipients", async (req, res, next) => {
           already_recipient: recipientSet.has(row.email),
           suppressed: suppressedSet.has(row.email.toLowerCase()),
         })),
-        pagination: { total: count ?? 0, limit, offset },
+        pagination: { total, limit, offset },
       },
     });
   } catch (err) {
@@ -508,11 +682,22 @@ router.patch("/:id", async (req, res, next) => {
       );
     }
 
+    const category = parseCategory(body.category);
+    if (!category) {
+      return next(
+        createError(
+          400,
+          "invalid_category",
+          "Categoria da campanha é obrigatória: produto ou promocional.",
+        ),
+      );
+    }
+
     // CAS no update: se a campanha saiu de draft entre a checagem e o update
     // (disparo concorrente), nada e alterado.
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("email_campaigns")
-      .update({ subject, body: bodyText, image_url: imageUrl })
+      .update({ subject, body: bodyText, image_url: imageUrl, category })
       .eq("id", req.params.id)
       .eq("status", "draft")
       .select(CAMPAIGN_COLUMNS)
@@ -830,12 +1015,31 @@ router.post("/:id/batches", async (req, res, next) => {
       );
     }
     const source = rawSource as BatchSource;
+
+    // Segmento so existe (e e obrigatorio) na origem users. A regra de
+    // consentimento por categoria e imposta no dispatch.
+    let userSegment: UserSegment | null = null;
     if (source === "users") {
+      const rawSegment = body.userSegment;
+      if (
+        typeof rawSegment !== "string" ||
+        !USER_SEGMENTS.includes(rawSegment as UserSegment)
+      ) {
+        return next(
+          createError(
+            400,
+            "invalid_segment",
+            "Segmento de usuários inválido.",
+          ),
+        );
+      }
+      userSegment = rawSegment as UserSegment;
+    } else if (body.userSegment !== undefined && body.userSegment !== null) {
       return next(
         createError(
           400,
-          "source_requires_opt_in",
-          "Envio para usuários da plataforma exige opt-in de comunicação, ainda não implementado.",
+          "invalid_segment",
+          "Segmento só se aplica à origem usuários.",
         ),
       );
     }
@@ -1008,6 +1212,7 @@ router.post("/:id/batches", async (req, res, next) => {
         batch_limit: limit,
         exclude_other_campaigns: excludeOtherCampaigns,
         source,
+        user_segment: userSegment,
         scheduled_for: scheduledFor,
         created_by: req.user.id,
       })

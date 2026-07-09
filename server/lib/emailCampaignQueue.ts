@@ -45,6 +45,20 @@ export type TableBackedSource = (typeof TABLE_BACKED_SOURCES)[number];
 // supressao global, e escopo newsletter).
 export const NEWSLETTER_ELIGIBLE_STATUSES = ["confirmed"];
 
+// Segmentos da origem users, derivados de subscriptions + plans no dispatch.
+export const USER_SEGMENTS = [
+  "all",
+  "never_pro",
+  "active_pro",
+  "ex_pro",
+] as const;
+export type UserSegment = (typeof USER_SEGMENTS)[number];
+
+// Categoria declarada da campanha. Regra de consentimento imposta na selecao
+// da origem users: product seleciona qualquer usuario nao suprimido (legitimo
+// interesse, opt-out); promotional exige profiles.marketing_opt_in = true.
+export type EmailCampaignCategory = "product" | "promotional";
+
 const QUEUE_NAME = "email-campaign";
 const CAMPAIGN_ATTEMPTS = 3;
 const DB_PAGE = 1000;
@@ -205,6 +219,76 @@ export async function fetchSuppressedEmailSet(): Promise<Set<string>> {
   return emails;
 }
 
+export type ProStatusSets = {
+  active: Set<string>;
+  pastDue: Set<string>;
+  everPaid: Set<string>;
+};
+
+// Deriva o status Pro por user_id a partir de subscriptions + plans (linhas
+// nunca sao deletadas, so atualizadas pelo webhook/reconcile do Asaas).
+// active = mesma condicao do is_user_pro: plano pago, status active/trialing
+// e periodo vigente.
+export async function fetchProStatusSets(): Promise<ProStatusSets> {
+  const { data: plans, error: plansError } = await supabaseAdmin
+    .from("plans")
+    .select("id, code");
+  if (plansError) {
+    throw new Error(`Falha ao buscar planos: ${plansError.message}`);
+  }
+  const paidPlanIds = new Set(
+    (plans ?? [])
+      .filter((plan) => plan.code !== "free")
+      .map((plan) => plan.id),
+  );
+
+  const active = new Set<string>();
+  const pastDue = new Set<string>();
+  const everPaid = new Set<string>();
+  for (let from = 0; ; from += DB_PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id, plan_id, status, current_period_end")
+      .range(from, from + DB_PAGE - 1);
+    if (error) {
+      throw new Error(`Falha ao buscar assinaturas: ${error.message}`);
+    }
+    const rows = data ?? [];
+    for (const row of rows) {
+      if (!row.plan_id || !paidPlanIds.has(row.plan_id)) continue;
+      everPaid.add(row.user_id);
+      const periodOk =
+        !row.current_period_end ||
+        new Date(row.current_period_end).getTime() > Date.now();
+      if ((row.status === "active" || row.status === "trialing") && periodOk) {
+        active.add(row.user_id);
+      } else if (row.status === "past_due") {
+        pastDue.add(row.user_id);
+      }
+    }
+    if (rows.length < DB_PAGE) break;
+  }
+  return { active, pastDue, everPaid };
+}
+
+// past_due fica FORA de active_pro e de ex_pro por decisao de produto: e
+// cliente em recuperacao de pagamento e nao deve receber campanha de win-back
+// no meio da cobranca. Entra apenas no segmento all.
+export function userMatchesSegment(
+  userId: string,
+  segment: UserSegment,
+  sets: ProStatusSets,
+): boolean {
+  if (segment === "all") return true;
+  if (segment === "active_pro") return sets.active.has(userId);
+  if (segment === "never_pro") return !sets.everPaid.has(userId);
+  return (
+    sets.everPaid.has(userId) &&
+    !sets.active.has(userId) &&
+    !sets.pastDue.has(userId)
+  );
+}
+
 function sourceTableQuery(source: TableBackedSource) {
   if (source === "newsletter") {
     return supabaseAdmin
@@ -253,6 +337,57 @@ async function selectNextEligibleEmails(
   return selected;
 }
 
+// mode 'next' da origem users: proximos N usuarios da plataforma em ordem de
+// cadastro (profiles.created_at), aplicando a regra de consentimento da
+// categoria (promotional exige marketing_opt_in) e o segmento, alem dos
+// filtros globais (supressao, dedup da campanha, exclude entre campanhas).
+async function selectNextEligibleUserEmails(
+  campaignId: string,
+  limit: number | null,
+  excludeOtherCampaigns: boolean,
+  category: EmailCampaignCategory,
+  segment: UserSegment,
+): Promise<string[]> {
+  const existing = await fetchCampaignRecipientEmailSet(campaignId);
+  const suppressed = await fetchSuppressedEmailSet();
+  const sentElsewhere = excludeOtherCampaigns
+    ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
+    : null;
+  const proSets = segment === "all" ? null : await fetchProStatusSets();
+  const needOptIn = category === "promotional";
+
+  const seen = new Set<string>();
+  const selected: string[] = [];
+  for (let from = 0; ; from += DB_PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, email, marketing_opt_in")
+      .order("created_at", { ascending: true })
+      .range(from, from + DB_PAGE - 1);
+    if (error) {
+      throw new Error(`Falha ao buscar usuarios: ${error.message}`);
+    }
+    const rows = data ?? [];
+    for (const row of rows) {
+      if (!row.email) continue;
+      const email = row.email.toLowerCase();
+      if (seen.has(email)) continue;
+      seen.add(email);
+      if (needOptIn && row.marketing_opt_in !== true) continue;
+      if (proSets && !userMatchesSegment(row.user_id, segment, proSets)) {
+        continue;
+      }
+      if (existing.has(email)) continue;
+      if (suppressed.has(email)) continue;
+      if (sentElsewhere?.has(email)) continue;
+      selected.push(email);
+      if (limit !== null && selected.length >= limit) return selected;
+    }
+    if (rows.length < DB_PAGE) break;
+  }
+  return selected;
+}
+
 // mode 'selected' (e origem custom): e-mails escolhidos a dedo ou colados,
 // com elegibilidade revalidada NA HORA do dispatch (quem se descadastrou
 // entre o agendamento e o disparo nao recebe), excluindo suprimidos e quem ja
@@ -263,6 +398,7 @@ async function selectBatchEligibleEmails(
   batchId: string,
   excludeOtherCampaigns: boolean,
   source: EmailCampaignBatchSource,
+  usersFilter?: { category: EmailCampaignCategory; segment: UserSegment },
 ): Promise<string[]> {
   const { data, error } = await supabaseAdmin
     .from("email_campaign_batch_recipients")
@@ -293,6 +429,39 @@ async function selectBatchEligibleEmails(
         );
       }
       (rows ?? []).forEach((row) => eligible?.add(row.email));
+    }
+  } else if (source === "users" && usersFilter) {
+    // Revalida na hora do dispatch: categoria promotional exige opt-in AGORA
+    // (quem desmarcou entre o agendamento e o disparo nao recebe) e o
+    // segmento e recalculado. Match em memoria por lower(email) porque o
+    // e-mail em profiles pode ter caixa mista.
+    const needOptIn = usersFilter.category === "promotional";
+    const proSets =
+      usersFilter.segment === "all" ? null : await fetchProStatusSets();
+    eligible = new Set<string>();
+    for (let from = 0; ; from += DB_PAGE) {
+      const { data: rows, error: profilesError } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, email, marketing_opt_in")
+        .range(from, from + DB_PAGE - 1);
+      if (profilesError) {
+        throw new Error(
+          `Falha ao validar usuarios do lote: ${profilesError.message}`,
+        );
+      }
+      const pageRows = rows ?? [];
+      for (const row of pageRows) {
+        if (!row.email) continue;
+        if (needOptIn && row.marketing_opt_in !== true) continue;
+        if (
+          proSets &&
+          !userMatchesSegment(row.user_id, usersFilter.segment, proSets)
+        ) {
+          continue;
+        }
+        eligible.add(row.email.toLowerCase());
+      }
+      if (pageRows.length < DB_PAGE) break;
     }
   }
 
@@ -347,7 +516,7 @@ export async function dispatchCampaignBatch(
     .eq("id", batchId)
     .eq("status", "pending")
     .select(
-      "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source",
+      "id, campaign_id, mode, batch_limit, exclude_other_campaigns, source, user_segment",
     )
     .maybeSingle();
   if (casError) {
@@ -372,25 +541,58 @@ export async function dispatchCampaignBatch(
 
     const excludeOtherCampaigns = batch.exclude_other_campaigns === true;
     const source = (batch.source ?? "waitlist") as EmailCampaignBatchSource;
-    // 'users' nao tem envio implementado (sem consentimento de marketing em
-    // profiles); a rota bloqueia na criacao, este guard e a segunda linha.
+
+    // Regra de consentimento imposta AQUI, na hora do disparo: a categoria
+    // vem da campanha (declarada pelo admin, nunca inferida) e o segmento do
+    // proprio lote.
+    let usersFilter:
+      | { category: EmailCampaignCategory; segment: UserSegment }
+      | undefined;
     if (source === "users") {
-      throw new Error("Origem users nao habilitada (exige opt-in).");
+      const { data: campaignRow, error: categoryError } = await supabaseAdmin
+        .from("email_campaigns")
+        .select("category")
+        .eq("id", batch.campaign_id)
+        .maybeSingle();
+      if (categoryError || !campaignRow) {
+        throw new Error(
+          `Falha ao buscar categoria da campanha: ${categoryError?.message ?? "campanha nao encontrada"}`,
+        );
+      }
+      usersFilter = {
+        category: (campaignRow.category ?? "product") as EmailCampaignCategory,
+        segment: (batch.user_segment ?? "all") as UserSegment,
+      };
     }
-    const emails =
-      batch.mode === "selected" || source === "custom"
-        ? await selectBatchEligibleEmails(
-            batch.campaign_id,
-            batch.id,
-            excludeOtherCampaigns,
-            source,
-          )
-        : await selectNextEligibleEmails(
-            batch.campaign_id,
-            batch.batch_limit ?? null,
-            excludeOtherCampaigns,
-            source,
-          );
+
+    let emails: string[];
+    if (batch.mode === "selected" || source === "custom") {
+      emails = await selectBatchEligibleEmails(
+        batch.campaign_id,
+        batch.id,
+        excludeOtherCampaigns,
+        source,
+        usersFilter,
+      );
+    } else if (source === "users") {
+      if (!usersFilter) {
+        throw new Error("Filtro de usuarios ausente no dispatch.");
+      }
+      emails = await selectNextEligibleUserEmails(
+        batch.campaign_id,
+        batch.batch_limit ?? null,
+        excludeOtherCampaigns,
+        usersFilter.category,
+        usersFilter.segment,
+      );
+    } else {
+      emails = await selectNextEligibleEmails(
+        batch.campaign_id,
+        batch.batch_limit ?? null,
+        excludeOtherCampaigns,
+        source,
+      );
+    }
 
     if (emails.length === 0) {
       // Nada novo a inserir. Este lote pode ter sido o ultimo pending
