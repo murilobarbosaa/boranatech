@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import Layout from "@/components/Layout";
@@ -92,6 +93,32 @@ const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
     "Analisa seu README de perfil, bio, links de contato, repositórios e atividade.",
   repo: "Analisa README, descrição, licença, topics, arquivos de segurança e a organização do projeto.",
 };
+
+// Avatar publico do GitHub (github.com/<owner>.png, redirect oficial, sem
+// API). onError cai pro icone; key={owner} no call-site zera o estado de erro
+// quando o alvo muda.
+function TargetAvatar({ owner }: { owner: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]"
+        aria-hidden
+      >
+        <Github className="h-6 w-6" />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`https://github.com/${owner}.png?size=96`}
+      alt=""
+      aria-hidden
+      onError={() => setFailed(true)}
+      className="h-12 w-12 shrink-0 rounded-xl border-2 border-slate-950 bg-white object-cover shadow-[3px_3px_0_#0f172a]"
+    />
+  );
+}
 
 const STORAGE_KEY = "boranatech:portfolio-analyzer";
 // Versao da forma do payload persistido. Bump sempre que a forma da resposta
@@ -294,6 +321,18 @@ export default function PortfolioAnalisar() {
   // Deteccao ao vivo do alvo (perfil ou repo) pela mesma fonte do server.
   const detection = detectGithubTarget(input);
 
+  const reduce = useReducedMotion() ?? false;
+
+  // Preview vivo com debounce de 300ms: o cartao-alvo (e o avatar) so
+  // materializa quando a digitacao assenta, pra nao piscar a cada tecla. O
+  // botao e o submit seguem na deteccao ao vivo.
+  const [debouncedInput, setDebouncedInput] = useState(input);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedInput(input), 300);
+    return () => clearTimeout(timer);
+  }, [input]);
+  const preview = detectGithubTarget(debouncedInput);
+
   function changeArea(next: AreaSelection) {
     areaSource.current = "user";
     setArea(next);
@@ -425,19 +464,23 @@ export default function PortfolioAnalisar() {
           </span>
         }
       />
-      <section className={cn(ac.contentBg, "py-12")}>
+      {/* Cenario do Dialeto 2 (padrao exato do RoadmapsV2Index) dentro da
+          secao de conteudo; o PageHero violet permanece acima. */}
+      <section className="bg-[#faf8f4] py-12 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <div className="container">
           {!isPro ? (
             <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
           ) : (
             <div className="space-y-8">
+              {/* Palco central: intake em destaque, com o alvo materializando
+                  abaixo do campo quando a deteccao assenta. */}
               <div
                 className={cn(
-                  "card-brutal area-rise rounded-2xl border-slate-950 bg-white p-6",
+                  "card-brutal area-rise mx-auto max-w-3xl rounded-2xl border-slate-950 bg-white p-6 sm:p-8",
                   ac.liftShadow,
                 )}
               >
-                <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-600">
                   {/* TODO(Ana): revisar rotulo e helper da area alvo. */}
                   <span>Área alvo desta análise</span>
                   <select
@@ -466,14 +509,14 @@ export default function PortfolioAnalisar() {
 
                 <form
                   onSubmit={handleSubmit}
-                  className="mt-4 flex flex-col gap-3 sm:flex-row"
+                  className="mt-5 flex flex-col gap-3 sm:flex-row"
                 >
                   <input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
                     placeholder={INPUT_PLACEHOLDER}
                     className={cn(
-                      "w-full rounded-xl border-2 bg-white p-3 text-sm outline-none",
+                      "w-full rounded-xl border-2 bg-white px-4 py-4 text-base outline-none",
                       ac.input,
                       ac.cardFocusRing,
                     )}
@@ -484,40 +527,71 @@ export default function PortfolioAnalisar() {
                     disabled={detection.kind === "invalid"}
                     loading={loading}
                     icon={<Sparkles className="h-4 w-4" aria-hidden />}
-                    className="shrink-0 px-6 py-3"
+                    className="shrink-0 px-6 py-4"
                   >
                     {loading ? "Analisando..." : "Analisar"}
                   </BrutalActionButton>
                 </form>
 
-                {/* TODO(Ana): revisar a copy do badge de deteccao. */}
-                {input.trim() !== "" ? (
-                  detection.kind === "invalid" ? (
-                    <p className="mt-3 text-xs font-bold text-rose-700">
-                      {detection.reason}
+                {/* TODO(Ana): revisar a copy do cartao-alvo e do motivo invalido. */}
+                {debouncedInput.trim() !== "" ? (
+                  preview.kind === "invalid" ? (
+                    <p className="mt-4 text-xs font-bold text-rose-700">
+                      {preview.reason}
                     </p>
                   ) : (
-                    <p className="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 font-black",
-                          ac.tag,
-                        )}
-                      >
-                        <Github className="h-3 w-3" aria-hidden />
-                        {detection.kind === "repo"
-                          ? `Repositório: ${detection.owner}/${detection.repo}`
-                          : `Perfil: ${detection.login}`}
-                      </span>
-                      {MODE_DESCRIPTION[detection.kind]}
-                    </p>
+                    <motion.div
+                      key={
+                        preview.kind === "repo"
+                          ? `repo:${preview.owner}/${preview.repo}`
+                          : `perfil:${preview.login}`
+                      }
+                      initial={reduce ? false : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.28, ease: "easeOut" }}
+                      className="mt-5 flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                    >
+                      <TargetAvatar
+                        key={
+                          preview.kind === "repo"
+                            ? preview.owner
+                            : preview.login
+                        }
+                        owner={
+                          preview.kind === "repo"
+                            ? preview.owner
+                            : preview.login
+                        }
+                      />
+                      <div className="min-w-0">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide",
+                            ac.tag,
+                          )}
+                        >
+                          {preview.kind === "repo" ? "Repositório" : "Perfil"}
+                        </span>
+                        <p className="mt-1 truncate font-display text-lg font-black leading-tight text-slate-950">
+                          {preview.kind === "repo"
+                            ? `${preview.owner}/${preview.repo}`
+                            : `@${preview.login}`}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-slate-600">
+                          {MODE_DESCRIPTION[preview.kind]}
+                        </p>
+                        {preview.kind === "repo" ? (
+                          <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                            <Globe
+                              className="h-3.5 w-3.5 text-slate-400"
+                              aria-hidden
+                            />
+                            O repositório precisa ser público.
+                          </p>
+                        ) : null}
+                      </div>
+                    </motion.div>
                   )
-                ) : null}
-                {detection.kind === "repo" ? (
-                  <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                    <Globe className="h-3.5 w-3.5 text-slate-400" />O
-                    repositório precisa ser público.
-                  </p>
                 ) : null}
               </div>
 
@@ -531,10 +605,7 @@ export default function PortfolioAnalisar() {
               ) : null}
 
               {!loading && !result ? (
-                <div
-                  className="area-rise space-y-8"
-                  style={{ animationDelay: "0.08s" }}
-                >
+                <div className="space-y-8">
                   <HowItWorks />
                   <WhatYouGet />
                 </div>

@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { FileCode2, Gauge, ListChecks, Sparkles } from "lucide-react";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
@@ -53,15 +54,20 @@ const ITEMS: {
 ];
 
 export function HowItWorks() {
+  const reduce = useReducedMotion() ?? false;
   return (
     <div>
       <h2 className="mb-4 font-display text-2xl font-black text-slate-950">
         Como funciona
       </h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {STEPS.map((step) => (
-          <div
+        {STEPS.map((step, i) => (
+          <motion.div
             key={step.n}
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.35, delay: Math.min(i * 0.04, 0.3) }}
             className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}
           >
             <span className="flex h-10 w-10 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_#0f172a]">
@@ -70,7 +76,7 @@ export function HowItWorks() {
             <p className="mt-3 text-sm font-medium text-slate-700">
               {step.text}
             </p>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>
@@ -78,15 +84,20 @@ export function HowItWorks() {
 }
 
 export function WhatYouGet() {
+  const reduce = useReducedMotion() ?? false;
   return (
     <div>
       <h2 className="mb-4 font-display text-2xl font-black text-slate-950">
         O que você recebe
       </h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {ITEMS.map((item) => (
-          <div
+        {ITEMS.map((item, i) => (
+          <motion.div
             key={item.title}
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.35, delay: Math.min(i * 0.04, 0.3) }}
             className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}
           >
             <span
@@ -101,7 +112,7 @@ export function WhatYouGet() {
               {item.title}
             </p>
             <p className="mt-1 text-sm text-slate-600">{item.text}</p>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>
