@@ -21,7 +21,6 @@ import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
-import PageHero from "@/components/shared/PageHero";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import SEO from "@/components/SEO";
@@ -64,27 +63,6 @@ import type {
 } from "@shared/github/schema";
 
 const ac = getPageAccentUi("violet");
-
-// Decor do hero no padrao das paginas de area (blobs de baixa opacidade com
-// animate-gentle-float; reduced-motion coberto pelo CSS global da classe).
-function AnalyzerHeroDecor() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-      aria-hidden
-    >
-      <div className="animate-gentle-float absolute -right-12 -top-16 h-48 w-48 rounded-full bg-violet-300 opacity-40 blur-3xl" />
-      <div
-        className="animate-gentle-float absolute right-1/4 top-1/3 h-28 w-28 rounded-full bg-violet-300 opacity-30 blur-3xl"
-        style={{ animationDelay: "1.4s" }}
-      />
-      <div
-        className="animate-gentle-float absolute -bottom-16 left-1/4 h-40 w-40 rounded-full bg-violet-300 opacity-25 blur-3xl"
-        style={{ animationDelay: "0.7s" }}
-      />
-    </div>
-  );
-}
 
 // TODO(Ana): revisar placeholder e descricoes da deteccao automatica.
 const INPUT_PLACEHOLDER = "github.com/usuario ou github.com/usuario/projeto";
@@ -778,48 +756,61 @@ export default function PortfolioAnalisar() {
         description="Analise seu GitHub com IA: receba uma nota objetiva, um checklist do que falta e melhorias priorizadas para deixar seu perfil pronto para vagas."
         url="/portfolio/analisar"
       />
-      {/* TODO(Ana): validar eyebrow e label do link de volta do hero */}
-      <PageHero
-        accent="violet"
-        eyebrow="Análise Pro"
-        title="Analisador de GitHub"
-        subtitle="Receba uma nota objetiva, um checklist do que falta e melhorias priorizadas pra deixar seu GitHub pronto pra vagas."
-        backgroundSlot={<AnalyzerHeroDecor />}
-        topSlot={
-          <Link
-            href="/portfolio"
-            className={cn(
-              "inline-flex items-center gap-2 text-sm font-bold",
-              ac.link,
-              ac.linkHover,
-            )}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Guia de portfólio
-          </Link>
-        }
-        titlePrefix={
-          <span
-            className={cn(
-              "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 shadow-[3px_3px_0_currentColor]",
-              ac.panelBorder,
-              ac.panelSoft,
-              ac.iconMuted,
-            )}
-            aria-hidden
-          >
-            <Github className="h-8 w-8" />
-          </span>
-        }
-      />
-      {/* Cenario do Dialeto 2 (padrao exato do RoadmapsV2Index) dentro da
-          secao de conteudo; o PageHero violet permanece acima. O backdrop
-          vivo (gradiente + doodles) so existe no estado de entrada. */}
-      <section className="relative overflow-hidden bg-[#faf8f4] py-12 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+      {/* Cenario do Dialeto 2 (padrao do RoadmapsV2Index) e a pagina inteira:
+          sem PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo.
+          O backdrop vivo (gradiente + doodles) so existe no estado de entrada. */}
+      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         {!loading && !error && !result ? (
           <AnalyzerBackdrop reduce={reduce} />
         ) : null}
         <div className="container relative z-10">
+          {/* Cabecalho integrado, presente nos 3 estados (entrada, scan,
+              resultado). TODO(Ana): validar eyebrow, titulo, subtitulo e o
+              label do link de volta. */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="mb-10"
+          >
+            <Link
+              href="/portfolio"
+              className={cn(
+                "inline-flex items-center gap-2 text-sm font-bold",
+                ac.link,
+                ac.linkHover,
+              )}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Guia de portfólio
+            </Link>
+            <p className="mt-5">
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                Análise Pro
+              </span>
+            </p>
+            <div className="mt-3.5 flex items-center gap-4">
+              <span
+                className={cn(
+                  "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 shadow-[3px_3px_0_currentColor]",
+                  ac.panelBorder,
+                  ac.panelSoft,
+                  ac.iconMuted,
+                )}
+                aria-hidden
+              >
+                <Github className="h-8 w-8" />
+              </span>
+              <h1 className="font-display text-3xl font-black tracking-tight text-slate-950 md:text-[clamp(2rem,5vw,2.6rem)]">
+                Analisador de GitHub
+              </h1>
+            </div>
+            <p className="mt-3 max-w-2xl text-base font-medium text-slate-600">
+              Receba uma nota objetiva, um checklist do que falta e melhorias
+              priorizadas pra deixar seu GitHub pronto pra vagas.
+            </p>
+          </motion.div>
+
           {!isPro ? (
             <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
           ) : (
@@ -843,6 +834,9 @@ export default function PortfolioAnalisar() {
               <div
                 className={cn(
                   "card-brutal area-rise relative mx-auto max-w-3xl -rotate-[0.4deg] rounded-2xl border-slate-950 bg-white p-6 sm:p-8",
+                  // Respiro dedicado entre a explicacao e o palco (so na
+                  // entrada; em scan/resultado o palco abre a pagina).
+                  !loading && !error && !result && "mt-14 sm:mt-16",
                   ac.liftShadow,
                 )}
               >
