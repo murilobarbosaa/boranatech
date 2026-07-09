@@ -22,3 +22,13 @@ export const BAND_UI: Record<ScoreBand, ScoreBandUi> = {
 export function isScoreBand(value: unknown): value is ScoreBand {
   return typeof value === "string" && value in BAND_UI;
 }
+
+// Wash do cenario do estado de resultado, colorido pela FAIXA da nota: o
+// mesmo eixo semantico de cor do BAND_UI, em tom bem mais discreto (unica
+// fonte; nenhuma cor de wash hardcoded fora daqui).
+export const BAND_WASH: Record<ScoreBand, string> = {
+  comecando: "from-rose-200/25",
+  evoluindo: "from-amber-200/25",
+  bom: "from-sky-200/25",
+  destaque: "from-emerald-200/25",
+};

@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ExternalLink,
   FileCode2,
-  Plus,
   FolderGit2,
   GitCommitHorizontal,
   GitFork,
@@ -18,7 +17,6 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
-import { Link } from "wouter";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
@@ -31,7 +29,7 @@ import {
   HowItWorksTimeline,
   ResultShowcase,
 } from "@/components/portfolio/AnalyzerIntro";
-import { BAND_UI } from "@/components/portfolio/bandUi";
+import { BAND_UI, BAND_WASH } from "@/components/portfolio/bandUi";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import GithubHistory from "@/components/portfolio/GithubHistory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
@@ -61,6 +59,7 @@ import { detectGithubTarget } from "@shared/github/detect";
 import type {
   AnalysisMode,
   GithubAnalysisResponse,
+  ScoreBand,
 } from "@shared/github/schema";
 
 const ac = getPageAccentUi("violet");
@@ -103,6 +102,67 @@ function AnalyzerBackdrop({ reduce }: { reduce: boolean }) {
           <motion.span
             key={i}
             className={`absolute ${doodle.cls}`}
+            animate={
+              reduce
+                ? undefined
+                : { y: [0, -10, 0], rotate: [0, doodle.rot, 0] }
+            }
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: doodle.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: doodle.delay,
+                  }
+            }
+          >
+            <Icon className={doodle.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
+// Doodles do cenario do RESULTADO: irmandade sobria do cenario da entrada.
+// Poucos (4), opacidade menor (0.06 a 0.10) e SO nas margens externas, fora
+// da coluna de leitura; escondidos abaixo de lg pra nunca atrapalhar as tabs.
+const RESULT_DOODLES = [
+  { Icon: Star, cls: "left-[2%] top-[12%] text-violet-500 opacity-[0.10]", size: "h-10 w-10", rot: 6, dur: 7, delay: 0 },
+  { Icon: GitFork, cls: "right-[2%] top-[22%] text-purple-500 opacity-[0.08]", size: "h-9 w-9", rot: -6, dur: 8, delay: 0.6 },
+  { Icon: GitCommitHorizontal, cls: "left-[2%] top-[58%] text-violet-400 opacity-[0.07]", size: "h-10 w-10", rot: 7, dur: 7.5, delay: 1 },
+  { Icon: FolderGit2, cls: "right-[2%] top-[72%] text-purple-600 opacity-[0.06]", size: "h-10 w-10", rot: -5, dur: 6.5, delay: 0.3 },
+];
+
+// Cenario do estado de resultado: o mesmo pontilhado da secao, um wash curto
+// no topo colorido pela FAIXA da nota (BAND_WASH) com fade rapido, e os
+// doodles das margens. O miolo denso (tabs) segue sobre area limpa.
+function ResultBackdrop({
+  band,
+  reduce,
+}: {
+  band: ScoreBand;
+  reduce: boolean;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden
+    >
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 h-72 bg-gradient-to-b via-transparent to-transparent [mask-image:linear-gradient(to_bottom,black_30%,transparent)]",
+          BAND_WASH[band],
+        )}
+      />
+      {RESULT_DOODLES.map((doodle, i) => {
+        const Icon = doodle.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute hidden lg:block ${doodle.cls}`}
             animate={
               reduce
                 ? undefined
@@ -787,28 +847,40 @@ export default function PortfolioAnalisar() {
         {!loading && !error && !result ? (
           <AnalyzerBackdrop reduce={reduce} />
         ) : null}
+        {!loading && !error && result ? (
+          <ResultBackdrop band={result.deterministic.band} reduce={reduce} />
+        ) : null}
         <div className="container relative z-10">
           {/* Cabecalho integrado, presente nos 3 estados (entrada, scan,
-              resultado). TODO(Ana): validar eyebrow, titulo, subtitulo e o
-              label do link de volta. */}
+              resultado). O slot do topo esquerdo e o lugar universal de
+              "voltar": no resultado vira o link Nova analise; na entrada e no
+              scan fica vazio. TODO(Ana): validar eyebrow, titulo, subtitulo e
+              o rotulo do link (alternativa: "Analisar outro"). */}
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-10"
           >
-            <Link
-              href="/portfolio"
+            {!loading && !error && result ? (
+              <button
+                type="button"
+                onClick={startNewAnalysis}
+                className={cn(
+                  "inline-flex items-center gap-2 text-sm font-bold",
+                  ac.link,
+                  ac.linkHover,
+                )}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                Nova análise
+              </button>
+            ) : null}
+            <p
               className={cn(
-                "inline-flex items-center gap-2 text-sm font-bold",
-                ac.link,
-                ac.linkHover,
+                !loading && !error && result ? "mt-5" : undefined,
               )}
             >
-              <ArrowLeft className="h-4 w-4" aria-hidden />
-              Guia de portfólio
-            </Link>
-            <p className="mt-5">
               <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
                 Análise Pro
               </span>
@@ -1022,18 +1094,6 @@ export default function PortfolioAnalisar() {
                   className="area-rise space-y-8"
                   style={{ animationDelay: "0.08s" }}
                 >
-                  {/* Saida visivel do resultado, alinhada ao cabecalho.
-                      TODO(Ana): revisar o rotulo do botao de nova analise. */}
-                  <div className="flex justify-end">
-                    <BrutalActionButton
-                      variant="primary"
-                      icon={<Plus className="h-4 w-4" aria-hidden />}
-                      onClick={startNewAnalysis}
-                    >
-                      Nova análise
-                    </BrutalActionButton>
-                  </div>
-
                   <ScoreHero
                     response={result}
                     scoreDelta={scoreDelta}
@@ -1144,7 +1204,7 @@ export default function PortfolioAnalisar() {
                 </div>
               ) : null}
 
-              {history && history.length > 0 ? (
+              {!loading && !error && !result && history && history.length > 0 ? (
                 <details
                   className={cn(
                     "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow",
@@ -1184,20 +1244,6 @@ export default function PortfolioAnalisar() {
                     />
                   </div>
                 </details>
-              ) : null}
-
-              {/* Mesma saida no rodape do resultado, apos o historico.
-                  TODO(Ana): revisar o rotulo do botao de nova analise. */}
-              {!loading && !error && result ? (
-                <div className="flex justify-center">
-                  <BrutalActionButton
-                    variant="primary"
-                    icon={<Plus className="h-4 w-4" aria-hidden />}
-                    onClick={startNewAnalysis}
-                  >
-                    Nova análise
-                  </BrutalActionButton>
-                </div>
               ) : null}
             </div>
           )}
