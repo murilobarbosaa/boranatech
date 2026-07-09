@@ -446,15 +446,23 @@ function ScoreHero({
   }, [delta, reduce]);
 
   return (
-    <div
-      className={cn(
-        "card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white",
-        ac.liftShadow,
-      )}
-    >
-      <div className="flex flex-col md:flex-row">
-        <div
-          ref={scoreRef}
+    // Peca central da familia da vitrine: rotacao leve compensada + selo de
+    // proposito no topo (o card interno mantem o overflow-hidden dos paineis).
+    <div className="relative -rotate-[0.3deg]">
+      {/* TODO(Ana): revisar o selo do resultado. */}
+      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+        <Sparkles className="h-3 w-3" aria-hidden />
+        Seu raio-X
+      </span>
+      <div
+        className={cn(
+          "card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white",
+          ac.liftShadow,
+        )}
+      >
+        <div className="flex flex-col md:flex-row">
+          <div
+            ref={scoreRef}
           className={cn(
             "flex flex-col items-center justify-center gap-3 border-b-2 border-slate-950 p-8 text-center md:w-72 md:shrink-0 md:border-b-0 md:border-r-2",
             band.cardBg,
@@ -543,6 +551,7 @@ function ScoreHero({
           <div className="mt-auto pt-6">
             <MetadataChips response={response} />
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -1056,6 +1065,7 @@ export default function PortfolioAnalisar() {
                         ? { duration: 0 }
                         : { delay: 0.3, duration: 0.4, ease: "easeOut" }
                     }
+                    className="rotate-[0.5deg]"
                   >
                     <NextStepCard
                       proximoPasso={result.qualitative.proximoPasso}
@@ -1073,16 +1083,22 @@ export default function PortfolioAnalisar() {
                       ? activeTab
                       : "checklist";
                     return (
-                      <div className="space-y-6">
+                      // Respiro dedicado entre o hero/spotlight e a zona densa
+                      // do diagnostico, coerente com a entrada.
+                      <div className="mt-14 space-y-6">
                         <DiagnosticTabs
                           tabs={availableTabs}
                           active={tab}
                           onChange={setActiveTab}
                         />
-                        <div
+                        <motion.div
+                          key={tab}
                           role="tabpanel"
                           id={`diag-panel-${tab}`}
                           aria-labelledby={`diag-tab-${tab}`}
+                          initial={reduce ? false : { opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.25, ease: "easeOut" }}
                           className="space-y-8"
                         >
                           {tab === "checklist" ? (
@@ -1121,7 +1137,7 @@ export default function PortfolioAnalisar() {
                               markdown={result.qualitative.readmeSugestao}
                             />
                           ) : null}
-                        </div>
+                        </motion.div>
                       </div>
                     );
                   })()}
