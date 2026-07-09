@@ -1605,17 +1605,32 @@ type EmailCampaign = {
 
 type EmailCampaignBatchStatus = "pending" | "dispatched" | "canceled";
 
+type EmailBatchSource = "waitlist" | "newsletter" | "custom" | "users";
+
 type EmailCampaignBatch = {
   id: string;
   mode: "next" | "selected";
   batch_limit: number | null;
   exclude_other_campaigns: boolean;
+  source: EmailBatchSource;
   selected_count: number | null;
   scheduled_for: string | null;
   status: EmailCampaignBatchStatus;
   dispatched_at: string | null;
   created_at: string;
 };
+
+// TODO(Ana): rótulos das origens de destinatários.
+const EMAIL_BATCH_SOURCE_META: Record<EmailBatchSource, string> = {
+  waitlist: "Waitlist",
+  newsletter: "Newsletter",
+  custom: "Lista avulsa",
+  users: "Usuários",
+};
+
+// Mesma validação de formato do backend (lista avulsa).
+const EMAIL_INPUT_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_INPUT_MAX_LENGTH = 254;
 
 type EmailCampaignDetail = EmailCampaign & {
   batches: EmailCampaignBatch[];
@@ -1626,6 +1641,7 @@ type WaitlistPickerItem = {
   created_at: string;
   status: string;
   already_recipient: boolean;
+  suppressed: boolean;
 };
 
 // TODO(Ana): rótulos de status dos lotes.
@@ -1751,6 +1767,10 @@ function EmailCampaignsAdminSection() {
 
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchMode, setBatchMode] = useState<"next" | "selected">("next");
+  const [batchSource, setBatchSource] = useState<
+    "waitlist" | "newsletter" | "custom"
+  >("waitlist");
+  const [customText, setCustomText] = useState("");
   const [excludeOther, setExcludeOther] = useState(true);
   const [whenMode, setWhenMode] = useState<"now" | "schedule">("now");
   const [scheduleText, setScheduleText] = useState("");
@@ -2030,21 +2050,26 @@ function EmailCampaignsAdminSection() {
   }
 
   const loadEligibleCount = useCallback(
-    async (campaignId: string, exclude: boolean) => {
+    async (
+      campaignId: string,
+      exclude: boolean,
+      source: "waitlist" | "newsletter",
+    ) => {
       setEligibleCount(null);
       setEligibleError(null);
       try {
         const params = new URLSearchParams();
         params.set("campaignId", campaignId);
+        params.set("source", source);
         if (exclude) params.set("excludeOtherCampaigns", "true");
         const json = await adminFetch(
-          `/email-campaigns/waitlist-count?${params.toString()}`,
+          `/email-campaigns/audience-count?${params.toString()}`,
         );
         setEligibleCount((json.data as { count: number }).count);
       } catch (err) {
         // Erro de contagem é exibido como erro, nunca como zero.
         setEligibleError(
-          err instanceof Error ? err.message : "Erro ao contar a waitlist.",
+          err instanceof Error ? err.message : "Erro ao contar os elegíveis.",
         );
       }
     },
@@ -2055,6 +2080,8 @@ function EmailCampaignsAdminSection() {
     if (!detail) return;
     setBatchModalOpen(true);
     setBatchMode("next");
+    setBatchSource("waitlist");
+    setCustomText("");
     setExcludeOther(true);
     setWhenMode("now");
     setScheduleText("");
@@ -2065,18 +2092,68 @@ function EmailCampaignsAdminSection() {
     setPickerSearchInput("");
     setPickerSearch("");
     setPickerError(null);
-    void loadEligibleCount(detail.id, true);
+    void loadEligibleCount(detail.id, true, "waitlist");
+  }
+
+  function selectBatchSource(next: "waitlist" | "newsletter" | "custom") {
+    if (!detail || next === batchSource) return;
+    setBatchSource(next);
+    setSelectedEmails(new Set());
+    setPickerOffset(0);
+    setPickerSearchInput("");
+    setPickerSearch("");
+    setPickerError(null);
+    setCustomText("");
+    setLimitText("");
+    if (next === "custom") {
+      // Lista avulsa é sempre a lista colada: sem modo "próximos" nem contagem
+      // de origem (a contagem útil é a de e-mails válidos colados).
+      setBatchMode("selected");
+      setEligibleCount(null);
+      setEligibleError(null);
+    } else {
+      setBatchMode("next");
+      void loadEligibleCount(detail.id, excludeOther, next);
+    }
   }
 
   function toggleExcludeOther() {
     if (!detail) return;
     const next = !excludeOther;
     setExcludeOther(next);
-    void loadEligibleCount(detail.id, next);
+    if (batchSource !== "custom") {
+      void loadEligibleCount(detail.id, next, batchSource);
+    }
   }
 
+  const parsedCustom = useMemo(() => {
+    const valid: string[] = [];
+    const invalid: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of customText.split(/[\s,;]+/)) {
+      const email = raw.trim().toLowerCase();
+      if (!email || seen.has(email)) continue;
+      seen.add(email);
+      if (
+        email.length <= EMAIL_INPUT_MAX_LENGTH &&
+        EMAIL_INPUT_PATTERN.test(email)
+      ) {
+        valid.push(email);
+      } else {
+        invalid.push(email);
+      }
+    }
+    return { valid, invalid };
+  }, [customText]);
+
   useEffect(() => {
-    if (!batchModalOpen || batchMode !== "selected" || !selectedId) return;
+    if (
+      !batchModalOpen ||
+      batchMode !== "selected" ||
+      batchSource === "custom" ||
+      !selectedId
+    )
+      return;
     let cancelled = false;
     async function loadPicker() {
       setPickerLoading(true);
@@ -2084,11 +2161,12 @@ function EmailCampaignsAdminSection() {
       try {
         const params = new URLSearchParams();
         params.set("campaignId", selectedId ?? "");
+        params.set("source", batchSource);
         params.set("limit", String(EMAIL_BATCH_PICKER_PAGE_SIZE));
         params.set("offset", String(pickerOffset));
         if (pickerSearch) params.set("search", pickerSearch);
         const json = await adminFetch(
-          `/email-campaigns/waitlist-recipients?${params.toString()}`,
+          `/email-campaigns/audience-recipients?${params.toString()}`,
         );
         if (cancelled) return;
         const data = json.data as {
@@ -2112,7 +2190,14 @@ function EmailCampaignsAdminSection() {
     return () => {
       cancelled = true;
     };
-  }, [batchModalOpen, batchMode, selectedId, pickerOffset, pickerSearch]);
+  }, [
+    batchModalOpen,
+    batchMode,
+    batchSource,
+    selectedId,
+    pickerOffset,
+    pickerSearch,
+  ]);
 
   function toggleSelectedEmail(email: string) {
     setSelectedEmails((prev) => {
@@ -2137,7 +2222,20 @@ function EmailCampaignsAdminSection() {
     if (!detail) return;
 
     let limit: number | undefined;
-    if (batchMode === "next") {
+    if (batchSource === "custom") {
+      if (parsedCustom.valid.length === 0) {
+        // TODO(Ana): mensagem de lista colada vazia.
+        toast.error("Cole ao menos um e-mail válido para o lote.");
+        return;
+      }
+      if (parsedCustom.valid.length > EMAIL_BATCH_MAX_SELECTED) {
+        // TODO(Ana): mensagem de lista colada acima do limite.
+        toast.error(
+          `Máximo de ${EMAIL_BATCH_MAX_SELECTED} e-mails por lote.`,
+        );
+        return;
+      }
+    } else if (batchMode === "next") {
       const trimmedLimit = limitText.trim();
       if (trimmedLimit) {
         const parsed = Number(trimmedLimit);
@@ -2172,16 +2270,21 @@ function EmailCampaignsAdminSection() {
     setBatchBusy(true);
     try {
       const payload =
-        batchMode === "next"
+        batchSource !== "custom" && batchMode === "next"
           ? {
               mode: "next",
+              source: batchSource,
               limit,
               scheduledFor,
               excludeOtherCampaigns: excludeOther,
             }
           : {
               mode: "selected",
-              emails: Array.from(selectedEmails),
+              source: batchSource,
+              emails:
+                batchSource === "custom"
+                  ? parsedCustom.valid
+                  : Array.from(selectedEmails),
               scheduledFor,
               excludeOtherCampaigns: excludeOther,
             };
@@ -2552,6 +2655,9 @@ function EmailCampaignsAdminSection() {
                       <tr className="border-b-2 border-slate-900 bg-slate-50">
                         {/* TODO(Ana): cabeçalhos da tabela de lotes. */}
                         <th className="px-4 py-3 font-black uppercase text-slate-600">
+                          Origem
+                        </th>
+                        <th className="px-4 py-3 font-black uppercase text-slate-600">
                           Modo
                         </th>
                         <th className="px-4 py-3 font-black uppercase text-slate-600">
@@ -2577,6 +2683,10 @@ function EmailCampaignsAdminSection() {
                             className="border-b border-slate-200 last:border-0"
                           >
                             <td className="px-4 py-3 font-semibold text-slate-900">
+                              {EMAIL_BATCH_SOURCE_META[batch.source] ??
+                                batch.source}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600">
                               {/* TODO(Ana): rótulos dos modos de lote. */}
                               {batch.mode === "next"
                                 ? "Próximos da fila"
@@ -2887,17 +2997,59 @@ function EmailCampaignsAdminSection() {
             <h3 className="font-display text-2xl font-black text-slate-950">
               Novo lote de envio
             </h3>
-            {eligibleError ? (
-              <p className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
-                {eligibleError}
+            <div className="mt-4">
+              {/* TODO(Ana): rótulo do passo de origem. */}
+              <p className="text-xs font-black uppercase text-slate-500">
+                Origem
               </p>
-            ) : (
-              <p className="mt-3 text-sm font-semibold text-slate-600">
-                {eligibleCount === null
-                  ? "Contando destinatários elegíveis..."
-                  : `${eligibleCount} pessoas elegíveis na waitlist.`}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  { id: "waitlist" as const, label: "Waitlist" },
+                  { id: "newsletter" as const, label: "Newsletter" },
+                  { id: "custom" as const, label: "Lista avulsa" },
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => selectBatchSource(option.id)}
+                    className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
+                      batchSource === option.id
+                        ? "bg-slate-950 text-white"
+                        : "bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled
+                  className="cursor-not-allowed rounded-full border-2 border-slate-300 bg-slate-100 px-4 py-1.5 text-xs font-black uppercase text-slate-400"
+                >
+                  {/* TODO(Ana) */}
+                  Usuários
+                </button>
+              </div>
+              <p className="mt-1 text-xs font-bold text-slate-500">
+                {/* TODO(Ana): aviso da origem usuários. */}
+                Usuários da plataforma exige opt-in de comunicação, ainda não
+                disponível.
               </p>
-            )}
+            </div>
+
+            {batchSource !== "custom" ? (
+              eligibleError ? (
+                <p className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+                  {eligibleError}
+                </p>
+              ) : (
+                <p className="mt-3 text-sm font-semibold text-slate-600">
+                  {eligibleCount === null
+                    ? "Contando destinatários elegíveis..."
+                    : `${eligibleCount} pessoas elegíveis nesta origem.`}
+                </p>
+              )
+            ) : null}
 
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-slate-700">
               <input
@@ -2910,33 +3062,72 @@ function EmailCampaignsAdminSection() {
               Pular quem já recebeu outra campanha
             </label>
 
-            <div className="mt-4">
-              {/* TODO(Ana): rótulos dos modos. */}
-              <p className="text-xs font-black uppercase text-slate-500">
-                Destinatários
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {[
-                  { id: "next" as const, label: "Próximos da fila" },
-                  { id: "selected" as const, label: "Selecionar e-mails" },
-                ].map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setBatchMode(option.id)}
-                    className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
-                      batchMode === option.id
-                        ? "bg-slate-950 text-white"
-                        : "bg-white text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+            {batchSource !== "custom" ? (
+              <div className="mt-4">
+                {/* TODO(Ana): rótulos dos modos. */}
+                <p className="text-xs font-black uppercase text-slate-500">
+                  Destinatários
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[
+                    { id: "next" as const, label: "Próximos da fila" },
+                    { id: "selected" as const, label: "Selecionar e-mails" },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setBatchMode(option.id)}
+                      className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
+                        batchMode === option.id
+                          ? "bg-slate-950 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="mt-4">
+                <label
+                  htmlFor="email-batch-custom"
+                  className="text-xs font-black uppercase text-slate-500"
+                >
+                  {/* TODO(Ana): rótulo da lista avulsa. */}
+                  Colar lista de e-mails
+                </label>
+                <textarea
+                  id="email-batch-custom"
+                  value={customText}
+                  onChange={(event) => setCustomText(event.target.value)}
+                  rows={6}
+                  // TODO(Ana): placeholder da lista avulsa.
+                  placeholder="Um e-mail por linha (vírgula e ponto e vírgula também separam)."
+                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
+                />
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs font-bold">
+                  <span className="text-slate-600">
+                    {/* TODO(Ana): contador da lista avulsa. */}
+                    {parsedCustom.valid.length} e-mails válidos
+                  </span>
+                  {parsedCustom.invalid.length > 0 ? (
+                    <span className="text-rose-700">
+                      {/* TODO(Ana): aviso de inválidos ignorados. */}
+                      {parsedCustom.invalid.length} inválidos (serão ignorados)
+                    </span>
+                  ) : null}
+                  {parsedCustom.valid.length > EMAIL_BATCH_MAX_SELECTED ? (
+                    <span className="text-amber-700">
+                      {/* TODO(Ana): aviso de limite da lista avulsa. */}
+                      Acima do limite de {EMAIL_BATCH_MAX_SELECTED} por lote.
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            )}
 
-            {batchMode === "next" ? (
+            {batchSource === "custom" ? null : batchMode === "next" ? (
               <div className="mt-4">
                 <label
                   htmlFor="email-batch-limit"
@@ -3024,14 +3215,16 @@ function EmailCampaignsAdminSection() {
                         >
                           <label
                             className={`flex items-center gap-3 px-3 py-2 text-sm font-semibold ${
-                              item.already_recipient
+                              item.already_recipient || item.suppressed
                                 ? "cursor-not-allowed text-slate-400"
                                 : "cursor-pointer text-slate-900"
                             }`}
                           >
                             <input
                               type="checkbox"
-                              disabled={item.already_recipient}
+                              disabled={
+                                item.already_recipient || item.suppressed
+                              }
                               checked={selectedEmails.has(item.email)}
                               onChange={() => toggleSelectedEmail(item.email)}
                               className="h-4 w-4 accent-slate-950"
@@ -3043,6 +3236,12 @@ function EmailCampaignsAdminSection() {
                               <span className="shrink-0 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-500">
                                 {/* TODO(Ana) */}
                                 Já na campanha
+                              </span>
+                            ) : null}
+                            {item.suppressed ? (
+                              <span className="shrink-0 rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10px] font-black uppercase text-rose-600">
+                                {/* TODO(Ana) */}
+                                Suprimido
                               </span>
                             ) : null}
                           </label>
