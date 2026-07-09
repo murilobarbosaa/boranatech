@@ -4,9 +4,11 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
   ExternalLink,
   Github,
   Globe,
+  History,
   Info,
   Sparkles,
 } from "lucide-react";
@@ -295,6 +297,78 @@ function useCountUp(target: number, from: number, reduce: boolean): number {
 // localizado do delta que subiu.
 const CONFETTI_COLORS = ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"];
 
+// Trilha de diagnostico: o corpo do resultado organizado em tabs acessiveis.
+type DiagnosticTab = "checklist" | "ia" | "plano" | "readme";
+
+// TODO(Ana): revisar os rotulos das tabs do diagnostico.
+const TAB_LABELS: Record<DiagnosticTab, string> = {
+  checklist: "Checklist",
+  ia: "Análise da IA",
+  plano: "Plano de ação",
+  readme: "README",
+};
+
+// Tablist acessivel (setas, Home/End, roving tabindex) com o visual Dialeto 2
+// do OptionToggle (que e aria-pressed e nao serve de tab).
+function DiagnosticTabs({
+  tabs,
+  active,
+  onChange,
+}: {
+  tabs: DiagnosticTab[];
+  active: DiagnosticTab;
+  onChange: (tab: DiagnosticTab) => void;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function onKeyDown(event: React.KeyboardEvent, index: number) {
+    let next: number | null = null;
+    if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+    else if (event.key === "ArrowLeft")
+      next = (index - 1 + tabs.length) % tabs.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = tabs.length - 1;
+    if (next === null) return;
+    event.preventDefault();
+    onChange(tabs[next]);
+    refs.current[next]?.focus();
+  }
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Diagnóstico da análise"
+      className="flex flex-wrap gap-2.5"
+    >
+      {tabs.map((tab, i) => {
+        const selected = tab === active;
+        return (
+          <button
+            key={tab}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`diag-tab-${tab}`}
+            aria-selected={selected}
+            aria-controls={`diag-panel-${tab}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(tab)}
+            onKeyDown={(event) => onKeyDown(event, i)}
+            className={cn(
+              "rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]",
+              selected ? "bg-[#FFB800] text-slate-950" : "bg-white text-slate-600",
+            )}
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Nota-hero: a nota e o protagonista (contador + anel SVG preenchendo junto +
 // carimbo da faixa), com alvo e link reorganizados ao lado. BAND_UI intacto
 // para as cores. Delta de reanalise: contador anima DA nota antiga PARA a
@@ -483,6 +557,9 @@ export default function PortfolioAnalisar() {
   } | null>(null);
   // Confirmacao leve da reanalise (consome 1 uso de IA).
   const [confirmReanalyze, setConfirmReanalyze] = useState(false);
+  // Tab ativa da trilha de diagnostico. Estado local (sem URL nesta fase);
+  // nova analise e reabrir do historico voltam pra Checklist.
+  const [activeTab, setActiveTab] = useState<DiagnosticTab>("checklist");
 
   // Default da area pelo perfil logado, so se nada foi salvo/escolhido. Usa o
   // profile ja carregado, sem fetch novo.
@@ -602,6 +679,7 @@ export default function PortfolioAnalisar() {
       // O kind vai por compat (o server autodetecta e ignora o mode).
       const data = await analyzeGithub(target.kind, trimmed, area);
       setResult(data);
+      setActiveTab("checklist");
       setScoreDelta(
         priorScore !== null
           ? { from: priorScore, to: data.deterministic.score }
@@ -629,6 +707,7 @@ export default function PortfolioAnalisar() {
       setConfirmReanalyze(false);
       setInput(rawInput);
       setResult(record.result);
+      setActiveTab("checklist");
       const priorScore = rawInput ? findPriorScore(rawInput, id) : null;
       setScoreDelta(
         priorScore !== null && typeof record.score === "number"
@@ -879,47 +958,121 @@ export default function PortfolioAnalisar() {
                     </div>
                   ) : null}
 
-                  <TopRepos response={result} />
+                  {/* Spotlight fora das tabs: a ponte nota -> acao. */}
+                  <motion.div
+                    initial={
+                      reduce ? false : { opacity: 0, y: 16, scale: 0.98 }
+                    }
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={
+                      reduce
+                        ? { duration: 0 }
+                        : { delay: 0.3, duration: 0.4, ease: "easeOut" }
+                    }
+                  >
+                    <NextStepCard
+                      proximoPasso={result.qualitative.proximoPasso}
+                    />
+                  </motion.div>
 
-                  <AiSummary resumo={result.qualitative.resumo} />
-
-                  <ChecklistByCategory checks={result.deterministic.checks} />
-
-                  <StrengthsWeaknesses
-                    pontosFortes={result.qualitative.pontosFortes}
-                    pontosFracos={result.qualitative.pontosFracos}
-                  />
-
-                  <NextStepCard proximoPasso={result.qualitative.proximoPasso} />
-
-                  <Improvements melhorias={result.qualitative.melhorias} />
-
-                  <ReadmeSuggestion
-                    markdown={result.qualitative.readmeSugestao}
-                  />
-
-                  <NextStepsByArea area={result.area} />
-
-                  <ReanalyzeCta
-                    confirming={confirmReanalyze}
-                    onStart={() => setConfirmReanalyze(true)}
-                    onConfirm={() => void runAnalysis()}
-                    onCancel={() => setConfirmReanalyze(false)}
-                  />
+                  {(() => {
+                    const availableTabs: DiagnosticTab[] = result.qualitative
+                      .readmeSugestao
+                      ? ["checklist", "ia", "plano", "readme"]
+                      : ["checklist", "ia", "plano"];
+                    // Guarda: resultado sem README com a tab README ativa cai
+                    // pra Checklist sem estado invalido.
+                    const tab = availableTabs.includes(activeTab)
+                      ? activeTab
+                      : "checklist";
+                    return (
+                      <div className="space-y-6">
+                        <DiagnosticTabs
+                          tabs={availableTabs}
+                          active={tab}
+                          onChange={setActiveTab}
+                        />
+                        <div
+                          role="tabpanel"
+                          id={`diag-panel-${tab}`}
+                          aria-labelledby={`diag-tab-${tab}`}
+                          className="space-y-8"
+                        >
+                          {tab === "checklist" ? (
+                            <>
+                              <TopRepos response={result} />
+                              <ChecklistByCategory
+                                checks={result.deterministic.checks}
+                              />
+                            </>
+                          ) : null}
+                          {tab === "ia" ? (
+                            <>
+                              <AiSummary resumo={result.qualitative.resumo} />
+                              <StrengthsWeaknesses
+                                pontosFortes={result.qualitative.pontosFortes}
+                                pontosFracos={result.qualitative.pontosFracos}
+                              />
+                            </>
+                          ) : null}
+                          {tab === "plano" ? (
+                            <>
+                              <Improvements
+                                melhorias={result.qualitative.melhorias}
+                              />
+                              <NextStepsByArea area={result.area} />
+                              <ReanalyzeCta
+                                confirming={confirmReanalyze}
+                                onStart={() => setConfirmReanalyze(true)}
+                                onConfirm={() => void runAnalysis()}
+                                onCancel={() => setConfirmReanalyze(false)}
+                              />
+                            </>
+                          ) : null}
+                          {tab === "readme" ? (
+                            <ReadmeSuggestion
+                              markdown={result.qualitative.readmeSugestao}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : null}
 
               {history && history.length > 0 ? (
-                <div
-                  className="area-rise"
+                <details
+                  className="area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a]"
                   style={{ animationDelay: "0.16s" }}
                 >
-                  <GithubHistory
-                    analyses={history}
-                    onOpen={(id) => void openHistory(id)}
-                    loadingId={historyLoadingId}
-                  />
-                </div>
+                  {/* TODO(Ana): revisar o rotulo da faixa colapsavel do historico. */}
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
+                    <span className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
+                      <History className="h-5 w-5 text-violet-700" aria-hidden />
+                      Análises anteriores
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-xs font-black",
+                          ac.tag,
+                        )}
+                      >
+                        {history.length}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className="h-5 w-5 shrink-0 text-slate-600 transition-transform group-open:rotate-180"
+                      aria-hidden
+                    />
+                  </summary>
+                  <div className="px-5 pb-5">
+                    <GithubHistory
+                      analyses={history}
+                      onOpen={(id) => void openHistory(id)}
+                      loadingId={historyLoadingId}
+                    />
+                  </div>
+                </details>
               ) : null}
             </div>
           )}
