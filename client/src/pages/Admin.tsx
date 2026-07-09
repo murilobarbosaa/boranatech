@@ -1589,11 +1589,14 @@ function BetaCodesAdminSection() {
 
 type EmailCampaignStatus = "draft" | "sending" | "completed" | "failed";
 
+type EmailCampaignCategory = "product" | "promotional";
+
 type EmailCampaign = {
   id: string;
   subject: string;
   body: string;
   image_url: string | null;
+  category: EmailCampaignCategory;
   status: EmailCampaignStatus;
   total_recipients: number | null;
   sent_count: number;
@@ -1607,12 +1610,15 @@ type EmailCampaignBatchStatus = "pending" | "dispatched" | "canceled";
 
 type EmailBatchSource = "waitlist" | "newsletter" | "custom" | "users";
 
+type EmailUserSegment = "all" | "never_pro" | "active_pro" | "ex_pro";
+
 type EmailCampaignBatch = {
   id: string;
   mode: "next" | "selected";
   batch_limit: number | null;
   exclude_other_campaigns: boolean;
   source: EmailBatchSource;
+  user_segment: EmailUserSegment | null;
   selected_count: number | null;
   scheduled_for: string | null;
   status: EmailCampaignBatchStatus;
@@ -1626,6 +1632,33 @@ const EMAIL_BATCH_SOURCE_META: Record<EmailBatchSource, string> = {
   newsletter: "Newsletter",
   custom: "Lista avulsa",
   users: "Usuários",
+};
+
+// TODO(Ana): rótulos e descrições das categorias de campanha.
+const EMAIL_CAMPAIGN_CATEGORY_META: Record<
+  EmailCampaignCategory,
+  { label: string; description: string; className: string }
+> = {
+  product: {
+    label: "Produto",
+    description:
+      "Comunicação da plataforma (novidades, avisos). Vai para qualquer pessoa não suprimida.",
+    className: "border-sky-500 bg-sky-100 text-sky-800",
+  },
+  promotional: {
+    label: "Promocional",
+    description:
+      "Ofertas e promoções. Na origem Usuários, só quem aceitou receber (opt-in).",
+    className: "border-violet-500 bg-violet-100 text-violet-800",
+  },
+};
+
+// TODO(Ana): rótulos dos segmentos de usuários.
+const EMAIL_USER_SEGMENT_META: Record<EmailUserSegment, string> = {
+  all: "Todos",
+  never_pro: "Nunca Pro",
+  active_pro: "Pro ativo",
+  ex_pro: "Ex-Pro",
 };
 
 // Mesma validação de formato do backend (lista avulsa).
@@ -1761,6 +1794,8 @@ function EmailCampaignsAdminSection() {
   const [bodyText, setBodyText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageBroken, setImageBroken] = useState(false);
+  const [campaignCategory, setCampaignCategory] =
+    useState<EmailCampaignCategory>("product");
 
   const [creating, setCreating] = useState(false);
   const [testBusy, setTestBusy] = useState(false);
@@ -1768,8 +1803,9 @@ function EmailCampaignsAdminSection() {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchMode, setBatchMode] = useState<"next" | "selected">("next");
   const [batchSource, setBatchSource] = useState<
-    "waitlist" | "newsletter" | "custom"
+    "waitlist" | "newsletter" | "custom" | "users"
   >("waitlist");
+  const [batchSegment, setBatchSegment] = useState<EmailUserSegment>("all");
   const [customText, setCustomText] = useState("");
   const [excludeOther, setExcludeOther] = useState(true);
   const [whenMode, setWhenMode] = useState<"now" | "schedule">("now");
@@ -1939,6 +1975,7 @@ function EmailCampaignsAdminSection() {
           subject: subject.trim(),
           body: bodyText.trim(),
           image_url: imageUrl.trim() || null,
+          category: campaignCategory,
         }),
       });
       const created = json.data as EmailCampaign;
@@ -1949,6 +1986,7 @@ function EmailCampaignsAdminSection() {
       setSubject("");
       setBodyText("");
       setImageUrl("");
+      setCampaignCategory("product");
       void loadCampaigns();
     } catch (err) {
       toast.error(
@@ -1965,6 +2003,7 @@ function EmailCampaignsAdminSection() {
     setSubject(detail.subject);
     setBodyText(detail.body);
     setImageUrl(detail.image_url ?? "");
+    setCampaignCategory(detail.category);
     setImageBroken(false);
   }
 
@@ -1973,6 +2012,7 @@ function EmailCampaignsAdminSection() {
     setSubject("");
     setBodyText("");
     setImageUrl("");
+    setCampaignCategory("product");
     setImageBroken(false);
   }
 
@@ -1991,6 +2031,7 @@ function EmailCampaignsAdminSection() {
           subject: subject.trim(),
           body: bodyText.trim(),
           image_url: imageUrl.trim() || null,
+          category: campaignCategory,
         }),
       });
       // TODO(Ana): toast da edição.
@@ -2053,7 +2094,8 @@ function EmailCampaignsAdminSection() {
     async (
       campaignId: string,
       exclude: boolean,
-      source: "waitlist" | "newsletter",
+      source: "waitlist" | "newsletter" | "users",
+      segment: EmailUserSegment = "all",
     ) => {
       setEligibleCount(null);
       setEligibleError(null);
@@ -2061,6 +2103,7 @@ function EmailCampaignsAdminSection() {
         const params = new URLSearchParams();
         params.set("campaignId", campaignId);
         params.set("source", source);
+        if (source === "users") params.set("segment", segment);
         if (exclude) params.set("excludeOtherCampaigns", "true");
         const json = await adminFetch(
           `/email-campaigns/audience-count?${params.toString()}`,
@@ -2095,9 +2138,12 @@ function EmailCampaignsAdminSection() {
     void loadEligibleCount(detail.id, true, "waitlist");
   }
 
-  function selectBatchSource(next: "waitlist" | "newsletter" | "custom") {
+  function selectBatchSource(
+    next: "waitlist" | "newsletter" | "custom" | "users",
+  ) {
     if (!detail || next === batchSource) return;
     setBatchSource(next);
+    setBatchSegment("all");
     setSelectedEmails(new Set());
     setPickerOffset(0);
     setPickerSearchInput("");
@@ -2113,7 +2159,17 @@ function EmailCampaignsAdminSection() {
       setEligibleError(null);
     } else {
       setBatchMode("next");
-      void loadEligibleCount(detail.id, excludeOther, next);
+      void loadEligibleCount(detail.id, excludeOther, next, "all");
+    }
+  }
+
+  function selectBatchSegment(next: EmailUserSegment) {
+    if (!detail || next === batchSegment) return;
+    setBatchSegment(next);
+    setSelectedEmails(new Set());
+    setPickerOffset(0);
+    if (batchSource === "users") {
+      void loadEligibleCount(detail.id, excludeOther, "users", next);
     }
   }
 
@@ -2122,7 +2178,7 @@ function EmailCampaignsAdminSection() {
     const next = !excludeOther;
     setExcludeOther(next);
     if (batchSource !== "custom") {
-      void loadEligibleCount(detail.id, next, batchSource);
+      void loadEligibleCount(detail.id, next, batchSource, batchSegment);
     }
   }
 
@@ -2162,6 +2218,7 @@ function EmailCampaignsAdminSection() {
         const params = new URLSearchParams();
         params.set("campaignId", selectedId ?? "");
         params.set("source", batchSource);
+        if (batchSource === "users") params.set("segment", batchSegment);
         params.set("limit", String(EMAIL_BATCH_PICKER_PAGE_SIZE));
         params.set("offset", String(pickerOffset));
         if (pickerSearch) params.set("search", pickerSearch);
@@ -2194,6 +2251,7 @@ function EmailCampaignsAdminSection() {
     batchModalOpen,
     batchMode,
     batchSource,
+    batchSegment,
     selectedId,
     pickerOffset,
     pickerSearch,
@@ -2269,11 +2327,13 @@ function EmailCampaignsAdminSection() {
 
     setBatchBusy(true);
     try {
+      const userSegment = batchSource === "users" ? batchSegment : undefined;
       const payload =
         batchSource !== "custom" && batchMode === "next"
           ? {
               mode: "next",
               source: batchSource,
+              userSegment,
               limit,
               scheduledFor,
               excludeOtherCampaigns: excludeOther,
@@ -2281,6 +2341,7 @@ function EmailCampaignsAdminSection() {
           : {
               mode: "selected",
               source: batchSource,
+              userSegment,
               emails:
                 batchSource === "custom"
                   ? parsedCustom.valid
@@ -2395,6 +2456,48 @@ function EmailCampaignsAdminSection() {
                 placeholder="Quebra de linha dupla vira parágrafo."
                 className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
               />
+            </div>
+            <div>
+              {/* TODO(Ana): rótulo do campo de categoria. */}
+              <p className="text-xs font-black uppercase text-slate-500">
+                Categoria
+              </p>
+              <div className="mt-1 space-y-2">
+                {(
+                  Object.keys(
+                    EMAIL_CAMPAIGN_CATEGORY_META,
+                  ) as EmailCampaignCategory[]
+                ).map((option) => {
+                  const meta = EMAIL_CAMPAIGN_CATEGORY_META[option];
+                  return (
+                    <label
+                      key={option}
+                      className={`flex cursor-pointer items-start gap-2 rounded-xl border-2 p-3 ${
+                        campaignCategory === option
+                          ? "border-slate-900 bg-amber-50"
+                          : "border-slate-300 bg-white hover:border-slate-500"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="email-campaign-category"
+                        value={option}
+                        checked={campaignCategory === option}
+                        onChange={() => setCampaignCategory(option)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-slate-950"
+                      />
+                      <span>
+                        <span className="block text-sm font-black text-slate-900">
+                          {meta.label}
+                        </span>
+                        <span className="block text-xs font-semibold text-slate-600">
+                          {meta.description}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
             <div>
               <label
@@ -2535,10 +2638,17 @@ function EmailCampaignsAdminSection() {
               <h3 className="font-display truncate text-2xl font-black">
                 {detail.subject}
               </h3>
-              <span
-                className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${EMAIL_CAMPAIGN_STATUS_META[detail.status].className}`}
-              >
-                {EMAIL_CAMPAIGN_STATUS_META[detail.status].label}
+              <span className="mt-2 inline-flex flex-wrap gap-2">
+                <span
+                  className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${EMAIL_CAMPAIGN_STATUS_META[detail.status].className}`}
+                >
+                  {EMAIL_CAMPAIGN_STATUS_META[detail.status].label}
+                </span>
+                <span
+                  className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-black ${EMAIL_CAMPAIGN_CATEGORY_META[detail.category].className}`}
+                >
+                  {EMAIL_CAMPAIGN_CATEGORY_META[detail.category].label}
+                </span>
               </span>
               {detail.status !== "draft" ? (
                 <p className="mt-2 text-xs font-bold text-slate-500">
@@ -2685,6 +2795,9 @@ function EmailCampaignsAdminSection() {
                             <td className="px-4 py-3 font-semibold text-slate-900">
                               {EMAIL_BATCH_SOURCE_META[batch.source] ??
                                 batch.source}
+                              {batch.user_segment
+                                ? ` (${EMAIL_USER_SEGMENT_META[batch.user_segment]})`
+                                : ""}
                             </td>
                             <td className="px-4 py-3 text-slate-600">
                               {/* TODO(Ana): rótulos dos modos de lote. */}
@@ -3007,6 +3120,7 @@ function EmailCampaignsAdminSection() {
                   { id: "waitlist" as const, label: "Waitlist" },
                   { id: "newsletter" as const, label: "Newsletter" },
                   { id: "custom" as const, label: "Lista avulsa" },
+                  { id: "users" as const, label: "Usuários" },
                 ].map((option) => (
                   <button
                     key={option.id}
@@ -3021,26 +3135,57 @@ function EmailCampaignsAdminSection() {
                     {option.label}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  disabled
-                  className="cursor-not-allowed rounded-full border-2 border-slate-300 bg-slate-100 px-4 py-1.5 text-xs font-black uppercase text-slate-400"
-                >
-                  {/* TODO(Ana) */}
-                  Usuários
-                </button>
               </div>
-              <p className="mt-1 text-xs font-bold text-slate-500">
-                {/* TODO(Ana): aviso da origem usuários. */}
-                Usuários da plataforma exige opt-in de comunicação, ainda não
-                disponível.
-              </p>
+              {batchSource === "users" ? (
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  {/* TODO(Ana): explicação da regra de consentimento. */}
+                  {detail.category === "promotional"
+                    ? "Campanha promocional: só usuários que aceitaram receber (opt-in)."
+                    : "Campanha de produto: usuários da plataforma não suprimidos."}
+                </p>
+              ) : null}
             </div>
+
+            {batchSource === "users" ? (
+              <div className="mt-4">
+                {/* TODO(Ana): rótulo do seletor de segmento. */}
+                <p className="text-xs font-black uppercase text-slate-500">
+                  Segmento
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(
+                    Object.keys(EMAIL_USER_SEGMENT_META) as EmailUserSegment[]
+                  ).map((segment) => (
+                    <button
+                      key={segment}
+                      type="button"
+                      onClick={() => selectBatchSegment(segment)}
+                      className={`rounded-full border-2 border-slate-900 px-4 py-1.5 text-xs font-black uppercase transition-colors motion-reduce:transition-none ${
+                        batchSegment === segment
+                          ? "bg-slate-950 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {EMAIL_USER_SEGMENT_META[segment]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {batchSource !== "custom" ? (
               eligibleError ? (
                 <p className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
                   {eligibleError}
+                </p>
+              ) : eligibleCount === 0 &&
+                batchSource === "users" &&
+                detail.category === "promotional" ? (
+                <p className="mt-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                  {/* TODO(Ana): aviso de promocional sem opt-in. */}
+                  Nenhum usuário deste segmento aceitou receber e-mails
+                  promocionais ainda. Campanha promocional só vai para quem tem
+                  opt-in.
                 </p>
               ) : (
                 <p className="mt-3 text-sm font-semibold text-slate-600">
