@@ -23,7 +23,6 @@ import ProGate from "@/components/pro/ProGate";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import PageHero from "@/components/shared/PageHero";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
-import { type ScoreBandUi } from "@/components/shared/ScoreCard";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import SEO from "@/components/SEO";
 import { AnalysisError } from "@/components/portfolio/AnalysisStates";
@@ -32,6 +31,7 @@ import {
   HowItWorksTimeline,
   ResultShowcase,
 } from "@/components/portfolio/AnalyzerIntro";
+import { BAND_UI } from "@/components/portfolio/bandUi";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import GithubHistory from "@/components/portfolio/GithubHistory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
@@ -61,27 +61,9 @@ import { detectGithubTarget } from "@shared/github/detect";
 import type {
   AnalysisMode,
   GithubAnalysisResponse,
-  ScoreBand,
 } from "@shared/github/schema";
 
 const ac = getPageAccentUi("violet");
-
-// Mapa faixa->cor preservado byte a byte do antigo ScoreCard do portfolio; a
-// anatomia agora vive no ScoreCard compartilhado.
-const BAND_UI: Record<ScoreBand, ScoreBandUi> = {
-  comecando: { label: "Começando", cardBg: "bg-red-100", chipBg: "bg-red-300" },
-  evoluindo: {
-    label: "Evoluindo",
-    cardBg: "bg-amber-100",
-    chipBg: "bg-amber-300",
-  },
-  bom: { label: "Bom", cardBg: "bg-sky-100", chipBg: "bg-sky-300" },
-  destaque: {
-    label: "Destaque",
-    cardBg: "bg-emerald-100",
-    chipBg: "bg-emerald-300",
-  },
-};
 
 // Decor do hero no padrao das paginas de area (blobs de baixa opacidade com
 // animate-gentle-float; reduced-motion coberto pelo CSS global da classe).
@@ -834,21 +816,46 @@ export default function PortfolioAnalisar() {
           secao de conteudo; o PageHero violet permanece acima. O backdrop
           vivo (gradiente + doodles) so existe no estado de entrada. */}
       <section className="relative overflow-hidden bg-[#faf8f4] py-12 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
-        {!loading && !result ? <AnalyzerBackdrop reduce={reduce} /> : null}
+        {!loading && !error && !result ? (
+          <AnalyzerBackdrop reduce={reduce} />
+        ) : null}
         <div className="container relative z-10">
           {!isPro ? (
             <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
           ) : (
             <div className="space-y-8">
+              {/* Ordem narrativa do estado de entrada: explicacao (timeline +
+                  vitrine) ANTES do palco; as pills fecham o argumento logo
+                  abaixo dele. Em scan/erro/resultado nada disso renderiza e o
+                  palco segue no topo. */}
+              {!loading && !error && !result ? (
+                <div className="mx-auto max-w-5xl">
+                  <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-center">
+                    <HowItWorksTimeline />
+                    <ResultShowcase />
+                  </div>
+                </div>
+              ) : null}
+
               {/* Palco central: intake em destaque, com o alvo materializando
-                  abaixo do campo quando a deteccao assenta. */}
+                  abaixo do campo quando a deteccao assenta. Peca da familia da
+                  vitrine: rotacao leve + selo de proposito no topo. */}
               <div
                 className={cn(
-                  "card-brutal area-rise mx-auto max-w-3xl rounded-2xl border-slate-950 bg-white p-6 sm:p-8",
+                  "card-brutal area-rise relative mx-auto max-w-3xl -rotate-[0.4deg] rounded-2xl border-slate-950 bg-white p-6 sm:p-8",
                   ac.liftShadow,
                 )}
               >
-                <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-600">
+                {/* TODO(Ana): revisar o selo e o titulo do palco. */}
+                <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  Comece aqui
+                </span>
+                <h2 className="font-display text-xl font-black text-slate-950 sm:text-2xl">
+                  Cole seu GitHub e receba o raio-X
+                </h2>
+
+                <label className="mt-4 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-600">
                   {/* TODO(Ana): revisar rotulo e helper da area alvo. */}
                   <span>Área alvo desta análise</span>
                   <select
@@ -963,6 +970,8 @@ export default function PortfolioAnalisar() {
                 ) : null}
               </div>
 
+              {!loading && !error && !result ? <BenefitPills /> : null}
+
               {loading ? (
                 <ScanCard
                   owner={
@@ -988,16 +997,6 @@ export default function PortfolioAnalisar() {
                   error={error}
                   onRetry={input.trim() ? () => void runAnalysis() : undefined}
                 />
-              ) : null}
-
-              {!loading && !result ? (
-                <div className="mx-auto max-w-5xl space-y-10">
-                  <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-center">
-                    <HowItWorksTimeline />
-                    <ResultShowcase />
-                  </div>
-                  <BenefitPills />
-                </div>
               ) : null}
 
               {!loading && !error && result ? (
@@ -1110,13 +1109,21 @@ export default function PortfolioAnalisar() {
 
               {history && history.length > 0 ? (
                 <details
-                  className="area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a]"
+                  className={cn(
+                    "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow",
+                    ac.liftShadow,
+                  )}
                   style={{ animationDelay: "0.16s" }}
                 >
                   {/* TODO(Ana): revisar o rotulo da faixa colapsavel do historico. */}
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
-                    <span className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
-                      <History className="h-5 w-5 text-violet-700" aria-hidden />
+                    <span className="flex items-center gap-3 font-display text-lg font-black text-slate-950">
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                        aria-hidden
+                      >
+                        <History className="h-5 w-5" />
+                      </span>
                       Análises anteriores
                       <span
                         className={cn(

@@ -8,6 +8,7 @@ import {
   ListChecks,
   Sparkles,
 } from "lucide-react";
+import MiniScoreRing from "@/components/portfolio/MiniScoreRing";
 
 // Estado de entrada do Analisador de GitHub (RD2.1): linha do tempo compacta
 // de 3 passos + VITRINE ilustrativa do resultado + pills de beneficios.
@@ -101,9 +102,6 @@ export function HowItWorksTimeline() {
   );
 }
 
-const MINI_RING_RADIUS = 26;
-const MINI_RING_CIRCUMFERENCE = 2 * Math.PI * MINI_RING_RADIUS;
-
 // Um mini-card da composicao: entrada whileInView + float sutilissimo em loop
 // (2 a 3px; reduce desliga os dois).
 function ShowcaseCard({
@@ -147,7 +145,6 @@ function ShowcaseCard({
 
 export function ResultShowcase() {
   const reduce = useReducedMotion() ?? false;
-  const ringOffset = MINI_RING_CIRCUMFERENCE * (1 - EXAMPLE_SCORE / 100);
   return (
     <div className="relative mx-auto w-full max-w-md" aria-hidden>
       <span className="absolute -top-3 right-2 z-20 rotate-2 rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-600 shadow-[2px_2px_0_#0f172a]">
@@ -157,33 +154,10 @@ export function ResultShowcase() {
       {/* (a) mini nota-hero */}
       <ShowcaseCard index={0} reduce={reduce} className="w-[88%] -rotate-2">
         <div className="flex items-center gap-4 rounded-xl bg-sky-100 p-4">
-          <div className="relative h-[72px] w-[72px] shrink-0">
-            <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90">
-              <circle
-                cx="32"
-                cy="32"
-                r={MINI_RING_RADIUS}
-                fill="none"
-                stroke="#0f172a"
-                strokeOpacity="0.15"
-                strokeWidth="6"
-              />
-              <circle
-                cx="32"
-                cy="32"
-                r={MINI_RING_RADIUS}
-                fill="none"
-                stroke="#0f172a"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeDasharray={MINI_RING_CIRCUMFERENCE}
-                strokeDashoffset={ringOffset}
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center font-display text-xl font-black text-slate-950">
-              {EXAMPLE_SCORE}
-            </span>
-          </div>
+          <MiniScoreRing
+            score={EXAMPLE_SCORE}
+            className="h-[72px] w-[72px] text-xl"
+          />
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
               Nota do portfólio
