@@ -127,19 +127,24 @@ function AnalyzerBackdrop({ reduce }: { reduce: boolean }) {
   );
 }
 
-// Doodles do cenario do RESULTADO: irmandade sobria do cenario da entrada.
-// Poucos (4), opacidade menor (0.06 a 0.10) e SO nas margens externas, fora
-// da coluna de leitura; escondidos abaixo de lg pra nunca atrapalhar as tabs.
+// Doodles do cenario do RESULTADO: familia do cenario da entrada, tintados
+// pela pagina toda (nao so no topo), opacidade 0.08 a 0.14, SO nas margens
+// externas, fora da coluna de leitura; escondidos abaixo de lg pra nunca
+// atrapalhar o corpo denso.
 const RESULT_DOODLES = [
-  { Icon: Star, cls: "left-[2%] top-[12%] text-violet-500 opacity-[0.10]", size: "h-10 w-10", rot: 6, dur: 7, delay: 0 },
-  { Icon: GitFork, cls: "right-[2%] top-[22%] text-purple-500 opacity-[0.08]", size: "h-9 w-9", rot: -6, dur: 8, delay: 0.6 },
-  { Icon: GitCommitHorizontal, cls: "left-[2%] top-[58%] text-violet-400 opacity-[0.07]", size: "h-10 w-10", rot: 7, dur: 7.5, delay: 1 },
-  { Icon: FolderGit2, cls: "right-[2%] top-[72%] text-purple-600 opacity-[0.06]", size: "h-10 w-10", rot: -5, dur: 6.5, delay: 0.3 },
+  { Icon: Github, cls: "left-[3%] top-[6%] text-violet-500 opacity-[0.14]", size: "h-11 w-11", rot: 6, dur: 7, delay: 0 },
+  { Icon: Star, cls: "right-[2%] top-[10%] text-amber-500 opacity-[0.12]", size: "h-10 w-10", rot: -6, dur: 8, delay: 0.6 },
+  { Icon: GitFork, cls: "left-[2%] top-[30%] text-purple-500 opacity-[0.10]", size: "h-9 w-9", rot: 8, dur: 7.5, delay: 0.3 },
+  { Icon: FileCode2, cls: "right-[3%] top-[38%] text-violet-600 opacity-[0.11]", size: "h-10 w-10", rot: -7, dur: 6.5, delay: 1.1 },
+  { Icon: GitCommitHorizontal, cls: "left-[2%] top-[58%] text-violet-400 opacity-[0.09]", size: "h-10 w-10", rot: 7, dur: 7, delay: 1 },
+  { Icon: FolderGit2, cls: "right-[2%] top-[66%] text-purple-600 opacity-[0.10]", size: "h-10 w-10", rot: -5, dur: 6.5, delay: 0.3 },
+  { Icon: Star, cls: "left-[3%] top-[86%] text-violet-500 opacity-[0.08]", size: "h-9 w-9", rot: 9, dur: 6, delay: 0.8 },
 ];
 
-// Cenario do estado de resultado: o mesmo pontilhado da secao, um wash curto
-// no topo colorido pela FAIXA da nota (BAND_WASH) com fade rapido, e os
-// doodles das margens. O miolo denso (tabs) segue sobre area limpa.
+// Cenario do estado de resultado: o mesmo pontilhado da secao, o wash da
+// FAIXA da nota (BAND_WASH) em DOIS focos (topo atras do hero + um segundo
+// suave a meia pagina), sempre com fade antes das areas de leitura densa, e
+// os doodles das margens ao longo de toda a altura.
 function ResultBackdrop({
   band,
   reduce,
@@ -154,7 +159,13 @@ function ResultBackdrop({
     >
       <div
         className={cn(
-          "absolute inset-x-0 top-0 h-72 bg-gradient-to-b via-transparent to-transparent [mask-image:linear-gradient(to_bottom,black_30%,transparent)]",
+          "absolute inset-x-0 top-0 h-80 bg-gradient-to-b via-transparent to-transparent [mask-image:linear-gradient(to_bottom,black_40%,transparent)]",
+          BAND_WASH[band],
+        )}
+      />
+      <div
+        className={cn(
+          "absolute right-[-12%] top-[42%] h-96 w-[65%] rounded-full bg-gradient-to-tl via-transparent to-transparent blur-3xl",
           BAND_WASH[band],
         )}
       />
