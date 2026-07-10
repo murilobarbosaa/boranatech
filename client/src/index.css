@@ -951,6 +951,15 @@
   }
 }
 
+/* Papel-protagonista do estado de resultado: sombra brutal generosa e leve
+   rotação no próprio A4, por CSS pra não mexer na máquina de scale do
+   CurriculoPreview. O bloco de print abaixo zera borda, sombra e rotação. */
+.curriculo-paper-spotlight .curriculo-print-target {
+  border: 2px solid #0f172a;
+  box-shadow: 10px 10px 0 #0f172a;
+  rotate: -0.4deg;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Currículo Pro: print styles. Quando o user dispara Ctrl+P (ou o botão
    da Fase 3 chamar window.print), esconde tudo que não é o documento e
