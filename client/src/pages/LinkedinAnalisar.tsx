@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileUp, Linkedin, Lightbulb, Shield, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import {
+  ChevronDown,
+  FileUp,
+  History,
+  Linkedin,
+  Lightbulb,
+  Shield,
+  Sparkles,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
-import PageHero from "@/components/shared/PageHero";
+import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import SEO from "@/components/SEO";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -12,7 +21,12 @@ import {
 } from "@/components/portfolio/QualitativePanels";
 import { NextStepCard } from "@/components/shared/NextStepCard";
 import NextStepsByArea from "@/components/shared/NextStepsByArea";
-import { HowItWorks, WhatYouGet } from "@/components/linkedin/LinkedinIntro";
+import {
+  BenefitPills,
+  HowItWorksTimeline,
+  ResultShowcase,
+} from "@/components/linkedin/LinkedinAnalyzerIntro";
+import LinkedinBackdrop from "@/components/linkedin/LinkedinBackdrop";
 import LinkedinChecklist from "@/components/linkedin/LinkedinChecklist";
 import LinkedinHistory from "@/components/linkedin/LinkedinHistory";
 import LinkedinScoreCard from "@/components/linkedin/LinkedinScoreCard";
@@ -680,6 +694,12 @@ export default function LinkedinAnalisar() {
   const profileChars = form.profileText.trim().length;
   const canSubmit = profileChars >= 200 && !loading;
 
+  const reduce = useReducedMotion() ?? false;
+  // Estado de ENTRADA: sem analise em andamento, sem erro e sem resultado. E
+  // onde vivem o cenario, a explicacao (timeline + vitrine), as pills e o
+  // historico colapsavel; loading e resultado seguem com o palco sozinho.
+  const showEntry = !loading && !error && !result;
+
   // Checklist de prontidao: o minimo REAL do backend (200 caracteres, o
   // schema da rota) bloqueia; a ausencia de Sobre e experiencias e aviso (o
   // server devolve 422 quando o texto nao tem nada aproveitavel).
@@ -699,355 +719,437 @@ export default function LinkedinAnalisar() {
         description="Veja como recrutadores encontram (ou não) seu perfil no LinkedIn e receba textos prontos para colar: headline, seção Sobre, experiências e mensagem."
         url="/linkedin/analisar"
       />
-      <PageHero
-        accent="sky"
-        eyebrow="revisão com IA"
-        title="Analisador de LinkedIn"
-        subtitle="Veja como recrutadores encontram (ou não encontram) seu perfil e receba os textos prontos para colar: headline, Sobre, experiências e mensagem."
-      />
-      <section className={cn(ac.contentBg, "py-12")}>
-        <div className="container">
+      {/* Cenario da pagina inteira no molde do Analisador de GitHub: sem
+          PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo. O
+          backdrop vivo (gradiente + doodles) so existe no estado de entrada. */}
+      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        {showEntry ? <LinkedinBackdrop reduce={reduce} /> : null}
+        <div className="container relative z-10">
+          {/* Cabecalho integrado, presente nos 3 estados (entrada, loading,
+              resultado). O slot do topo esquerdo e o lugar universal de
+              "voltar": fica vazio nesta fase (o link Nova analise e da L4). */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="mb-10"
+          >
+            <p>
+              {/* TODO(Ana): validar o eyebrow do cabecalho. */}
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-sky-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                Análise Pro
+              </span>
+            </p>
+            <div className="mt-3.5 flex items-center gap-4">
+              <span
+                className={cn(
+                  "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 shadow-[3px_3px_0_currentColor]",
+                  ac.panelBorder,
+                  ac.panelSoft,
+                  ac.iconMuted,
+                )}
+                aria-hidden
+              >
+                <Linkedin className="h-8 w-8" />
+              </span>
+              <h1 className="font-display text-3xl font-black tracking-tight text-slate-950 md:text-[clamp(2rem,5vw,2.6rem)]">
+                Analisador de LinkedIn
+              </h1>
+            </div>
+            <p className="mt-3 max-w-2xl text-base font-medium text-slate-600">
+              Veja como recrutadores encontram (ou não encontram) seu perfil e
+              receba os textos prontos para colar: headline, Sobre, experiências
+              e mensagem.
+            </p>
+          </motion.div>
+
           {!isPro ? (
             <ProGate description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno." />
           ) : (
             <div className="space-y-8">
-              <form
-                onSubmit={handleSubmit}
-                className="card-brutal space-y-6 rounded-2xl border-slate-950 bg-white p-6"
+              {/* Ordem narrativa da entrada: explicacao (timeline + vitrine)
+                  na coluna esquerda, palco de intake na direita; empilham em
+                  coluna unica no mobile. Fora da entrada o grid some e o palco
+                  segue sozinho no topo (o formulario continua visivel em
+                  loading, erro e resultado, como antes). */}
+              <div
+                className={
+                  showEntry
+                    ? "grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start"
+                    : undefined
+                }
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(event) => void handleFile(event.target.files?.[0])}
-                />
-
-                {entryPath === "pdf" ? (
-                  <div className="space-y-5">
-                    <div>
-                      <h2 className="font-display text-2xl font-black text-slate-950">
-                        {ENTRY_COPY.pdfTitle}
-                      </h2>
-                      <p className="mt-1 text-sm font-medium text-slate-600">
-                        {ENTRY_COPY.pdfSubtitle}
-                      </p>
-                    </div>
-
-                    <ol className="grid gap-3 sm:grid-cols-2">
-                      {ENTRY_COPY.steps.map((step, i) => (
-                        <li
-                          key={step}
-                          className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
-                        >
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
-                            {i + 1}
-                          </span>
-                          <span className="text-sm font-medium text-slate-700">
-                            {step}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
-
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      aria-label={ENTRY_COPY.dropIdle}
-                      onClick={() => fileInputRef.current?.click()}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          fileInputRef.current?.click();
-                        }
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        setDragOver(true);
-                      }}
-                      onDragLeave={() => setDragOver(false)}
-                      onDrop={onDropPdf}
-                      className={cn(
-                        "flex min-h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-[3px] border-dashed border-slate-900 p-8 text-center transition-colors",
-                        dragOver ? "bg-sky-100" : "bg-sky-50 hover:bg-sky-100",
-                      )}
-                    >
-                      {extracting ? (
-                        <Spinner className="h-8 w-8 text-sky-700" />
-                      ) : (
-                        <FileUp className="h-8 w-8 text-sky-700" />
-                      )}
-                      <p className="font-display text-base font-black text-slate-950">
-                        {extracting
-                          ? ENTRY_COPY.dropReading
-                          : ENTRY_COPY.dropIdle}
-                      </p>
-                      <p className="text-xs font-bold text-slate-500">
-                        {ENTRY_COPY.dropHint}
-                      </p>
-                    </div>
-
-                    <div className="flex items-start gap-2 rounded-xl border-2 border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-900">
-                      <Shield className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                      <span>{ENTRY_COPY.privacy}</span>
-                    </div>
-
-                    {pdfError ? (
-                      <p className="rounded-xl border-2 border-slate-950 bg-rose-100 px-3 py-2 text-sm font-bold text-rose-800">
-                        {pdfError}
-                      </p>
-                    ) : null}
-
-                    <button
-                      type="button"
-                      onClick={() => setEntryPath("manual")}
-                      className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
-                    >
-                      {ENTRY_COPY.manualLink}
-                    </button>
+                {showEntry ? (
+                  <div className="space-y-12">
+                    <HowItWorksTimeline />
+                    <ResultShowcase />
                   </div>
                 ) : null}
+                {/* Palco de intake: peca da familia da vitrine (rotacao leve
+                    + selo de proposito), contendo TODO o fluxo de entrada
+                    existente (PDF -> revisao -> analise, fallback manual). */}
+                <div
+                  className={cn(
+                    "card-brutal area-rise relative -rotate-[0.4deg] rounded-2xl border-slate-950 bg-white p-6 sm:p-8",
+                    ac.liftShadow,
+                  )}
+                >
+                  {/* TODO(Ana): revisar o selo do palco. */}
+                  <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                    <Sparkles className="h-3 w-3" aria-hidden />
+                    Comece aqui
+                  </span>
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(event) =>
+                        void handleFile(event.target.files?.[0])
+                      }
+                    />
 
-                {entryPath === "manual" ? (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h2 className="font-display text-2xl font-black text-slate-950">
-                          {ENTRY_COPY.manualTitle}
-                        </h2>
-                        <p className="mt-1 text-sm font-medium text-slate-600">
-                          {ENTRY_COPY.manualSubtitle}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setEntryPath("pdf")}
-                        className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
-                      >
-                        {ENTRY_COPY.backToPdf}
-                      </button>
-                    </div>
+                    {entryPath === "pdf" ? (
+                      <div className="space-y-5">
+                        <div>
+                          <h2 className="font-display text-2xl font-black text-slate-950">
+                            {ENTRY_COPY.pdfTitle}
+                          </h2>
+                          <p className="mt-1 text-sm font-medium text-slate-600">
+                            {ENTRY_COPY.pdfSubtitle}
+                          </p>
+                        </div>
 
-                    <Field
-                      label="Texto do seu perfil"
-                      hint="Headline, Sobre, experiências e formação. Mínimo de 200 caracteres."
-                    >
-                      <textarea
-                        value={form.profileText}
-                        onChange={(event) =>
-                          update("profileText", event.target.value)
-                        }
-                        placeholder="Cole aqui o texto do seu perfil do LinkedIn (headline, Sobre, experiências...)."
-                        className={cn(inputClass, "min-h-36")}
-                      />
-                    </Field>
+                        <ol className="grid gap-3 sm:grid-cols-2">
+                          {ENTRY_COPY.steps.map((step, i) => (
+                            <li
+                              key={step}
+                              className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
+                            >
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                                {i + 1}
+                              </span>
+                              <span className="text-sm font-medium text-slate-700">
+                                {step}
+                              </span>
+                            </li>
+                          ))}
+                        </ol>
 
-                    <ContextFields form={form} update={update} />
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          aria-label={ENTRY_COPY.dropIdle}
+                          onClick={() => fileInputRef.current?.click()}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              fileInputRef.current?.click();
+                            }
+                          }}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                            setDragOver(true);
+                          }}
+                          onDragLeave={() => setDragOver(false)}
+                          onDrop={onDropPdf}
+                          className={cn(
+                            "flex min-h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-[3px] border-dashed border-slate-900 p-8 text-center transition-colors",
+                            dragOver
+                              ? "bg-sky-100"
+                              : "bg-sky-50 hover:bg-sky-100",
+                          )}
+                        >
+                          {extracting ? (
+                            <Spinner className="h-8 w-8 text-sky-700" />
+                          ) : (
+                            <FileUp className="h-8 w-8 text-sky-700" />
+                          )}
+                          <p className="font-display text-base font-black text-slate-950">
+                            {extracting
+                              ? ENTRY_COPY.dropReading
+                              : ENTRY_COPY.dropIdle}
+                          </p>
+                          <p className="text-xs font-bold text-slate-500">
+                            {ENTRY_COPY.dropHint}
+                          </p>
+                        </div>
 
-                    <Field
-                      label="Cole suas competências (skills) do LinkedIn"
-                      hint="Separadas por vírgula. Copie da seção Competências do seu perfil."
-                    >
-                      <textarea
-                        value={form.skills}
-                        onChange={(event) =>
-                          update("skills", event.target.value)
-                        }
-                        placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
-                        className={cn(inputClass, "min-h-20")}
-                      />
-                    </Field>
+                        <div className="flex items-start gap-2 rounded-xl border-2 border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-900">
+                          <Shield className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                          <span>{ENTRY_COPY.privacy}</span>
+                        </div>
 
-                    <ProfileQuestions form={form} update={update} />
-                  </>
-                ) : null}
-
-                {entryPath === "review" ? (
-                  <>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h2 className="font-display text-2xl font-black text-slate-950">
-                          {ENTRY_COPY.reviewTitle}
-                        </h2>
-                        <p className="mt-1 text-sm font-medium text-slate-600">
-                          {ENTRY_COPY.reviewSubtitle}
-                        </p>
-                        {pdfStatus ? (
-                          <p className="mt-1 text-xs font-bold text-emerald-700">
-                            {pdfStatus}
+                        {pdfError ? (
+                          <p className="rounded-xl border-2 border-slate-950 bg-rose-100 px-3 py-2 text-sm font-bold text-rose-800">
+                            {pdfError}
                           </p>
                         ) : null}
+
+                        <button
+                          type="button"
+                          onClick={() => setEntryPath("manual")}
+                          className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                        >
+                          {ENTRY_COPY.manualLink}
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setEntryPath("pdf")}
-                        className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
-                      >
-                        {ENTRY_COPY.swapPdf}
-                      </button>
-                    </div>
+                    ) : null}
 
-                    <div className="flex flex-wrap gap-2">
-                      <span
-                        className={cn(
-                          "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                          parsed?.headline ? "bg-emerald-100" : "bg-amber-100",
-                        )}
-                      >
-                        Headline:{" "}
-                        {parsed?.headline
-                          ? "detectada"
-                          : ENTRY_COPY.reviewNotFound}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                          parsed?.sobre ? "bg-emerald-100" : "bg-amber-100",
-                        )}
-                      >
-                        Sobre:{" "}
-                        {parsed?.sobre
-                          ? `${parsed.sobre.length} caracteres`
-                          : ENTRY_COPY.reviewNotFound}
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
-                          parsed && parsed.experiencias.length > 0
-                            ? "bg-emerald-100"
-                            : "bg-amber-100",
-                        )}
-                      >
-                        Experiências: {parsed?.experiencias.length ?? 0}{" "}
-                        detectada
-                        {(parsed?.experiencias.length ?? 0) === 1 ? "" : "s"}
-                      </span>
-                      <span className="rounded-full border-2 border-slate-900 bg-sky-100 px-3 py-1 text-xs font-black text-slate-900">
-                        Competências no PDF: {parsed?.skillsPdf.length ?? 0}
-                      </span>
-                    </div>
+                    {entryPath === "manual" ? (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h2 className="font-display text-2xl font-black text-slate-950">
+                              {ENTRY_COPY.manualTitle}
+                            </h2>
+                            <p className="mt-1 text-sm font-medium text-slate-600">
+                              {ENTRY_COPY.manualSubtitle}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEntryPath("pdf")}
+                            className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
+                          >
+                            {ENTRY_COPY.backToPdf}
+                          </button>
+                        </div>
 
-                    <div className="space-y-2">
-                      {parsed?.headline ? (
-                        <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
-                          <summary className="cursor-pointer text-sm font-black text-slate-800">
-                            Headline detectada
-                          </summary>
-                          <p className="mt-2 text-sm text-slate-700">
-                            {parsed.headline}
-                          </p>
-                        </details>
-                      ) : null}
-                      {parsed?.sobre ? (
-                        <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
-                          <summary className="cursor-pointer text-sm font-black text-slate-800">
-                            Sobre ({parsed.sobre.length} caracteres)
-                          </summary>
-                          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-                            {parsed.sobre}
-                          </p>
-                        </details>
-                      ) : null}
-                      {parsed && parsed.experiencias.length > 0 ? (
-                        <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
-                          <summary className="cursor-pointer text-sm font-black text-slate-800">
-                            Experiências ({parsed.experiencias.length}{" "}
+                        <Field
+                          label="Texto do seu perfil"
+                          hint="Headline, Sobre, experiências e formação. Mínimo de 200 caracteres."
+                        >
+                          <textarea
+                            value={form.profileText}
+                            onChange={(event) =>
+                              update("profileText", event.target.value)
+                            }
+                            placeholder="Cole aqui o texto do seu perfil do LinkedIn (headline, Sobre, experiências...)."
+                            className={cn(inputClass, "min-h-36")}
+                          />
+                        </Field>
+
+                        <ContextFields form={form} update={update} />
+
+                        <Field
+                          label="Cole suas competências (skills) do LinkedIn"
+                          hint="Separadas por vírgula. Copie da seção Competências do seu perfil."
+                        >
+                          <textarea
+                            value={form.skills}
+                            onChange={(event) =>
+                              update("skills", event.target.value)
+                            }
+                            placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
+                            className={cn(inputClass, "min-h-20")}
+                          />
+                        </Field>
+
+                        <ProfileQuestions form={form} update={update} />
+                      </>
+                    ) : null}
+
+                    {entryPath === "review" ? (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h2 className="font-display text-2xl font-black text-slate-950">
+                              {ENTRY_COPY.reviewTitle}
+                            </h2>
+                            <p className="mt-1 text-sm font-medium text-slate-600">
+                              {ENTRY_COPY.reviewSubtitle}
+                            </p>
+                            {pdfStatus ? (
+                              <p className="mt-1 text-xs font-bold text-emerald-700">
+                                {pdfStatus}
+                              </p>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEntryPath("pdf")}
+                            className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
+                          >
+                            {ENTRY_COPY.swapPdf}
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
+                              parsed?.headline
+                                ? "bg-emerald-100"
+                                : "bg-amber-100",
+                            )}
+                          >
+                            Headline:{" "}
+                            {parsed?.headline
+                              ? "detectada"
+                              : ENTRY_COPY.reviewNotFound}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
+                              parsed?.sobre ? "bg-emerald-100" : "bg-amber-100",
+                            )}
+                          >
+                            Sobre:{" "}
+                            {parsed?.sobre
+                              ? `${parsed.sobre.length} caracteres`
+                              : ENTRY_COPY.reviewNotFound}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
+                              parsed && parsed.experiencias.length > 0
+                                ? "bg-emerald-100"
+                                : "bg-amber-100",
+                            )}
+                          >
+                            Experiências: {parsed?.experiencias.length ?? 0}{" "}
                             detectada
-                            {parsed.experiencias.length === 1 ? "" : "s"})
-                          </summary>
-                          <ul className="mt-2 space-y-2">
-                            {parsed.experiencias.map((exp, i) => (
-                              <li key={i} className="text-sm text-slate-700">
-                                <span className="font-bold text-slate-900">
-                                  {exp.titulo || "(sem título)"}
-                                </span>
-                                {exp.descricao ? (
-                                  <span>
-                                    {" "}
-                                    · {exp.descricao.slice(0, 160)}
-                                    {exp.descricao.length > 160 ? "..." : ""}
-                                  </span>
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </details>
-                      ) : null}
-                      <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
-                        <summary className="cursor-pointer text-sm font-black text-slate-800">
-                          {ENTRY_COPY.reviewFullText}
-                        </summary>
-                        <textarea
-                          value={form.profileText}
-                          onChange={(event) =>
-                            update("profileText", event.target.value)
-                          }
-                          className={cn(inputClass, "mt-2 min-h-40")}
-                        />
-                      </details>
-                    </div>
+                            {(parsed?.experiencias.length ?? 0) === 1
+                              ? ""
+                              : "s"}
+                          </span>
+                          <span className="rounded-full border-2 border-slate-900 bg-sky-100 px-3 py-1 text-xs font-black text-slate-900">
+                            Competências no PDF: {parsed?.skillsPdf.length ?? 0}
+                          </span>
+                        </div>
 
-                    <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4">
-                      <p className="text-sm font-black text-slate-900">
-                        {ENTRY_COPY.skillsGapTitle}
-                      </p>
-                      <p className="mt-1 text-xs font-medium text-slate-600">
-                        {ENTRY_COPY.skillsGapHint}
-                      </p>
-                      <textarea
-                        value={form.skills}
-                        onChange={(event) =>
-                          update("skills", event.target.value)
-                        }
-                        placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
-                        className={cn(inputClass, "mt-2 min-h-20")}
-                      />
-                    </div>
+                        <div className="space-y-2">
+                          {parsed?.headline ? (
+                            <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                              <summary className="cursor-pointer text-sm font-black text-slate-800">
+                                Headline detectada
+                              </summary>
+                              <p className="mt-2 text-sm text-slate-700">
+                                {parsed.headline}
+                              </p>
+                            </details>
+                          ) : null}
+                          {parsed?.sobre ? (
+                            <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                              <summary className="cursor-pointer text-sm font-black text-slate-800">
+                                Sobre ({parsed.sobre.length} caracteres)
+                              </summary>
+                              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+                                {parsed.sobre}
+                              </p>
+                            </details>
+                          ) : null}
+                          {parsed && parsed.experiencias.length > 0 ? (
+                            <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                              <summary className="cursor-pointer text-sm font-black text-slate-800">
+                                Experiências ({parsed.experiencias.length}{" "}
+                                detectada
+                                {parsed.experiencias.length === 1 ? "" : "s"})
+                              </summary>
+                              <ul className="mt-2 space-y-2">
+                                {parsed.experiencias.map((exp, i) => (
+                                  <li
+                                    key={i}
+                                    className="text-sm text-slate-700"
+                                  >
+                                    <span className="font-bold text-slate-900">
+                                      {exp.titulo || "(sem título)"}
+                                    </span>
+                                    {exp.descricao ? (
+                                      <span>
+                                        {" "}
+                                        · {exp.descricao.slice(0, 160)}
+                                        {exp.descricao.length > 160
+                                          ? "..."
+                                          : ""}
+                                      </span>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          ) : null}
+                          <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                            <summary className="cursor-pointer text-sm font-black text-slate-800">
+                              {ENTRY_COPY.reviewFullText}
+                            </summary>
+                            <textarea
+                              value={form.profileText}
+                              onChange={(event) =>
+                                update("profileText", event.target.value)
+                              }
+                              className={cn(inputClass, "mt-2 min-h-40")}
+                            />
+                          </details>
+                        </div>
 
-                    <div className="space-y-4 rounded-xl border-2 border-amber-400 bg-amber-50 p-4">
-                      <div>
+                        <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4">
+                          <p className="text-sm font-black text-slate-900">
+                            {ENTRY_COPY.skillsGapTitle}
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-slate-600">
+                            {ENTRY_COPY.skillsGapHint}
+                          </p>
+                          <textarea
+                            value={form.skills}
+                            onChange={(event) =>
+                              update("skills", event.target.value)
+                            }
+                            placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
+                            className={cn(inputClass, "mt-2 min-h-20")}
+                          />
+                        </div>
+
+                        <div className="space-y-4 rounded-xl border-2 border-amber-400 bg-amber-50 p-4">
+                          <div>
+                            <p className="text-sm font-black text-slate-900">
+                              {ENTRY_COPY.confirmTitle}
+                            </p>
+                            <p className="mt-1 text-xs font-medium text-slate-600">
+                              {ENTRY_COPY.confirmHint}
+                            </p>
+                          </div>
+                          <ProfileQuestions form={form} update={update} />
+                        </div>
+
+                        <ContextFields form={form} update={update} />
+                      </>
+                    ) : null}
+
+                    {entryPath !== "pdf" &&
+                    !loading &&
+                    checklistItems.length > 0 ? (
+                      <div className="rounded-xl border-2 border-slate-950 bg-amber-50 p-3">
                         <p className="text-sm font-black text-slate-900">
-                          {ENTRY_COPY.confirmTitle}
+                          {ENTRY_COPY.checklistTitle}
                         </p>
-                        <p className="mt-1 text-xs font-medium text-slate-600">
-                          {ENTRY_COPY.confirmHint}
-                        </p>
+                        <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs font-medium text-slate-700">
+                          {checklistItems.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
                       </div>
-                      <ProfileQuestions form={form} update={update} />
-                    </div>
+                    ) : null}
 
-                    <ContextFields form={form} update={update} />
-                  </>
-                ) : null}
+                    {entryPath !== "pdf" ? (
+                      <BrutalActionButton
+                        variant="ai"
+                        type="submit"
+                        disabled={!canSubmit}
+                        loading={loading}
+                        icon={<Sparkles className="h-4 w-4" aria-hidden />}
+                        className="px-6 py-3"
+                      >
+                        {loading ? "Analisando..." : "Analisar meu LinkedIn"}
+                      </BrutalActionButton>
+                    ) : null}
+                  </form>
+                </div>
+              </div>
 
-                {entryPath !== "pdf" && !loading && checklistItems.length > 0 ? (
-                  <div className="rounded-xl border-2 border-slate-950 bg-amber-50 p-3">
-                    <p className="text-sm font-black text-slate-900">
-                      {ENTRY_COPY.checklistTitle}
-                    </p>
-                    <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs font-medium text-slate-700">
-                      {checklistItems.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-
-                {entryPath !== "pdf" ? (
-                  <button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {loading ? (
-                      <Spinner className="h-4 w-4" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    {loading ? "Analisando..." : "Analisar meu LinkedIn"}
-                  </button>
-                ) : null}
-              </form>
+              {showEntry ? <BenefitPills /> : null}
 
               {loading ? <LinkedinSkeleton /> : null}
 
@@ -1060,13 +1162,6 @@ export default function LinkedinAnalisar() {
                       : undefined
                   }
                 />
-              ) : null}
-
-              {!loading && !result && !error ? (
-                <div className="space-y-8">
-                  <HowItWorks />
-                  <WhatYouGet />
-                </div>
               ) : null}
 
               {!loading && result ? (
@@ -1141,11 +1236,47 @@ export default function LinkedinAnalisar() {
                 </div>
               ) : null}
 
-              <LinkedinHistory
-                analyses={analyses}
-                onOpen={(id) => void openHistory(id)}
-                loadingId={openingId}
-              />
+              {showEntry && analyses.length > 0 ? (
+                <details
+                  className={cn(
+                    "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow",
+                    ac.liftShadow,
+                  )}
+                  style={{ animationDelay: "0.16s" }}
+                >
+                  {/* TODO(Ana): revisar o rotulo da faixa colapsavel do historico. */}
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
+                    <span className="flex items-center gap-3 font-display text-lg font-black text-slate-950">
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                        aria-hidden
+                      >
+                        <History className="h-5 w-5" />
+                      </span>
+                      Análises anteriores
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-xs font-black",
+                          ac.tag,
+                        )}
+                      >
+                        {analyses.length}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className="h-5 w-5 shrink-0 text-slate-600 transition-transform group-open:rotate-180"
+                      aria-hidden
+                    />
+                  </summary>
+                  <div className="px-5 pb-5">
+                    <LinkedinHistory
+                      analyses={analyses}
+                      onOpen={(id) => void openHistory(id)}
+                      loadingId={openingId}
+                    />
+                  </div>
+                </details>
+              ) : null}
             </div>
           )}
         </div>
