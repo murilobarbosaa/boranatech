@@ -745,6 +745,28 @@ export default function PortfolioAnalisar() {
     };
   }, [analysisId]);
 
+  // Recupera o analysisId de um resultado restaurado sem id (sessionStorage
+  // de antes do RD2.7 ou persistencia best-effort que falhou na hora): busca
+  // no historico a analise MAIS RECENTE do mesmo alvo normalizado com a mesma
+  // nota exibida. Mesmo alvo + mesma nota = mesmo checklist na pratica, entao
+  // empate de criterio nao e problema. O early return em analysisId evita
+  // loop (achou -> seta -> proximo run sai cedo) e o effect acima carrega o
+  // progresso sozinho. Sem par no historico, fica o aviso atual (correto para
+  // o caso raro real de persistencia perdida).
+  useEffect(() => {
+    if (!result || analysisId !== null || !history) return;
+    const normalized = normalizeGithubTarget(input);
+    const match = history.find(
+      (item) =>
+        item.raw_input !== null &&
+        typeof item.score === "number" &&
+        item.score === result.deterministic.score &&
+        normalizeGithubTarget(item.raw_input) === normalized,
+    );
+    if (match) setAnalysisId(match.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, analysisId, history]);
+
   // Toggle otimista do checklist: atualiza na hora, PUT em background e
   // rollback com aviso quando o server recusar.
   function toggleImprovement(index: number) {
