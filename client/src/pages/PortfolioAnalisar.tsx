@@ -585,7 +585,10 @@ function ScoreHero({
           ) : null}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col p-6">
+        {/* Coluna do alvo sem espaco morto: centrada na vertical, com os
+            chips logo apos o bloco do alvo (nao presos ao rodape). A altura
+            do card e ditada so pelo painel da nota. */}
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-5 p-6">
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <TargetAvatar key={target.login} owner={target.login} />
@@ -608,9 +611,7 @@ function ScoreHero({
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
-          <div className="mt-auto pt-6">
-            <MetadataChips response={response} />
-          </div>
+          <MetadataChips response={response} />
         </div>
         </div>
       </div>
@@ -833,8 +834,10 @@ export default function PortfolioAnalisar() {
       setResult(data);
       setAnalysisId(newAnalysisId);
       setProgressError("");
+      // Delta SO quando a nota mudou: empate (95 -> 95) nao vira banner nem
+      // seta, e o contador do hero volta a animar de 0.
       setScoreDelta(
-        priorScore !== null
+        priorScore !== null && priorScore !== data.deterministic.score
           ? { from: priorScore, to: data.deterministic.score }
           : null,
       );
@@ -863,8 +866,11 @@ export default function PortfolioAnalisar() {
       setAnalysisId(record.id);
       setProgressError("");
       const priorScore = rawInput ? findPriorScore(rawInput, id) : null;
+      // Mesmo criterio do analyze: delta so quando a nota mudou de fato.
       setScoreDelta(
-        priorScore !== null && typeof record.score === "number"
+        priorScore !== null &&
+          typeof record.score === "number" &&
+          priorScore !== record.score
           ? { from: priorScore, to: record.score }
           : null,
       );
@@ -1236,6 +1242,13 @@ export default function PortfolioAnalisar() {
                       </Reveal>
                       <Reveal className="order-4 lg:order-none" delay={0.05}>
                         <div className="space-y-3">
+                          {!analysisId ? (
+                            <FeedbackBanner variant="warn">
+                              {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
+                              O progresso de melhorias está indisponível para
+                              esta análise.
+                            </FeedbackBanner>
+                          ) : null}
                           {progressError ? (
                             <FeedbackBanner variant="error">
                               {progressError}
@@ -1257,6 +1270,19 @@ export default function PortfolioAnalisar() {
                           />
                         </Reveal>
                       ) : null}
+                      {/* Climax do loop fechando a COLUNA PRINCIPAL: card com
+                          titulo e controles empilhados, celebrando no N de N.
+                          Confirmacao em 2 passos e custo explicito identicos. */}
+                      <Reveal className="order-8 lg:order-none">
+                        <ReanalyzeCta
+                          confirming={confirmReanalyze}
+                          onStart={() => setConfirmReanalyze(true)}
+                          onConfirm={() => void runAnalysis()}
+                          onCancel={() => setConfirmReanalyze(false)}
+                          spotlight
+                          celebrate={allApplied}
+                        />
+                      </Reveal>
                     </div>
 
                     <div className="contents lg:col-span-5 lg:block lg:space-y-8">
@@ -1285,20 +1311,6 @@ export default function PortfolioAnalisar() {
                       </Reveal>
                     </div>
                   </div>
-
-                  {/* Climax do loop: a reanalise em faixa de largura total,
-                      celebrando quando o placar fecha em N de N. Confirmacao
-                      em 2 passos e custo explicito identicos aos de antes. */}
-                  <Reveal>
-                    <ReanalyzeCta
-                      confirming={confirmReanalyze}
-                      onStart={() => setConfirmReanalyze(true)}
-                      onConfirm={() => void runAnalysis()}
-                      onCancel={() => setConfirmReanalyze(false)}
-                      spotlight
-                      celebrate={allApplied}
-                    />
-                  </Reveal>
                 </div>
               ) : null}
 
