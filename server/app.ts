@@ -140,11 +140,11 @@ async function redisRateLimitCount(
   }
 }
 
-const CSP_REPORT_ONLY = [
+const CSP_POLICY = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self'",
   "script-src 'self' https://us-assets.i.posthog.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
@@ -164,7 +164,7 @@ const CSP_REPORT_ONLY = [
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Permissions-Policy",
@@ -174,7 +174,7 @@ app.use((req, res, next) => {
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains",
   );
-  res.setHeader("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
+  res.setHeader("Content-Security-Policy", CSP_POLICY);
   next();
 });
 
