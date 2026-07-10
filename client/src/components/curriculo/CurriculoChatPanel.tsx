@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { FileText, Loader2, Send, Wand2 } from "lucide-react";
 import { Streamdown } from "streamdown";
 
@@ -79,16 +80,43 @@ const FALLBACK_BUTTON_LABEL = "Gerar currículo com o que já conversamos";
 // o fallback de geracao aparece, caso o marcador nunca venha. // TODO: calibrar.
 const FALLBACK_AFTER_REPLIES = 4;
 
-function TypingDots() {
+// Respostas rapidas SUGERIDAS do inicio da conversa: apenas PREENCHEM o
+// input ao clicar (nunca enviam) e somem apos a primeira resposta da pessoa.
+// TODO(Ana): revisar os textos dos chips de resposta rapida.
+const QUICK_REPLIES = [
+  "Tô estudando ainda",
+  "Quero migrar pra TI",
+  "Já trabalho na área",
+];
+
+// Pontinhos de digitacao: pulso via CSS; com reduce ficam estaticos (a
+// bolha em si ja comunica que o Natechinho esta respondendo).
+function TypingDots({ reduce }: { reduce: boolean }) {
   return (
     <div className="flex items-center gap-1 px-2 py-1" aria-hidden>
       {[0, 1, 2].map((dot) => (
         <span
           key={dot}
-          className="ai-chat-typing-dot h-2.5 w-2.5 rounded-full bg-amber-500"
+          className={cn(
+            "h-2.5 w-2.5 rounded-full bg-amber-500",
+            !reduce && "ai-chat-typing-dot",
+          )}
         />
       ))}
     </div>
+  );
+}
+
+// Avatar mini do Natechinho, ao lado da primeira bolha de cada sequencia do
+// assistente (caixinha ambar da familia do header do painel).
+function NatechinhoAvatar() {
+  return (
+    <span
+      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_#0f172a]"
+      aria-hidden
+    >
+      <Wand2 className="h-3.5 w-3.5 text-slate-950" strokeWidth={2.5} />
+    </span>
   );
 }
 
@@ -99,6 +127,7 @@ export default function CurriculoChatPanel({
 }: CurriculoChatPanelProps) {
   // A saudação começa vazia e é preenchida pelo efeito de typewriter abaixo
   // pra dar a mesma sensação visual do streaming das respostas reais.
+  const reduce = useReducedMotion() ?? false;
   const [messages, setMessages] = useState<AiChatMessage[]>([
     { role: "assistant", content: "" },
   ]);
@@ -297,6 +326,14 @@ export default function CurriculoChatPanel({
     lastMessage?.role === "assistant" &&
     lastMessage.content === "";
 
+  // Vida do inicio da conversa: marca-dagua e chips sugeridos duram so ate a
+  // primeira resposta da pessoa. Na ponte ?rewrite a primeira resposta e
+  // automatica, entao os chips nem aparecem. Clicar num chip APENAS preenche
+  // o input (o envio segue exclusivamente pelo botao/Enter).
+  const hasUserMessage = messages.some((m) => m.role === "user");
+  const showQuickReplies =
+    greetingDone && !hasUserMessage && !initialUserMessage;
+
   return (
     <div className="card-brutal w-full overflow-hidden rounded-2xl bg-white">
       <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
@@ -321,25 +358,58 @@ export default function CurriculoChatPanel({
         </header>
 
         <div
-          className="wa-chat-wallpaper flex min-h-0 flex-1 flex-col border-b-2 border-slate-950"
+          // Papel do atelie: fundo quente com o micro-pontilhado da casa em
+          // ambar sutil (sai o lavanda herdado do accent antigo).
+          className="relative isolate flex min-h-0 flex-1 flex-col bg-[#fffdf7] [background-image:radial-gradient(rgba(180,120,0,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
           role="log"
           aria-live="polite"
           aria-relevant="additions"
         >
+          {/* Marca-dagua do inicio: some na primeira resposta da pessoa.
+              -z-10 + isolate no pai = acima do fundo, abaixo das bolhas. */}
+          {!hasUserMessage ? (
+            <span
+              className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center"
+              aria-hidden
+            >
+              <Wand2
+                className="h-40 w-40 -rotate-12 text-slate-900 opacity-[0.05]"
+                strokeWidth={2}
+              />
+            </span>
+          ) : null}
           <div
             ref={scrollContainerRef}
             className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4"
           >
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
               {messages.map((m, i) => {
+                // Grupos de sequencia: avatar so na primeira bolha do
+                // assistente da vez; troca de autor abre respiro extra
+                // (gap-2.5 da coluna + mt-1.5 = gap-4 entre grupos).
+                const groupStart = i === 0 || messages[i - 1].role !== m.role;
                 if (m.role === "assistant") {
                   const visible = stripMarker(m.content);
                   if (!visible) return null;
                   return (
-                    <div key={i} className="flex justify-start">
+                    <motion.div
+                      key={i}
+                      initial={reduce ? false : { opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className={cn(
+                        "flex items-start justify-start gap-2",
+                        i > 0 && groupStart && "mt-1.5",
+                      )}
+                    >
+                      {groupStart ? (
+                        <NatechinhoAvatar />
+                      ) : (
+                        <span className="w-7 shrink-0" aria-hidden />
+                      )}
                       <div
                         className={cn(
-                          "max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5",
+                          "max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,72%)] sm:px-4 sm:py-3.5",
                           "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                         )}
                       >
@@ -356,14 +426,23 @@ export default function CurriculoChatPanel({
                           {visible}
                         </Streamdown>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 }
                 return (
-                  <div key={i} className="flex justify-end">
+                  <motion.div
+                    key={i}
+                    initial={reduce ? false : { opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className={cn(
+                      "flex justify-end",
+                      i > 0 && groupStart && "mt-1.5",
+                    )}
+                  >
                     <div
                       className={cn(
-                        "max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-white px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5",
+                        "max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-white px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,72%)] sm:px-4 sm:py-3.5",
                         "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
@@ -371,15 +450,31 @@ export default function CurriculoChatPanel({
                         {m.content}
                       </p>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
 
+              {showQuickReplies ? (
+                <div className="flex flex-wrap gap-2 pl-9">
+                  {QUICK_REPLIES.map((reply) => (
+                    <button
+                      key={reply}
+                      type="button"
+                      onClick={() => setInput(reply)}
+                      className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:bg-amber-50"
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
               {showTypingDots ? (
-                <div className="flex justify-start">
+                <div className="flex items-start justify-start gap-2">
+                  <NatechinhoAvatar />
                   <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
                     <span className="sr-only">Natechinho digitando</span>
-                    <TypingDots />
+                    <TypingDots reduce={reduce} />
                   </div>
                 </div>
               ) : null}
@@ -412,14 +507,16 @@ export default function CurriculoChatPanel({
         </div>
 
         {error ? (
-          <div className="shrink-0 border-b-2 border-slate-950 bg-red-100 px-4 py-2.5 sm:px-5">
+          // border-t aqui + border-t na barra de input abaixo: a borda de
+          // cima de cada bloco desenha a divisao, sem dupla.
+          <div className="shrink-0 border-t-2 border-slate-950 bg-red-100 px-4 py-2.5 sm:px-5">
             <p className="text-center text-sm font-bold text-red-900 sm:text-base">
               {error}
             </p>
           </div>
         ) : null}
 
-        <div className="shrink-0 bg-[#faf8f4] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
+        <div className="shrink-0 border-t-2 border-slate-950 bg-[#faf8f4] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
           {showFallbackGenerate ? (
             <div className="mx-auto mb-2 flex w-full max-w-3xl justify-center">
               <BrutalActionButton
@@ -435,7 +532,9 @@ export default function CurriculoChatPanel({
             <label className="sr-only" htmlFor="curriculo-chat-input">
               Mensagem
             </label>
-            <div className="flex min-h-[48px] flex-1 items-end rounded-2xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_#0f172a]">
+            {/* Mesmos tokens do ac.input amber, em versao focus-within (o
+                foco visivel precisa subir do textarea pro container). */}
+            <div className="flex min-h-[48px] flex-1 items-end rounded-2xl border-2 border-amber-200 bg-white shadow-[3px_3px_0_#0f172a] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-200">
               <textarea
                 id="curriculo-chat-input"
                 rows={1}
@@ -466,7 +565,7 @@ export default function CurriculoChatPanel({
               )}
             </button>
           </div>
-          <p className="mx-auto mt-2 max-w-3xl text-center text-xs font-bold text-slate-600 sm:text-sm">
+          <p className="mx-auto mt-2 max-w-3xl text-center text-[11px] font-semibold text-slate-500">
             Enter envia · Shift+Enter nova linha
           </p>
         </div>
