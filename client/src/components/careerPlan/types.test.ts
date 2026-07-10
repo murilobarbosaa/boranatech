@@ -98,6 +98,11 @@ describe("buildTrailVM", () => {
       "cert-transversal",
     ]);
     expect(vm.generalCerts[0].done).toBe(false);
+
+    // Blocos com estacao ficam fora da faixa; o de stepIds vazio entra.
+    expect(vm.looseScheduleBlocks).toEqual([
+      { monthsLabel: "Mes 7", focus: "revisao geral" },
+    ]);
   });
 
   it("plano antigo sem ancoras: tudo na prateleira geral e unanchored true", () => {
@@ -110,6 +115,13 @@ describe("buildTrailVM", () => {
     ]);
     expect(vm.stations.every((s) => s.anchoredCerts.length === 0)).toBe(true);
     expect(vm.stations.every((s) => s.scheduleLabel === null)).toBe(true);
+
+    // Plano antigo: a faixa de cronograma mostra TODOS os blocos, na ordem.
+    expect(vm.looseScheduleBlocks.map((b) => b.monthsLabel)).toEqual([
+      "Meses 1 a 3",
+      "Meses 4 a 6",
+      "Mes 7",
+    ]);
   });
 
   it("checklist indisponivel propaga null, nunca 0", () => {
@@ -135,5 +147,20 @@ describe("buildTrailVM", () => {
     ]);
     expect(vm.stations[0].anchoredCerts).toEqual([]);
     expect(vm.stations[0].progress.total).toBe(2);
+  });
+
+  it("bloco do cronograma so com ids invalidos vira faixa nao-ancorada", () => {
+    const plan = anchoredPlan();
+    plan.schedule[0].stepIds = ["degrau-fantasma"];
+
+    const vm = buildTrailVM(plan, new Set());
+
+    expect(vm.looseScheduleBlocks.map((b) => b.monthsLabel)).toEqual([
+      "Meses 1 a 3",
+      "Mes 7",
+    ]);
+    // A estacao passa a ancorar no primeiro bloco valido seguinte.
+    expect(vm.stations[0].scheduleLabel).toBe("Meses 4 a 6");
+    expect(vm.unanchored).toBe(false);
   });
 });

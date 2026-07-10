@@ -17,6 +17,8 @@ interface TrailStationCardProps {
   onExpand: (stationId: string | null) => void;
   onToggleItem: (itemId: string) => void;
   readonly?: boolean;
+  // Versao do catalogo do plano (repassada aos trofeus ancorados).
+  catalogVersion?: string | null;
   // Ref do botao de cabecalho, usada pelo CareerTrail na navegacao por setas.
   buttonRef?: (el: HTMLButtonElement | null) => void;
 }
@@ -28,6 +30,7 @@ export default function TrailStationCard({
   onExpand,
   onToggleItem,
   readonly = false,
+  catalogVersion = null,
   buttonRef,
 }: TrailStationCardProps) {
   const reduce = useReducedMotion() ?? false;
@@ -128,6 +131,7 @@ export default function TrailStationCard({
               cert={cert}
               onToggle={readonly ? undefined : onToggleItem}
               readonly={readonly}
+              catalogVersion={catalogVersion}
             />
           ))}
         </div>

@@ -39,6 +39,17 @@ async function request(path: string, options?: RequestInit) {
 export async function listProgress(
   context: ProgressContext,
 ): Promise<ProgressEntry[]> {
+  const entries = await listProgressOrNull(context);
+  return entries ?? [];
+}
+
+// Variante que distingue FALHA (null) de lista vazia ([]), para consumidores
+// que nao podem colapsar erro em "0 concluidos" (padrao progressFailed).
+// listProgress acima mantem o contrato antigo (erro vira []) para os demais
+// consumidores (useRoadmapProgress, usePortfolioChecklist).
+export async function listProgressOrNull(
+  context: ProgressContext,
+): Promise<ProgressEntry[] | null> {
   try {
     const res = await request(`/${encodeURIComponent(context)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -46,7 +57,7 @@ export async function listProgress(
     return json.data ?? [];
   } catch (err) {
     console.error("[userProgress] listProgress error:", err);
-    return [];
+    return null;
   }
 }
 

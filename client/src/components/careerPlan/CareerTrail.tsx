@@ -13,6 +13,11 @@ interface CareerTrailProps {
   onExpand: (stationId: string | null) => void;
   onToggleItem: (itemId: string) => void;
   readonly?: boolean;
+  // Versao do catalogo do plano exibido (linha de preco do trofeu expandido).
+  catalogVersion?: string | null;
+  // Ao montar com progresso conhecido, rola a trilha ate a estacao "voce
+  // esta aqui" (so o scroll horizontal do container; a pagina nao se move).
+  autoScrollToCurrent?: boolean;
 }
 
 // Trilha horizontal do plano de carreira: scroll nativo com CSS scroll-snap,
@@ -24,12 +29,33 @@ export default function CareerTrail({
   onExpand,
   onToggleItem,
   readonly = false,
+  catalogVersion = null,
+  autoScrollToCurrent = false,
 }: CareerTrailProps) {
   const reduce = useReducedMotion() ?? false;
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const wrapperRefs = useRef<Array<HTMLDivElement | null>>([]);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const didAutoScroll = useRef(false);
   const [visibleIndex, setVisibleIndex] = useState(0);
+
+  // Deep-link visual: centraliza a estacao atual UMA vez, mexendo apenas no
+  // scrollLeft do container (scrollIntoView poderia rolar a pagina inteira
+  // na vertical). reduce = posicionamento instantaneo, sem animacao.
+  useEffect(() => {
+    if (!autoScrollToCurrent || didAutoScroll.current) return;
+    if (currentStationIndex === null) return;
+    const rootEl = scrollRef.current;
+    const wrapper = wrapperRefs.current[currentStationIndex];
+    if (!rootEl || !wrapper) return;
+    didAutoScroll.current = true;
+    const left =
+      wrapper.offsetLeft - (rootEl.clientWidth - wrapper.clientWidth) / 2;
+    rootEl.scrollTo({
+      left: Math.max(0, left),
+      behavior: reduce ? "auto" : "smooth",
+    });
+  }, [autoScrollToCurrent, currentStationIndex, reduce]);
 
   // IntersectionObserver em vez de scroll handler: cobre snap, resize e
   // larguras variaveis de card sem matematica manual de offsets (que exigiria
@@ -169,6 +195,7 @@ export default function CareerTrail({
                 }}
                 onToggleItem={onToggleItem}
                 readonly={readonly}
+                catalogVersion={catalogVersion}
                 buttonRef={(el) => {
                   buttonRefs.current[index] = el;
                 }}

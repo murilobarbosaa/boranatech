@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   deleteProgress,
-  listProgress,
+  listProgressOrNull,
   upsertProgress,
 } from "@/services/userProgressService";
 
@@ -10,12 +10,14 @@ import {
 // usePortfolioChecklist: toggle otimista com rollback. item_key completo e
 // "<planId>:<itemId>"; o hook expoe o estado por itemId do plano dado. Sem
 // caminho anonimo em localStorage: a feature exige login.
+//
+// doneIds null = FALHA ao carregar o progresso (padrao progressFailed): a UI
+// mostra "progresso indisponivel", nunca "0 de N". Set vazio = vazio legitimo.
 
 interface UseCareerPlanChecklistResult {
-  doneIds: Set<string>;
+  doneIds: Set<string> | null;
   isLoading: boolean;
   toggle: (itemId: string) => Promise<{ ok: boolean }>;
-  doneCount: number;
 }
 
 function itemKeyFor(planId: string, itemId: string): string {
@@ -26,7 +28,7 @@ export function useCareerPlanChecklist(
   planId: string | null,
 ): UseCareerPlanChecklistResult {
   const { user, loading: authLoading } = useAuth();
-  const [doneIds, setDoneIds] = useState<Set<string>>(new Set());
+  const [doneIds, setDoneIds] = useState<Set<string> | null>(new Set());
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -40,8 +42,15 @@ export function useCareerPlanChecklist(
       }
 
       setIsLoading(true);
-      const entries = await listProgress("career_plan");
+      const entries = await listProgressOrNull("career_plan");
       if (cancelled) return;
+
+      if (entries === null) {
+        // Falha de rede/servidor: progresso indisponivel, nunca 0.
+        setDoneIds(null);
+        setIsLoading(false);
+        return;
+      }
 
       const prefix = `${planId}:`;
       const next = new Set(
@@ -69,10 +78,12 @@ export function useCareerPlanChecklist(
 
   const toggle = useCallback(
     async (itemId: string): Promise<{ ok: boolean }> => {
-      if (!user || !planId) return { ok: false };
+      // Sem estado confiavel (falha no load) nao ha o que alternar.
+      if (!user || !planId || doneIds === null) return { ok: false };
 
       const wasDone = doneIds.has(itemId);
       setDoneIds((prev) => {
+        if (prev === null) return prev;
         const next = new Set(prev);
         if (wasDone) next.delete(itemId);
         else next.add(itemId);
@@ -90,6 +101,7 @@ export function useCareerPlanChecklist(
       } catch (err) {
         console.error("[useCareerPlanChecklist] toggle failed", err);
         setDoneIds((prev) => {
+          if (prev === null) return prev;
           const next = new Set(prev);
           if (wasDone) next.add(itemId);
           else next.delete(itemId);
@@ -105,6 +117,5 @@ export function useCareerPlanChecklist(
     doneIds,
     isLoading,
     toggle,
-    doneCount: doneIds.size,
   };
 }

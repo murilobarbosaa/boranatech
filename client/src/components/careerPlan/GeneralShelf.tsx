@@ -8,6 +8,8 @@ interface GeneralShelfProps {
   unanchored: boolean;
   onToggleCert?: (itemId: string) => void;
   readonly?: boolean;
+  // Versao do catalogo do plano (linha de preco do trofeu expandido).
+  catalogVersion?: string | null;
 }
 
 // Prateleira horizontal das certificacoes transversais (ou de todas, em
@@ -17,6 +19,7 @@ export default function GeneralShelf({
   unanchored,
   onToggleCert,
   readonly = false,
+  catalogVersion = null,
 }: GeneralShelfProps) {
   if (certs.length === 0) return null;
 
@@ -44,6 +47,7 @@ export default function GeneralShelf({
               cert={cert}
               onToggle={readonly ? undefined : onToggleCert}
               readonly={readonly}
+              catalogVersion={catalogVersion}
             />
           </div>
         ))}

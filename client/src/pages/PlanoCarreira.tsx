@@ -1,10 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowLeft,
-  Check,
-  ExternalLink,
   Loader2,
   Map as MapIcon,
   RefreshCw,
@@ -13,6 +11,9 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import { Spinner } from "@/components/ui/spinner";
+import CareerTrail from "@/components/careerPlan/CareerTrail";
+import GeneralShelf from "@/components/careerPlan/GeneralShelf";
+import InvestmentSummary from "@/components/careerPlan/InvestmentSummary";
 import {
   CareerPlanEntryBackdrop,
   CareerPlanResultBackdrop,
@@ -21,12 +22,12 @@ import {
   HowItWorksSteps,
   TrailShowcase,
 } from "@/components/careerPlan/CareerPlanIntro";
+import { buildTrailVM } from "@/components/careerPlan/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { AREA_LABELS, AREA_SLUGS } from "@shared/areas";
-import { getCatalogItem } from "@shared/careerCatalog";
 import { useCareerPlanChecklist } from "@/hooks/useCareerPlanChecklist";
 import {
   CareerPlanApiError,
@@ -58,14 +59,6 @@ const fieldClass = cn(
   "mt-1 w-full rounded-xl border-2 p-3 text-sm font-bold text-slate-900",
   ac.input,
 );
-
-function formatPrice(catalogId: string): string {
-  const item = getCatalogItem(catalogId);
-  if (!item) return "";
-  if ("free" in item.price) return "Gratuito";
-  if (item.price.currency === "BRL") return `R$ ${item.price.amount}`;
-  return `USD ${item.price.amount}`;
-}
 
 interface IntakeFormProps {
   prefill: CareerPlanContext | null;
@@ -264,60 +257,77 @@ function IntakeForm({
   );
 }
 
-function ChecklistBox({
-  done,
-  disabled,
-  onToggle,
-  label,
-}: {
-  done: boolean;
-  disabled: boolean;
-  onToggle: () => void;
-  label: string;
-}) {
+// Skeleton do checklist em carregamento: enquanto o progresso nao chegou,
+// nunca mostrar "0 de N" nem estacoes todas desmarcadas.
+function TrailSkeleton() {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onToggle}
-      className={cn(
-        "flex w-full items-start gap-2.5 rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors",
-        done
-          ? "border-emerald-500 bg-emerald-50 text-slate-700"
-          : "border-slate-300 bg-white text-slate-800 hover:border-slate-500",
-        disabled && "cursor-default opacity-80",
-      )}
-    >
-      <span
-        className={cn(
-          "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border-2",
-          done ? "border-emerald-600 bg-emerald-500" : "border-slate-400 bg-white",
-        )}
-        aria-hidden
-      >
-        {done ? <Check className="h-3 w-3 text-white" strokeWidth={3} /> : null}
-      </span>
-      <span className={cn(done && "line-through decoration-slate-400")}>
-        {label}
-      </span>
-    </button>
+    <div className="flex gap-5 overflow-hidden" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="h-56 w-[min(82vw,340px)] shrink-0 animate-pulse rounded-2xl border-2 border-slate-200 bg-white/70 motion-reduce:animate-none"
+        />
+      ))}
+    </div>
   );
 }
 
-interface PlanViewProps {
+interface PlanResultProps {
   plan: CareerPlanDetail;
   readonly: boolean;
   onWantNew: () => void;
 }
 
-function PlanView({ plan, readonly, onWantNew }: PlanViewProps) {
-  const { doneIds, toggle } = useCareerPlanChecklist(plan.id);
+// Estado de resultado: status + logica da rota + trilha horizontal (estacoes
+// fundem degrau, trofeus ancorados e periodo do cronograma) + prateleira
+// geral + investimento + cronograma nao-ancorado + o que ficou de fora.
+function PlanResult({ plan, readonly, onWantNew }: PlanResultProps) {
+  const { doneIds, isLoading, toggle } = useCareerPlanChecklist(plan.id);
+  const [expandedStationId, setExpandedStationId] = useState<string | null>(
+    null,
+  );
+  const [toggleError, setToggleError] = useState("");
+  const toggleErrorTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toggleErrorTimer.current !== null) {
+        window.clearTimeout(toggleErrorTimer.current);
+      }
+    };
+  }, []);
+
   const result = plan.result;
+  // doneIds null (falha no load do progresso) propaga estado indeterminado
+  // pelo VM: aneis e checkboxes mostram "indisponivel", nunca 0.
+  const vm = useMemo(() => buildTrailVM(result, doneIds), [result, doneIds]);
+  const allCerts = useMemo(
+    () => [...vm.stations.flatMap((s) => s.anchoredCerts), ...vm.generalCerts],
+    [vm],
+  );
+
   const total = result.checklist.length;
-  const done = result.checklist.filter((item) =>
-    doneIds.has(item.itemId),
-  ).length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const done = doneIds
+    ? result.checklist.filter((item) => doneIds.has(item.itemId)).length
+    : null;
+  const pct =
+    done !== null && total > 0 ? Math.round((done / total) * 100) : 0;
+
+  async function handleToggle(itemId: string) {
+    if (readonly) return;
+    const res = await toggle(itemId);
+    if (!res.ok) {
+      // TODO(Ana): mensagem de falha ao salvar marcacao do checklist
+      setToggleError("Não deu pra salvar essa marcação agora. Tenta de novo.");
+      if (toggleErrorTimer.current !== null) {
+        window.clearTimeout(toggleErrorTimer.current);
+      }
+      toggleErrorTimer.current = window.setTimeout(
+        () => setToggleError(""),
+        4000,
+      );
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -328,9 +338,21 @@ function PlanView({ plan, readonly, onWantNew }: PlanViewProps) {
               {/* TODO(Ana): rotulo do progresso */}
               Progresso do plano
             </p>
-            <p className="mt-1 font-display text-xl font-black text-slate-950">
-              {done} de {total} itens concluídos
-            </p>
+            {isLoading ? (
+              <span
+                className="mt-2 block h-6 w-44 animate-pulse rounded bg-slate-200 motion-reduce:animate-none"
+                aria-hidden
+              />
+            ) : done === null ? (
+              <p className="mt-1 font-display text-xl font-black text-slate-500">
+                {/* TODO(Ana): progresso indisponivel */}
+                Progresso indisponível no momento
+              </p>
+            ) : (
+              <p className="mt-1 font-display text-xl font-black text-slate-950">
+                {done} de {total} itens concluídos
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {plan.status === "archived" ? (
@@ -348,13 +370,24 @@ function PlanView({ plan, readonly, onWantNew }: PlanViewProps) {
             </button>
           </div>
         </div>
-        <div className="mt-3 h-3 overflow-hidden rounded-full border-2 border-slate-950 bg-slate-100">
-          <div
-            className="h-full bg-emerald-500 transition-[width]"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+        {!isLoading && done !== null ? (
+          <div className="mt-3 h-3 overflow-hidden rounded-full border-2 border-slate-950 bg-slate-100">
+            <div
+              className="h-full bg-emerald-500 transition-[width]"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        ) : null}
       </div>
+
+      {toggleError ? (
+        <p
+          aria-live="polite"
+          className="rounded-xl border-2 border-red-400 bg-red-100 px-3 py-2 text-sm font-bold text-red-900"
+        >
+          {toggleError}
+        </p>
+      ) : null}
 
       <div className="card-brutal rounded-2xl bg-white p-6">
         <h2 className="font-display text-2xl font-black text-slate-950">
@@ -366,165 +399,59 @@ function PlanView({ plan, readonly, onWantNew }: PlanViewProps) {
         </p>
       </div>
 
-      <div>
-        <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-          {/* TODO(Ana): rotulo da secao de degraus */}
-          Degraus da rota
-        </p>
-        <div className="mt-4 space-y-5">
-          {result.steps.map((step, stepIndex) => (
-            <div key={step.id} className="card-brutal rounded-2xl bg-white p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-display text-xl font-black text-slate-950">
-                  {stepIndex + 1}. {step.title}
-                </h3>
-                <span className="rounded-full border-2 border-slate-950 bg-amber-100 px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-900">
-                  ~{step.estimatedWeeks}{" "}
-                  {step.estimatedWeeks === 1 ? "semana" : "semanas"}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-slate-600">{step.rationale}</p>
-              <div className="mt-4 space-y-2">
-                {step.items.map((item, itemIndex) => {
-                  const itemId = `step:${step.id}:${itemIndex}`;
-                  const catalogItem = item.catalogId
-                    ? getCatalogItem(item.catalogId)
-                    : null;
-                  const label = catalogItem
-                    ? `${item.label} (${catalogItem.name})`
-                    : item.label;
-                  return (
-                    <ChecklistBox
-                      key={itemId}
-                      done={doneIds.has(itemId)}
-                      disabled={readonly}
-                      onToggle={() => void toggle(itemId)}
-                      label={label}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {isLoading ? (
+        <TrailSkeleton />
+      ) : (
+        <>
+          <CareerTrail
+            stations={vm.stations}
+            currentStationIndex={vm.currentStationIndex}
+            expandedStationId={expandedStationId}
+            onExpand={setExpandedStationId}
+            onToggleItem={(itemId) => void handleToggle(itemId)}
+            readonly={readonly}
+            catalogVersion={plan.catalog_version}
+            autoScrollToCurrent
+          />
 
-      {result.certifications.length > 0 ? (
-        <div className="card-brutal overflow-hidden rounded-2xl bg-white">
-          <div className="p-5 pb-0">
-            <h2 className="font-display text-2xl font-black text-slate-950">
-              {/* TODO(Ana): titulo da tabela de certificacoes */}
-              Certificações da rota
-            </h2>
-          </div>
-          <div className="overflow-x-auto p-5">
-            <table className="w-full min-w-[640px] text-left text-sm">
-              <thead>
-                <tr className="border-b-2 border-slate-950 text-xs font-black uppercase tracking-wide text-slate-600">
-                  <th className="py-2 pr-3">Feito</th>
-                  <th className="py-2 pr-3">Certificação</th>
-                  <th className="py-2 pr-3">Nível</th>
-                  <th className="py-2 pr-3">Preço</th>
-                  <th className="py-2">Quando</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.certifications.map((cert) => {
-                  const item = getCatalogItem(cert.catalogId);
-                  const itemId = `cert:${cert.catalogId}`;
-                  return (
-                    <tr key={cert.catalogId} className="border-b border-slate-200 align-top">
-                      <td className="py-3 pr-3">
-                        <button
-                          type="button"
-                          disabled={readonly}
-                          onClick={() => void toggle(itemId)}
-                          aria-label={`Marcar ${item?.name ?? cert.catalogId}`}
-                          className={cn(
-                            "flex h-5 w-5 items-center justify-center rounded border-2",
-                            doneIds.has(itemId)
-                              ? "border-emerald-600 bg-emerald-500"
-                              : "border-slate-400 bg-white",
-                            readonly && "cursor-default opacity-80",
-                          )}
-                        >
-                          {doneIds.has(itemId) ? (
-                            <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
-                          ) : null}
-                        </button>
-                      </td>
-                      <td className="py-3 pr-3">
-                        {item ? (
-                          <a
-                            href={item.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-bold text-slate-900 underline underline-offset-2 hover:text-amber-800"
-                          >
-                            {item.name}
-                            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                          </a>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 font-bold text-slate-700">
-                            {cert.catalogId}
-                            <span className="rounded-full border border-slate-400 bg-slate-100 px-1.5 text-[0.6rem] font-black uppercase text-slate-600">
-                              {/* TODO(Ana): marcacao de item fora do catalogo atual */}
-                              item desatualizado
-                            </span>
-                          </span>
-                        )}
-                        <p className="mt-1 text-xs font-medium text-slate-500">
-                          {cert.rationale}
-                        </p>
-                      </td>
-                      <td className="py-3 pr-3 text-slate-700">
-                        {item?.level ?? ""}
-                      </td>
-                      <td className="py-3 pr-3 font-bold text-slate-900">
-                        {item ? formatPrice(cert.catalogId) : ""}
-                      </td>
-                      <td className="py-3 text-slate-700">
-                        {cert.whenLabel}
-                        {cert.optional ? (
-                          <span className="ml-1.5 rounded-full border border-slate-400 bg-slate-100 px-1.5 text-[0.6rem] font-black uppercase text-slate-600">
-                            opcional
-                          </span>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <p className="mt-3 text-xs font-medium text-slate-500">
-              {/* TODO(Ana): disclaimer fixo de precos */}
-              Preços de referência de {plan.catalog_version}, direto do nosso
-              catálogo curado. Confirme o valor no site oficial antes de
-              comprar; provedores mudam preço sem aviso.
-            </p>
-          </div>
-        </div>
-      ) : null}
+          <GeneralShelf
+            certs={vm.generalCerts}
+            unanchored={vm.unanchored}
+            onToggleCert={
+              readonly ? undefined : (itemId) => void handleToggle(itemId)
+            }
+            readonly={readonly}
+            catalogVersion={plan.catalog_version}
+          />
 
-      <div className="card-brutal rounded-2xl bg-white p-6">
-        <h2 className="font-display text-2xl font-black text-slate-950">
-          {/* TODO(Ana): titulo do cronograma */}
-          Cronograma
-        </h2>
-        <div className="mt-4 space-y-3">
-          {result.schedule.map((block) => (
-            <div
-              key={block.monthsLabel}
-              className={cn("rounded-xl border-2 p-4", ac.panelSoft)}
-            >
-              <p className="font-display text-sm font-black uppercase tracking-wide text-slate-900">
-                {block.monthsLabel}
+          <InvestmentSummary
+            certs={allCerts}
+            catalogVersion={plan.catalog_version}
+          />
+
+          {vm.looseScheduleBlocks.length > 0 ? (
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                {/* TODO(Ana): titulo da faixa de cronograma nao-ancorado */}
+                Cronograma da rota
               </p>
-              <p className="mt-1 text-sm text-slate-700">{block.focus}</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {vm.looseScheduleBlocks.map((block) => (
+                  <div
+                    key={block.monthsLabel}
+                    className={cn("rounded-xl border-2 p-4", ac.panelSoft)}
+                  >
+                    <p className="font-display text-sm font-black uppercase tracking-wide text-slate-900">
+                      {block.monthsLabel}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">{block.focus}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
+          ) : null}
+        </>
+      )}
 
       <div className="card-brutal rounded-2xl bg-white p-6">
         <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
@@ -558,6 +485,10 @@ export default function PlanoCarreira() {
   const [wantNew, setWantNew] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState("");
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [openingId, setOpeningId] = useState<string | null>(null);
+  const [openError, setOpenError] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -567,6 +498,8 @@ export default function PlanoCarreira() {
         setPhase("ready");
         return;
       }
+      setPhase("loading");
+      setLoadError(false);
       try {
         const plans = await listPlans();
         if (!alive) return;
@@ -578,7 +511,9 @@ export default function PlanoCarreira() {
           setActivePlan(detail);
         }
       } catch {
-        // Sem plano carregado; a pagina cai no intake/ProGate normalmente.
+        // Falha de rede NUNCA colapsa em "sem plano" (o Pro cairia no intake
+        // achando que perdeu o plano): vira estado de erro com retry.
+        if (alive) setLoadError(true);
       }
       try {
         const ctx = await getContext();
@@ -593,7 +528,7 @@ export default function PlanoCarreira() {
     return () => {
       alive = false;
     };
-  }, [user]);
+  }, [user, reloadKey]);
 
   async function handleGenerate(intake: CareerPlanIntake) {
     if (generating) return;
@@ -630,12 +565,18 @@ export default function PlanoCarreira() {
   }
 
   async function openArchived(planId: string) {
+    if (openingId) return;
+    setOpeningId(planId);
+    setOpenError("");
     try {
       const detail = await getPlan(planId);
       setViewing(detail);
       setWantNew(false);
     } catch {
-      // Mantem a visao atual; sem banner dedicado para caso raro.
+      // TODO(Ana): mensagem de falha ao abrir plano anterior
+      setOpenError("Não conseguimos abrir esse plano agora. Tenta de novo.");
+    } finally {
+      setOpeningId(null);
     }
   }
 
@@ -643,8 +584,9 @@ export default function PlanoCarreira() {
   const loading = phase === "loading" || subLoading;
   // Estado de resultado: um plano visivel (ativo ou arquivado), sem intake
   // aberto. Estado de entrada: nada pra mostrar (vitrine + ProGate/intake).
+  // Erro de carregamento nao e entrada: mostra o card de retry, sem vitrine.
   const showingPlan = !loading && !!shown && !wantNew;
-  const entryState = !loading && !shown;
+  const entryState = !loading && !shown && !loadError;
 
   // Slot de acao contextual do cabecalho (padrao do molde RD2: o topo
   // esquerdo e o lugar universal de "voltar").
@@ -674,6 +616,29 @@ export default function PlanoCarreira() {
         <Spinner className="size-8" />
       </div>
     );
+  } else if (loadError && !shown) {
+    mainBlock = (
+      <div className="card-brutal mx-auto max-w-xl rounded-2xl bg-white p-6 text-center">
+        <p className="font-display text-xl font-black text-slate-950">
+          {/* TODO(Ana): titulo do erro de carregamento do plano */}
+          Não conseguimos carregar seu plano
+        </p>
+        <p className="mt-2 text-sm font-medium text-slate-600">
+          {/* TODO(Ana): texto do erro de carregamento do plano */}
+          Pode ser uma instabilidade passageira. Seu plano e o progresso
+          continuam salvos.
+        </p>
+        <button
+          type="button"
+          onClick={() => setReloadKey((key) => key + 1)}
+          className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+        >
+          <RefreshCw className="h-4 w-4" aria-hidden />
+          {/* TODO(Ana): label do botao de tentar de novo */}
+          Tentar de novo
+        </button>
+      </div>
+    );
   } else if (wantNew && !isPro) {
     // A volta pro plano atual vive no slot do cabecalho.
     mainBlock = (
@@ -691,7 +656,7 @@ export default function PlanoCarreira() {
     );
   } else if (shown) {
     mainBlock = (
-      <PlanView
+      <PlanResult
         plan={shown}
         readonly={shown.status === "archived"}
         onWantNew={() => setWantNew(true)}
@@ -714,7 +679,7 @@ export default function PlanoCarreira() {
       {/* Cenario do Dialeto 2 (molde atual do PortfolioAnalisar): sem
           PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo. O
           backdrop vivo de entrada cobre vitrine, intake e ProGate; o de
-          resultado acompanha o PlanView. */}
+          resultado acompanha o PlanResult. */}
       <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         {!loading && !showingPlan ? (
           <CareerPlanEntryBackdrop reduce={reduce} />
@@ -796,14 +761,26 @@ export default function PlanoCarreira() {
                     <button
                       key={p.id}
                       type="button"
+                      disabled={openingId !== null}
                       onClick={() => void openArchived(p.id)}
-                      className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500"
+                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500 disabled:opacity-60"
                     >
+                      {openingId === p.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                      ) : null}
                       {p.area ?? "plano"} ·{" "}
                       {new Date(p.created_at).toLocaleDateString("pt-BR")}
                     </button>
                   ))}
                 </div>
+                {openError ? (
+                  <p
+                    aria-live="polite"
+                    className="mt-2 text-sm font-bold text-red-700"
+                  >
+                    {openError}
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </div>

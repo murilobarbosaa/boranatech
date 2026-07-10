@@ -1,3 +1,4 @@
+import { getCatalogItem } from "@shared/careerCatalog";
 import type {
   CareerPlanCertification,
   CareerPlanResult,
@@ -82,6 +83,20 @@ export interface TrailVM {
   // Primeira estacao com progresso incompleto (marcador "voce esta aqui");
   // null quando o progresso esta indisponivel ou tudo esta completo.
   currentStationIndex: number | null;
+  // Blocos do cronograma que NAO ancoraram nenhuma estacao visivel (stepIds
+  // vazio/ausente ou so com ids invalidos). Em plano antigo (unanchored),
+  // TODOS os blocos, na ordem original: viram a faixa "Cronograma da rota".
+  looseScheduleBlocks: Array<Pick<CareerPlanScheduleBlock, "monthsLabel" | "focus">>;
+}
+
+// Preco de exibicao SEMPRE do catalogo curado; "" quando o item saiu do
+// catalogo atual (a UI mostra o aviso de desatualizado, nunca um preco).
+export function formatPrice(catalogId: string): string {
+  const item = getCatalogItem(catalogId);
+  if (!item) return "";
+  if ("free" in item.price) return "Gratuito";
+  if (item.price.currency === "BRL") return `R$ ${item.price.amount}`;
+  return `USD ${item.price.amount}`;
 }
 
 function certToVM(
@@ -185,5 +200,20 @@ export function buildTrailVM(
     }
   });
 
-  return { stations, generalCerts, unanchored, currentStationIndex };
+  const looseScheduleBlocks = result.schedule
+    .filter(
+      (block) =>
+        unanchored ||
+        !Array.isArray(block.stepIds) ||
+        !block.stepIds.some((id) => stepIdSet.has(id)),
+    )
+    .map((block) => ({ monthsLabel: block.monthsLabel, focus: block.focus }));
+
+  return {
+    stations,
+    generalCerts,
+    unanchored,
+    currentStationIndex,
+    looseScheduleBlocks,
+  };
 }
