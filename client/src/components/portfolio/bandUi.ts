@@ -33,3 +33,14 @@ export const BAND_WASH: Record<ScoreBand, string> = {
   bom: "from-sky-200/40",
   destaque: "from-emerald-200/40",
 };
+
+// Wash quase imperceptivel da coluna do alvo do nota-hero: mesmo eixo
+// semantico por faixa, na familia *-50/60 (bem abaixo do BAND_WASH) para o
+// texto slate-950 seguir com contraste folgado. Classe pronta por faixa, sem
+// cor calculada em runtime.
+export const BAND_WASH_SOFT: Record<ScoreBand, string> = {
+  comecando: "bg-red-50/60",
+  evoluindo: "bg-amber-50/60",
+  bom: "bg-sky-50/60",
+  destaque: "bg-emerald-50/60",
+};

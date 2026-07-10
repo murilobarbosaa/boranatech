@@ -25,16 +25,30 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString("pt-BR");
 }
 
+const RECENT_PUSH_MS = 90 * 24 * 60 * 60 * 1000;
+
+// Push nos ultimos 90 dias = repo vivo: acende o icone do chip em emerald
+// (sinal positivo discreto). Derivacao pura da mesma data do formatDate.
+function isRecentPush(iso: string | null): boolean {
+  if (!iso) return false;
+  const time = new Date(iso).getTime();
+  if (Number.isNaN(time)) return false;
+  return Date.now() - time < RECENT_PUSH_MS;
+}
+
 function Chip({
   icon: Icon,
+  iconClass,
   children,
 }: {
   icon: ComponentType<{ className?: string }>;
+  /** Cor do icone; default slate-600 (chips neutros). */
+  iconClass?: string;
   children: React.ReactNode;
 }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a]">
-      <Icon className="h-3.5 w-3.5 text-slate-600" />
+      <Icon className={cn("h-3.5 w-3.5", iconClass ?? "text-slate-600")} />
       {children}
     </span>
   );
@@ -56,7 +70,12 @@ export function MetadataChips({ response }: MetadataProps) {
         <Chip icon={Star}>{m.stars} estrelas</Chip>
         <Chip icon={GitFork}>{m.forks} forks</Chip>
         <Chip icon={CircleDot}>{m.openIssues} issues abertas</Chip>
-        <Chip icon={CalendarClock}>
+        <Chip
+          icon={CalendarClock}
+          iconClass={
+            isRecentPush(m.pushedAt) ? "text-emerald-600" : undefined
+          }
+        >
           último push em {formatDate(m.pushedAt)}
         </Chip>
       </div>

@@ -30,7 +30,11 @@ import {
   HowItWorksTimeline,
   ResultShowcase,
 } from "@/components/portfolio/AnalyzerIntro";
-import { BAND_UI, BAND_WASH } from "@/components/portfolio/bandUi";
+import {
+  BAND_UI,
+  BAND_WASH,
+  BAND_WASH_SOFT,
+} from "@/components/portfolio/bandUi";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import GithubHistory from "@/components/portfolio/GithubHistory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
@@ -449,6 +453,9 @@ function ScoreHero({
     target.kind === "repo"
       ? `${target.login}/${target.repo}`
       : `@${target.login}`;
+  // Doodle tematico da coluna do alvo: pasta de codigo pro repo, octocat pro
+  // perfil.
+  const CornerDoodle = target.kind === "repo" ? FolderGit2 : Github;
   // Delta valido para ESTE resultado: anima da nota antiga pra nova.
   const delta =
     scoreDelta && scoreDelta.to === deterministic.score ? scoreDelta : null;
@@ -587,8 +594,22 @@ function ScoreHero({
 
         {/* Coluna do alvo sem espaco morto: centrada na vertical, com os
             chips logo apos o bloco do alvo (nao presos ao rodape). A altura
-            do card e ditada so pelo painel da nota. */}
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-5 p-6">
+            do card e ditada so pelo painel da nota. Decoracao: wash quase
+            imperceptivel da faixa sob o micro-pontilhado da casa, e doodle
+            tematico em marca-dagua no canto (isolate + -z-10 deixam o doodle
+            acima do fundo e abaixo de todo o conteudo; estatico de proposito,
+            movimento atrapalha card de leitura, reduce irrelevante). */}
+        <div
+          className={cn(
+            "relative isolate flex min-w-0 flex-1 flex-col justify-center gap-5 p-6",
+            "[background-image:radial-gradient(rgba(15,23,42,0.05)_1.2px,transparent_1.2px)] [background-size:18px_18px]",
+            BAND_WASH_SOFT[deterministic.band],
+          )}
+        >
+          <CornerDoodle
+            aria-hidden
+            className="pointer-events-none absolute -right-6 -top-6 -z-10 hidden h-24 w-24 rotate-12 text-slate-900 opacity-[0.05] sm:block"
+          />
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <TargetAvatar key={target.login} owner={target.login} />
