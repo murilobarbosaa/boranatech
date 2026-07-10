@@ -61,11 +61,17 @@ export interface ResumeScoreResult {
 }
 
 // Pesos dos criterios. Ajustaveis; a soma DEVE permanecer 100. // TODO: calibrar.
-const WEIGHT_CONTACT = 20;
-const WEIGHT_SECTIONS = 30;
-const WEIGHT_LENGTH = 15;
-const WEIGHT_ACTION_VERBS = 20;
-const WEIGHT_METRICS = 15;
+// Calibracao: os dois checks novos (github_link e palavras_vagas) entraram
+// tirando pontos proporcionalmente dos cinco originais (20/30/15/20/15 virou
+// 18/28/13/18/13), mantendo secoes como o criterio mais pesado e o github como
+// bonus pequeno; 18+28+13+18+13+4+6 = 100.
+const WEIGHT_CONTACT = 18;
+const WEIGHT_SECTIONS = 28;
+const WEIGHT_LENGTH = 13;
+const WEIGHT_ACTION_VERBS = 18;
+const WEIGHT_METRICS = 13;
+const WEIGHT_GITHUB = 4;
+const WEIGHT_VAGUE = 6;
 
 // Normaliza para deteccao por palavra-chave: minusculas e sem acentos
 // (remove os combinantes U+0300..U+036F apos decompor em NFD).
@@ -81,28 +87,69 @@ const PHONE_RE = /(\(?\d{2}\)?\s?)?\d{4,5}[-\s]?\d{4}/;
 const SOCIAL_RE = /linkedin\.com|github\.com/;
 
 // Grupos de palavras-chave que identificam cada secao essencial. Basta UMA
-// palavra do grupo aparecer para a secao contar como presente.
+// palavra do grupo aparecer para a secao contar como presente. BILINGUE
+// (pt-BR e en): curriculo em ingles com Work Experience/Education/Goal/Skills
+// pontua igual ao equivalente em portugues. Case-insensitive e sem acentos
+// (o normalize ja cuida).
 const SECTION_KEYWORDS: Array<{ label: string; keywords: string[] }> = [
   {
     label: "experiencia",
-    keywords: ["experiencia", "atuacao profissional", "historico profissional"],
+    keywords: [
+      "experiencia",
+      "atuacao profissional",
+      "historico profissional",
+      "experience",
+      "work experience",
+      "employment history",
+      "professional background",
+    ],
   },
   {
     label: "formacao",
-    keywords: ["formacao", "educacao", "academic", "graduacao", "curso superior"],
+    keywords: [
+      "formacao",
+      "educacao",
+      "academic",
+      "graduacao",
+      "curso superior",
+      "education",
+      "degree",
+    ],
   },
   {
     label: "habilidades",
-    keywords: ["habilidade", "skills", "competencia", "tecnologias", "stack"],
+    keywords: [
+      "habilidade",
+      "skills",
+      "competencia",
+      "tecnologias",
+      "stack",
+      "technologies",
+      "competencies",
+    ],
   },
   {
     label: "objetivo ou resumo",
-    keywords: ["objetivo", "resumo", "sobre mim", "perfil profissional"],
+    keywords: [
+      "objetivo",
+      "resumo",
+      "sobre mim",
+      "perfil profissional",
+      "goal",
+      "summary",
+      "objective",
+      "about me",
+      "professional profile",
+    ],
   },
 ];
 
-// Radicais de verbos de acao em pt-BR (cobrem primeira pessoa e variacoes:
-// "desenvolvi", "desenvolvimento de", "desenvolvendo").
+// Radicais de verbos de acao, pt-BR e en (cobrem variacoes: "desenvolvi",
+// "desenvolvendo", "developed", "developing"). Casados com fronteira de
+// palavra no inicio (\b + radical) para radical curto nao casar dentro de
+// outra palavra (ex: "led" dentro de "knowledge"). Os radicais en evitam
+// sobrepor os pt/neutros ja presentes (implement, integr) para o mesmo verbo
+// nao contar como dois tipos.
 const ACTION_VERB_STEMS = [
   "desenvolv",
   "implement",
@@ -118,6 +165,20 @@ const ACTION_VERB_STEMS = [
   "integr",
   "entreg",
   "coorden",
+  "develop",
+  "buil",
+  "design",
+  "creat",
+  "led",
+  "launch",
+  "deliver",
+  "optimiz",
+  "automated",
+  "reduc",
+  "increas",
+  "improv",
+  "manag",
+  "achiev",
 ];
 // Quantos radicais distintos valem pontuacao cheia. // TODO: calibrar.
 const ACTION_VERBS_TARGET = 5;
@@ -155,6 +216,9 @@ function sectionsCriterion(norm: string): ResumeScoreCriterion {
   const missing = SECTION_KEYWORDS.filter((g) => !present.includes(g)).map(
     (g) => g.label,
   );
+  // Transparencia: quando reprova, lista tambem o que FOI encontrado, nao so
+  // o que falta.
+  const foundLabels = present.map((g) => g.label);
   return {
     id: "secoes",
     label: "Secoes essenciais",
@@ -163,7 +227,7 @@ function sectionsCriterion(norm: string): ResumeScoreCriterion {
     detail:
       missing.length === 0
         ? "Todas as secoes essenciais presentes."
-        : `Faltando: ${missing.join(", ")}.`,
+        : `Encontradas: ${foundLabels.length > 0 ? foundLabels.join(", ") : "nenhuma"}. Faltando: ${missing.join(", ")}.`,
   };
 }
 
@@ -195,7 +259,9 @@ function lengthCriterion(raw: string): ResumeScoreCriterion {
 }
 
 function actionVerbsCriterion(norm: string): ResumeScoreCriterion {
-  const found = ACTION_VERB_STEMS.filter((stem) => norm.includes(stem)).length;
+  const found = ACTION_VERB_STEMS.filter((stem) =>
+    new RegExp(`\\b${stem}`).test(norm),
+  ).length;
   const fraction = Math.min(1, found / ACTION_VERBS_TARGET);
   return {
     id: "verbos",
@@ -203,6 +269,65 @@ function actionVerbsCriterion(norm: string): ResumeScoreCriterion {
     weight: WEIGHT_ACTION_VERBS,
     achieved: Math.round(WEIGHT_ACTION_VERBS * fraction),
     detail: `${found} tipos de verbo de acao encontrados (alvo: ${ACTION_VERBS_TARGET}).`,
+  };
+}
+
+const GITHUB_RE = /github\.com\//;
+
+// Bonus explicito de GitHub: o check de contato continua aceitando LinkedIn
+// OU GitHub como canal; este da hint proprio pra quem ainda nao linkou.
+function githubCriterion(norm: string): ResumeScoreCriterion {
+  const has = GITHUB_RE.test(norm);
+  // TODO(Ana): revisar os textos de detail do check de GitHub.
+  return {
+    id: "github_link",
+    label: "Perfil GitHub linkado",
+    weight: WEIGHT_GITHUB,
+    achieved: has ? WEIGHT_GITHUB : 0,
+    detail: has
+      ? "Link do GitHub encontrado."
+      : "Sem link do GitHub: em tecnologia, ele e seu portfolio. Adicione.",
+  };
+}
+
+// Intensificadores vagos, pt-BR e en. Excesso acima do limiar por 1000
+// caracteres zera o criterio (penalidade leve: peso pequeno).
+const VAGUE_WORDS = [
+  "significantly",
+  "considerably",
+  "various",
+  "numerous",
+  "extensively",
+  "substantially",
+  "significativamente",
+  "consideravelmente",
+  "diversos",
+  "diversas",
+  "varios",
+  "varias",
+  "inumeros",
+  "inumeras",
+  "amplamente",
+];
+// Ocorrencias toleradas por 1000 caracteres. // TODO: calibrar.
+const VAGUE_PER_1000_LIMIT = 2;
+
+function vagueWordsCriterion(norm: string): ResumeScoreCriterion {
+  let count = 0;
+  for (const word of VAGUE_WORDS) {
+    count += (norm.match(new RegExp(`\\b${word}\\b`, "g")) ?? []).length;
+  }
+  const per1000 = (count / Math.max(norm.length, 1)) * 1000;
+  const ok = per1000 <= VAGUE_PER_1000_LIMIT;
+  // TODO(Ana): revisar os textos de detail do check de palavras vagas.
+  return {
+    id: "palavras_vagas",
+    label: "Sem palavras vagas em excesso",
+    weight: WEIGHT_VAGUE,
+    achieved: ok ? WEIGHT_VAGUE : 0,
+    detail: ok
+      ? "Sem excesso de intensificadores vagos."
+      : `${count} intensificadores vagos (significativamente, diversos, various...): troque por numero ou corte.`,
   };
 }
 
@@ -229,6 +354,8 @@ export function computeResumeScore(resumeText: string): ResumeScoreResult {
     lengthCriterion(raw),
     actionVerbsCriterion(norm),
     metricsCriterion(norm),
+    githubCriterion(norm),
+    vagueWordsCriterion(norm),
   ];
   const score = Math.min(
     100,

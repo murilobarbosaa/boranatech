@@ -4,7 +4,7 @@
 
 Plataforma brasileira de orientação de carreira para quem quer começar em tecnologia.
 
-O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramentas que um iniciante em TI precisa para escolher uma área e chegar na primeira vaga: quiz de carreira, roadmaps de estudo por área, curadoria de cursos, dicionário de termos técnicos, guias de inglês e de entrevistas, e ferramentas de análise com IA (currículo, LinkedIn, GitHub e plano de estudos). A descoberta é gratuita com conta free; as análises personalizadas por IA fazem parte do plano Pro, por assinatura.
+O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramentas que um iniciante em TI precisa para escolher uma área e chegar na primeira vaga: quiz de carreira, roadmaps de estudo por área, curadoria de cursos, dicionário de termos técnicos, guias de inglês e de entrevistas, e ferramentas de análise com IA (currículo, LinkedIn, GitHub e plano de carreira). A descoberta é gratuita com conta free; as análises personalizadas por IA fazem parte do plano Pro, por assinatura.
 
 ## Páginas principais
 
@@ -16,7 +16,7 @@ O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramenta
 - [Salários](https://boranatech.com.br/salarios): faixas salariais de tecnologia por área, nível e cidade.
 - [Dicionário](https://boranatech.com.br/dicionario): termos técnicos de TI explicados sem complicação.
 - [Inglês para tech](https://boranatech.com.br/ingles): guia de inglês técnico por nível, do vocabulário de vagas ao inglês de entrevista.
-- [Entrevistas](https://boranatech.com.br/entrevistas): guia do processo seletivo em tecnologia, com banco de perguntas e desafios técnicos.
+- [Entrevistas](https://boranatech.com.br/entrevistas): guia do processo seletivo em tecnologia, com banco de perguntas, desafios técnicos e treino de entrevista com IA (plano Pro).
 - [Currículo e LinkedIn](https://boranatech.com.br/curriculo): como montar um currículo no padrão da área e aparecer para os recrutadores certos.
 - [Portfólio](https://boranatech.com.br/portfolio): o que incluir e como organizar projetos para se destacar em vagas.
 - [Vagas e estágio](https://boranatech.com.br/estagio): vagas de estágio e júnior em tecnologia, com guia de candidatura.
@@ -31,5 +31,5 @@ O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramenta
 - O público principal são pessoas iniciantes em tecnologia, antes ou no começo da primeira vaga.
 - O acesso ao conteúdo de descoberta (quiz, roadmaps, curadoria de cursos, dicionário, guias) é gratuito com conta free.
 - A curadoria de cursos tem mais de 190 cursos de tecnologia, com plataforma, nível, duração e idioma identificados.
-- As ferramentas de análise personalizada com IA (currículo, LinkedIn, GitHub, entrevista, plano de estudos) fazem parte do plano Pro, uma assinatura paga.
+- As ferramentas de análise personalizada com IA (currículo, LinkedIn, GitHub, entrevista, plano de carreira) fazem parte do plano Pro, uma assinatura paga.
 - O site oficial é https://boranatech.com.br e a conta gratuita é criada em https://boranatech.com.br/cadastro.

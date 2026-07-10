@@ -80,8 +80,9 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     pergunta: "O que o plano Pro inclui?",
+    // TODO(Ana): revisar resposta do Pro apos remocao de ferramentas
     resposta:
-      "O Pro adiciona as ferramentas de análise personalizada com IA sobre a base gratuita: análise de currículo, roadmaps com acompanhamento, simulador de entrevistas, plano de estudos, otimização de LinkedIn, análise de portfólio e GitHub, análise de empregabilidade e gerador de mensagens de networking, além da comunidade. A página de planos tem a comparação completa.",
+      "O Pro adiciona as ferramentas de análise personalizada com IA sobre a base gratuita: análise de currículo, roadmaps com acompanhamento, treino de entrevistas, plano de carreira, otimização de LinkedIn e análise de portfólio e GitHub, além da comunidade. A página de planos tem a comparação completa.",
     link: { href: "/planos", label: "Ver o que o Pro inclui" },
   },
   {

@@ -3,12 +3,14 @@ import { Link } from "wouter";
 import {
   ClipboardPaste,
   FileUp,
+  History,
   Loader2,
   Sparkles,
   Wand2,
 } from "lucide-react";
 
 import Layout from "@/components/Layout";
+import { LinkedinSkeleton } from "@/components/linkedin/LinkedinStates";
 import ProGate from "@/components/pro/ProGate";
 import PageHero from "@/components/shared/PageHero";
 import SEO from "@/components/SEO";
@@ -84,9 +86,11 @@ const COPY = {
   jobFitMissing: "Palavras-chave faltando",
   jobFitRecommendations: "Recomendações",
   rewriteCta: "Reescrever com o Natechinho",
-  rewriteCtaHint: "Monte uma versão nova do zero, conversando com a IA.",
+  rewriteCtaHint:
+    "Abre o assistente de criação com este currículo já carregado na conversa.",
   newAnalysis: "Analisar outro currículo",
   historyTitle: "Suas análises anteriores",
+  historyToggle: "Análises anteriores",
   historyEmpty: "Você ainda não analisou nenhum currículo.",
   historyOpen: "Ver",
   // TODO(Ana): escrever a dica gratis definitiva (mini-guia de curriculo).
@@ -98,6 +102,8 @@ const COPY = {
     "Comece cada experiência com um verbo de ação e mostre o resultado, não só a tarefa. Mantenha o currículo em uma página e deixe as tecnologias que você domina visíveis logo no topo.",
   freeTipProInvite:
     "Quer uma análise completa, com nota e sugestões por seção? É o que o analisador Pro faz.",
+  scoreTransparency:
+    "A nota é calculada pela estrutura do texto do currículo e não muda com o objetivo ou a vaga; eles direcionam a avaliação qualitativa abaixo.",
 } as const;
 
 // TODO(Ana): revisar os rotulos das secoes do resultado.
@@ -142,6 +148,20 @@ export default function CurriculoAnalisar() {
   const [result, setResult] = useState<ResumeAnalyzeResponse | null>(null);
 
   const [history, setHistory] = useState<ResumeAnalysisSummary[] | null>(null);
+  // Historico visivel tambem na tela de resultado, sob demanda.
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Reset real do fluxo: limpa texto, arquivo e vaga; MANTEM o objetivo
+  // (prefill do perfil ou o que a pessoa digitou).
+  function startNewAnalysis() {
+    setResult(null);
+    setResumeText("");
+    setPdfFileName(null);
+    setPdfError(null);
+    setJobPostingText("");
+    setFormError(null);
+    setShowHistory(false);
+  }
 
   useEffect(() => {
     if (!goalSeeded && profile?.career_goal) {
@@ -272,7 +292,11 @@ export default function CurriculoAnalisar() {
           {!isPro ? (
             <ProGate description={COPY.proGateDescription} />
           ) : result ? (
-            <ResultView result={result} onNewAnalysis={() => setResult(null)} />
+            <ResultView
+              result={result}
+              onNewAnalysis={startNewAnalysis}
+              onToggleHistory={() => setShowHistory((prev) => !prev)}
+            />
           ) : (
             <div className="mx-auto max-w-3xl">
               <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
@@ -442,10 +466,19 @@ export default function CurriculoAnalisar() {
                   )}
                 </button>
               </div>
+
+              {analyzing ? (
+                <div className="mt-8">
+                  <p className="mb-4 text-center text-sm font-bold text-slate-600">
+                    {COPY.analyzing}
+                  </p>
+                  <LinkedinSkeleton />
+                </div>
+              ) : null}
             </div>
           )}
 
-          {isPro && !result ? (
+          {isPro && (!result || showHistory) ? (
             <div className="mx-auto max-w-3xl">
               <h2 className="font-display text-2xl font-black text-slate-950">
                 {COPY.historyTitle}
@@ -496,18 +529,24 @@ export default function CurriculoAnalisar() {
 interface ResultViewProps {
   result: ResumeAnalyzeResponse;
   onNewAnalysis: () => void;
+  onToggleHistory: () => void;
 }
 
-function ResultView({ result, onNewAnalysis }: ResultViewProps) {
+function ResultView({ result, onNewAnalysis, onToggleHistory }: ResultViewProps) {
   const { qualitative } = result;
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <div className="grid gap-6 lg:grid-cols-2">
-        <ResumeScoreCard
-          score={result.score}
-          faixa={result.faixa}
-          criterios={result.criterios}
-        />
+        <div>
+          <ResumeScoreCard
+            score={result.score}
+            faixa={result.faixa}
+            criterios={result.criterios}
+          />
+          <p className="mt-3 text-xs font-medium leading-relaxed text-slate-500">
+            {COPY.scoreTransparency}
+          </p>
+        </div>
         <div className="space-y-6">
           <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
             <p className="text-sm font-medium leading-relaxed text-slate-800">
@@ -658,6 +697,14 @@ function ResultView({ result, onNewAnalysis }: ResultViewProps) {
           className="inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
         >
           {COPY.newAnalysis}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleHistory}
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+        >
+          <History className="h-4 w-4" aria-hidden />
+          {COPY.historyToggle}
         </button>
       </div>
     </div>

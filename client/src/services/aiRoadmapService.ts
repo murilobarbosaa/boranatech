@@ -16,10 +16,22 @@ export interface AiRoadmapListItem {
   status: AiRoadmapStatus;
   created_at: string;
   updated_at: string;
+  // Presentes (nao-null) apenas em roadmaps ready; base do badge Concluido.
+  totalSteps?: number | null;
+  completedSteps?: number | null;
 }
 
 export interface AiRoadmapDetail extends AiRoadmapListItem {
   roadmap: RoadmapV2;
+}
+
+// Resumo do contexto do usuario que a geracao vai usar (GET /context).
+export interface AiRoadmapContext {
+  quiz: { area: string | null; level: string | null } | null;
+  skills: string[];
+  trails: Array<{ title: string; pct: number | null }>;
+  careerGoal: string | null;
+  studyMinutes30d: number | null;
 }
 
 export interface GenerationHandlers {
@@ -72,6 +84,18 @@ export async function listAiRoadmaps(): Promise<AiRoadmapListItem[]> {
   }
   const payload = (await response.json()) as { roadmaps?: AiRoadmapListItem[] };
   return payload.roadmaps ?? [];
+}
+
+export async function getAiRoadmapContext(): Promise<AiRoadmapContext> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(apiUrl("/api/roadmaps-ia/context"), {
+    headers: authHeader,
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    throw new Error(readErrorBody(body).message);
+  }
+  return (await response.json()) as AiRoadmapContext;
 }
 
 // 404 (inexistente ou de outro usuario) vira null, nao excecao: a pagina de

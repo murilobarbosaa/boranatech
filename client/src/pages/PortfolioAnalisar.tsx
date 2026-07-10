@@ -1,21 +1,41 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Github, Globe, Info, Sparkles } from "lucide-react";
+import confetti from "canvas-confetti";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+  ExternalLink,
+  FileCode2,
+  FolderGit2,
+  GitCommitHorizontal,
+  GitFork,
+  Github,
+  Globe,
+  History,
+  Info,
+  Sparkles,
+  Star,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import PortfolioFreeGuide from "@/components/portfolio/PortfolioFreeGuide";
-import PageHero from "@/components/shared/PageHero";
+import BrutalActionButton from "@/components/shared/BrutalActionButton";
+import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
+import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
+import SectionLabel from "@/components/shared/SectionLabel";
 import SEO from "@/components/SEO";
-import { Spinner } from "@/components/ui/spinner";
+import { AnalysisError } from "@/components/portfolio/AnalysisStates";
 import {
-  AnalysisError,
-  AnalysisSkeleton,
-} from "@/components/portfolio/AnalysisStates";
-import { HowItWorks, WhatYouGet } from "@/components/portfolio/AnalyzerIntro";
+  BenefitPills,
+  HowItWorksTimeline,
+  ResultShowcase,
+} from "@/components/portfolio/AnalyzerIntro";
+import { BAND_UI, BAND_WASH } from "@/components/portfolio/bandUi";
 import ChecklistByCategory from "@/components/portfolio/ChecklistByCategory";
 import GithubHistory from "@/components/portfolio/GithubHistory";
 import { MetadataChips, TopRepos } from "@/components/portfolio/MetadataStrip";
 import NextStepsByArea from "@/components/portfolio/NextStepsByArea";
-import ScoreCard from "@/components/portfolio/ScoreCard";
 import {
   AiSummary,
   Improvements,
@@ -37,17 +57,17 @@ import { getQuizHistory } from "@/services/careerQuizService";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { GENERAL_AREA, isAreaSlug, type AreaSelection } from "@shared/areas";
+import { detectGithubTarget } from "@shared/github/detect";
 import type {
   AnalysisMode,
   GithubAnalysisResponse,
+  ScoreBand,
 } from "@shared/github/schema";
 
 const ac = getPageAccentUi("violet");
 
-const PLACEHOLDER: Record<AnalysisMode, string> = {
-  perfil: "seu usuario do GitHub",
-  repo: "github.com/usuario/projeto",
-};
+// TODO(Ana): revisar placeholder e descricoes da deteccao automatica.
+const INPUT_PLACEHOLDER = "github.com/usuario ou github.com/usuario/projeto";
 
 const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
   perfil:
@@ -55,40 +75,168 @@ const MODE_DESCRIPTION: Record<AnalysisMode, string> = {
   repo: "Analisa README, descrição, licença, topics, arquivos de segurança e a organização do projeto.",
 };
 
+// Doodles tematicos de GitHub do cenario de entrada, no padrao exato dos
+// HERO_DOODLES do RoadmapsV2Index (loop lento de y/rotate; reduce para tudo).
+const ENTRY_DOODLES = [
+  { Icon: Github, cls: "left-[4%] top-[6%] text-violet-500 opacity-[0.16]", size: "h-12 w-12", rot: 6, dur: 7, delay: 0 },
+  { Icon: Star, cls: "right-[6%] top-[8%] text-amber-500 opacity-[0.15]", size: "h-10 w-10", rot: -6, dur: 8, delay: 0.5 },
+  { Icon: GitFork, cls: "left-[14%] top-[30%] text-purple-500 opacity-[0.13]", size: "h-9 w-9", rot: 8, dur: 7.5, delay: 0.3 },
+  { Icon: FileCode2, cls: "right-[12%] top-[34%] text-violet-600 opacity-[0.14]", size: "h-10 w-10", rot: -7, dur: 6.5, delay: 1.1 },
+  { Icon: GitCommitHorizontal, cls: "left-[6%] top-[58%] text-violet-400 opacity-[0.13]", size: "h-10 w-10", rot: 7, dur: 7, delay: 0.8 },
+  { Icon: FolderGit2, cls: "right-[5%] top-[62%] text-purple-600 opacity-[0.14]", size: "h-11 w-11", rot: -5, dur: 8, delay: 1.4 },
+  { Icon: Star, cls: "left-[10%] top-[84%] text-violet-500 opacity-[0.12]", size: "h-8 w-8", rot: 9, dur: 6, delay: 0.6 },
+  { Icon: Github, cls: "right-[15%] top-[86%] text-purple-500 opacity-[0.12]", size: "h-9 w-9", rot: -8, dur: 6.5, delay: 1 },
+];
+
+// Cenario vivo do estado de ENTRADA: overlay de gradiente de marca (o mesmo
+// do RoadmapsV2Index) na regiao superior com fade pro fundo + doodles
+// flutuantes. Renderizado SO na entrada; scan e resultado ficam limpos.
+function AnalyzerBackdrop({ reduce }: { reduce: boolean }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden
+    >
+      <div className="absolute inset-x-0 top-0 h-[540px] bg-gradient-to-br from-violet-300/45 via-fuchsia-200/35 to-amber-200/45 [mask-image:linear-gradient(to_bottom,black_55%,transparent)]" />
+      {ENTRY_DOODLES.map((doodle, i) => {
+        const Icon = doodle.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute ${doodle.cls}`}
+            animate={
+              reduce
+                ? undefined
+                : { y: [0, -10, 0], rotate: [0, doodle.rot, 0] }
+            }
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: doodle.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: doodle.delay,
+                  }
+            }
+          >
+            <Icon className={doodle.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
+// Doodles do cenario do RESULTADO: familia do cenario da entrada, tintados
+// pela pagina toda (nao so no topo), opacidade 0.08 a 0.14, SO nas margens
+// externas, fora da coluna de leitura; escondidos abaixo de lg pra nunca
+// atrapalhar o corpo denso.
+const RESULT_DOODLES = [
+  { Icon: Github, cls: "left-[3%] top-[6%] text-violet-500 opacity-[0.14]", size: "h-11 w-11", rot: 6, dur: 7, delay: 0 },
+  { Icon: Star, cls: "right-[2%] top-[10%] text-amber-500 opacity-[0.12]", size: "h-10 w-10", rot: -6, dur: 8, delay: 0.6 },
+  { Icon: GitFork, cls: "left-[2%] top-[30%] text-purple-500 opacity-[0.10]", size: "h-9 w-9", rot: 8, dur: 7.5, delay: 0.3 },
+  { Icon: FileCode2, cls: "right-[3%] top-[38%] text-violet-600 opacity-[0.11]", size: "h-10 w-10", rot: -7, dur: 6.5, delay: 1.1 },
+  { Icon: GitCommitHorizontal, cls: "left-[2%] top-[58%] text-violet-400 opacity-[0.09]", size: "h-10 w-10", rot: 7, dur: 7, delay: 1 },
+  { Icon: FolderGit2, cls: "right-[2%] top-[66%] text-purple-600 opacity-[0.10]", size: "h-10 w-10", rot: -5, dur: 6.5, delay: 0.3 },
+  { Icon: Star, cls: "left-[3%] top-[86%] text-violet-500 opacity-[0.08]", size: "h-9 w-9", rot: 9, dur: 6, delay: 0.8 },
+];
+
+// Cenario do estado de resultado: o mesmo pontilhado da secao, o wash da
+// FAIXA da nota (BAND_WASH) em DOIS focos (topo atras do hero + um segundo
+// suave a meia pagina), sempre com fade antes das areas de leitura densa, e
+// os doodles das margens ao longo de toda a altura.
+function ResultBackdrop({
+  band,
+  reduce,
+}: {
+  band: ScoreBand;
+  reduce: boolean;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      aria-hidden
+    >
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 h-80 bg-gradient-to-b via-transparent to-transparent [mask-image:linear-gradient(to_bottom,black_40%,transparent)]",
+          BAND_WASH[band],
+        )}
+      />
+      <div
+        className={cn(
+          "absolute right-[-12%] top-[42%] h-96 w-[65%] rounded-full bg-gradient-to-tl via-transparent to-transparent blur-3xl",
+          BAND_WASH[band],
+        )}
+      />
+      {RESULT_DOODLES.map((doodle, i) => {
+        const Icon = doodle.Icon;
+        return (
+          <motion.span
+            key={i}
+            className={`absolute hidden lg:block ${doodle.cls}`}
+            animate={
+              reduce
+                ? undefined
+                : { y: [0, -10, 0], rotate: [0, doodle.rot, 0] }
+            }
+            transition={
+              reduce
+                ? undefined
+                : {
+                    duration: doodle.dur,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: doodle.delay,
+                  }
+            }
+          >
+            <Icon className={doodle.size} strokeWidth={2.5} />
+          </motion.span>
+        );
+      })}
+    </div>
+  );
+}
+
+// Avatar publico do GitHub (github.com/<owner>.png, redirect oficial, sem
+// API). onError cai pro icone; key={owner} no call-site zera o estado de erro
+// quando o alvo muda.
+function TargetAvatar({ owner }: { owner: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]"
+        aria-hidden
+      >
+        <Github className="h-6 w-6" />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`https://github.com/${owner}.png?size=96`}
+      alt=""
+      aria-hidden
+      onError={() => setFailed(true)}
+      className="h-12 w-12 shrink-0 rounded-xl border-2 border-slate-950 bg-white object-cover shadow-[3px_3px_0_#0f172a]"
+    />
+  );
+}
+
 const STORAGE_KEY = "boranatech:portfolio-analyzer";
 // Versao da forma do payload persistido. Bump sempre que a forma da resposta
-// (GithubAnalysisResponse) mudar. No restore, slots de versao diferente sao
-// descartados, pra nunca reusar um result de shape antigo (ex sem suficiencia
-// ou sem deepSignals). A versao 3 marca o qualitative com proximoPasso.
-const STORAGE_SHAPE_VERSION = 3;
-
-interface ModeSlot {
-  input: string;
-  result: GithubAnalysisResponse | null;
-}
-
-type ModeSlots = Record<AnalysisMode, ModeSlot>;
-
-function emptySlots(): ModeSlots {
-  return {
-    perfil: { input: "", result: null },
-    repo: { input: "", result: null },
-  };
-}
-
-function coerceSlot(value: unknown): ModeSlot {
-  if (!value || typeof value !== "object") return { input: "", result: null };
-  const slot = value as { input?: unknown; result?: unknown };
-  const input = typeof slot.input === "string" ? slot.input : "";
-  const result =
-    slot.result && typeof slot.result === "object"
-      ? (slot.result as GithubAnalysisResponse)
-      : null;
-  return { input, result };
-}
+// (GithubAnalysisResponse) ou a forma do estado salvo mudar. No restore,
+// payload de versao diferente e descartado, pra nunca reusar um result de
+// shape antigo. A versao 4 troca os slots por modo por um input/result unico
+// (o alvo e autodetectado do input).
+const STORAGE_SHAPE_VERSION = 4;
 
 interface StoredState {
-  slots: ModeSlots;
+  input: string;
+  result: GithubAnalysisResponse | null;
   // null = nada valido salvo (ainda nao escolhido nesta sessao).
   area: AreaSelection | null;
 }
@@ -100,51 +248,313 @@ function coerceArea(value: unknown): AreaSelection | null {
 }
 
 function loadState(): StoredState {
-  if (typeof window === "undefined") return { slots: emptySlots(), area: null };
+  if (typeof window === "undefined") {
+    return { input: "", result: null, area: null };
+  }
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return { slots: emptySlots(), area: null };
+    if (!raw) return { input: "", result: null, area: null };
     const parsed = JSON.parse(raw) as {
-      perfil?: unknown;
-      repo?: unknown;
+      input?: unknown;
+      result?: unknown;
       area?: unknown;
       version?: unknown;
     };
-    // So restaura os slots (com result) se a versao de shape bater com a atual.
-    // Payload de build antigo (sem version ou com version diferente) cai pra
-    // vazio, evitando reusar um result de forma velha. A area nao depende da
-    // forma da resposta, entao e restaurada de qualquer jeito.
-    const slotsOk = parsed.version === STORAGE_SHAPE_VERSION;
+    // So restaura input/result se a versao de shape bater com a atual. A area
+    // nao depende da forma da resposta, entao e restaurada de qualquer jeito.
+    const ok = parsed.version === STORAGE_SHAPE_VERSION;
     return {
-      slots: slotsOk
-        ? {
-            perfil: coerceSlot(parsed.perfil),
-            repo: coerceSlot(parsed.repo),
-          }
-        : emptySlots(),
+      input: ok && typeof parsed.input === "string" ? parsed.input : "",
+      result:
+        ok && parsed.result && typeof parsed.result === "object"
+          ? (parsed.result as GithubAnalysisResponse)
+          : null,
       area: coerceArea(parsed.area),
     };
   } catch {
-    return { slots: emptySlots(), area: null };
+    return { input: "", result: null, area: null };
   }
 }
 
-function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
+// TODO(Ana): revisar os rotulos do scan. Eles descrevem o pipeline REAL do
+// server (fetch publico do GitHub + checagens deterministicas + 1 chamada de
+// IA) e rodam em loop rotativo, sem prometer conclusao de etapa nem
+// porcentagem: a resposta e unica e o client nao sabe em que etapa o server
+// esta de verdade.
+const SCAN_STEPS = [
+  "Lendo os dados públicos do GitHub...",
+  "Rodando as checagens automáticas...",
+  "Consultando a análise da IA...",
+];
+
+// Card de scan do estado de analise: alvo no topo, shimmer INDETERMINADO
+// (nunca porcentagem) e rotulo rotativo a cada 2.5s. reduce: barra estatica e
+// troca de texto sem fade.
+function ScanCard({
+  owner,
+  display,
+  reduce,
+}: {
+  owner: string | null;
+  display: string | null;
+  reduce: boolean;
+}) {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(
+      () => setStep((s) => (s + 1) % SCAN_STEPS.length),
+      2500,
+    );
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div
+      role="status"
+      className="card-brutal mx-auto max-w-3xl rounded-2xl border-slate-950 bg-white p-8 text-center"
+    >
+      <div className="flex flex-col items-center gap-3">
+        {owner ? (
+          <TargetAvatar key={owner} owner={owner} />
+        ) : (
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]"
+            aria-hidden
+          >
+            <Github className="h-6 w-6" />
+          </span>
+        )}
+        {display ? (
+          <p className="truncate font-display text-xl font-black text-slate-950">
+            {display}
+          </p>
+        ) : null}
+      </div>
+      <div className="mx-auto mt-6 h-3 w-full max-w-sm overflow-hidden rounded-full border-2 border-slate-900 bg-slate-100">
+        {reduce ? (
+          <div className="h-full w-full bg-violet-300" />
+        ) : (
+          <motion.div
+            className="h-full w-1/3 rounded-full bg-violet-500"
+            animate={{ x: ["-110%", "320%"] }}
+            transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+          />
+        )}
+      </div>
+      <div className="mt-4 min-h-[1.5rem] text-sm font-bold text-slate-600">
+        {reduce ? (
+          <p>{SCAN_STEPS[step]}</p>
+        ) : (
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={step}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {SCAN_STEPS[step]}
+            </motion.p>
+          </AnimatePresence>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const RING_RADIUS = 52;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+// Contador da nota: rAF de ~1s com ease-out cubico, de `from` ate `target`.
+// reduce pula direto ao valor final.
+function useCountUp(target: number, from: number, reduce: boolean): number {
+  const [value, setValue] = useState(reduce ? target : from);
+  useEffect(() => {
+    if (reduce) {
+      setValue(target);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const duration = 1000;
+    const stepFrame = (ts: number) => {
+      const p = Math.min((ts - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(Math.round(from + (target - from) * eased));
+      if (p < 1) raf = requestAnimationFrame(stepFrame);
+    };
+    raf = requestAnimationFrame(stepFrame);
+    return () => cancelAnimationFrame(raf);
+  }, [target, from, reduce]);
+  return value;
+}
+
+// Paleta do confete da plataforma (proConfetti.ts), reusada no burst
+// localizado do delta que subiu.
+const CONFETTI_COLORS = ["#FFB800", "#1a1a1a", "#ffffff", "#10b981"];
+
+// Entrada padrao dos blocos do corpo revista do resultado: whileInView uma
+// vez, stagger curto via delay; reduce pula direto.
+function Reveal({
+  children,
+  className,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const reduce = useReducedMotion() ?? false;
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.35, delay }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// Nota-hero: a nota e o protagonista (contador + anel SVG preenchendo junto +
+// carimbo da faixa), com alvo e link reorganizados ao lado. BAND_UI intacto
+// para as cores. Delta de reanalise: contador anima DA nota antiga PARA a
+// nova, a antiga aparece riscada, e subir dispara um burst de confete
+// localizado (reduce desliga contador, carimbo e confete).
+function ScoreHero({
+  response,
+  scoreDelta,
+  reduce,
+}: {
+  response: GithubAnalysisResponse;
+  scoreDelta: { from: number; to: number } | null;
+  reduce: boolean;
+}) {
   const { target, deterministic } = response;
+  const band = BAND_UI[deterministic.band];
   const display =
     target.kind === "repo"
       ? `${target.login}/${target.repo}`
       : `@${target.login}`;
+  // Delta valido para ESTE resultado: anima da nota antiga pra nova.
+  const delta =
+    scoreDelta && scoreDelta.to === deterministic.score ? scoreDelta : null;
+  const value = useCountUp(deterministic.score, delta ? delta.from : 0, reduce);
+  const ringOffset = RING_CIRCUMFERENCE * (1 - value / 100);
+
+  const scoreRef = useRef<HTMLDivElement>(null);
+
+  // Burst localizado quando a reanalise SUBIU a nota, sincronizado com a
+  // chegada do contador. reduce nao dispara nada.
+  useEffect(() => {
+    if (reduce || !delta || delta.to <= delta.from) return;
+    const timer = window.setTimeout(() => {
+      const rect = scoreRef.current?.getBoundingClientRect();
+      const origin = rect
+        ? {
+            x: (rect.left + rect.width / 2) / window.innerWidth,
+            y: (rect.top + rect.height / 2) / window.innerHeight,
+          }
+        : { x: 0.5, y: 0.35 };
+      confetti({
+        particleCount: 90,
+        spread: 100,
+        origin,
+        colors: CONFETTI_COLORS,
+        scalar: 0.9,
+        ticks: 140,
+        gravity: 0.85,
+      });
+    }, 950);
+    return () => window.clearTimeout(timer);
+  }, [delta, reduce]);
 
   return (
-    <div className="card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white">
-      <div className="flex flex-col md:flex-row">
+    // Peca central da familia da vitrine: rotacao leve compensada + selo de
+    // proposito no topo (o card interno mantem o overflow-hidden dos paineis).
+    <div className="relative -rotate-[0.3deg]">
+      {/* TODO(Ana): revisar o selo do resultado. */}
+      <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+        <Sparkles className="h-3 w-3" aria-hidden />
+        Seu raio-X
+      </span>
+      <div
+        className={cn(
+          "card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white",
+          ac.liftShadow,
+        )}
+      >
+        <div className="flex flex-col md:flex-row">
+          <div
+            ref={scoreRef}
+          className={cn(
+            "flex flex-col items-center justify-center gap-3 border-b-2 border-slate-950 p-8 text-center md:w-72 md:shrink-0 md:border-b-0 md:border-r-2",
+            band.cardBg,
+          )}
+        >
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-700">
+            Nota do portfólio
+          </p>
+          <div className="relative h-[132px] w-[132px]">
+            <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+              <circle
+                cx="60"
+                cy="60"
+                r={RING_RADIUS}
+                fill="none"
+                stroke="#0f172a"
+                strokeOpacity="0.15"
+                strokeWidth="8"
+              />
+              <circle
+                cx="60"
+                cy="60"
+                r={RING_RADIUS}
+                fill="none"
+                stroke="#0f172a"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={RING_CIRCUMFERENCE}
+                strokeDashoffset={ringOffset}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="font-display text-4xl font-black leading-none text-slate-950">
+                {value}
+              </span>
+              <span className="text-xs font-black text-slate-500">/100</span>
+            </div>
+          </div>
+          {delta ? (
+            <p className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
+              <span className="line-through opacity-60">{delta.from}</span>
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              <span>{delta.to}</span>
+            </p>
+          ) : null}
+          <motion.span
+            initial={reduce ? false : { opacity: 0, scale: 1.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : { delay: 0.85, duration: 0.3, ease: "backOut" }
+            }
+            className={cn(
+              "inline-flex rounded-full border-2 border-slate-950 px-4 py-1 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]",
+              band.chipBg,
+            )}
+          >
+            {band.label}
+          </motion.span>
+        </div>
+
         <div className="flex min-w-0 flex-1 flex-col p-6">
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-slate-950 text-white shadow-[3px_3px_0_#0f172a]">
-                <Github className="h-6 w-6" />
-              </span>
+              <TargetAvatar key={target.login} owner={target.login} />
               <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
                   {target.kind === "repo" ? "Repositório" : "Perfil"}
@@ -168,12 +578,6 @@ function ResultHeader({ response }: { response: GithubAnalysisResponse }) {
             <MetadataChips response={response} />
           </div>
         </div>
-        <div className="border-t-2 border-slate-950 md:w-56 md:border-l-2 md:border-t-0">
-          <ScoreCard
-            score={deterministic.score}
-            band={deterministic.band}
-            variant="panel"
-          />
         </div>
       </div>
     </div>
@@ -185,9 +589,10 @@ export default function PortfolioAnalisar() {
   const { profile } = useAuth();
 
   const [bootstrap] = useState(loadState);
-  const [mode, setMode] = useState<AnalysisMode>("perfil");
-  const [slots, setSlots] = useState<ModeSlots>(bootstrap.slots);
-  // Area e selecao global (vale pros dois modos), nao por modo.
+  const [input, setInput] = useState(bootstrap.input);
+  const [result, setResult] = useState<GithubAnalysisResponse | null>(
+    bootstrap.result,
+  );
   const [area, setArea] = useState<AreaSelection>(
     bootstrap.area ?? GENERAL_AREA,
   );
@@ -256,37 +661,38 @@ export default function PortfolioAnalisar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPro]);
 
-  // Persiste slots e area no sessionStorage. Nunca persiste loading nem error.
+  // Persiste input, result e area no sessionStorage. Nunca persiste loading
+  // nem error.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       window.sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ ...slots, area, version: STORAGE_SHAPE_VERSION }),
+        JSON.stringify({ input, result, area, version: STORAGE_SHAPE_VERSION }),
       );
     } catch {
       // storage cheio ou indisponivel: ignora, segue so em memoria.
     }
-  }, [slots, area]);
+  }, [input, result, area]);
 
-  const input = slots[mode].input;
-  const result = slots[mode].result;
+  // Deteccao ao vivo do alvo (perfil ou repo) pela mesma fonte do server.
+  const detection = detectGithubTarget(input);
 
-  function setInput(value: string) {
-    setSlots((prev) => ({ ...prev, [mode]: { ...prev[mode], input: value } }));
-  }
+  const reduce = useReducedMotion() ?? false;
+
+  // Preview vivo com debounce de 300ms: o cartao-alvo (e o avatar) so
+  // materializa quando a digitacao assenta, pra nao piscar a cada tecla. O
+  // botao e o submit seguem na deteccao ao vivo.
+  const [debouncedInput, setDebouncedInput] = useState(input);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedInput(input), 300);
+    return () => clearTimeout(timer);
+  }, [input]);
+  const preview = detectGithubTarget(debouncedInput);
 
   function changeArea(next: AreaSelection) {
     areaSource.current = "user";
     setArea(next);
-  }
-
-  function changeMode(next: AnalysisMode) {
-    if (next === mode) return;
-    setMode(next);
-    setError("");
-    setScoreDelta(null);
-    setConfirmReanalyze(false);
   }
 
   // Anterior do MESMO alvo no historico (para o delta de nota). skipId pula a
@@ -312,9 +718,9 @@ export default function PortfolioAnalisar() {
   }
 
   async function runAnalysis() {
-    const activeMode = mode;
-    const trimmed = slots[activeMode].input.trim();
-    if (!trimmed || loading) return;
+    const trimmed = input.trim();
+    const target = detectGithubTarget(trimmed);
+    if (target.kind === "invalid" || loading) return;
 
     setLoading(true);
     setError("");
@@ -325,11 +731,9 @@ export default function PortfolioAnalisar() {
     const priorScore = findPriorScore(trimmed);
 
     try {
-      const data = await analyzeGithub(activeMode, trimmed, area);
-      setSlots((prev) => ({
-        ...prev,
-        [activeMode]: { ...prev[activeMode], result: data },
-      }));
+      // O kind vai por compat (o server autodetecta e ignora o mode).
+      const data = await analyzeGithub(target.kind, trimmed, area);
+      setResult(data);
       setScoreDelta(
         priorScore !== null
           ? { from: priorScore, to: data.deterministic.score }
@@ -352,16 +756,11 @@ export default function PortfolioAnalisar() {
         loadHistory();
         return;
       }
-      const recordMode: AnalysisMode =
-        record.input?.mode === "repo" ? "repo" : "perfil";
       const rawInput = record.input?.input ?? "";
-      setMode(recordMode);
       setError("");
       setConfirmReanalyze(false);
-      setSlots((prev) => ({
-        ...prev,
-        [recordMode]: { input: rawInput, result: record.result },
-      }));
+      setInput(rawInput);
+      setResult(record.result);
       const priorScore = rawInput ? findPriorScore(rawInput, id) : null;
       setScoreDelta(
         priorScore !== null && typeof record.score === "number"
@@ -380,6 +779,19 @@ export default function PortfolioAnalisar() {
     void runAnalysis();
   }
 
+  // Saida do estado de resultado: reset SO de UI (nenhuma funcao B3 muda).
+  // Mantem input e area (a pessoa pode analisar o mesmo alvo editado ou
+  // outro; o historico segue oferecendo as salvas). O resultado persistido
+  // some junto pelo proprio effect de persistencia (que passa a gravar
+  // result: null), entao sair e voltar depois disso cai na ENTRADA, sem
+  // mudanca de forma nem bump de versao do storage.
+  function startNewAnalysis() {
+    setResult(null);
+    setError("");
+    setScoreDelta(null);
+    setConfirmReanalyze(false);
+  }
+
   return (
     <Layout>
       {/* TODO(Ana): validar title e description */}
@@ -388,14 +800,73 @@ export default function PortfolioAnalisar() {
         description="Analise seu GitHub com IA: receba uma nota objetiva, um checklist do que falta e melhorias priorizadas para deixar seu perfil pronto para vagas."
         url="/portfolio/analisar"
       />
-      <PageHero
-        accent="violet"
-        eyebrow="revisão com IA"
-        title="Analisador de GitHub"
-        subtitle="Receba uma nota objetiva, um checklist do que falta e melhorias priorizadas pra deixar seu GitHub pronto pra vagas."
-      />
-      <section className={cn(ac.contentBg, "py-12")}>
-        <div className="container">
+      {/* Cenario do Dialeto 2 (padrao do RoadmapsV2Index) e a pagina inteira:
+          sem PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo.
+          O backdrop vivo (gradiente + doodles) so existe no estado de entrada. */}
+      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        {!loading && !error && !result ? (
+          <AnalyzerBackdrop reduce={reduce} />
+        ) : null}
+        {!loading && !error && result ? (
+          <ResultBackdrop band={result.deterministic.band} reduce={reduce} />
+        ) : null}
+        <div className="container relative z-10">
+          {/* Cabecalho integrado, presente nos 3 estados (entrada, scan,
+              resultado). O slot do topo esquerdo e o lugar universal de
+              "voltar": no resultado vira o link Nova analise; na entrada e no
+              scan fica vazio. TODO(Ana): validar eyebrow, titulo, subtitulo e
+              o rotulo do link (alternativa: "Analisar outro"). */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="mb-10"
+          >
+            {!loading && !error && result ? (
+              <button
+                type="button"
+                onClick={startNewAnalysis}
+                className={cn(
+                  "inline-flex items-center gap-2 text-sm font-bold",
+                  ac.link,
+                  ac.linkHover,
+                )}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                Nova análise
+              </button>
+            ) : null}
+            <p
+              className={cn(
+                !loading && !error && result ? "mt-5" : undefined,
+              )}
+            >
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                Análise Pro
+              </span>
+            </p>
+            <div className="mt-3.5 flex items-center gap-4">
+              <span
+                className={cn(
+                  "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 shadow-[3px_3px_0_currentColor]",
+                  ac.panelBorder,
+                  ac.panelSoft,
+                  ac.iconMuted,
+                )}
+                aria-hidden
+              >
+                <Github className="h-8 w-8" />
+              </span>
+              <h1 className="font-display text-3xl font-black tracking-tight text-slate-950 md:text-[clamp(2rem,5vw,2.6rem)]">
+                Analisador de GitHub
+              </h1>
+            </div>
+            <p className="mt-3 max-w-2xl text-base font-medium text-slate-600">
+              Receba uma nota objetiva, um checklist do que falta e melhorias
+              priorizadas pra deixar seu GitHub pronto pra vagas.
+            </p>
+          </motion.div>
+
           {!isPro ? (
             <div className="space-y-10">
               <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
@@ -403,90 +874,176 @@ export default function PortfolioAnalisar() {
             </div>
           ) : (
             <div className="space-y-8">
-              <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="inline-flex rounded-full border-2 border-slate-950 bg-white p-1 shadow-[3px_3px_0_#0f172a]">
-                    <button
-                      type="button"
-                      onClick={() => changeMode("perfil")}
-                      className={cn(
-                        "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                        mode === "perfil"
-                          ? "bg-amber-300 text-slate-950"
-                          : "text-slate-600 hover:text-slate-900",
-                      )}
-                    >
-                      Perfil
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => changeMode("repo")}
-                      className={cn(
-                        "rounded-full px-5 py-2 text-sm font-black transition-colors",
-                        mode === "repo"
-                          ? "bg-amber-300 text-slate-950"
-                          : "text-slate-600 hover:text-slate-900",
-                      )}
-                    >
-                      Repositório
-                    </button>
+              {/* Ordem narrativa do estado de entrada: explicacao (timeline +
+                  vitrine) ANTES do palco; as pills fecham o argumento logo
+                  abaixo dele. Em scan/erro/resultado nada disso renderiza e o
+                  palco segue no topo. */}
+              {!loading && !error && !result ? (
+                <div className="mx-auto max-w-5xl">
+                  <div className="grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-center">
+                    <HowItWorksTimeline />
+                    <ResultShowcase />
                   </div>
-
-                  <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
-                    <span className="hidden sm:inline">Área alvo</span>
-                    <select
-                      value={area}
-                      onChange={(event) =>
-                        changeArea(event.target.value as AreaSelection)
-                      }
-                      className="rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:ring-4 focus:ring-violet-200"
-                    >
-                      <option value={GENERAL_AREA}>Geral</option>
-                      {areasTI.map((a) => (
-                        <option key={a.slug} value={a.slug}>
-                          {a.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
                 </div>
+              ) : null}
 
-                <p className="mt-4 text-sm font-medium text-slate-600">
-                  {MODE_DESCRIPTION[mode]}
+              {/* Palco central: intake em destaque, com o alvo materializando
+                  abaixo do campo quando a deteccao assenta. Peca da familia da
+                  vitrine: rotacao leve + selo de proposito no topo. */}
+              <div
+                className={cn(
+                  "card-brutal area-rise relative mx-auto max-w-3xl -rotate-[0.4deg] rounded-2xl border-slate-950 bg-white p-6 sm:p-8",
+                  // Respiro dedicado entre a explicacao e o palco (so na
+                  // entrada; em scan/resultado o palco abre a pagina).
+                  !loading && !error && !result && "mt-14 sm:mt-16",
+                  ac.liftShadow,
+                )}
+              >
+                {/* TODO(Ana): revisar o selo e o titulo do palco. */}
+                <span className="absolute -top-3.5 left-6 z-10 inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  Comece aqui
+                </span>
+                <h2 className="font-display text-xl font-black text-slate-950 sm:text-2xl">
+                  Cole seu GitHub e receba o raio-X
+                </h2>
+
+                <label className="mt-4 flex flex-wrap items-center gap-2 text-sm font-bold text-slate-600">
+                  {/* TODO(Ana): revisar rotulo e helper da area alvo. */}
+                  <span>Área alvo desta análise</span>
+                  <select
+                    value={area}
+                    onChange={(event) =>
+                      changeArea(event.target.value as AreaSelection)
+                    }
+                    className={cn(
+                      "rounded-xl border-2 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none",
+                      ac.input,
+                      ac.cardFocusRing,
+                    )}
+                  >
+                    <option value={GENERAL_AREA}>Geral</option>
+                    {areasTI.map((a) => (
+                      <option key={a.slug} value={a.slug}>
+                        {a.nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                  Vale só para esta análise e direciona as recomendações. Ex:
+                  você pode ser full stack e analisar um projeto de IA.
                 </p>
 
                 <form
                   onSubmit={handleSubmit}
-                  className="mt-4 flex flex-col gap-3 sm:flex-row"
+                  className="mt-5 flex flex-col gap-3 sm:flex-row"
                 >
                   <input
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder={PLACEHOLDER[mode]}
-                    className="w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-violet-200"
-                  />
-                  <button
-                    type="submit"
-                    disabled={loading || !input.trim()}
-                    className="btn-brutal-accent inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {loading ? (
-                      <Spinner className="h-4 w-4" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
+                    placeholder={INPUT_PLACEHOLDER}
+                    className={cn(
+                      "w-full rounded-xl border-2 bg-white px-4 py-4 text-base outline-none",
+                      ac.input,
+                      ac.cardFocusRing,
                     )}
+                  />
+                  <BrutalActionButton
+                    variant="ai"
+                    type="submit"
+                    disabled={detection.kind === "invalid"}
+                    loading={loading}
+                    icon={<Sparkles className="h-4 w-4" aria-hidden />}
+                    className="shrink-0 px-6 py-4"
+                  >
                     {loading ? "Analisando..." : "Analisar"}
-                  </button>
+                  </BrutalActionButton>
                 </form>
-                {mode === "repo" ? (
-                  <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-slate-500">
-                    <Globe className="h-3.5 w-3.5 text-slate-400" />O
-                    repositório precisa ser público.
-                  </p>
+
+                {/* TODO(Ana): revisar a copy do cartao-alvo e do motivo invalido. */}
+                {debouncedInput.trim() !== "" ? (
+                  preview.kind === "invalid" ? (
+                    <p className="mt-4 text-xs font-bold text-rose-700">
+                      {preview.reason}
+                    </p>
+                  ) : (
+                    <motion.div
+                      key={
+                        preview.kind === "repo"
+                          ? `repo:${preview.owner}/${preview.repo}`
+                          : `perfil:${preview.login}`
+                      }
+                      initial={reduce ? false : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.28, ease: "easeOut" }}
+                      className="mt-5 flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                    >
+                      <TargetAvatar
+                        key={
+                          preview.kind === "repo"
+                            ? preview.owner
+                            : preview.login
+                        }
+                        owner={
+                          preview.kind === "repo"
+                            ? preview.owner
+                            : preview.login
+                        }
+                      />
+                      <div className="min-w-0">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wide",
+                            ac.tag,
+                          )}
+                        >
+                          {preview.kind === "repo" ? "Repositório" : "Perfil"}
+                        </span>
+                        <p className="mt-1 truncate font-display text-lg font-black leading-tight text-slate-950">
+                          {preview.kind === "repo"
+                            ? `${preview.owner}/${preview.repo}`
+                            : `@${preview.login}`}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-slate-600">
+                          {MODE_DESCRIPTION[preview.kind]}
+                        </p>
+                        {preview.kind === "repo" ? (
+                          <p className="mt-1.5 flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                            <Globe
+                              className="h-3.5 w-3.5 text-slate-400"
+                              aria-hidden
+                            />
+                            O repositório precisa ser público.
+                          </p>
+                        ) : null}
+                      </div>
+                    </motion.div>
+                  )
                 ) : null}
               </div>
 
-              {loading ? <AnalysisSkeleton /> : null}
+              {!loading && !error && !result ? <BenefitPills /> : null}
+
+              {loading ? (
+                <ScanCard
+                  owner={
+                    detection.kind === "repo"
+                      ? detection.owner
+                      : detection.kind === "perfil"
+                        ? detection.login
+                        : null
+                  }
+                  display={
+                    detection.kind === "repo"
+                      ? `${detection.owner}/${detection.repo}`
+                      : detection.kind === "perfil"
+                        ? `@${detection.login}`
+                        : null
+                  }
+                  reduce={reduce}
+                />
+              ) : null}
 
               {!loading && error ? (
                 <AnalysisError
@@ -495,97 +1052,151 @@ export default function PortfolioAnalisar() {
                 />
               ) : null}
 
-              {!loading && !result ? (
-                <div className="space-y-8">
-                  <HowItWorks />
-                  <WhatYouGet />
-                </div>
-              ) : null}
-
               {!loading && !error && result ? (
-                <div className="space-y-8">
-                  <ResultHeader response={result} />
+                <div
+                  className="area-rise space-y-8"
+                  style={{ animationDelay: "0.08s" }}
+                >
+                  <ScoreHero
+                    response={result}
+                    scoreDelta={scoreDelta}
+                    reduce={reduce}
+                  />
 
                   {scoreDelta ? (
-                    <div className="rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a]">
-                      {/* TODO(Ana): revisar a copy do delta de nota. */}
-                      Sua nota foi de {scoreDelta.from} para {scoreDelta.to}
-                      {scoreDelta.to > scoreDelta.from
-                        ? ". Continua assim!"
-                        : scoreDelta.to === scoreDelta.from
-                          ? "."
-                          : ". Veja abaixo o que priorizar."}
-                    </div>
+                    <ScoreDeltaBanner
+                      from={scoreDelta.from}
+                      to={scoreDelta.to}
+                    />
                   ) : null}
 
                   {result.deterministic.suficienciaRazao?.trim() ? (
-                    <div className="flex items-start gap-2 rounded-2xl border-2 border-sky-300 bg-sky-50 p-4 text-sm font-medium text-sky-900">
+                    <div className="flex items-start gap-2 rounded-2xl border-2 border-slate-900 bg-sky-50 p-4 text-sm font-medium text-sky-900 shadow-[3px_3px_0_#0f172a]">
                       <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
                       <span>{result.deterministic.suficienciaRazao}</span>
                     </div>
                   ) : null}
 
-                  <TopRepos response={result} />
+                  {/* Spotlight fora das tabs: a ponte nota -> acao. */}
+                  <motion.div
+                    initial={
+                      reduce ? false : { opacity: 0, y: 16, scale: 0.98 }
+                    }
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={
+                      reduce
+                        ? { duration: 0 }
+                        : { delay: 0.3, duration: 0.4, ease: "easeOut" }
+                    }
+                    className="rotate-[0.5deg]"
+                  >
+                    <NextStepCard
+                      proximoPasso={result.qualitative.proximoPasso}
+                    />
+                  </motion.div>
 
-                  <AiSummary resumo={result.qualitative.resumo} />
+                  {/* Corpo revista: coluna narrativa (7) + trilho lateral
+                      consultavel (5). No mobile os wrappers viram display
+                      contents e as classes order-* definem a ordem de leitura
+                      empilhada: resumo, fortes/fracos, checklist, melhorias,
+                      repos, readme, next steps, reanalise. */}
+                  <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+                    <div className="contents lg:col-span-7 lg:block lg:space-y-8">
+                      <Reveal className="order-1 lg:order-none">
+                        <AiSummary resumo={result.qualitative.resumo} />
+                      </Reveal>
+                      <Reveal className="order-2 lg:order-none" delay={0.05}>
+                        <StrengthsWeaknesses
+                          pontosFortes={result.qualitative.pontosFortes}
+                          pontosFracos={result.qualitative.pontosFracos}
+                        />
+                      </Reveal>
+                      <Reveal className="order-4 lg:order-none" delay={0.05}>
+                        <Improvements
+                          melhorias={result.qualitative.melhorias}
+                        />
+                      </Reveal>
+                      {result.qualitative.readmeSugestao ? (
+                        <Reveal className="order-6 lg:order-none">
+                          <ReadmeSuggestion
+                            markdown={result.qualitative.readmeSugestao}
+                          />
+                        </Reveal>
+                      ) : null}
+                      <Reveal className="order-8 lg:order-none">
+                        <ReanalyzeCta
+                          confirming={confirmReanalyze}
+                          onStart={() => setConfirmReanalyze(true)}
+                          onConfirm={() => void runAnalysis()}
+                          onCancel={() => setConfirmReanalyze(false)}
+                        />
+                      </Reveal>
+                    </div>
 
-                  <ChecklistByCategory checks={result.deterministic.checks} />
-
-                  <StrengthsWeaknesses
-                    pontosFortes={result.qualitative.pontosFortes}
-                    pontosFracos={result.qualitative.pontosFracos}
-                  />
-
-                  <NextStepCard proximoPasso={result.qualitative.proximoPasso} />
-
-                  <Improvements melhorias={result.qualitative.melhorias} />
-
-                  <ReadmeSuggestion
-                    markdown={result.qualitative.readmeSugestao}
-                  />
-
-                  <NextStepsByArea area={result.area} />
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* TODO(Ana): revisar a copy da reanalise. */}
-                    {confirmReanalyze ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => void runAnalysis()}
-                          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-                        >
-                          <Sparkles className="h-4 w-4" />
-                          Confirmar (usa 1 análise do dia)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmReanalyze(false)}
-                          className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
-                        >
-                          Cancelar
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmReanalyze(true)}
-                        className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        Apliquei as melhorias, analisar de novo
-                      </button>
-                    )}
+                    <div className="contents lg:col-span-5 lg:block lg:space-y-8">
+                      <Reveal className="order-3 lg:order-none" delay={0.1}>
+                        <div className="space-y-4">
+                          {/* TODO(Ana): revisar o rotulo do trilho lateral. */}
+                          <SectionLabel ac={ac}>Raio-X completo</SectionLabel>
+                          <ChecklistByCategory
+                            checks={result.deterministic.checks}
+                            compact
+                          />
+                        </div>
+                      </Reveal>
+                      {result.mode === "perfil" ? (
+                        <Reveal className="order-5 lg:order-none">
+                          <TopRepos response={result} compact />
+                        </Reveal>
+                      ) : null}
+                      <Reveal className="order-7 lg:order-none">
+                        <NextStepsByArea area={result.area} />
+                      </Reveal>
+                    </div>
                   </div>
                 </div>
               ) : null}
 
-              {history && history.length > 0 ? (
-                <GithubHistory
-                  analyses={history}
-                  onOpen={(id) => void openHistory(id)}
-                  loadingId={historyLoadingId}
-                />
+              {!loading && !error && !result && history && history.length > 0 ? (
+                <details
+                  className={cn(
+                    "area-rise group rounded-2xl border-2 border-slate-950 bg-white shadow-[4px_4px_0_#0f172a] transition-shadow",
+                    ac.liftShadow,
+                  )}
+                  style={{ animationDelay: "0.16s" }}
+                >
+                  {/* TODO(Ana): revisar o rotulo da faixa colapsavel do historico. */}
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5">
+                    <span className="flex items-center gap-3 font-display text-lg font-black text-slate-950">
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                        aria-hidden
+                      >
+                        <History className="h-5 w-5" />
+                      </span>
+                      Análises anteriores
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-xs font-black",
+                          ac.tag,
+                        )}
+                      >
+                        {history.length}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className="h-5 w-5 shrink-0 text-slate-600 transition-transform group-open:rotate-180"
+                      aria-hidden
+                    />
+                  </summary>
+                  <div className="px-5 pb-5">
+                    <GithubHistory
+                      analyses={history}
+                      onOpen={(id) => void openHistory(id)}
+                      loadingId={historyLoadingId}
+                    />
+                  </div>
+                </details>
               ) : null}
             </div>
           )}

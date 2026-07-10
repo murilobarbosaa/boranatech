@@ -475,10 +475,11 @@ export default function Simulador() {
 
       <div className="mt-8 flex flex-col flex-wrap justify-center gap-3 sm:flex-row">
         <Link
-          href="/estudos"
+          href="/plano-carreira"
           className="btn-brutal-accent inline-flex cursor-pointer justify-center rounded-full px-6 py-3 font-black"
         >
-          Ver plano de estudos
+          {/* TODO(Ana): label do link pro plano de carreira */}
+          Ver plano de carreira
         </Link>
         <Link
           href={areaPageHref}

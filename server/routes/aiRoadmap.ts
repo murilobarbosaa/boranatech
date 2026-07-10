@@ -6,9 +6,11 @@ import {
   RoadmapIntakeSchema,
   type RoadmapIntake,
 } from "../../shared/aiRoadmap";
-import type { RoadmapV2 } from "../../shared/roadmapV2/types";
+import { roadmapsV2 } from "../../shared/roadmapV2/content";
+import type { RoadmapNode, RoadmapV2 } from "../../shared/roadmapV2/types";
 import {
   buildGenerationContext,
+  countLeaves,
   generateAiRoadmapSlug,
   generateSectionContent,
   generateSkeleton,
@@ -16,6 +18,7 @@ import {
 import { estimateCost } from "../lib/aiTools";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { env } from "../lib/env";
+import { fetchUserContextPool } from "../lib/userContext/pool";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -70,13 +73,24 @@ function sseInit(res: Response): void {
   res.flushHeaders?.();
 }
 
+// Emits fail-soft: cliente que fechou a aba mata o socket, mas a geracao segue
+// gerando e persistindo por secao ate ready/partial. Um throw de write aqui
+// NAO pode abortar o loop (cairia no catch de runSections e marcaria partial).
 function sseSend(res: Response, payload: Record<string, unknown>): void {
-  res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  try {
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  } catch (err) {
+    console.warn("[roadmap-ia] emit SSE falhou (cliente desconectado?):", err);
+  }
 }
 
 function sseDone(res: Response): void {
-  res.write("data: [DONE]\n\n");
-  res.end();
+  try {
+    res.write("data: [DONE]\n\n");
+    res.end();
+  } catch (err) {
+    console.warn("[roadmap-ia] fechamento SSE falhou (cliente desconectado?):", err);
+  }
 }
 
 async function setStatus(
@@ -543,20 +557,147 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
   }
 });
 
+// Ids das folhas OBRIGATORIAS da arvore (exclui optional), espelhando o
+// requiredLeaves do client (client/src/lib/roadmapV2/progress.ts): e essa a
+// base do badge Concluido, a mesma do percentual que a view mostra.
+function collectRequiredLeafIds(nodes: RoadmapNode[], into: Set<string>): void {
+  for (const node of nodes) {
+    if (node.optional === true) continue;
+    if (node.children && node.children.length > 0) {
+      collectRequiredLeafIds(node.children, into);
+    } else if (node.children === undefined) {
+      into.add(node.id);
+    }
+  }
+}
+
 // Lista os roadmaps do proprio usuario. Sem gate Pro: dado do dono (um ex-Pro
-// continua vendo o que gerou).
+// continua vendo o que gerou). Roadmaps ready levam totalSteps (folhas
+// obrigatorias do jsonb) e completedSteps (user_progress do dono, uma query
+// agregada, contando SO os nodeIds que sao folhas obrigatorias do proprio
+// roadmap, para opcionais/sub-passos marcados nao inflarem o badge); contagem
+// best-effort, falha degrada para null.
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   const userId = req.user!.id;
   const { data, error } = await supabaseAdmin
     .from("ai_roadmaps")
-    .select("id, slug, title, status, created_at, updated_at")
+    .select("id, slug, title, status, roadmap, created_at, updated_at")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) {
     // TODO(Ana): mensagem de falha ao listar roadmaps.
     return next(createError(500, "list_failed", "Nao foi possivel listar seus roadmaps."));
   }
-  res.json({ roadmaps: (data ?? []) as AiRoadmapListRow[] });
+  const rows = (data ?? []) as Array<AiRoadmapListRow & { roadmap: RoadmapV2 | null }>;
+
+  const doneIdsBySlug = new Map<string, Set<string>>();
+  let progressFailed = false;
+  const hasReady = rows.some((row) => row.status === "ready");
+  if (hasReady) {
+    const { data: progressRows, error: progressError } = await supabaseAdmin
+      .from("user_progress")
+      .select("item_key")
+      .eq("user_id", userId)
+      .eq("context", "course_progress")
+      .like("item_key", "ia-%");
+    if (progressError) {
+      progressFailed = true;
+      console.warn(
+        "[roadmap-ia] contagem de progresso da lista falhou:",
+        progressError.message,
+      );
+    } else {
+      for (const row of (progressRows ?? []) as Array<{ item_key: string }>) {
+        const sep = row.item_key.indexOf(":");
+        if (sep <= 0) continue;
+        const slug = row.item_key.slice(0, sep);
+        const nodeId = row.item_key.slice(sep + 1);
+        const ids = doneIdsBySlug.get(slug) ?? new Set<string>();
+        ids.add(nodeId);
+        doneIdsBySlug.set(slug, ids);
+      }
+    }
+  }
+
+  const roadmaps = rows.map(({ roadmap, ...row }) => {
+    if (row.status !== "ready" || !roadmap || !Array.isArray(roadmap.sections)) {
+      return { ...row, totalSteps: null, completedSteps: null };
+    }
+    const requiredIds = new Set<string>();
+    collectRequiredLeafIds(
+      roadmap.sections.flatMap((section) => section.children ?? []),
+      requiredIds,
+    );
+    const doneIds = doneIdsBySlug.get(row.slug);
+    let completed = 0;
+    if (doneIds) {
+      doneIds.forEach((id) => {
+        if (requiredIds.has(id)) completed += 1;
+      });
+    }
+    return {
+      ...row,
+      totalSteps: requiredIds.size,
+      completedSteps: progressFailed ? null : completed,
+    };
+  });
+  res.json({ roadmaps });
+});
+
+// Resumo do contexto que a geracao vai usar, para o painel do intake. Dono,
+// sem gate Pro (checkProStatus so injeta req.isPro). DECLARADA antes de /:slug
+// para "context" nao casar como slug. Mesmas fontes do buildGenerationContext.
+router.get("/context", async (req: Request, res: Response, next: NextFunction) => {
+  const userId = req.user!.id;
+  try {
+    const pool = await fetchUserContextPool(userId);
+
+    const quiz =
+      pool.quiz.ok && pool.quiz.data
+        ? { area: pool.quiz.data.area, level: pool.quiz.data.level }
+        : null;
+
+    const skills =
+      pool.skills.ok && pool.skills.data.length > 0
+        ? pool.skills.data.slice(0, 8).map((s) => s.label)
+        : [];
+
+    const trails =
+      pool.courses.ok && pool.courses.data.length > 0
+        ? pool.courses.data.map((course) => {
+            const trail = roadmapsV2.find((r) => r.slug === course.courseSlug);
+            if (trail) {
+              const total = countLeaves(
+                trail.sections.flatMap((section) => section.children),
+              );
+              const pct =
+                total > 0
+                  ? Math.min(100, Math.round((course.completedItems / total) * 100))
+                  : 0;
+              return { title: trail.title, pct };
+            }
+            return { title: course.title ?? course.courseSlug, pct: null };
+          })
+        : [];
+
+    const careerGoal =
+      pool.profile.ok && pool.profile.data?.careerGoal
+        ? pool.profile.data.careerGoal
+        : null;
+
+    const studyMinutes30d =
+      pool.studyDiary.ok && pool.studyDiary.data.totalMinutes30d > 0
+        ? pool.studyDiary.data.totalMinutes30d
+        : null;
+
+    res.json({ quiz, skills, trails, careerGoal, studyMinutes30d });
+  } catch (err) {
+    console.error("[roadmap-ia] contexto do intake falhou:", err);
+    // TODO(Ana): mensagem de falha ao carregar o contexto do intake.
+    return next(
+      createError(500, "context_failed", "Nao foi possivel carregar seu contexto agora."),
+    );
+  }
 });
 
 // Detalhe do roadmap do dono (jsonb completo + status). Sem gate Pro. 404

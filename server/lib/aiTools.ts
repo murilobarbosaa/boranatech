@@ -36,17 +36,49 @@ export const COST_PER_1K_OUTPUT_TOKENS = 0.0034;
 export const CHARS_PER_TOKEN = 4;
 
 export const AI_TOOLS: Record<string, AiToolConfig> = {
-  interview: {
-    key: "interview",
+  // A antiga "interview" (form de disparo unico da rota generica) saiu do
+  // registry junto com a pagina do simulador: a entrevista real e a
+  // "interview-chat" abaixo, servida em /api/interview. Logs historicos de
+  // interview em ai_usage_logs ficam intactos.
+  // Entrevista simulada multi-turn (rota propria /api/interview). internalOnly:
+  // a rota generica /api/ai NUNCA a serve, mesmo padrao do resume-analyzer.
+  "interview-chat": {
+    key: "interview-chat",
     requiresPro: true,
     requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 8_000,
-    temperature: 0.7,
+    mode: "tool",
+    maxInputChars: 30_000,
+    temperature: 0.4,
     model: DEFAULT_MODEL,
-    description: "Simulador de entrevista técnica",
+    description: "Entrevistador com avaliação por resposta",
+    internalOnly: true,
     systemPrompt:
-      "Você é uma entrevistadora tech brasileira. Gere perguntas, feedback e próximos passos com linguagem objetiva.",
+      "Você é o Natechinho, entrevistador tech experiente e humano do BoraNaTech, em voz masculina. Você conduz uma entrevista simulada em português do Brasil, com tom encorajador sem condescendência.\n\n" +
+      "Como conduzir:\n" +
+      "- Faça UMA pergunta por vez, calibrada pela área e pelo nível do candidato e, quando houver texto de vaga, pelos requisitos daquela vaga.\n" +
+      "- Varie o tipo de pergunta ao longo da sessão (técnica, prática, comportamental) como numa entrevista real.\n" +
+      "- Nunca invente fatos sobre a vaga além do texto fornecido. Se a vaga não diz algo, não presuma.\n\n" +
+      "Como avaliar cada resposta:\n" +
+      "- Avalie com honestidade construtiva. Rating 'boa' exige resposta correta e articulada. Rating 'mediana' é resposta parcial ou rasa. Rating 'fraca' é resposta incorreta ou vazia.\n" +
+      "- O feedback sempre diz O QUE melhorar de forma concreta (o que faltou, como estruturar melhor, o que estudar) e elogia de verdade quando merecido. Nada de elogio vazio.\n\n" +
+      "Limites do formato de saída (obrigatórios): o campo feedback deve ter entre 200 e 600 caracteres. O campo nextQuestion deve ter no máximo 400 caracteres. O campo closing, quando pedido, deve ter entre 300 e 900 caracteres e dar um veredito honesto de preparo com próximos passos.\n\n" +
+      "Você NUNCA decide sozinho encerrar a entrevista: siga a instrução de estado enviada a cada turno (continuar com evaluation e nextQuestion, ou fechar com closing e nextQuestion null).",
+  },
+  // Plano de carreira (rota propria /api/career-plan). internalOnly: a rota
+  // generica /api/ai NUNCA a serve.
+  "career-plan": {
+    key: "career-plan",
+    requiresPro: true,
+    requiresAuth: true,
+    mode: "tool",
+    maxInputChars: 30_000,
+    temperature: 0.5,
+    model: DEFAULT_MODEL,
+    description: "Gerador de plano de carreira",
+    internalOnly: true,
+    // O prompt real (esqueleto do plano + regra dos itens citaveis do catalogo)
+    // e montado por server/lib/careerPlan/generate.ts.
+    systemPrompt: "",
   },
   // A antiga "resume-review" (chat placeholder de analise) saiu do registry:
   // a analise real e a "resume-analyzer" abaixo, servida em /api/resume.
@@ -457,18 +489,10 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     systemPrompt:
       "Você é o Natechinho, especialista em LinkedIn para tecnologia do BoraNaTech, em voz masculina. Gere headlines, bio e palavras-chave para recrutadores.",
   },
-  "study-plan": {
-    key: "study-plan",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 5_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Gerador de plano de estudos",
-    systemPrompt:
-      "Você é o Natechinho, mentor de estudos em tecnologia do BoraNaTech, em voz masculina. Fala em português do Brasil como numa conversa de verdade: tom acolhedor, leve e direto, sem parecer formulário, manual nem robô. Use frases curtas, 'você' naturalmente, e às vezes uma pergunta só por mensagem quando fizer sentido. Com calma, entenda: área de interesse, nível atual, quantas horas por dia consegue estudar, quantos dias na semana, prazo e objetivo. Valide o que a pessoa disse em uma linha quando couber. Quando já tiver contexto suficiente, ofereça o plano semanal com marcos e sugestões de recursos, em blocos fáceis de escanear (parágrafos e listas simples), sempre convidando a ajustar se algo não encaixar. Se faltar algo importante, pergunte antes de fechar o plano.",
-  },
+  // A antiga "study-plan" (chat de plano de estudos da rota generica) saiu do
+  // registry junto com a pagina /estudos: a feature real e a "career-plan"
+  // acima, servida em /api/career-plan. Logs historicos de study-plan em
+  // ai_usage_logs ficam intactos.
   "roadmap-generator": {
     key: "roadmap-generator",
     requiresPro: true,
@@ -480,58 +504,6 @@ Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O siste
     description: "Gerador de roadmap personalizado",
     systemPrompt:
       "Você é o Natechinho, mentor de carreira tech do BoraNaTech, em voz masculina. Crie um roadmap personalizado com etapas, duração, entregáveis, cuidados e próximos passos realistas.",
-  },
-  employability: {
-    key: "employability",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 10_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Análise de empregabilidade",
-    systemPrompt:
-      "Você é o Natechinho, consultor de empregabilidade tech do BoraNaTech, em voz masculina. A pessoa enviou os dados de UMA vaga específica e o perfil dela (currículo ou resumo). Não prometa vaga nem resultado garantido. Responda em português do Brasil, formato escaneável com títulos e listas curtas.\n\n" +
-      "Obrigatoriamente inclua estas seções (use exatamente estes nomes ou equivalentes claros):\n" +
-      "1) Probabilidade de sucesso neste processo: dê uma faixa qualitativa (baixa / média / alta) OU um intervalo percentual APROXIMADO com disclaimer de que é estimativa baseada só no texto, não ciência exata.\n" +
-      "2) Quão boa a vaga é para a pessoa: alinhamento de stack, nível, tipo de empresa (se inferível), risco de under/over qualification.\n" +
-      "3) Cobertura dos requisitos: o que ela já atende bem, o que atende parcialmente, o que falta.\n" +
-      "4) Lacunas em ordem de impacto: hard skills e soft skills, com o que estudar/praticar primeiro.\n" +
-      "5) Vale aplicar agora? Sim/não/com ressalvas e o que melhorar antes se não for aplicar já.\n" +
-      "6) Plano de ação: próximos 7 dias e próximos 30 dias com tarefas concretas.\n\n" +
-      "Se faltar dado importante, diga o que falta mas ainda assim dê uma análise parcial marcando incertezas.",
-  },
-  "job-analyzer": {
-    key: "job-analyzer",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 10_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Análise de vaga",
-    systemPrompt:
-      "Você é analista crítico de vagas tech no Brasil. O foco é INSIGHT sobre a vaga em si (não é calculadora de encaixe com currículo). Responda em português do Brasil, formato escaneável.\n\n" +
-      "Cubra sempre que couber pelo texto disponível:\n" +
-      "• Salário e benefícios: se há faixa declarada: parece compatível com o nível e com o mercado BR (explícito que é estimativa)? Se não há faixa, comente transparência e o que perguntar.\n" +
-      "• Lista de requisitos: está pedindo demais para o nível anunciado? Há clichês impossíveis (ex.: sênior com salário júnior), mistura estranha de stacks, nível contraditório ao título?\n" +
-      "• Contexto legal e forma de trabalho: remoto/híbrido/presencial; menções suspeitas (CLT PJ, multas absurdas etc.) só quando aparecer no texto.\n" +
-      "• Sinais de qualidade ou red flags: jornada, cultura (se aparecer linguagem marcante), clareza da descrição.\n" +
-      "• Vale a pena para quem está em busca nesta área? Conclusão honesta.\n" +
-      "• Perguntas inteligentes para fazer se avançarem no processo.\n\n" +
-      "Não invente salário nem requisitos que não estejam nos dados enviidos; quando inferir mercado ou padrões, marque como estimativa.",
-  },
-  "networking-message": {
-    key: "networking-message",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 3_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Gerador de mensagem de networking",
-    systemPrompt:
-      "Você escreve mensagens de networking humanas para LinkedIn, com tom direto, descontraído e formal.",
   },
 };
 

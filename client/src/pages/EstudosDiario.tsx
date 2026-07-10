@@ -480,15 +480,16 @@ export default function EstudosDiario() {
                   </p>
                 </div>
 
-                {/* TODO(Ana): copy da CTA do plano de estudos com IA */}
+                {/* TODO(Ana): copy da CTA do plano de carreira com IA */}
                 {!isPro && !loading ? (
                   <AiCtaLink
-                    href="/estudos"
-                    description="A IA monta seu cronograma por semana"
+                    href="/plano-carreira"
+                    description="A IA monta sua rota com cronograma"
                     accent="fuchsia"
                     className="w-full"
                   >
-                    Cansou de planejar na mão? Monte seu plano de estudos com IA
+                    Cansou de planejar na mão? Monte seu plano de carreira com
+                    IA
                   </AiCtaLink>
                 ) : null}
               </aside>

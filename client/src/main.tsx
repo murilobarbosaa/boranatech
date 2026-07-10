@@ -2,9 +2,14 @@ import "./lib/recoverySnapshot";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import posthog from "posthog-js";
+import { z } from "zod";
 import App from "./App";
 import "./fonts.css";
 import "./index.css";
+
+// CSP: desliga o probe de eval e o JIT fastpass do Zod (new Function), que
+// dispara securitypolicyviolation. Precisa rodar antes do primeiro parse.
+z.config({ jitless: true });
 
 posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
   api_host: import.meta.env.VITE_POSTHOG_HOST,

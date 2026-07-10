@@ -37,6 +37,7 @@ type MenuItem = {
   // do isPro (100% Pro) pra nao parecer pagina 100% paga.
   isFreemium?: boolean;
   isWomen?: boolean;
+  badge?: string;
 };
 
 type MenuColumn = {
@@ -129,9 +130,10 @@ const menuData: DropdownMenu[] = [
             isPro: true,
           },
           {
-            label: "Plano de Estudos",
-            description: "Monte sua rotina personalizada",
-            path: "/estudos",
+            label: "Plano de Carreira",
+            // TODO(Ana): validar description (diferenciar do Roadmap com IA)
+            description: "A rota da carreira: ordem, certificações e prazos",
+            path: "/plano-carreira",
             isPro: true,
           },
           {
@@ -208,14 +210,9 @@ const menuData: DropdownMenu[] = [
         items: [
           {
             label: "Entrevista",
-            description: "Prepare-se para processos seletivos",
+            // TODO(Ana): validar description da entrada unificada
+            description: "Preparação para vaga e treino com IA",
             path: "/entrevistas",
-            isPro: true,
-          },
-          {
-            label: "Simulador de Entrevista",
-            description: "Treine com IA e receba feedback",
-            path: "/entrevistas/simulador",
             isPro: true,
           },
           {
@@ -226,10 +223,9 @@ const menuData: DropdownMenu[] = [
             isPro: true,
           },
           {
-            label: "Networking",
-            description: "Conecte-se com as pessoas certas",
-            path: "/networking",
-            isPro: true,
+            label: "Portfólio",
+            description: "Monte um portfólio que gera entrevistas",
+            path: "/portfolio",
           },
         ],
       },
@@ -278,12 +274,6 @@ const menuData: DropdownMenu[] = [
             path: "/salarios",
           },
           {
-            label: "Empregabilidade",
-            description: "Prontidão vaga × perfil e análise crítica do anúncio",
-            path: "/empregabilidade",
-            isPro: true,
-          },
-          {
             label: "Ranking",
             description: "Empresas com mais vagas para júnior",
             path: "/empresas/ranking-junior",
@@ -322,7 +312,7 @@ const menuData: DropdownMenu[] = [
             label: "Mentorias e Ebooks",
             description: "Mentorias e ebooks de parceiros",
             path: "/mentorias",
-            isPro: true,
+            badge: "Em breve", // TODO(Ana): validar texto do selo
           },
           { label: "Mulheres", path: "/mulheres", isWomen: true },
         ],
@@ -442,12 +432,14 @@ function DropdownItemTitle({
   isFreemium,
   isWomen,
   label,
+  badge,
 }: {
   active: boolean;
   isPro?: boolean;
   isFreemium?: boolean;
   isWomen?: boolean;
   label: string;
+  badge?: string;
 }) {
   if (isWomen) {
     return (
@@ -470,6 +462,11 @@ function DropdownItemTitle({
       className={`relative z-10 flex items-start text-sm leading-snug text-slate-900 ${isPro || active ? "font-bold" : "font-medium"}`}
     >
       <span>{label}</span>
+      {badge ? (
+        <span className="ml-1.5 mt-[1px] inline-flex shrink-0 items-center rounded-full border border-slate-400 bg-slate-100 px-1.5 py-px text-[9px] font-black uppercase tracking-wide text-slate-600">
+          {badge}
+        </span>
+      ) : null}
       {isPro ? <ProStarBadge /> : isFreemium ? <FreemiumStarBadge /> : null}
       {active ? <ActiveRouteDot /> : null}
     </span>
@@ -621,6 +618,7 @@ function DesktopMenuItem({
                           isFreemium={item.isFreemium}
                           isWomen={item.isWomen}
                           label={item.label}
+                          badge={item.badge}
                         />
                         {item.description ? (
                           <span
@@ -683,7 +681,6 @@ function DesktopNav({ location }: { location: string }) {
         className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a,0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
       >
         Comparador
-        <ProStarBadge />
       </Link>
     </nav>
   );
@@ -754,6 +751,7 @@ function MobileAccordion({
                       isFreemium={item.isFreemium}
                       isWomen={item.isWomen}
                       label={item.label}
+                      badge={item.badge}
                     />
                     {item.description ? (
                       <span
@@ -1017,7 +1015,6 @@ export default function Header() {
             className="mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-3 text-center text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a,0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
           >
             Comparador
-            <ProStarBadge />
           </Link>
         </nav>
 

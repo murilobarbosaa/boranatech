@@ -10,6 +10,7 @@ import {
 import RoadmapTrail from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { useRoadmapProgress } from "@/hooks/useRoadmapProgress";
+import { useTrailCelebration } from "@/hooks/useTrailCelebration";
 import { nodeProgress } from "@/lib/roadmapV2/progress";
 import {
   getAiRoadmap,
@@ -35,6 +36,12 @@ const COPY = {
   failedTitle: "A geracao deste roadmap falhou",
   failedBody: "Nao se preocupe, nada foi cobrado. Gere um novo quando quiser.",
   failedCta: "Gerar um novo roadmap",
+  // TODO(Ana): revisar toda a copy de conclusao.
+  completedTitle: "Voce concluiu este roadmap!",
+  completedBody:
+    "Parabens pela consistencia. Proximo passo: colocar o que voce aprendeu a prova.",
+  completedCtaGithub: "Analisar meu projeto no GitHub",
+  completedCtaNext: "Gerar o proximo roadmap",
 } as const;
 
 // Refetch periodico leve enquanto o server ainda esta gerando.
@@ -82,6 +89,16 @@ export default function RoadmapIAView() {
       (section) => section.children && section.children.length > 0,
     );
   }, [roadmap]);
+
+  // Mesma orquestracao de conclusao das trilhas estaticas: drawer fecha,
+  // confete na estacao e walk() destrava a proxima ao vivo (sem F5).
+  const trailRef = useTrailCelebration({
+    sections: visibleSections,
+    done,
+    ready,
+    openSectionId,
+    onCloseDrawer: () => setOpenSectionId(null),
+  });
 
   const overall = useMemo(() => {
     return visibleSections.reduce(
@@ -178,6 +195,33 @@ export default function RoadmapIAView() {
                 </span>
               </div>
 
+              {detail.status === "ready" &&
+              overall.total > 0 &&
+              overall.done >= overall.total ? (
+                <div className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-emerald-50 p-5 shadow-[4px_4px_0_#10b981]">
+                  <h2 className="font-display text-xl font-black text-slate-950">
+                    {COPY.completedTitle}
+                  </h2>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">
+                    {COPY.completedBody}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link
+                      href="/portfolio/analisar"
+                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                    >
+                      {COPY.completedCtaGithub}
+                    </Link>
+                    <Link
+                      href="/roadmaps/ia"
+                      className="inline-flex items-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                    >
+                      {COPY.completedCtaNext}
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+
               {detail.status === "partial" ? (
                 <div className="mt-6">
                   {resuming ? (
@@ -211,6 +255,7 @@ export default function RoadmapIAView() {
 
               {ready ? (
                 <RoadmapTrail
+                  ref={trailRef}
                   sections={visibleSections}
                   done={done}
                   onOpenSection={setOpenSectionId}

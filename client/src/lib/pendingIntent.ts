@@ -4,7 +4,8 @@ const TTL_MS = 5 * 60 * 1000;
 export type ProgressContext =
   | "portfolio_checklist"
   | "course_progress"
-  | "quiz_history";
+  | "quiz_history"
+  | "career_plan";
 
 export interface ProgressIntent {
   kind: "progress";

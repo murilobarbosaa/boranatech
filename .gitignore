@@ -25,3 +25,6 @@ supabase/.branches/
 
 # Local DB content backups (never commit)
 backups/
+
+# Bundle analysis (ANALYZE=1 pnpm build)
+bundle-stats.html

@@ -1,6 +1,8 @@
 import { getActivitySummary } from "./tools/getActivitySummary";
+import { getCareerPlan } from "./tools/getCareerPlan";
 import { getFavorites } from "./tools/getFavorites";
 import { getGithubAnalysis } from "./tools/getGithubAnalysis";
+import { getInterviewSessions } from "./tools/getInterviewSessions";
 import { getLinkedinAnalysis } from "./tools/getLinkedinAnalysis";
 import { getProfileSkills } from "./tools/getProfileSkills";
 import { getQuizResult } from "./tools/getQuizResult";
@@ -13,8 +15,8 @@ import type { AgentTool } from "./types";
 // Free: searchPlatformContent, suggestNavigation.
 // Pro (tier "pro"): getQuizResult, getFavorites, getProfileSkills,
 // getActivitySummary, getLinkedinAnalysis, getGithubAnalysis,
-// getResumeAnalysis. O gating por tier abaixo garante que usuario free NUNCA
-// recebe uma tool tier "pro".
+// getResumeAnalysis, getInterviewSessions, getCareerPlan. O gating por tier
+// abaixo garante que usuario free NUNCA recebe uma tool tier "pro".
 const TOOLS: AgentTool[] = [
   searchPlatformContent,
   suggestNavigation,
@@ -25,6 +27,8 @@ const TOOLS: AgentTool[] = [
   getLinkedinAnalysis,
   getGithubAnalysis,
   getResumeAnalysis,
+  getInterviewSessions,
+  getCareerPlan,
 ];
 
 // Selecao por tier verificado server-side. Free (!isPro) recebe APENAS tools com

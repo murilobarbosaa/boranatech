@@ -31,8 +31,9 @@ function day(value: string | null): string {
 
 // Monta as linhas de cada fonte, em ordem de prioridade:
 // plano > quiz > roadmaps > cursos > skills > linkedin > github > analise de
-// curriculo > curriculo criado > diario > perfil > favoritos > badges. Cada
-// bloco e um array de linhas completas.
+// curriculo > curriculo criado > entrevista simulada > plano de carreira >
+// diario > perfil > favoritos > badges. Cada bloco e um array de linhas
+// completas.
 function buildSourceBlocks(pool: UserContextPool): string[][] {
   const blocks: string[][] = [];
 
@@ -127,6 +128,39 @@ function buildSourceBlocks(pool: UserContextPool): string[][] {
     const r = pool.resumes.data;
     blocks.push([
       `- Curriculo criado na plataforma: "${r.latestTitle ?? "sem titulo"}" em ${day(r.latestCreatedAt)} (${r.total} no total).`,
+    ]);
+  }
+
+  // Ultima entrevista simulada (interview_sessions). Ausencia e omitida (o
+  // padrao de linha explicita de ausencia e exclusivo do quiz).
+  if (pool.interview.ok && pool.interview.data) {
+    const i = pool.interview.data;
+    const tipo = i.kind === "job" ? "para vaga" : "geral";
+    const estado =
+      i.status === "completed"
+        ? i.verdict?.result === "prepared"
+          ? "concluida com criterio de preparo atingido"
+          : i.verdict?.result === "question_cap"
+            ? "concluida no limite de perguntas"
+            : i.verdict?.result === "stopped_early"
+              ? "encerrada pela propria pessoa"
+              : "concluida"
+        : "em andamento";
+    blocks.push([
+      `- Ultima entrevista simulada: ${tipo}, area ${i.area ?? "nao registrada"}, ${estado}, ${i.goodCount} de ${i.questionCount} respostas boas (em ${day(i.updatedAt)}).`,
+    ]);
+  }
+
+  // Plano de carreira ativo (career_plans). checklistDone null = contagem de
+  // progresso indisponivel, dito explicitamente (nunca vira 0).
+  if (pool.careerPlan.ok && pool.careerPlan.data) {
+    const p = pool.careerPlan.data;
+    const progresso =
+      p.checklistDone !== null
+        ? `${p.checklistDone} de ${p.checklistTotal} itens concluidos`
+        : "progresso indisponivel no momento";
+    blocks.push([
+      `- Plano de carreira ativo: area ${p.area ?? "nao registrada"}, ${progresso} (criado em ${day(p.createdAt)}).`,
     ]);
   }
 

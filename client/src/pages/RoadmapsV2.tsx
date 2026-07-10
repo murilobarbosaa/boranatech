@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Redirect, useParams } from "wouter";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -13,24 +13,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import RoadmapTrail, {
-  type TrailHandle,
-} from "@/components/roadmapV2/RoadmapTrail";
+import RoadmapTrail from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { frontend, roadmapsV2 } from "@/lib/roadmapV2/content";
-import { isComplete, nodeProgress } from "@/lib/roadmapV2/progress";
+import { nodeProgress } from "@/lib/roadmapV2/progress";
 import { useRoadmapProgress } from "@/hooks/useRoadmapProgress";
+import { useTrailCelebration } from "@/hooks/useTrailCelebration";
 import { loadLanguage, saveLanguage } from "@/lib/roadmapV2/languageStorage";
-
-// Beats of the section-complete sequence, with soft pauses between each step:
-// a) station turns green (immediate, derived from `done`)
-// b) hold on the green station, then the drawer closes itself
-// c) after the drawer is fully gone, the confetti bursts
-// d) after the confetti settles, the dots walk to the next station (slow, in the trail)
-// e) the next station unlocks (gated on the walk inside the trail)
-const GREEN_HOLD = 580;
-const CLOSE_TO_BURST = 640;
-const BURST_TO_WALK = 480;
 
 export default function RoadmapsV2() {
   const params = useParams();
@@ -60,19 +49,13 @@ export default function RoadmapsV2() {
     if (languageId) saveLanguage(slug, languageId);
   }, [slug, languageId]);
 
-  const trailRef = useRef<TrailHandle>(null);
-  const timeouts = useRef<ReturnType<typeof setTimeout>[]>([]);
-
-  const completed = useMemo(
-    () => roadmap.sections.map((section) => isComplete(section, done)),
-    [roadmap, done],
-  );
-
-  // Seeded on the first settled (ready) render with the loaded completion, so a
-  // reload never replays the confetti + line-walk for already-complete sections.
-  // Starts null because the logged-in `done` arrives async: seeding eagerly with
-  // the empty first render would make the celebration fire when the data lands.
-  const prevCompleted = useRef<boolean[] | null>(null);
+  const trailRef = useTrailCelebration({
+    sections: roadmap.sections,
+    done,
+    ready,
+    openSectionId,
+    onCloseDrawer: () => setOpenSectionId(null),
+  });
 
   const overall = useMemo(() => {
     return roadmap.sections.reduce(
@@ -89,63 +72,6 @@ export default function RoadmapsV2() {
 
   const overallPct =
     overall.total > 0 ? Math.round((overall.done / overall.total) * 100) : 0;
-
-  useEffect(() => {
-    // Wait until the progress is settled (anon: immediate; logged-in: after the
-    // server load). The first settled render seeds prevCompleted with the loaded
-    // completion and animates nothing, so only new in-session changes celebrate.
-    // Resetting to null on every unsettled cycle (initial load, in-place login,
-    // logout) forces a fresh re-seed when ready returns, so a server delta (e.g.
-    // progress from another device) does not replay through this parent effect,
-    // which (unlike the trail) is not remounted by the ready gate.
-    if (!ready) {
-      prevCompleted.current = null;
-      return;
-    }
-    const prev = prevCompleted.current;
-    if (prev === null) {
-      prevCompleted.current = completed;
-      return;
-    }
-    roadmap.sections.forEach((section, i) => {
-      const wasComplete = prev[i] ?? false;
-      const nowComplete = completed[i];
-      if (nowComplete && !wasComplete) {
-        const sequence = () => {
-          // c) confetti, then d) the slow walk once it settles
-          const burstTimer = setTimeout(
-            () => trailRef.current?.burst(i),
-            CLOSE_TO_BURST,
-          );
-          const walkTimer = setTimeout(
-            () => trailRef.current?.walk(i),
-            CLOSE_TO_BURST + BURST_TO_WALK,
-          );
-          timeouts.current.push(burstTimer, walkTimer);
-        };
-        if (openSectionId === section.id) {
-          // b) hold on the green station, then close the drawer before celebrating
-          const closeTimer = setTimeout(() => {
-            setOpenSectionId(null);
-            sequence();
-          }, GREEN_HOLD);
-          timeouts.current.push(closeTimer);
-        } else {
-          sequence();
-        }
-      } else if (!nowComplete && wasComplete) {
-        trailRef.current?.unwalk(i);
-      }
-    });
-    prevCompleted.current = completed;
-  }, [completed, openSectionId, ready]);
-
-  useEffect(() => {
-    const pending = timeouts.current;
-    return () => {
-      pending.forEach((id) => clearTimeout(id));
-    };
-  }, []);
 
   const openSection = openSectionId
     ? (roadmap.sections.find((section) => section.id === openSectionId) ?? null)

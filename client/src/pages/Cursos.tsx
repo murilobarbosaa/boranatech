@@ -581,15 +581,15 @@ export default function Cursos() {
 
           {!isPro && !loading ? (
             <div className="mb-8">
-              {/* TODO(Ana): copy da CTA do plano de estudos */}
+              {/* TODO(Ana): copy da CTA do plano de carreira */}
               <AiCtaLink
-                href="/estudos"
-                description="A IA monta a ordem certa e o ritmo pra você"
+                href="/plano-carreira"
+                description="A IA monta a rota e a ordem certa pra você"
                 accent="amber"
                 className="w-full"
               >
-                Não sabe quais cursos fazer? Monte um plano de estudos
-                personalizado e descubra a ordem certa
+                Não sabe quais cursos fazer? Monte seu plano de carreira e
+                descubra a ordem certa
               </AiCtaLink>
             </div>
           ) : null}

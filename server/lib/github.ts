@@ -1,4 +1,9 @@
 import { env } from "./env";
+import {
+  detectGithubTarget,
+  isValidOwner,
+  isValidRepo,
+} from "../../shared/github/detect";
 import type {
   GithubDeepSignals,
   GithubProfileData,
@@ -21,12 +26,6 @@ import type {
 const API_BASE = "https://api.github.com";
 const RAW_BASE = "https://raw.githubusercontent.com";
 const REQUEST_TIMEOUT_MS = 10_000;
-
-// Formato permitido pelo GitHub.
-// owner/login: 1 a 39 caracteres, letras, numeros e hifen, sem hifen no inicio nem no fim.
-const OWNER_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
-// repo: 1 a 100 caracteres, letras, numeros, ponto, sublinhado e hifen.
-const REPO_RE = /^[A-Za-z0-9._-]{1,100}$/;
 
 // Erros normalizados. A rota traduz para HTTP no proximo passo.
 
@@ -53,85 +52,22 @@ export class GithubFetchError extends Error {
   }
 }
 
-// Parsers puros (exportados, testados sem rede)
+// Parsers puros (exportados, testados sem rede). Wrappers finos sobre a fonte
+// unica de deteccao (shared/github/detect.ts): devolvem null quando o input
+// nao e do tipo pedido.
 
 export function parseRepoInput(
   input: string,
 ): { owner: string; repo: string } | null {
-  if (typeof input !== "string") return null;
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  let owner: string | undefined;
-  let repo: string | undefined;
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    let url: URL;
-    try {
-      url = new URL(trimmed);
-    } catch {
-      return null;
-    }
-    if (url.hostname.toLowerCase() !== "github.com") return null;
-    const segments = url.pathname.split("/").filter(Boolean);
-    if (segments.length < 2) return null;
-    owner = segments[0];
-    repo = segments[1];
-  } else {
-    // Atalho owner/repo. Nao pode trazer mais nada depois do repo.
-    const segments = trimmed.split("/");
-    if (segments.length !== 2) return null;
-    owner = segments[0];
-    repo = segments[1];
-  }
-
-  if (!owner || !repo) return null;
-  repo = stripGitSuffix(repo);
-
-  if (!isValidOwner(owner)) return null;
-  if (!isValidRepo(repo)) return null;
-
-  return { owner, repo };
+  const target = detectGithubTarget(input);
+  return target.kind === "repo"
+    ? { owner: target.owner, repo: target.repo }
+    : null;
 }
 
 export function parseProfileInput(input: string): { login: string } | null {
-  if (typeof input !== "string") return null;
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  let login: string | undefined;
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    let url: URL;
-    try {
-      url = new URL(trimmed);
-    } catch {
-      return null;
-    }
-    if (url.hostname.toLowerCase() !== "github.com") return null;
-    const segments = url.pathname.split("/").filter(Boolean);
-    if (segments.length !== 1) return null;
-    login = segments[0];
-  } else {
-    if (trimmed.includes("/")) return null;
-    login = trimmed;
-  }
-
-  if (!login || !isValidOwner(login)) return null;
-  return { login };
-}
-
-function stripGitSuffix(repo: string): string {
-  return repo.toLowerCase().endsWith(".git") ? repo.slice(0, -4) : repo;
-}
-
-function isValidOwner(value: string): boolean {
-  return OWNER_RE.test(value);
-}
-
-function isValidRepo(value: string): boolean {
-  if (value === "." || value === "..") return false;
-  return REPO_RE.test(value);
+  const target = detectGithubTarget(input);
+  return target.kind === "perfil" ? { login: target.login } : null;
 }
 
 // Cliente HTTP interno (nao exportado)

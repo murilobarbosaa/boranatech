@@ -8,11 +8,15 @@ import {
   Star,
   Users,
 } from "lucide-react";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { cn } from "@/lib/utils";
 import type {
   GithubAnalysisResponse,
   ProfileMetadata,
   RepoMetadata,
 } from "@shared/github/schema";
+
+const ac = getPageAccentUi("violet");
 
 function formatDate(iso: string | null): string {
   if (!iso) return "sem data";
@@ -68,8 +72,12 @@ export function MetadataChips({ response }: MetadataProps) {
   );
 }
 
-/** Grid de repositórios em destaque, só no modo perfil. Seção própria. */
-export function TopRepos({ response }: MetadataProps) {
+/** Grid de repositórios em destaque, só no modo perfil. Seção própria.
+ * compact: coluna unica (trilho lateral do resultado); default mantem o atual. */
+export function TopRepos({
+  response,
+  compact = false,
+}: MetadataProps & { compact?: boolean }) {
   if (response.mode !== "perfil") return null;
 
   const m = response.metadata as ProfileMetadata;
@@ -80,11 +88,19 @@ export function TopRepos({ response }: MetadataProps) {
       <p className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-slate-600">
         Repositórios em destaque
       </p>
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-3",
+          compact ? undefined : "md:grid-cols-2",
+        )}
+      >
         {m.topRepos.map((repo) => (
           <div
             key={repo.name}
-            className="card-brutal rounded-2xl border-slate-950 bg-white p-4"
+            className={cn(
+              "card-brutal rounded-2xl border-slate-950 bg-white p-4",
+              ac.liftShadow,
+            )}
           >
             <div className="flex items-center justify-between gap-2">
               <p className="truncate font-display text-base font-black text-slate-950">

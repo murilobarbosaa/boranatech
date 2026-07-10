@@ -581,32 +581,6 @@ export const studyTechniques = [
   },
 ];
 
-export const networkingGuide = [
-  "Como abordar devs sênior sem ser invasivo",
-  "O que postar no LinkedIn para aparecer",
-  "Como participar de comunidades online",
-  "Como se comportar em eventos tech",
-  "Como manter contato após uma conversa",
-];
-
-export const communityMap = [
-  "Front-end",
-  "Back-end",
-  "Dados",
-  "Mobile",
-  "UX",
-  "DevOps",
-  "Geral",
-].map((area) => ({
-  area,
-  links: [
-    "Discord da comunidade",
-    "Telegram de vagas",
-    "Grupo LinkedIn",
-    "WhatsApp local",
-  ],
-}));
-
 export const freelancePlatforms = [
   "99Freelas",
   "Workana",

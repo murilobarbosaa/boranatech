@@ -21,9 +21,7 @@ import {
   Map,
   MessageSquare,
   Mic,
-  Send,
   Sparkles,
-  TrendingUp,
   Users,
 } from "lucide-react";
 
@@ -79,8 +77,6 @@ const PRO_FEATURE_ICONS: Record<string, LucideIcon> = {
   CalendarCheck,
   Linkedin,
   Github,
-  TrendingUp,
-  Send,
   Users,
 };
 
@@ -173,9 +169,10 @@ export default function Checkout() {
 
   return (
     <Layout>
+      {/* TODO(Ana): revisar meta description do plano Pro apos remocao de ferramentas */}
       <SEO
         title="Plano Pro · Bora na Tech?"
-        description="Desbloqueie 8 ferramentas com IA pra entrar em TI: roadmaps, plano de estudos, análise de currículo, LinkedIn, portfólio, entrevista, empregabilidade e networking. A partir de R$ 14,99/mês no plano anual."
+        description="Desbloqueie as ferramentas com IA pra entrar em TI: roadmaps, plano de carreira, análise de currículo, LinkedIn, portfólio e entrevista. A partir de R$ 14,99/mês no plano anual."
         keywords={[
           "plano pro bora na tech",
           "ia carreira ti",
@@ -271,8 +268,9 @@ export default function Checkout() {
               {...fade(0.1)}
               className="mx-auto mt-5 max-w-2xl text-base md:text-lg font-medium leading-relaxed text-slate-300"
             >
-              O Pro desbloqueia 8 ferramentas com IA pra acelerar sua entrada em
-              TI.
+              {/* TODO(Ana): revisar copy sem contagem de ferramentas */}
+              O Pro desbloqueia as ferramentas com IA pra acelerar sua entrada
+              em TI.
             </motion.p>
 
             <motion.ul
@@ -412,7 +410,8 @@ export default function Checkout() {
                 })}
               </ul>
               <p className="mt-4 text-xs font-medium text-slate-400">
-                E mais: {extraNames}. Total de 8 ferramentas com IA.
+                {/* TODO(Ana): revisar copy sem contagem de ferramentas */}E
+                mais: {extraNames}.
               </p>
             </motion.div>
           </div>

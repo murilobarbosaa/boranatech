@@ -192,14 +192,16 @@ const PRO_TOOLS: ProTool[] = [
   {
     label: "entrevista",
     title: "Entrevistas",
-    route: "/entrevistas/simulador",
-    desc: "Simulador de entrevistas com IA",
+    route: "/entrevistas",
+    // TODO(Ana): copy do card de entrevistas
+    desc: "Treino de entrevistas com IA",
   },
   {
-    label: "estudos",
-    title: "Plano de estudos",
-    route: "/estudos",
-    desc: "Plano de estudos personalizado",
+    // TODO(Ana): copy do card de plano de carreira
+    label: "carreira",
+    title: "Plano de carreira",
+    route: "/plano-carreira",
+    desc: "A rota da sua carreira com IA",
   },
   {
     label: "linkedin",
@@ -212,18 +214,6 @@ const PRO_TOOLS: ProTool[] = [
     title: "Portfólio",
     route: "/portfolio/analisar",
     desc: "Analisa seu portfólio do GitHub",
-  },
-  {
-    label: "networking",
-    title: "Networking",
-    route: "/networking",
-    desc: "Gera mensagens de networking",
-  },
-  {
-    label: "empregabilidade",
-    title: "Empregabilidade",
-    route: "/empregabilidade",
-    desc: "Análise da sua empregabilidade",
   },
 ];
 

@@ -14,13 +14,11 @@ import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
 import Home from "./pages/home/HomeLanding";
-import AgentWidget from "./components/agent/AgentWidget";
 
 const Admin = lazy(() => import("@/pages/Admin"));
 const AreaDetalhe = lazy(() => import("@/pages/AreaDetalhe"));
 const Areas = lazy(() => import("@/pages/Areas"));
 const Auth = lazy(() => import("@/pages/Auth"));
-const AuthGatePlayground = lazy(() => import("@/pages/dev/AuthGatePlayground"));
 const BemVindo = lazy(() => import("@/pages/BemVindo"));
 const Cadastro = lazy(() => import("@/pages/Cadastro"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
@@ -33,19 +31,16 @@ const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
 const CurriculoGerar = lazy(() => import("@/pages/CurriculoGerar"));
 const CurriculoLinkedin = lazy(() => import("@/pages/CurriculoLinkedin"));
 const Cursos = lazy(() => import("@/pages/Cursos"));
-const DevProBorders = lazy(() => import("@/pages/dev/ProBordersPlayground"));
 const Dicas = lazy(() => import("@/pages/Dicas"));
 const Dicionario = lazy(() => import("@/pages/Dicionario"));
-const Empregabilidade = lazy(() => import("@/pages/Empregabilidade"));
 const EmpresaDetalhe = lazy(() => import("@/pages/EmpresaDetalhe"));
 const EmpresaRankingJunior = lazy(() => import("@/pages/EmpresaRankingJunior"));
 const Empresas = lazy(() => import("@/pages/Empresas"));
 const EntrevistaDesafios = lazy(() => import("@/pages/EntrevistaDesafios"));
 const EntrevistaPerguntas = lazy(() => import("@/pages/EntrevistaPerguntas"));
-const EntrevistaSimulador = lazy(() => import("@/pages/EntrevistaSimulador"));
+const EntrevistaSessao = lazy(() => import("@/pages/EntrevistaSessao"));
 const Entrevistas = lazy(() => import("@/pages/Entrevistas"));
 const Estagio = lazy(() => import("@/pages/Estagio"));
-const Estudos = lazy(() => import("@/pages/Estudos"));
 const EstudosDiario = lazy(() => import("@/pages/EstudosDiario"));
 const Eventos = lazy(() => import("@/pages/Eventos"));
 const Evolucao = lazy(() => import("@/pages/Evolucao"));
@@ -62,11 +57,11 @@ const Licenca = lazy(() => import("@/pages/Licenca"));
 const LinkedinAnalisar = lazy(() => import("@/pages/LinkedinAnalisar"));
 const Mentorias = lazy(() => import("@/pages/Mentorias"));
 const Mulheres = lazy(() => import("@/pages/Mulheres"));
-const Networking = lazy(() => import("@/pages/Networking"));
 const Noticias = lazy(() => import("@/pages/Noticias"));
 const Perfil = lazy(() => import("@/pages/Perfil"));
 const PerfilFavoritos = lazy(() => import("@/pages/PerfilFavoritos"));
 const PerguntasFrequentes = lazy(() => import("@/pages/PerguntasFrequentes"));
+const PlanoCarreira = lazy(() => import("@/pages/PlanoCarreira"));
 const Plataformas = lazy(() => import("@/pages/Plataformas"));
 const PortfolioAnalisar = lazy(() => import("@/pages/PortfolioAnalisar"));
 const Privacidade = lazy(() => import("@/pages/Privacidade"));
@@ -168,7 +163,17 @@ function Router() {
         <Route path="/salarios" component={Salarios} />
         <Route path="/entrevistas" component={Entrevistas} />
         <Route path="/entrevistas/perguntas" component={EntrevistaPerguntas} />
-        <Route path="/entrevistas/simulador" component={EntrevistaSimulador} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/entrevistas/simulador">
+          {() => <Redirect to="/entrevistas" />}
+        </Route>
+        <Route path="/entrevistas/sessao/:id">
+          {() => (
+            <RequireAuth>
+              <EntrevistaSessao />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/entrevistas/desafios" component={EntrevistaDesafios} />
         <Route path="/portfolio">
           {() => <Redirect to="/portfolio/analisar" />}
@@ -181,10 +186,16 @@ function Router() {
         <Route path="/curriculo/gerar" component={CurriculoGerar} />
         <Route path="/curriculo/linkedin" component={CurriculoLinkedin} />
         <Route path="/linkedin/analisar" component={LinkedinAnalisar} />
-        <Route path="/estudos" component={Estudos} />
+        <Route path="/plano-carreira" component={PlanoCarreira} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/estudos">{() => <Redirect to="/plano-carreira" />}</Route>
         <Route path="/estudos/diario" component={EstudosDiario} />
-        <Route path="/empregabilidade" component={Empregabilidade} />
-        <Route path="/networking" component={Networking} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/empregabilidade">
+          {() => <Redirect to="/entrevistas" />}
+        </Route>
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/networking">{() => <Redirect to="/comunidades" />}</Route>
         <Route path="/freelance">
           {() => <Redirect to="/estagio/freelance" />}
         </Route>
@@ -296,12 +307,6 @@ function Router() {
         <Route path="/licenca" component={Licenca} />
         <Route path="/privacidade" component={Privacidade} />
         <Route path="/termos-de-uso" component={TermosDeUso} />
-        {/* PROTOTIPO DESCARTAVEL: bordas Pro animadas. Remover junto com a pasta dev/. */}
-        <Route path="/dev/pro-borders" component={DevProBorders} />
-        {/* PROTOTIPO DESCARTAVEL: playground do gate de auth, so em dev. */}
-        {import.meta.env.DEV && (
-          <Route path="/dev/auth-gate" component={AuthGatePlayground} />
-        )}
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
@@ -328,7 +333,6 @@ function App() {
                 <LaunchGate>
                   <Router />
                 </LaunchGate>
-                <AgentWidget />
               </TooltipProvider>
             </SubscriptionProvider>
           </FavoritesProvider>

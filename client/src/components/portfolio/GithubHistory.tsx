@@ -1,7 +1,13 @@
 import { History } from "lucide-react";
+import { BAND_UI, isScoreBand } from "@/components/portfolio/bandUi";
+import MiniScoreRing from "@/components/portfolio/MiniScoreRing";
 import { Spinner } from "@/components/ui/spinner";
 import type { GithubAnalysisSummary } from "@/lib/githubClient";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { cn } from "@/lib/utils";
 import { AREA_LABELS, isAreaSlug } from "@shared/areas";
+
+const ac = getPageAccentUi("violet");
 
 // Historico de analises de GitHub, no molde do LinkedinHistory: lista com
 // nota/faixa/area/data e reabertura na mesma tela de resultado. O delta de
@@ -18,6 +24,8 @@ const COPY = {
   title: "Minhas análises",
   modePerfil: "Perfil",
   modeRepo: "Repositório",
+  open: "Ver análise salva",
+  openFree: "não usa IA",
 } as const;
 
 function areaLabel(area: string | null): string {
@@ -44,7 +52,7 @@ export default function GithubHistory({
   if (analyses.length === 0) return null;
 
   return (
-    <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
+    <div className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-6", ac.liftShadow)}>
       <h3 className="mb-4 flex items-center gap-2 font-display text-xl font-black text-slate-950">
         <History className="h-5 w-5 text-violet-700" />
         {COPY.title}
@@ -66,13 +74,37 @@ export default function GithubHistory({
                 </p>
                 <p className="text-xs font-medium text-slate-500">
                   {formatDate(analysis.created_at)} · {areaLabel(analysis.area)}
-                  {analysis.faixa ? ` · ${analysis.faixa}` : ""}
                 </p>
+                {isScoreBand(analysis.faixa) ? (
+                  <span
+                    className={cn(
+                      "mt-1.5 inline-flex rounded-full border-2 border-slate-950 px-2 py-0.5 text-[10px] font-black text-slate-950",
+                      BAND_UI[analysis.faixa].chipBg,
+                    )}
+                  >
+                    {BAND_UI[analysis.faixa].label}
+                  </span>
+                ) : null}
               </div>
-              <span className="flex items-center gap-2">
-                <span className="font-display text-2xl font-black text-slate-950">
-                  {analysis.score ?? "?"}
+              <span className="flex shrink-0 items-center gap-3">
+                <span className="hidden text-right sm:block">
+                  <span className="block text-xs font-black text-violet-800">
+                    {COPY.open}
+                  </span>
+                  <span className="block text-[11px] font-medium text-slate-500">
+                    {COPY.openFree}
+                  </span>
                 </span>
+                {typeof analysis.score === "number" ? (
+                  <MiniScoreRing
+                    score={analysis.score}
+                    className="h-12 w-12 text-sm"
+                  />
+                ) : (
+                  <span className="font-display text-2xl font-black text-slate-950">
+                    ?
+                  </span>
+                )}
                 {loadingId === analysis.id ? (
                   <Spinner className="h-4 w-4" />
                 ) : null}

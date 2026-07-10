@@ -83,9 +83,9 @@ export default function Evolucao() {
 
           {!isPro && !loading ? (
             <div>
-              {/* TODO(Ana): copy da CTA do plano de estudos (gap pro proximo nivel) */}
+              {/* TODO(Ana): copy da CTA do plano de carreira (gap pro proximo nivel) */}
               <AiCtaLink
-                href="/estudos"
+                href="/plano-carreira"
                 description="A IA monta o cronograma pro próximo nível"
                 accent="emerald"
                 className="w-full"

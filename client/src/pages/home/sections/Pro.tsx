@@ -10,8 +10,6 @@ import {
   type LucideIcon,
   Map,
   Mic,
-  Send,
-  TrendingUp,
 } from "lucide-react";
 
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
@@ -29,7 +27,8 @@ const STARS: ConstellationStar[] = [
   { id: "roadmaps", name: "Roadmaps", icon: Map, position: { x: 8, y: 15 } },
   {
     id: "estudos",
-    name: "Plano de estudos",
+    // TODO(Ana): validar nome da estrela do plano de carreira
+    name: "Plano de Carreira",
     icon: CalendarCheck,
     position: { x: 18, y: 45 },
   },
@@ -43,13 +42,13 @@ const STARS: ConstellationStar[] = [
     id: "linkedin",
     name: "LinkedIn",
     icon: Linkedin,
-    position: { x: 88, y: 38 },
+    position: { x: 88, y: 46 },
   },
   {
     id: "portfolio",
     name: "Portfólio",
     icon: Github,
-    position: { x: 50, y: 58 },
+    position: { x: 62, y: 70 },
   },
   {
     id: "entrevistas",
@@ -57,31 +56,14 @@ const STARS: ConstellationStar[] = [
     icon: Mic,
     position: { x: 22, y: 85 },
   },
-  {
-    id: "empregabilidade",
-    name: "Empregabilidade",
-    icon: TrendingUp,
-    position: { x: 58, y: 82 },
-  },
-  {
-    id: "networking",
-    name: "Networking",
-    icon: Send,
-    position: { x: 92, y: 92 },
-  },
 ];
 
 const CONNECTIONS: ReadonlyArray<readonly [string, string]> = [
   ["roadmaps", "estudos"],
-  ["roadmaps", "empregabilidade"],
   ["estudos", "portfolio"],
   ["curriculo", "linkedin"],
   ["curriculo", "portfolio"],
   ["portfolio", "entrevistas"],
-  ["portfolio", "empregabilidade"],
-  ["entrevistas", "empregabilidade"],
-  ["linkedin", "networking"],
-  ["empregabilidade", "networking"],
 ];
 
 const VIEWBOX_W = 1400;
@@ -91,7 +73,7 @@ const PRO_SHORTCUTS: Array<{ icon: LucideIcon; name: string; href: string }> = [
   { icon: FileText, name: "Currículo", href: "/curriculo/analisar" },
   { icon: Linkedin, name: "LinkedIn", href: "/curriculo/linkedin" },
   { icon: Github, name: "Portfólio", href: "/portfolio/analisar" },
-  { icon: Mic, name: "Simulador", href: "/entrevistas/simulador" },
+  { icon: Mic, name: "Entrevistas", href: "/entrevistas" }, // TODO(Ana): validar nome do atalho
 ];
 
 const SHORTCUT_COLORS: Array<{
@@ -190,7 +172,8 @@ function ProPitchVariant() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="mx-auto max-w-2xl text-base md:text-lg font-medium text-violet-100"
           >
-            8 ferramentas com IA pra entrar em TI. Currículo, LinkedIn,
+            {/* TODO(Ana): revisar copy sem contagem de ferramentas */}
+            Ferramentas com IA pra entrar em TI. Currículo, LinkedIn,
             portfólio, entrevista e mais.
           </motion.p>
         </div>
@@ -361,11 +344,12 @@ function Constellation() {
 
   return (
     <div className="relative mx-auto w-full max-w-[1400px]">
+      {/* TODO(Ana): validar aria-label sem contagem de ferramentas */}
       <svg
         viewBox={`0 0 ${VIEWBOX_W} ${VIEWBOX_H}`}
         className="h-auto w-full max-h-[40vh]"
         role="img"
-        aria-label="Constelação interativa das 8 ferramentas Pro"
+        aria-label="Constelação interativa das ferramentas Pro"
       >
         <defs>
           <filter id="star-glow" x="-50%" y="-50%" width="200%" height="200%">

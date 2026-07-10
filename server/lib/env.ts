@@ -76,6 +76,13 @@ export const env = {
   // TODO: calibrar AGENT_DAILY_LIMIT_FREE e AGENT_DAILY_LIMIT_PRO.
   agentDailyLimitFree: parseInt(process.env.AGENT_DAILY_LIMIT_FREE || "20", 10),
   agentDailyLimitPro: parseInt(process.env.AGENT_DAILY_LIMIT_PRO || "200", 10),
+  // Teto diario de turnos da entrevista simulada. Sem variante free: a feature
+  // e Pro-only e o gate barra antes de qualquer chamada.
+  // TODO: calibrar INTERVIEW_DAILY_TURN_LIMIT_PRO.
+  interviewDailyTurnLimitPro: parseInt(
+    process.env.INTERVIEW_DAILY_TURN_LIMIT_PRO || "150",
+    10,
+  ),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;
@@ -125,7 +132,21 @@ export const env = {
   // Base URL absoluta do BACKEND para montar os links de confirm/unsubscribe nos
   // e-mails (ex.: https://api.boranatech.com.br). Vazia = captura fechada (nao da
   // pra montar link valido). Nao reutiliza appPublicUrl, que aponta pro frontend.
+  // Reutilizada tambem pelo link de descadastro das campanhas de e-mail.
   newsletterPublicBaseUrl: process.env.NEWSLETTER_PUBLIC_BASE_URL || "",
+  // Intervalo minimo (ms) entre jobs da fila email-campaign (limiter do BullMQ):
+  // o Resend limita a 2 req/s, entao o default de 1 envio por 1000ms fica com
+  // folga. Invalido (nao inteiro ou < 100) cai no default com warn no boot.
+  emailCampaignRateMs: (() => {
+    const raw = process.env.EMAIL_CAMPAIGN_RATE_MS;
+    if (!raw) return 1000;
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 100) return parsed;
+    console.warn(
+      `[env] AVISO: EMAIL_CAMPAIGN_RATE_MS invalido ("${raw}"), usando 1000`,
+    );
+    return 1000;
+  })(),
   // Allowlist dev-only de user ids que enxergam como Pro fora de producao.
   // Ignorada quando NODE_ENV === "production". Nunca prefixar com VITE_.
   devProUserIds: (process.env.DEV_PRO_USER_IDS || "")

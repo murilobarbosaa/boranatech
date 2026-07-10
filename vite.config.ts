@@ -2,11 +2,23 @@ import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
 
 const PROJECT_ROOT = import.meta.dirname;
 
 const plugins = [react(), tailwindcss()];
+
+// Analise de bundle sob demanda: ANALYZE=1 pnpm build gera bundle-stats.html.
+if (process.env.ANALYZE) {
+  plugins.push(
+    visualizer({
+      filename: "bundle-stats.html",
+      gzipSize: true,
+      template: "treemap",
+    }),
+  );
+}
 
 export default defineConfig(({ command, mode }) => {
   const envDir = path.resolve(PROJECT_ROOT);
@@ -25,6 +37,41 @@ export default defineConfig(({ command, mode }) => {
     build: {
       outDir: path.resolve(import.meta.dirname, "dist/public"),
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          // Chunks manuais por ciclo de vida de mudanca: vendors so mudam em
+          // bump de dependencia e dados so mudam em edicao de conteudo, entao
+          // seus hashes sobrevivem aos deploys de feature. O resto segue o
+          // split default do Rollup.
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (/node_modules\/(react|react-dom|scheduler|wouter)\//.test(id)) {
+                return "react-vendor";
+              }
+              if (id.includes("node_modules/@supabase/")) {
+                return "supabase";
+              }
+              if (/node_modules\/(framer-motion|motion-dom|motion-utils)\//.test(id)) {
+                return "motion";
+              }
+              if (id.includes("node_modules/posthog-js/")) {
+                return "analytics";
+              }
+              return undefined;
+            }
+            if (
+              id.includes("client/src/lib/data.ts") ||
+              id.includes("client/src/lib/platformData.ts") ||
+              id.includes("client/src/lib/dicasData.ts") ||
+              id.includes("client/src/lib/technologyData.ts") ||
+              id.includes("shared/glossaryData.ts")
+            ) {
+              return "app-data";
+            }
+            return undefined;
+          },
+        },
+      },
     },
     server: {
       port: 3000,

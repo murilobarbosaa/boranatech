@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileUp, Linkedin, Lightbulb, Shield, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
@@ -32,6 +32,7 @@ import {
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
 import { cn } from "@/lib/utils";
+import { parseLinkedinText } from "@shared/linkedin/parse";
 import {
   AREA_LABELS,
   AREA_SLUGS,
@@ -204,6 +205,215 @@ const selectClass =
 const inputClass =
   "w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm outline-none focus:ring-4 focus:ring-sky-200";
 
+// Caminho de entrada: o PDF guiado e o primario; digitar na mao e o fallback;
+// review e o pos-parse com os campos preenchidos.
+type EntryPath = "pdf" | "manual" | "review";
+
+// TODO(Ana): revisar TODA a copy do fluxo de entrada por PDF (passos,
+// dropzone, revisao, erros e links).
+const ENTRY_COPY = {
+  pdfTitle: "Traga seu perfil em 30 segundos",
+  pdfSubtitle:
+    "Exporte o PDF oficial do seu perfil e deixe a gente preencher tudo. Você só revisa.",
+  steps: [
+    "Abra seu perfil no LinkedIn.",
+    "Toque em Mais (More) logo abaixo do seu nome.",
+    "Escolha Salvar como PDF.",
+    "Solte o arquivo aqui embaixo.",
+  ],
+  dropIdle: "Arraste o PDF aqui ou clique para escolher",
+  dropHint: "Somente PDF, até 5MB.",
+  dropReading: "Lendo o PDF...",
+  privacy:
+    "Seu arquivo nunca sai do navegador: a gente lê o texto aqui mesmo e só o texto vai pra análise.",
+  manualLink: "Prefiro preencher na mão",
+  backToPdf: "Usar o PDF do LinkedIn (recomendado)",
+  parseFail:
+    "Esse PDF não parece o export de perfil do LinkedIn. Siga o passo a passo acima (Mais, Salvar como PDF) e tente de novo, ou preencha na mão.",
+  reviewTitle: "Confira o que detectamos",
+  reviewSubtitle:
+    "Preenchemos com o que veio no PDF. Revise, complete o que faltar e analise.",
+  reviewNotFound: "não detectado",
+  reviewFullText: "Ver e editar o texto completo extraído",
+  swapPdf: "Trocar o PDF",
+  skillsGapTitle: "Complete suas competências",
+  skillsGapHint:
+    "O PDF do LinkedIn costuma trazer só as principais competências (até 5). Cole as outras da seção Competências do seu perfil, separadas por vírgula.",
+  confirmTitle: "Confirme o que o PDF não traz",
+  confirmHint:
+    "O export do LinkedIn não inclui foto, banner, Open to Work, conexões nem sua frequência de atividade. Responda aqui.",
+  manualTitle: "Seu perfil",
+  manualSubtitle:
+    "Cole o texto do seu perfil (headline, Sobre, experiências) e preencha os campos abaixo.",
+  checklistTitle: "Falta pouco pra analisar:",
+  checklistChars: (n: number) =>
+    `Texto do perfil com pelo menos 200 caracteres (agora: ${n}).`,
+  checklistSections:
+    "Inclua o Sobre ou as experiências: não detectamos nenhum dos dois no texto.",
+} as const;
+
+type UpdateField = <K extends keyof FormState>(
+  key: K,
+  value: FormState[K],
+) => void;
+
+// Area, nivel, mercado e objetivo: contexto da analise, presente nos dois
+// caminhos (o PDF nao traz esses dados de forma confiavel).
+function ContextFields({
+  form,
+  update,
+}: {
+  form: FormState;
+  update: UpdateField;
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Field label="Área de interesse">
+        <select
+          value={form.area}
+          onChange={(event) => update("area", event.target.value as AreaSlug)}
+          className={selectClass}
+        >
+          {AREA_SLUGS.map((slug) => (
+            <option key={slug} value={slug}>
+              {AREA_LABELS[slug]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Nível">
+        <select
+          value={form.level}
+          onChange={(event) =>
+            update("level", event.target.value as LinkedinLevel)
+          }
+          className={selectClass}
+        >
+          {LINKEDIN_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {LEVEL_LABEL[level]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Onde você quer trabalhar?">
+        <select
+          value={form.mercado}
+          onChange={(event) => update("mercado", event.target.value as Mercado)}
+          className={selectClass}
+        >
+          {MERCADOS.map((mercado) => (
+            <option key={mercado} value={mercado}>
+              {MERCADO_LABELS[mercado]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Objetivo (opcional)">
+        <input
+          value={form.objetivo}
+          onChange={(event) => update("objetivo", event.target.value)}
+          placeholder="Ex: estágio remoto em front-end"
+          maxLength={300}
+          className={inputClass}
+        />
+      </Field>
+    </div>
+  );
+}
+
+// As cinco perguntas que o export do LinkedIn sabidamente NAO responde.
+function ProfileQuestions({
+  form,
+  update,
+}: {
+  form: FormState;
+  update: UpdateField;
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Field label="Tem foto profissional?">
+        <select
+          value={form.foto}
+          onChange={(event) => update("foto", event.target.value as SimNao)}
+          className={selectClass}
+        >
+          {(["sim", "nao"] as SimNao[]).map((value) => (
+            <option key={value} value={value}>
+              {SIM_NAO_LABEL[value]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Tem banner personalizado?">
+        <select
+          value={form.banner}
+          onChange={(event) => update("banner", event.target.value as SimNao)}
+          className={selectClass}
+        >
+          {(["sim", "nao"] as SimNao[]).map((value) => (
+            <option key={value} value={value}>
+              {SIM_NAO_LABEL[value]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Open to Work para recrutadores?">
+        <select
+          value={form.openToWork}
+          onChange={(event) =>
+            update("openToWork", event.target.value as OpenToWork)
+          }
+          className={selectClass}
+        >
+          {(["sim", "nao", "nao-sei"] as OpenToWork[]).map((value) => (
+            <option key={value} value={value}>
+              {OPEN_TO_WORK_LABEL[value]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Quantas conexões?">
+        <select
+          value={form.conexoes}
+          onChange={(event) =>
+            update("conexoes", event.target.value as Conexoes)
+          }
+          className={selectClass}
+        >
+          {CONEXOES.map((value) => (
+            <option key={value} value={value}>
+              {CONEXOES_LABEL[value]}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Com que frequência posta ou comenta?">
+        <select
+          value={form.atividade}
+          onChange={(event) =>
+            update("atividade", event.target.value as Atividade)
+          }
+          className={selectClass}
+        >
+          {ATIVIDADE.map((value) => (
+            <option key={value} value={value}>
+              {ATIVIDADE_LABEL[value]}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </div>
+  );
+}
+
 function ResultHeader({ response }: { response: LinkedinAnalysisResponse }) {
   return (
     <div className="card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white">
@@ -278,6 +488,12 @@ export default function LinkedinAnalisar() {
   const [result, setResult] = useState<LinkedinAnalysisResponse | null>(
     bootstrap.result,
   );
+  // PDF e a porta de entrada; quem ja tem texto (sessao restaurada) cai
+  // direto no modo revisao.
+  const [entryPath, setEntryPath] = useState<EntryPath>(() =>
+    bootstrap.form.profileText.trim().length > 0 ? "review" : "pdf",
+  );
+  const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pdfStatus, setPdfStatus] = useState("");
@@ -332,6 +548,16 @@ export default function LinkedinAnalisar() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  // Parse estruturado do texto atual (a MESMA funcao que o server roda), pra
+  // alimentar o modo revisao e o checklist. Puro e barato.
+  const parsed = useMemo(
+    () =>
+      form.profileText.trim().length > 0
+        ? parseLinkedinText(form.profileText)
+        : null,
+    [form.profileText],
+  );
+
   async function handleFile(file: File | undefined) {
     if (!file) return;
     setPdfError("");
@@ -339,22 +565,41 @@ export default function LinkedinAnalisar() {
     setExtracting(true);
     try {
       const text = await extractLinkedinPdf(file);
-      setForm((prev) => ({ ...prev, profileText: text }));
+      const detected = parseLinkedinText(text);
+      if (!detected.usable) {
+        setPdfError(ENTRY_COPY.parseFail);
+        return;
+      }
+      setForm((prev) => ({
+        ...prev,
+        profileText: text,
+        // Prefill das skills a partir do PDF SO quando o campo esta vazio: o
+        // export traz apenas as principais competencias e a pessoa complementa.
+        skills:
+          prev.skills.trim() === "" && detected.skillsPdf.length > 0
+            ? detected.skillsPdf.join(", ")
+            : prev.skills,
+      }));
       setPdfStatus(
         `PDF lido (${text.length.toLocaleString("pt-BR")} caracteres).`,
       );
+      setEntryPath("review");
     } catch (err) {
       if (err instanceof PdfExtractError) {
         setPdfError(err.message);
       } else {
-        setPdfError(
-          "Não consegui ler o PDF. Cole o texto do perfil manualmente.",
-        );
+        setPdfError(ENTRY_COPY.parseFail);
       }
     } finally {
       setExtracting(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function onDropPdf(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragOver(false);
+    void handleFile(event.dataTransfer.files?.[0]);
   }
 
   async function runAnalysis() {
@@ -432,7 +677,19 @@ export default function LinkedinAnalisar() {
     void runAnalysis();
   }
 
-  const canSubmit = form.profileText.trim().length >= 200 && !loading;
+  const profileChars = form.profileText.trim().length;
+  const canSubmit = profileChars >= 200 && !loading;
+
+  // Checklist de prontidao: o minimo REAL do backend (200 caracteres, o
+  // schema da rota) bloqueia; a ausencia de Sobre e experiencias e aviso (o
+  // server devolve 422 quando o texto nao tem nada aproveitavel).
+  const checklistItems: string[] = [];
+  if (profileChars < 200) {
+    checklistItems.push(ENTRY_COPY.checklistChars(profileChars));
+  }
+  if (parsed !== null && !parsed.sobre && parsed.experiencias.length === 0) {
+    checklistItems.push(ENTRY_COPY.checklistSections);
+  }
 
   return (
     <Layout>
@@ -475,244 +732,338 @@ export default function LinkedinAnalisar() {
                 onSubmit={handleSubmit}
                 className="card-brutal space-y-6 rounded-2xl border-slate-950 bg-white p-6"
               >
-                <div>
-                  <h2 className="font-display text-2xl font-black text-slate-950">
-                    Seu perfil
-                  </h2>
-                  <p className="mt-1 text-sm font-medium text-slate-600">
-                    Envie o PDF do seu perfil ou cole o texto. Depois preencha
-                    os campos abaixo.
-                  </p>
-                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(event) => void handleFile(event.target.files?.[0])}
+                />
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(event) =>
-                      void handleFile(event.target.files?.[0])
-                    }
-                  />
+                {entryPath === "pdf" ? (
+                  <div className="space-y-5">
+                    <div>
+                      <h2 className="font-display text-2xl font-black text-slate-950">
+                        {ENTRY_COPY.pdfTitle}
+                      </h2>
+                      <p className="mt-1 text-sm font-medium text-slate-600">
+                        {ENTRY_COPY.pdfSubtitle}
+                      </p>
+                    </div>
+
+                    <ol className="grid gap-3 sm:grid-cols-2">
+                      {ENTRY_COPY.steps.map((step, i) => (
+                        <li
+                          key={step}
+                          className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
+                        >
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-base font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                            {i + 1}
+                          </span>
+                          <span className="text-sm font-medium text-slate-700">
+                            {step}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label={ENTRY_COPY.dropIdle}
+                      onClick={() => fileInputRef.current?.click()}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setDragOver(true);
+                      }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={onDropPdf}
+                      className={cn(
+                        "flex min-h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-[3px] border-dashed border-slate-900 p-8 text-center transition-colors",
+                        dragOver ? "bg-sky-100" : "bg-sky-50 hover:bg-sky-100",
+                      )}
+                    >
+                      {extracting ? (
+                        <Spinner className="h-8 w-8 text-sky-700" />
+                      ) : (
+                        <FileUp className="h-8 w-8 text-sky-700" />
+                      )}
+                      <p className="font-display text-base font-black text-slate-950">
+                        {extracting
+                          ? ENTRY_COPY.dropReading
+                          : ENTRY_COPY.dropIdle}
+                      </p>
+                      <p className="text-xs font-bold text-slate-500">
+                        {ENTRY_COPY.dropHint}
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-2 rounded-xl border-2 border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-900">
+                      <Shield className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                      <span>{ENTRY_COPY.privacy}</span>
+                    </div>
+
+                    {pdfError ? (
+                      <p className="rounded-xl border-2 border-slate-950 bg-rose-100 px-3 py-2 text-sm font-bold text-rose-800">
+                        {pdfError}
+                      </p>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => setEntryPath("manual")}
+                      className="text-sm font-bold text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                    >
+                      {ENTRY_COPY.manualLink}
+                    </button>
+                  </div>
+                ) : null}
+
+                {entryPath === "manual" ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="font-display text-2xl font-black text-slate-950">
+                          {ENTRY_COPY.manualTitle}
+                        </h2>
+                        <p className="mt-1 text-sm font-medium text-slate-600">
+                          {ENTRY_COPY.manualSubtitle}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEntryPath("pdf")}
+                        className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
+                      >
+                        {ENTRY_COPY.backToPdf}
+                      </button>
+                    </div>
+
+                    <Field
+                      label="Texto do seu perfil"
+                      hint="Headline, Sobre, experiências e formação. Mínimo de 200 caracteres."
+                    >
+                      <textarea
+                        value={form.profileText}
+                        onChange={(event) =>
+                          update("profileText", event.target.value)
+                        }
+                        placeholder="Cole aqui o texto do seu perfil do LinkedIn (headline, Sobre, experiências...)."
+                        className={cn(inputClass, "min-h-36")}
+                      />
+                    </Field>
+
+                    <ContextFields form={form} update={update} />
+
+                    <Field
+                      label="Cole suas competências (skills) do LinkedIn"
+                      hint="Separadas por vírgula. Copie da seção Competências do seu perfil."
+                    >
+                      <textarea
+                        value={form.skills}
+                        onChange={(event) =>
+                          update("skills", event.target.value)
+                        }
+                        placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
+                        className={cn(inputClass, "min-h-20")}
+                      />
+                    </Field>
+
+                    <ProfileQuestions form={form} update={update} />
+                  </>
+                ) : null}
+
+                {entryPath === "review" ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h2 className="font-display text-2xl font-black text-slate-950">
+                          {ENTRY_COPY.reviewTitle}
+                        </h2>
+                        <p className="mt-1 text-sm font-medium text-slate-600">
+                          {ENTRY_COPY.reviewSubtitle}
+                        </p>
+                        {pdfStatus ? (
+                          <p className="mt-1 text-xs font-bold text-emerald-700">
+                            {pdfStatus}
+                          </p>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEntryPath("pdf")}
+                        className="text-sm font-bold text-sky-700 underline underline-offset-2 hover:text-sky-900"
+                      >
+                        {ENTRY_COPY.swapPdf}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
+                          parsed?.headline ? "bg-emerald-100" : "bg-amber-100",
+                        )}
+                      >
+                        Headline:{" "}
+                        {parsed?.headline
+                          ? "detectada"
+                          : ENTRY_COPY.reviewNotFound}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
+                          parsed?.sobre ? "bg-emerald-100" : "bg-amber-100",
+                        )}
+                      >
+                        Sobre:{" "}
+                        {parsed?.sobre
+                          ? `${parsed.sobre.length} caracteres`
+                          : ENTRY_COPY.reviewNotFound}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-900",
+                          parsed && parsed.experiencias.length > 0
+                            ? "bg-emerald-100"
+                            : "bg-amber-100",
+                        )}
+                      >
+                        Experiências: {parsed?.experiencias.length ?? 0}{" "}
+                        detectada
+                        {(parsed?.experiencias.length ?? 0) === 1 ? "" : "s"}
+                      </span>
+                      <span className="rounded-full border-2 border-slate-900 bg-sky-100 px-3 py-1 text-xs font-black text-slate-900">
+                        Competências no PDF: {parsed?.skillsPdf.length ?? 0}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {parsed?.headline ? (
+                        <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                          <summary className="cursor-pointer text-sm font-black text-slate-800">
+                            Headline detectada
+                          </summary>
+                          <p className="mt-2 text-sm text-slate-700">
+                            {parsed.headline}
+                          </p>
+                        </details>
+                      ) : null}
+                      {parsed?.sobre ? (
+                        <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                          <summary className="cursor-pointer text-sm font-black text-slate-800">
+                            Sobre ({parsed.sobre.length} caracteres)
+                          </summary>
+                          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+                            {parsed.sobre}
+                          </p>
+                        </details>
+                      ) : null}
+                      {parsed && parsed.experiencias.length > 0 ? (
+                        <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                          <summary className="cursor-pointer text-sm font-black text-slate-800">
+                            Experiências ({parsed.experiencias.length}{" "}
+                            detectada
+                            {parsed.experiencias.length === 1 ? "" : "s"})
+                          </summary>
+                          <ul className="mt-2 space-y-2">
+                            {parsed.experiencias.map((exp, i) => (
+                              <li key={i} className="text-sm text-slate-700">
+                                <span className="font-bold text-slate-900">
+                                  {exp.titulo || "(sem título)"}
+                                </span>
+                                {exp.descricao ? (
+                                  <span>
+                                    {" "}
+                                    · {exp.descricao.slice(0, 160)}
+                                    {exp.descricao.length > 160 ? "..." : ""}
+                                  </span>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : null}
+                      <details className="rounded-xl border-2 border-slate-200 bg-white p-3">
+                        <summary className="cursor-pointer text-sm font-black text-slate-800">
+                          {ENTRY_COPY.reviewFullText}
+                        </summary>
+                        <textarea
+                          value={form.profileText}
+                          onChange={(event) =>
+                            update("profileText", event.target.value)
+                          }
+                          className={cn(inputClass, "mt-2 min-h-40")}
+                        />
+                      </details>
+                    </div>
+
+                    <div className="rounded-xl border-2 border-amber-400 bg-amber-50 p-4">
+                      <p className="text-sm font-black text-slate-900">
+                        {ENTRY_COPY.skillsGapTitle}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-slate-600">
+                        {ENTRY_COPY.skillsGapHint}
+                      </p>
+                      <textarea
+                        value={form.skills}
+                        onChange={(event) =>
+                          update("skills", event.target.value)
+                        }
+                        placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
+                        className={cn(inputClass, "mt-2 min-h-20")}
+                      />
+                    </div>
+
+                    <div className="space-y-4 rounded-xl border-2 border-amber-400 bg-amber-50 p-4">
+                      <div>
+                        <p className="text-sm font-black text-slate-900">
+                          {ENTRY_COPY.confirmTitle}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-slate-600">
+                          {ENTRY_COPY.confirmHint}
+                        </p>
+                      </div>
+                      <ProfileQuestions form={form} update={update} />
+                    </div>
+
+                    <ContextFields form={form} update={update} />
+                  </>
+                ) : null}
+
+                {entryPath !== "pdf" && !loading && checklistItems.length > 0 ? (
+                  <div className="rounded-xl border-2 border-slate-950 bg-amber-50 p-3">
+                    <p className="text-sm font-black text-slate-900">
+                      {ENTRY_COPY.checklistTitle}
+                    </p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs font-medium text-slate-700">
+                      {checklistItems.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {entryPath !== "pdf" ? (
                   <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={extracting}
-                    className="inline-flex items-center gap-2 rounded-xl border-2 border-slate-900 bg-sky-100 px-4 py-2 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-colors hover:bg-sky-200 disabled:opacity-60"
+                    type="submit"
+                    disabled={!canSubmit}
+                    className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {extracting ? (
+                    {loading ? (
                       <Spinner className="h-4 w-4" />
                     ) : (
-                      <FileUp className="h-4 w-4" />
+                      <Sparkles className="h-4 w-4" />
                     )}
-                    {extracting ? "Lendo PDF..." : "Enviar PDF do LinkedIn"}
+                    {loading ? "Analisando..." : "Analisar meu LinkedIn"}
                   </button>
-                  {pdfStatus ? (
-                    <span className="text-xs font-bold text-emerald-700">
-                      {pdfStatus}
-                    </span>
-                  ) : null}
-                  {pdfError ? (
-                    <span className="text-xs font-bold text-red-700">
-                      {pdfError}
-                    </span>
-                  ) : null}
-                </div>
-
-                <Field
-                  label="Ou cole o texto do seu perfil"
-                  hint="Headline, Sobre, experiências e formação. Mínimo de 200 caracteres."
-                >
-                  <textarea
-                    value={form.profileText}
-                    onChange={(event) =>
-                      update("profileText", event.target.value)
-                    }
-                    placeholder="Cole aqui o texto do seu perfil do LinkedIn (headline, Sobre, experiências...)."
-                    className={cn(inputClass, "min-h-36")}
-                  />
-                </Field>
-
-                <div className="flex items-start gap-2 rounded-xl border-2 border-sky-200 bg-sky-50 p-3 text-xs font-medium text-sky-900">
-                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
-                  <span>
-                    Seu PDF é lido no seu navegador e não é enviado aos nossos
-                    servidores. Enviamos apenas o texto do perfil para a
-                    análise.
-                  </span>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Área de interesse">
-                    <select
-                      value={form.area}
-                      onChange={(event) =>
-                        update("area", event.target.value as AreaSlug)
-                      }
-                      className={selectClass}
-                    >
-                      {AREA_SLUGS.map((slug) => (
-                        <option key={slug} value={slug}>
-                          {AREA_LABELS[slug]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Nível">
-                    <select
-                      value={form.level}
-                      onChange={(event) =>
-                        update("level", event.target.value as LinkedinLevel)
-                      }
-                      className={selectClass}
-                    >
-                      {LINKEDIN_LEVELS.map((level) => (
-                        <option key={level} value={level}>
-                          {LEVEL_LABEL[level]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Onde você quer trabalhar?">
-                    <select
-                      value={form.mercado}
-                      onChange={(event) =>
-                        update("mercado", event.target.value as Mercado)
-                      }
-                      className={selectClass}
-                    >
-                      {MERCADOS.map((mercado) => (
-                        <option key={mercado} value={mercado}>
-                          {MERCADO_LABELS[mercado]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
-
-                <Field
-                  label="Cole suas competências (skills) do LinkedIn"
-                  hint="Separadas por vírgula. Copie da seção Competências do seu perfil."
-                >
-                  <textarea
-                    value={form.skills}
-                    onChange={(event) => update("skills", event.target.value)}
-                    placeholder="Ex: React, JavaScript, TypeScript, Git, HTML, CSS, Node.js..."
-                    className={cn(inputClass, "min-h-20")}
-                  />
-                </Field>
-
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Tem foto profissional?">
-                    <select
-                      value={form.foto}
-                      onChange={(event) =>
-                        update("foto", event.target.value as SimNao)
-                      }
-                      className={selectClass}
-                    >
-                      {(["sim", "nao"] as SimNao[]).map((value) => (
-                        <option key={value} value={value}>
-                          {SIM_NAO_LABEL[value]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Tem banner personalizado?">
-                    <select
-                      value={form.banner}
-                      onChange={(event) =>
-                        update("banner", event.target.value as SimNao)
-                      }
-                      className={selectClass}
-                    >
-                      {(["sim", "nao"] as SimNao[]).map((value) => (
-                        <option key={value} value={value}>
-                          {SIM_NAO_LABEL[value]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Open to Work para recrutadores?">
-                    <select
-                      value={form.openToWork}
-                      onChange={(event) =>
-                        update("openToWork", event.target.value as OpenToWork)
-                      }
-                      className={selectClass}
-                    >
-                      {(["sim", "nao", "nao-sei"] as OpenToWork[]).map(
-                        (value) => (
-                          <option key={value} value={value}>
-                            {OPEN_TO_WORK_LABEL[value]}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </Field>
-
-                  <Field label="Quantas conexões?">
-                    <select
-                      value={form.conexoes}
-                      onChange={(event) =>
-                        update("conexoes", event.target.value as Conexoes)
-                      }
-                      className={selectClass}
-                    >
-                      {CONEXOES.map((value) => (
-                        <option key={value} value={value}>
-                          {CONEXOES_LABEL[value]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Com que frequência posta ou comenta?">
-                    <select
-                      value={form.atividade}
-                      onChange={(event) =>
-                        update("atividade", event.target.value as Atividade)
-                      }
-                      className={selectClass}
-                    >
-                      {ATIVIDADE.map((value) => (
-                        <option key={value} value={value}>
-                          {ATIVIDADE_LABEL[value]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Objetivo (opcional)">
-                    <input
-                      value={form.objetivo}
-                      onChange={(event) =>
-                        update("objetivo", event.target.value)
-                      }
-                      placeholder="Ex: estágio remoto em front-end"
-                      maxLength={300}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={!canSubmit}
-                  className="btn-brutal-accent inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {loading ? (
-                    <Spinner className="h-4 w-4" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-                  {loading ? "Analisando..." : "Analisar meu LinkedIn"}
-                </button>
+                ) : null}
               </form>
 
               {loading ? <LinkedinSkeleton /> : null}

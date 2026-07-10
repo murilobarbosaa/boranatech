@@ -53,6 +53,9 @@ export interface Profile {
   // Perfil expandido (colunas ja retornadas por /api/me; opcionais aqui
   // porque nem todo caller depende delas).
   career_goal?: string | null;
+  // Consentimento de comunicacao promocional (carimbo gravado pelo server).
+  marketing_opt_in?: boolean;
+  marketing_opt_in_at?: string | null;
   created_at: string;
   updated_at: string;
 }

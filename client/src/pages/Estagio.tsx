@@ -132,35 +132,33 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
         <div className="container">
           <div className="mb-10 grid gap-5 md:grid-cols-2">
             <Link
-              href="/empregabilidade"
+              href="/entrevistas"
               className="card-brutal block rounded-2xl border-2 border-slate-950 bg-white p-5"
             >
-              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-1 text-xs font-black text-slate-950">
-                <Star className="h-3 w-3 fill-[#FFB800] text-slate-950" />
-                Plano Pro
-              </span>
+              {/* TODO(Ana): copy do card de guia de entrevistas */}
               <h2 className="font-display text-xl font-black text-slate-950">
-                Analisador de Vaga
+                Guia de Entrevistas
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                Cole uma vaga e descubra se vale aplicar agora e o que estudar
-                nos próximos 7 dias.
+                Entenda cada etapa do processo seletivo e chegue preparado na
+                conversa com o recrutador.
               </p>
             </Link>
             <Link
-              href="/empregabilidade"
+              href="/entrevistas"
               className="card-brutal block rounded-2xl border-2 border-slate-950 bg-white p-5"
             >
               <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-1 text-xs font-black text-slate-950">
                 <Star className="h-3 w-3 fill-[#FFB800] text-slate-950" />
                 Plano Pro
               </span>
+              {/* TODO(Ana): copy do card de treino de entrevista */}
               <h2 className="font-display text-xl font-black text-slate-950">
-                Calculadora de Prontidão
+                Treino de Entrevista com IA
               </h2>
               <p className="mt-2 text-sm text-slate-600">
-                Veja o que você já tem, o que falta e um plano de ação para
-                chegar à primeira vaga.
+                Treine a entrevista com IA e receba feedback do que melhorar
+                antes de encarar a de verdade.
               </p>
             </Link>
           </div>
@@ -170,14 +168,14 @@ export default function Estagio({ initialTab = 0 }: EstagioProps) {
             <div>
               {!isPro && !loading ? (
                 <div className="mb-10">
-                  {/* TODO(Ana): copy da CTA de prontidao pra candidatura */}
+                  {/* TODO(Ana): copy da CTA de treino de entrevista */}
                   <AiCtaLink
-                    href="/empregabilidade"
-                    description="Veja seu encaixe na vaga e o que falta"
+                    href="/entrevistas"
+                    description="Simule a entrevista e receba feedback"
                     accent="amber"
                     className="w-full"
                   >
-                    Está pronto pra se candidatar? Cheque sua prontidão com IA
+                    Vai se candidatar? Treine a entrevista com IA antes
                   </AiCtaLink>
                 </div>
               ) : null}

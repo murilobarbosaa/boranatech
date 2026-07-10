@@ -80,6 +80,10 @@ export const COLOR_FAMILIES: Record<ColorFamily, ColorFamilyConfig> = {
   },
 };
 
+// FONTE CANONICA de accent por rota: toda pagina deriva o proprio accent da
+// familia registrada aqui (via COLOR_FAMILIES). Divergencias intencionais de
+// marca sao registradas com comentario na propria linha; rota fora do mapa cai
+// no fallback institutional (bug de registro, nao decisao).
 export const PAGE_FAMILY: Record<string, ColorFamily> = {
   // discovery
   areas: "discovery",
@@ -93,7 +97,6 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
   portfolio: "technical",
   evolucao: "technical",
   "tecnologias/por-area": "technical",
-  networking: "technical",
   comparador: "technical",
   plataformas: "technical",
   "tecnologias/comparar": "technical",
@@ -106,23 +109,32 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
   mentorias: "market",
   dicas: "market",
   estudos: "market",
-  empregabilidade: "market",
+  "plano-carreira": "market",
+  // Divergencia intencional: marca Natechinho (amber), nao a familia
+  // application da rota-mae curriculo.
+  "curriculo/gerar": "market",
 
   // application
   curriculo: "application",
   "curriculo/linkedin": "application",
   "curriculo/analisar": "application",
-  "portfolio/analisar": "application",
   empresas: "application",
   "empresas/ranking-junior": "application",
   entrevistas: "application",
+  "entrevistas/sessao": "application",
   "entrevistas/perguntas": "application",
   "entrevistas/simulador": "application",
   "entrevistas/desafios": "application",
+  // Divergencia intencional: violet consolidado da pagina (revisao com IA),
+  // nao o blue da familia application nem o emerald do hub portfolio.
+  "portfolio/analisar": "discovery",
 
   // information
   noticias: "information",
   ingles: "information",
+  // Divergencia intencional: sky pela marca LinkedIn, nao o blue da familia
+  // application das rotas de curriculo.
+  "linkedin/analisar": "information",
 
   // reference
   dicionario: "reference",

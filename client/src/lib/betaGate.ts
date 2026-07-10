@@ -18,11 +18,3 @@ export function setBetaToken(token: string): void {
     // Sem storage nao da pra persistir; ignora sem quebrar o fluxo.
   }
 }
-
-export function clearBetaToken(): void {
-  try {
-    localStorage.removeItem(BETA_TOKEN_KEY);
-  } catch {
-    // Sem storage, nada a limpar.
-  }
-}

@@ -61,7 +61,7 @@ Comunica "este elemento é exclusivo do plano pago" (Pro, Plus, ou planos futuro
 - Em conjunto com cor de família: o dourado vence visualmente (é o que o usuário precisa ver primeiro)
 - O sistema 4 é "transparente" às famílias, pode aparecer sobre qualquer fundo de família
 
-**Exemplo aplicado:** dropdown "Carreira" no Header mostra estrelas douradas e background `#FFF7D6` em itens Pro (Salários, Empregabilidade, Currículo IA, etc), distinguindo-os dos itens gratuitos.
+**Exemplo aplicado:** dropdown "Carreira" no Header mostra estrelas douradas e background `#FFF7D6` em itens Pro (Salários, Currículo IA, etc), distinguindo-os dos itens gratuitos.
 
 ### Sistema 5: Acentos de Navegação (legado do Header)
 
@@ -94,8 +94,8 @@ Exemplo: avatar do usuário com fundo rosa (Sistema 2) aparece no header de TODA
 | Família         | Cor base | Tom claro     | Tom escuro    | Propósito                           | Páginas                                                                                                  |
 | --------------- | -------- | ------------- | ------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `discovery`     | violet   | `violet-100`  | `violet-900`  | Exploração e orientação de carreira | Áreas, Quiz, Tecnologias, Comunidades, Faculdades                                                        |
-| `technical`     | emerald  | `emerald-100` | `emerald-900` | Conteúdo prático e técnico          | Roadmaps, Portfólio, Evolução, TecnologiaMapa, Networking, Comparador, Plataformas, TecnologiaComparador |
-| `market`        | amber    | `amber-100`   | `amber-900`   | Mercado de trabalho e carreira      | Cursos, Estágio, Salários, TecnologiaRanking, Mentorias, Dicas, Estudos, Empregabilidade                 |
+| `technical`     | emerald  | `emerald-100` | `emerald-900` | Conteúdo prático e técnico          | Roadmaps, Portfólio, Evolução, TecnologiaMapa, Comparador, Plataformas, TecnologiaComparador             |
+| `market`        | amber    | `amber-100`   | `amber-900`   | Mercado de trabalho e carreira      | Cursos, Estágio, Salários, TecnologiaRanking, Mentorias, Dicas, Estudos                                  |
 | `application`   | blue     | `blue-100`    | `blue-900`    | Candidatura e processos seletivos   | Currículo, LinkedIn, Empresas, Entrevistas (todas), CurriculoAnalisar, PortfolioAnalisar                 |
 | `information`   | sky      | `sky-100`     | `sky-900`     | Informação e atualidade             | Notícias, Inglês                                                                                         |
 | `reference`     | cyan     | `cyan-100`    | `cyan-900`    | Referência e consulta rápida        | Dicionário                                                                                               |
@@ -273,7 +273,6 @@ Exceção: quando o número É inerentemente uma categorização semântica de o
 | Termos de Uso           | TermosDeUso.tsx          | LegalPage `amber-100`                                | `bg-[#faf8f4]`                      | Família → `institutional`                                                                                                                    |
 | Comparador de Cursos    | Comparador.tsx           | `bg-lime-100` / `bg-lime-300`                        | `bg-emerald-100` / `bg-emerald-300` | Trocar escala                                                                                                                                |
 | Tecnologias: Mapa       | TecnologiaMapa.tsx       | PageHero `accent="teal"`                             | PageHero `accent="emerald"`         | Trocar prop                                                                                                                                  |
-| Networking              | Networking.tsx           | PageHero `accent="teal"`                             | PageHero `accent="emerald"`         | Trocar prop                                                                                                                                  |
 | Estudos: Diário         | EstudosDiario.tsx        | PageHero `accent="rose"`                             | PageHero `accent="fuchsia"`         | Trocar prop                                                                                                                                  |
 | Entrevistas             | Entrevistas.tsx          | PageHero `accent="sky"`                              | PageHero `accent="blue"`            | Trocar prop                                                                                                                                  |
 | Faculdades              | Faculdades.tsx           | `bg-indigo-100` / `bg-indigo-300`                    | `bg-violet-100` / `bg-violet-300`   | Trocar escala                                                                                                                                |
@@ -286,7 +285,6 @@ Exceção: quando o número É inerentemente uma categorização semântica de o
 | Currículo: Analisar     | CurriculoAnalisar.tsx    | PageHero `accent="amber"`                            | PageHero `accent="blue"`            | Trocar prop                                                                                                                                  |
 | Portfolio: Analisar     | PortfolioAnalisar.tsx    | PageHero `accent="violet"`                           | PageHero `accent="blue"`            | Trocar prop                                                                                                                                  |
 | Plataformas             | Plataformas.tsx          | `bg-blue-100` / `bg-blue-300`                        | `bg-emerald-100` / `bg-emerald-300` | Trocar escala                                                                                                                                |
-| Empregabilidade         | Empregabilidade.tsx      | PageHero `accent="violet"`                           | PageHero `accent="amber"`           | Trocar prop                                                                                                                                  |
 | Auditoria de saturação  | Todas as páginas         | tons médios (`-400` a `-700`) em backgrounds grandes | tons `-100` ou `-800`/`-900`        | Auditar caso a caso durante implementação. Exemplo confirmado: card "Analisar seu portfólio" em Portfolio.tsx usa `bg-emerald-500`, migrar. |
 
 ## TODO Futuro

@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 
 import { resolveAreaSelection } from "../../shared/areas";
+import { detectGithubTarget } from "../../shared/github/detect";
 import type { GithubAnalysisResponse } from "../../shared/github/schema";
 import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
 import { analyzeGithub } from "../lib/githubAnalyze";
@@ -11,8 +12,6 @@ import {
   GithubFetchError,
   GithubNotFoundError,
   GithubRateLimitError,
-  parseProfileInput,
-  parseRepoInput,
 } from "../lib/github";
 import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -22,8 +21,10 @@ const router = Router();
 router.use(requireAuth);
 router.use(checkProStatus);
 
+// mode e aceito por compat com clients antigos mas IGNORADO: o alvo e sempre
+// autodetectado do input pela fonte unica (shared/github/detect.ts).
 const BodySchema = z.object({
-  mode: z.enum(["perfil", "repo"]),
+  mode: z.enum(["perfil", "repo"]).optional(),
   input: z.string().min(1),
   area: z.string().optional(),
 });
@@ -73,27 +74,24 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
 
   const parsedBody = BodySchema.safeParse(req.body);
   if (!parsedBody.success) {
-    return next(createError(400, "invalid_request", "Envie mode ('perfil' ou 'repo') e input."));
+    // TODO(Ana): mensagem de request invalido do analisador.
+    return next(createError(400, "invalid_request", "Envie a URL ou o usuario do GitHub no campo input."));
   }
 
-  const { mode, input } = parsedBody.data;
+  const { input } = parsedBody.data;
   // Area opcional: slug desconhecido ou ausente vira "geral". So afeta a prosa da IA.
   const area = resolveAreaSelection(parsedBody.data.area);
 
-  let parsed: { owner: string; repo: string } | { login: string } | null;
-  if (mode === "repo") {
-    parsed = parseRepoInput(input);
-    if (!parsed) {
-      return next(
-        createError(400, "invalid_request", "Informe a URL do repositorio, ex github.com/usuario/projeto."),
-      );
-    }
-  } else {
-    parsed = parseProfileInput(input);
-    if (!parsed) {
-      return next(createError(400, "invalid_request", "Informe seu usuario do GitHub."));
-    }
+  // Alvo autodetectado do input; o mode do client e ignorado.
+  const target = detectGithubTarget(input);
+  if (target.kind === "invalid") {
+    return next(createError(400, "invalid_request", target.reason));
   }
+  const mode = target.kind;
+  const parsed: { owner: string; repo: string } | { login: string } =
+    target.kind === "repo"
+      ? { owner: target.owner, repo: target.repo }
+      : { login: target.login };
 
   const userId = req.user!.id;
   const requestId =

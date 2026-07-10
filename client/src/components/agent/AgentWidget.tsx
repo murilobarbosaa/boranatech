@@ -35,6 +35,12 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
 // TODO(Ana): rotulo de status padrao.
 const DEFAULT_STATUS_LABEL = "Buscando...";
 
+// Velocidade do typewriter, mesmo padrao do CurriculoChatPanel: os tokens vao
+// para um buffer e um timer revela 1 caractere por tick em ritmo fixo. O texto
+// final e identico ao recebido; so a velocidade de revelacao muda.
+const TYPING_CHARS_PER_SECOND = 45;
+const TYPING_TICK_MS = Math.max(8, Math.round(1000 / TYPING_CHARS_PER_SECOND));
+
 // Caminho interno isolado (token que comeca com barra). Usado so para auto-link.
 const INTERNAL_PATH_RE = /^\/[A-Za-z0-9/_-]+$/;
 
@@ -136,6 +142,22 @@ function ConversationList({
         );
       })}
     </div>
+  );
+}
+
+// Indicador "digitando": tres bolinhas animadas. Reusa a classe global
+// ai-chat-typing-dot (index.css), a mesma do CurriculoChatPanel, com acento
+// violet do widget. Aparece na bolha do assistente enquanto nada foi revelado.
+function TypingDots() {
+  return (
+    <span className="flex items-center gap-1 py-1" aria-hidden>
+      {[0, 1, 2].map((dot) => (
+        <span
+          key={dot}
+          className="ai-chat-typing-dot h-2 w-2 rounded-full bg-violet-700"
+        />
+      ))}
+    </span>
   );
 }
 
@@ -300,20 +322,43 @@ export default function AgentWidget() {
     setStatusLabel(null);
     setStreaming(true);
 
+    // Pipeline de revelacao controlada (mesmo padrao do CurriculoChatPanel):
+    // onToken so acumula no buffer (nao atualiza a UI direto); um setInterval
+    // revela 1 caractere por tick em ritmo fixo. Enquanto nada foi revelado, a
+    // bolha vazia mostra o TypingDots. Ao terminar, todo o buffer e exibido.
+    const bufferRef = { current: "" };
+    const streamDoneRef = { current: false };
+    let revealedLength = 0;
+
+    const revealDone = new Promise<void>((resolve) => {
+      const timer = window.setInterval(() => {
+        const target = bufferRef.current;
+        if (revealedLength < target.length) {
+          revealedLength = Math.min(target.length, revealedLength + 1);
+          const slice = target.slice(0, revealedLength);
+          setMessages((prev) => {
+            const next = prev.slice();
+            const last = next[next.length - 1];
+            if (last && last.role === "assistant") {
+              next[next.length - 1] = { role: "assistant", content: slice };
+            }
+            return next;
+          });
+        } else if (streamDoneRef.current) {
+          window.clearInterval(timer);
+          resolve();
+        }
+      }, TYPING_TICK_MS);
+    });
+
     try {
       await streamAgentChat(
         history,
         location || undefined,
         {
           onToken: (delta) => {
-            setMessages((prev) => {
-              const copy = prev.slice();
-              const last = copy[copy.length - 1];
-              if (last && last.role === "assistant") {
-                copy[copy.length - 1] = { ...last, content: last.content + delta };
-              }
-              return copy;
-            });
+            // So acumula; o reveal acima revela char a char.
+            bufferRef.current += delta;
           },
           onStatus: handleStatus,
           onError: (message) => setErrorMsg(message),
@@ -323,10 +368,16 @@ export default function AgentWidget() {
         },
         activeConversationId ?? undefined,
       );
+      // Garante que todo o buffer seja revelado (sem cortar o final).
+      streamDoneRef.current = true;
+      await revealDone;
       // Apos um envio bem-sucedido, atualiza a lista (nova conversa aparece, ou a
       // existente sobe pela ordem de updated_at). Best-effort.
       await refreshConversations();
     } catch (err) {
+      // Deixa o reveal esvaziar o buffer (parcial) e encerra o timer antes de sair.
+      streamDoneRef.current = true;
+      await revealDone;
       setErrorMsg(friendlyError(err));
     } finally {
       setStreaming(false);
@@ -433,7 +484,11 @@ export default function AgentWidget() {
                       }
                     >
                       {m.role === "assistant" ? (
-                        <AssistantText text={m.content} />
+                        m.content.length === 0 ? (
+                          <TypingDots />
+                        ) : (
+                          <AssistantText text={m.content} />
+                        )
                       ) : (
                         <span className="whitespace-pre-wrap break-words">
                           {m.content}

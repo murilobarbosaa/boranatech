@@ -5,6 +5,7 @@ import {
   MinusCircle,
   XCircle,
 } from "lucide-react";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
   CHECK_CATALOG,
@@ -12,6 +13,8 @@ import {
   type CheckStatus,
   type GithubCheckResult,
 } from "@shared/github/schema";
+
+const ac = getPageAccentUi("violet");
 
 // Hints do catalogo (fonte unica em shared): renderizados como "como
 // resolver" nos checks warn/fail. Lookup por id, sem duplicar textos.
@@ -48,10 +51,13 @@ const STATUS_UI: Record<
 
 interface ChecklistByCategoryProps {
   checks: GithubCheckResult[];
+  /** Densidade leve pro trilho lateral do resultado; default mantem o atual. */
+  compact?: boolean;
 }
 
 export default function ChecklistByCategory({
   checks,
+  compact = false,
 }: ChecklistByCategoryProps) {
   const groups = CATEGORY_ORDER.map((category) => ({
     category,
@@ -59,16 +65,25 @@ export default function ChecklistByCategory({
   })).filter((group) => group.items.length > 0);
 
   return (
-    <div className="space-y-5">
+    <div className={compact ? "space-y-4" : "space-y-5"}>
       {groups.map((group) => (
         <div
           key={group.category}
-          className="card-brutal rounded-2xl border-slate-950 bg-white p-5"
+          className={cn(
+            "card-brutal rounded-2xl border-slate-950 bg-white",
+            compact ? "p-4" : "p-5",
+            ac.liftShadow,
+          )}
         >
-          <h3 className="mb-4 font-display text-lg font-black text-slate-950">
+          <h3
+            className={cn(
+              "font-display font-black text-slate-950",
+              compact ? "mb-3 text-base" : "mb-4 text-lg",
+            )}
+          >
             {CATEGORY_LABEL[group.category]}
           </h3>
-          <ul className="space-y-3">
+          <ul className={compact ? "space-y-2.5" : "space-y-3"}>
             {group.items.map((check) => {
               const ui = STATUS_UI[check.status];
               return (

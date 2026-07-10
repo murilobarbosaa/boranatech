@@ -4,8 +4,6 @@ import { ArrowRight, BookOpen, Users } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import PageHero from "@/components/shared/PageHero";
-import ProGate from "@/components/pro/ProGate";
-import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
@@ -93,11 +91,69 @@ function EmptyState({ texto }: { texto: string }) {
   );
 }
 
+const COMING_SOON_CARDS: Array<{
+  titulo: string;
+  descricao: string;
+  icon: typeof Users;
+}> = [
+  {
+    // TODO(Ana): copy do card de mentorias em breve
+    titulo: "Mentorias",
+    descricao:
+      "Conversas com profissionais que já trabalham na área pra tirar dúvidas de carreira, portfólio e primeiros passos.",
+    icon: Users,
+  },
+  {
+    // TODO(Ana): copy do card de ebooks em breve
+    titulo: "Ebooks",
+    descricao:
+      "Materiais selecionados de parceiros pra estudar no seu ritmo, do primeiro conceito à preparação pra vaga.",
+    icon: BookOpen,
+  },
+];
+
+function ComingSoon({ reduce }: { reduce: boolean }) {
+  return (
+    <div className="space-y-8">
+      {/* TODO(Ana): frase de status das parcerias */}
+      <p className="max-w-2xl text-base font-bold text-slate-700">
+        Estamos fechando parcerias pra trazer mentorias e ebooks de verdade,
+        com curadoria. Quando estiver no ar, você vê aqui primeiro.
+      </p>
+      <div className="grid gap-5 md:grid-cols-2">
+        {COMING_SOON_CARDS.map((card, index) => (
+          <motion.div
+            key={card.titulo}
+            initial={reduce ? false : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.35, delay: index * 0.05 }}
+            className="flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[4px_4px_0_#0f172a]"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
+                <card.icon className="h-6 w-6 text-amber-700" aria-hidden />
+                {card.titulo}
+              </h2>
+              <span className="shrink-0 rounded-full border-2 border-slate-400 bg-slate-100 px-2.5 py-0.5 text-[0.6rem] font-black uppercase tracking-wide text-slate-700">
+                Em breve
+              </span>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-slate-700">
+              {card.descricao}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Mentorias() {
-  const { isPro } = useSubscription();
   const [filtro, setFiltro] = useState<Filtro>("Todas");
   const reduce = useReducedMotion() ?? false;
 
+  const temItens = mentorias.length > 0 || ebooks.length > 0;
   const mentoriasFiltradas = mentorias.filter((m) =>
     matchFiltro(m.tipo, filtro),
   );
@@ -105,23 +161,24 @@ export default function Mentorias() {
 
   return (
     <Layout>
-      {/* TODO(Ana): validar title e description */}
+      {/* TODO(Ana): validar title e description do estado em breve */}
       <SEO
-        title="Mentorias e ebooks para carreira em tech"
-        description="Mentorias com profissionais da área e ebooks selecionados para acelerar sua carreira em tecnologia, do primeiro passo até a sua primeira vaga."
+        title="Mentorias e ebooks para carreira em tech (em breve)"
+        description="Estamos fechando parcerias pra trazer mentorias com profissionais da área e ebooks selecionados pra sua carreira em tecnologia. Em breve na plataforma."
         url="/mentorias"
         schemaType="CollectionPage"
       />
+      {/* TODO(Ana): validar eyebrow e subtitle do estado em breve */}
       <PageHero
         accent="amber"
-        eyebrow="conteúdo premium"
+        eyebrow="em breve"
         title="Mentorias e Ebooks"
         subtitle="Mentorias com profissionais e ebooks selecionados pra acelerar sua carreira em tech."
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container">
-          {!isPro ? (
-            <ProGate description="Mentorias com profissionais de tech e ebooks selecionados de parceiros, com curadoria pra acelerar sua carreira." />
+          {!temItens ? (
+            <ComingSoon reduce={reduce} />
           ) : (
             <div className="space-y-12">
               <div

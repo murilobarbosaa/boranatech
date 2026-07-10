@@ -76,6 +76,7 @@ import {
   type PendingPhoto,
 } from "@/services/avatarService";
 import type { Profile } from "@/services/contracts";
+import { updateMyProfile } from "@/services/profileService";
 import { greet } from "@shared/greeting";
 
 type SubscriptionPlan = {
@@ -685,6 +686,7 @@ export default function Perfil() {
   const [signingOut, setSigningOut] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [marketingSaving, setMarketingSaving] = useState(false);
   const subscriptionData = subscription as SubscriptionData | null;
 
   useEffect(() => {
@@ -941,6 +943,30 @@ export default function Perfil() {
       toast.error("Erro ao reativar. Tente novamente ou contate o suporte.");
     } finally {
       setReactivating(false);
+    }
+  }
+
+  // Opt-in de comunicacao promocional. Desmarcar zera o consentimento no
+  // server (marketing_opt_in_at vira null); nao mexe na supressao global,
+  // que e outra camada.
+  async function handleToggleMarketingOptIn() {
+    if (!localProfile || marketingSaving) return;
+    const next = !(localProfile.marketing_opt_in ?? false);
+    setMarketingSaving(true);
+    try {
+      await updateMyProfile({ marketing_opt_in: next });
+      setLocalProfile({ ...localProfile, marketing_opt_in: next });
+      await refreshProfile().catch(() => undefined);
+      // TODO(Ana): toasts do opt-in de comunicação.
+      toast.success(
+        next
+          ? "Você vai receber novidades e promoções por e-mail."
+          : "Você não vai mais receber e-mails promocionais.",
+      );
+    } catch {
+      toast.error("Não foi possível salvar sua preferência. Tente de novo.");
+    } finally {
+      setMarketingSaving(false);
     }
   }
 
@@ -1396,7 +1422,7 @@ export default function Perfil() {
                   title="Analisar portfólio"
                 />
                 <ProToolCard
-                  href="/entrevistas/simulador"
+                  href="/entrevistas"
                   icon={<MessageSquare className="h-5 w-5" strokeWidth={2.5} />}
                   title="Simular entrevista"
                 />
@@ -1676,7 +1702,9 @@ export default function Perfil() {
                     </h2>
 
                     <p className="mt-3 text-sm font-semibold text-slate-600">
-                      Desbloqueie 8 ferramentas de IA pra acelerar sua carreira.
+                      {/* TODO(Ana): revisar copy sem contagem de ferramentas */}
+                      Desbloqueie as ferramentas de IA pra acelerar sua
+                      carreira.
                     </p>
 
                     <Link
@@ -1740,6 +1768,23 @@ export default function Perfil() {
                     {email}
                   </p>
                 </div>
+
+                <div className="my-6 border-t-2 border-dashed border-violet-200" />
+
+                <label className="flex cursor-pointer items-start gap-2 text-sm font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={localProfile?.marketing_opt_in ?? false}
+                    disabled={marketingSaving}
+                    onChange={() => void handleToggleMarketingOptIn()}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-violet-700"
+                  />
+                  {/* TODO(Ana): texto do consentimento no perfil. */}
+                  <span>
+                    Quero receber e-mails com novidades e promoções do Bora na
+                    Tech.
+                  </span>
+                </label>
 
                 <div className="my-6 border-t-2 border-dashed border-violet-200" />
 

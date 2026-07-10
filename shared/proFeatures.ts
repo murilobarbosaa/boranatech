@@ -51,20 +51,22 @@ export const PRO_FEATURES: ProFeature[] = [
     number: "03",
     iconName: "Mic",
     title: "Entrevistas",
-    label: "Simulador de entrevistas com IA",
+    // TODO(Ana): validar label e description da feature unificada
+    label: "Treino de entrevista com IA",
     description:
-      "Simulação por chat de entrevistas reais com feedback instantâneo. Treina antes de precisar.",
+      "Entrevista simulada por chat, calibrada pela vaga ou pela sua área, com feedback a cada resposta e veredito de preparo.",
     color: "amber",
     group: "main",
   },
   {
-    id: "plano-estudos",
+    id: "plano-carreira",
     number: "04",
     iconName: "CalendarCheck",
-    title: "Plano de estudos",
-    label: "Plano de estudos personalizado",
+    // TODO(Ana): validar title, label e description da feature nova
+    title: "Plano de carreira",
+    label: "Plano de carreira com IA",
     description:
-      "Sua semana planejada com base no seu tempo e nos seus objetivos. Sem improviso.",
+      "A rota da sua carreira: degraus na ordem certa, certificações que valem o preço e cronograma no seu ritmo.",
     color: "blue",
     group: "extra",
   },
@@ -91,30 +93,8 @@ export const PRO_FEATURES: ProFeature[] = [
     group: "extra",
   },
   {
-    id: "empregabilidade",
-    number: "07",
-    iconName: "TrendingUp",
-    title: "Empregabilidade",
-    label: "Análise de empregabilidade com IA",
-    description:
-      "Onde você tá hoje vs onde o mercado quer. Métricas reais, plano de ação.",
-    color: "fuchsia",
-    group: "extra",
-  },
-  {
-    id: "networking",
-    number: "08",
-    iconName: "Send",
-    title: "Networking",
-    label: "Gerador de mensagens de networking",
-    description:
-      "Mensagens personalizadas pra LinkedIn, eventos, processos seletivos.",
-    color: "pink",
-    group: "extra",
-  },
-  {
     id: "comunidade",
-    number: "09",
+    number: "07",
     iconName: "Users",
     title: "Comunidade",
     label: "Comunidade exclusiva Pro",

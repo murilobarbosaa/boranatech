@@ -38,7 +38,7 @@ export default function EntrevistaPerguntas() {
         actions={
           !isPro && !loading ? (
             <AiCtaLink
-              href="/entrevistas/simulador"
+              href="/entrevistas"
               description="Simule a entrevista e receba feedback"
               accent="blue"
               className="w-full"

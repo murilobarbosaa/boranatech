@@ -6,8 +6,11 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import CopyButton from "@/components/shared/CopyButton";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import type { GithubMelhoria, Prioridade } from "@shared/github/schema";
+
+const ac = getPageAccentUi("violet");
 
 const IA_EYEBROW =
   "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_#0f172a]";
@@ -20,12 +23,12 @@ const PRIORITY: Record<Prioridade, { label: string; chipBg: string }> = {
 
 export function AiSummary({ resumo }: { resumo: string }) {
   return (
-    <div className="card-brutal rounded-2xl border-slate-950 bg-violet-50 p-6">
+    <div className={cn("card-brutal rounded-2xl border-slate-950 bg-violet-50 p-6", ac.liftShadow)}>
       <span className={IA_EYEBROW}>
         <Sparkles className="h-3.5 w-3.5" />
         análise da IA
       </span>
-      <p className="mt-4 text-lg font-medium leading-relaxed text-slate-900">
+      <p className="mt-4 max-w-prose text-lg font-medium leading-relaxed text-slate-900">
         {resumo}
       </p>
     </div>
@@ -45,7 +48,7 @@ export function StrengthsWeaknesses({
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <div className="card-brutal rounded-2xl border-slate-950 bg-white p-5">
+      <div className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}>
         <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-black text-slate-950">
           <ThumbsUp className="h-5 w-5 text-emerald-600" />
           Pontos fortes
@@ -69,7 +72,7 @@ export function StrengthsWeaknesses({
         )}
       </div>
 
-      <div className="card-brutal rounded-2xl border-slate-950 bg-white p-5">
+      <div className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}>
         <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-black text-slate-950">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
           Pontos a melhorar
@@ -109,7 +112,7 @@ export function Improvements({ melhorias }: { melhorias: GithubMelhoria[] }) {
           return (
             <div
               key={index}
-              className="card-brutal rounded-2xl border-slate-950 bg-white p-5"
+              className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}
             >
               <div className="flex flex-wrap items-center gap-3">
                 <span
@@ -139,7 +142,7 @@ export function ReadmeSuggestion({ markdown }: { markdown: string | null }) {
   if (!markdown) return null;
 
   return (
-    <details className="card-brutal group rounded-2xl border-slate-950 bg-white p-5">
+    <details className={cn("card-brutal group rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}>
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
         <span className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
           <FileCode2 className="h-5 w-5 text-violet-700" />

@@ -20,9 +20,11 @@ import avatarsRouter from "./routes/avatars";
 import badgesRouter from "./routes/badges";
 import billingRouter from "./routes/billing";
 import bookmarksRouter from "./routes/bookmarks";
+import careerPlanRouter from "./routes/careerPlan";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
 import githubRouter from "./routes/github";
+import interviewRouter from "./routes/interview";
 import launchStateRouter, { betaRouter } from "./routes/launchState";
 import linkedinRouter from "./routes/linkedin";
 import meAvatarRouter from "./routes/meAvatar";
@@ -138,11 +140,11 @@ async function redisRateLimitCount(
   }
 }
 
-const CSP_REPORT_ONLY = [
+const CSP_POLICY = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self'",
   "script-src 'self' https://us-assets.i.posthog.com",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
@@ -162,7 +164,7 @@ const CSP_REPORT_ONLY = [
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Permissions-Policy",
@@ -172,7 +174,7 @@ app.use((req, res, next) => {
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains",
   );
-  res.setHeader("Content-Security-Policy-Report-Only", CSP_REPORT_ONLY);
+  res.setHeader("Content-Security-Policy", CSP_POLICY);
   next();
 });
 
@@ -282,6 +284,9 @@ app.use((req, res, next) => {
     "Access-Control-Allow-Headers",
     "Content-Type,Authorization,x-beta-token",
   );
+  // Preflight cacheado por 10 minutos: sem isso o navegador refaz o OPTIONS a
+  // cada POST cross-origin (landing -> api.), pagando um round-trip extra.
+  res.setHeader("Access-Control-Max-Age", "600");
 
   if (req.method === "OPTIONS") {
     res.sendStatus(204);
@@ -324,6 +329,7 @@ app.use("/api/roadmaps-ia", aiRoadmapRouter);
 app.use("/api/agent/conversations", agentHistoryRouter);
 app.use("/api/agent", agentRouter);
 app.use("/api/github", githubRouter);
+app.use("/api/interview", interviewRouter);
 app.use("/api/linkedin", linkedinRouter);
 app.use("/api/resume", resumeAnalysisRouter);
 app.use("/api/resumes", resumesRouter);
@@ -334,6 +340,7 @@ app.use("/api/profiles", profilesRouter);
 app.use("/api/badges", badgesRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/bookmarks", bookmarksRouter);
+app.use("/api/career-plan", careerPlanRouter);
 app.use("/api/progress", progressRouter);
 app.use("/api/study", studyRouter);
 app.use("/api/quiz", quizRouter);

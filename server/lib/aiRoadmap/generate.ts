@@ -15,6 +15,7 @@ import { env } from "../env";
 import { fetchWithTimeout } from "../http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../openai";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
+import { supabaseAdmin } from "../supabaseAdmin";
 import { fetchUserContextPool } from "../userContext/pool";
 
 // Geracao do Roadmap com IA, no molde EXATO dos analisadores (linkedinAnalyze/
@@ -33,7 +34,7 @@ const AI_MAX_ATTEMPTS = 3;
 const AI_BACKOFF_MS = [400, 800];
 // Tetos de saida por chamada. Ajustaveis. // TODO: calibrar.
 const SKELETON_MAX_TOKENS = 2000;
-const SECTION_MAX_TOKENS = 2500;
+const SECTION_MAX_TOKENS = 3500;
 const AI_TEMPERATURE = 0.4;
 
 const SKELETON_JSON_SCHEMA = toOpenAIStrictSchema(RoadmapSkeletonModelSchema);
@@ -60,9 +61,10 @@ const SKELETON_SYSTEM_PROMPT = `Voce e um mentor senior de carreira em tecnologi
 
 REGRAS DO ESQUELETO:
 - Escreva em portugues do Brasil, tom acolhedor, direto e claro.
-- De 5 a 9 secoes, em ordem de estudo, do fundamento ao avancado. Cada secao tem id (kebab-case, unico, curto), title, description (uma ou duas frases do que a pessoa vai dominar) e level (iniciante, intermediario ou avancado).
+- De 7 a 10 secoes, em ordem de estudo, do fundamento ao avancado. Cada secao tem id (kebab-case, unico, curto), title, description (uma ou duas frases do que a pessoa vai dominar) e level (iniciante, intermediario ou avancado).
 - area e a area de tecnologia do roadmap; title e o nome da trilha (pessoal, ex: citando o foco da pessoa); level e o nivel GERAL de partida; description resume a jornada em ate duas frases.
-- Dimensione a jornada pelas horas semanais e pelo prazo informados no contexto: menos horas ou prazo curto pedem menos secoes e foco no essencial.
+- Este e um produto pago: a jornada precisa ser completa e profunda, cobrindo do fundamento ao nivel que o objetivo pede, sem etapas superficiais.
+- Dimensione a jornada pelas horas semanais e pelo prazo informados no contexto: menos horas ou prazo curto pedem menos secoes (perto de 7) e foco no essencial.
 - Se o contexto mostrar trilhas ou conteudos que a pessoa ja avancou, NAO recomece do zero: parta do ponto em que ela esta e aproveite o que ja foi feito.
 - NUNCA invente dados sobre a pessoa alem do contexto recebido.
 - NUNCA gere URLs nem cite paginas, cursos ou produtos especificos de nenhuma plataforma. O conteudo e autocontido.
@@ -74,10 +76,13 @@ const SECTION_SYSTEM_PROMPT = `Voce e um mentor senior de carreira em tecnologia
 
 REGRAS DO CONTEUDO:
 - Escreva em portugues do Brasil, tom acolhedor, direto e claro.
-- De 4 a 10 passos (children) para a secao pedida. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title e, quando fizer sentido, description (uma frase), content (markdown pratico: o que estudar, em que ordem, como praticar, sinais de que pode avancar), project (um mini projeto pratico para fixar), estimatedTime (estimativa realista, ex: "1 semana", "4h a 6h") e optional (true apenas para aprofundamento que pode ser pulado).
+- De 6 a 10 passos (children) para a secao pedida. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedTime; optional e true apenas para aprofundamento que pode ser pulado.
+- content e OBRIGATORIO em todo passo: markdown de 4 a 8 frases, estruturado em tres partes, nesta ordem: (1) o que dominar, nomeando os subtopicos concretos; (2) como praticar, com uma atividade clara; (3) um mini desafio pratico concreto para fechar o passo.
+- estimatedTime e OBRIGATORIO em todo passo: estimativa realista, ex: "2 semanas", "10 horas", "4h a 6h". Calibre pelas horas semanais e pelo prazo do contexto; a soma da secao precisa ser realista.
+- project: pelo menos UM passo da secao deve ter um mini projeto pratico que consolida a secao; nos demais passos use null quando nao fizer sentido.
+- Este e um produto pago: cada passo deve ensinar o suficiente para a pessoa saber exatamente o que estudar e como praticar hoje, sem citar cursos ou paginas especificas.
 - Um passo pode ter ate 5 sub-passos (children de segundo nivel, sem novos filhos), para quebrar um tema denso.
-- Campos que nao se aplicam ao passo devem vir como null, nunca texto vazio.
-- Calibre estimatedTime pelas horas semanais e pelo prazo do contexto; a soma da secao precisa ser realista.
+- Campos nullable que nao se aplicam ao passo devem vir como null, nunca texto vazio.
 - Se o contexto mostrar que a pessoa ja domina parte do tema, reconheca isso no content e foque no que falta.
 - NUNCA invente dados sobre a pessoa alem do contexto recebido.
 - NUNCA gere URLs nem cite paginas, cursos ou produtos especificos de nenhuma plataforma. Ensine o caminho e os conceitos; o conteudo e autocontido.
@@ -116,7 +121,8 @@ const FORMAT_LABELS: Record<RoadmapIntake["format"], string> = {
 
 // Total aproximado de passos de uma trilha estatica (folhas da arvore), para
 // dar percentual de avanco a IA. Aproximacao: conta folhas, incluindo opcionais.
-function countLeaves(nodes: RoadmapNode[]): number {
+// Exportado para a rota de contexto visivel usar o MESMO percentual.
+export function countLeaves(nodes: RoadmapNode[]): number {
   let total = 0;
   for (const node of nodes) {
     if (node.children && node.children.length > 0) {
@@ -128,6 +134,99 @@ function countLeaves(nodes: RoadmapNode[]): number {
   return total;
 }
 
+// Teto de titulos de etapas ja concluidas passados a IA (anti-repeticao).
+const MAX_COMPLETED_TITLES = 40;
+const MAX_PROGRESS_ROWS = 500;
+
+// Indexa title por id em toda a arvore de um RoadmapV2 (secoes e nos).
+function collectNodeTitles(roadmap: RoadmapV2, into: Map<string, string>): void {
+  const walk = (nodes: RoadmapNode[]): void => {
+    for (const node of nodes) {
+      into.set(node.id, node.title);
+      if (node.children && node.children.length > 0) walk(node.children);
+    }
+  };
+  for (const section of roadmap.sections) {
+    walk(section.children);
+  }
+}
+
+// Titulos das etapas ja concluidas pelo usuario (trilhas v2 estaticas via
+// conteudo em shared/roadmapV2 + roadmaps IA anteriores via ai_roadmaps),
+// resolvidos de user_progress (item_key = slug:nodeId). Best-effort: qualquer
+// falha degrada para lista vazia, nunca derruba a geracao.
+async function fetchCompletedTopicTitles(userId: string): Promise<string[]> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("user_progress")
+      .select("item_key")
+      .eq("user_id", userId)
+      .eq("context", "course_progress")
+      .limit(MAX_PROGRESS_ROWS);
+    if (error) {
+      console.warn("[roadmap-ia] leitura de progresso falhou:", error.message);
+      return [];
+    }
+
+    const nodeIdsBySlug = new Map<string, string[]>();
+    for (const row of (data ?? []) as Array<{ item_key: string }>) {
+      const sep = row.item_key.indexOf(":");
+      if (sep <= 0) continue;
+      const slug = row.item_key.slice(0, sep);
+      const nodeId = row.item_key.slice(sep + 1);
+      const ids = nodeIdsBySlug.get(slug) ?? [];
+      ids.push(nodeId);
+      nodeIdsBySlug.set(slug, ids);
+    }
+    if (nodeIdsBySlug.size === 0) return [];
+
+    const titlesById = new Map<string, string>();
+
+    for (const trail of roadmapsV2) {
+      if (nodeIdsBySlug.has(trail.slug)) collectNodeTitles(trail, titlesById);
+    }
+
+    const aiSlugs = Array.from(nodeIdsBySlug.keys()).filter((slug) =>
+      AI_ROADMAP_SLUG_RE.test(slug),
+    );
+    if (aiSlugs.length > 0) {
+      const { data: aiRows, error: aiError } = await supabaseAdmin
+        .from("ai_roadmaps")
+        .select("slug, roadmap")
+        .eq("user_id", userId)
+        .in("slug", aiSlugs);
+      if (aiError) {
+        console.warn(
+          "[roadmap-ia] resolucao de ai_roadmaps para anti-repeticao falhou:",
+          aiError.message,
+        );
+      } else {
+        for (const row of (aiRows ?? []) as Array<{ slug: string; roadmap: RoadmapV2 }>) {
+          if (row.roadmap && Array.isArray(row.roadmap.sections)) {
+            collectNodeTitles(row.roadmap, titlesById);
+          }
+        }
+      }
+    }
+
+    const titles: string[] = [];
+    const seen = new Set<string>();
+    for (const nodeIds of Array.from(nodeIdsBySlug.values())) {
+      for (const nodeId of nodeIds) {
+        const title = titlesById.get(nodeId);
+        if (!title || seen.has(title)) continue;
+        seen.add(title);
+        titles.push(title);
+        if (titles.length >= MAX_COMPLETED_TITLES) return titles;
+      }
+    }
+    return titles;
+  } catch (err) {
+    console.warn("[roadmap-ia] anti-repeticao indisponivel:", err);
+    return [];
+  }
+}
+
 // Monta o contexto textual da pessoa: intake (respostas do entendimento) +
 // pool de contexto (fail-soft por fonte: o que nao veio simplesmente nao
 // aparece; a IA e instruida a nunca inventar alem do contexto).
@@ -135,7 +234,10 @@ export async function buildGenerationContext(
   userId: string,
   intake: RoadmapIntake,
 ): Promise<string> {
-  const pool = await fetchUserContextPool(userId);
+  const [pool, completedTitles] = await Promise.all([
+    fetchUserContextPool(userId),
+    fetchCompletedTopicTitles(userId),
+  ]);
   const lines: string[] = [];
 
   lines.push("Contexto da pessoa (fatos; nao invente alem disto):");
@@ -246,6 +348,29 @@ export async function buildGenerationContext(
     const r = pool.resumes.data;
     lines.push(
       `- Ja criou curriculo na plataforma: ${r.latestTitle ?? "sem titulo"}, em ${r.latestCreatedAt ? r.latestCreatedAt.slice(0, 10) : "data desconhecida"}.`,
+    );
+  }
+
+  if (pool.interview.ok && pool.interview.data) {
+    const i = pool.interview.data;
+    lines.push(
+      `- Ultima entrevista simulada: area ${i.area ?? "nao registrada"}, ${i.goodCount} de ${i.questionCount} respostas boas.`,
+    );
+  }
+
+  if (pool.careerPlan.ok && pool.careerPlan.data) {
+    const p = pool.careerPlan.data;
+    lines.push(
+      `- Plano de carreira ativo na plataforma: area ${p.area ?? "nao registrada"}${p.goal ? `, objetivo "${p.goal}"` : ""}. Use so como sinal de direcao; NAO reproduza o plano de carreira na trilha.`,
+    );
+  }
+
+  if (completedTitles.length > 0) {
+    lines.push(
+      `- Etapas que a pessoa JA CONCLUIU na plataforma: ${completedTitles.join("; ")}.`,
+    );
+    lines.push(
+      "- NAO crie etapas sobre topicos desta lista; se um topico for pre-requisito, cite-o como ja dominado.",
     );
   }
 
