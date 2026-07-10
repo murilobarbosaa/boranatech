@@ -41,10 +41,13 @@ import ReadyTexts from "@/components/linkedin/ReadyTexts";
 import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import FeedbackBanner from "@/components/shared/FeedbackBanner";
 import {
   analyzeLinkedin,
   getLinkedinAnalysis,
+  getLinkedinImprovements,
   listLinkedinAnalyses,
+  setLinkedinImprovement,
 } from "@/lib/linkedinClient";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { extractLinkedinPdf, PdfExtractError } from "@/lib/pdfExtract";
@@ -76,9 +79,13 @@ import {
 const ac = getPageAccentUi("sky");
 
 const STORAGE_KEY = "boranatech:linkedin-analyzer";
-// Bump sempre que a forma da resposta mudar. A versao 2 marca o qualitative
-// com proximoPasso: result salvo com shape antigo e descartado no restore.
-const STORAGE_SHAPE_VERSION = 2;
+// Bump sempre que a forma da resposta ou do estado salvo mudar. A versao 3
+// adiciona analysisId ao lado do result (o checklist de melhorias aplicadas e
+// chaveado pelo id da analise persistida). A versao 2 tem o MESMO shape de
+// result e segue restauravel: result valido com analysisId null, ou seja,
+// progresso indisponivel com aviso, SEM recuperacao por nota (o fallback do
+// GitHub foi rejeitado para o LinkedIn). Versoes anteriores descartam result.
+const STORAGE_SHAPE_VERSION = 3;
 
 const LEVEL_LABEL = LINKEDIN_LEVEL_LABELS;
 
@@ -140,6 +147,8 @@ function emptyForm(): FormState {
 interface StoredState {
   form: FormState;
   result: LinkedinAnalysisResponse | null;
+  // Id da analise persistida exibida (null = sem checklist de melhorias).
+  analysisId: string | null;
 }
 
 function coerceForm(value: unknown): FormState {
@@ -173,25 +182,40 @@ function coerceForm(value: unknown): FormState {
 }
 
 function loadState(): StoredState {
-  if (typeof window === "undefined") return { form: emptyForm(), result: null };
+  if (typeof window === "undefined") {
+    return { form: emptyForm(), result: null, analysisId: null };
+  }
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return { form: emptyForm(), result: null };
+    if (!raw) return { form: emptyForm(), result: null, analysisId: null };
     const parsed = JSON.parse(raw) as {
       form?: unknown;
       result?: unknown;
+      analysisId?: unknown;
       version?: unknown;
     };
     const form = coerceForm(parsed.form);
+    // v3 e o shape atual; v2 tem o mesmo shape de result (so sem analysisId),
+    // entao restaura com progresso indisponivel. Nada de recuperar id por
+    // nota. Outras versoes descartam o result.
+    const versionOk =
+      parsed.version === STORAGE_SHAPE_VERSION || parsed.version === 2;
     const result =
-      parsed.version === STORAGE_SHAPE_VERSION &&
-      parsed.result &&
-      typeof parsed.result === "object"
+      versionOk && parsed.result && typeof parsed.result === "object"
         ? (parsed.result as LinkedinAnalysisResponse)
         : null;
-    return { form, result };
+    return {
+      form,
+      result,
+      analysisId:
+        parsed.version === STORAGE_SHAPE_VERSION &&
+        result !== null &&
+        typeof parsed.analysisId === "string"
+          ? parsed.analysisId
+          : null,
+    };
   } catch {
-    return { form: emptyForm(), result: null };
+    return { form: emptyForm(), result: null, analysisId: null };
   }
 }
 
@@ -491,6 +515,15 @@ export default function LinkedinAnalisar() {
   const [result, setResult] = useState<LinkedinAnalysisResponse | null>(
     bootstrap.result,
   );
+  // Id da analise persistida exibida: chaveia o checklist de melhorias
+  // aplicadas. null quando a persistencia best-effort falhou ou o restore
+  // veio do storage v2 (sem checklist; nunca recuperado por nota).
+  const [analysisId, setAnalysisId] = useState<string | null>(
+    bootstrap.analysisId,
+  );
+  // Indices das melhorias marcadas como aplicadas (carregado por analysisId).
+  const [applied, setApplied] = useState<Set<number>>(new Set());
+  const [progressError, setProgressError] = useState("");
   // PDF e a porta de entrada; quem ja tem texto (sessao restaurada) cai
   // direto no modo revisao.
   const [entryPath, setEntryPath] = useState<EntryPath>(() =>
@@ -528,12 +561,68 @@ export default function LinkedinAnalisar() {
     try {
       window.sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ form, result, version: STORAGE_SHAPE_VERSION }),
+        JSON.stringify({
+          form,
+          result,
+          analysisId,
+          version: STORAGE_SHAPE_VERSION,
+        }),
       );
     } catch {
       // storage cheio ou indisponivel: segue so em memoria.
     }
-  }, [form, result]);
+  }, [form, result, analysisId]);
+
+  // Carga do checklist por analise: analyze novo comeca vazio (a tabela nao
+  // tem linhas pra analise recem-criada), openHistory carrega o salvo. Falha
+  // de carga NUNCA colapsa em vazio silencioso: liga o progressError.
+  useEffect(() => {
+    setProgressError("");
+    if (!analysisId) {
+      setApplied(new Set());
+      return;
+    }
+    let alive = true;
+    getLinkedinImprovements(analysisId)
+      .then((indexes) => {
+        if (alive) setApplied(new Set(indexes));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setApplied(new Set());
+        // TODO(Ana): revisar a mensagem de falha ao carregar o progresso.
+        setProgressError(
+          "Não foi possível carregar seu progresso salvo. Recarregue a página para tentar de novo.",
+        );
+      });
+    return () => {
+      alive = false;
+    };
+  }, [analysisId]);
+
+  // Toggle otimista do checklist: atualiza na hora, PUT em background e
+  // rollback com aviso quando o server recusar.
+  function toggleImprovement(index: number) {
+    if (!analysisId) return;
+    const wasDone = applied.has(index);
+    setProgressError("");
+    setApplied((prev) => {
+      const next = new Set(prev);
+      if (wasDone) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+    setLinkedinImprovement(analysisId, index, !wasDone).catch(() => {
+      setApplied((prev) => {
+        const reverted = new Set(prev);
+        if (wasDone) reverted.add(index);
+        else reverted.delete(index);
+        return reverted;
+      });
+      // TODO(Ana): revisar a mensagem de falha ao salvar o progresso.
+      setProgressError("Não foi possível salvar seu progresso. Tente de novo.");
+    });
+  }
 
   useEffect(() => {
     if (!isPro) return;
@@ -620,9 +709,7 @@ export default function LinkedinAnalisar() {
     const priorScore = analyses[0]?.score ?? null;
 
     try {
-      // O analysisId devolvido junto passa a ser consumido na L6 (checklist
-      // de melhorias aplicadas); por ora so o data importa.
-      const { data } = await analyzeLinkedin({
+      const { data, analysisId: newAnalysisId } = await analyzeLinkedin({
         profileText: form.profileText.trim(),
         area: form.area,
         level: form.level,
@@ -636,6 +723,7 @@ export default function LinkedinAnalisar() {
         objetivo: form.objetivo.trim() || undefined,
       });
       setResult(data);
+      setAnalysisId(newAnalysisId);
       // Delta SO quando a nota mudou: empate nao vira banner nem seta, e o
       // contador do hero volta a animar de 0 (semantica alinhada ao GitHub).
       setScoreDelta(
@@ -659,6 +747,8 @@ export default function LinkedinAnalisar() {
       const record = await getLinkedinAnalysis(id);
       if (record) {
         setResult(record.result);
+        // O id da linha do historico chaveia o checklist salvo da analise.
+        setAnalysisId(record.id);
         setError("");
         setConfirmReanalyze(false);
         // Anterior = a entrada logo DEPOIS da aberta na lista (desc), pulando
@@ -688,10 +778,12 @@ export default function LinkedinAnalisar() {
   // Saida do estado de resultado: reset SO de UI. Mantem form e entryPath (a
   // pessoa volta pra revisao com os dados preservados); o resultado
   // persistido some pelo proprio effect de persistencia (que passa a gravar
-  // result null). L6: limpar aqui tambem os campos do loop de melhorias
-  // (analysisId, progresso aplicado) quando existirem.
+  // result e analysisId nulos). O applied zera pelo effect de carga quando o
+  // analysisId vira null.
   function startNewAnalysis() {
     setResult(null);
+    setAnalysisId(null);
+    setProgressError("");
     setError("");
     setScoreDelta(null);
     setConfirmReanalyze(false);
@@ -1273,10 +1365,24 @@ export default function LinkedinAnalisar() {
                         />
                       </Reveal>
                       <Reveal className="order-4 lg:order-none" delay={0.05}>
-                        <Improvements
-                          melhorias={result.qualitative.melhorias}
-                          accent={ac}
-                        />
+                        <div className="space-y-3">
+                          {!analysisId ? (
+                            <FeedbackBanner variant="warn">
+                              {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
+                              O progresso de melhorias está indisponível para
+                              esta análise.
+                            </FeedbackBanner>
+                          ) : null}
+                          {progressError ? (
+                            <FeedbackBanner variant="error">
+                              {progressError}
+                            </FeedbackBanner>
+                          ) : null}
+                          <Improvements
+                            melhorias={result.qualitative.melhorias}
+                            accent={ac}
+                          />
+                        </div>
                       </Reveal>
                       <Reveal className="order-6 lg:order-none">
                         <ReadyTexts qualitative={result.qualitative} />
