@@ -1,5 +1,6 @@
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, ExternalLink, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { resolveCheckActionUrl } from "@shared/linkedin/checkLinks";
 import {
   LINKEDIN_CATEGORIES,
   LINKEDIN_CATEGORY_LABELS,
@@ -39,6 +40,12 @@ export default function LinkedinChecklist({ checks }: LinkedinChecklistProps) {
           <ul className="space-y-3">
             {group.items.map((check) => {
               const Icon = check.aprovado ? CheckCircle2 : XCircle;
+              // Deep link honesto de "Resolver agora" (shared/linkedin/
+              // checkLinks): so nos reprovados e so quando a correcao e
+              // edicao do proprio perfil; sem URL, fica so o hint textual.
+              const actionUrl = !check.aprovado
+                ? resolveCheckActionUrl(check.id)
+                : null;
               return (
                 <li key={check.id} className="flex items-start gap-3">
                   <Icon
@@ -60,6 +67,18 @@ export default function LinkedinChecklist({ checks }: LinkedinChecklistProps) {
                         </span>{" "}
                         {HINT_BY_ID.get(check.id)}
                       </p>
+                    ) : null}
+                    {actionUrl ? (
+                      <a
+                        href={actionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1.5 inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-colors hover:bg-yellow-100"
+                      >
+                        {/* TODO(Ana): revisar o rotulo "Resolver agora". */}
+                        Resolver agora
+                        <ExternalLink className="h-3 w-3" aria-hidden />
+                      </a>
                     ) : null}
                   </div>
                 </li>

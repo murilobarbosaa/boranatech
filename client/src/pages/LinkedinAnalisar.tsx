@@ -39,6 +39,7 @@ import { LinkedinError } from "@/components/linkedin/LinkedinStates";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import ReadyTexts from "@/components/linkedin/ReadyTexts";
 import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
+import { openAgentWidget } from "@/components/agent/AgentWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import FeedbackBanner from "@/components/shared/FeedbackBanner";
@@ -1372,6 +1373,12 @@ export default function LinkedinAnalisar() {
                         <AiSummary
                           resumo={result.qualitative.resumo}
                           accent={ac}
+                          onAskAgent={() =>
+                            // TODO(Ana): revisar o texto pre-preenchido da ponte.
+                            openAgentWidget(
+                              "Sobre minha análise de LinkedIn de hoje: ",
+                            )
+                          }
                         />
                       </Reveal>
                       <Reveal className="order-2 lg:order-none" delay={0.05}>
