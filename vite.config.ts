@@ -2,11 +2,23 @@ import { jsxLocPlugin } from "@builder.io/vite-plugin-jsx-loc";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+import { visualizer } from "rollup-plugin-visualizer";
 import { defineConfig } from "vite";
 
 const PROJECT_ROOT = import.meta.dirname;
 
 const plugins = [react(), tailwindcss()];
+
+// Analise de bundle sob demanda: ANALYZE=1 pnpm build gera bundle-stats.html.
+if (process.env.ANALYZE) {
+  plugins.push(
+    visualizer({
+      filename: "bundle-stats.html",
+      gzipSize: true,
+      template: "treemap",
+    }),
+  );
+}
 
 export default defineConfig(({ command, mode }) => {
   const envDir = path.resolve(PROJECT_ROOT);
