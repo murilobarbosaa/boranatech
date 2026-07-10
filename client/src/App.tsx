@@ -19,7 +19,6 @@ const Admin = lazy(() => import("@/pages/Admin"));
 const AreaDetalhe = lazy(() => import("@/pages/AreaDetalhe"));
 const Areas = lazy(() => import("@/pages/Areas"));
 const Auth = lazy(() => import("@/pages/Auth"));
-const AuthGatePlayground = lazy(() => import("@/pages/dev/AuthGatePlayground"));
 const BemVindo = lazy(() => import("@/pages/BemVindo"));
 const Cadastro = lazy(() => import("@/pages/Cadastro"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
@@ -32,7 +31,6 @@ const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
 const CurriculoGerar = lazy(() => import("@/pages/CurriculoGerar"));
 const CurriculoLinkedin = lazy(() => import("@/pages/CurriculoLinkedin"));
 const Cursos = lazy(() => import("@/pages/Cursos"));
-const DevProBorders = lazy(() => import("@/pages/dev/ProBordersPlayground"));
 const Dicas = lazy(() => import("@/pages/Dicas"));
 const Dicionario = lazy(() => import("@/pages/Dicionario"));
 const EmpresaDetalhe = lazy(() => import("@/pages/EmpresaDetalhe"));
@@ -299,12 +297,6 @@ function Router() {
         <Route path="/licenca" component={Licenca} />
         <Route path="/privacidade" component={Privacidade} />
         <Route path="/termos-de-uso" component={TermosDeUso} />
-        {/* PROTOTIPO DESCARTAVEL: bordas Pro animadas. Remover junto com a pasta dev/. */}
-        <Route path="/dev/pro-borders" component={DevProBorders} />
-        {/* PROTOTIPO DESCARTAVEL: playground do gate de auth, so em dev. */}
-        {import.meta.env.DEV && (
-          <Route path="/dev/auth-gate" component={AuthGatePlayground} />
-        )}
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
