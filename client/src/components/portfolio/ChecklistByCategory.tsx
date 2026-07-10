@@ -2,11 +2,16 @@ import type { ComponentType } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ExternalLink,
   MinusCircle,
   XCircle,
 } from "lucide-react";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+import {
+  resolveCheckActionUrl,
+  type CheckLinkTarget,
+} from "@shared/github/checkLinks";
 import {
   CHECK_CATALOG,
   type CheckCategory,
@@ -53,11 +58,15 @@ interface ChecklistByCategoryProps {
   checks: GithubCheckResult[];
   /** Densidade leve pro trilho lateral do resultado; default mantem o atual. */
   compact?: boolean;
+  /** Alvo da analise para os deep links deterministas de "Resolver agora"
+   * (shared/github/checkLinks). Ausente = sem botoes, so os hints. */
+  linkTarget?: CheckLinkTarget | null;
 }
 
 export default function ChecklistByCategory({
   checks,
   compact = false,
+  linkTarget = null,
 }: ChecklistByCategoryProps) {
   const groups = CATEGORY_ORDER.map((category) => ({
     category,
@@ -86,6 +95,12 @@ export default function ChecklistByCategory({
           <ul className={compact ? "space-y-2.5" : "space-y-3"}>
             {group.items.map((check) => {
               const ui = STATUS_UI[check.status];
+              const actionable =
+                check.status === "warn" || check.status === "fail";
+              const actionUrl =
+                actionable && linkTarget
+                  ? resolveCheckActionUrl(check.id, linkTarget)
+                  : null;
               return (
                 <li key={check.id} className="flex items-start gap-3">
                   <ui.Icon
@@ -96,8 +111,7 @@ export default function ChecklistByCategory({
                       {check.label}
                     </p>
                     <p className="text-sm text-slate-500">{check.detail}</p>
-                    {(check.status === "warn" || check.status === "fail") &&
-                    HINT_BY_ID.has(check.id) ? (
+                    {actionable && HINT_BY_ID.has(check.id) ? (
                       <p className="mt-0.5 text-xs font-medium text-slate-400">
                         {/* TODO(Ana): revisar o rotulo "como resolver". */}
                         <span className="font-bold text-slate-500">
@@ -105,6 +119,18 @@ export default function ChecklistByCategory({
                         </span>{" "}
                         {HINT_BY_ID.get(check.id)}
                       </p>
+                    ) : null}
+                    {actionUrl ? (
+                      <a
+                        href={actionUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1.5 inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-colors hover:bg-yellow-100"
+                      >
+                        {/* TODO(Ana): revisar o rotulo "Resolver agora". */}
+                        Resolver agora
+                        <ExternalLink className="h-3 w-3" aria-hidden />
+                      </a>
                     ) : null}
                   </div>
                 </li>

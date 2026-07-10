@@ -45,11 +45,15 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI } from "@/lib/data";
+import { openAgentWidget } from "@/components/agent/AgentWidget";
+import FeedbackBanner from "@/components/shared/FeedbackBanner";
 import {
   analyzeGithub,
   getGithubAnalysis,
   listGithubAnalyses,
+  listImprovementProgress,
   normalizeGithubTarget,
+  setImprovementProgress,
   type GithubAnalysisSummary,
 } from "@/lib/githubClient";
 import { getQuizHistory } from "@/services/careerQuizService";
@@ -229,13 +233,15 @@ const STORAGE_KEY = "boranatech:portfolio-analyzer";
 // Versao da forma do payload persistido. Bump sempre que a forma da resposta
 // (GithubAnalysisResponse) ou a forma do estado salvo mudar. No restore,
 // payload de versao diferente e descartado, pra nunca reusar um result de
-// shape antigo. A versao 4 troca os slots por modo por um input/result unico
-// (o alvo e autodetectado do input).
-const STORAGE_SHAPE_VERSION = 4;
+// shape antigo. A versao 5 adiciona analysisId ao lado do result (o checklist
+// de melhorias aplicadas e chaveado pelo id da analise persistida).
+const STORAGE_SHAPE_VERSION = 5;
 
 interface StoredState {
   input: string;
   result: GithubAnalysisResponse | null;
+  // Id da analise persistida exibida (null = sem checklist de melhorias).
+  analysisId: string | null;
   // null = nada valido salvo (ainda nao escolhido nesta sessao).
   area: AreaSelection | null;
 }
@@ -248,14 +254,15 @@ function coerceArea(value: unknown): AreaSelection | null {
 
 function loadState(): StoredState {
   if (typeof window === "undefined") {
-    return { input: "", result: null, area: null };
+    return { input: "", result: null, analysisId: null, area: null };
   }
   try {
     const raw = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!raw) return { input: "", result: null, area: null };
+    if (!raw) return { input: "", result: null, analysisId: null, area: null };
     const parsed = JSON.parse(raw) as {
       input?: unknown;
       result?: unknown;
+      analysisId?: unknown;
       area?: unknown;
       version?: unknown;
     };
@@ -268,10 +275,12 @@ function loadState(): StoredState {
         ok && parsed.result && typeof parsed.result === "object"
           ? (parsed.result as GithubAnalysisResponse)
           : null,
+      analysisId:
+        ok && typeof parsed.analysisId === "string" ? parsed.analysisId : null,
       area: coerceArea(parsed.area),
     };
   } catch {
-    return { input: "", result: null, area: null };
+    return { input: "", result: null, analysisId: null, area: null };
   }
 }
 
@@ -426,10 +435,13 @@ function ScoreHero({
   response,
   scoreDelta,
   reduce,
+  improvements,
 }: {
   response: GithubAnalysisResponse;
   scoreDelta: { from: number; to: number } | null;
   reduce: boolean;
+  /** Placar do checklist de melhorias (null = sem checklist nesta analise). */
+  improvements: { done: number; total: number } | null;
 }) {
   const { target, deterministic } = response;
   const band = BAND_UI[deterministic.band];
@@ -548,6 +560,29 @@ function ScoreHero({
           >
             {band.label}
           </motion.span>
+          {improvements && improvements.total > 0 ? (
+            <motion.span
+              // key muda a cada avanco: o remount reanima; no N de N, o pulso
+              // unico de micro-celebracao (sem confete, exclusivo do delta).
+              key={`${improvements.done}/${improvements.total}`}
+              initial={false}
+              animate={
+                !reduce && improvements.done === improvements.total
+                  ? { scale: [1, 1.15, 1] }
+                  : undefined
+              }
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              className={cn(
+                "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                improvements.done === improvements.total
+                  ? "bg-emerald-300"
+                  : "bg-white",
+              )}
+            >
+              {/* TODO(Ana): revisar a copy do placar de melhorias. */}
+              {improvements.done} de {improvements.total} melhorias aplicadas
+            </motion.span>
+          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col p-6">
@@ -592,6 +627,14 @@ export default function PortfolioAnalisar() {
   const [result, setResult] = useState<GithubAnalysisResponse | null>(
     bootstrap.result,
   );
+  // Id da analise persistida exibida: chaveia o checklist de melhorias
+  // aplicadas. null quando a persistencia best-effort falhou (sem checklist).
+  const [analysisId, setAnalysisId] = useState<string | null>(
+    bootstrap.analysisId,
+  );
+  // Indices das melhorias marcadas como aplicadas (carregado por analysisId).
+  const [applied, setApplied] = useState<Set<number>>(new Set());
+  const [progressError, setProgressError] = useState("");
   const [area, setArea] = useState<AreaSelection>(
     bootstrap.area ?? GENERAL_AREA,
   );
@@ -660,19 +703,70 @@ export default function PortfolioAnalisar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPro]);
 
-  // Persiste input, result e area no sessionStorage. Nunca persiste loading
-  // nem error.
+  // Persiste input, result, analysisId e area no sessionStorage. Nunca
+  // persiste loading nem error.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       window.sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ input, result, area, version: STORAGE_SHAPE_VERSION }),
+        JSON.stringify({
+          input,
+          result,
+          analysisId,
+          area,
+          version: STORAGE_SHAPE_VERSION,
+        }),
       );
     } catch {
       // storage cheio ou indisponivel: ignora, segue so em memoria.
     }
-  }, [input, result, area]);
+  }, [input, result, analysisId, area]);
+
+  // Carga do checklist por analise: analyze novo comeca vazio (a tabela nao
+  // tem linhas pra analise recem-criada), openHistory carrega o salvo. Falha
+  // de carga degrada pra vazio (marcar de novo re-upserta, sem duplicar).
+  useEffect(() => {
+    if (!analysisId) {
+      setApplied(new Set());
+      return;
+    }
+    let alive = true;
+    listImprovementProgress(analysisId)
+      .then((indexes) => {
+        if (alive) setApplied(new Set(indexes));
+      })
+      .catch(() => {
+        if (alive) setApplied(new Set());
+      });
+    return () => {
+      alive = false;
+    };
+  }, [analysisId]);
+
+  // Toggle otimista do checklist: atualiza na hora, PUT em background e
+  // rollback com aviso quando o server recusar.
+  function toggleImprovement(index: number) {
+    if (!analysisId) return;
+    const wasDone = applied.has(index);
+    setProgressError("");
+    setApplied((prev) => {
+      const next = new Set(prev);
+      if (wasDone) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+    setImprovementProgress(analysisId, index, !wasDone).catch(() => {
+      setApplied((prev) => {
+        const reverted = new Set(prev);
+        if (wasDone) reverted.add(index);
+        else reverted.delete(index);
+        return reverted;
+      });
+      // TODO(Ana): revisar a mensagem de falha ao salvar o progresso.
+      setProgressError("Não foi possível salvar seu progresso. Tente de novo.");
+    });
+  }
 
   // Deteccao ao vivo do alvo (perfil ou repo) pela mesma fonte do server.
   const detection = detectGithubTarget(input);
@@ -731,8 +825,14 @@ export default function PortfolioAnalisar() {
 
     try {
       // O kind vai por compat (o server autodetecta e ignora o mode).
-      const data = await analyzeGithub(target.kind, trimmed, area);
+      const { data, analysisId: newAnalysisId } = await analyzeGithub(
+        target.kind,
+        trimmed,
+        area,
+      );
       setResult(data);
+      setAnalysisId(newAnalysisId);
+      setProgressError("");
       setScoreDelta(
         priorScore !== null
           ? { from: priorScore, to: data.deterministic.score }
@@ -760,6 +860,8 @@ export default function PortfolioAnalisar() {
       setConfirmReanalyze(false);
       setInput(rawInput);
       setResult(record.result);
+      setAnalysisId(record.id);
+      setProgressError("");
       const priorScore = rawInput ? findPriorScore(rawInput, id) : null;
       setScoreDelta(
         priorScore !== null && typeof record.score === "number"
@@ -778,6 +880,20 @@ export default function PortfolioAnalisar() {
     void runAnalysis();
   }
 
+  // Placar do checklist: so conta indices dentro do range das melhorias da
+  // analise exibida; sem analysisId (persistencia falhou) nao ha checklist.
+  const improvementsTotal = result?.qualitative.melhorias.length ?? 0;
+  const appliedCount = Array.from(applied).filter(
+    (index) => index < improvementsTotal,
+  ).length;
+  const improvementsScore =
+    analysisId && improvementsTotal > 0
+      ? { done: appliedCount, total: improvementsTotal }
+      : null;
+  const allApplied =
+    improvementsScore !== null &&
+    improvementsScore.done === improvementsScore.total;
+
   // Saida do estado de resultado: reset SO de UI (nenhuma funcao B3 muda).
   // Mantem input e area (a pessoa pode analisar o mesmo alvo editado ou
   // outro; o historico segue oferecendo as salvas). O resultado persistido
@@ -786,6 +902,8 @@ export default function PortfolioAnalisar() {
   // mudanca de forma nem bump de versao do storage.
   function startNewAnalysis() {
     setResult(null);
+    setAnalysisId(null);
+    setProgressError("");
     setError("");
     setScoreDelta(null);
     setConfirmReanalyze(false);
@@ -1057,6 +1175,7 @@ export default function PortfolioAnalisar() {
                     response={result}
                     scoreDelta={scoreDelta}
                     reduce={reduce}
+                    improvements={improvementsScore}
                   />
 
                   {scoreDelta ? (
@@ -1099,7 +1218,15 @@ export default function PortfolioAnalisar() {
                   <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
                     <div className="contents lg:col-span-7 lg:block lg:space-y-8">
                       <Reveal className="order-1 lg:order-none">
-                        <AiSummary resumo={result.qualitative.resumo} />
+                        <AiSummary
+                          resumo={result.qualitative.resumo}
+                          onAskAgent={() =>
+                            // TODO(Ana): revisar o texto pre-preenchido da ponte.
+                            openAgentWidget(
+                              "Sobre minha análise de GitHub de hoje: ",
+                            )
+                          }
+                        />
                       </Reveal>
                       <Reveal className="order-2 lg:order-none" delay={0.05}>
                         <StrengthsWeaknesses
@@ -1108,9 +1235,20 @@ export default function PortfolioAnalisar() {
                         />
                       </Reveal>
                       <Reveal className="order-4 lg:order-none" delay={0.05}>
-                        <Improvements
-                          melhorias={result.qualitative.melhorias}
-                        />
+                        <div className="space-y-3">
+                          {progressError ? (
+                            <FeedbackBanner variant="error">
+                              {progressError}
+                            </FeedbackBanner>
+                          ) : null}
+                          <Improvements
+                            melhorias={result.qualitative.melhorias}
+                            applied={analysisId ? applied : undefined}
+                            onToggle={
+                              analysisId ? toggleImprovement : undefined
+                            }
+                          />
+                        </div>
                       </Reveal>
                       {result.qualitative.readmeSugestao ? (
                         <Reveal className="order-6 lg:order-none">
@@ -1119,14 +1257,6 @@ export default function PortfolioAnalisar() {
                           />
                         </Reveal>
                       ) : null}
-                      <Reveal className="order-8 lg:order-none">
-                        <ReanalyzeCta
-                          confirming={confirmReanalyze}
-                          onStart={() => setConfirmReanalyze(true)}
-                          onConfirm={() => void runAnalysis()}
-                          onCancel={() => setConfirmReanalyze(false)}
-                        />
-                      </Reveal>
                     </div>
 
                     <div className="contents lg:col-span-5 lg:block lg:space-y-8">
@@ -1137,6 +1267,11 @@ export default function PortfolioAnalisar() {
                           <ChecklistByCategory
                             checks={result.deterministic.checks}
                             compact
+                            linkTarget={{
+                              kind: result.target.kind,
+                              login: result.target.login,
+                              repo: result.target.repo,
+                            }}
                           />
                         </div>
                       </Reveal>
@@ -1150,6 +1285,20 @@ export default function PortfolioAnalisar() {
                       </Reveal>
                     </div>
                   </div>
+
+                  {/* Climax do loop: a reanalise em faixa de largura total,
+                      celebrando quando o placar fecha em N de N. Confirmacao
+                      em 2 passos e custo explicito identicos aos de antes. */}
+                  <Reveal>
+                    <ReanalyzeCta
+                      confirming={confirmReanalyze}
+                      onStart={() => setConfirmReanalyze(true)}
+                      onConfirm={() => void runAnalysis()}
+                      onCancel={() => setConfirmReanalyze(false)}
+                      spotlight
+                      celebrate={allApplied}
+                    />
+                  </Reveal>
                 </div>
               ) : null}
 

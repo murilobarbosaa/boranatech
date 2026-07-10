@@ -1,7 +1,10 @@
+import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
+  Check,
   ChevronDown,
   FileCode2,
+  MessageCircle,
   Sparkles,
   ThumbsUp,
 } from "lucide-react";
@@ -21,7 +24,15 @@ const PRIORITY: Record<Prioridade, { label: string; chipBg: string }> = {
   baixa: { label: "prioridade baixa", chipBg: "bg-sky-300" },
 };
 
-export function AiSummary({ resumo }: { resumo: string }) {
+export function AiSummary({
+  resumo,
+  onAskAgent,
+}: {
+  resumo: string;
+  /** Ponte com o agente Pro (analisador de GitHub): abre o widget com o
+   * input pre-preenchido, sem enviar. Ausente = card identico ao de antes. */
+  onAskAgent?: () => void;
+}) {
   return (
     <div className={cn("card-brutal rounded-2xl border-slate-950 bg-violet-50 p-6", ac.liftShadow)}>
       <span className={IA_EYEBROW}>
@@ -31,6 +42,17 @@ export function AiSummary({ resumo }: { resumo: string }) {
       <p className="mt-4 max-w-prose text-lg font-medium leading-relaxed text-slate-900">
         {resumo}
       </p>
+      {onAskAgent ? (
+        <button
+          type="button"
+          onClick={onAskAgent}
+          className="mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-colors hover:bg-violet-100"
+        >
+          <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+          {/* TODO(Ana): revisar o rotulo da ponte com o agente. */}
+          Tirar dúvida sobre esta análise
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -97,8 +119,21 @@ export function StrengthsWeaknesses({
   );
 }
 
-export function Improvements({ melhorias }: { melhorias: GithubMelhoria[] }) {
+export function Improvements({
+  melhorias,
+  applied,
+  onToggle,
+}: {
+  melhorias: GithubMelhoria[];
+  /** Checklist vivo (analisador de GitHub): indices marcados como aplicados.
+   * Ausentes = cards identicos aos de antes (consumo do LinkedIn intacto). */
+  applied?: Set<number>;
+  onToggle?: (index: number) => void;
+}) {
+  const reduce = useReducedMotion() ?? false;
   if (melhorias.length === 0) return null;
+
+  const interactive = applied !== undefined && onToggle !== undefined;
 
   return (
     <div className="space-y-3">
@@ -109,10 +144,15 @@ export function Improvements({ melhorias }: { melhorias: GithubMelhoria[] }) {
       <div className="grid gap-3">
         {melhorias.map((item, index) => {
           const p = PRIORITY[item.prioridade];
+          const done = interactive && applied.has(index);
           return (
             <div
               key={index}
-              className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}
+              className={cn(
+                "card-brutal rounded-2xl border-slate-950 p-5",
+                done ? "bg-emerald-50" : "bg-white",
+                ac.liftShadow,
+              )}
             >
               <div className="flex flex-wrap items-center gap-3">
                 <span
@@ -123,13 +163,46 @@ export function Improvements({ melhorias }: { melhorias: GithubMelhoria[] }) {
                 >
                   {p.label}
                 </span>
-                <h4 className="font-display text-base font-black text-slate-950">
+                <h4
+                  className={cn(
+                    "font-display text-base font-black text-slate-950",
+                    done && "line-through decoration-2 decoration-slate-400",
+                  )}
+                >
                   {item.titulo}
                 </h4>
+                {done ? (
+                  <motion.span
+                    initial={reduce ? false : { scale: 1.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={
+                      reduce
+                        ? { duration: 0 }
+                        : { duration: 0.25, ease: "backOut" }
+                    }
+                    className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-emerald-300 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]"
+                  >
+                    <Check className="h-3 w-3" aria-hidden />
+                    {/* TODO(Ana): revisar o carimbo de melhoria aplicada. */}
+                    aplicada
+                  </motion.span>
+                ) : null}
               </div>
               <p className="mt-2 text-sm leading-relaxed text-slate-700">
                 {item.comoFazer}
               </p>
+              {interactive ? (
+                <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm font-black text-slate-900">
+                  <input
+                    type="checkbox"
+                    checked={done}
+                    onChange={() => onToggle(index)}
+                    className="h-5 w-5 rounded border-2 border-slate-950 accent-emerald-600"
+                  />
+                  {/* TODO(Ana): revisar o rotulo do checkbox de melhoria. */}
+                  Apliquei esta
+                </label>
+              ) : null}
             </div>
           );
         })}

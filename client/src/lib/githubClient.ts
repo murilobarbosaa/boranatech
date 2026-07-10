@@ -14,14 +14,21 @@ async function getAuthHeader(): Promise<Record<string, string>> {
 
 /**
  * Chama o analisador de GitHub (POST /api/github/analyze) e devolve o
- * GithubAnalysisResponse. Erros viram codigos tratados pela UI, no mesmo
- * estilo do callAiStructured do aiClient.
+ * GithubAnalysisResponse mais o id da analise persistida (null quando a
+ * persistencia best-effort falhou; o checklist de melhorias fica indisponivel
+ * nesse caso). Erros viram codigos tratados pela UI, no mesmo estilo do
+ * callAiStructured do aiClient.
  */
+export interface AnalyzeGithubResult {
+  data: GithubAnalysisResponse;
+  analysisId: string | null;
+}
+
 export async function analyzeGithub(
   mode: AnalysisMode,
   input: string,
   area: AreaSelection,
-): Promise<GithubAnalysisResponse> {
+): Promise<AnalyzeGithubResult> {
   const authHeader = await getAuthHeader();
   const response = await fetch(apiUrl("/api/github/analyze"), {
     method: "POST",
@@ -46,9 +53,56 @@ export async function analyzeGithub(
     throw new Error(body.error?.message || "Nao foi possivel concluir a analise agora.");
   }
 
-  const body = (await response.json()) as Partial<{ data: GithubAnalysisResponse }>;
+  const body = (await response.json()) as Partial<{
+    data: GithubAnalysisResponse;
+    analysisId: string | null;
+  }>;
   if (!body.data) throw new Error("ANALYSIS_FAILED");
-  return body.data;
+  return {
+    data: body.data,
+    analysisId: typeof body.analysisId === "string" ? body.analysisId : null,
+  };
+}
+
+// Progresso das melhorias aplicadas (checklist vivo do resultado). Sem custo
+// de IA: e so estado do proprio dado.
+
+export async function listImprovementProgress(
+  analysisId: string,
+): Promise<number[]> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(
+    apiUrl(`/api/github/analyses/${encodeURIComponent(analysisId)}/improvements`),
+    { headers: authHeader },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    throw new Error(readErrorMessage(body));
+  }
+  const payload = (await response.json()) as { applied?: number[] };
+  return Array.isArray(payload.applied) ? payload.applied : [];
+}
+
+export async function setImprovementProgress(
+  analysisId: string,
+  index: number,
+  done: boolean,
+): Promise<void> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(
+    apiUrl(
+      `/api/github/analyses/${encodeURIComponent(analysisId)}/improvements/${index}`,
+    ),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeader },
+      body: JSON.stringify({ done }),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    throw new Error(readErrorMessage(body));
+  }
 }
 
 // Historico de analises (GET /api/github/analyses), no padrao dos outros

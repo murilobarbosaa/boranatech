@@ -26,6 +26,25 @@ import {
   type ConversationSummary,
 } from "@/lib/agentHistoryClient";
 
+// Gancho minimo para abrir o widget programaticamente com o input
+// PRE-PREENCHIDO (sem enviar nada): CustomEvent tipado disparado por paginas
+// (ex.: a ponte do Analisador de GitHub). Fora este listener o widget nao
+// muda em nada.
+export const AGENT_OPEN_EVENT = "bnt:agent:open";
+
+export interface AgentOpenEventDetail {
+  prefill?: string;
+}
+
+export function openAgentWidget(prefill?: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<AgentOpenEventDetail>(AGENT_OPEN_EVENT, {
+      detail: { prefill },
+    }),
+  );
+}
+
 // Rotulos amigaveis de status por tool. Default abaixo cobre tools novas.
 // TODO(Ana): revisar os rotulos de status de busca.
 const TOOL_STATUS_LABELS: Record<string, string> = {
@@ -190,6 +209,25 @@ export default function AgentWidget() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, statusLabel, errorMsg, open]);
+
+  // Abertura programatica (ver AGENT_OPEN_EVENT no topo): abre o painel e
+  // pre-preenche o input SEM enviar. Deslogado cai no mesmo gate de login do
+  // launcher.
+  useEffect(() => {
+    function onOpenEvent(event: Event) {
+      const detail = (event as CustomEvent<AgentOpenEventDetail>).detail;
+      if (!user) {
+        requireAuth({});
+        return;
+      }
+      setOpen(true);
+      if (typeof detail?.prefill === "string" && detail.prefill.length > 0) {
+        setInput(detail.prefill);
+      }
+    }
+    window.addEventListener(AGENT_OPEN_EVENT, onOpenEvent);
+    return () => window.removeEventListener(AGENT_OPEN_EVENT, onOpenEvent);
+  }, [user, requireAuth]);
 
   // Carrega a lista de conversas ao abrir o painel, SO para Pro logado. Falha
   // NAO quebra o widget: apenas marca o historico como indisponivel e o chat
