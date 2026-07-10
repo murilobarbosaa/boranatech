@@ -39,29 +39,38 @@ const ANALYZE_BUDGET_MS = 75_000;
 // linkedin.ts: falha de escrita vira console.warn e NUNCA quebra a resposta.
 // user_id vem SO do JWT verificado (a rota tem requireAuth no topo). level fica
 // nulo: a analise de GitHub nao produz nivel, so nota (score) e faixa (band).
+// Devolve o id da linha inserida (o client precisa dele pro checklist de
+// melhorias aplicadas) ou null quando a persistencia falhou.
 async function persistGithubAnalysis(
   userId: string,
   rawInput: string,
   response: GithubAnalysisResponse,
-) {
+): Promise<string | null> {
   try {
-    const { error } = await supabaseAdmin.from("github_analyses").insert({
-      user_id: userId,
-      area: response.area,
-      level: null,
-      score: response.deterministic.score,
-      faixa: response.deterministic.band,
-      input: { mode: response.mode, input: rawInput, area: response.area },
-      result: response,
-    });
+    const { data, error } = await supabaseAdmin
+      .from("github_analyses")
+      .insert({
+        user_id: userId,
+        area: response.area,
+        level: null,
+        score: response.deterministic.score,
+        faixa: response.deterministic.band,
+        input: { mode: response.mode, input: rawInput, area: response.area },
+        result: response,
+      })
+      .select("id")
+      .single();
     if (error) {
       console.warn(
         "[github] Falha ao persistir analise (fail-soft):",
         error.message,
       );
+      return null;
     }
+    return (data as { id: string } | null)?.id ?? null;
   } catch (err) {
     console.warn("[github] Erro inesperado ao persistir analise (fail-soft):", err);
+    return null;
   }
 }
 
@@ -148,8 +157,8 @@ router.post("/analyze", async (req: Request, res: Response, next: NextFunction) 
       inputChars: aiIo.inputChars,
       outputChars,
     });
-    await persistGithubAnalysis(userId, input, data);
-    res.json({ data });
+    const analysisId = await persistGithubAnalysis(userId, input, data);
+    res.json({ data, analysisId });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro desconhecido";
     await logAiUsage({ userId, tool, requestId, status: "error", errorMessage: message });
@@ -268,5 +277,126 @@ router.get("/analyses/:id", async (req: Request, res: Response, next: NextFuncti
   }
   res.json(data);
 });
+
+// Progresso das melhorias aplicadas (o checklist vivo do resultado). Sem gate
+// Pro alem do requireAuth do router: e progresso do PROPRIO dado (um ex-Pro
+// segue marcando as analises antigas). Nenhum custo de IA aqui.
+
+// Teto do indice aceito (as melhorias vem 4 a 7 por analise; folga proposital).
+const MAX_IMPROVEMENT_INDEX = 20;
+
+// Posse da analise ANTES de qualquer leitura/escrita de progresso: true/false
+// pela existencia da linha do dono, null em erro de query (vira 500).
+async function ownsGithubAnalysis(
+  userId: string,
+  analysisId: string,
+): Promise<boolean | null> {
+  const { data, error } = await supabaseAdmin
+    .from("github_analyses")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("id", analysisId)
+    .maybeSingle();
+  if (error) {
+    console.error("[github] checagem de posse da analise falhou:", error.message);
+    return null;
+  }
+  return Boolean(data);
+}
+
+router.get(
+  "/analyses/:id/improvements",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      // TODO(Ana): mensagem de analise nao encontrada.
+      return next(createError(404, "not_found", "Analise nao encontrada."));
+    }
+    const owns = await ownsGithubAnalysis(userId, id);
+    if (owns === null) {
+      // TODO(Ana): mensagem de falha ao carregar o progresso.
+      return next(
+        createError(500, "load_failed", "Nao foi possivel carregar o progresso."),
+      );
+    }
+    if (!owns) {
+      // 404 tambem para analise de OUTRO usuario: nao vaza existencia.
+      return next(createError(404, "not_found", "Analise nao encontrada."));
+    }
+    const { data, error } = await supabaseAdmin
+      .from("github_improvement_progress")
+      .select("improvement_index")
+      .eq("user_id", userId)
+      .eq("analysis_id", id)
+      .eq("done", true);
+    if (error) {
+      return next(
+        createError(500, "load_failed", "Nao foi possivel carregar o progresso."),
+      );
+    }
+    res.json({
+      applied: ((data ?? []) as Array<{ improvement_index: number }>).map(
+        (row) => row.improvement_index,
+      ),
+    });
+  },
+);
+
+router.put(
+  "/analyses/:id/improvements/:index",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Analise nao encontrada."));
+    }
+    const index = Number(req.params.index);
+    if (
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index > MAX_IMPROVEMENT_INDEX
+    ) {
+      // TODO(Ana): mensagem de indice invalido.
+      return next(
+        createError(400, "invalid_request", "Indice de melhoria invalido."),
+      );
+    }
+    const body = (req.body ?? {}) as { done?: unknown };
+    if (typeof body.done !== "boolean") {
+      // TODO(Ana): mensagem de body invalido do progresso.
+      return next(
+        createError(400, "invalid_request", "Envie done como boolean."),
+      );
+    }
+    const owns = await ownsGithubAnalysis(userId, id);
+    if (owns === null) {
+      // TODO(Ana): mensagem de falha ao salvar o progresso.
+      return next(
+        createError(500, "save_failed", "Nao foi possivel salvar o progresso."),
+      );
+    }
+    if (!owns) {
+      return next(createError(404, "not_found", "Analise nao encontrada."));
+    }
+    const { error } = await supabaseAdmin
+      .from("github_improvement_progress")
+      .upsert(
+        {
+          user_id: userId,
+          analysis_id: id,
+          improvement_index: index,
+          done: body.done,
+        },
+        { onConflict: "user_id,analysis_id,improvement_index" },
+      );
+    if (error) {
+      return next(
+        createError(500, "save_failed", "Nao foi possivel salvar o progresso."),
+      );
+    }
+    res.json({ ok: true });
+  },
+);
 
 export default router;
