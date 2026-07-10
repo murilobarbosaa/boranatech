@@ -1,21 +1,52 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Lightbulb, Shuffle } from "lucide-react";
-import { dicas } from "@/lib/dicasData";
+
+type Dica = (typeof import("@/lib/dicasData"))["dicas"][number];
 
 // Card na home com uma dica aleatoria da lista REAL de dicas, com botao pra
 // gerar outra (padrao "me surpreenda"). Nao inventa dicas.
+// A lista carrega sob demanda no mount (dynamic import) para nao entrar no
+// grafo do boot; enquanto carrega, um skeleton reserva o espaco do card.
 export default function DicaDoDia() {
+  const [dicas, setDicas] = useState<Dica[] | null>(null);
   const [indice, setIndice] = useState(0);
-  const dica = dicas[indice];
+  const dica = dicas?.[indice];
+
+  useEffect(() => {
+    let ativo = true;
+    import("@/lib/dicasData")
+      .then((mod) => {
+        if (ativo) setDicas(mod.dicas);
+      })
+      .catch(() => {
+        if (ativo) setDicas([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   function outra() {
-    if (dicas.length < 2) return;
+    if (!dicas || dicas.length < 2) return;
     let proximo = indice;
     while (proximo === indice) {
       proximo = Math.floor(Math.random() * dicas.length);
     }
     setIndice(proximo);
+  }
+
+  if (dicas === null) {
+    return (
+      <section className="bg-[#faf8f4] py-16 sm:py-20">
+        <div className="container">
+          <div
+            className="mx-auto h-64 max-w-2xl animate-pulse rounded-2xl border-2 border-slate-200 bg-white sm:h-56"
+            aria-hidden="true"
+          />
+        </div>
+      </section>
+    );
   }
 
   if (!dica) return null;

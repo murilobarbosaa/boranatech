@@ -1,4 +1,4 @@
-import { EVENTO_UF_NACIONAL, estadosBrasil } from "./data";
+import { EVENTO_UF_NACIONAL, estadosBrasil } from "./eventosData";
 
 /** Rótulos visíveis nos `<label>` acima dos `<select>` (não entram como opções). */
 export const LABEL_FILTROS = {

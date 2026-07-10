@@ -1,17 +1,39 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, CalendarDays, ExternalLink, MapPin } from "lucide-react";
-import { eventos } from "@/lib/data";
-import { isEventoPassado } from "@/lib/eventFilters";
+
+type Evento = (typeof import("@/lib/eventosData"))["eventos"][number];
 
 // Card na home com os proximos eventos, lendo a mesma fonte real da pagina de
-// Eventos (array `eventos` de @/lib/data). So mostra eventos que ainda nao
-// passaram E que tem link/material publico. Nao inventa evento: se nao houver
-// nenhum, mostra estado vazio elegante.
-const proximos = eventos
-  .filter((evento) => !isEventoPassado(evento) && Boolean(evento.link))
-  .slice(0, 3);
-
+// Eventos (array `eventos` de @/lib/eventosData). So mostra eventos que ainda
+// nao passaram E que tem link/material publico. Nao inventa evento: se nao
+// houver nenhum, mostra estado vazio elegante.
+// O array e o filtro carregam sob demanda no mount (dynamic import) para nao
+// entrarem no grafo do boot; o eventFilters tambem e dinamico porque importa
+// de eventosData. Enquanto carrega, skeletons reservam o espaco (sem layout
+// shift).
 export default function ProximosEventos() {
+  const [proximos, setProximos] = useState<Evento[] | null>(null);
+
+  useEffect(() => {
+    let ativo = true;
+    Promise.all([import("@/lib/eventosData"), import("@/lib/eventFilters")])
+      .then(([{ eventos }, { isEventoPassado }]) => {
+        if (!ativo) return;
+        setProximos(
+          eventos
+            .filter((evento) => !isEventoPassado(evento) && Boolean(evento.link))
+            .slice(0, 3),
+        );
+      })
+      .catch(() => {
+        if (ativo) setProximos([]);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
   return (
     <section className="bg-white py-16 sm:py-20">
       <div className="container">
@@ -29,7 +51,18 @@ export default function ProximosEventos() {
           </Link>
         </div>
 
-        {proximos.length > 0 ? (
+        {proximos === null ? (
+          <ul
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            aria-hidden="true"
+          >
+            {[0, 1, 2].map((i) => (
+              <li key={i}>
+                <div className="h-52 animate-pulse rounded-2xl border-2 border-slate-200 bg-slate-100" />
+              </li>
+            ))}
+          </ul>
+        ) : proximos.length > 0 ? (
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {proximos.map((evento) => (
               <li key={evento.id}>

@@ -57,12 +57,33 @@ export default defineConfig(({ command, mode }) => {
               if (id.includes("node_modules/posthog-js/")) {
                 return "analytics";
               }
+              // Sem este pin o Rollup funde os icones compartilhados dentro do
+              // app-data (chunk manual rouba dependencia comum), e o boot passa
+              // a importar o app-data inteiro so pra pegar icone.
+              if (id.includes("node_modules/lucide-react/")) {
+                return "icons";
+              }
               return undefined;
+            }
+            // dicasData e eventosData ficam FORA do app-data de proposito:
+            // a home os carrega sob demanda e nao pode arrastar o chunk todo.
+            // eventosData e pinado em chunk proprio porque data.ts o reexporta;
+            // sem o pin, o Rollup o fundiria de volta no app-data.
+            if (id.includes("client/src/lib/eventosData.ts")) {
+              return "eventos-data";
+            }
+            // slugify e quizMeta sao usados pelo boot da home E por modulos do
+            // app-data; pinados num chunk minimo para o Rollup nao os fundir no
+            // app-data (o que arrastaria o app-data inteiro pro boot).
+            if (
+              id.includes("client/src/lib/slugify.ts") ||
+              id.includes("client/src/lib/quizMeta.ts")
+            ) {
+              return "boot-utils";
             }
             if (
               id.includes("client/src/lib/data.ts") ||
               id.includes("client/src/lib/platformData.ts") ||
-              id.includes("client/src/lib/dicasData.ts") ||
               id.includes("client/src/lib/technologyData.ts") ||
               id.includes("shared/glossaryData.ts")
             ) {
