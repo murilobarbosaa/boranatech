@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { slugify } from "@/lib/technologyData";
+import { slugify } from "@/lib/slugify";
 
 type LogoItem = {
   name: string;

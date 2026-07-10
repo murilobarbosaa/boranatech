@@ -1,4 +1,5 @@
 import { TECH_AREA_MAP } from "@shared/techAreas";
+import { slugify } from "./slugify";
 import { usageEvidence } from "./surveyData2025";
 
 export type TechnologyCategory =
@@ -337,14 +338,9 @@ const difficulties: Record<string, DifficultyLabel> = {
   Gradle: "Intermediário",
 };
 
-export function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace("#", "sharp")
-    .replace(/\+/g, "plus")
-    .replace(/\./g, "")
-    .replace(/\s+/g, "-");
-}
+// slugify vive em slugify.ts (util puro) para a home nao arrastar este
+// arquivo pro boot; reexportado para os consumidores existentes.
+export { slugify };
 
 function categoryFor(name: string): TechnologyCategory {
   return (
