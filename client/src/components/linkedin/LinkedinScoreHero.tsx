@@ -56,10 +56,14 @@ export default function LinkedinScoreHero({
   response,
   scoreDelta,
   reduce,
+  improvements = null,
 }: {
   response: LinkedinAnalysisResponse;
   scoreDelta: { from: number; to: number } | null;
   reduce: boolean;
+  /** Placar do checklist de melhorias (null = sem checklist nesta analise:
+   * persistencia falhou, storage v2 ou erro de carga; o chip nao renderiza). */
+  improvements?: { done: number; total: number } | null;
 }) {
   const { deterministic } = response;
   const faixaUi = FAIXA_UI[deterministic.faixa];
@@ -174,9 +178,30 @@ export default function LinkedinScoreHero({
             >
               {FAIXA_LABELS[deterministic.faixa]}
             </motion.span>
-            {/* L6: o placar "X de N melhorias aplicadas" (chip com pulso no
-                N de N) entra AQUI, logo abaixo do carimbo da faixa, quando o
-                checklist de melhorias aplicadas existir no LinkedIn. */}
+            {improvements && improvements.total > 0 ? (
+              <motion.span
+                // key muda a cada avanco: o remount reanima; no N de N, o
+                // pulso unico de micro-celebracao (sem confete, que segue
+                // exclusivo do delta que subiu).
+                key={`${improvements.done}/${improvements.total}`}
+                initial={false}
+                animate={
+                  !reduce && improvements.done === improvements.total
+                    ? { scale: [1, 1.15, 1] }
+                    : undefined
+                }
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className={cn(
+                  "inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                  improvements.done === improvements.total
+                    ? "bg-emerald-300"
+                    : "bg-white",
+                )}
+              >
+                {/* TODO(Ana): revisar a copy do placar de melhorias. */}
+                {improvements.done} de {improvements.total} melhorias aplicadas
+              </motion.span>
+            ) : null}
           </div>
 
           {/* Coluna do contexto da analise (o antigo ResultHeader absorvido):

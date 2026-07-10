@@ -792,6 +792,22 @@ export default function LinkedinAnalisar() {
   const profileChars = form.profileText.trim().length;
   const canSubmit = profileChars >= 200 && !loading;
 
+  // Placar do checklist: so conta indices dentro do range das melhorias da
+  // analise exibida. Sem analysisId (persistencia falhou ou storage v2) ou
+  // com erro de progresso, o placar e null e o chip NAO renderiza: erro nunca
+  // vira um "0 de N" falso.
+  const improvementsTotal = result?.qualitative.melhorias.length ?? 0;
+  const appliedCount = Array.from(applied).filter(
+    (index) => index < improvementsTotal,
+  ).length;
+  const improvementsScore =
+    analysisId && !progressError && improvementsTotal > 0
+      ? { done: appliedCount, total: improvementsTotal }
+      : null;
+  const allApplied =
+    improvementsScore !== null &&
+    improvementsScore.done === improvementsScore.total;
+
   const reduce = useReducedMotion() ?? false;
   // Estado de ENTRADA: sem analise em andamento, sem erro e sem resultado. E
   // onde vivem o cenario, a explicacao (timeline + vitrine), as pills e o
@@ -1316,6 +1332,7 @@ export default function LinkedinAnalisar() {
                     response={result}
                     scoreDelta={scoreDelta}
                     reduce={reduce}
+                    improvements={improvementsScore}
                   />
 
                   {scoreDelta ? (
@@ -1381,6 +1398,10 @@ export default function LinkedinAnalisar() {
                           <Improvements
                             melhorias={result.qualitative.melhorias}
                             accent={ac}
+                            applied={analysisId ? applied : undefined}
+                            onToggle={
+                              analysisId ? toggleImprovement : undefined
+                            }
                           />
                         </div>
                       </Reveal>
@@ -1394,8 +1415,7 @@ export default function LinkedinAnalisar() {
                       </Reveal>
                       {/* Climax do loop fechando a COLUNA PRINCIPAL, com a
                           confirmacao em 2 passos e o custo explicito de
-                          sempre; celebrate chega na L6 com o checklist de
-                          melhorias aplicadas. */}
+                          sempre, celebrando no N de N. */}
                       <Reveal className="order-9 lg:order-none">
                         <ReanalyzeCta
                           confirming={confirmReanalyze}
@@ -1403,6 +1423,7 @@ export default function LinkedinAnalisar() {
                           onConfirm={() => void runAnalysis()}
                           onCancel={() => setConfirmReanalyze(false)}
                           spotlight
+                          celebrate={allApplied}
                         />
                       </Reveal>
                     </div>
