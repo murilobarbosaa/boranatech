@@ -1,22 +1,30 @@
 import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
+  ArrowLeft,
   Check,
   ExternalLink,
   Loader2,
+  Map as MapIcon,
   RefreshCw,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
-import PageHero from "@/components/shared/PageHero";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  CareerPlanEntryBackdrop,
+  CareerPlanResultBackdrop,
+} from "@/components/careerPlan/CareerPlanBackdrop";
+import {
+  HowItWorksSteps,
+  TrailShowcase,
+} from "@/components/careerPlan/CareerPlanIntro";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
-import { studyTechniques } from "@/lib/careerToolsData";
-import { technologies } from "@/lib/technologyData";
 import { AREA_LABELS, AREA_SLUGS } from "@shared/areas";
 import { getCatalogItem } from "@shared/careerCatalog";
 import { useCareerPlanChecklist } from "@/hooks/useCareerPlanChecklist";
@@ -57,71 +65,6 @@ function formatPrice(catalogId: string): string {
   if ("free" in item.price) return "Gratuito";
   if (item.price.currency === "BRL") return `R$ ${item.price.amount}`;
   return `USD ${item.price.amount}`;
-}
-
-function CalculadoraTempo() {
-  const [tech, setTech] = useState("React");
-  const [hours, setHours] = useState(2);
-  const difficulty =
-    technologies.find((item) => item.name === tech)?.difficultyScore ?? 3;
-  const estimate = Math.max(3, Math.round((difficulty * 8) / hours));
-
-  return (
-    <div className="card-brutal rounded-2xl bg-white p-6">
-      <h2 className="font-display text-2xl font-black">
-        Calculadora de tempo para aprender
-      </h2>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="font-black">
-          Quero aprender
-          <select
-            className={cn("mt-1 w-full rounded-xl border-2 p-3", ac.input)}
-            value={tech}
-            onChange={(event) => setTech(event.target.value)}
-          >
-            {technologies.map((item) => (
-              <option key={item.slug}>{item.name}</option>
-            ))}
-          </select>
-        </label>
-        <label className="font-black">
-          Vou estudar {hours}h por dia
-          <input
-            type="range"
-            min="1"
-            max="8"
-            value={hours}
-            onChange={(event) => setHours(Number(event.target.value))}
-            className="mt-4 w-full"
-          />
-        </label>
-      </div>
-      <p
-        className={cn(
-          "mt-5 rounded-2xl p-5 font-display text-xl font-black",
-          ac.panelSoft,
-          ac.tbodyAccent,
-        )}
-      >
-        Com cerca de {hours}h por dia, uma base inicial em {tech} leva em torno
-        de {estimate} semanas. É uma estimativa pra te dar um norte, não uma
-        régua.
-      </p>
-    </div>
-  );
-}
-
-function TecnicasEstudo() {
-  return (
-    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-      {studyTechniques.map((item) => (
-        <article key={item.title} className="card-brutal rounded-2xl bg-white p-5">
-          <h3 className="font-display text-xl font-black">{item.title}</h3>
-          <p className="mt-2 text-sm text-slate-600">{item.description}</p>
-        </article>
-      ))}
-    </div>
-  );
 }
 
 interface IntakeFormProps {
@@ -605,6 +548,7 @@ function PlanView({ plan, readonly, onWantNew }: PlanViewProps) {
 export default function PlanoCarreira() {
   const { user } = useAuth();
   const { isPro, loading: subLoading } = useSubscription();
+  const reduce = useReducedMotion() ?? false;
 
   const [phase, setPhase] = useState<"loading" | "ready">("loading");
   const [activePlan, setActivePlan] = useState<CareerPlanDetail | null>(null);
@@ -697,6 +641,31 @@ export default function PlanoCarreira() {
 
   const shown = viewing ?? activePlan;
   const loading = phase === "loading" || subLoading;
+  // Estado de resultado: um plano visivel (ativo ou arquivado), sem intake
+  // aberto. Estado de entrada: nada pra mostrar (vitrine + ProGate/intake).
+  const showingPlan = !loading && !!shown && !wantNew;
+  const entryState = !loading && !shown;
+
+  // Slot de acao contextual do cabecalho (padrao do molde RD2: o topo
+  // esquerdo e o lugar universal de "voltar").
+  const backAction =
+    !loading && wantNew && shown
+      ? {
+          // TODO(Ana): label de volta ao plano atual
+          label: "Voltar pro plano atual",
+          onClick: () => setWantNew(false),
+        }
+      : !loading &&
+          !wantNew &&
+          viewing &&
+          activePlan &&
+          viewing.id !== activePlan.id
+        ? {
+            // TODO(Ana): label de volta ao plano ativo
+            label: "Voltar pro plano ativo",
+            onClick: () => setViewing(null),
+          }
+        : null;
 
   let mainBlock: React.ReactNode;
   if (loading) {
@@ -706,26 +675,15 @@ export default function PlanoCarreira() {
       </div>
     );
   } else if (wantNew && !isPro) {
+    // A volta pro plano atual vive no slot do cabecalho.
     mainBlock = (
-      <div className="space-y-4">
-        <ProGate description="Gerar um plano de carreira novo faz parte do Plano Pro. Seu plano atual e o progresso continuam aqui." />
-        {shown ? (
-          <button
-            type="button"
-            onClick={() => setWantNew(false)}
-            className="rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-[2px_2px_0_#0f172a]"
-          >
-            Voltar pro meu plano
-          </button>
-        ) : null}
-      </div>
+      <ProGate description="Gerar um plano de carreira novo faz parte do Plano Pro. Seu plano atual e o progresso continuam aqui." />
     );
   } else if (wantNew || (!shown && isPro)) {
     mainBlock = (
       <IntakeForm
         prefill={prefill}
         showArchiveWarning={wantNew && !!activePlan}
-        onCancel={shown ? () => setWantNew(false) : undefined}
         generating={generating}
         error={genError}
         onSubmit={(intake) => void handleGenerate(intake)}
@@ -753,52 +711,102 @@ export default function PlanoCarreira() {
         description="A rota da sua carreira em tecnologia: degraus ordenados, certificações que valem a pena pro seu orçamento, cronograma realista e checklist de progresso."
         url="/plano-carreira"
       />
-      {/* TODO(Ana): validar copy do hero (diferenciar do Roadmap com IA, que responde o que estudar) */}
-      <PageHero
-        accent="amber"
-        eyebrow="a rota da carreira"
-        title="Plano de Carreira"
-        subtitle="O Roadmap diz o que estudar. Aqui é a rota da carreira: em que ordem, o que certificar e quando, no seu ritmo e orçamento."
-      />
-      <section className={cn(ac.contentBg, "py-12")}>
-        <div className="container space-y-10">
-          {mainBlock}
-
-          {!loading && shown && viewing && activePlan && viewing.id !== activePlan.id ? (
-            <button
-              type="button"
-              onClick={() => setViewing(null)}
-              className="rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-[2px_2px_0_#0f172a]"
-            >
-              {/* TODO(Ana): label de volta ao plano ativo */}
-              Voltar pro plano ativo
-            </button>
-          ) : null}
-
-          {!loading && archived.length > 0 && !wantNew ? (
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                {/* TODO(Ana): titulo da lista de planos anteriores */}
-                Planos anteriores
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {archived.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => void openArchived(p.id)}
-                    className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500"
-                  >
-                    {p.area ?? "plano"} ·{" "}
-                    {new Date(p.created_at).toLocaleDateString("pt-BR")}
-                  </button>
-                ))}
-              </div>
+      {/* Cenario do Dialeto 2 (molde atual do PortfolioAnalisar): sem
+          PageHero, o cabecalho vive DENTRO do cenario, que nasce no topo. O
+          backdrop vivo de entrada cobre vitrine, intake e ProGate; o de
+          resultado acompanha o PlanView. */}
+      <section className="relative overflow-hidden bg-[#faf8f4] pb-16 pt-8 [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        {!loading && !showingPlan ? (
+          <CareerPlanEntryBackdrop reduce={reduce} />
+        ) : null}
+        {showingPlan ? <CareerPlanResultBackdrop reduce={reduce} /> : null}
+        <div className="container relative z-10">
+          {/* Cabecalho integrado, presente em todos os estados. */}
+          {/* TODO(Ana): validar copy do hero (diferenciar do Roadmap com IA, que responde o que estudar) */}
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="mb-10"
+          >
+            {backAction ? (
+              <button
+                type="button"
+                onClick={backAction.onClick}
+                className={cn(
+                  "inline-flex items-center gap-2 text-sm font-bold",
+                  ac.link,
+                  ac.linkHover,
+                )}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                {backAction.label}
+              </button>
+            ) : null}
+            <p className={cn(backAction ? "mt-5" : undefined)}>
+              <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                a rota da carreira
+              </span>
+            </p>
+            <div className="mt-3.5 flex items-center gap-4">
+              <span
+                className={cn(
+                  "flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border-2 shadow-[3px_3px_0_currentColor]",
+                  ac.panelBorder,
+                  ac.panelSoft,
+                  ac.iconMuted,
+                )}
+                aria-hidden
+              >
+                <MapIcon className="h-8 w-8" />
+              </span>
+              <h1 className="font-display text-3xl font-black tracking-tight text-slate-950 md:text-[clamp(2rem,5vw,2.6rem)]">
+                Plano de Carreira
+              </h1>
             </div>
-          ) : null}
+            <p className="mt-3 max-w-2xl text-base font-medium text-slate-600">
+              O Roadmap diz o que estudar. Aqui é a rota da carreira: em que
+              ordem, o que certificar e quando, no seu ritmo e orçamento.
+            </p>
+          </motion.div>
 
-          <CalculadoraTempo />
-          <TecnicasEstudo />
+          <div className="space-y-10">
+            {/* Vitrine do estado de entrada: como funciona + mini-trilha de
+                exemplo (componentes reais da Fase 2, readonly), ANTES do
+                ProGate/intake. */}
+            {entryState ? (
+              <div className="mx-auto max-w-6xl">
+                <div className="grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:items-center">
+                  <HowItWorksSteps />
+                  <TrailShowcase />
+                </div>
+              </div>
+            ) : null}
+
+            {mainBlock}
+
+            {!loading && archived.length > 0 && !wantNew ? (
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                  {/* TODO(Ana): titulo da lista de planos anteriores */}
+                  Planos anteriores
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {archived.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => void openArchived(p.id)}
+                      className="rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500"
+                    >
+                      {p.area ?? "plano"} ·{" "}
+                      {new Date(p.created_at).toLocaleDateString("pt-BR")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
     </Layout>
