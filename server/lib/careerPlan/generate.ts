@@ -65,6 +65,9 @@ const StepSchema = z.object({
 
 const CertificationSchema = z.object({
   catalogId: z.string().min(1),
+  // Ancora ao degrau (steps[].id) em que a certificacao deve ser conquistada;
+  // null quando a certificacao e transversal a rota inteira.
+  stepId: z.string().nullable(),
   whenLabel: z.string().min(1).max(80),
   optional: z.boolean(),
   rationale: z.string().min(80).max(300),
@@ -73,6 +76,9 @@ const CertificationSchema = z.object({
 const ScheduleSchema = z.object({
   monthsLabel: z.string().min(1).max(40),
   focus: z.string().min(80).max(300),
+  // Ids dos degraus (steps[].id) cobertos pelo bloco; vazio e permitido
+  // (bloco sem degrau especifico, como revisao geral).
+  stepIds: z.array(z.string()).max(6),
 });
 
 const OutOfScopeSchema = z.object({
@@ -99,7 +105,24 @@ export interface CareerPlanChecklistItem {
   stepId?: string;
 }
 
-export type CareerPlanStoredResult = CareerPlanResult & {
+// Tipos de LEITURA retrocompativeis: planos persistidos antes da ancoragem
+// nao tem stepId nem stepIds, entao na leitura esses campos sao opcionais.
+// O schema de GERACAO acima segue exigindo os dois (strict mode).
+type StoredCertification = Omit<
+  z.infer<typeof CertificationSchema>,
+  "stepId"
+> & { stepId?: string | null };
+
+type StoredScheduleBlock = Omit<z.infer<typeof ScheduleSchema>, "stepIds"> & {
+  stepIds?: string[];
+};
+
+export type CareerPlanStoredResult = Omit<
+  CareerPlanResult,
+  "certifications" | "schedule"
+> & {
+  certifications: StoredCertification[];
+  schedule: StoredScheduleBlock[];
   checklist: CareerPlanChecklistItem[];
 };
 
@@ -146,6 +169,7 @@ const SYSTEM_PROMPT =
   "- schedule: 2 a 5 blocos com monthsLabel (ex 'Meses 1 a 3') e focus (80 a 300 caracteres), cobrindo o horizonte informado num ritmo realista pelas horas semanais. Não prometa resultado em prazo irreal.\n" +
   "- outOfScope: 1 a 4 itens que ficaram DE FORA de propósito, com reason honesta (60 a 250 caracteres) explicando por que não entram agora.\n\n" +
   "REGRA DOS ITENS CITÁVEIS (crítica): você vai receber a lista ITENS CITÁVEIS com ids do catálogo. Qualquer certificação ou curso pago citado DEVE entrar apenas por catalogId dessa lista (em items.catalogId ou certifications.catalogId). Itens de degrau sem catálogo (prática, projeto pessoal, conteúdo gratuito genérico) usam catalogId null e o label descreve a ação. NUNCA invente id, nome, sigla ou provedor de certificação fora da lista.\n\n" +
+  "REGRA DE ANCORAGEM (crítica): cada certificação deve declarar em stepId o id do degrau em que ela deve ser conquistada, escolhido entre os ids de steps que você mesmo gerou. Use null apenas se a certificação for transversal à rota inteira. Cada bloco do cronograma deve listar em stepIds os ids dos degraus que aquele período cobre (array vazio para bloco sem degrau específico, como revisão geral). A sequência dos blocos deve respeitar a ordem dos degraus. NUNCA invente id de degrau.\n\n" +
   "PROIBIDO mencionar preço, valor ou moeda em QUALQUER campo de texto: quem exibe preço é a plataforma, direto do catálogo.\n\n" +
   "Não invente fatos sobre a pessoa além do contexto fornecido. Em conflito entre o contexto histórico e o que a pessoa pediu agora, vale o pedido atual. Tom direto, encorajador e concreto, sem condescendência.";
 
@@ -261,6 +285,27 @@ function findInvalidCatalogIds(result: CareerPlanResult): string[] {
   return invalid;
 }
 
+// Toda ancora de degrau (certifications[].stepId nao-null e cada id em
+// schedule[].stepIds) precisa existir em steps[].id; devolve as invalidas.
+// Exportada para teste.
+export function findInvalidStepRefs(result: CareerPlanResult): string[] {
+  const stepIds = new Set(result.steps.map((step) => step.id));
+  const invalid: string[] = [];
+  for (const cert of result.certifications) {
+    if (cert.stepId !== null && !stepIds.has(cert.stepId)) {
+      invalid.push(cert.stepId);
+    }
+  }
+  for (const block of result.schedule) {
+    for (const id of block.stepIds) {
+      if (!stepIds.has(id)) {
+        invalid.push(id);
+      }
+    }
+  }
+  return invalid;
+}
+
 function deriveChecklist(result: CareerPlanResult): CareerPlanChecklistItem[] {
   const items: CareerPlanChecklistItem[] = [];
   for (const step of result.steps) {
@@ -355,6 +400,13 @@ async function callModelOnce(
   if (invalidIds.length > 0) {
     throw new Error(
       `Resposta da IA citou catalogId inexistente: ${invalidIds.join(", ")}`,
+    );
+  }
+
+  const invalidStepRefs = findInvalidStepRefs(validation.data);
+  if (invalidStepRefs.length > 0) {
+    throw new Error(
+      `Resposta da IA citou stepId inexistente: ${invalidStepRefs.join(", ")}`,
     );
   }
 
