@@ -153,6 +153,7 @@ export function ResultShowcase() {
             className="h-[72px] w-[72px] text-xl"
           />
           <div>
+            {/* TODO(Ana): revisar o rotulo do mini nota-hero. */}
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
               Nota do perfil
             </p>
@@ -170,6 +171,7 @@ export function ResultShowcase() {
         className="relative z-10 -mt-5 ml-auto w-[85%] rotate-[1.5deg]"
       >
         <div className="space-y-2 rounded-xl bg-white p-4">
+          {/* TODO(Ana): revisar o rotulo do mini card de headline. */}
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
             Headline reescrita
           </p>
@@ -200,6 +202,7 @@ export function ResultShowcase() {
         className="relative z-20 -mt-4 w-[92%] -rotate-1"
       >
         <div className="rounded-xl bg-sky-50 p-4">
+          {/* TODO(Ana): revisar o rotulo do mini card de Sobre. */}
           <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-sky-800">
             <Sparkles className="h-3.5 w-3.5" aria-hidden />
             Sobre reescrito
