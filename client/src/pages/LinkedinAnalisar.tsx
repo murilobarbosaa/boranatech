@@ -645,8 +645,10 @@ export default function LinkedinAnalisar() {
         objetivo: form.objetivo.trim() || undefined,
       });
       setResult(data);
+      // Delta SO quando a nota mudou: empate nao vira banner nem seta, e o
+      // contador do hero volta a animar de 0 (semantica alinhada ao GitHub).
       setScoreDelta(
-        typeof priorScore === "number"
+        priorScore !== null && priorScore !== data.deterministic.score
           ? { from: priorScore, to: data.deterministic.score }
           : null,
       );
@@ -669,11 +671,12 @@ export default function LinkedinAnalisar() {
         setError("");
         setConfirmReanalyze(false);
         // Anterior = a entrada logo DEPOIS da aberta na lista (desc), pulando
-        // a propria linha.
+        // a propria linha. Mesmo criterio do analyze: delta so quando a nota
+        // mudou de fato.
         const idx = analyses.findIndex((item) => item.id === id);
         const prior = idx >= 0 ? (analyses[idx + 1]?.score ?? null) : null;
         setScoreDelta(
-          typeof prior === "number"
+          prior !== null && prior !== record.result.deterministic.score
             ? { from: prior, to: record.result.deterministic.score }
             : null,
         );
