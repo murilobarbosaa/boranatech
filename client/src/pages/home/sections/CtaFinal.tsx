@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { greet } from "@shared/greeting";
 import type { Profile } from "@/services/contracts";
-import { areasTI } from "@/lib/data";
+import { skillsAreaNames } from "@/lib/homeData.generated";
 import { areasCount } from "@/lib/countsGenerated";
 
 const HEADLINE_TEXT = "Sua carreira em TI começa aqui.";
@@ -131,7 +131,7 @@ const FREE_COMMANDS: CommandMap = {
           {areasCount} áreas de TI disponíveis:
         </div>
         <div className="text-slate-300">
-          {areasTI.map((area) => area.nome).join(" · ")}
+          {skillsAreaNames.join(" · ")}
         </div>
       </div>
     ),

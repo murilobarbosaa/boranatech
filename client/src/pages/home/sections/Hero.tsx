@@ -8,8 +8,20 @@ import {
   useMotionValue,
   useTransform,
 } from "framer-motion";
-import { ArrowRight, Compass } from "lucide-react";
-import { areasTI } from "@/lib/data";
+import {
+  ArrowRight,
+  BarChart3,
+  Cloud,
+  Compass,
+  GitBranch,
+  Layout,
+  Palette,
+  Server,
+  Shield,
+  Smartphone,
+  type LucideIcon,
+} from "lucide-react";
+import { featuredAreas } from "@/lib/homeData.generated";
 import { apiUrl } from "@/lib/api";
 
 // =========================================
@@ -45,9 +57,23 @@ const FEATURED_OVERRIDES: Record<
   },
 };
 
-const FEATURED_AREAS = FEATURED_SLUGS.flatMap((slug) => {
-  const area = areasTI.find((a) => a.slug === slug);
-  return area ? [{ ...area, ...FEATURED_OVERRIDES[slug] }] : [];
+// O icone (componente Lucide) nao e serializavel pelo gerador, entao vive
+// aqui; slug e nome vem da fatia gerada (homeData.generated).
+const FEATURED_ICONS: Record<(typeof FEATURED_SLUGS)[number], LucideIcon> = {
+  frontend: Layout,
+  backend: Server,
+  mobile: Smartphone,
+  dados: BarChart3,
+  uxui: Palette,
+  cloud: Cloud,
+  devops: GitBranch,
+  ciberseguranca: Shield,
+};
+
+const FEATURED_AREAS = featuredAreas.flatMap((area) => {
+  const slug = area.slug as (typeof FEATURED_SLUGS)[number];
+  const override = FEATURED_OVERRIDES[slug];
+  return override ? [{ ...area, ...override, icon: FEATURED_ICONS[slug] }] : [];
 });
 
 // Verbo dentro de cada badge pra toda rotacao ficar gramatical

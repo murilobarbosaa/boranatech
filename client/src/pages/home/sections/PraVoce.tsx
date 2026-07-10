@@ -8,21 +8,11 @@ import {
   Clock,
   Tag,
 } from "lucide-react";
-import { areasTI, noticias, eventos, cursosGratuitos } from "@/lib/data";
-
-const CURSO_AREA_SPECIAL_LABELS: Record<string, string> = {
-  carreira: "Carreira",
-  fullstack: "Full Stack",
-};
-
-function labelForCursoArea(slug: string | null | undefined): string {
-  if (!slug) return "Geral";
-  return (
-    areasTI.find((a) => a.slug === slug)?.nome ??
-    CURSO_AREA_SPECIAL_LABELS[slug] ??
-    slug
-  );
-}
+import {
+  praVoceCursos,
+  praVoceEventos,
+  praVoceNoticia,
+} from "@/lib/homeData.generated";
 
 // =========================================
 // CONFIGURAÇÕES
@@ -106,14 +96,13 @@ const NUVENS = [
 // =========================================
 
 export default function PraVoce() {
-  // Notícia escolhida: tom encorajador pra iniciante (déficit de vagas = oportunidade).
-  // Fallback pro primeiro item caso o id mude no data.ts.
-  const noticiaDestaque =
-    noticias.find((n) => n.id === "vagas-ti-brasil") ?? noticias[0];
-  const evento1 = eventos[0];
-  const evento2 = eventos[1];
-  const curso1 = cursosGratuitos[0];
-  const curso2 = cursosGratuitos[1];
+  // Selecao resolvida em build time (scripts/generateHomeData.mts) com a
+  // mesma logica de antes: noticia por id com fallback, indices 0 e 1.
+  const noticiaDestaque = praVoceNoticia;
+  const evento1 = praVoceEventos[0];
+  const evento2 = praVoceEventos[1];
+  const curso1 = praVoceCursos[0];
+  const curso2 = praVoceCursos[1];
 
   return (
     <section className="relative overflow-hidden py-20 md:py-28 bg-[#f0f9ff]">
@@ -187,7 +176,7 @@ export default function PraVoce() {
 // COMPONENTE NoticiaDestaque (card grande)
 // =========================================
 
-function NoticiaDestaque({ noticia }: { noticia: (typeof noticias)[0] }) {
+function NoticiaDestaque({ noticia }: { noticia: typeof praVoceNoticia }) {
   // Tempo de leitura simulado, data.ts só tem resumo curto, então hardcoded.
   // TODO: calcular dinamicamente quando notícias tiverem corpo completo.
   const tempoLeitura = "3 min de leitura";
@@ -262,7 +251,7 @@ function EventoCard({
   evento,
   delay,
 }: {
-  evento: (typeof eventos)[0];
+  evento: (typeof praVoceEventos)[number];
   delay: number;
 }) {
   // Info evergreen substitui a data (alguns eventos podem ter passado).
@@ -371,7 +360,7 @@ function CursoCard({
   curso,
   delay,
 }: {
-  curso: (typeof cursosGratuitos)[0];
+  curso: (typeof praVoceCursos)[number];
   delay: number;
 }) {
   const areaColors: Record<string, { bg: string; text: string }> = {
@@ -415,7 +404,7 @@ function CursoCard({
             <span
               className={`font-display text-xs font-black uppercase tracking-wider ${colors.text}`}
             >
-              {labelForCursoArea(curso.areaSlug)}
+              {curso.areaLabel}
             </span>
           </div>
 
