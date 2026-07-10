@@ -264,4 +264,136 @@ router.get(
   },
 );
 
+// Progresso das melhorias aplicadas (o checklist vivo do resultado), espelho
+// das rotas do analisador de GitHub. Sem gate Pro alem do requireAuth do
+// router: e progresso do PROPRIO dado (um ex-Pro segue marcando as analises
+// antigas). Nenhum custo de IA aqui.
+
+// Teto do indice aceito (as melhorias vem 4 a 7 por analise; folga proposital).
+const MAX_IMPROVEMENT_INDEX = 20;
+
+// Posse da analise ANTES de qualquer leitura/escrita de progresso: true/false
+// pela existencia da linha do dono, null em erro de query (vira 500).
+async function ownsLinkedinAnalysis(
+  userId: string,
+  analysisId: string,
+): Promise<boolean | null> {
+  const { data, error } = await supabaseAdmin
+    .from("linkedin_analyses")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("id", analysisId)
+    .maybeSingle();
+  if (error) {
+    console.error(
+      "[linkedin] checagem de posse da analise falhou:",
+      error.message,
+    );
+    return null;
+  }
+  return Boolean(data);
+}
+
+router.get(
+  "/analyses/:id/improvements",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Análise não encontrada."));
+    }
+    const owns = await ownsLinkedinAnalysis(userId, id);
+    if (owns === null) {
+      // TODO(Ana): mensagem de falha ao carregar o progresso.
+      return next(
+        createError(
+          500,
+          "load_failed",
+          "Não foi possível carregar o progresso.",
+        ),
+      );
+    }
+    if (!owns) {
+      // 404 tambem para analise de OUTRO usuario: nao vaza existencia.
+      return next(createError(404, "not_found", "Análise não encontrada."));
+    }
+    const { data, error } = await supabaseAdmin
+      .from("linkedin_improvement_progress")
+      .select("improvement_index")
+      .eq("user_id", userId)
+      .eq("analysis_id", id)
+      .eq("done", true);
+    if (error) {
+      return next(
+        createError(
+          500,
+          "load_failed",
+          "Não foi possível carregar o progresso.",
+        ),
+      );
+    }
+    res.json({
+      applied: ((data ?? []) as Array<{ improvement_index: number }>).map(
+        (row) => row.improvement_index,
+      ),
+    });
+  },
+);
+
+router.put(
+  "/analyses/:id/improvements/:index",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Análise não encontrada."));
+    }
+    const index = Number(req.params.index);
+    if (
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index > MAX_IMPROVEMENT_INDEX
+    ) {
+      // TODO(Ana): mensagem de indice invalido.
+      return next(
+        createError(400, "invalid_request", "Índice de melhoria inválido."),
+      );
+    }
+    const body = (req.body ?? {}) as { done?: unknown };
+    if (typeof body.done !== "boolean") {
+      // TODO(Ana): mensagem de body invalido do progresso.
+      return next(
+        createError(400, "invalid_request", "Envie done como boolean."),
+      );
+    }
+    const owns = await ownsLinkedinAnalysis(userId, id);
+    if (owns === null) {
+      // TODO(Ana): mensagem de falha ao salvar o progresso.
+      return next(
+        createError(500, "save_failed", "Não foi possível salvar o progresso."),
+      );
+    }
+    if (!owns) {
+      return next(createError(404, "not_found", "Análise não encontrada."));
+    }
+    const { error } = await supabaseAdmin
+      .from("linkedin_improvement_progress")
+      .upsert(
+        {
+          user_id: userId,
+          analysis_id: id,
+          improvement_index: index,
+          done: body.done,
+        },
+        { onConflict: "user_id,analysis_id,improvement_index" },
+      );
+    if (error) {
+      return next(
+        createError(500, "save_failed", "Não foi possível salvar o progresso."),
+      );
+    }
+    res.json({ ok: true });
+  },
+);
+
 export default router;

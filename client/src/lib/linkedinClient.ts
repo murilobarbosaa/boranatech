@@ -68,6 +68,58 @@ export async function analyzeLinkedin(
   };
 }
 
+// Progresso das melhorias aplicadas (checklist vivo do resultado), espelho do
+// githubClient. Sem custo de IA: e so estado do proprio dado.
+
+function readErrorMessage(body: unknown): string {
+  if (body && typeof body === "object") {
+    const rec = body as { error?: { message?: unknown } };
+    if (typeof rec.error?.message === "string") return rec.error.message;
+  }
+  // TODO(Ana): mensagem generica de erro do progresso.
+  return "Não foi possível completar agora. Tente novamente.";
+}
+
+export async function getLinkedinImprovements(
+  analysisId: string,
+): Promise<number[]> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(
+    apiUrl(
+      `/api/linkedin/analyses/${encodeURIComponent(analysisId)}/improvements`,
+    ),
+    { headers: authHeader },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    throw new Error(readErrorMessage(body));
+  }
+  const payload = (await response.json()) as { applied?: number[] };
+  return Array.isArray(payload.applied) ? payload.applied : [];
+}
+
+export async function setLinkedinImprovement(
+  analysisId: string,
+  index: number,
+  done: boolean,
+): Promise<void> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(
+    apiUrl(
+      `/api/linkedin/analyses/${encodeURIComponent(analysisId)}/improvements/${index}`,
+    ),
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeader },
+      body: JSON.stringify({ done }),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    throw new Error(readErrorMessage(body));
+  }
+}
+
 export async function listLinkedinAnalyses(): Promise<
   LinkedinAnalysisSummary[]
 > {

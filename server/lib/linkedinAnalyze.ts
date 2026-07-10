@@ -14,7 +14,10 @@ import { ENGLISH_TITLES, PT_TITLES } from "../../shared/linkedin/titles";
 import { env } from "./env";
 import { runLinkedinChecks } from "./linkedinChecks";
 import { fetchWithTimeout } from "./http";
-import { parseLinkedinText, type LinkedinParsed } from "../../shared/linkedin/parse";
+import {
+  parseLinkedinText,
+  type LinkedinParsed,
+} from "../../shared/linkedin/parse";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 
@@ -295,6 +298,13 @@ function warmEmptyQualitative(
         titulo: "Escreva um Sobre curto",
         comoFazer:
           "Comece com uma frase de gancho, conte o que você estuda e está construindo, liste sua stack por extenso e termine com um convite ao contato.",
+      },
+      {
+        // TODO(Ana): revisar a quarta melhoria do perfil quase vazio.
+        prioridade: "baixa",
+        titulo: "Cadastre suas competências",
+        comoFazer:
+          "Na seção Competências, adicione as tecnologias que você já estuda, começando pelas da sua área. Adicione só o que você realmente sabe, mesmo que no básico.",
       },
     ],
     // TODO(Ana): revisar o proximo passo do perfil quase vazio.
