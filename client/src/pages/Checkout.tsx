@@ -33,7 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import { createCheckout } from "@/services/subscriptionService";
 import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
-import { areasCount, dictionaryTermsCount } from "@/lib/counts";
+import { areasCount, dictionaryTermsCount } from "@/lib/countsGenerated";
 
 const plans = [
   {
