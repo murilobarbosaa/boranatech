@@ -8,7 +8,7 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
-import { areasCount } from "@/lib/counts";
+import { areasCount } from "@/lib/countsGenerated";
 
 // Copy desta secao e rascunho da Ana (texto final e dela).
 // TODO(Ana): revisar headline, personas e beneficios antes de publicar.

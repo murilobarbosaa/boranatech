@@ -8,7 +8,7 @@ import {
   animate,
 } from "framer-motion";
 import { LEVEL_QUESTION_COUNT } from "@/lib/quizMeta";
-import { dictionaryTermsCount, roadmapsCount } from "@/lib/counts";
+import { dictionaryTermsCount, roadmapsCount } from "@/lib/countsGenerated";
 
 // =========================================
 // DADOS DOS NÚMEROS

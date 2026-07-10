@@ -19,7 +19,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { greet } from "@shared/greeting";
 import type { Profile } from "@/services/contracts";
 import { areasTI } from "@/lib/data";
-import { areasCount } from "@/lib/counts";
+import { areasCount } from "@/lib/countsGenerated";
 
 const HEADLINE_TEXT = "Sua carreira em TI começa aqui.";
 const EYEBROW_TEXT = "BORA NA TECH?";

@@ -10,6 +10,8 @@
     "dev": "concurrently -k -n \"client,server\" -c \"blue,green\" \"vite --host\" \"tsx --tsconfig tsconfig.node.json server/index.ts\"",
     "dev:client": "vite --host",
     "dev:server": "tsx --tsconfig tsconfig.node.json server/index.ts",
+    "generate:counts": "tsx scripts/generateCounts.mts",
+    "prebuild": "pnpm generate:counts",
     "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" --external:@supabase/supabase-js --external:@supabase/* --external:@sentry/node --external:bullmq --external:ioredis --external:sharp --external:@img/sharp-linux-x64 --external:@img/sharp-darwin-x64 --external:@img/sharp-win32-x64",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
