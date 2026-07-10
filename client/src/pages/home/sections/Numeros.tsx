@@ -7,7 +7,7 @@ import {
   useTransform,
   animate,
 } from "framer-motion";
-import { LEVEL_QUESTION_COUNT } from "@/lib/platformData";
+import { LEVEL_QUESTION_COUNT } from "@/lib/quizMeta";
 import { dictionaryTermsCount, roadmapsCount } from "@/lib/counts";
 
 // =========================================

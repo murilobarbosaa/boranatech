@@ -12,7 +12,7 @@ import {
 import {
   LEVEL_QUESTION_COUNT,
   QUIZ_ESTIMATED_MINUTES,
-} from "@/lib/platformData";
+} from "@/lib/quizMeta";
 
 // =========================================
 // SEÇÃO PRINCIPAL

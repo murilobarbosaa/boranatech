@@ -642,13 +642,14 @@ export const comparisonMatrix = [
   },
 ];
 
-export const QUIZ_ESTIMATED_MINUTES = 5;
-
-/** Numero de perguntas da triagem de nivel (fase 1). */
-export const TRIAGE_QUESTION_COUNT = 3;
-
-/** Numero de perguntas do quiz de cada nivel (fase 2). */
-export const LEVEL_QUESTION_COUNT = 15;
+// Escalares do quiz vivem em quizMeta.ts (fonte unica) para a home consumir
+// sem arrastar este arquivo pro boot. Reexportados aqui pra nao quebrar os
+// consumidores existentes.
+export {
+  LEVEL_QUESTION_COUNT,
+  QUIZ_ESTIMATED_MINUTES,
+  TRIAGE_QUESTION_COUNT,
+} from "@/lib/quizMeta";
 
 export type QuizLevel = "iniciante" | "intermediario" | "avancado";
 
