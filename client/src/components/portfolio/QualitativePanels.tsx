@@ -9,14 +9,29 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import CopyButton from "@/components/shared/CopyButton";
-import { getPageAccentUi } from "@/lib/pageAccentUi";
+import { getPageAccentUi, type PageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import type { GithubMelhoria, Prioridade } from "@shared/github/schema";
 
+// Default violet (o comportamento de sempre do analisador de GitHub). Os tres
+// paineis aceitam um accent opt-in (ex.: sky no analisador de LinkedIn); sem
+// a prop, o render e identico ao de antes.
 const ac = getPageAccentUi("violet");
 
 const IA_EYEBROW =
-  "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_#0f172a]";
+  "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-slate-950 shadow-[3px_3px_0_#0f172a]";
+
+// O chip -300 do eyebrow de IA nao existe como token do PageAccentUi, entao e
+// resolvido a partir do panelSoft do accent neste mapa minimo (so os accents
+// que consomem os paineis); fora do mapa, fica o violet de sempre.
+const EYEBROW_CHIP: Record<string, string> = {
+  "bg-violet-50": "bg-violet-300",
+  "bg-sky-50": "bg-sky-300",
+};
+
+function eyebrowChip(accent: PageAccentUi): string {
+  return EYEBROW_CHIP[accent.panelSoft] ?? "bg-violet-300";
+}
 
 const PRIORITY: Record<Prioridade, { label: string; chipBg: string }> = {
   alta: { label: "prioridade alta", chipBg: "bg-red-300" },
@@ -27,15 +42,24 @@ const PRIORITY: Record<Prioridade, { label: string; chipBg: string }> = {
 export function AiSummary({
   resumo,
   onAskAgent,
+  accent = ac,
 }: {
   resumo: string;
   /** Ponte com o agente Pro (analisador de GitHub): abre o widget com o
    * input pre-preenchido, sem enviar. Ausente = card identico ao de antes. */
   onAskAgent?: () => void;
+  /** Accent da pagina consumidora (opt-in). Ausente = violet, como antes. */
+  accent?: PageAccentUi;
 }) {
   return (
-    <div className={cn("card-brutal rounded-2xl border-slate-950 bg-violet-50 p-6", ac.liftShadow)}>
-      <span className={IA_EYEBROW}>
+    <div
+      className={cn(
+        "card-brutal rounded-2xl border-slate-950 p-6",
+        accent.panelSoft,
+        accent.liftShadow,
+      )}
+    >
+      <span className={cn(IA_EYEBROW, eyebrowChip(accent))}>
         <Sparkles className="h-3.5 w-3.5" />
         análise da IA
       </span>
@@ -64,13 +88,21 @@ export { NextStepCard } from "@/components/shared/NextStepCard";
 export function StrengthsWeaknesses({
   pontosFortes,
   pontosFracos,
+  accent = ac,
 }: {
   pontosFortes: string[];
   pontosFracos: string[];
+  /** Accent da pagina consumidora (opt-in). Ausente = violet, como antes. */
+  accent?: PageAccentUi;
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <div className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}>
+      <div
+        className={cn(
+          "card-brutal rounded-2xl border-slate-950 bg-white p-5",
+          accent.liftShadow,
+        )}
+      >
         <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-black text-slate-950">
           <ThumbsUp className="h-5 w-5 text-emerald-600" />
           Pontos fortes
@@ -94,7 +126,12 @@ export function StrengthsWeaknesses({
         )}
       </div>
 
-      <div className={cn("card-brutal rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}>
+      <div
+        className={cn(
+          "card-brutal rounded-2xl border-slate-950 bg-white p-5",
+          accent.liftShadow,
+        )}
+      >
         <h3 className="mb-3 flex items-center gap-2 font-display text-lg font-black text-slate-950">
           <AlertTriangle className="h-5 w-5 text-amber-500" />
           Pontos a melhorar
@@ -123,12 +160,15 @@ export function Improvements({
   melhorias,
   applied,
   onToggle,
+  accent = ac,
 }: {
   melhorias: GithubMelhoria[];
   /** Checklist vivo (analisador de GitHub): indices marcados como aplicados.
    * Ausentes = cards identicos aos de antes (consumo do LinkedIn intacto). */
   applied?: Set<number>;
   onToggle?: (index: number) => void;
+  /** Accent da pagina consumidora (opt-in). Ausente = violet, como antes. */
+  accent?: PageAccentUi;
 }) {
   const reduce = useReducedMotion() ?? false;
   if (melhorias.length === 0) return null;
@@ -137,7 +177,7 @@ export function Improvements({
 
   return (
     <div className="space-y-3">
-      <span className={IA_EYEBROW}>
+      <span className={cn(IA_EYEBROW, eyebrowChip(accent))}>
         <Sparkles className="h-3.5 w-3.5" />
         melhorias priorizadas
       </span>
@@ -151,7 +191,7 @@ export function Improvements({
               className={cn(
                 "card-brutal rounded-2xl border-slate-950 p-5",
                 done ? "bg-emerald-50" : "bg-white",
-                ac.liftShadow,
+                accent.liftShadow,
               )}
             >
               <div className="flex flex-wrap items-center gap-3">
@@ -215,7 +255,12 @@ export function ReadmeSuggestion({ markdown }: { markdown: string | null }) {
   if (!markdown) return null;
 
   return (
-    <details className={cn("card-brutal group rounded-2xl border-slate-950 bg-white p-5", ac.liftShadow)}>
+    <details
+      className={cn(
+        "card-brutal group rounded-2xl border-slate-950 bg-white p-5",
+        ac.liftShadow,
+      )}
+    >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
         <span className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
           <FileCode2 className="h-5 w-5 text-violet-700" />
