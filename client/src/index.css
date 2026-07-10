@@ -903,6 +903,55 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Currículo Pro: materialização do resultado. As seções do A4 (filhos
+   diretos do article do preview) entram escalonadas SÓ quando o currículo
+   já chegou (estado de resultado). Nunca roda durante a conversa: não é
+   indicador de progresso. Reduce mostra tudo direto.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@keyframes curriculo-section-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.curriculo-materialize .curriculo-print-target article > * {
+  animation: curriculo-section-rise 0.45s ease-out both;
+}
+.curriculo-materialize .curriculo-print-target article > *:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.curriculo-materialize .curriculo-print-target article > *:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.curriculo-materialize .curriculo-print-target article > *:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.curriculo-materialize .curriculo-print-target article > *:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.curriculo-materialize .curriculo-print-target article > *:nth-child(6) {
+  animation-delay: 0.5s;
+}
+.curriculo-materialize .curriculo-print-target article > *:nth-child(7) {
+  animation-delay: 0.6s;
+}
+.curriculo-materialize .curriculo-print-target article > *:nth-child(n + 8) {
+  animation-delay: 0.7s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .curriculo-materialize .curriculo-print-target article > * {
+    animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Currículo Pro: print styles. Quando o user dispara Ctrl+P (ou o botão
    da Fase 3 chamar window.print), esconde tudo que não é o documento e
    imprime só o CurriculoPreview em A4.
@@ -967,6 +1016,13 @@
   /* Elementos da app marcados pra fora do print. */
   .print-hide {
     display: none !important;
+  }
+
+  /* Cinto e suspensório: nenhuma animação de tela (ex: materialização das
+     seções) vaza pro papel impresso. */
+  .curriculo-print-target,
+  .curriculo-print-target * {
+    animation: none !important;
   }
 
   /* Garantir que itens (experiência, formação, projeto) não sejam cortados

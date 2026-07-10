@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { FileText, Loader2, Send, Wand2 } from "lucide-react";
 import { Streamdown } from "streamdown";
 
+import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import { Spinner } from "@/components/ui/spinner";
 import type { AiChatMessage } from "@/lib/aiClient";
 import { callAiChatStream, callAiStructured } from "@/lib/aiClient";
@@ -67,10 +68,9 @@ interface CurriculoChatPanelProps {
 
 // Textos fixos do painel (as antigas props title/description/placeholder
 // nunca eram passadas pelo caller; viraram constantes).
-// TODO(Ana): revisar estes textos do painel do chat.
-const PANEL_TITLE = "Natechinho monta teu currículo";
-const PANEL_DESCRIPTION =
-  "Conversa de uns 10 minutinhos. No fim, teu currículo sai pronto e salvo.";
+// TODO(Ana): revisar estes textos do painel do chat (nome + status curto).
+const PANEL_TITLE = "Natechinho";
+const PANEL_DESCRIPTION = "Mentor de carreira, montando teu currículo contigo";
 const INPUT_PLACEHOLDER = "Manda tua resposta";
 // TODO(Ana): revisar copy do botao de gerar sem o sinal do Natechinho.
 const FALLBACK_BUTTON_LABEL = "Gerar currículo com o que já conversamos";
@@ -300,9 +300,9 @@ export default function CurriculoChatPanel({
   return (
     <div className="card-brutal w-full overflow-hidden rounded-2xl bg-white">
       <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
-        <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-950 bg-[#FFB800] px-4 py-3.5 text-slate-950 sm:px-5 sm:py-4">
+        <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-950 bg-white px-4 py-3.5 text-slate-950 sm:px-5 sm:py-4">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-[#FFB800] shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
             aria-hidden
           >
             <Wand2
@@ -314,7 +314,7 @@ export default function CurriculoChatPanel({
             <h2 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
               {PANEL_TITLE}
             </h2>
-            <p className="mt-0.5 truncate text-xs font-bold leading-snug text-slate-800 sm:text-sm">
+            <p className="mt-0.5 truncate text-xs font-bold leading-snug text-slate-600 sm:text-sm">
               {PANEL_DESCRIPTION}
             </p>
           </div>
@@ -339,7 +339,7 @@ export default function CurriculoChatPanel({
                     <div key={i} className="flex justify-start">
                       <div
                         className={cn(
-                          "max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5",
+                          "max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5",
                           "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                         )}
                       >
@@ -363,7 +363,7 @@ export default function CurriculoChatPanel({
                   <div key={i} className="flex justify-end">
                     <div
                       className={cn(
-                        "max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-amber-200 px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5",
+                        "max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-white px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5",
                         "font-body text-[15px] leading-relaxed text-slate-900 sm:text-base",
                       )}
                     >
@@ -377,7 +377,7 @@ export default function CurriculoChatPanel({
 
               {showTypingDots ? (
                 <div className="flex justify-start">
-                  <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
+                  <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-amber-50 px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
                     <span className="sr-only">Natechinho digitando</span>
                     <TypingDots />
                   </div>
@@ -422,14 +422,13 @@ export default function CurriculoChatPanel({
         <div className="shrink-0 bg-[#faf8f4] px-3 pt-2.5 pb-2.5 sm:px-4 sm:pt-3 sm:pb-3">
           {showFallbackGenerate ? (
             <div className="mx-auto mb-2 flex w-full max-w-3xl justify-center">
-              <button
-                type="button"
+              <BrutalActionButton
+                variant="primary"
+                icon={<FileText className="h-4 w-4" aria-hidden />}
                 onClick={handleFallbackGenerate}
-                className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-slate-950"
               >
-                <FileText className="h-3.5 w-3.5" aria-hidden />
                 {FALLBACK_BUTTON_LABEL}
-              </button>
+              </BrutalActionButton>
             </div>
           ) : null}
           <div className="mx-auto flex w-full max-w-3xl items-end gap-2 sm:gap-3">

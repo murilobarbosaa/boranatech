@@ -3,7 +3,6 @@ import { useSearch } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Briefcase,
-  CheckCircle2,
   CloudUpload,
   FileDown,
   FileText,
@@ -366,6 +365,11 @@ export default function CurriculoGerar() {
   // exibicao (o preview aparece igual; o selo/aviso comunica o estado).
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
+  // Materializacao: as secoes do A4 entram escalonadas SO quando o curriculo
+  // acabou de ser gerado nesta sessao (dado ja em maos). Reabrir um salvo
+  // mostra o papel direto, sem teatro.
+  const [materialize, setMaterialize] = useState(false);
+
   // Curriculos ja salvos: undefined = carregando, null = falha de carga.
   const [saved, setSaved] = useState<ResumeSummary[] | null | undefined>(
     undefined,
@@ -426,6 +430,7 @@ export default function CurriculoGerar() {
   );
 
   function handleCurriculoReady(cv: Curriculo) {
+    setMaterialize(true);
     setGenerated(cv);
     void persist(cv);
   }
@@ -438,6 +443,7 @@ export default function CurriculoGerar() {
     }
     // Reabre o jsonb salvo direto no preview: nada e regerado e nada e
     // salvo de novo (ja esta na conta).
+    setMaterialize(false);
     setGenerated(record.curriculo);
     setSaveState("saved");
   }
@@ -445,6 +451,7 @@ export default function CurriculoGerar() {
   function handleReset() {
     setGenerated(null);
     setSaveState("idle");
+    setMaterialize(false);
     setMode("chat");
     // A ponte de reescrita vale UMA vez: comecar de novo abre um chat limpo,
     // sem reenvio automatico do curriculo analisado.
@@ -522,10 +529,13 @@ export default function CurriculoGerar() {
               onReset={handleReset}
               saveState={saveState}
               onRetrySave={() => void persist(generated)}
+              materialize={materialize}
             />
           ) : isAtelier ? (
-            <div className="grid gap-8 lg:grid-cols-5">
-              <div className="lg:col-span-3">
+            // Atelie: conversa de um lado, prancheta do outro. No mobile
+            // empilha com o chat PRIMEIRO (ordem do DOM).
+            <div className="grid gap-8 lg:grid-cols-12">
+              <div className="lg:col-span-7">
                 <CurriculoChatPanel
                   key={resetKey}
                   initialAssistantMessage={greeting}
@@ -533,8 +543,8 @@ export default function CurriculoGerar() {
                   initialUserMessage={rewriteSeed ?? undefined}
                 />
               </div>
-              <aside className="lg:col-span-2">
-                <PendingStatus />
+              <aside className="lg:col-span-5">
+                <DraftingBoard />
               </aside>
             </div>
           ) : mode === "list" && saved === undefined ? (
@@ -586,39 +596,64 @@ function PreparingChat() {
   );
 }
 
-function PendingStatus() {
+// Rotulos das secoes do wireframe da prancheta (decoracao, nao progresso).
+// TODO(Ana): revisar selo, legenda e rotulos da prancheta.
+const BOARD_SECTIONS = ["Objetivo", "Experiências", "Skills"];
+const BOARD_BADGE = "Em construção";
+const BOARD_CAPTION = "O Natechinho monta tudo no fim da conversa. Sem pressa.";
+const FORMAT_CHIPS = ["Híbrido", "Cronológico", "Harvard"];
+
+// Prancheta do atelie: um A4 em wireframe 100% ESTATICO (sem shimmer, sem
+// barra, sem checagem de secao: o client NAO sabe o que ja foi coberto na
+// conversa, entao qualquer indicador de progresso seria mentira). A
+// materializacao animada acontece so no estado de resultado, com o dado
+// ja em maos.
+function DraftingBoard() {
   return (
-    <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-100 shadow-[2px_2px_0_#0f172a]">
-          <CheckCircle2
-            className="h-5 w-5 text-slate-950"
-            strokeWidth={2.25}
-            aria-hidden
-          />
+    <div>
+      <div className="relative mx-auto max-w-xs rotate-[0.8deg]">
+        <span className="absolute -top-3 left-5 z-10 inline-flex -rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+          <PenLine className="h-3 w-3" aria-hidden />
+          {BOARD_BADGE}
+        </span>
+        <div
+          className="rounded-xl border-2 border-slate-950 bg-white p-5 shadow-[5px_5px_0_#0f172a]"
+          aria-hidden
+        >
+          <SkeletonBar className="h-3 w-1/2 bg-slate-800" />
+          <SkeletonBar className="mt-1.5 h-2 w-1/3 bg-slate-300" />
+          {BOARD_SECTIONS.map((label) => (
+            <div key={label} className="mt-4">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">
+                {label}
+              </p>
+              <SkeletonBar className="mt-1.5 h-2 w-full" />
+              <SkeletonBar className="mt-1 h-2 w-5/6" />
+              <SkeletonBar className="mt-1 h-2 w-4/6" />
+            </div>
+          ))}
         </div>
-        <h3 className="font-display text-lg font-black text-slate-950">
-          Resultado vai aparecer aqui
-        </h3>
       </div>
-      <p className="mt-4 text-sm font-medium leading-relaxed text-slate-700">
-        Quando tu confirmar pro Natechinho que pode gerar, o currículo aparece
-        nesta tela em formato bonito, pronto pra imprimir.
+      <p className="mt-5 text-center text-sm font-medium text-slate-600">
+        {BOARD_CAPTION}
       </p>
-      <ul className="mt-5 space-y-2 text-sm font-bold text-slate-800">
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        {FORMAT_CHIPS.map((label) => (
+          <span
+            key={label}
+            className="inline-flex items-center rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-black text-slate-800 shadow-[2px_2px_0_#0f172a]"
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      <ul className="mx-auto mt-5 max-w-xs space-y-2 text-sm font-bold text-slate-800">
         <li className="flex items-start gap-2">
           <span
             className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]"
             aria-hidden
           />
           Conversa de uns 10 minutos
-        </li>
-        <li className="flex items-start gap-2">
-          <span
-            className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full bg-[#FFB800]"
-            aria-hidden
-          />
-          3 formatos (Híbrido, Cronológico, Harvard)
         </li>
         <li className="flex items-start gap-2">
           <span
@@ -637,6 +672,9 @@ interface GeneratedViewProps {
   onReset: () => void;
   saveState: SaveState;
   onRetrySave: () => void;
+  // Liga a entrada escalonada das secoes do A4 (so quando o curriculo acabou
+  // de ser gerado; reduce e print desligam via CSS).
+  materialize: boolean;
 }
 
 /**
@@ -682,6 +720,7 @@ function GeneratedView({
   onReset,
   saveState,
   onRetrySave,
+  materialize,
 }: GeneratedViewProps) {
   const formatoLabel =
     curriculo.formato === "hibrido"
@@ -768,7 +807,12 @@ function GeneratedView({
         ) : null}
       </div>
 
-      <div className="curriculo-preview-stage rounded-2xl bg-slate-100 p-4 sm:p-8">
+      <div
+        className={cn(
+          "curriculo-preview-stage rounded-2xl bg-slate-100 p-4 sm:p-8",
+          materialize && "curriculo-materialize",
+        )}
+      >
         <CurriculoPreview curriculo={curriculo} />
       </div>
 
