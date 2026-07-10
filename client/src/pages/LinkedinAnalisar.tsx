@@ -620,7 +620,9 @@ export default function LinkedinAnalisar() {
     const priorScore = analyses[0]?.score ?? null;
 
     try {
-      const data = await analyzeLinkedin({
+      // O analysisId devolvido junto passa a ser consumido na L6 (checklist
+      // de melhorias aplicadas); por ora so o data importa.
+      const { data } = await analyzeLinkedin({
         profileText: form.profileText.trim(),
         area: form.area,
         level: form.level,

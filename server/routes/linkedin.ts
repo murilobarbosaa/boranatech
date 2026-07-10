@@ -29,13 +29,16 @@ const UUID_RE =
  * Persistência fail-soft: nunca derruba a análise e nunca é confundida com
  * sucesso, falha vira um console.error claro no servidor. O input jsonb guarda
  * o formulário e um resumo do parse (sem o texto cru gigante do perfil).
+ * Devolve o id da linha inserida (o client precisa dele pro checklist de
+ * melhorias aplicadas) ou null quando a persistência falhou, espelhando o
+ * persistGithubAnalysis.
  */
 async function persistAnalysis(
   userId: string,
   request: LinkedinAnalyzeRequest,
   response: LinkedinAnalysisResponse,
   parsed: LinkedinParsed,
-): Promise<void> {
+): Promise<string | null> {
   try {
     const input = {
       area: request.area,
@@ -56,27 +59,34 @@ async function persistAnalysis(
       },
     };
 
-    const { error } = await supabaseAdmin.from("linkedin_analyses").insert({
-      user_id: userId,
-      area: request.area,
-      level: request.level,
-      score: response.deterministic.score,
-      faixa: response.deterministic.faixa,
-      input,
-      result: response,
-    });
+    const { data, error } = await supabaseAdmin
+      .from("linkedin_analyses")
+      .insert({
+        user_id: userId,
+        area: request.area,
+        level: request.level,
+        score: response.deterministic.score,
+        faixa: response.deterministic.faixa,
+        input,
+        result: response,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       console.error(
         "[linkedin] Falha ao persistir analise (fail-soft):",
         error.message,
       );
+      return null;
     }
+    return (data as { id: string } | null)?.id ?? null;
   } catch (err) {
     console.error(
       "[linkedin] Erro inesperado ao persistir analise (fail-soft):",
       err,
     );
+    return null;
   }
 }
 
@@ -107,7 +117,7 @@ router.post(
     const request = parsedBody.data;
     const userId = req.user!.id;
     const requestId =
-    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
 
     const usage = await checkAiDailyLimit(userId, !!req.isPro, "[linkedin]");
     if (!usage.allowed) {
@@ -165,9 +175,14 @@ router.post(
         outputChars,
       });
 
-      await persistAnalysis(userId, request, response, parsed);
+      const analysisId = await persistAnalysis(
+        userId,
+        request,
+        response,
+        parsed,
+      );
 
-      res.json({ data: response });
+      res.json({ data: response, analysisId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro desconhecido";
       await logAiUsage({

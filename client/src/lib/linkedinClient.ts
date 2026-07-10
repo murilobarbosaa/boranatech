@@ -21,9 +21,19 @@ async function getAuthHeader(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${session.access_token}` };
 }
 
+/**
+ * Resultado do analyze: a resposta completa mais o id da analise persistida
+ * (null quando a persistencia best-effort falhou no server; o checklist de
+ * melhorias aplicadas fica indisponivel nesse caso), como no githubClient.
+ */
+export interface AnalyzeLinkedinResult {
+  data: LinkedinAnalysisResponse;
+  analysisId: string | null;
+}
+
 export async function analyzeLinkedin(
   payload: LinkedinAnalyzeRequest,
-): Promise<LinkedinAnalysisResponse> {
+): Promise<AnalyzeLinkedinResult> {
   const authHeader = await getAuthHeader();
   const response = await fetch(apiUrl("/api/linkedin/analyze"), {
     method: "POST",
@@ -49,9 +59,13 @@ export async function analyzeLinkedin(
 
   const body = (await response.json()) as Partial<{
     data: LinkedinAnalysisResponse;
+    analysisId: string | null;
   }>;
   if (!body.data) throw new Error("ANALYSIS_FAILED");
-  return body.data;
+  return {
+    data: body.data,
+    analysisId: typeof body.analysisId === "string" ? body.analysisId : null,
+  };
 }
 
 export async function listLinkedinAnalyses(): Promise<
