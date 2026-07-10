@@ -29,11 +29,10 @@ import {
 import LinkedinBackdrop from "@/components/linkedin/LinkedinBackdrop";
 import LinkedinChecklist from "@/components/linkedin/LinkedinChecklist";
 import LinkedinHistory from "@/components/linkedin/LinkedinHistory";
-import LinkedinScoreCard from "@/components/linkedin/LinkedinScoreCard";
-import {
-  LinkedinError,
-  LinkedinSkeleton,
-} from "@/components/linkedin/LinkedinStates";
+import LinkedinScanCard from "@/components/linkedin/LinkedinScanCard";
+import LinkedinScoreHero from "@/components/linkedin/LinkedinScoreHero";
+import { LinkedinError } from "@/components/linkedin/LinkedinStates";
+import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import ReadyTexts from "@/components/linkedin/ReadyTexts";
 import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
 import { useAuth } from "@/contexts/AuthContext";
@@ -424,45 +423,6 @@ function ProfileQuestions({
           ))}
         </select>
       </Field>
-    </div>
-  );
-}
-
-function ResultHeader({ response }: { response: LinkedinAnalysisResponse }) {
-  return (
-    <div className="card-brutal overflow-hidden rounded-2xl border-slate-950 bg-white">
-      <div className="flex flex-col md:flex-row">
-        <div className="flex min-w-0 flex-1 flex-col p-6">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-sky-600 text-white shadow-[3px_3px_0_#0f172a]">
-              <Linkedin className="h-6 w-6" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
-                Análise do perfil
-              </p>
-              <p className="truncate font-display text-2xl font-black text-slate-950">
-                {AREA_LABELS[response.area]}
-              </p>
-            </div>
-          </div>
-          <div className="mt-auto flex flex-wrap gap-2 pt-6">
-            <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-700">
-              {LEVEL_LABEL[response.level]}
-            </span>
-            <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black text-slate-700">
-              {MERCADO_LABELS[response.mercado]}
-            </span>
-          </div>
-        </div>
-        <div className="border-t-2 border-slate-950 md:w-56 md:border-l-2 md:border-t-0">
-          <LinkedinScoreCard
-            score={response.deterministic.score}
-            faixa={response.deterministic.faixa}
-            variant="panel"
-          />
-        </div>
-      </div>
     </div>
   );
 }
@@ -1158,7 +1118,13 @@ export default function LinkedinAnalisar() {
 
               {showEntry ? <BenefitPills /> : null}
 
-              {loading ? <LinkedinSkeleton /> : null}
+              {loading ? (
+                <LinkedinScanCard
+                  area={form.area}
+                  level={form.level}
+                  reduce={reduce}
+                />
+              ) : null}
 
               {!loading && error ? (
                 <LinkedinError
@@ -1173,18 +1139,17 @@ export default function LinkedinAnalisar() {
 
               {!loading && result ? (
                 <div className="space-y-8">
-                  <ResultHeader response={result} />
+                  <LinkedinScoreHero
+                    response={result}
+                    scoreDelta={scoreDelta}
+                    reduce={reduce}
+                  />
 
                   {scoreDelta ? (
-                    <div className="rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4 text-sm font-bold text-slate-900 shadow-[3px_3px_0_#0f172a]">
-                      {/* TODO(Ana): revisar a copy do delta de nota. */}
-                      Sua nota foi de {scoreDelta.from} para {scoreDelta.to}
-                      {scoreDelta.to > scoreDelta.from
-                        ? ". Continua assim!"
-                        : scoreDelta.to === scoreDelta.from
-                          ? "."
-                          : ". Veja abaixo o que priorizar."}
-                    </div>
+                    <ScoreDeltaBanner
+                      from={scoreDelta.from}
+                      to={scoreDelta.to}
+                    />
                   ) : null}
 
                   <RecruiterFinder

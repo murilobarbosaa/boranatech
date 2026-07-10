@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, History, Minus } from "lucide-react";
+import { History } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { AREA_LABELS, isAreaSlug } from "@shared/areas";
 import {
@@ -27,34 +27,6 @@ function formatDate(iso: string): string {
   });
 }
 
-function DeltaBadge({ delta }: { delta: number }) {
-  if (delta === 0) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-300 bg-slate-50 px-3 py-1 text-xs font-black text-slate-600">
-        <Minus className="h-3 w-3" />
-        manteve a nota
-      </span>
-    );
-  }
-  const up = delta > 0;
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border-2 px-3 py-1 text-xs font-black ${
-        up
-          ? "border-emerald-600 bg-emerald-50 text-emerald-800"
-          : "border-red-500 bg-red-50 text-red-700"
-      }`}
-    >
-      {up ? (
-        <ArrowUpRight className="h-3 w-3" />
-      ) : (
-        <ArrowDownRight className="h-3 w-3" />
-      )}
-      {up ? "subiu" : "caiu"} {Math.abs(delta)} pontos
-    </span>
-  );
-}
-
 export default function LinkedinHistory({
   analyses,
   onOpen,
@@ -62,18 +34,14 @@ export default function LinkedinHistory({
 }: LinkedinHistoryProps) {
   if (analyses.length === 0) return null;
 
-  const delta =
-    analyses.length >= 2 ? analyses[0].score - analyses[1].score : null;
-
+  // O delta de nota e responsabilidade da pagina (banner e hero do
+  // resultado), como no molde do GitHub; aqui e so a lista.
   return (
     <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 font-display text-xl font-black text-slate-950">
-          <History className="h-5 w-5 text-sky-700" />
-          Minhas análises
-        </h3>
-        {delta !== null ? <DeltaBadge delta={delta} /> : null}
-      </div>
+      <h3 className="mb-4 flex items-center gap-2 font-display text-xl font-black text-slate-950">
+        <History className="h-5 w-5 text-sky-700" />
+        Minhas análises
+      </h3>
 
       <ul className="space-y-2">
         {analyses.map((analysis) => (
