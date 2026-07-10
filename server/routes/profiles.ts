@@ -28,6 +28,7 @@ async function maybeHideAvatar(targetUserId: string): Promise<void> {
     openRows.map((row) => row.reporter_user_id),
   ).size;
 
+  // TODO(Ana) SEG-06: contas distintas por denuncia JA garantido (dedupe + indice unico parcial). Pendente ao reativar avatar publico: revisao humana antes de ocultar no limiar (hoje a ocultacao e automatica). Rotas de report montadas em app.ts mesmo sem UI: reavaliar gate ao ativar. Feature sem UI hoje, sem avatar de terceiro exposto.
   if (distinctReporters < env.avatarReportHideThreshold) return;
 
   const { data: target, error: targetError } = await supabaseAdmin
