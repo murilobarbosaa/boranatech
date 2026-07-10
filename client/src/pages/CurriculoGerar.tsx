@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearch } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import {
+  ArrowLeft,
   Briefcase,
   CloudUpload,
   FileDown,
@@ -19,6 +20,7 @@ import {
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
+import OptionToggle from "@/components/shared/OptionToggle";
 import SEO from "@/components/SEO";
 import CurriculoChatPanel from "@/components/curriculo/CurriculoChatPanel";
 import CurriculoPreview from "@/components/curriculo/preview/CurriculoPreview";
@@ -488,7 +490,28 @@ export default function CurriculoGerar() {
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="print-hide mb-10"
           >
-            <p>
+            {/* Slot universal de "voltar" do molde: no resultado vira o link
+                Novo curriculo (mesmo caminho do comecar de novo).
+                TODO(Ana): validar o rotulo do link. */}
+            {isPro && !authLoading && generated ? (
+              <button
+                type="button"
+                onClick={handleReset}
+                className={cn(
+                  "inline-flex items-center gap-2 text-sm font-bold",
+                  ac.link,
+                  ac.linkHover,
+                )}
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                Novo currículo
+              </button>
+            ) : null}
+            <p
+              className={cn(
+                isPro && !authLoading && generated ? "mt-5" : undefined,
+              )}
+            >
               <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
                 Currículo Pro
               </span>
@@ -715,6 +738,13 @@ function downloadAsPdf(nome: string) {
   }, 200);
 }
 
+// Os 3 formatos do seletor do resultado, na ordem dos chips do atelie.
+const FORMAT_OPTIONS: { value: Curriculo["formato"]; label: string }[] = [
+  { value: "hibrido", label: "Híbrido" },
+  { value: "cronologico", label: "Cronológico" },
+  { value: "harvard", label: "Harvard" },
+];
+
 function GeneratedView({
   curriculo,
   onReset,
@@ -722,12 +752,19 @@ function GeneratedView({
   onRetrySave,
   materialize,
 }: GeneratedViewProps) {
-  const formatoLabel =
-    curriculo.formato === "hibrido"
-      ? "Híbrido"
-      : curriculo.formato === "cronologico"
-        ? "Cronológico"
-        : "Harvard";
+  // Seletor de formato: override LOCAL de exibicao alimentando o MESMO campo
+  // formato que o CurriculoPreview ja usa pra trocar de layout. Nao regrava
+  // o salvo (o jsonb da conta segue como foi gerado); imprimir sai no
+  // formato exibido.
+  const [formato, setFormato] = useState<Curriculo["formato"]>(
+    curriculo.formato,
+  );
+  useEffect(() => {
+    setFormato(curriculo.formato);
+  }, [curriculo]);
+  const displayed =
+    formato === curriculo.formato ? curriculo : { ...curriculo, formato };
+
   const personaLabel =
     curriculo.persona === "estudante"
       ? "Estudante/Iniciante"
@@ -743,7 +780,7 @@ function GeneratedView({
 
   return (
     <div>
-      <div className="print-hide mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="print-hide mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-800">
             Currículo pronto
@@ -752,36 +789,10 @@ function GeneratedView({
             {curriculo.dadosPessoais.nome}
           </h2>
           <p className="mt-0.5 text-sm font-bold text-slate-700">
-            Formato {formatoLabel} · Persona {personaLabel} ·{" "}
+            Persona {personaLabel} ·{" "}
             {curriculo.idioma === "en" ? "English" : "Português"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleDownload}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-          >
-            <FileDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-            {/* TODO(Ana): copy do botao de imprimir/salvar PDF */}
-            Imprimir ou salvar PDF
-          </button>
-          <button
-            type="button"
-            onClick={onReset}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
-          >
-            <RefreshCw className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-            Começar de novo
-          </button>
-        </div>
-      </div>
-      <p className="print-hide -mt-3 mb-3 text-xs font-medium text-slate-600">
-        Abre o diálogo de impressão do navegador. Escolhe "Salvar como PDF" pra
-        baixar.
-      </p>
-
-      <div className="print-hide mb-6">
         {/* TODO(Ana): revisar os textos do estado de salvamento */}
         {saveState === "saving" ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-bold text-slate-600">
@@ -807,13 +818,62 @@ function GeneratedView({
         ) : null}
       </div>
 
+      {/* Barra de acoes acima do papel: formato, imprimir e comecar de novo. */}
+      <div className="print-hide mb-2 flex flex-wrap items-center gap-3">
+        <div
+          role="group"
+          aria-label="Formato do currículo"
+          className="flex flex-wrap gap-2"
+        >
+          {FORMAT_OPTIONS.map((option) => (
+            <OptionToggle
+              key={option.value}
+              active={formato === option.value}
+              onClick={() => setFormato(option.value)}
+            >
+              {option.label}
+            </OptionToggle>
+          ))}
+        </div>
+        <BrutalActionButton
+          variant="primary"
+          icon={<FileDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />}
+          onClick={handleDownload}
+        >
+          {/* TODO(Ana): copy do botao de imprimir/salvar PDF */}
+          Imprimir ou salvar PDF
+        </BrutalActionButton>
+        <button
+          type="button"
+          onClick={onReset}
+          className="inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px"
+        >
+          <RefreshCw className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+          Começar de novo
+        </button>
+      </div>
+      <p className="print-hide mb-6 text-xs font-medium text-slate-600">
+        Abre o diálogo de impressão do navegador. Escolhe "Salvar como PDF" pra
+        baixar.
+      </p>
+
+      {/* Papel-protagonista: selo no topo + A4 com sombra brutal e leve
+          rotacao (via .curriculo-paper-spotlight, zerada no print), direto
+          sobre o pontilhado da pagina. */}
+      <div className="print-hide relative z-10 mx-auto -mb-3 flex w-fit">
+        {/* TODO(Ana): revisar o selo do papel. */}
+        <span className="inline-flex rotate-1 items-center gap-1.5 rounded-full border-2 border-slate-950 bg-[#FFB800] px-3 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+          <Sparkles className="h-3 w-3" aria-hidden />
+          Seu currículo
+        </span>
+      </div>
       <div
         className={cn(
-          "curriculo-preview-stage rounded-2xl bg-slate-100 p-4 sm:p-8",
+          "curriculo-preview-stage curriculo-paper-spotlight rounded-2xl p-4 pb-8 sm:p-8 sm:pb-10",
           materialize && "curriculo-materialize",
         )}
       >
-        <CurriculoPreview curriculo={curriculo} />
+        <CurriculoPreview curriculo={displayed} />
       </div>
 
       <p className="print-hide mt-4 text-xs font-medium text-slate-600">

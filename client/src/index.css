@@ -1009,8 +1009,11 @@
     border: 0 !important;
     border-radius: 0 !important;
     outline: 0 !important;
-    /* CRÍTICO: zera o scale aplicado na tela. PDF sai em tamanho real. */
+    /* CRÍTICO: zera o scale aplicado na tela. PDF sai em tamanho real.
+       rotate é propriedade separada de transform (papel-protagonista),
+       precisa do próprio reset. */
     transform: none !important;
+    rotate: none !important;
   }
 
   /* Elementos da app marcados pra fora do print. */
