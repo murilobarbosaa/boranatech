@@ -151,7 +151,7 @@ export default function CareerTrail({
         <div
           ref={scrollRef}
           onKeyDown={handleKeyDown}
-          className="relative z-10 -mx-1 flex snap-x snap-mandatory items-start gap-5 overflow-x-auto px-1 pb-4 pt-2"
+          className="relative z-10 -mx-2 flex snap-x snap-mandatory items-start gap-5 overflow-x-auto px-2 pb-4 pt-2"
         >
           {stations.map((station, index) => (
             <motion.div

@@ -1,6 +1,6 @@
 import { getCatalogItem, type CareerCatalogItem } from "@shared/careerCatalog";
 import { cn } from "@/lib/utils";
-import { formatPrice, type StationCertVM } from "./types";
+import { formatAmount, formatPrice, type StationCertVM } from "./types";
 
 interface InvestmentSummaryProps {
   // TODAS as certs do plano (ancoradas + gerais), na ordem de exibicao.
@@ -14,10 +14,6 @@ interface CurrencyTotal {
   currency: Currency;
   required: number;
   withOptionals: number;
-}
-
-function currencyLabel(currency: Currency, amount: number): string {
-  return currency === "BRL" ? `R$ ${amount}` : `USD ${amount}`;
 }
 
 // Secao "Investimento da rota": soma honesta dos precos do catalogo.
@@ -134,12 +130,12 @@ export default function InvestmentSummary({
                 </span>
                 <span className="text-right">
                   <span className="font-display text-lg font-black text-slate-950">
-                    {currencyLabel(total.currency, total.required)}
+                    {formatAmount(total.required, total.currency)}
                   </span>
                   {total.withOptionals > total.required ? (
                     <span className="ml-1.5 text-xs font-bold text-slate-500">
                       {/* TODO(Ana): sufixo do total com opcionais */}
-                      até {currencyLabel(total.currency, total.withOptionals)}{" "}
+                      até {formatAmount(total.withOptionals, total.currency)}{" "}
                       com as opcionais
                     </span>
                   ) : null}

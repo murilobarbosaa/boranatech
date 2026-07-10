@@ -89,14 +89,19 @@ export interface TrailVM {
   looseScheduleBlocks: Array<Pick<CareerPlanScheduleBlock, "monthsLabel" | "focus">>;
 }
 
+// Formatador unico de valor+moeda: itens de linha e totais do investimento
+// passam pelo MESMO caminho, sem template cru duplicado.
+export function formatAmount(amount: number, currency: "USD" | "BRL"): string {
+  return currency === "BRL" ? `R$ ${amount}` : `USD ${amount}`;
+}
+
 // Preco de exibicao SEMPRE do catalogo curado; "" quando o item saiu do
 // catalogo atual (a UI mostra o aviso de desatualizado, nunca um preco).
 export function formatPrice(catalogId: string): string {
   const item = getCatalogItem(catalogId);
   if (!item) return "";
   if ("free" in item.price) return "Gratuito";
-  if (item.price.currency === "BRL") return `R$ ${item.price.amount}`;
-  return `USD ${item.price.amount}`;
+  return formatAmount(item.price.amount, item.price.currency);
 }
 
 function certToVM(

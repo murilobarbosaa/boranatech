@@ -60,7 +60,7 @@ export default function TrophyCard({
           // TODO(Ana): aria-label do detalhe do trofeu
           aria-label={`Detalhes de ${name}`}
           onClick={() => setExpanded((prev) => !prev)}
-          className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
+          className="flex min-w-0 flex-1 items-start gap-2.5 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         >
           <span
             aria-hidden
@@ -107,7 +107,7 @@ export default function TrophyCard({
           <ChevronDown
             aria-hidden
             className={cn(
-              "mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform",
+              "mt-1 h-4 w-4 shrink-0 text-slate-400 transition-transform motion-reduce:transition-none",
               expanded && "rotate-180",
             )}
           />
@@ -120,7 +120,7 @@ export default function TrophyCard({
             aria-label={`Marcar certificação ${name}`}
             onClick={() => onToggle?.(cert.itemId)}
             className={cn(
-              "mt-1 grid h-5 w-5 shrink-0 place-items-center rounded border-2",
+              "mt-1 grid h-5 w-5 shrink-0 place-items-center rounded border-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1",
               done
                 ? "border-emerald-600 bg-emerald-500"
                 : "border-slate-400 bg-white hover:border-slate-600",
@@ -198,7 +198,7 @@ export default function TrophyCard({
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-bold text-amber-800 underline underline-offset-2 hover:text-amber-900"
+                      className="inline-flex items-center gap-1 rounded text-xs font-bold text-amber-800 underline underline-offset-2 hover:text-amber-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                     >
                       {/* TODO(Ana): label do link oficial */}
                       Ver no site oficial

@@ -363,7 +363,7 @@ function PlanResult({ plan, readonly, onWantNew }: PlanResultProps) {
             <button
               type="button"
               onClick={onWantNew}
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
             >
               <RefreshCw className="h-3.5 w-3.5" aria-hidden />
               Gerar novo plano
@@ -373,7 +373,7 @@ function PlanResult({ plan, readonly, onWantNew }: PlanResultProps) {
         {!isLoading && done !== null ? (
           <div className="mt-3 h-3 overflow-hidden rounded-full border-2 border-slate-950 bg-slate-100">
             <div
-              className="h-full bg-emerald-500 transition-[width]"
+              className="h-full bg-emerald-500 transition-[width] motion-reduce:transition-none"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -631,7 +631,7 @@ export default function PlanoCarreira() {
         <button
           type="button"
           onClick={() => setReloadKey((key) => key + 1)}
-          className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+          className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-950 bg-[#FFB800] px-5 py-2.5 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
         >
           <RefreshCw className="h-4 w-4" aria-hidden />
           {/* TODO(Ana): label do botao de tentar de novo */}
@@ -699,7 +699,7 @@ export default function PlanoCarreira() {
                 type="button"
                 onClick={backAction.onClick}
                 className={cn(
-                  "inline-flex items-center gap-2 text-sm font-bold",
+                  "inline-flex items-center gap-2 rounded-md text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2",
                   ac.link,
                   ac.linkHover,
                 )}
@@ -763,7 +763,7 @@ export default function PlanoCarreira() {
                       type="button"
                       disabled={openingId !== null}
                       onClick={() => void openArchived(p.id)}
-                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500 disabled:opacity-60"
+                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:border-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 disabled:opacity-60"
                     >
                       {openingId === p.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" aria-hidden />

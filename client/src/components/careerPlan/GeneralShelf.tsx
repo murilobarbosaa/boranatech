@@ -37,7 +37,7 @@ export default function GeneralShelf({
       <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
         {title}
       </p>
-      <div className="-mx-1 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
+      <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2">
         {certs.map((cert) => (
           <div
             key={cert.itemId}

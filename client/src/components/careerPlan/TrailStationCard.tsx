@@ -57,7 +57,7 @@ export default function TrailStationCard({
         data-station-index={index}
         aria-expanded={expanded}
         onClick={() => onExpand(expanded ? null : step.id)}
-        className="flex w-full items-start gap-3 rounded-t-2xl p-4 text-left"
+        className="flex w-full items-start gap-3 rounded-t-2xl p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-500"
       >
         <span
           className={cn(
@@ -113,7 +113,7 @@ export default function TrailStationCard({
             <div className="mt-1 h-2 overflow-hidden rounded-full border-2 border-slate-950 bg-slate-100">
               <div
                 className={cn(
-                  "h-full transition-[width]",
+                  "h-full transition-[width] motion-reduce:transition-none",
                   complete ? "bg-emerald-500" : ac.progressFill,
                 )}
                 style={{ width: `${pct}%` }}
@@ -170,7 +170,7 @@ export default function TrailStationCard({
                       disabled={disabled}
                       onClick={() => onToggleItem(item.itemId)}
                       className={cn(
-                        "flex w-full items-start gap-2.5 rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors",
+                        "flex w-full items-start gap-2.5 rounded-xl border-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500",
                         done
                           ? "border-emerald-500 bg-emerald-50 text-slate-700"
                           : "border-slate-300 bg-white text-slate-800 hover:border-slate-500",
