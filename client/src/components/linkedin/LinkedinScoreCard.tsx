@@ -1,12 +1,6 @@
+import { FAIXA_UI } from "@/components/linkedin/faixaUi";
 import { cn } from "@/lib/utils";
 import { FAIXA_LABELS, type LinkedinFaixa } from "@shared/linkedin/schema";
-
-const FAIXA_UI: Record<LinkedinFaixa, { cardBg: string; chipBg: string }> = {
-  inicio: { cardBg: "bg-red-100", chipBg: "bg-red-300" },
-  "em-construcao": { cardBg: "bg-amber-100", chipBg: "bg-amber-300" },
-  forte: { cardBg: "bg-sky-100", chipBg: "bg-sky-300" },
-  magnetico: { cardBg: "bg-emerald-100", chipBg: "bg-emerald-300" },
-};
 
 interface LinkedinScoreCardProps {
   score: number;

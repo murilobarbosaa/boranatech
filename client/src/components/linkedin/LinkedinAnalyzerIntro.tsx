@@ -1,7 +1,9 @@
 import type { ComponentType } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { FileText, Gauge, Search, Sparkles, Type } from "lucide-react";
+import { FAIXA_UI } from "@/components/linkedin/faixaUi";
 import MiniScoreRing from "@/components/portfolio/MiniScoreRing";
+import { cn } from "@/lib/utils";
 
 // Estado de entrada do Analisador de LinkedIn (L3): linha do tempo compacta
 // de 3 passos + VITRINE ilustrativa do resultado + pills de beneficios, no
@@ -27,7 +29,8 @@ const TIMELINE_STEPS: { title: string; text: string }[] = [
 
 // Constantes ILUSTRATIVAS da vitrine (nunca dado real do usuario).
 const EXAMPLE_SCORE = 76;
-// Chip nas cores da faixa "forte" do FAIXA_UI do LinkedinScoreCard (sky).
+// Cores da faixa "forte" direto do FAIXA_UI compartilhado (fonte unica).
+const EXAMPLE_FAIXA_UI = FAIXA_UI.forte;
 // TODO(Ana): revisar o rotulo de faixa do exemplo.
 const EXAMPLE_FAIXA_LABEL = "Forte";
 // TODO(Ana): revisar as headlines de exemplo (antes fraca, depois forte).
@@ -147,7 +150,12 @@ export function ResultShowcase() {
 
       {/* (a) mini nota-hero */}
       <ShowcaseCard index={0} reduce={reduce} className="w-[88%] -rotate-2">
-        <div className="flex items-center gap-4 rounded-xl bg-sky-100 p-4">
+        <div
+          className={cn(
+            "flex items-center gap-4 rounded-xl p-4",
+            EXAMPLE_FAIXA_UI.cardBg,
+          )}
+        >
           <MiniScoreRing
             score={EXAMPLE_SCORE}
             className="h-[72px] w-[72px] text-xl"
@@ -157,7 +165,12 @@ export function ResultShowcase() {
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
               Nota do perfil
             </p>
-            <span className="mt-1.5 inline-flex rounded-full border-2 border-slate-950 bg-sky-300 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+            <span
+              className={cn(
+                "mt-1.5 inline-flex rounded-full border-2 border-slate-950 px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a]",
+                EXAMPLE_FAIXA_UI.chipBg,
+              )}
+            >
               {EXAMPLE_FAIXA_LABEL}
             </span>
           </div>
