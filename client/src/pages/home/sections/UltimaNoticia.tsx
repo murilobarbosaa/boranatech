@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Newspaper } from "lucide-react";
-import { getNews, type NewsItem } from "@/services/contentService";
+import { getNews, type NewsItem } from "@/services/contentApi";
 
 // Card na home com a noticia MAIS RECENTE, lendo a mesma fonte real da pagina de
-// Noticias (getNews do contentService). Nao inventa noticia: se a fonte estiver
-// vazia ou falhando, mostra um estado vazio elegante.
+// Noticias (getNews do contentApi, sem arrastar os data files estaticos pro
+// boot). Nao inventa noticia: se a fonte estiver vazia ou falhando, mostra um
+// estado vazio elegante.
 export default function UltimaNoticia() {
   const [item, setItem] = useState<NewsItem | null>(null);
   const [carregando, setCarregando] = useState(true);
