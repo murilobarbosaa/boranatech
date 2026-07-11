@@ -253,6 +253,7 @@ function Router() {
         <Route path="/faculdades" component={Faculdades} />
         <Route path="/eventos" component={Eventos} />
         <Route path="/projetos" component={Projetos} />
+        <Route path="/projetos/:id" component={Projetos} />
         <Route path="/estagio/freelance">
           {() => <Estagio initialTab={2} />}
         </Route>

@@ -78,9 +78,7 @@ function ProjectCard({
   checked: boolean;
   onToggleDone: () => void;
 }) {
-  const href = project.areaSlug
-    ? `/projetos?area=${project.areaSlug}`
-    : "/projetos";
+  const href = `/projetos/${project.id}`;
   return (
     <div className="mb-3 rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-4 shadow-[4px_4px_0_#0f172a]">
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -250,6 +248,14 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
   const project = node.project
     ? projetos.find((p) => p.id === node.project)
     : undefined;
+  // node.project que nao resolve no catalogo (id removido/renomeado, ou texto
+  // livre de roadmap de IA antigo): card minimo em vez de sumir em silencio.
+  const projectUnresolved = Boolean(node.project && !project);
+  if (projectUnresolved && import.meta.env.DEV) {
+    console.warn(
+      `[roadmapV2] node.project "${node.project}" (no ${node.id}) nao resolve no catalogo de projetos`,
+    );
+  }
   const hasResources = Boolean(node.resources && node.resources.length > 0);
   const hasLangResources = Boolean(
     langContent?.resources && langContent.resources.length > 0,
@@ -258,6 +264,7 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
     Boolean(node.content) ||
     Boolean(langContent?.content) ||
     Boolean(project) ||
+    projectUnresolved ||
     hasResources ||
     hasLangResources;
 
@@ -332,6 +339,24 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
                   onToggleDone={() => onToggle(node.id)}
                 />
               )}
+              {projectUnresolved && (
+                <div className="mb-3 rounded-[14px] border-[2.5px] border-dashed border-slate-400 bg-slate-50 p-4">
+                  <span className="rounded-md border-2 border-slate-400 bg-white px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-500">
+                    Projeto
+                  </span>
+                  <p className="mt-2 text-[0.86rem] font-medium leading-snug text-slate-600">
+                    {/* TODO(Ana): copy do card de projeto indisponivel */}
+                    Este projeto está indisponível no momento. Explore outros na
+                    página de projetos.
+                  </p>
+                  <Link
+                    href="/projetos"
+                    className="mt-3 inline-flex rounded-[9px] border-[2.5px] border-slate-900 bg-white px-3 py-1.5 text-[0.8rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
+                  >
+                    Ver projetos
+                  </Link>
+                </div>
+              )}
               {hasResources && (
                 <div className="pb-2.5">
                   <ResourceChips resources={node.resources ?? []} />
@@ -361,7 +386,12 @@ export default function RoadmapNodeItem({
 }: RoadmapNodeItemProps) {
   const isGroup = Boolean(node.children && node.children.length > 0);
   return isGroup ? (
-    <GroupItem node={node} done={done} language={language} onToggle={onToggle} />
+    <GroupItem
+      node={node}
+      done={done}
+      language={language}
+      onToggle={onToggle}
+    />
   ) : (
     <LeafItem node={node} done={done} language={language} onToggle={onToggle} />
   );

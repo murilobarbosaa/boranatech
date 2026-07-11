@@ -15,6 +15,11 @@ export type RoadmapNode = {
   description?: string;
   content?: string;
   byLanguage?: Record<string, RoadmapNodeLanguageContent>;
+  // Nas trilhas estaticas: id do catalogo de projetos (array projetos em
+  // client/src/lib/data.ts), resolvido pelo ProjectCard. Roadmaps de IA
+  // historicamente emitiram texto livre aqui, que nao resolve no catalogo
+  // (o card cai no fallback de indisponivel); normalizar a geracao e assunto
+  // da fase 5c.
   project?: string;
   estimatedTime?: string;
   optional?: boolean;

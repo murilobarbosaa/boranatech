@@ -3,8 +3,8 @@
   Style: Neo-Brutalism Suavizado
 */
 
-import { useMemo, useState } from "react";
-import { Link, useSearch } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams, useSearch } from "wouter";
 import {
   ArrowRight,
   ChevronDown,
@@ -87,14 +87,36 @@ const SAMPLE_SIZE = 6;
 export default function Projetos() {
   const { isPro, loading } = useSubscription();
   const search = useSearch();
+  const params = useParams<{ id?: string }>();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
   // Fonte canonica: o catalogo estatico versionado (client/src/lib/data.ts).
   // A tabela projects do Supabase segue existindo pra outras superficies, mas
   // esta pagina nao a consome mais.
   const projectItems = projetos;
+  // Deep-link /projetos/:id: abre o card expandido e rola ate ele. Id que nao
+  // existe no catalogo mostra um banner discreto e a listagem normal.
+  const deepLinkId = params.id ?? null;
+  const deepLinkProject = deepLinkId
+    ? projectItems.find((p) => p.id === deepLinkId)
+    : undefined;
+  const deepLinkMissing = Boolean(deepLinkId && !deepLinkProject);
   const [area, setArea] = useState(initialAreaFromUrl ?? AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(
+    deepLinkProject?.id ?? null,
+  );
+
+  useEffect(() => {
+    if (!deepLinkProject) return;
+    // Espera o primeiro paint pro card existir com layout estavel antes de
+    // rolar (o smooth scroll em elemento recem-montado engasga em mobile).
+    const raf = requestAnimationFrame(() => {
+      document
+        .getElementById(`projeto-${deepLinkProject.id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [deepLinkProject]);
   const [query, setQuery] = useState("");
   const [tech, setTech] = useState(TECH_ALL);
   const areaSlugOptions = useMemo<(string | null)[]>(
@@ -335,6 +357,13 @@ export default function Projetos() {
           >
             {filtered.length} projeto{filtered.length !== 1 ? "s" : ""}
           </p>
+          {deepLinkMissing && (
+            <p className="mb-6 rounded-xl border-2 border-slate-900 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-[3px_3px_0_#0f172a]">
+              {/* TODO(Ana): copy do aviso de projeto nao encontrado no deep-link */}
+              Não encontramos esse projeto. Ele pode ter mudado de nome; aqui
+              está a lista completa.
+            </p>
+          )}
           {!isPro && !loading && lockedTotal > 0 ? (
             <Link
               href="/planos"
@@ -376,7 +405,11 @@ export default function Projetos() {
                   {grupo.itens.map((projeto) => {
                     const locked = !isPro && !freeProjectIds.has(projeto.id);
                     return (
-                      <div key={projeto.id} className="relative">
+                      <div
+                        key={projeto.id}
+                        id={`projeto-${projeto.id}`}
+                        className="relative scroll-mt-24"
+                      >
                         <div
                           style={{
                             boxShadow: `5px 5px 0 ${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}`,
