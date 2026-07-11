@@ -304,7 +304,9 @@ export const frontend: RoadmapV2 = {
           id: "layout.flexbox",
           title: "Flexbox",
           description:
-            "Eixos, container e itens: o modelo que resolve a maioria dos alinhamentos.",
+            "Eixos, justify-content, align-items, gap e as três receitas que resolvem 90% dos alinhamentos.",
+          content:
+            "Flexbox é o sistema de layout unidimensional do CSS: você liga no elemento pai com `display: flex` e ele passa a distribuir os **filhos diretos** ao longo de uma linha ou coluna. A maior parte do alinhamento que atormentava gerações de devs virou duas ou três propriedades.\n\nO modelo mental: todo container flex tem um **eixo principal** (horizontal por padrão, controlado por `flex-direction`) e um **eixo cruzado**, perpendicular a ele. As duas propriedades mestras alinham nesses eixos: `justify-content` distribui os itens no eixo principal (`center`, `space-between`, `flex-end`) e `align-items` alinha no eixo cruzado (`center`, `stretch`). O `gap` define o respiro entre os itens sem depender de margin.\n\nNos filhos, três propriedades decidem como cada um cresce e encolhe: `flex-grow`, `flex-shrink` e `flex-basis`, quase sempre resumidas no atalho `flex: 1` (todos crescem por igual) ou simplesmente deixadas no padrão.\n\nTrês receitas resolvem 90% do dia a dia. Barra de navegação com logo de um lado e links do outro: `display: flex` com `justify-content: space-between` e `align-items: center`. Centralizar qualquer coisa perfeitamente: `justify-content: center` com `align-items: center` no pai. Fileira de cards que quebra de linha: `flex-wrap: wrap` com `gap`.\n\nVocê domina este passo quando monta as três receitas de memória e, diante de qualquer alinhamento, sabe dizer qual eixo está em jogo.",
           resources: [
             {
               label: "CSS-Tricks Flexbox",
@@ -317,7 +319,9 @@ export const frontend: RoadmapV2 = {
           id: "layout.grid",
           title: "Grid",
           description:
-            "Grades de duas dimensões: linhas, colunas, áreas e alinhamento.",
+            "Layout bidimensional com colunas em fr e a receita de grade responsiva sem media query.",
+          content:
+            "Grid é o layout bidimensional do CSS: enquanto o Flexbox pensa numa fila (uma dimensão de cada vez), o Grid pensa numa tabela, linhas E colunas juntas. O critério de escolha é esse: fileira de itens, Flexbox; grade onde linhas e colunas precisam se alinhar entre si, Grid.\n\nLiga-se com `display: grid` no pai e desenham-se as colunas com `grid-template-columns`. A unidade nova é o `fr`, a fração do espaço livre: `grid-template-columns: 1fr 1fr 1fr` cria três colunas iguais; `2fr 1fr` faz a primeira ter o dobro da segunda. O `gap` funciona como no Flexbox, espaçando linhas e colunas de uma vez.\n\nA receita de ouro da grade responsiva sem nenhuma media query: `grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))`. Lendo por partes: cada coluna tem no mínimo 250px e no máximo uma fração igual do espaço (`minmax`), e o navegador encaixa quantas colunas couberem na largura disponível (`repeat` com `auto-fit`). A tela estreitou? As colunas quebram sozinhas pra linha de baixo. É a solução padrão pra galeria de cards.\n\nGrid tem bem mais (áreas nomeadas, posicionamento explícito de itens), mas colunas, `fr`, `gap` e a receita responsiva cobrem a larga maioria do que você vai construir. Monte uma galeria com a receita hoje e redimensione a janela pra ver funcionando.",
           resources: [
             {
               label: "CSS-Tricks Grid",
@@ -330,7 +334,9 @@ export const frontend: RoadmapV2 = {
           id: "layout.responsivo",
           title: "Responsividade (mobile-first)",
           description:
-            "Fazer o layout se adaptar de celulares a telas grandes.",
+            "Mobile-first, media queries, breakpoints pelo conteúdo e imagens que nunca estouram.",
+          content:
+            "Responsividade é o compromisso de a página funcionar de um celular de 360px a um monitor de 1440px. Mobile-first é a estratégia que torna isso administrável: escreva o CSS base pra tela pequena e adicione ajustes conforme a tela CRESCE, nunca o contrário.\n\nA ferramenta dos ajustes é a **media query**: `@media (min-width: 768px) { ... }` aplica as regras dali de dentro só quando a janela tem pelo menos 768px. No fluxo mobile-first, você empilha blocos de `min-width` progressivos: a base pro celular, um bloco pra tablet, outro pra desktop.\n\nE onde ficam os cortes? **Breakpoints se escolhem pelo conteúdo, não por dispositivo.** Estique a janela devagar: no ponto em que o layout começa a ficar estranho (linha de texto longa demais, espaço sobrando), ali nasce um breakpoint. Perseguir medidas de aparelhos específicos é enxugar gelo; aparelhos mudam todo ano.\n\nDuas práticas completam o kit. As unidades relativas que você viu no box model (`rem`, `%`, `vh`) fazem o layout esticar sozinho entre um breakpoint e outro, diminuindo quantos você precisa. E toda imagem leva `max-width: 100%`: ela encolhe junto com o container e nunca estoura pro lado.\n\nVocê domina este passo quando abre o modo responsivo do DevTools, arrasta a largura de 360px a 1200px e a sua página não quebra em nenhum ponto do caminho.",
           resources: [
             {
               label: "web.dev Responsive",
@@ -343,8 +349,10 @@ export const frontend: RoadmapV2 = {
           id: "layout.arquitetura",
           title: "Arquitetura de CSS (Sass, BEM)",
           description:
-            "Variáveis, reúso e convenção de nomes pra manter o CSS organizado em projetos grandes.",
+            "Por que CSS degrada em projeto grande, e as disciplinas (BEM, Sass) que o fazem envelhecer bem.",
           optional: true,
+          content:
+            "Em página pequena, CSS se comporta. Em projeto grande, ele degrada de um jeito previsível: a especificidade vai subindo (uma regra precisa ganhar da outra, alguém apela pro id, outro apela pro `!important`), ninguém sabe mais o que cada classe afeta e bate o medo de deletar qualquer linha. Arquitetura de CSS é o conjunto de disciplinas pra ele envelhecer bem.\n\nA disciplina mais barata é uma convenção de nomes. O **BEM** (bloco, elemento, modificador) nomeia as classes como `card`, `card__titulo` e `card--destaque`: lendo o nome você sabe a que bloco a classe pertence e o que ela modifica, e a especificidade fica plana, porque tudo é uma classe só. Parece burocracia numa página pessoal; num time, é o que evita o CSS de ninguém, aquele que todos temem tocar.\n\nO **Sass** ataca por outro lado: é um pré-processador, um CSS com superpoderes (variáveis, aninhamento, funções) que compila pra CSS comum antes de chegar ao navegador.\n\nE existe uma terceira via que virou dominante no mercado: frameworks de utilidades, como o Tailwind, trocam a invenção de nomes por classes minúsculas prontas, resolvendo o mesmo problema por outro ângulo. Você vai encontrá-los mais à frente; conhecer BEM e Sass te faz entender exatamente qual dor eles vieram curar.",
           resources: [
             {
               label: "Sass",
@@ -366,7 +374,9 @@ export const frontend: RoadmapV2 = {
           id: "javascript.tipos",
           title: "Tipos e variáveis",
           description:
-            "Os tipos de dados do JavaScript e como guardar valores.",
+            "Const e let, tipos primitivos, template literals e por que comparar sempre com ===.",
+          content:
+            'Variável é uma caixinha com nome onde o programa guarda um valor pra usar depois. No JavaScript moderno você declara com `const` (valor que não será reatribuído, o seu padrão) e `let` (valor que muda, como um contador). Existe também o `var`, o jeito antigo com regras de escopo traiçoeiras: você vai vê-lo em código velho, não escreva em código novo.\n\nOs valores têm **tipos**. Os primitivos do dia a dia: `string` (texto entre aspas), `number` (inteiro e decimal são o mesmo tipo), `boolean` (`true` ou `false`), mais `null` (ausência intencional de valor) e `undefined` (ainda sem valor). No Console, `typeof valor` revela o tipo de qualquer coisa.\n\nPra montar textos, os **template literals** substituem a colagem com `+`: entre crases, `Olá, ${nome}!` interpola qualquer expressão dentro do `${}`. Mais legível, menos propenso a erro.\n\nA armadilha clássica do começo é a **coerção**: o JavaScript converte tipos sozinho quando acha que deve, e `"5" + 1` vira `"51"` enquanto `"5" - 1` vira `4`. Por isso a comparação `==` engana: ela converte antes de comparar, e `"5" == 5` dá `true`. Regra sem exceção nesta trilha: compare com `===` e `!==`, que exigem tipo e valor iguais.\n\nAbra o Console do DevTools e teste cada exemplo acima: ele é o seu laboratório de JavaScript daqui em diante.',
           resources: [
             {
               label: "JavaScript.info",
@@ -378,13 +388,18 @@ export const frontend: RoadmapV2 = {
         {
           id: "javascript.controle",
           title: "Condicionais e laços",
-          description: "Tomar decisões e repetir ações no código.",
+          description:
+            "If, operadores lógicos, os três loops e o early return como hábito de legibilidade.",
+          content:
+            "Controle de fluxo é o que transforma uma lista de instruções em programa de verdade: decidir e repetir.\n\nA decisão é o `if`: `if (idade >= 18) { ... } else { ... }` executa um bloco ou o outro conforme a condição. Condições se combinam com os operadores lógicos `&&` (e), `||` (ou) e `!` (não): `if (logado && !bloqueado)` lê exatamente como a frase que descreve.\n\nA repetição tem três formas principais. O `for` clássico conta: `for (let i = 0; i < 10; i++)`. O `while` repete enquanto a condição valer, útil quando não se sabe de antemão quantas voltas. E o `for...of` percorre uma coleção item a item: `for (const item of carrinho)` lê muito melhor do que gerenciar índice na mão, e vai ser o seu loop do dia a dia até os métodos de array assumirem boa parte do trabalho daqui a dois passos.\n\nUm hábito de legibilidade pra adotar desde já: o **early return**. Em vez de aninhar `if` dentro de `if`, trate os casos de saída primeiro e encerre cedo; o caminho principal fica reto, sem indentação profunda. Você ainda não escreveu funções (é o próximo passo), mas guarde o princípio: exceções primeiro, fluxo principal limpo.\n\nVocê domina este passo quando lê uma condição composta em voz alta e o programa faz exatamente o que você narrou.",
         },
         {
           id: "javascript.funcoes",
           title: "Funções, escopo e arrow functions",
           description:
-            "Empacotar lógica reutilizável, entender onde as variáveis vivem e como o this muda.",
+            "Parâmetros, retorno, escopo, função como valor e arrow functions com a noção de this.",
+          content:
+            "Função é um bloco de código com nome que você define uma vez e executa quantas vezes quiser: a unidade básica de organização de qualquer programa. Ela recebe **parâmetros**, faz o trabalho e devolve um resultado com `return`: definida `function somar(a, b) { return a + b; }`, a expressão `somar(2, 3)` vale `5` em qualquer lugar do código.\n\nO que separa o JavaScript de muitas linguagens: função é **valor**. Dá pra guardar numa variável, passar como argumento e devolver de outra função. É isso que os métodos de array do próximo passo exploram: `numeros.map(dobrar)` entrega a função `dobrar` pro `map` aplicar em cada item.\n\nCada função cria um **escopo**: variáveis declaradas dentro só existem dentro. De dentro se enxerga o lado de fora; de fora, nunca o lado de dentro. Esse cerco é o que deixa duas funções usarem nomes iguais sem conflito.\n\nA **arrow function** é a sintaxe enxuta pra função como valor: `const dobrar = (n) => n * 2` retorna a expressão direto, sem `return` nem chaves. Em callbacks curtos ela reina: `numeros.map((n) => n * 2)`. Além da sintaxe, uma diferença real: a arrow não tem `this` próprio, herda o do lugar onde foi escrita. Por ora guarde a noção: se um `this` se comportar estranho um dia, lembre que a arrow existe e aprofunde na hora.\n\nVocê domina este passo quando escreve a mesma lógica nas duas sintaxes e passa uma função pra outra sem executá-la por engano (passar `dobrar`, não `dobrar()`).",
           resources: [
             {
               label: "MDN Functions",
@@ -396,7 +411,10 @@ export const frontend: RoadmapV2 = {
         {
           id: "javascript.arrays",
           title: "Arrays (map, filter, reduce)",
-          description: "Transformar e filtrar listas sem laços manuais.",
+          description:
+            "Map, filter e reduce, buscas com find e includes, e o modelo mental de não mutar o original.",
+          content:
+            'Array é a lista do JavaScript: `const frutas = ["uva", "kiwi", "manga"]`, acesso por índice a partir do zero (`frutas[0]`), tamanho em `frutas.length`. O poder real está nos métodos, e eles se dividem em famílias.\n\nOs **transformadores** criam um array novo a partir do original. O `map` aplica uma função a cada item: `const dobros = numeros.map((n) => n * 2)`. O `filter` mantém só o que passa no teste: `const pares = numeros.filter((n) => n % 2 === 0)`. O `reduce` resume a lista inteira num valor só (a soma, o maior, um agrupamento); é o mais poderoso e o mais difícil de ler, então por enquanto basta a noção de que existe pra esse fim.\n\nOs **buscadores** respondem perguntas: `find` devolve o primeiro item que passa no teste, `includes` diz se um valor está lá.\n\nO **iterador** `forEach` executa algo pra cada item sem produzir array novo, primo do `for...of` que você já usa.\n\nO modelo mental central da família: **mutação versus array novo**. `map` e `filter` não tocam no original, devolvem outro array; esse estilo de transformar sem alterar é exatamente o que o React vai exigir mais à frente. Métodos como `push` e `sort` alteram o próprio array; use com consciência do efeito.\n\nVocê domina este passo quando resolve com `map` e `filter` o que antes escreveria com um `for` e um array auxiliar.',
           resources: [
             {
               label: "MDN Array",
@@ -409,12 +427,31 @@ export const frontend: RoadmapV2 = {
           id: "javascript.objetos",
           title: "Objetos, desestruturação e JSON",
           description:
-            "Estruturar dados em pares chave-valor, extrair o que precisa e trocar dados com o back.",
+            "Chave-valor, desestruturação, spread e o par JSON.stringify e parse pra trocar dados.",
+          content:
+            'Objeto é a estrutura de dados central do JavaScript: pares de chave e valor descrevendo uma coisa só. `const usuario = { nome: "Bia", idade: 23 }` agrupa num único valor tudo que descreve a usuária.\n\nO acesso tem duas formas: o ponto, `usuario.nome`, pro caso comum; e o colchete, `usuario["nome"]`, pra quando a chave vem numa variável ou tem caracteres especiais.\n\nA **desestruturação** extrai valores direto pra variáveis: `const { nome, idade } = usuario` cria as duas de uma vez. Funciona com arrays (`const [primeiro] = lista`) e em parâmetros de função, e você vai vê-la em praticamente todo código React.\n\nO **spread** (`...`) espalha um objeto dentro de outro: `const atualizado = { ...usuario, idade: 24 }` cria uma cópia com um campo trocado, sem tocar no original. O mesmo espírito do `map` e do `filter` do passo anterior, agora pra objetos.\n\nE o **JSON**? É o formato de texto que o front e o back usam pra trocar dados, com cara de objeto JavaScript (chaves entre aspas duplas, sem funções). A conversão é um par: `JSON.stringify(objeto)` transforma objeto em texto pra enviar ou guardar; `JSON.parse(texto)` faz a volta. Esse par reaparece no armazenamento local e nas APIs, logo adiante.\n\nVocê domina este passo quando modela algo do mundo real (um produto, um perfil) como objeto e o converte pra JSON e de volta sem surpresas.',
+          resources: [
+            {
+              label: "MDN JSON",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Reference/Global_Objects/JSON",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "javascript.modulos",
           title: "Módulos (import / export)",
-          description: "Quebrar o código em arquivos que se importam.",
+          description:
+            "Import, export, named vs default e o type=module que liga tudo no navegador.",
+          content:
+            'Módulo é um arquivo de JavaScript que declara o que oferece (`export`) e o que precisa (`import`). É a resposta pra pergunta que todo projeto encontra ao crescer: como dividir mil linhas em arquivos pequenos sem virar uma bagunça de variáveis globais se atropelando.\n\nA mecânica: um arquivo `matematica.js` exporta com `export function somar(a, b) { ... }`; outro arquivo consome com `import { somar } from "./matematica.js"`. Cada módulo tem escopo próprio (o cerco das funções, agora no nível do arquivo inteiro): o que não for exportado é invisível pra fora.\n\nExistem dois estilos de export. O **named** permite vários por arquivo e o import usa chaves com o nome exato. O **default** é um por arquivo, importado sem chaves e com o nome que você quiser. Critério prático desta trilha: prefira named exports (o editor autocompleta e renomear é seguro) e reserve o default pra quando o arquivo É uma coisa só, como um componente React será mais à frente.\n\nNo navegador, módulos ligam com `<script type="module" src="app.js">` no HTML: sem esse atributo, `import` e `export` nem funcionam. As ferramentas da próxima seção, como o Vite, já assumem esse mundo de módulos como padrão e cuidam do resto pra você.',
+          resources: [
+            {
+              label: "MDN Módulos",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Guide/Modules",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "javascript.dom",
@@ -423,7 +460,10 @@ export const frontend: RoadmapV2 = {
             {
               id: "javascript.dom.manipular",
               title: "Manipular elementos",
-              description: "Ler e mudar a página pelo JavaScript.",
+              description:
+                "querySelector, textContent, classList e criar elementos: a página viva nas mãos do JS.",
+              content:
+                'Lembra de como o navegador renderiza? Ele lê o seu HTML e monta o DOM, a árvore viva da página. Pois o JavaScript tem acesso total a essa árvore: ler, alterar, criar e remover qualquer elemento, a qualquer momento, sem recarregar nada. Manipular o DOM é isso: editar a página em plena execução.\n\nO ponto de partida é achar o elemento: `document.querySelector(".titulo")` devolve o primeiro que casa com o seletor (a mesma sintaxe de seletores CSS que você já domina); `querySelectorAll` devolve todos.\n\nCom o elemento na mão: `el.textContent = "Novo texto"` troca o texto; `el.setAttribute("src", "outra.jpg")` mexe nos atributos; e o `classList` gerencia classes com `add`, `remove` e `toggle`, que é a forma padrão de mudar aparência (a classe carrega o estilo no CSS, o JavaScript só liga e desliga).\n\nCriar também é direto: `document.createElement("li")` fabrica o elemento, você preenche o conteúdo e pendura na árvore com `pai.append(el)`. É assim que uma lista de tarefas ganha itens novos na tela.\n\nO exercício que consolida: na sua página pessoal, adicione um botão que alterna o tema chamando `document.body.classList.toggle("escuro")`, com a classe `escuro` definida no seu CSS. Uma linha de JavaScript e a página reage. Falta o clique de verdade: eventos, no próximo passo.',
               resources: [
                 {
                   label: "MDN DOM",
@@ -436,12 +476,24 @@ export const frontend: RoadmapV2 = {
               id: "javascript.dom.eventos",
               title: "Eventos e delegação",
               description:
-                "Reagir a cliques, teclas e outras ações do usuário.",
+                "addEventListener, o objeto de evento, preventDefault no formulário e a noção de delegação.",
+              content:
+                'Evento é qualquer coisa que acontece na página: clique, tecla, envio de formulário, rolagem. O DOM anuncia esses acontecimentos, e o JavaScript escuta com `addEventListener`: `botao.addEventListener("click", aoClicar)` registra a função `aoClicar` pra rodar a cada clique. Repare que a função é passada como valor, sem parênteses: quem a executa é o navegador, na hora certa.\n\nA função ouvinte recebe um **objeto de evento** cheio de contexto: `event.target` é o elemento onde o evento aconteceu, `event.key` diz a tecla pressionada, e por aí vai.\n\nO caso central do começo é o formulário. Por padrão, enviar um `<form>` recarrega a página inteira (o comportamento clássico da web). Numa aplicação, você intercepta: escuta o evento `submit` e chama `event.preventDefault()` na primeira linha; dali em diante, quem decide o que fazer com os dados é o seu código. Esse padrão (escutar, prevenir o comportamento padrão, tratar) vai se repetir em toda aplicação que você construir.\n\nUma técnica pra guardar como noção: **delegação**. Em vez de um ouvinte por item de uma lista longa (ou de itens que ainda nem existem), registra-se um só no pai e usa-se `event.target` pra descobrir qual filho originou o evento. Menos ouvintes, e itens criados depois já nascem cobertos.\n\nVocê domina este passo quando o seu formulário valida e responde na tela sem recarregar a página.',
+              resources: [
+                {
+                  label: "MDN addEventListener",
+                  url: "https://developer.mozilla.org/pt-BR/docs/Web/API/EventTarget/addEventListener",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "javascript.dom.storage",
               title: "localStorage e sessionStorage",
-              description: "Guardar dados no navegador entre visitas.",
+              description:
+                "localStorage e sessionStorage, o limite de string com JSON e o tema salvo entre visitas.",
+              content:
+                'O localStorage é a gaveta persistente do navegador: pares de chave e valor que sobrevivem ao fechamento da aba, do navegador e ao desligar do computador. O sessionStorage é a gaveta irmã de vida curta: dura só enquanto aquela aba existir. O critério: preferência que deve ser lembrada amanhã, `localStorage`; estado descartável daquela visita, `sessionStorage`.\n\nA API é minúscula: `localStorage.setItem("tema", "escuro")` guarda, `localStorage.getItem("tema")` lê (e devolve `null` se não existir), `removeItem` apaga.\n\nO detalhe que pega todo mundo: as gavetas só guardam **string**. Objeto entra e sai pelo par que você conheceu no passo de objetos: `setItem("config", JSON.stringify(config))` na ida, `JSON.parse(getItem("config"))` na volta.\n\nO exemplo mental completo é o tema escuro da sua página: o botão que você criou no passo de manipulação alterna a classe e grava a escolha com `setItem`; no início do script, ao carregar a página, um `getItem` reaplica o tema salvo. A página passa a lembrar do usuário entre visitas, tudo no navegador, sem servidor nenhum.\n\nE esse é justamente o limite da gaveta: ela só conhece o que o SEU código guardou nela. Buscar dados do mundo lá fora, de um servidor de verdade, é o próximo salto da trilha: a seção de APIs e assincronia.',
               resources: [
                 {
                   label: "MDN Web Storage",
