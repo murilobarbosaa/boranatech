@@ -67,23 +67,6 @@ export async function callAiChat(
   return parseAiResponse(response);
 }
 
-export async function callAiTool(
-  endpoint: string,
-  payload: Record<string, unknown>,
-): Promise<AiResponse> {
-  const authHeader = await getAuthHeader();
-  const response = await fetch(apiUrl(`/api/ai/${endpoint}`), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeader,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseAiResponse(response);
-}
-
 interface AiChatStreamHandlers {
   onToken: (delta: string) => void;
   onError?: (message: string) => void;

@@ -116,7 +116,6 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
 
   // application
   curriculo: "application",
-  "curriculo/linkedin": "application",
   "curriculo/analisar": "application",
   empresas: "application",
   "empresas/ranking-junior": "application",

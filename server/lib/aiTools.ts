@@ -477,18 +477,10 @@ Pegue do histórico: o Natechinho normalmente anuncia ou confirma essas duas inf
 ## 10. Saída
 Apenas o JSON, sem markdown, sem comentário, sem texto antes ou depois. O sistema garante o schema via response_format strict.`,
   },
-  "linkedin-optimizer": {
-    key: "linkedin-optimizer",
-    requiresPro: true,
-    requiresAuth: true,
-    mode: "chat",
-    maxInputChars: 10_000,
-    temperature: 0.7,
-    model: DEFAULT_MODEL,
-    description: "Otimizador de LinkedIn",
-    systemPrompt:
-      "Você é o Natechinho, especialista em LinkedIn para tecnologia do BoraNaTech, em voz masculina. Gere headlines, bio e palavras-chave para recrutadores.",
-  },
+  // A antiga "linkedin-optimizer" (Otimizador de LinkedIn da rota generica)
+  // saiu do registry junto com a pagina /curriculo/linkedin: a feature real e
+  // a analise de LinkedIn servida em /api/linkedin, pagina /linkedin/analisar.
+  // Logs historicos de linkedin-optimizer em ai_usage_logs ficam intactos.
   // A antiga "study-plan" (chat de plano de estudos da rota generica) saiu do
   // registry junto com a pagina /estudos: a feature real e a "career-plan"
   // acima, servida em /api/career-plan. Logs historicos de study-plan em
