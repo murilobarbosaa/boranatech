@@ -22,6 +22,8 @@ import { analiseSistemas } from "./analise-sistemas";
 import { blockchain } from "./blockchain";
 import { iot } from "./iot";
 import { mainframe } from "./mainframe";
+import { comecarDoZero } from "./comecar-do-zero";
+import { linkedinTrail } from "./linkedin";
 
 export {
   frontend,
@@ -47,6 +49,8 @@ export {
   blockchain,
   iot,
   mainframe,
+  comecarDoZero,
+  linkedinTrail,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -72,4 +76,6 @@ export const roadmapsV2: RoadmapV2[] = [
   blockchain,
   iot,
   mainframe,
+  comecarDoZero,
+  linkedinTrail,
 ];

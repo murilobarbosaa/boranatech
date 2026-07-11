@@ -72,7 +72,6 @@ const QuizCarreiraResultado = lazy(
 );
 const RecuperarSenha = lazy(() => import("@/pages/RecuperarSenha"));
 const RedefinirSenha = lazy(() => import("@/pages/RedefinirSenha"));
-const RoadmapCarreira = lazy(() => import("@/pages/RoadmapCarreira"));
 const RoadmapIA = lazy(() => import("@/pages/RoadmapIA"));
 const RoadmapIAView = lazy(() => import("@/pages/RoadmapIAView"));
 const RoadmapsV2 = lazy(() => import("@/pages/RoadmapsV2"));
@@ -211,20 +210,6 @@ function Router() {
         <Route path="/mentorias" component={Mentorias} />
         <Route path="/admin" component={Admin} />
         <Route path="/roadmaps" component={RoadmapsV2Index} />
-        <Route path="/roadmaps/comecar-do-zero">
-          {() => (
-            <RequireAuth>
-              <RoadmapCarreira roadmapId="zero-ti" />
-            </RequireAuth>
-          )}
-        </Route>
-        <Route path="/roadmaps/linkedin">
-          {() => (
-            <RequireAuth>
-              <RoadmapCarreira roadmapId="linkedin" />
-            </RequireAuth>
-          )}
-        </Route>
         {/* /roadmaps/ia ANTES de /roadmaps/:slug: o wouter casa na ordem e o
             segmento "ia" seria engolido pelo :slug (que redireciona slug
             desconhecido para /roadmaps). Nao reordenar. */}

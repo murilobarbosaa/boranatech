@@ -41,6 +41,11 @@ export type RoadmapV2 = {
   title: string;
   level: string;
   description: string;
+  // Ausente: trilha de area (comportamento padrao, card no grid principal,
+  // exige entrada correspondente em areasTI). "carreira": trilha transversal
+  // de carreira, listada na secao "Trilhas de carreira" da listagem e sem
+  // dependencia de areasTI.
+  kind?: "carreira";
   languages?: RoadmapLanguage[];
   sections: RoadmapSection[];
 };
