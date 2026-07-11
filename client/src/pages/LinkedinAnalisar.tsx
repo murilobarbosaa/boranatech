@@ -907,22 +907,25 @@ export default function LinkedinAnalisar() {
           </motion.div>
 
           {/* TODO(Ana): escrever a copy da amostra de dica gratis do LinkedIn. */}
-          <div className="mx-auto mb-10 max-w-3xl">
-            <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
-              <p className="text-xs font-black uppercase tracking-wide text-sky-700">
-                dica grátis
-              </p>
-              <h2 className="mt-1 font-display text-xl font-black text-slate-950">
-                Uma amostra antes do Pro
-              </h2>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                Placeholder de dica grátis de LinkedIn (Ana escreve aqui).
-              </p>
-              <p className="mt-3 text-sm font-bold text-slate-700">
-                A análise completa com IA e os textos prontos pra colar são Pro.
-              </p>
+          {showEntry ? (
+            <div className="mx-auto mb-10 max-w-3xl">
+              <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
+                <p className="text-xs font-black uppercase tracking-wide text-sky-700">
+                  dica grátis
+                </p>
+                <h2 className="mt-1 font-display text-xl font-black text-slate-950">
+                  Uma amostra antes do Pro
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  Placeholder de dica grátis de LinkedIn (Ana escreve aqui).
+                </p>
+                <p className="mt-3 text-sm font-bold text-slate-700">
+                  A análise completa com IA e os textos prontos pra colar são
+                  Pro.
+                </p>
+              </div>
             </div>
-          </div>
+          ) : null}
           {!isPro ? (
             <ProGate description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno." />
           ) : (
