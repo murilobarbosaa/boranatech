@@ -70,12 +70,19 @@ export const frontend: RoadmapV2 = {
           id: "html.estrutura",
           title: "Estrutura do documento",
           description:
-            "Os elementos básicos que todo HTML precisa pra existir.",
+            "Doctype, html, head e body: o esqueleto que todo documento precisa, e o que vai em cada parte.",
+          content:
+            'Todo arquivo HTML segue o mesmo esqueleto, e o navegador conta com ele pra interpretar a página do jeito certo. São quatro peças: a declaração `<!DOCTYPE html>`, o elemento `<html>`, o `<head>` e o `<body>`.\n\nA primeira linha, `<!DOCTYPE html>`, avisa o navegador que o documento usa HTML moderno. Sem ela, o navegador entra num modo de compatibilidade antigo (o quirks mode) e pequenas diferenças de renderização começam a aparecer do nada.\n\nO `<html>` embrulha todo o resto e leva o atributo de idioma, como em `<html lang="pt-BR">`. É ele que faz o leitor de tela escolher a voz certa e o navegador acertar corretor e tradução.\n\nO `<head>` é a área de bastidores: nada dali aparece na página. É onde vivem o `<title>` (o texto da aba), o `<meta charset="UTF-8">` (que garante os acentos), a meta viewport (que prepara a página pra telas de celular) e os links pros arquivos de CSS.\n\nO `<body>` é o palco: tudo que o usuário vê mora aqui, dos títulos aos botões.\n\nO critério de domínio desta folha é objetivo: fechar qualquer referência e escrever de memória um documento mínimo com essas quatro partes, com `lang`, `charset`, viewport e um `<title>` decente. Esse esqueleto vai abrir todo projeto seu daqui pra frente.',
           resources: [
             {
               label: "MDN HTML",
               url: "https://developer.mozilla.org/pt-BR/docs/Web/HTML",
               kind: "doc",
+            },
+            {
+              label: "web.dev Learn HTML",
+              url: "https://web.dev/learn/html",
+              kind: "curso",
             },
           ],
         },
@@ -83,24 +90,54 @@ export const frontend: RoadmapV2 = {
           id: "html.conteudo",
           title: "Texto, links, imagens e listas",
           description:
-            "As tags do dia a dia pra colocar conteúdo de verdade na página.",
+            "Títulos, parágrafos, links, imagens e listas: as tags que colocam conteúdo real na página.",
+          content:
+            'Com o esqueleto de pé, entra o conteúdo de verdade. Um punhado de tags cobre a maior parte do que qualquer página mostra: títulos, parágrafos, links, imagens e listas.\n\nTítulos vão de `<h1>` a `<h6>` e formam a hierarquia do documento: um único `<h1>` com o assunto principal, `<h2>` pras seções, `<h3>` pra subdivisões. Pular níveis por estética é erro clássico: o tamanho se ajusta com CSS, a tag diz a estrutura. Texto corrido vive em `<p>`.\n\nO link, `<a href="https://exemplo.com">texto</a>`, é o elemento que dá nome ao hipertexto. O endereço vai no atributo `href`, e o texto entre as tags deve dizer pra onde o link leva. Aqui aparece um padrão que vale pra todo o HTML: tags carregam informação extra em **atributos**, pares de nome e valor escritos dentro da abertura da tag.\n\nImagens usam `<img src="foto.jpg" alt="descrição da foto">`. O `src` aponta o arquivo; o `alt` descreve a imagem pra quem não a vê, e na prática é obrigatório.\n\nListas fecham o kit: `<ul>` pra itens sem ordem, `<ol>` quando a sequência importa, `<li>` pra cada item. Monte uma página de receita culinária usando tudo isso (título, ingredientes em lista, passos numerados, foto e um link) e você terá coberto o essencial do conteúdo HTML.',
+          resources: [
+            {
+              label: "MDN Elementos HTML",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTML/Element",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "html.semantica",
           title: "Tags semânticas",
           description:
-            "Usar tags que descrevem o significado do conteúdo, não só a aparência.",
+            "Escolher a tag pelo significado do conteúdo: o mapa que leitores de tela e buscadores usam.",
+          content:
+            "Semântica em HTML é escolher a tag pelo **significado** do conteúdo, não pela aparência. Uma `<div>` não diz nada sobre o que tem dentro; um `<nav>` diz que ali mora a navegação. As duas podem ficar idênticas na tela, mas só uma carrega informação.\n\nAs principais tags semânticas de estrutura são `<header>` (o topo com logo e menu), `<nav>` (blocos de navegação), `<main>` (o conteúdo principal, um por página), `<section>` (agrupamento por assunto), `<article>` (conteúdo que faz sentido sozinho, como um post ou um card de produto) e `<footer>` (o rodapé). No nível do texto, `<strong>` marca importância e `<em>` marca ênfase.\n\nIsso importa por três motivos concretos. Leitores de tela usam essas tags como mapa: quem navega por atalhos pula direto pro `<main>` ou pro `<nav>` sem ouvir a página inteira. Buscadores entendem melhor o que é conteúdo e o que é moldura. E o próximo dev que abrir o arquivo (inclusive você daqui a três meses) lê a estrutura sem decifrar dezenas de `<div>` aninhadas.\n\nO hábito a construir: antes de digitar `<div>`, pergunte se existe uma tag que descreve o que esse bloco É. Use `<div>` só quando a resposta for não, como puro agrupador visual.",
+          resources: [
+            {
+              label: "MDN Semântica",
+              url: "https://developer.mozilla.org/pt-BR/docs/Glossary/Semantics",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "html.forms",
           title: "Formulários e validação",
-          description: "Capturar dados do usuário e checar se vieram certos.",
+          description:
+            "Campos, labels, envio e a validação nativa que o HTML faz antes de qualquer JavaScript.",
+          content:
+            'Formulário é o canal de entrada de dados da web: login, busca, cadastro, checkout. Tudo começa com `<form>`, que agrupa os campos e define o que acontece no envio.\n\nO campo básico é o `<input>`, e o atributo `type` muda o comportamento dele: `type="text"` pra texto livre, `type="email"` valida formato de e-mail, `type="password"` esconde a digitação, `type="number"`, `type="date"` e `type="checkbox"` fazem o que os nomes dizem. Texto longo usa `<textarea>`; opções fechadas usam `<select>`.\n\nDois atributos merecem atenção especial. O `name` identifica o dado no envio: campo sem `name` simplesmente não é enviado. E todo campo precisa de um `<label>` conectado por `for` e `id`, como em `<label for="email">E-mail</label>` ligado a `<input id="email">`: além de acessível, o rótulo inteiro vira área clicável.\n\nO envio acontece com `<button type="submit">`. E antes de qualquer JavaScript, o próprio HTML valida: `required` impede envio vazio, `minlength` e `maxlength` controlam tamanho, `min` e `max` limitam números, e o `type` certo já bloqueia formato errado. O navegador exibe as mensagens de erro sozinho.\n\nA validação nativa resolve o básico de graça; a validação com JavaScript, que vem mais adiante na trilha, refina a experiência em cima dela. Comece sempre pela nativa.',
+          resources: [
+            {
+              label: "MDN Formulários",
+              url: "https://developer.mozilla.org/pt-BR/docs/Learn/Forms",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "html.a11y",
           title: "Acessibilidade básica",
           description:
-            "Fazer sua página funcionar pra todo mundo, incluindo leitores de tela.",
+            "Alt, label, headings em ordem e links claros: acessibilidade de graça no HTML básico.",
+          content:
+            'Acessibilidade é garantir que a página funcione pra todo mundo: quem usa leitor de tela, quem navega só pelo teclado, quem enxerga pouco contraste, quem está num celular fraco sob sol forte. No HTML básico, quatro hábitos cobrem a maior parte do caminho.\n\nPrimeiro: toda imagem com conteúdo precisa de `alt` descritivo. O leitor de tela lê esse texto no lugar da imagem; sem ele, a pessoa ouve só o nome do arquivo. Imagem puramente decorativa leva `alt=""` vazio de propósito, pra ser pulada.\n\nSegundo: todo campo de formulário precisa de `<label>` associado, como você viu na folha anterior. Placeholder não substitui rótulo: ele some assim que a pessoa digita.\n\nTerceiro: hierarquia de títulos correta. Leitores de tela listam os headings como um sumário da página; um `<h4>` solto logo depois de um `<h1>` quebra esse mapa.\n\nQuarto: texto de link que se explica sozinho. Quem navega pulando de link em link ouve cada texto fora de contexto: "clique aqui" não diz nada, "ver a documentação de formulários" diz tudo.\n\nSemântica correta, `alt`, `label` e headings em ordem são acessibilidade de graça, sem uma linha de ARIA. O aprofundamento (ARIA, gestão de foco, navegação por teclado) tem folha própria na reta final da trilha.',
           resources: [
             {
               label: "web.dev Acessibilidade",
@@ -113,8 +150,17 @@ export const frontend: RoadmapV2 = {
           id: "html.seo",
           title: "SEO básico (meta tags, títulos)",
           description:
-            "O mínimo pra os buscadores entenderem e indexarem sua página.",
+            "Title, meta description e estrutura limpa: o mínimo pra buscadores entenderem sua página.",
           optional: true,
+          content:
+            'SEO é o conjunto de práticas pra buscadores encontrarem, entenderem e ranquearem sua página. O front-end controla a camada técnica básica, e ela mora quase toda no HTML que você acabou de aprender.\n\nO `<title>` é o elemento mais importante: vira o título clicável no resultado da busca e o texto da aba do navegador. Cada página do site deve ter um título único e descritivo, com o assunto principal no começo. Logo abaixo vem a `<meta name="description" content="...">`: o resumo de uma ou duas frases que costuma aparecer como o texto cinza do resultado.\n\nO resto é consequência do que esta seção já ensinou: um único `<h1>` coerente com o assunto, hierarquia de headings limpa, tags semânticas no lugar certo e `alt` nas imagens. O robô do buscador lê a página de um jeito muito parecido com um leitor de tela: estrutura boa pra acessibilidade é estrutura boa pra SEO.\n\nNesta fase, pare por aqui: título único, descrição decente e estrutura semântica já colocam sua página na frente da maioria. O jogo avançado (performance, dados estruturados, estratégia de conteúdo) pertence a outras etapas da trilha e a outras disciplinas.',
+          resources: [
+            {
+              label: "Guia de SEO do Google",
+              url: "https://developers.google.com/search/docs/fundamentals/seo-starter-guide",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
