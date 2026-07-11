@@ -719,9 +719,9 @@ export default function AgentWidget() {
 
             {/* Barra de input: anatomia brutal (tokens violeta em focus-within,
                 enviar em circulo solido). */}
-            <div className="border-t-2 border-slate-950 bg-white p-3">
-              <div className="flex items-end gap-2">
-                <div className="flex min-h-[40px] flex-1 items-end rounded-xl border-2 border-violet-200 bg-white shadow-[2px_2px_0_#0f172a] focus-within:border-violet-600 focus-within:ring-2 focus-within:ring-violet-200">
+            <div className="border-t-2 border-slate-950 bg-white px-3 py-3">
+              <div className="flex items-center gap-2">
+                <div className="flex min-h-0 flex-1 items-center rounded-xl border-2 border-violet-200 bg-white shadow-[2px_2px_0_#0f172a] focus-within:border-violet-600 focus-within:ring-2 focus-within:ring-violet-200">
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -734,18 +734,18 @@ export default function AgentWidget() {
                     rows={1}
                     /* TODO(Ana): placeholder do campo de mensagem. */
                     placeholder="Escreva sua mensagem..."
-                    className="max-h-28 w-full resize-none rounded-xl border-0 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-500"
+                    className="h-10 min-h-0 w-full resize-none rounded-xl border-0 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-500"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => void send()}
                   disabled={streaming || input.trim().length === 0}
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-600 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-violet-300 disabled:shadow-[1px_1px_0_#0f172a] disabled:hover:translate-y-0"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white transition-colors enabled:hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-violet-300"
                   /* TODO(Ana): label de acessibilidade do botao enviar. */
                   aria-label="Enviar mensagem"
                 >
-                  <Send className="h-5 w-5" strokeWidth={2.5} />
+                  <Send className="h-4 w-4" strokeWidth={2.5} />
                 </button>
               </div>
             </div>
