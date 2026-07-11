@@ -251,10 +251,7 @@ export async function fetchRepoData(
   }
 
   const [languages, readme, rootContents] = await Promise.all([
-    apiGet<Record<string, number>>(
-      `/repos/${owner}/${repo}/languages`,
-      signal,
-    ),
+    apiGet<Record<string, number>>(`/repos/${owner}/${repo}/languages`, signal),
     apiGet<GithubApiReadme>(`/repos/${owner}/${repo}/readme`, signal),
     apiGet<GithubApiContentEntry[]>(`/repos/${owner}/${repo}/contents`, signal),
   ]);
@@ -517,4 +514,128 @@ export async function fetchProfileData(
     })),
     deepSignals,
   };
+}
+
+// ===== Evidencia estendida do modo validacao de projeto (fase 5c.2) =====
+// Buscada SOMENTE quando a analise carrega projectContext. Cada fonte degrada
+// de forma independente: falha vira flag de erro (o material do prompt anota
+// a limitacao e a regra "sem evidencia, nao_atende" cobre o resto). Nunca
+// derruba a analise.
+
+// Teto de caminhos da arvore no prompt. Estourou (ou a propria API truncou):
+// prioriza menor profundidade e anota o corte no material.
+export const TREE_PATHS_LIMIT = 400;
+// Teto de conteudo por arquivo de evidencia (package.json e cada workflow).
+export const EVIDENCE_FILE_LIMIT = 4096;
+// Quantos workflows entram no material.
+export const WORKFLOWS_LIMIT = 2;
+
+export interface ValidationEvidence {
+  // null = falha ao listar (diferente de arvore vazia).
+  treePaths: string[] | null;
+  treeTruncated: boolean;
+  // null = sem package.json na raiz (quando packageJsonError e false).
+  packageJson: string | null;
+  packageJsonError: boolean;
+  workflows: Array<{ name: string; content: string }>;
+  workflowsError: boolean;
+}
+
+interface GithubApiTree {
+  truncated?: boolean;
+  tree?: Array<{ path?: string; type?: string }>;
+}
+
+function truncateEvidence(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit)}\n... (conteudo truncado em ${limit} caracteres)`;
+}
+
+export async function fetchValidationEvidence(
+  owner: string,
+  repo: string,
+  defaultBranch: string,
+  signal?: AbortSignal,
+): Promise<ValidationEvidence> {
+  const evidence: ValidationEvidence = {
+    treePaths: null,
+    treeTruncated: false,
+    packageJson: null,
+    packageJsonError: false,
+    workflows: [],
+    workflowsError: false,
+  };
+
+  try {
+    const tree = await apiGet<GithubApiTree>(
+      `/repos/${owner}/${repo}/git/trees/${encodeURIComponent(defaultBranch)}?recursive=1`,
+      signal,
+    );
+    if (tree && Array.isArray(tree.tree)) {
+      const paths = tree.tree
+        .map((entry) => entry.path)
+        .filter((p): p is string => typeof p === "string");
+      // Menor profundidade primeiro (a estrutura de topo e a evidencia mais
+      // util); desempate lexicografico pra saida deterministica.
+      paths.sort((a, b) => {
+        const depthA = a.split("/").length;
+        const depthB = b.split("/").length;
+        if (depthA !== depthB) return depthA - depthB;
+        return a.localeCompare(b);
+      });
+      evidence.treeTruncated =
+        tree.truncated === true || paths.length > TREE_PATHS_LIMIT;
+      evidence.treePaths = paths.slice(0, TREE_PATHS_LIMIT);
+    }
+  } catch {
+    evidence.treePaths = null;
+  }
+
+  try {
+    const pkg = await apiGet<GithubApiReadme>(
+      `/repos/${owner}/${repo}/contents/package.json`,
+      signal,
+    );
+    if (pkg && pkg.content && pkg.encoding === "base64") {
+      evidence.packageJson = truncateEvidence(
+        decodeBase64(pkg.content),
+        EVIDENCE_FILE_LIMIT,
+      );
+    }
+  } catch {
+    evidence.packageJsonError = true;
+  }
+
+  try {
+    const listing = await apiGet<GithubApiContentEntry[]>(
+      `/repos/${owner}/${repo}/contents/.github/workflows`,
+      signal,
+    );
+    const files = Array.isArray(listing)
+      ? listing
+          .filter((entry) => entry.type === "file")
+          .map((entry) => entry.name)
+          .sort((a, b) => a.localeCompare(b))
+          .slice(0, WORKFLOWS_LIMIT)
+      : [];
+    for (const name of files) {
+      const file = await apiGet<GithubApiReadme>(
+        `/repos/${owner}/${repo}/contents/.github/workflows/${encodeURIComponent(name)}`,
+        signal,
+      );
+      if (file && file.content && file.encoding === "base64") {
+        evidence.workflows.push({
+          name,
+          content: truncateEvidence(
+            decodeBase64(file.content),
+            EVIDENCE_FILE_LIMIT,
+          ),
+        });
+      }
+    }
+  } catch {
+    evidence.workflowsError = true;
+  }
+
+  return evidence;
 }

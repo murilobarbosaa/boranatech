@@ -1,5 +1,10 @@
 import { env } from "./env";
-import { fetchProfileData, fetchRepoData } from "./github";
+import {
+  fetchProfileData,
+  fetchRepoData,
+  fetchValidationEvidence,
+  type ValidationEvidence,
+} from "./github";
 import { analyzeProfile, analyzeRepo } from "./githubChecks";
 import { fetchWithTimeout } from "./http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
@@ -46,7 +51,8 @@ const PROJECT_VALIDATION_PROMPT =
   "TAREFA ADICIONAL DE VALIDACAO DE PROJETO: a entrada traz um bloco de contexto de validacao com a lista de requisitos do projeto. Alem dos campos usuais, preencha requisitosAvaliacao com EXATAMENTE um item por requisito listado, usando o id exato de cada requisito, sem repetir nem omitir nenhum. " +
   "Veredito por requisito: atende quando ha evidencia concreta e visivel no material da entrada (um arquivo ou pasta listado na raiz, um trecho do README, uma checagem automatica aprovada); parcial quando a evidencia mostra o requisito comecado mas incompleto; nao_atende quando nao ha evidencia. " +
   "A evidencia e OBRIGATORIA e CONCRETA em todos os vereditos: cite o arquivo, o trecho do README ou a checagem que sustenta a decisao. E PROIBIDO inferir sem evidencia: na duvida, o veredito e nao_atende. " +
-  "Se um requisito nao for verificavel com o material disponivel na entrada (por exemplo, algo que exigiria ler conteudo alem da raiz e do README), use nao_atende e explique essa limitacao na evidencia. " +
+  "Alem do README, da listagem da raiz e das checagens, sao evidencia admissivel quando presentes na entrada: a arvore de caminhos do repositorio, o conteudo do package.json (dependencias e scripts) e o conteudo dos workflows de .github/workflows. Quando o material anotar que uma dessas fontes falhou ou foi cortada, trate o que dependeria dela de acordo, sem supor o que nao esta la. " +
+  "Se um requisito nao for verificavel com o material disponivel na entrada, use nao_atende e explique essa limitacao na evidencia. " +
   "Os vereditos de requisito nao mudam a nota, as checagens nem os demais campos da resposta.";
 
 // Opcoes de chamada da IA: ausentes, a chamada usa o prompt e o schema padrao
@@ -118,11 +124,59 @@ function selectTopRepos(data: GithubProfileData): ProfileTopRepo[] {
     }));
 }
 
+function buildEvidenceLines(evidence: ValidationEvidence): string[] {
+  const lines: string[] = [
+    "",
+    "Evidencia adicional do repositorio (admissivel pros vereditos de requisito):",
+  ];
+
+  if (evidence.treePaths === null) {
+    lines.push(
+      "Arvore de arquivos: (falha ao listar; requisitos que dependem dela nao sao verificaveis por esta fonte)",
+    );
+  } else {
+    lines.push(
+      evidence.treeTruncated
+        ? `Arvore de arquivos (caminhos; LISTA CORTADA em ${evidence.treePaths.length} itens, pode haver mais arquivos alem destes):`
+        : "Arvore de arquivos (caminhos, completa):",
+      ...evidence.treePaths,
+    );
+  }
+
+  lines.push("", "package.json da raiz (pode estar truncado):");
+  if (evidence.packageJsonError) {
+    lines.push(
+      "(falha ao buscar o package.json; requisitos que dependem dele nao sao verificaveis por esta fonte)",
+    );
+  } else {
+    lines.push(evidence.packageJson ?? "(sem package.json na raiz)");
+  }
+
+  lines.push(
+    "",
+    "Workflows de .github/workflows (ate 2, podem estar truncados):",
+  );
+  if (evidence.workflowsError) {
+    lines.push(
+      "(falha ao listar os workflows; requisitos que dependem deles nao sao verificaveis por esta fonte)",
+    );
+  } else if (evidence.workflows.length === 0) {
+    lines.push("(nenhum workflow encontrado)");
+  } else {
+    for (const wf of evidence.workflows) {
+      lines.push(`--- ${wf.name} ---`, wf.content);
+    }
+  }
+
+  return lines;
+}
+
 function buildRepoPrompt(
   data: GithubRepoData,
   deterministic: DeterministicResult,
   label: string | null,
   projectContext?: ProjectValidationContext,
+  evidence?: ValidationEvidence | null,
 ): string {
   const languages = Object.keys(data.languages);
   const areaLines = label
@@ -145,6 +199,7 @@ function buildRepoPrompt(
           (req) =>
             `- [${req.id}] ${req.descricao} | Como conferir: ${req.verificacao}`,
         ),
+        ...(evidence ? buildEvidenceLines(evidence) : []),
       ]
     : [];
   return [
@@ -438,6 +493,18 @@ export async function analyzeGithub(
     // contexto de validacao, os requisitos viram nao_atende sinteticos (nao
     // ha material pra verificar nada), tambem sem gastar IA.
     const isEmptyRepo = deterministic.suficiencia === "baixa";
+    // Evidencia estendida (arvore, package.json, workflows) SO no modo
+    // validacao e so quando a IA vai rodar; a analise avulsa nao paga esses
+    // fetches. Falha de qualquer fonte degrada com nota no material.
+    const evidence =
+      projectContext && !isEmptyRepo
+        ? await fetchValidationEvidence(
+            data.owner,
+            data.name,
+            data.defaultBranch,
+            signal,
+          )
+        : null;
     const qualitative = isEmptyRepo
       ? projectContext
         ? {
@@ -451,7 +518,7 @@ export async function analyzeGithub(
           }
         : emptyRepoQualitative()
       : await runQualitative(
-          buildRepoPrompt(data, deterministic, label, projectContext),
+          buildRepoPrompt(data, deterministic, label, projectContext, evidence),
           onAiIo,
           signal,
           aiOptions,
