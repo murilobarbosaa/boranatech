@@ -403,6 +403,63 @@ export const GithubQualitativeSchema = z.object({
 export type GithubMelhoria = z.infer<typeof GithubMelhoriaSchema>;
 export type GithubQualitative = z.infer<typeof GithubQualitativeSchema>;
 
+// ===== Validacao de projeto Pro (fase 5c) =====
+// Canal OPCIONAL do pipeline: quando uma analise de repo carrega o contexto
+// de um projeto do catalogo, o qualitativo ganha a avaliacao requisito a
+// requisito. Sem contexto, nada disto entra no schema enviado a OpenAI.
+
+export const REQUISITO_VEREDITOS = ["atende", "parcial", "nao_atende"] as const;
+export type RequisitoVeredito = (typeof REQUISITO_VEREDITOS)[number];
+
+export interface RequisitoAvaliacao {
+  id: string;
+  veredito: RequisitoVeredito;
+  evidencia: string;
+}
+
+export interface ProjectValidationContext {
+  projectId: string;
+  nome: string;
+  objetivo: string;
+  requisitos: Array<{ id: string; descricao: string; verificacao: string }>;
+}
+
+export type GithubQualitativeWithRequirements = GithubQualitative & {
+  requisitosAvaliacao: RequisitoAvaliacao[];
+};
+
+// Variante do schema qualitativo com a avaliacao de requisitos. E uma
+// VARIANTE separada (nao um campo condicional no schema base) porque o
+// strict mode da OpenAI exige todo campo em required: um campo opcional
+// viraria required+nullable pra TODAS as analises, mudando o contrato do
+// caminho sem contexto. O enum de ids e dinamico por projeto, entao o schema
+// e construido por request. min/max sao removidos pelo toOpenAIStrictSchema,
+// mas o safeParse local os aplica (violacao vira retry, padrao do arquivo).
+export function buildQualitativeWithRequirementsSchema(requisitoIds: string[]) {
+  const ids = requisitoIds as [string, ...string[]];
+  return GithubQualitativeSchema.extend({
+    requisitosAvaliacao: z
+      .array(
+        z.object({
+          id: z.enum(ids).describe("Id exato do requisito avaliado."),
+          veredito: z
+            .enum(REQUISITO_VEREDITOS)
+            .describe(
+              "atende com evidencia concreta; parcial quando incompleto; nao_atende sem evidencia.",
+            ),
+          evidencia: z
+            .string()
+            .describe(
+              "Evidencia concreta da entrada que sustenta o veredito: arquivo, trecho do README ou checagem.",
+            ),
+        }),
+      )
+      .min(requisitoIds.length)
+      .max(requisitoIds.length)
+      .describe("Exatamente um item por requisito do projeto."),
+  });
+}
+
 // Resposta futura do endpoint (determinística + qualitativa + metadados de exibição)
 
 export interface RepoMetadata {
