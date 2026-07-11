@@ -1307,16 +1307,24 @@ export default function LinkedinAnalisar() {
                       ) : null}
 
                       {entryPath !== "pdf" ? (
-                        <BrutalActionButton
-                          variant="ai"
-                          type="submit"
-                          disabled={!canSubmit}
-                          loading={loading}
-                          icon={<Sparkles className="h-4 w-4" aria-hidden />}
-                          className="px-6 py-3"
-                        >
-                          {loading ? "Analisando..." : "Analisar meu LinkedIn"}
-                        </BrutalActionButton>
+                        <div className="flex justify-center">
+                          {/* Acento sky da pagina no lugar do violet do
+                              variant ai, com a sombra na cor do liftShadow
+                              sky (#0284c7) do pageAccentUi. */}
+                          <BrutalActionButton
+                            variant="ai"
+                            type="submit"
+                            disabled={!canSubmit}
+                            loading={loading}
+                            icon={<Sparkles className="h-4 w-4" aria-hidden />}
+                            accentClass="bg-sky-600 text-white hover:bg-sky-700 focus-visible:ring-sky-300"
+                            className="px-6 py-3 shadow-[3px_3px_0_#0284c7] hover:shadow-[4px_4px_0_#0284c7] disabled:hover:shadow-[3px_3px_0_#0284c7]"
+                          >
+                            {loading
+                              ? "Analisando..."
+                              : "Analisar meu LinkedIn"}
+                          </BrutalActionButton>
+                        </div>
                       ) : null}
                     </form>
                   </div>
