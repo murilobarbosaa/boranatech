@@ -1,20 +1,23 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
-import {
-  AlertTriangle,
-  Check,
-  Flag,
-  Lightbulb,
-  Loader2,
-  Mic,
-  Send,
-  Square,
-  X,
-} from "lucide-react";
+import { useReducedMotion } from "framer-motion";
+import { Flag, Lightbulb, Loader2, Mic, Send, Square, X } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  AnswerBubble,
+  AssistantRow,
+  CHAT_PAPER_CLASS,
+  FeedbackCard,
+  HintCard,
+  QuestionBubble,
+  TypingDots,
+  UserRow,
+} from "@/components/interview/SessionChatSkin";
+import SessionProgress from "@/components/interview/SessionProgress";
+import SessionVerdict from "@/components/interview/SessionVerdict";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import {
   MAX_RECORDING_SECONDS,
@@ -22,6 +25,7 @@ import {
 } from "@/hooks/useAudioRecorder";
 import { apiUrl } from "@/lib/api";
 import { showErrorToast } from "@/lib/notify";
+import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
@@ -30,15 +34,16 @@ import {
   InterviewApiError,
   requestHint,
   sendAnswer,
-  type InterviewEvaluation,
-  type InterviewRating,
+  type InterviewProgress,
   type InterviewSessionDetail,
   type InterviewTurn,
 } from "@/services/interviewService";
 
-// Visual no padrao do CurriculoChatPanel (bolhas, TypingDots, autoscroll), mas
-// o transporte aqui e POST JSON por turno: sem stream, sem typewriter, as
-// respostas chegam inteiras.
+// Pele do chat no padrao do CurriculoChatPanel reformado, duplicada em BLUE
+// (SessionChatSkin); o transporte segue POST JSON por turno: sem stream, sem
+// typewriter, as respostas chegam inteiras.
+
+const ac = getPageAccentUi("blue");
 
 // Espelhos do server: cap de bytes do audio (audioTranscribe.ts) e teto de
 // caracteres do answer (AnswerSchema). O client avisa ANTES do server rejeitar.
@@ -103,122 +108,25 @@ async function requestTranscription(
   return body.data.text;
 }
 
-const RATING_UI: Record<
-  InterviewRating,
-  { label: string; icon: typeof Check; box: string; badge: string }
-> = {
-  // TODO(Ana): labels dos ratings de resposta
-  boa: {
-    label: "Boa resposta",
-    icon: Check,
-    box: "border-emerald-500 bg-emerald-50",
-    badge: "border-emerald-500 bg-emerald-100 text-emerald-900",
-  },
-  mediana: {
-    label: "Resposta mediana",
-    icon: AlertTriangle,
-    box: "border-amber-500 bg-amber-50",
-    badge: "border-amber-500 bg-amber-100 text-amber-900",
-  },
-  fraca: {
-    label: "Resposta fraca",
-    icon: X,
-    box: "border-red-500 bg-red-50",
-    badge: "border-red-500 bg-red-100 text-red-900",
-  },
-};
-
-function TypingDots() {
-  return (
-    <div className="flex items-center gap-1 px-2 py-1" aria-hidden>
-      {[0, 1, 2].map((dot) => (
-        <span
-          key={dot}
-          className="ai-chat-typing-dot h-2.5 w-2.5 rounded-full bg-blue-500"
-        />
-      ))}
-    </div>
-  );
-}
-
-function QuestionBubble({ content }: { content: string }) {
-  return (
-    <div className="flex justify-start">
-      <div className="max-w-[min(100%,86%)] rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3.5 py-3 font-body text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5 sm:text-base">
-        <p className="whitespace-pre-wrap break-words">{content}</p>
-      </div>
-    </div>
-  );
-}
-
-function AnswerBubble({ content }: { content: string }) {
-  return (
-    <div className="flex justify-end">
-      <div className="max-w-[min(100%,86%)] rounded-[14px] rounded-tr-sm border-2 border-slate-950 bg-amber-200 px-3.5 py-3 font-body text-[15px] leading-relaxed text-slate-900 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4 sm:py-3.5 sm:text-base">
-        <p className="whitespace-pre-wrap break-words">{content}</p>
-      </div>
-    </div>
-  );
-}
-
-// Dica pedida pelo candidato (turno kind hint): cartao proprio, visualmente
-// distinto da pergunta (borda tracejada), deixando claro que a pergunta segue
-// aberta.
-function HintCard({ content }: { content: string }) {
-  return (
-    <div className="flex justify-start">
-      <div className="max-w-[min(100%,86%)] rounded-[14px] border-2 border-dashed border-blue-400 bg-blue-50 px-3.5 py-3 sm:max-w-[min(100%,82%)] sm:px-4">
-        <span className="inline-flex items-center gap-1.5 text-[0.6rem] font-black uppercase tracking-wide text-blue-800">
-          <Lightbulb className="h-3 w-3" aria-hidden />
-          {/* TODO(Ana): rotulo do cartao de dica. */}
-          Dica
-        </span>
-        <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
-          {content}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function FeedbackCard({ evaluation }: { evaluation: InterviewEvaluation }) {
-  const ui = RATING_UI[evaluation.rating];
-  const Icon = ui.icon;
-  return (
-    <div className="flex justify-start">
-      <div
-        className={cn(
-          "max-w-[min(100%,86%)] rounded-[14px] border-2 px-3.5 py-3 shadow-[2px_2px_0_#0f172a] sm:max-w-[min(100%,82%)] sm:px-4",
-          ui.box,
-        )}
-      >
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border-2 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wide",
-            ui.badge,
-          )}
-        >
-          <Icon className="h-3 w-3" aria-hidden />
-          {ui.label}
-        </span>
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
-          {evaluation.feedback}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export default function EntrevistaSessao() {
   const params = useParams();
   const sessionId = params.id ?? "";
   const { isPro } = useSubscription();
+  const reduce = useReducedMotion() ?? false;
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [session, setSession] = useState<InterviewSessionDetail | null>(null);
   const [turns, setTurns] = useState<InterviewTurn[]>([]);
+  // Preparo AO VIVO: inicializa do getSession e avanca SOMENTE com
+  // response.progress do server (dado real; o rollback do turno otimista nao
+  // toca aqui). Ausente na resposta = mantem o ultimo conhecido.
+  const [progress, setProgress] = useState<InterviewProgress | null>(null);
+  // true apenas quando o fechamento preparado aconteceu NESTA visita: e o que
+  // libera o confetti da conquista (retomada mostra o cartao sem confetti).
+  const [justPrepared, setJustPrepared] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [hintLoading, setHintLoading] = useState(false);
@@ -246,6 +154,11 @@ export default function EntrevistaSessao() {
         if (!alive) return;
         setSession(detail);
         setTurns(detail.turns);
+        setProgress({
+          questionCount: detail.question_count,
+          goodCount: detail.good_count,
+          goodStreak: detail.good_streak,
+        });
       })
       .catch((err) => {
         if (!alive) return;
@@ -381,11 +294,18 @@ export default function EntrevistaSessao() {
         }
         return next;
       });
+      if (result.progress) {
+        setProgress(result.progress);
+      }
       if (result.done && result.verdict) {
         const verdict = result.verdict;
         setSession((prev) =>
           prev ? { ...prev, status: "completed", verdict } : prev,
         );
+        if (verdict.result === "prepared") {
+          // Fechamento preparado AO VIVO: libera a celebracao (uma vez).
+          setJustPrepared(true);
+        }
       }
     } catch (err) {
       // Erro recuperavel: desfaz o turno otimista e devolve o texto digitado.
@@ -529,33 +449,50 @@ export default function EntrevistaSessao() {
       <div className="container py-8">
         <div className="card-brutal mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white">
           <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
-            {/* O microfone saiu do header: agora existe controle REAL de
-                gravacao no composer; dois microfones confundiriam. */}
-            <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-950 bg-[#FFB800] px-4 py-3.5 text-slate-950 sm:px-5 sm:py-4">
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
-                  {/* TODO(Ana): titulo do painel da sessao */}
-                  {session.kind === "job"
-                    ? "Entrevista pra vaga"
-                    : "Treino de entrevista"}
-                </h1>
-                <p className="mt-0.5 truncate text-xs font-bold leading-snug text-slate-800 sm:text-sm">
-                  {session.area ?? "Área não informada"} ·{" "}
-                  {session.level ?? "nível não informado"}
-                </p>
+            {/* Header re-skin BLUE (o microfone saiu na E2: o controle real de
+                gravacao vive no composer). O indicador de preparo ao vivo
+                entra como segunda linha e some quando a sessao fecha (o
+                veredito assume). */}
+            <header className="shrink-0 border-b-2 border-slate-950 bg-blue-300 px-4 py-3 text-slate-950 sm:px-5 sm:py-3.5">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
+                    {/* TODO(Ana): titulo do painel da sessao */}
+                    {session.kind === "job"
+                      ? "Entrevista pra vaga"
+                      : "Treino de entrevista"}
+                  </h1>
+                  <p className="mt-0.5 truncate text-xs font-bold leading-snug text-slate-800 sm:text-sm">
+                    {session.area ?? "Área não informada"} ·{" "}
+                    {session.level ?? "nível não informado"}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full border-2 border-slate-950 px-2.5 py-1 text-[0.6rem] font-black uppercase tracking-wide",
+                    completed ? "bg-emerald-200" : "bg-white",
+                  )}
+                >
+                  {completed ? "Concluída" : "Em andamento"}
+                </span>
               </div>
-              <span
-                className={cn(
-                  "shrink-0 rounded-full border-2 border-slate-950 px-2.5 py-1 text-[0.6rem] font-black uppercase tracking-wide",
-                  completed ? "bg-emerald-200" : "bg-white",
-                )}
-              >
-                {completed ? "Concluída" : "Em andamento"}
-              </span>
+              {!completed && progress ? (
+                <div className="mt-2">
+                  <SessionProgress
+                    goodStreak={progress.goodStreak}
+                    goodCount={progress.goodCount}
+                    questionCount={progress.questionCount}
+                    reduce={reduce}
+                  />
+                </div>
+              ) : null}
             </header>
 
             <div
-              className="wa-chat-wallpaper flex min-h-0 flex-1 flex-col border-b-2 border-slate-950"
+              className={cn(
+                "flex min-h-0 flex-1 flex-col border-b-2 border-slate-950",
+                CHAT_PAPER_CLASS,
+              )}
               role="log"
               aria-live="polite"
               aria-relevant="additions"
@@ -565,12 +502,23 @@ export default function EntrevistaSessao() {
                 className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4"
               >
                 <div className="mx-auto flex w-full max-w-3xl flex-col gap-2.5">
-                  {turns.map((t) => {
+                  {turns.map((t, i) => {
+                    // Avatar so no inicio de sequencia do autor (padrao do
+                    // molde); as demais pecas da sequencia levam spacer.
+                    const groupStart = i === 0 || turns[i - 1].role !== t.role;
                     if (t.role === "user") {
-                      return <AnswerBubble key={t.id} content={t.content} />;
+                      return (
+                        <UserRow key={t.id} groupStart={groupStart}>
+                          <AnswerBubble content={t.content} />
+                        </UserRow>
+                      );
                     }
                     if (t.kind === "hint") {
-                      return <HintCard key={t.id} content={t.content} />;
+                      return (
+                        <AssistantRow key={t.id} groupStart={groupStart}>
+                          <HintCard content={t.content} />
+                        </AssistantRow>
+                      );
                     }
                     // Turno de fechamento (kind closing, marcado pelo server):
                     // o veredito abaixo ja o renderiza, nao duplica como bolha.
@@ -579,58 +527,50 @@ export default function EntrevistaSessao() {
                     }
                     if (t.evaluation) {
                       // Turno avaliado: cartao de feedback sempre; a bolha de
-                      // pergunta so quando a sessao seguiu (no fechamento o
-                      // content JA E o feedback, nao ha proxima pergunta).
-                      const terminal = t.content === t.evaluation.feedback;
+                      // pergunta so quando a sessao seguiu. A decisao e pelo
+                      // marcador ESTRUTURAL evaluation.terminal; a comparacao
+                      // de strings abaixo e FALLBACK LEGADO para sessoes
+                      // anteriores ao marcador (remover quando envelhecerem).
+                      const terminal =
+                        t.evaluation.terminal === true ||
+                        t.content === t.evaluation.feedback;
                       return (
                         <Fragment key={t.id}>
-                          <FeedbackCard evaluation={t.evaluation} />
+                          <AssistantRow groupStart={groupStart}>
+                            <FeedbackCard evaluation={t.evaluation} />
+                          </AssistantRow>
                           {!terminal ? (
-                            <QuestionBubble content={t.content} />
+                            <AssistantRow groupStart={false}>
+                              <QuestionBubble content={t.content} />
+                            </AssistantRow>
                           ) : null}
                         </Fragment>
                       );
                     }
-                    return <QuestionBubble key={t.id} content={t.content} />;
+                    return (
+                      <AssistantRow key={t.id} groupStart={groupStart}>
+                        <QuestionBubble content={t.content} />
+                      </AssistantRow>
+                    );
                   })}
 
                   {sending || hintLoading ? (
-                    <div className="flex justify-start">
+                    <AssistantRow groupStart>
                       <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
                         <span className="sr-only">
                           {sending ? "Avaliando sua resposta" : "Preparando a dica"}
                         </span>
-                        <TypingDots />
+                        <TypingDots reduce={reduce} />
                       </div>
-                    </div>
+                    </AssistantRow>
                   ) : null}
 
                   {completed && verdict ? (
-                    <div className="mt-2 rounded-[14px] border-2 border-slate-950 bg-blue-50 px-4 py-4 shadow-[3px_3px_0_#0f172a]">
-                      <p className="font-display text-sm font-black uppercase tracking-[0.15em] text-blue-900">
-                        {/* TODO(Ana): titulo do veredito final */}
-                        {verdict.result === "stopped_early"
-                          ? "Entrevista encerrada"
-                          : "Veredito final"}
-                      </p>
-                      <p className="mt-1 text-xs font-bold text-slate-600">
-                        {verdict.goodCount} respostas boas de{" "}
-                        {verdict.questionCount} avaliadas
-                      </p>
-                      {typeof verdict.hintsUsed === "number" &&
-                      verdict.hintsUsed > 0 ? (
-                        <p className="mt-0.5 text-xs font-bold text-slate-600">
-                          {/* TODO(Ana): frase do uso de dicas no resumo final. */}
-                          Você pediu dica em {verdict.hintsUsed} de{" "}
-                          {verdict.questionCount} perguntas
-                        </p>
-                      ) : null}
-                      {verdict.closing ? (
-                        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
-                          {verdict.closing}
-                        </p>
-                      ) : null}
-                    </div>
+                    <SessionVerdict
+                      verdict={verdict}
+                      celebrate={justPrepared}
+                      reduce={reduce}
+                    />
                   ) : null}
                 </div>
               </div>
@@ -707,11 +647,17 @@ export default function EntrevistaSessao() {
                       </button>
                     </div>
                   ) : null}
-                  <div className="mx-auto flex w-full max-w-3xl items-end gap-2 sm:gap-3">
+                  {/* flex-wrap: em 375px os controles de voz + enviar podem
+                      quebrar em linha propria abaixo do textarea; nada some e
+                      nada gera scroll horizontal. */}
+                  <div className="mx-auto flex w-full max-w-3xl flex-wrap items-end gap-2 sm:gap-3">
                     <label className="sr-only" htmlFor="entrevista-chat-input">
                       Resposta
                     </label>
-                    <div className="flex min-h-[48px] flex-1 items-end rounded-2xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_#0f172a]">
+                    {/* Mesmos tokens do ac.input blue, em versao focus-within
+                        (o foco visivel sobe do textarea pro container, padrao
+                        do molde reformado). */}
+                    <div className="flex min-h-[48px] min-w-[200px] flex-1 items-end rounded-2xl border-2 border-blue-200 bg-white shadow-[3px_3px_0_#0f172a] focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
                       <textarea
                         id="entrevista-chat-input"
                         ref={inputRef}
@@ -811,7 +757,10 @@ export default function EntrevistaSessao() {
                           type="button"
                           onClick={() => void handleHint()}
                           disabled={hintLoading || sending || recorderBusy}
-                          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1 text-xs font-bold text-blue-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0",
+                            ac.panelSoft,
+                          )}
                         >
                           {hintLoading ? (
                             <Loader2
