@@ -7,8 +7,11 @@ import FavoriteButton from "@/components/FavoriteButton";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import RoadmapTrail from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
+import RoadmapCompletionCard from "@/components/roadmapV2/RoadmapCompletionCard";
+import RoadmapCompletionModal from "@/components/roadmapV2/RoadmapCompletionModal";
 import { frontend, roadmapsV2 } from "@/lib/roadmapV2/content";
 import { nodeProgress } from "@/lib/roadmapV2/progress";
+import { useRoadmapCompletion } from "@/hooks/useRoadmapCompletion";
 import { useRoadmapProgress } from "@/hooks/useRoadmapProgress";
 import { useTrailCelebration } from "@/hooks/useTrailCelebration";
 import { loadLanguage, saveLanguage } from "@/lib/roadmapV2/languageStorage";
@@ -48,6 +51,9 @@ export default function RoadmapsV2() {
     openSectionId,
     onCloseDrawer: () => setOpenSectionId(null),
   });
+
+  const { completion, allComplete, showModal, dismissModal, ctas } =
+    useRoadmapCompletion({ roadmap, done, ready });
 
   const overall = useMemo(() => {
     return roadmap.sections.reduce(
@@ -158,6 +164,15 @@ export default function RoadmapsV2() {
             />
           </div>
 
+          {ready && (
+            <RoadmapCompletionCard
+              roadmap={roadmap}
+              completion={completion}
+              allComplete={allComplete}
+              ctas={ctas}
+            />
+          )}
+
           {ready ? (
             <RoadmapTrail
               ref={trailRef}
@@ -179,6 +194,13 @@ export default function RoadmapsV2() {
         language={selectedLanguage}
         onToggle={onToggle}
         onClose={() => setOpenSectionId(null)}
+      />
+
+      <RoadmapCompletionModal
+        roadmap={roadmap}
+        open={showModal}
+        onClose={dismissModal}
+        ctas={ctas}
       />
     </Layout>
   );
