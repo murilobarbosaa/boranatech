@@ -32,6 +32,16 @@ const MARKDOWN_COMPONENTS: Components = {
       {children}
     </code>
   ),
+  // Bloco cercado. No react-markdown 10 nao existe prop `inline`: o code de
+  // bloco vem embrulhado em <pre>, entao o container escuro vive aqui e as
+  // variantes [&_code] neutralizam o estilo inline do <code> interno (vencem
+  // por especificidade, com ou sem linguagem anotada no fence, que por ora e
+  // ignorada; sem syntax highlighting de proposito).
+  pre: ({ children }) => (
+    <pre className="mt-3 overflow-x-auto rounded-[10px] border-[2.5px] border-slate-900 bg-slate-900 p-4 leading-relaxed [&_code]:block [&_code]:rounded-none [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0 [&_code]:font-mono [&_code]:text-[0.82rem] [&_code]:text-slate-100">
+      {children}
+    </pre>
+  ),
   ul: ({ children }) => (
     <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[0.92rem] leading-relaxed text-slate-700 marker:text-slate-400">
       {children}
