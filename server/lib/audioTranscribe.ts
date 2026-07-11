@@ -31,14 +31,21 @@ export function decodeAudioInput(input: string): Buffer {
     throw new AudioTranscribeError(400, "invalid_audio", "Audio invalido.");
   }
 
+  // O mimetype da data URL pode carregar parametros antes do ";base64"
+  // (Chrome/Firefox gravam "data:audio/webm;codecs=opus;base64,..."), entao
+  // nada de regex preso ao mime: o marcador ";base64," e seguro porque o
+  // header da data URL nao pode conter virgula e o payload base64 nao pode
+  // conter ponto e virgula.
   let b64 = input;
-  const dataUrl = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(input);
-  if (dataUrl) {
-    if (!dataUrl[2]) {
+  if (input.startsWith("data:")) {
+    const marker = ";base64,";
+    const markerIndex = input.indexOf(marker);
+    if (markerIndex === -1) {
+      // Data URL sem base64 continua rejeitada.
       // TODO(Ana): mensagem de audio invalido.
       throw new AudioTranscribeError(400, "invalid_audio", "Audio invalido.");
     }
-    b64 = dataUrl[3];
+    b64 = input.slice(markerIndex + marker.length);
   }
 
   let buf: Buffer;
