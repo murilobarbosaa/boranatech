@@ -1,7 +1,16 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useReducedMotion } from "framer-motion";
-import { Flag, Lightbulb, Loader2, Mic, Send, Square, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Flag,
+  Lightbulb,
+  Loader2,
+  Mic,
+  Send,
+  Square,
+  X,
+} from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
@@ -480,6 +489,22 @@ export default function EntrevistaSessao() {
       <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
         <InterviewBackdrop reduce={reduce} />
         <div className="container relative z-10 py-8">
+        {/* Slot superior esquerdo de voltar, planta do slot do Portfolio
+            (ArrowLeft + rotulo em ac.link), alinhado a borda do card. */}
+        <div className="mx-auto mb-4 w-full max-w-4xl">
+          <Link
+            href="/entrevistas"
+            className={cn(
+              "inline-flex items-center gap-2 text-sm font-bold",
+              ac.link,
+              ac.linkHover,
+            )}
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            {/* TODO(Ana): label do link de voltar da sessao */}
+            Voltar pra Entrevistas
+          </Link>
+        </div>
         <div className="card-brutal mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white">
           <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
             {/* Header re-skin BLUE (o microfone saiu na E2: o controle real de
