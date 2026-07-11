@@ -51,6 +51,10 @@ const ac = getPageAccentUi("blue");
 const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 const ANSWER_MAX_CHARS = 4_000;
 const CHAR_COUNTER_THRESHOLD = 3_600;
+// Teto do auto-grow do textarea do composer, equivalente ao max-h-32 (que
+// permanece nas classes como cinto de seguranca): o campo cresce com o
+// conteudo ate aqui e so entao passa a rolar.
+const COMPOSER_MAX_HEIGHT_PX = 128;
 
 function formatElapsed(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
@@ -189,6 +193,20 @@ export default function EntrevistaSessao() {
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [turns, sending, hintLoading]);
+
+  // Auto-grow do textarea: dirigido pelo VALOR (cobre digitacao, o append da
+  // transcricao de voz e o esvaziar pos-envio, sem tocar em handler nenhum).
+  // Zera a altura pra medir o scrollHeight real e trava no teto; rolagem so
+  // acima dele.
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(el.scrollHeight, COMPOSER_MAX_HEIGHT_PX);
+    el.style.height = `${next}px`;
+    el.style.overflowY =
+      el.scrollHeight > COMPOSER_MAX_HEIGHT_PX ? "auto" : "hidden";
+  }, [input]);
 
   async function reloadSession() {
     try {
@@ -677,7 +695,7 @@ export default function EntrevistaSessao() {
                         id="entrevista-chat-input"
                         ref={inputRef}
                         rows={1}
-                        className="max-h-32 min-h-[48px] w-full resize-y rounded-2xl border-0 bg-transparent px-4 py-3 font-body text-[15px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-500 disabled:opacity-60 sm:py-3.5 sm:text-base"
+                        className="max-h-32 min-h-[48px] w-full resize-none rounded-2xl border-0 bg-transparent px-4 py-3 font-body text-[15px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-500 disabled:opacity-60 sm:py-3.5 sm:text-base"
                         placeholder="Manda tua resposta"
                         value={input}
                         disabled={sending}
