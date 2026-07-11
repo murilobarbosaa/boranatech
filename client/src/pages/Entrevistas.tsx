@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
-import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { BookOpen, Mic } from "lucide-react";
+import { Mic } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
@@ -9,18 +8,15 @@ import InterviewBackdrop from "@/components/interview/InterviewBackdrop";
 import InterviewIntake from "@/components/interview/InterviewIntake";
 import InterviewIntro from "@/components/interview/InterviewIntro";
 import SessionGallery from "@/components/interview/SessionGallery";
-import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
-import SectionLabel from "@/components/shared/SectionLabel";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
-import { interviewSteps } from "@/lib/careerToolsData";
 
-// Pagina principal das Entrevistas no molde Pro (PortfolioAnalisar): arena
-// primeiro (cenario vivo, header integrado, timeline + vitrine, palco de
-// intake, galeria de sessoes) e a BIBLIOTECA (guia + bancos, conteudo
-// intocado) abaixo, na mesma URL. Accent unico blue.
+// Pagina principal das Entrevistas no molde Pro (PortfolioAnalisar): a arena
+// e a pagina inteira (cenario vivo, header integrado, timeline + vitrine,
+// palco de intake, galeria de sessoes). O guia e os bancos sairam daqui na
+// E3.1 (rotas proprias seguem vivas). Accent unico blue.
 const ac = getPageAccentUi("blue");
 
 export default function Entrevistas() {
@@ -41,10 +37,11 @@ export default function Entrevistas() {
 
   return (
     <Layout>
-      {/* TODO(Ana): validar title e description da pagina unificada */}
+      {/* TODO(Ana): validar title e a nova description focada no treino
+          (o guia e os bancos sairam desta pagina). */}
       <SEO
         title="Entrevistas em tech · Guia e treino com IA"
-        description="Guia do processo seletivo em tecnologia e treino de entrevista com IA: perguntas calibradas pela vaga ou pela sua área, com feedback a cada resposta."
+        description="Treine entrevistas com IA: perguntas calibradas pela vaga ou pela sua área, feedback a cada resposta e um veredito de preparo."
         url="/entrevistas"
       />
 
@@ -111,72 +108,6 @@ export default function Entrevistas() {
         </div>
       </section>
 
-      {/* BIBLIOTECA: guia do processo e bancos, conteudo INTOCADO (copy da
-          Ana), apenas movidos pra baixo da arena. */}
-      <section className={cn(ac.contentBg, "py-12")}>
-        <div className="container">
-          <SectionLabel icon={BookOpen} ac={ac}>
-            {/* TODO(Ana): rotulo de transicao da biblioteca. */}
-            Biblioteca da entrevista
-          </SectionLabel>
-        </div>
-        <div
-          className={cn("sticky top-16 z-40 mt-4 border-b-2 py-4", ac.stickyBar)}
-        >
-          <div className="container flex flex-wrap items-center gap-3">
-            <Link
-              href="/entrevistas/perguntas"
-              className={cn(
-                "rounded-full border-2 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-[2px_2px_0_#0f172a] transition-all",
-                ac.panelBorder,
-                "hover:border-blue-500",
-              )}
-            >
-              Banco de perguntas
-            </Link>
-            <Link
-              href="/entrevistas/desafios"
-              className={cn(
-                "rounded-full border-2 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-[2px_2px_0_#0f172a] transition-all",
-                ac.panelBorder,
-                "hover:border-blue-500",
-              )}
-            >
-              Desafios técnicos
-            </Link>
-          </div>
-        </div>
-        <div className="container mt-8">
-          <div className="grid gap-5 md:grid-cols-2">
-            {interviewSteps.map((step, index) => (
-              <DetailsChevronOnly
-                key={step.title}
-                className="card-brutal rounded-2xl bg-white p-5"
-                title={
-                  <span className="font-display text-xl font-black">
-                    {index + 1}. {step.title}
-                  </span>
-                }
-              >
-                <div className="mt-4 space-y-3 text-sm text-slate-700">
-                  <p>
-                    <strong>O que avaliam:</strong> {step.evaluate}
-                  </p>
-                  <p>
-                    <strong>Como se preparar:</strong> {step.prepare}
-                  </p>
-                  <p>
-                    <strong>Erro comum:</strong> {step.mistakes}
-                  </p>
-                  <p>
-                    <strong>Dica prática:</strong> {step.tip}
-                  </p>
-                </div>
-              </DetailsChevronOnly>
-            ))}
-          </div>
-        </div>
-      </section>
     </Layout>
   );
 }
