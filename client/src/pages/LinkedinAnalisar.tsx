@@ -932,12 +932,13 @@ export default function LinkedinAnalisar() {
             <div className="space-y-8">
               {/* Ordem narrativa da entrada: explicacao (timeline + vitrine)
                   na coluna esquerda, palco de intake na direita; empilham em
-                  coluna unica no mobile. Em loading e erro o grid some e o
-                  palco segue sozinho no topo; no RESULTADO nada disso
-                  renderiza (o form state vive na pagina, entao a reanalise
-                  le o estado normalmente e Nova analise traz o palco de
-                  volta com os dados preservados). */}
-              {!showResult ? (
+                  coluna unica no mobile. Em erro o grid some e o palco segue
+                  sozinho no topo pra pessoa corrigir; em LOADING o palco NAO
+                  renderiza (so o scan card centralizado abaixo) e no
+                  RESULTADO tambem nao (o form state vive na pagina, entao a
+                  reanalise le o estado normalmente e Nova analise traz o
+                  palco de volta com os dados preservados). */}
+              {!showResult && !loading ? (
                 <div
                   className={
                     showEntry
