@@ -115,17 +115,24 @@ const OPEN_TO_WORK_LABEL: Record<OpenToWork, string> = {
   "nao-sei": "Não sei",
 };
 
+// TODO(Ana): revisar o placeholder dos selects de sinais.
+const SELECT_PLACEHOLDER = "Selecione";
+
+// Os 5 sinais começam SEM resposta ("" = a pessoa ainda não respondeu): um
+// default pre-marcado vira resposta errada silenciosa. O checklist de
+// mínimos bloqueia o submit até os 5 terem valor, e o request schema segue
+// intacto (o payload só é montado com valores válidos).
 interface FormState {
   profileText: string;
   area: AreaSlug;
   level: LinkedinLevel;
   mercado: Mercado;
   skills: string;
-  foto: SimNao;
-  banner: SimNao;
-  openToWork: OpenToWork;
-  conexoes: Conexoes;
-  atividade: Atividade;
+  foto: SimNao | "";
+  banner: SimNao | "";
+  openToWork: OpenToWork | "";
+  conexoes: Conexoes | "";
+  atividade: Atividade | "";
   objetivo: string;
 }
 
@@ -136,11 +143,11 @@ function emptyForm(): FormState {
     level: "junior",
     mercado: "brasil",
     skills: "",
-    foto: "nao",
-    banner: "nao",
-    openToWork: "nao-sei",
-    conexoes: "ate-50",
-    atividade: "raramente",
+    foto: "",
+    banner: "",
+    openToWork: "",
+    conexoes: "",
+    atividade: "",
     objetivo: "",
   };
 }
@@ -166,18 +173,22 @@ function coerceForm(value: unknown): FormState {
       ? (v.mercado as Mercado)
       : base.mercado,
     skills: typeof v.skills === "string" ? v.skills : "",
-    foto: v.foto === "sim" ? "sim" : "nao",
-    banner: v.banner === "sim" ? "sim" : "nao",
+    // Sinais: valor valido restaura; qualquer outra coisa (inclusive o "")
+    // do proprio estado sem resposta) volta pra sem resposta.
+    foto: v.foto === "sim" || v.foto === "nao" ? v.foto : "",
+    banner: v.banner === "sim" || v.banner === "nao" ? v.banner : "",
     openToWork:
-      v.openToWork === "sim" || v.openToWork === "nao"
+      v.openToWork === "sim" ||
+      v.openToWork === "nao" ||
+      v.openToWork === "nao-sei"
         ? v.openToWork
-        : "nao-sei",
+        : "",
     conexoes: CONEXOES.includes(v.conexoes as Conexoes)
       ? (v.conexoes as Conexoes)
-      : base.conexoes,
+      : "",
     atividade: ATIVIDADE.includes(v.atividade as Atividade)
       ? (v.atividade as Atividade)
-      : base.atividade,
+      : "",
     objetivo: typeof v.objetivo === "string" ? v.objetivo : "",
   };
 }
@@ -292,6 +303,9 @@ const ENTRY_COPY = {
     `Texto do perfil com pelo menos 200 caracteres (agora: ${n}).`,
   checklistSections:
     "Inclua o Sobre ou as experiências: não detectamos nenhum dos dois no texto.",
+  // TODO(Ana): revisar o item de sinais do checklist de minimos.
+  checklistSinais:
+    "Responda as 5 perguntas do perfil (foto, banner, Open to Work, conexões e atividade).",
 } as const;
 
 type UpdateField = <K extends keyof FormState>(
@@ -383,6 +397,9 @@ function ProfileQuestions({
           onChange={(event) => update("foto", event.target.value as SimNao)}
           className={selectClass}
         >
+          <option value="" disabled>
+            {SELECT_PLACEHOLDER}
+          </option>
           {(["sim", "nao"] as SimNao[]).map((value) => (
             <option key={value} value={value}>
               {SIM_NAO_LABEL[value]}
@@ -397,6 +414,9 @@ function ProfileQuestions({
           onChange={(event) => update("banner", event.target.value as SimNao)}
           className={selectClass}
         >
+          <option value="" disabled>
+            {SELECT_PLACEHOLDER}
+          </option>
           {(["sim", "nao"] as SimNao[]).map((value) => (
             <option key={value} value={value}>
               {SIM_NAO_LABEL[value]}
@@ -413,6 +433,9 @@ function ProfileQuestions({
           }
           className={selectClass}
         >
+          <option value="" disabled>
+            {SELECT_PLACEHOLDER}
+          </option>
           {(["sim", "nao", "nao-sei"] as OpenToWork[]).map((value) => (
             <option key={value} value={value}>
               {OPEN_TO_WORK_LABEL[value]}
@@ -429,6 +452,9 @@ function ProfileQuestions({
           }
           className={selectClass}
         >
+          <option value="" disabled>
+            {SELECT_PLACEHOLDER}
+          </option>
           {CONEXOES.map((value) => (
             <option key={value} value={value}>
               {CONEXOES_LABEL[value]}
@@ -445,6 +471,9 @@ function ProfileQuestions({
           }
           className={selectClass}
         >
+          <option value="" disabled>
+            {SELECT_PLACEHOLDER}
+          </option>
           {ATIVIDADE.map((value) => (
             <option key={value} value={value}>
               {ATIVIDADE_LABEL[value]}
@@ -697,7 +726,17 @@ export default function LinkedinAnalisar() {
 
   async function runAnalysis() {
     if (loading) return;
-    if (form.profileText.trim().length < 200) {
+    // Destructuring narra o tipo: depois do guard, os 5 sinais sao os tipos
+    // validos do request schema (que segue intacto, sem aceitar vazio).
+    const { foto, banner, openToWork, conexoes, atividade } = form;
+    if (
+      form.profileText.trim().length < 200 ||
+      !foto ||
+      !banner ||
+      !openToWork ||
+      !conexoes ||
+      !atividade
+    ) {
       setError("INVALID_REQUEST");
       return;
     }
@@ -716,11 +755,11 @@ export default function LinkedinAnalisar() {
         level: form.level,
         mercado: form.mercado,
         skills: form.skills,
-        foto: form.foto,
-        banner: form.banner,
-        openToWork: form.openToWork,
-        conexoes: form.conexoes,
-        atividade: form.atividade,
+        foto,
+        banner,
+        openToWork,
+        conexoes,
+        atividade,
         objetivo: form.objetivo.trim() || undefined,
       });
       setResult(data);
@@ -791,7 +830,13 @@ export default function LinkedinAnalisar() {
   }
 
   const profileChars = form.profileText.trim().length;
-  const canSubmit = profileChars >= 200 && !loading;
+  const signalsAnswered =
+    form.foto !== "" &&
+    form.banner !== "" &&
+    form.openToWork !== "" &&
+    form.conexoes !== "" &&
+    form.atividade !== "";
+  const canSubmit = profileChars >= 200 && signalsAnswered && !loading;
 
   // Placar do checklist: so conta indices dentro do range das melhorias da
   // analise exibida. Sem analysisId (persistencia falhou ou storage v2) ou
@@ -825,6 +870,9 @@ export default function LinkedinAnalisar() {
   const checklistItems: string[] = [];
   if (profileChars < 200) {
     checklistItems.push(ENTRY_COPY.checklistChars(profileChars));
+  }
+  if (!signalsAnswered) {
+    checklistItems.push(ENTRY_COPY.checklistSinais);
   }
   if (parsed !== null && !parsed.sobre && parsed.experiencias.length === 0) {
     checklistItems.push(ENTRY_COPY.checklistSections);
@@ -1346,7 +1394,7 @@ export default function LinkedinAnalisar() {
                 <LinkedinError
                   error={error}
                   onRetry={
-                    form.profileText.trim().length >= 200
+                    form.profileText.trim().length >= 200 && signalsAnswered
                       ? () => void runAnalysis()
                       : undefined
                   }

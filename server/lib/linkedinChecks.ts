@@ -377,12 +377,17 @@ export function runLinkedinChecks(
           ? "Você marcou que tem um banner personalizado."
           : "Sem banner personalizado (um detalhe que valoriza o perfil).",
     }),
+    // Fail-closed: "nao-sei" continua reprovando, mas o detail diz que nao
+    // deu para confirmar em vez de afirmar que nao esta configurado.
     "open-to-work": () => ({
       aprovado: input.openToWork === "sim",
       detail:
         input.openToWork === "sim"
           ? "Open to Work configurado para recrutadores."
-          : "Open to Work não configurado para recrutadores.",
+          : input.openToWork === "nao-sei"
+            ? // TODO(Ana): revisar o detail do Open to Work sem confirmacao.
+              "Não foi possível confirmar o Open to Work para recrutadores, vale conferir nas configurações do seu perfil."
+            : "Open to Work não configurado para recrutadores.",
     }),
     conexoes: () => {
       const ok = input.conexoes === "100-500" || input.conexoes === "500-mais";
