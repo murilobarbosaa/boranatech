@@ -1,13 +1,8 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type RefObject,
-} from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Flag, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { FxRate } from "@/services/careerPlanService";
 import TrailStationCard from "./TrailStationCard";
 import { useTrailScroll } from "./useTrailScroll";
 import type { TrailStationVM } from "./types";
@@ -30,16 +25,16 @@ interface CareerTrailProps {
   // bandeira de chegada, gaps maiores e cards maiores no desktop. A vitrine
   // da entrada NAO passa a prop e continua com o visual compacto.
   decorated?: boolean;
-  // Area maior que captura o wheel da trilha (a faixa full-bleed inteira no
-  // PlanResult). Sem ela, o wheel fica no container de scroll.
-  wheelAreaRef?: RefObject<HTMLDivElement | null>;
+  // Cotacao PTAX (ou null): repassada aos trofeus ancorados para o "≈ R$"
+  // ao lado do preco em USD.
+  fx?: FxRate | null;
 }
 
 // Trilha horizontal do plano de carreira: scroll nativo com CSS scroll-snap,
 // sem lib de carrossel. Irma conceitual da trilha vertical do RoadmapsV2.
-// Wheel e arrasto vem do useTrailScroll; snap-proximity (nao mandatory) com
-// snap desligado durante o arrasto, para o card assentar de leve perto do
-// ponto de snap sem o efeito borracha do mandatory ao soltar.
+// O arrasto com maozinha vem do useTrailScroll; snap-proximity (nao
+// mandatory) com snap desligado durante o arrasto, para o card assentar de
+// leve perto do ponto de snap sem o efeito borracha do mandatory ao soltar.
 export default function CareerTrail({
   stations,
   currentStationIndex,
@@ -50,11 +45,11 @@ export default function CareerTrail({
   catalogVersion = null,
   autoScrollToCurrent = false,
   decorated = false,
-  wheelAreaRef,
+  fx = null,
 }: CareerTrailProps) {
   const reduce = useReducedMotion() ?? false;
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const { dragging, handlers } = useTrailScroll(scrollRef, wheelAreaRef);
+  const { dragging, handlers } = useTrailScroll(scrollRef);
   const wrapperRefs = useRef<Array<HTMLDivElement | null>>([]);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const didAutoScroll = useRef(false);
@@ -196,7 +191,7 @@ export default function CareerTrail({
           style={{ scrollSnapType: dragging ? "none" : undefined }}
           className={cn(
             "relative z-10 -mx-2 flex snap-x snap-proximity items-start overflow-x-auto px-2 pb-4 pt-2",
-            decorated ? "gap-8 md:gap-16 lg:gap-20" : "gap-5",
+            decorated ? "gap-10 md:gap-20 lg:gap-28" : "gap-5",
             dragging
               ? "cursor-grabbing select-none [&_*]:pointer-events-none"
               : "cursor-grab",
@@ -211,12 +206,12 @@ export default function CareerTrail({
               // Largura fluida no mobile (com espiada dos vizinhos via
               // snap-center), fixa no desktop. Sem altura fixa: overflow
               // vertical proibido.
-              // No modo destaque o card mobile encolhe um pouco (75vw) para a
-              // espiada do proximo card sobreviver ao gap-8 em 375px.
+              // No modo destaque o card mobile encolhe um pouco (72vw) para a
+              // espiada do proximo card sobreviver ao gap-10 em 375px.
               className={cn(
                 "relative shrink-0 snap-center pt-4",
                 decorated
-                  ? "w-[min(75vw,340px)] lg:w-[400px]"
+                  ? "w-[min(72vw,340px)] lg:w-[400px]"
                   : "w-[min(82vw,340px)] lg:w-[360px]",
               )}
               initial={reduce ? false : { opacity: 0, y: 14 }}
@@ -229,11 +224,11 @@ export default function CareerTrail({
             >
               {decorated && index < stations.length - 1 ? (
                 // Marco discreto no centro do caminho entre esta estacao e a
-                // proxima: offset = metade do gap + metade do marco (gap-8 no
-                // mobile, gap-16 no md, gap-20 no lg).
+                // proxima: offset = metade do gap + metade do marco (gap-10 no
+                // mobile, gap-20 no md, gap-28 no lg).
                 <span
                   aria-hidden
-                  className="absolute -right-[21px] top-[67px] z-0 h-2.5 w-2.5 rotate-45 rounded-[2px] border-2 border-slate-950/60 bg-amber-300 md:-right-[37px] lg:-right-[45px]"
+                  className="absolute -right-[25px] top-[67px] z-0 h-2.5 w-2.5 rotate-45 rounded-[2px] border-2 border-slate-950/60 bg-amber-300 md:-right-[45px] lg:-right-[61px]"
                 />
               ) : null}
               {currentStationIndex === index ? (
@@ -261,6 +256,7 @@ export default function CareerTrail({
                 onToggleItem={onToggleItem}
                 readonly={readonly}
                 catalogVersion={catalogVersion}
+                fx={fx}
                 buttonRef={(el) => {
                   buttonRefs.current[index] = el;
                 }}

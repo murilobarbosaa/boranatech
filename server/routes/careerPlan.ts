@@ -10,6 +10,7 @@ import {
   type CareerPlanIntake,
   type CareerPlanStoredResult,
 } from "../lib/careerPlan/generate";
+import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { fetchUserContextPool } from "../lib/userContext/pool";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -93,6 +94,25 @@ router.get(
     }
   },
 );
+
+// GET /api/career-plan/fx: cotacao PTAX de venda USD/BRL para o total em
+// reais do investimento. Indisponibilidade de cotacao NAO e erro do nosso
+// sistema: 204 sem corpo e a UI omite a conversao em silencio; erros
+// inesperados logam e viram 204 tambem, NUNCA 500. Sem quota de IA (nao e
+// IA, nao entra em AI_TOOLS).
+router.get("/fx", async (_req: Request, res: Response) => {
+  try {
+    const fx = await fetchUsdBrlRate();
+    if (!fx) {
+      res.status(204).end();
+      return;
+    }
+    res.json({ usdBrl: fx.usdBrl, quoteDate: fx.quoteDate });
+  } catch (err) {
+    console.error("[career-plan] cotacao ptax falhou:", err);
+    res.status(204).end();
+  }
+});
 
 // POST /api/career-plan/generate: gera e persiste um plano novo (o anterior
 // ativo e arquivado).

@@ -35,6 +35,7 @@ import {
   CareerPlanApiError,
   generatePlan,
   getContext,
+  getFxRate,
   getPlan,
   listPlans,
   type CareerPlanBudget,
@@ -42,6 +43,7 @@ import {
   type CareerPlanDetail,
   type CareerPlanIntake,
   type CareerPlanSummary,
+  type FxRate,
 } from "@/services/careerPlanService";
 
 const ac = getPageAccentUi("amber");
@@ -324,15 +326,8 @@ function TrailSkeleton() {
 // offset esquerdo do wrapper em fluxo), nunca 100vw, para a pagina jamais
 // ganhar scrollbar horizontal. Mesmo espirito do full-bleed do RoadmapTrail.
 // O wash amber e da familia do ResultBackdrop, mais concentrado na faixa;
-// doodles aria-hidden com loop gated por reduce. wheelAreaRef expoe a faixa
-// inteira como area de wheel da trilha (useTrailScroll).
-function TrailBand({
-  children,
-  wheelAreaRef,
-}: {
-  children: React.ReactNode;
-  wheelAreaRef?: React.RefObject<HTMLDivElement | null>;
-}) {
+// doodles aria-hidden com loop gated por reduce.
+function TrailBand({ children }: { children: React.ReactNode }) {
   const reduce = useReducedMotion() ?? false;
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [metrics, setMetrics] = useState(() => ({
@@ -368,7 +363,6 @@ function TrailBand({
   return (
     <div ref={wrapRef} className="w-full">
       <div
-        ref={wheelAreaRef}
         className="relative overflow-hidden border-y-2 border-dashed border-amber-900/10 py-10 md:py-14"
         style={{ marginLeft: -metrics.wrapLeft, width: metrics.viewportW }}
       >
@@ -426,10 +420,21 @@ function PlanResult({ plan, readonly, checklist }: PlanResultProps) {
   const [expandedStationId, setExpandedStationId] = useState<string | null>(
     null,
   );
-  // A faixa inteira da trilha e a area de wheel (TrailBand -> CareerTrail).
-  const bandRef = useRef<HTMLDivElement | null>(null);
   const [toggleError, setToggleError] = useState("");
   const toggleErrorTimer = useRef<number | null>(null);
+  // Cotacao PTAX para os "≈ R$": UMA busca ao montar a secao, sem poll. null
+  // (indisponivel) e silencioso e NAO entra no sessionStorage da pagina.
+  const [fx, setFx] = useState<FxRate | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void getFxRate().then((rate) => {
+      if (alive) setFx(rate);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -505,7 +510,7 @@ function PlanResult({ plan, readonly, checklist }: PlanResultProps) {
         <TrailSkeleton />
       ) : (
         <>
-          <TrailBand wheelAreaRef={bandRef}>
+          <TrailBand>
             <CareerTrail
               stations={vm.stations}
               currentStationIndex={vm.currentStationIndex}
@@ -516,7 +521,7 @@ function PlanResult({ plan, readonly, checklist }: PlanResultProps) {
               catalogVersion={plan.catalog_version}
               autoScrollToCurrent
               decorated
-              wheelAreaRef={bandRef}
+              fx={fx}
             />
           </TrailBand>
 
@@ -529,11 +534,13 @@ function PlanResult({ plan, readonly, checklist }: PlanResultProps) {
               }
               readonly={readonly}
               catalogVersion={plan.catalog_version}
+              fx={fx}
             />
 
             <InvestmentSummary
               certs={allCerts}
               catalogVersion={plan.catalog_version}
+              fx={fx}
             />
 
             {vm.looseScheduleBlocks.length > 0 ? (

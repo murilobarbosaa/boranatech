@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useRef,
   useState,
   type MouseEvent,
@@ -8,15 +7,15 @@ import {
 } from "react";
 
 // Interacao compartilhada das trilhas horizontais (CareerTrail e
-// GeneralShelf): wheel vertical rola a trilha para o lado e arrastar com a
-// maozinha (mouse ou pen) move o scroll. Touch fica de fora: o gesto nativo
-// ja resolve. Drag e wheel sao manipulacao direta do usuario, permitidos com
+// GeneralShelf): arrastar com a maozinha (mouse ou pen) move o scroll. Touch
+// fica de fora: o gesto nativo ja resolve. O wheel vertical rolando a trilha
+// foi REMOVIDO por decisao de produto: ficam o drag, o swipe touch, o
+// trackpad horizontal (deltaX nativo, sem nenhuma interferencia daqui) e as
+// setas do teclado. Drag e manipulacao direta do usuario, permitido com
 // reduced motion; nenhuma animacao decorativa vive aqui.
 
 // Abaixo do limiar o gesto e clique normal (estacoes, checkboxes, trofeus).
 const DRAG_THRESHOLD_PX = 6;
-// deltaMode 1 (linhas, Firefox): conversao usual de linha para pixels.
-const LINE_HEIGHT_PX = 40;
 
 interface DragState {
   pointerId: number;
@@ -33,48 +32,13 @@ interface TrailScrollHandlers {
   onClickCapture: (event: MouseEvent<HTMLDivElement>) => void;
 }
 
-export function useTrailScroll(
-  scrollRef: RefObject<HTMLDivElement | null>,
-  // Area maior que captura o wheel (ex.: a faixa full-bleed inteira da
-  // trilha). O scroll continua sendo aplicado no scrollRef; sem ela, o wheel
-  // anexa no proprio container de scroll.
-  wheelAreaRef?: RefObject<HTMLDivElement | null>,
-): {
+export function useTrailScroll(scrollRef: RefObject<HTMLDivElement | null>): {
   dragging: boolean;
   handlers: TrailScrollHandlers;
 } {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<DragState | null>(null);
   const suppressClickRef = useRef(false);
-
-  // Listener nao-passivo: preventDefault SO quando a trilha ainda pode rolar
-  // naquela direcao; no limite o wheel segue para a pagina, nunca aprisiona o
-  // usuario. Trackpad com deltaX dominante nao sofre interferencia.
-  useEffect(() => {
-    const el = scrollRef.current;
-    const area = wheelAreaRef?.current ?? el;
-    if (!el || !area) return;
-    function onWheel(event: WheelEvent) {
-      if (!el) return;
-      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-      const scale =
-        event.deltaMode === 1
-          ? LINE_HEIGHT_PX
-          : event.deltaMode === 2
-            ? el.clientWidth
-            : 1;
-      const delta = event.deltaY * scale;
-      if (delta === 0) return;
-      const max = el.scrollWidth - el.clientWidth;
-      if (max <= 0) return;
-      const canScroll = delta > 0 ? el.scrollLeft < max - 1 : el.scrollLeft > 1;
-      if (!canScroll) return;
-      event.preventDefault();
-      el.scrollLeft += delta;
-    }
-    area.addEventListener("wheel", onWheel, { passive: false });
-    return () => area.removeEventListener("wheel", onWheel);
-  }, [scrollRef, wheelAreaRef]);
 
   function endDrag(event: PointerEvent<HTMLDivElement>) {
     const state = dragRef.current;

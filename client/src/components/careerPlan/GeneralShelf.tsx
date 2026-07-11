@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
+import type { FxRate } from "@/services/careerPlanService";
 import TrophyCard from "./TrophyCard";
 import { useTrailScroll } from "./useTrailScroll";
 import type { StationCertVM } from "./types";
@@ -13,17 +14,20 @@ interface GeneralShelfProps {
   readonly?: boolean;
   // Versao do catalogo do plano (linha de preco do trofeu expandido).
   catalogVersion?: string | null;
+  // Cotacao PTAX (ou null), repassada aos trofeus.
+  fx?: FxRate | null;
 }
 
 // Prateleira horizontal das certificacoes transversais (ou de todas, em
 // planos antigos). Mesmo padrao de scroll nativo do CareerTrail, incluindo o
-// wheel e o arrasto do useTrailScroll (snap-proximity, sem mandatory).
+// arrasto com maozinha do useTrailScroll (snap-proximity, sem mandatory).
 export default function GeneralShelf({
   certs,
   unanchored,
   onToggleCert,
   readonly = false,
   catalogVersion = null,
+  fx = null,
 }: GeneralShelfProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const { dragging, handlers } = useTrailScroll(scrollRef);
@@ -65,6 +69,7 @@ export default function GeneralShelf({
               onToggle={readonly ? undefined : onToggleCert}
               readonly={readonly}
               catalogVersion={catalogVersion}
+              fx={fx}
             />
           </div>
         ))}
