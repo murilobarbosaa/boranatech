@@ -13,8 +13,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Do básico da web até publicar uma aplicação React. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 11,
-    "stepCount": 62,
-    "hasProject": false
+    "stepCount": 63,
+    "hasProject": true
   },
   {
     "slug": "backend",
@@ -81,8 +81,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Dos fundamentos e da matemática essencial ao machine learning, deep learning e IA generativa. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 21,
-    "hasProject": false
+    "stepCount": 22,
+    "hasProject": true
   },
   {
     "slug": "produto",
@@ -91,8 +91,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da mentalidade de produto e discovery aos métodos ágeis, priorização, métricas e a entrada na carreira de PM. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 20,
-    "hasProject": false
+    "stepCount": 21,
+    "hasProject": true
   },
   {
     "slug": "ciberseguranca",
@@ -101,8 +101,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Das bases de redes e Linux aos conceitos de segurança, times ofensivo e defensivo, prática ética e certificações. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 18,
-    "hasProject": false
+    "stepCount": 19,
+    "hasProject": true
   },
   {
     "slug": "cloud",
@@ -125,8 +125,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
       }
     ],
     "sectionCount": 7,
-    "stepCount": 19,
-    "hasProject": false
+    "stepCount": 20,
+    "hasProject": true
   },
   {
     "slug": "gestao",
@@ -173,8 +173,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
       }
     ],
     "sectionCount": 7,
-    "stepCount": 14,
-    "hasProject": false
+    "stepCount": 15,
+    "hasProject": true
   },
   {
     "slug": "devops",
@@ -207,8 +207,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
       }
     ],
     "sectionCount": 7,
-    "stepCount": 16,
-    "hasProject": false
+    "stepCount": 17,
+    "hasProject": true
   },
   {
     "slug": "analise-dados",
@@ -217,8 +217,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De SQL e planilhas à preparação de dados, dashboards de BI e a arte de contar histórias com números. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 17,
-    "hasProject": false
+    "stepCount": 18,
+    "hasProject": true
   },
   {
     "slug": "engenharia-dados",
@@ -227,8 +227,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Das bases de SQL e Python à modelagem de data warehouses, pipelines de ETL/ELT, orquestração e processamento em escala. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 16,
-    "hasProject": false
+    "stepCount": 17,
+    "hasProject": true
   },
   {
     "slug": "banco-de-dados",
@@ -237,8 +237,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De SQL e modelagem a índices, transações, backup e segurança: como manter bancos de dados rápidos, seguros e confiáveis. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 16,
-    "hasProject": false
+    "stepCount": 17,
+    "hasProject": true
   },
   {
     "slug": "sre",
@@ -247,8 +247,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da base técnica à engenharia de confiabilidade: SLOs, observabilidade, resposta a incidentes e automação pra manter sistemas grandes no ar. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 16,
-    "hasProject": false
+    "stepCount": 17,
+    "hasProject": true
   },
   {
     "slug": "infraestrutura",
@@ -257,8 +257,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De hardware e sistemas operacionais a redes, servidores e atendimento: a porta de entrada mais acessível da TI. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 16,
-    "hasProject": false
+    "stepCount": 17,
+    "hasProject": true
   },
   {
     "slug": "analise-sistemas",
@@ -267,8 +267,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De levantar requisitos a modelar processos e validar entregas: a ponte entre o negócio e o time de desenvolvimento. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 6,
-    "stepCount": 13,
-    "hasProject": false
+    "stepCount": 14,
+    "hasProject": true
   },
   {
     "slug": "blockchain",
@@ -277,8 +277,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Dos fundamentos de blockchain ao Solidity, contratos inteligentes, integração Web3 e a segurança que essa área exige acima de tudo. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 12,
-    "hasProject": false
+    "stepCount": 13,
+    "hasProject": true
   },
   {
     "slug": "iot",
@@ -287,8 +287,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De C e eletrônica básica a microcontroladores, sensores, conectividade e projetos de IoT conectados à nuvem. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 13,
-    "hasProject": false
+    "stepCount": 14,
+    "hasProject": true
   },
   {
     "slug": "mainframe",
@@ -297,8 +297,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da lógica e do COBOL ao JCL, DB2 e ao ambiente z/OS: como manter os sistemas críticos que rodam bancos e governo. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 13,
-    "hasProject": false
+    "stepCount": 14,
+    "hasProject": true
   },
   {
     "slug": "comecar-do-zero",

@@ -5072,8 +5072,7 @@ export const areasComplementares: {
   },
   {
     nome: "Automação e RPA",
-    descricao:
-      "Automatiza tarefas e processos repetitivos com scripts e bots.",
+    descricao: "Automatiza tarefas e processos repetitivos com scripts e bots.",
     icon: Bot,
     grupo: "gestao",
   },
@@ -8031,9 +8030,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "300 horas",
     idioma: "Inglês",
-    descricao: "Curso que constroi a base de logica de programacao usando JavaScript, do basico ate estruturas de dados e algoritmos. Voce aprende programando projetos do inicio ao fim.",
-    motivoIndicacao: "JavaScript e a linguagem da web, e aqui voce aprende ela com fundamentos solidos de logica e algoritmos.",
-    oQueAprende: ["variaveis, arrays e objetos", "funcoes e programacao funcional", "programacao orientada a objetos"],
+    descricao:
+      "Curso que constroi a base de logica de programacao usando JavaScript, do basico ate estruturas de dados e algoritmos. Voce aprende programando projetos do inicio ao fim.",
+    motivoIndicacao:
+      "JavaScript e a linguagem da web, e aqui voce aprende ela com fundamentos solidos de logica e algoritmos.",
+    oQueAprende: [
+      "variaveis, arrays e objetos",
+      "funcoes e programacao funcional",
+      "programacao orientada a objetos",
+    ],
     proximoConteudo: "Front End Development Libraries (React)",
     tipo: "Gratuito",
   },
@@ -8048,9 +8053,15 @@ export const cursosGratuitos = [
     nivel: "Avançado",
     duracao: "300 horas",
     idioma: "Inglês",
-    descricao: "Certificacao que introduz aprendizado de maquina e redes neurais usando Python e TensorFlow. Os projetos envolvem criar modelos preditivos do zero.",
-    motivoIndicacao: "Da uma base solida e gratuita em machine learning, uma das areas mais quentes da tecnologia.",
-    oQueAprende: ["TensorFlow e redes neurais", "processamento de linguagem natural", "aprendizado por reforco"],
+    descricao:
+      "Certificacao que introduz aprendizado de maquina e redes neurais usando Python e TensorFlow. Os projetos envolvem criar modelos preditivos do zero.",
+    motivoIndicacao:
+      "Da uma base solida e gratuita em machine learning, uma das areas mais quentes da tecnologia.",
+    oQueAprende: [
+      "TensorFlow e redes neurais",
+      "processamento de linguagem natural",
+      "aprendizado por reforco",
+    ],
     proximoConteudo: "CS50 AI with Python",
     tipo: "Gratuito",
   },
@@ -8065,9 +8076,15 @@ export const cursosGratuitos = [
     nivel: "Intermediário",
     duracao: "300 horas",
     idioma: "Inglês",
-    descricao: "Certificacao focada em testes automatizados e garantia de qualidade de software com JavaScript. Voce aprende a escrever testes e validar aplicacoes.",
-    motivoIndicacao: "Uma das poucas trilhas gratuitas dedicadas a QA, area com boa demanda e menos concorrencia.",
-    oQueAprende: ["testes com Chai", "autenticacao com Passport", "comunicacao em tempo real com Socket.io"],
+    descricao:
+      "Certificacao focada em testes automatizados e garantia de qualidade de software com JavaScript. Voce aprende a escrever testes e validar aplicacoes.",
+    motivoIndicacao:
+      "Uma das poucas trilhas gratuitas dedicadas a QA, area com boa demanda e menos concorrencia.",
+    oQueAprende: [
+      "testes com Chai",
+      "autenticacao com Passport",
+      "comunicacao em tempo real com Socket.io",
+    ],
     proximoConteudo: "Back End Development and APIs",
     tipo: "Gratuito",
   },
@@ -8082,9 +8099,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "24 horas",
     idioma: "Inglês",
-    descricao: "Curso interativo que ensina Python 3 do zero, com exercicios escritos diretamente no navegador. Inclui projetos praticos e questionarios ao longo do caminho.",
-    motivoIndicacao: "Python e uma das linguagens mais faceis para iniciantes, e o formato interativo acelera o aprendizado.",
-    oQueAprende: ["sintaxe e tipos de Python", "controle de fluxo e loops", "funcoes e estruturas de dados"],
+    descricao:
+      "Curso interativo que ensina Python 3 do zero, com exercicios escritos diretamente no navegador. Inclui projetos praticos e questionarios ao longo do caminho.",
+    motivoIndicacao:
+      "Python e uma das linguagens mais faceis para iniciantes, e o formato interativo acelera o aprendizado.",
+    oQueAprende: [
+      "sintaxe e tipos de Python",
+      "controle de fluxo e loops",
+      "funcoes e estruturas de dados",
+    ],
     proximoConteudo: "Learn SQL ou Data Analysis with Python",
     tipo: "Gratuito",
   },
@@ -8099,9 +8122,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "7 horas",
     idioma: "Inglês",
-    descricao: "Curso introdutorio sobre HTML, a estrutura de toda pagina web. Voce constroi paginas reais como um blog enquanto aprende.",
-    motivoIndicacao: "E o primeiro passo absoluto de quem nunca tocou em codigo e quer entrar no mundo web.",
-    oQueAprende: ["elementos e estrutura HTML", "tabelas e formularios", "HTML semantico e acessibilidade"],
+    descricao:
+      "Curso introdutorio sobre HTML, a estrutura de toda pagina web. Voce constroi paginas reais como um blog enquanto aprende.",
+    motivoIndicacao:
+      "E o primeiro passo absoluto de quem nunca tocou em codigo e quer entrar no mundo web.",
+    oQueAprende: [
+      "elementos e estrutura HTML",
+      "tabelas e formularios",
+      "HTML semantico e acessibilidade",
+    ],
     proximoConteudo: "Curso de CSS ou Responsive Web Design",
     tipo: "Gratuito",
   },
@@ -8116,9 +8145,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "5 horas",
     idioma: "Inglês",
-    descricao: "Curso pratico de SQL para consultar e manipular bancos de dados. Os exercicios usam conjuntos de dados reais para fixar os conceitos.",
-    motivoIndicacao: "SQL e habilidade obrigatoria para quem trabalha com dados, e este curso vai direto ao ponto.",
-    oQueAprende: ["consultas e filtros SQL", "funcoes de agregacao", "relacionamento entre tabelas"],
+    descricao:
+      "Curso pratico de SQL para consultar e manipular bancos de dados. Os exercicios usam conjuntos de dados reais para fixar os conceitos.",
+    motivoIndicacao:
+      "SQL e habilidade obrigatoria para quem trabalha com dados, e este curso vai direto ao ponto.",
+    oQueAprende: [
+      "consultas e filtros SQL",
+      "funcoes de agregacao",
+      "relacionamento entre tabelas",
+    ],
     proximoConteudo: "Data Analysis with Python",
     tipo: "Gratuito",
   },
@@ -8133,9 +8168,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "4 horas",
     idioma: "Inglês",
-    descricao: "Curso feito em parceria com o GitHub que ensina controle de versao na pratica. Voce aprende fluxos de trabalho usados em times reais.",
-    motivoIndicacao: "Git e GitHub sao usados em praticamente toda equipe de tecnologia, entao isso e indispensavel.",
-    oQueAprende: ["fundamentos de Git", "branches e colaboracao", "fluxos de trabalho no GitHub"],
+    descricao:
+      "Curso feito em parceria com o GitHub que ensina controle de versao na pratica. Voce aprende fluxos de trabalho usados em times reais.",
+    motivoIndicacao:
+      "Git e GitHub sao usados em praticamente toda equipe de tecnologia, entao isso e indispensavel.",
+    oQueAprende: [
+      "fundamentos de Git",
+      "branches e colaboracao",
+      "fluxos de trabalho no GitHub",
+    ],
     proximoConteudo: "Learn the Command Line",
     tipo: "Gratuito",
   },
@@ -8150,9 +8191,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "4 horas",
     idioma: "Inglês",
-    descricao: "Curso que ensina a usar a linha de comando para navegar e manipular arquivos. Habilidade base para devops, back-end e qualquer trabalho com servidores.",
-    motivoIndicacao: "Saber o terminal destrava ferramentas profissionais e e pre-requisito de muitas trilhas tecnicas.",
-    oQueAprende: ["navegacao no sistema de arquivos", "redirecionamento de entrada e saida", "configuracao do ambiente"],
+    descricao:
+      "Curso que ensina a usar a linha de comando para navegar e manipular arquivos. Habilidade base para devops, back-end e qualquer trabalho com servidores.",
+    motivoIndicacao:
+      "Saber o terminal destrava ferramentas profissionais e e pre-requisito de muitas trilhas tecnicas.",
+    oQueAprende: [
+      "navegacao no sistema de arquivos",
+      "redirecionamento de entrada e saida",
+      "configuracao do ambiente",
+    ],
     proximoConteudo: "Learn Git & GitHub",
     tipo: "Gratuito",
   },
@@ -8167,9 +8214,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "3 horas",
     idioma: "Inglês",
-    descricao: "Curso introdutorio que apresenta os conceitos fundamentais de ciberseguranca. Cobre tipos de ameacas, criptografia e protecao de dispositivos.",
-    motivoIndicacao: "Uma porta de entrada rapida e acessivel para quem quer descobrir a area de seguranca.",
-    oQueAprende: ["tipos de ameacas e malware", "criptografia e autenticacao", "seguranca de redes"],
+    descricao:
+      "Curso introdutorio que apresenta os conceitos fundamentais de ciberseguranca. Cobre tipos de ameacas, criptografia e protecao de dispositivos.",
+    motivoIndicacao:
+      "Uma porta de entrada rapida e acessivel para quem quer descobrir a area de seguranca.",
+    oQueAprende: [
+      "tipos de ameacas e malware",
+      "criptografia e autenticacao",
+      "seguranca de redes",
+    ],
     proximoConteudo: "Information Security (freeCodeCamp)",
     tipo: "Gratuito",
   },
@@ -8184,9 +8237,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "6 meses",
     idioma: "Inglês",
-    descricao: "Certificado profissional do Google sobre gestao de projetos tradicional e agil. Ensina a planejar, executar e acompanhar projetos do comeco ao fim.",
-    motivoIndicacao: "Conta horas validas para certificacoes do PMI e abre portas para vagas de gestao de projetos.",
-    oQueAprende: ["ciclo de vida de projetos", "metodologias Agil e Scrum", "gestao de riscos e prazos"],
+    descricao:
+      "Certificado profissional do Google sobre gestao de projetos tradicional e agil. Ensina a planejar, executar e acompanhar projetos do comeco ao fim.",
+    motivoIndicacao:
+      "Conta horas validas para certificacoes do PMI e abre portas para vagas de gestao de projetos.",
+    oQueAprende: [
+      "ciclo de vida de projetos",
+      "metodologias Agil e Scrum",
+      "gestao de riscos e prazos",
+    ],
     proximoConteudo: "Estudar para a certificacao CAPM do PMI",
     tipo: "Pago",
   },
@@ -8201,9 +8260,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "6 meses",
     idioma: "Inglês",
-    descricao: "Certificado profissional do Google que prepara para vagas iniciais em seguranca. Cobre desde fundamentos ate ferramentas SIEM e resposta a incidentes.",
-    motivoIndicacao: "Prepara para o primeiro emprego em seguranca e ainda ajuda na certificacao CompTIA Security+.",
-    oQueAprende: ["seguranca de redes e Linux", "Python e SQL aplicados a seguranca", "deteccao de ameacas e ferramentas SIEM"],
+    descricao:
+      "Certificado profissional do Google que prepara para vagas iniciais em seguranca. Cobre desde fundamentos ate ferramentas SIEM e resposta a incidentes.",
+    motivoIndicacao:
+      "Prepara para o primeiro emprego em seguranca e ainda ajuda na certificacao CompTIA Security+.",
+    oQueAprende: [
+      "seguranca de redes e Linux",
+      "Python e SQL aplicados a seguranca",
+      "deteccao de ameacas e ferramentas SIEM",
+    ],
     proximoConteudo: "Estudar para a certificacao CompTIA Security+",
     tipo: "Pago",
   },
@@ -8218,9 +8283,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "7 meses",
     idioma: "Inglês",
-    descricao: "Certificado profissional da Meta que ensina desenvolvimento front-end do basico ao React. Termina com um projeto de portfolio para entrevistas.",
-    motivoIndicacao: "Ensina React, a biblioteca criada pela propria Meta e muito pedida em vagas de front-end.",
-    oQueAprende: ["HTML, CSS e JavaScript", "React e Bootstrap", "Git e preparo para entrevistas"],
+    descricao:
+      "Certificado profissional da Meta que ensina desenvolvimento front-end do basico ao React. Termina com um projeto de portfolio para entrevistas.",
+    motivoIndicacao:
+      "Ensina React, a biblioteca criada pela propria Meta e muito pedida em vagas de front-end.",
+    oQueAprende: [
+      "HTML, CSS e JavaScript",
+      "React e Bootstrap",
+      "Git e preparo para entrevistas",
+    ],
     proximoConteudo: "Aprofundar em React e construir projetos proprios",
     tipo: "Pago",
   },
@@ -8235,9 +8306,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "2 semanas",
     idioma: "Inglês",
-    descricao: "Curso introdutorio de programacao em Python da Universidade de Michigan, ministrado pelo professor Charles Severance. Ideal para quem nunca programou.",
-    motivoIndicacao: "Um dos cursos de Python para iniciantes mais populares do mundo, didatico e gratuito para assistir.",
-    oQueAprende: ["instalar Python e escrever o primeiro programa", "variaveis e calculos", "funcoes e loops"],
+    descricao:
+      "Curso introdutorio de programacao em Python da Universidade de Michigan, ministrado pelo professor Charles Severance. Ideal para quem nunca programou.",
+    motivoIndicacao:
+      "Um dos cursos de Python para iniciantes mais populares do mundo, didatico e gratuito para assistir.",
+    oQueAprende: [
+      "instalar Python e escrever o primeiro programa",
+      "variaveis e calculos",
+      "funcoes e loops",
+    ],
     proximoConteudo: "Continuar a especializacao Python for Everybody",
     tipo: "Gratuito",
   },
@@ -8252,9 +8329,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "2 semanas",
     idioma: "Inglês",
-    descricao: "Curso oficial da AWS que apresenta os fundamentos de computacao em nuvem. Cobre os principais servicos de computacao, armazenamento e banco de dados.",
-    motivoIndicacao: "AWS lidera o mercado de nuvem, e este curso oficial e uma otima introducao gratuita para assistir.",
-    oQueAprende: ["seguranca e IAM na AWS", "computo com EC2 e Lambda", "armazenamento S3 e bancos de dados"],
+    descricao:
+      "Curso oficial da AWS que apresenta os fundamentos de computacao em nuvem. Cobre os principais servicos de computacao, armazenamento e banco de dados.",
+    motivoIndicacao:
+      "AWS lidera o mercado de nuvem, e este curso oficial e uma otima introducao gratuita para assistir.",
+    oQueAprende: [
+      "seguranca e IAM na AWS",
+      "computo com EC2 e Lambda",
+      "armazenamento S3 e bancos de dados",
+    ],
     proximoConteudo: "Estudar para a certificacao AWS Cloud Practitioner",
     tipo: "Pago",
   },
@@ -8269,9 +8352,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "11 semanas",
     idioma: "Inglês",
-    descricao: "O famoso curso introdutorio de ciencia da computacao de Harvard. Apresenta logica, algoritmos e varias linguagens, do C ao Python e SQL.",
-    motivoIndicacao: "Considerado um dos melhores cursos de introducao a programacao do mundo, e totalmente gratuito para assistir.",
-    oQueAprende: ["fundamentos de algoritmos", "programacao em C, Python e SQL", "desenvolvimento web basico"],
+    descricao:
+      "O famoso curso introdutorio de ciencia da computacao de Harvard. Apresenta logica, algoritmos e varias linguagens, do C ao Python e SQL.",
+    motivoIndicacao:
+      "Considerado um dos melhores cursos de introducao a programacao do mundo, e totalmente gratuito para assistir.",
+    oQueAprende: [
+      "fundamentos de algoritmos",
+      "programacao em C, Python e SQL",
+      "desenvolvimento web basico",
+    ],
     proximoConteudo: "CS50 Web Programming with Python and JavaScript",
     tipo: "Gratuito",
   },
@@ -8286,9 +8375,15 @@ export const cursosGratuitos = [
     nivel: "Intermediário",
     duracao: "12 semanas",
     idioma: "Inglês",
-    descricao: "Continuacao do CS50 voltada para desenvolvimento web fullstack. Voce constroi aplicacoes completas com Python, JavaScript e bancos de dados.",
-    motivoIndicacao: "Aprofunda em desenvolvimento web com Django e React, ideal para quem quer virar fullstack.",
-    oQueAprende: ["Python e Django", "JavaScript e React", "bancos de dados e APIs"],
+    descricao:
+      "Continuacao do CS50 voltada para desenvolvimento web fullstack. Voce constroi aplicacoes completas com Python, JavaScript e bancos de dados.",
+    motivoIndicacao:
+      "Aprofunda em desenvolvimento web com Django e React, ideal para quem quer virar fullstack.",
+    oQueAprende: [
+      "Python e Django",
+      "JavaScript e React",
+      "bancos de dados e APIs",
+    ],
     proximoConteudo: "Construir projetos fullstack proprios",
     tipo: "Gratuito",
   },
@@ -8303,9 +8398,15 @@ export const cursosGratuitos = [
     nivel: "Intermediário",
     duracao: "7 semanas",
     idioma: "Inglês",
-    descricao: "Curso de Harvard que introduz os conceitos por tras da inteligencia artificial usando Python. Aborda busca, aprendizado de maquina e redes neurais.",
-    motivoIndicacao: "Da uma base teorica e pratica solida em IA com a qualidade de ensino de Harvard.",
-    oQueAprende: ["algoritmos de busca", "aprendizado de maquina", "redes neurais e processamento de linguagem"],
+    descricao:
+      "Curso de Harvard que introduz os conceitos por tras da inteligencia artificial usando Python. Aborda busca, aprendizado de maquina e redes neurais.",
+    motivoIndicacao:
+      "Da uma base teorica e pratica solida em IA com a qualidade de ensino de Harvard.",
+    oQueAprende: [
+      "algoritmos de busca",
+      "aprendizado de maquina",
+      "redes neurais e processamento de linguagem",
+    ],
     proximoConteudo: "Machine Learning with Python (freeCodeCamp)",
     tipo: "Gratuito",
   },
@@ -8320,9 +8421,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "8 semanas",
     idioma: "Inglês",
-    descricao: "Curso gratuito da Khan Academy que ensina os fundamentos de programacao em Python. Usa projetos como simulacoes e jogos para aplicar os conceitos.",
-    motivoIndicacao: "Aprendizado totalmente gratuito e guiado, perfeito para quem esta dando os primeiros passos em programacao.",
-    oQueAprende: ["variaveis e logica", "simulacoes e ciencia de dados", "design de jogos com Python"],
+    descricao:
+      "Curso gratuito da Khan Academy que ensina os fundamentos de programacao em Python. Usa projetos como simulacoes e jogos para aplicar os conceitos.",
+    motivoIndicacao:
+      "Aprendizado totalmente gratuito e guiado, perfeito para quem esta dando os primeiros passos em programacao.",
+    oQueAprende: [
+      "variaveis e logica",
+      "simulacoes e ciencia de dados",
+      "design de jogos com Python",
+    ],
     proximoConteudo: "Learn Python 3 (Codecademy) ou Python for Everybody",
     tipo: "Gratuito",
   },
@@ -8337,10 +8444,17 @@ export const cursosGratuitos = [
     nivel: "Intermediário",
     duracao: "Curso completo",
     idioma: "Português",
-    descricao: "Curso de machine learning com aulas práticas em Python apresentado pelo canal Programação Dinâmica. Explica os principais algoritmos de aprendizado de máquina.",
-    motivoIndicacao: "Traz conteúdo de qualidade sobre aprendizado de máquina em português, ponte entre dados e IA.",
-    oQueAprende: ["Conceitos de machine learning", "Regressão e classificação", "Prática com Python"],
-    proximoConteudo: "Estudar deep learning e projetos aplicados de ciência de dados.",
+    descricao:
+      "Curso de machine learning com aulas práticas em Python apresentado pelo canal Programação Dinâmica. Explica os principais algoritmos de aprendizado de máquina.",
+    motivoIndicacao:
+      "Traz conteúdo de qualidade sobre aprendizado de máquina em português, ponte entre dados e IA.",
+    oQueAprende: [
+      "Conceitos de machine learning",
+      "Regressão e classificação",
+      "Prática com Python",
+    ],
+    proximoConteudo:
+      "Estudar deep learning e projetos aplicados de ciência de dados.",
     tipo: "Gratuito",
   },
   {
@@ -8354,9 +8468,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "50+ aulas",
     idioma: "Português",
-    descricao: "Curso completo de Flutter e Dart para desenvolvimento de aplicativos mobile. Vai da configuração do ambiente até a construção de apps para Android e iOS.",
-    motivoIndicacao: "Flutter permite criar apps para várias plataformas com um só código, e este curso é uma referência em português.",
-    oQueAprende: ["Fundamentos de Dart", "Estrutura de projetos Flutter", "Construção de interfaces mobile"],
+    descricao:
+      "Curso completo de Flutter e Dart para desenvolvimento de aplicativos mobile. Vai da configuração do ambiente até a construção de apps para Android e iOS.",
+    motivoIndicacao:
+      "Flutter permite criar apps para várias plataformas com um só código, e este curso é uma referência em português.",
+    oQueAprende: [
+      "Fundamentos de Dart",
+      "Estrutura de projetos Flutter",
+      "Construção de interfaces mobile",
+    ],
     proximoConteudo: "Aprender gerenciamento de estado e integração com APIs.",
     tipo: "Gratuito",
   },
@@ -8371,10 +8491,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "Curso completo",
     idioma: "Português",
-    descricao: "Curso do canal Programador BR voltado para quem está começando na programação e na carreira de desenvolvedor. Mistura fundamentos técnicos com orientação de carreira.",
-    motivoIndicacao: "Une lógica de programação e dicas reais de carreira, útil para quem quer entrar na área de tecnologia.",
-    oQueAprende: ["Fundamentos de programação", "Orientação de carreira", "Primeiros passos como dev"],
-    proximoConteudo: "Aprofundar em uma linguagem específica e montar um portfólio.",
+    descricao:
+      "Curso do canal Programador BR voltado para quem está começando na programação e na carreira de desenvolvedor. Mistura fundamentos técnicos com orientação de carreira.",
+    motivoIndicacao:
+      "Une lógica de programação e dicas reais de carreira, útil para quem quer entrar na área de tecnologia.",
+    oQueAprende: [
+      "Fundamentos de programação",
+      "Orientação de carreira",
+      "Primeiros passos como dev",
+    ],
+    proximoConteudo:
+      "Aprofundar em uma linguagem específica e montar um portfólio.",
     tipo: "Gratuito",
   },
   {
@@ -8388,10 +8515,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Português",
-    descricao: "Curso base que ensina o raciocínio de programação antes de qualquer linguagem, usando Scratch para fixar a lógica de forma visual. Ideal para quem nunca programou e quer construir uma fundação sólida.",
-    motivoIndicacao: "É o ponto de partida perfeito para iniciantes, pois separa a lógica da sintaxe e prepara o aluno para qualquer linguagem depois.",
-    oQueAprende: ["Lógica de programação e algoritmos", "Estruturas condicionais e de repetição", "Vetores, matrizes e funções"],
-    proximoConteudo: "Escolher uma linguagem como Python ou JavaScript para aplicar a lógica aprendida.",
+    descricao:
+      "Curso base que ensina o raciocínio de programação antes de qualquer linguagem, usando Scratch para fixar a lógica de forma visual. Ideal para quem nunca programou e quer construir uma fundação sólida.",
+    motivoIndicacao:
+      "É o ponto de partida perfeito para iniciantes, pois separa a lógica da sintaxe e prepara o aluno para qualquer linguagem depois.",
+    oQueAprende: [
+      "Lógica de programação e algoritmos",
+      "Estruturas condicionais e de repetição",
+      "Vetores, matrizes e funções",
+    ],
+    proximoConteudo:
+      "Escolher uma linguagem como Python ou JavaScript para aplicar a lógica aprendida.",
     tipo: "Gratuito",
   },
   {
@@ -8405,10 +8539,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Português",
-    descricao: "Primeira etapa da famosa série de Python do Curso em Vídeo, que parte do zero absoluto e cobre instalação, variáveis e os primeiros programas. Tem uma didática leve e cheia de exercícios práticos.",
-    motivoIndicacao: "É uma das introduções a Python mais queridas do Brasil, com explicações simples e muita prática para fixar o conteúdo.",
-    oQueAprende: ["Instalação e configuração do Python", "Tipos de dados e operadores", "Condicionais e manipulação de texto"],
-    proximoConteudo: "Seguir para o Python 3 Mundo 2, com estruturas de repetição.",
+    descricao:
+      "Primeira etapa da famosa série de Python do Curso em Vídeo, que parte do zero absoluto e cobre instalação, variáveis e os primeiros programas. Tem uma didática leve e cheia de exercícios práticos.",
+    motivoIndicacao:
+      "É uma das introduções a Python mais queridas do Brasil, com explicações simples e muita prática para fixar o conteúdo.",
+    oQueAprende: [
+      "Instalação e configuração do Python",
+      "Tipos de dados e operadores",
+      "Condicionais e manipulação de texto",
+    ],
+    proximoConteudo:
+      "Seguir para o Python 3 Mundo 2, com estruturas de repetição.",
     tipo: "Gratuito",
   },
   {
@@ -8422,10 +8563,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Português",
-    descricao: "Primeiro módulo da série de desenvolvimento web, explicando como a internet funciona e os fundamentos de HTML5 e CSS3. Cobre desde semântica até inserção de imagens, áudio e vídeo.",
-    motivoIndicacao: "Dá uma base completa de front-end começando do zero, com projeto prático e materiais de apoio em PDF.",
-    oQueAprende: ["Estrutura semântica do HTML5", "Formatação de texto e mídia", "Introdução aos estilos com CSS3"],
-    proximoConteudo: "Avançar para os módulos seguintes de HTML5 e CSS3 e depois JavaScript.",
+    descricao:
+      "Primeiro módulo da série de desenvolvimento web, explicando como a internet funciona e os fundamentos de HTML5 e CSS3. Cobre desde semântica até inserção de imagens, áudio e vídeo.",
+    motivoIndicacao:
+      "Dá uma base completa de front-end começando do zero, com projeto prático e materiais de apoio em PDF.",
+    oQueAprende: [
+      "Estrutura semântica do HTML5",
+      "Formatação de texto e mídia",
+      "Introdução aos estilos com CSS3",
+    ],
+    proximoConteudo:
+      "Avançar para os módulos seguintes de HTML5 e CSS3 e depois JavaScript.",
     tipo: "Gratuito",
   },
   {
@@ -8439,10 +8587,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Português",
-    descricao: "Curso que ensina JavaScript do zero, da sintaxe básica à manipulação do DOM e eventos. Avança até arrays e funções, sempre com exercícios e desafios práticos.",
-    motivoIndicacao: "Complementa a base de HTML e CSS adicionando interatividade, essencial para qualquer pessoa de front-end.",
-    oQueAprende: ["Variáveis, tipos e operadores", "Manipulação do DOM e eventos", "Arrays e funções em JavaScript"],
-    proximoConteudo: "Estudar um framework como React ou aprofundar em JavaScript moderno (ES6+).",
+    descricao:
+      "Curso que ensina JavaScript do zero, da sintaxe básica à manipulação do DOM e eventos. Avança até arrays e funções, sempre com exercícios e desafios práticos.",
+    motivoIndicacao:
+      "Complementa a base de HTML e CSS adicionando interatividade, essencial para qualquer pessoa de front-end.",
+    oQueAprende: [
+      "Variáveis, tipos e operadores",
+      "Manipulação do DOM e eventos",
+      "Arrays e funções em JavaScript",
+    ],
+    proximoConteudo:
+      "Estudar um framework como React ou aprofundar em JavaScript moderno (ES6+).",
     tipo: "Gratuito",
   },
   {
@@ -8456,10 +8611,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Português",
-    descricao: "Curso de banco de dados relacional com MySQL, do conceito de tabelas às consultas com JOIN. Explica cada conceito de forma simples para quem está começando com dados.",
-    motivoIndicacao: "Ensina os fundamentos de banco de dados de forma acessível, habilidade que serve para back-end e dados.",
-    oQueAprende: ["Criação e modelagem de tabelas", "Comandos INSERT, UPDATE e DELETE", "Consultas SELECT e JOIN"],
-    proximoConteudo: "Praticar consultas mais avançadas e estudar modelagem de dados.",
+    descricao:
+      "Curso de banco de dados relacional com MySQL, do conceito de tabelas às consultas com JOIN. Explica cada conceito de forma simples para quem está começando com dados.",
+    motivoIndicacao:
+      "Ensina os fundamentos de banco de dados de forma acessível, habilidade que serve para back-end e dados.",
+    oQueAprende: [
+      "Criação e modelagem de tabelas",
+      "Comandos INSERT, UPDATE e DELETE",
+      "Consultas SELECT e JOIN",
+    ],
+    proximoConteudo:
+      "Praticar consultas mais avançadas e estudar modelagem de dados.",
     tipo: "Gratuito",
   },
   {
@@ -8473,10 +8635,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "20 horas",
     idioma: "Português",
-    descricao: "Curso voltado a iniciantes que ensina controle de versão com Git e colaboração no GitHub. Cobre desde criação de repositórios até branches e publicação com GitHub Pages.",
-    motivoIndicacao: "Versionamento é obrigatório no mercado, e este curso ensina a usar Git e GitHub de forma prática e organizada.",
-    oQueAprende: ["Conceitos de controle de versão", "Repositórios, commits e branches", "Publicação com GitHub Pages"],
-    proximoConteudo: "Aprender fluxos de trabalho em equipe e pull requests no dia a dia.",
+    descricao:
+      "Curso voltado a iniciantes que ensina controle de versão com Git e colaboração no GitHub. Cobre desde criação de repositórios até branches e publicação com GitHub Pages.",
+    motivoIndicacao:
+      "Versionamento é obrigatório no mercado, e este curso ensina a usar Git e GitHub de forma prática e organizada.",
+    oQueAprende: [
+      "Conceitos de controle de versão",
+      "Repositórios, commits e branches",
+      "Publicação com GitHub Pages",
+    ],
+    proximoConteudo:
+      "Aprender fluxos de trabalho em equipe e pull requests no dia a dia.",
     tipo: "Gratuito",
   },
   {
@@ -8490,10 +8659,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Português",
-    descricao: "Curso introdutório ao Linux que vai da instalação do sistema até os comandos essenciais de terminal. Usa o Linux Mint e exemplos práticos para quem está começando.",
-    motivoIndicacao: "Saber Linux e terminal abre portas em infraestrutura, DevOps e desenvolvimento em geral.",
-    oQueAprende: ["Conceitos e história do Linux", "Instalação e ambiente do sistema", "Comandos de terminal e arquivos"],
-    proximoConteudo: "Aprofundar em scripts shell e administração de servidores.",
+    descricao:
+      "Curso introdutório ao Linux que vai da instalação do sistema até os comandos essenciais de terminal. Usa o Linux Mint e exemplos práticos para quem está começando.",
+    motivoIndicacao:
+      "Saber Linux e terminal abre portas em infraestrutura, DevOps e desenvolvimento em geral.",
+    oQueAprende: [
+      "Conceitos e história do Linux",
+      "Instalação e ambiente do sistema",
+      "Comandos de terminal e arquivos",
+    ],
+    proximoConteudo:
+      "Aprofundar em scripts shell e administração de servidores.",
     tipo: "Gratuito",
   },
   {
@@ -8507,10 +8683,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "20 horas",
     idioma: "Português",
-    descricao: "Módulo inicial sobre segurança da informação, apresentando os pilares de confidencialidade, integridade e disponibilidade. Aborda boas práticas de senhas, proteção de dispositivos e prevenção de fraudes.",
-    motivoIndicacao: "Uma porta de entrada acessível para cibersegurança, com foco em hábitos seguros que todo profissional de tech deveria ter.",
-    oQueAprende: ["Pilares da segurança da informação", "Boas práticas de senhas", "Prevenção de fraudes digitais"],
-    proximoConteudo: "Continuar nos módulos seguintes da série de Segurança da Informação.",
+    descricao:
+      "Módulo inicial sobre segurança da informação, apresentando os pilares de confidencialidade, integridade e disponibilidade. Aborda boas práticas de senhas, proteção de dispositivos e prevenção de fraudes.",
+    motivoIndicacao:
+      "Uma porta de entrada acessível para cibersegurança, com foco em hábitos seguros que todo profissional de tech deveria ter.",
+    oQueAprende: [
+      "Pilares da segurança da informação",
+      "Boas práticas de senhas",
+      "Prevenção de fraudes digitais",
+    ],
+    proximoConteudo:
+      "Continuar nos módulos seguintes da série de Segurança da Informação.",
     tipo: "Gratuito",
   },
   {
@@ -8524,10 +8707,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "40 horas",
     idioma: "Português",
-    descricao: "Curso prático de inteligência artificial que parte dos fundamentos e história até o uso de ferramentas como ChatGPT e geração de imagens. Não exige matemática avançada, focando em aplicação real.",
-    motivoIndicacao: "Apresenta IA de forma prática e atual, ótimo para quem quer entender e usar essas ferramentas no dia a dia.",
-    oQueAprende: ["Fundamentos de IA e machine learning", "Engenharia de prompt", "Aplicações com ChatGPT e geração de imagens"],
-    proximoConteudo: "Seguir para o Módulo 02 e estudar Python aplicado a dados e IA.",
+    descricao:
+      "Curso prático de inteligência artificial que parte dos fundamentos e história até o uso de ferramentas como ChatGPT e geração de imagens. Não exige matemática avançada, focando em aplicação real.",
+    motivoIndicacao:
+      "Apresenta IA de forma prática e atual, ótimo para quem quer entender e usar essas ferramentas no dia a dia.",
+    oQueAprende: [
+      "Fundamentos de IA e machine learning",
+      "Engenharia de prompt",
+      "Aplicações com ChatGPT e geração de imagens",
+    ],
+    proximoConteudo:
+      "Seguir para o Módulo 02 e estudar Python aplicado a dados e IA.",
     tipo: "Gratuito",
   },
   {
@@ -8541,10 +8731,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "5 horas",
     idioma: "Português",
-    descricao: "Curso da DIO que apresenta a linguagem Python de forma prática, cobrindo desde variáveis e condicionais até classes e manipulação de arquivos. Foca em construir base com projetos.",
-    motivoIndicacao: "Boa introdução a Python com certificado de referência da DIO, plataforma reconhecida no mercado tech.",
-    oQueAprende: ["Variáveis e operadores", "Estruturas de dados e laços", "Programação orientada a objetos"],
-    proximoConteudo: "Entrar em um bootcamp de Python ou estudar bibliotecas como Pandas.",
+    descricao:
+      "Curso da DIO que apresenta a linguagem Python de forma prática, cobrindo desde variáveis e condicionais até classes e manipulação de arquivos. Foca em construir base com projetos.",
+    motivoIndicacao:
+      "Boa introdução a Python com certificado de referência da DIO, plataforma reconhecida no mercado tech.",
+    oQueAprende: [
+      "Variáveis e operadores",
+      "Estruturas de dados e laços",
+      "Programação orientada a objetos",
+    ],
+    proximoConteudo:
+      "Entrar em um bootcamp de Python ou estudar bibliotecas como Pandas.",
     tipo: "Gratuito",
   },
   {
@@ -8558,9 +8755,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "3 horas",
     idioma: "Português",
-    descricao: "Curso da DIO sobre controle de versão, explicando como o Git funciona internamente e os primeiros comandos. Aborda o ciclo de vida dos arquivos e resolução de conflitos no GitHub.",
-    motivoIndicacao: "Ensina versionamento de forma direta e com certificado DIO, habilidade essencial em qualquer time de tecnologia.",
-    oQueAprende: ["Funcionamento interno do Git", "Primeiros comandos e ciclo de arquivos", "Resolução de conflitos no GitHub"],
+    descricao:
+      "Curso da DIO sobre controle de versão, explicando como o Git funciona internamente e os primeiros comandos. Aborda o ciclo de vida dos arquivos e resolução de conflitos no GitHub.",
+    motivoIndicacao:
+      "Ensina versionamento de forma direta e com certificado DIO, habilidade essencial em qualquer time de tecnologia.",
+    oQueAprende: [
+      "Funcionamento interno do Git",
+      "Primeiros comandos e ciclo de arquivos",
+      "Resolução de conflitos no GitHub",
+    ],
     proximoConteudo: "Praticar branches e pull requests em projetos reais.",
     tipo: "Gratuito",
   },
@@ -8575,10 +8778,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "4 horas",
     idioma: "Português",
-    descricao: "Curso da DIO que ensina a criar sites do zero com HTML5 e CSS3, da semântica à estilização de elementos. Aborda imagens, listas, links e alinhamento de layout.",
-    motivoIndicacao: "Introdução prática ao front-end com certificado DIO, perfeita para quem quer publicar a primeira página.",
-    oQueAprende: ["Semântica e estrutura HTML", "Imagens, links e listas", "Estilização e alinhamento com CSS3"],
-    proximoConteudo: "Estudar JavaScript para adicionar interatividade às páginas.",
+    descricao:
+      "Curso da DIO que ensina a criar sites do zero com HTML5 e CSS3, da semântica à estilização de elementos. Aborda imagens, listas, links e alinhamento de layout.",
+    motivoIndicacao:
+      "Introdução prática ao front-end com certificado DIO, perfeita para quem quer publicar a primeira página.",
+    oQueAprende: [
+      "Semântica e estrutura HTML",
+      "Imagens, links e listas",
+      "Estilização e alinhamento com CSS3",
+    ],
+    proximoConteudo:
+      "Estudar JavaScript para adicionar interatividade às páginas.",
     tipo: "Gratuito",
   },
   {
@@ -8592,9 +8802,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "4 horas",
     idioma: "Português",
-    descricao: "Curso da DIO focado em CSS, cobrindo seletores, combinadores e propriedades de dimensionamento e espaçamento. Tem abordagem prática e baseada em projetos.",
-    motivoIndicacao: "Aprofunda o CSS de quem já viu o básico, com badge e certificado da DIO ao final.",
-    oQueAprende: ["Seletores e combinadores", "Dimensionamento e espaçamento", "Boas práticas de estilização"],
+    descricao:
+      "Curso da DIO focado em CSS, cobrindo seletores, combinadores e propriedades de dimensionamento e espaçamento. Tem abordagem prática e baseada em projetos.",
+    motivoIndicacao:
+      "Aprofunda o CSS de quem já viu o básico, com badge e certificado da DIO ao final.",
+    oQueAprende: [
+      "Seletores e combinadores",
+      "Dimensionamento e espaçamento",
+      "Boas práticas de estilização",
+    ],
     proximoConteudo: "Estudar layouts modernos com Flexbox e Grid.",
     tipo: "Gratuito",
   },
@@ -8609,9 +8825,15 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "2 horas",
     idioma: "Português",
-    descricao: "Curso da DIO que apresenta o básico de SQL para quem quer começar a trabalhar com bancos de dados. Foca nos fundamentos para consultar e manipular dados.",
-    motivoIndicacao: "Introdução rápida e objetiva ao SQL, base essencial para carreiras em dados e back-end.",
-    oQueAprende: ["Conceitos de bancos de dados", "Comandos básicos de SQL", "Consultas iniciais"],
+    descricao:
+      "Curso da DIO que apresenta o básico de SQL para quem quer começar a trabalhar com bancos de dados. Foca nos fundamentos para consultar e manipular dados.",
+    motivoIndicacao:
+      "Introdução rápida e objetiva ao SQL, base essencial para carreiras em dados e back-end.",
+    oQueAprende: [
+      "Conceitos de bancos de dados",
+      "Comandos básicos de SQL",
+      "Consultas iniciais",
+    ],
     proximoConteudo: "Aprender modelagem de dados e consultas com JOIN.",
     tipo: "Gratuito",
   },
@@ -8626,10 +8848,17 @@ export const cursosGratuitos = [
     nivel: "Intermediário",
     duracao: "4 horas",
     idioma: "Português",
-    descricao: "Curso da DIO sobre os fundamentos de engenharia de dados usando a plataforma Azure, da ingestão ao processamento. Cobre ferramentas como HDInsight e Stream Analytics.",
-    motivoIndicacao: "Conecta dados e nuvem em um cenário cada vez mais demandado, com certificação da DIO.",
-    oQueAprende: ["Visão geral de engenharia de dados", "Ingestão e armazenamento na Azure", "Processamento com HDInsight e Stream Analytics"],
-    proximoConteudo: "Praticar pipelines de dados e aprofundar em serviços Azure.",
+    descricao:
+      "Curso da DIO sobre os fundamentos de engenharia de dados usando a plataforma Azure, da ingestão ao processamento. Cobre ferramentas como HDInsight e Stream Analytics.",
+    motivoIndicacao:
+      "Conecta dados e nuvem em um cenário cada vez mais demandado, com certificação da DIO.",
+    oQueAprende: [
+      "Visão geral de engenharia de dados",
+      "Ingestão e armazenamento na Azure",
+      "Processamento com HDInsight e Stream Analytics",
+    ],
+    proximoConteudo:
+      "Praticar pipelines de dados e aprofundar em serviços Azure.",
     tipo: "Gratuito",
   },
   {
@@ -8643,9 +8872,15 @@ export const cursosGratuitos = [
     nivel: "Intermediário",
     duracao: "3 horas",
     idioma: "Português",
-    descricao: "Curso da DIO que mostra como configurar e fazer deploy de aplicações na nuvem Microsoft Azure. Aborda automação com CI e CD para otimizar entregas.",
-    motivoIndicacao: "Apresenta conceitos de nuvem e deploy com Azure, área com forte demanda no mercado.",
-    oQueAprende: ["Conceitos de nuvem e Azure", "Deploy de aplicações", "Automação com CI e CD"],
+    descricao:
+      "Curso da DIO que mostra como configurar e fazer deploy de aplicações na nuvem Microsoft Azure. Aborda automação com CI e CD para otimizar entregas.",
+    motivoIndicacao:
+      "Apresenta conceitos de nuvem e deploy com Azure, área com forte demanda no mercado.",
+    oQueAprende: [
+      "Conceitos de nuvem e Azure",
+      "Deploy de aplicações",
+      "Automação com CI e CD",
+    ],
     proximoConteudo: "Estudar certificações Azure como o AZ-900.",
     tipo: "Gratuito",
   },
@@ -8660,10 +8895,17 @@ export const cursosGratuitos = [
     nivel: "Iniciante",
     duracao: "2 horas",
     idioma: "Português",
-    descricao: "Curso gratuito da Escola Virtual da Fundação Bradesco que guia a construção de um site simples do início ao fim. Cobre estrutura HTML, estilização com CSS e interatividade com JavaScript.",
-    motivoIndicacao: "Curso curto e gratuito com certificado oficial da Fundação Bradesco, ótimo para um primeiro projeto web completo.",
-    oQueAprende: ["Estrutura de uma aplicação web", "Estilização com CSS", "Interatividade com JavaScript"],
-    proximoConteudo: "Aprofundar em cada tecnologia separadamente e criar projetos maiores.",
+    descricao:
+      "Curso gratuito da Escola Virtual da Fundação Bradesco que guia a construção de um site simples do início ao fim. Cobre estrutura HTML, estilização com CSS e interatividade com JavaScript.",
+    motivoIndicacao:
+      "Curso curto e gratuito com certificado oficial da Fundação Bradesco, ótimo para um primeiro projeto web completo.",
+    oQueAprende: [
+      "Estrutura de uma aplicação web",
+      "Estilização com CSS",
+      "Interatividade com JavaScript",
+    ],
+    proximoConteudo:
+      "Aprofundar em cada tecnologia separadamente e criar projetos maiores.",
     tipo: "Gratuito",
   },
   {
@@ -9247,8 +9489,7 @@ export const cursosGratuitos = [
   {
     id: "backend-12",
     certificate: "nao",
-    titulo:
-      "Canal freeCodeCamp em Português - Cursos de Programação e Backend",
+    titulo: "Canal freeCodeCamp em Português - Cursos de Programação e Backend",
     canal: "freeCodeCamp em Português",
     plataforma: "YouTube",
     link: "https://www.youtube.com/@freecodecampemportugues",
@@ -9341,7 +9582,8 @@ export const cursosGratuitos = [
       "MongoDB e Mongoose",
       "Construção de microsserviços",
     ],
-    proximoConteudo: "Formação Full-Stack da Rocketseat ou projeto MERN completo",
+    proximoConteudo:
+      "Formação Full-Stack da Rocketseat ou projeto MERN completo",
   },
   {
     id: "fullstack-4",
@@ -9770,67 +10012,1370 @@ export const cursosGratuitos = [
     ],
     proximoConteudo: "Introdução ao Teste de Software (USP) no Coursera",
   },
-  { id: "kaggle-python-dados", certificate: "sim", titulo: "Python", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/python", areaSlug: "dados" as string | null, nivel: "Iniciante", duracao: "Cerca de 5 horas", idioma: "Inglês", descricao: "Curso introdutorio que cobre a linguagem mais usada na area de dados, do zero ate funcoes, listas, loops e bibliotecas externas, tudo em notebooks praticos.", motivoIndicacao: "E o ponto de partida natural para quem ainda nao programa e quer entrar em dados, ja preparando o terreno para Pandas e analise.", oQueAprende: ["Sintaxe basica, variaveis e tipos em Python", "Funcoes, condicionais e estruturas de repeticao", "Listas, dicionarios e uso de bibliotecas externas"], proximoConteudo: "Pandas (Kaggle Learn)" },
-  { id: "kaggle-intro-programming-dados", certificate: "sim", titulo: "Intro to Programming", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/intro-to-programming", areaSlug: "dados" as string | null, nivel: "Iniciante", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Trilha para quem nunca escreveu uma linha de codigo, apresentando logica de programacao e os primeiros passos com Python de forma guiada.", motivoIndicacao: "Indicado para iniciantes absolutos que sentem que o curso de Python ja pressupoe alguma base; aqui o ritmo e mais lento.", oQueAprende: ["Conceitos de variaveis e calculos", "Funcoes e condicionais do zero", "Introducao a listas e ao pensamento computacional"], proximoConteudo: "Python (Kaggle Learn)" },
-  { id: "fcc-py-analise-dados-br", certificate: "sim", titulo: "Analise de Dados com Python", canal: "freeCodeCamp", plataforma: "freeCodeCamp (em portugues)", link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python", areaSlug: "dados" as string | null, nivel: "Intermediário", duracao: "Aprox. 30 horas (autoinstrucional)", idioma: "Português", descricao: "Certificacao do freeCodeCamp, em portugues, que ensina a ler, limpar e analisar dados usando Python com NumPy e Pandas, com projetos avaliados ao final.", motivoIndicacao: "Reune teoria e pratica em portugues, com emissao de certificacao gratuita, algo raro em conteudo desse nivel.", oQueAprende: ["Leitura de dados de CSV, Excel e SQL", "Manipulacao com NumPy e Pandas", "Projetos praticos de analise para certificacao"], proximoConteudo: "Visualizacao de dados com Pandas e Matplotlib" },
-  { id: "hashtag-canal-programacao-dados", certificate: "nao", titulo: "Canal Hashtag Programacao", canal: "Hashtag Programacao", plataforma: "YouTube", link: "https://www.youtube.com/@HashtagProgramacao", areaSlug: "dados" as string | null, nivel: "Iniciante", duracao: "Conteudo continuo", idioma: "Português", descricao: "Canal brasileiro com aulas e mini cursos gratuitos de Python, SQL e ciencia de dados, com foco pratico em projetos reais e didatica direta.", motivoIndicacao: "Boa fonte em portugues para complementar os estudos com exemplos aplicados ao mercado, sem custo.", oQueAprende: ["Fundamentos de Python aplicados a dados", "Uso de Pandas e Jupyter na pratica", "Construcao de projetos de analise e automacao"], proximoConteudo: "Curso de analise de dados com Python da propria Hashtag" },
-  { id: "fcc-canal-portugues-dados", certificate: "nao", titulo: "Canal freeCodeCamp em Portugues", canal: "freeCodeCamp em Portugues", plataforma: "YouTube", link: "https://www.youtube.com/@freecodecampemportugues", areaSlug: "dados" as string | null, nivel: "Iniciante", duracao: "Conteudo continuo (cursos completos)", idioma: "Português", descricao: "Canal oficial do freeCodeCamp em portugues, com cursos completos dublados ou produzidos em portugues sobre programacao, dados e ciencia da computacao.", motivoIndicacao: "Traz o conteudo serio do freeCodeCamp para quem prefere estudar em portugues, de forma totalmente gratuita.", oQueAprende: ["Logica e fundamentos de programacao", "Introducao a dados e ferramentas", "Trilhas completas em video"], proximoConteudo: "Certificacoes em portugues no site do freeCodeCamp" },
-  { id: "bradesco-intro-analise-dados-powerbi", certificate: "sim", titulo: "Introducao a Analise de Dados - Microsoft Power BI", canal: "Fundacao Bradesco / Microsoft", plataforma: "Escola Virtual (Fundacao Bradesco)", link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi", areaSlug: "analise-dados" as string | null, nivel: "Iniciante", duracao: "5 horas", idioma: "Português", descricao: "Curso que apresenta o papel do analista de dados, as categorias de analise e os blocos de construcao do Power BI, com conteudo produzido pela Microsoft.", motivoIndicacao: "Otimo primeiro contato com a carreira de analise de dados, gratuito, em portugues e com certificado emitido apos aprovacao.", oQueAprende: ["Dados, informacoes e tipos de analise", "Funcoes exercidas por quem trabalha com dados", "Primeiros passos no servico do Power BI"], proximoConteudo: "Analise de Dados no Power BI (Escola Virtual)" },
-  { id: "fcc-py-analise-dados-analise", certificate: "sim", titulo: "Analise de Dados com Python", canal: "freeCodeCamp", plataforma: "freeCodeCamp (em portugues)", link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python", areaSlug: "analise-dados" as string | null, nivel: "Intermediário", duracao: "Aprox. 30 horas (autoinstrucional)", idioma: "Português", descricao: "Certificacao em portugues focada em transformar dados brutos em insights usando Python, com enfase em limpeza, transformacao e analise com Pandas.", motivoIndicacao: "Para quem quer sair do Power BI e analisar dados com codigo, e a opcao gratuita mais completa em portugues com certificacao.", oQueAprende: ["Importacao e limpeza de dados", "Analise exploratoria com Pandas e NumPy", "Projetos de analise avaliados"], proximoConteudo: "Visualizacao de dados (Kaggle Learn)" },
-  { id: "kaggle-pandas-analise", certificate: "sim", titulo: "Pandas", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/pandas", areaSlug: "analise-dados" as string | null, nivel: "Intermediário", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso pratico, em desafios curtos, para dominar manipulacao de dados tabulares com a biblioteca Pandas.", motivoIndicacao: "Pandas e a ferramenta central do dia a dia do analista; este curso e direto ao ponto e gratuito.", oQueAprende: ["Criacao e leitura de DataFrames", "Selecao, filtragem e agrupamento de dados", "Tratamento de valores ausentes e combinacao de tabelas"], proximoConteudo: "Data Cleaning (Kaggle Learn)" },
-  { id: "kaggle-data-viz-analise", certificate: "sim", titulo: "Data Visualization", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/data-visualization", areaSlug: "analise-dados" as string | null, nivel: "Iniciante", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso para criar visualizacoes com a biblioteca Seaborn, cobrindo graficos de linha, dispersao, barras e distribuicoes.", motivoIndicacao: "Saber visualizar e parte essencial da analise; o curso entrega resultados visuais rapidos e bem fundamentados.", oQueAprende: ["Graficos de linha, barra e dispersao", "Visualizacao de distribuicoes", "Escolha do grafico certo para cada dado"], proximoConteudo: "Pandas (Kaggle Learn)" },
-  { id: "kaggle-data-cleaning-analise", certificate: "sim", titulo: "Data Cleaning", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/data-cleaning", areaSlug: "analise-dados" as string | null, nivel: "Intermediário", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso dedicado a limpeza de dados: valores ausentes, escalonamento, inconsistencias de texto e problemas de codificacao e datas.", motivoIndicacao: "Limpeza costuma consumir a maior parte do tempo de um analista, e poucos cursos gratuitos tratam o tema com essa profundidade.", oQueAprende: ["Tratamento de dados faltantes", "Normalizacao e escalonamento", "Correcao de datas, encoding e entradas inconsistentes"], proximoConteudo: "Feature Engineering (Kaggle Learn)" },
-  { id: "hashtag-canal-analise-dados", certificate: "nao", titulo: "Canal Hashtag Programacao", canal: "Hashtag Programacao", plataforma: "YouTube", link: "https://www.youtube.com/@HashtagProgramacao", areaSlug: "analise-dados" as string | null, nivel: "Iniciante", duracao: "Conteudo continuo", idioma: "Português", descricao: "Canal brasileiro com aulas gratuitas de analise de dados usando Python, Pandas e Jupyter, com projetos aplicados a situacoes reais.", motivoIndicacao: "Complemento pratico em portugues para fixar a teoria com exemplos do mercado brasileiro.", oQueAprende: ["Analise de dados com Pandas", "Uso do Jupyter na pratica", "Mini projetos de analise"], proximoConteudo: "Curso de analise de dados com Python da Hashtag" },
-  { id: "ms-learn-plano-analista-dados", certificate: "nao_informado", titulo: "Treinamento para analistas de dados (plano de carreira)", canal: "Microsoft Learn", plataforma: "Microsoft Learn", link: "https://learn.microsoft.com/pt-br/training/career-paths/data-analyst", areaSlug: "analista-dados" as string | null, nivel: "Iniciante", duracao: "Trilha com varios modulos (autoinstrucional)", idioma: "Português", descricao: "Plano de carreira oficial da Microsoft, em portugues, que reune modulos para formar um analista de dados com foco em Power BI.", motivoIndicacao: "Trilha gratuita, estruturada e em portugues, que organiza o aprendizado do iniciante ate a preparacao para certificacao.", oQueAprende: ["Perfilamento, limpeza e transformacao de dados", "Modelagem de dados no Power BI", "Criacao de relatorios e recursos analiticos"], proximoConteudo: "Avaliacao pratica do exame PL-300" },
-  { id: "dio-power-bi-analista-dados", certificate: "sim", titulo: "Formacao Power BI Analyst", canal: "DIO", plataforma: "DIO", link: "https://www.dio.me/curso-power-bi", areaSlug: "analista-dados" as string | null, nivel: "Iniciante", duracao: "Formacao com varios modulos e projetos", idioma: "Português", descricao: "Formacao gratuita em portugues que leva da fundamentacao em BI ate modelagem, DAX, storytelling e gerenciamento de workspaces no Power BI.", motivoIndicacao: "Combina teoria, projetos para portfolio e certificado, sendo uma trilha completa de analista de BI sem custo.", oQueAprende: ["Fundamentos de analise de dados e BI", "Modelagem e transformacao com DAX e Power Query", "Construcao de dashboards e storytelling com dados"], proximoConteudo: "Construcao de um dashboard de vendas para portfolio" },
-  { id: "bradesco-intro-analise-analista-dados", certificate: "sim", titulo: "Introducao a Analise de Dados - Microsoft Power BI", canal: "Fundacao Bradesco / Microsoft", plataforma: "Escola Virtual (Fundacao Bradesco)", link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi", areaSlug: "analista-dados" as string | null, nivel: "Iniciante", duracao: "5 horas", idioma: "Português", descricao: "Curso introdutorio sobre o papel do analista de dados e as ferramentas do Power BI, com conteudo produzido pela Microsoft.", motivoIndicacao: "Apresenta de forma rapida e gratuita o que faz um analista de dados, com certificado ao final.", oQueAprende: ["Atribuicoes e tarefas do analista de dados", "Categorias de analise de dados", "Uso inicial do Power BI"], proximoConteudo: "Analise de Dados no Power BI (Escola Virtual)" },
-  { id: "fcc-py-analise-dados-analista", certificate: "sim", titulo: "Analise de Dados com Python", canal: "freeCodeCamp", plataforma: "freeCodeCamp (em portugues)", link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python", areaSlug: "analista-dados" as string | null, nivel: "Intermediário", duracao: "Aprox. 30 horas (autoinstrucional)", idioma: "Português", descricao: "Certificacao gratuita em portugues que ensina o analista a trabalhar dados com Python, da importacao a analise exploratoria.", motivoIndicacao: "Para o analista que quer ir alem das ferramentas visuais e analisar dados com codigo, com certificacao gratuita.", oQueAprende: ["Leitura e limpeza de dados", "Analise exploratoria com Pandas", "Projetos avaliados"], proximoConteudo: "Visualizacao de dados (Kaggle Learn)" },
-  { id: "kaggle-data-viz-analista", certificate: "sim", titulo: "Data Visualization", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/data-visualization", areaSlug: "analista-dados" as string | null, nivel: "Iniciante", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso pratico de visualizacao de dados com Seaborn, ensinando a escolher e construir os graficos mais comuns.", motivoIndicacao: "Visualizacao e parte central do trabalho do analista; o curso e curto, pratico e gratuito.", oQueAprende: ["Graficos de linha, barra e dispersao", "Distribuicoes e comparacoes", "Boas praticas de escolha de grafico"], proximoConteudo: "Pandas (Kaggle Learn)" },
-  { id: "dio-power-bi-analista-bi", certificate: "sim", titulo: "Formacao Power BI Analyst", canal: "DIO", plataforma: "DIO", link: "https://www.dio.me/curso-power-bi", areaSlug: "analista-bi" as string | null, nivel: "Iniciante", duracao: "Formacao com varios modulos e projetos", idioma: "Português", descricao: "Formacao gratuita em portugues voltada a formar analistas de BI, cobrindo visualizacao, processamento, modelagem e gestao no Power BI.", motivoIndicacao: "E uma das trilhas gratuitas mais completas de BI em portugues, com projetos para portfolio e certificado.", oQueAprende: ["Fundamentos de BI e analise de dados", "Modelagem com DAX e Power Query", "Dashboards, storytelling e gestao de workspaces"], proximoConteudo: "Modelagem e transformacao de dados para portfolio" },
-  { id: "bradesco-analise-dados-powerbi-bi", certificate: "sim", titulo: "Analise de Dados no Power BI", canal: "Fundacao Bradesco / Microsoft", plataforma: "Escola Virtual (Fundacao Bradesco)", link: "https://www.ev.org.br/cursos/analise-de-dados-no-power-bi", areaSlug: "analista-bi" as string | null, nivel: "Avançado", duracao: "4 horas", idioma: "Português", descricao: "Curso avancado da trilha de Power BI da Escola Virtual, com recursos de IA como Principais Influenciadores, Arvore Hierarquica e Perguntas e Respostas.", motivoIndicacao: "Aprofunda recursos analiticos do Power BI que vao alem do basico, de graca e em portugues, com certificado.", oQueAprende: ["Visuais de IA no Power BI", "Analise de causa raiz com Arvore Hierarquica", "Apresentacao coesa de relatorios"], proximoConteudo: "Pratica com datasets proprios no Power BI" },
-  { id: "bradesco-intro-analise-bi", certificate: "sim", titulo: "Introducao a Analise de Dados - Microsoft Power BI", canal: "Fundacao Bradesco / Microsoft", plataforma: "Escola Virtual (Fundacao Bradesco)", link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi", areaSlug: "analista-bi" as string | null, nivel: "Iniciante", duracao: "5 horas", idioma: "Português", descricao: "Porta de entrada da trilha de Power BI, apresentando o papel do analista e os blocos de construcao da ferramenta.", motivoIndicacao: "Ideal como primeiro modulo antes do curso avancado de Power BI, gratuito e com certificado.", oQueAprende: ["Conceitos de dados e analise", "Funcoes na area de dados", "Servico e ferramentas do Power BI"], proximoConteudo: "Analise de Dados no Power BI (Escola Virtual)" },
-  { id: "ms-learn-analista-bi", certificate: "nao_informado", titulo: "Treinamento para analistas de dados (plano de carreira)", canal: "Microsoft Learn", plataforma: "Microsoft Learn", link: "https://learn.microsoft.com/pt-br/training/career-paths/data-analyst", areaSlug: "analista-bi" as string | null, nivel: "Intermediário", duracao: "Trilha com varios modulos (autoinstrucional)", idioma: "Português", descricao: "Plano de carreira da Microsoft em portugues centrado em Power BI, com modulos de modelagem, visualizacao e relatorios.", motivoIndicacao: "Trilha oficial e gratuita que prepara o analista de BI inclusive para a certificacao PL-300.", oQueAprende: ["Modelagem de dados escalavel", "Recursos analiticos avancados em relatorios", "Preparo para certificacao PL-300"], proximoConteudo: "Avaliacao pratica do exame PL-300" },
-  { id: "kaggle-advanced-sql-ae", certificate: "sim", titulo: "Advanced SQL", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/advanced-sql", areaSlug: "analytics-engineer" as string | null, nivel: "Avançado", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso de SQL avancado sobre BigQuery, com JOINs e UNIONs complexos, funcoes analiticas e tecnicas para consultas eficientes em grande escala.", motivoIndicacao: "SQL avancado e a competencia central do analytics engineer; o curso e gratuito e direto ao que a funcao exige.", oQueAprende: ["JOINs e UNIONs avancados", "Funcoes analiticas e janelas", "Consultas otimizadas em dados grandes"], proximoConteudo: "Modulos de modelagem e transformacao em data warehouse" },
-  { id: "kaggle-intro-sql-ae", certificate: "sim", titulo: "Intro to SQL", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/intro-to-sql", areaSlug: "analytics-engineer" as string | null, nivel: "Intermediário", duracao: "Cerca de 3 horas", idioma: "Inglês", descricao: "Curso introdutorio de SQL usando Google BigQuery, do SELECT basico a agrupamentos e ordenacao de resultados.", motivoIndicacao: "Base obrigatoria antes do SQL avancado; ja usa um data warehouse real, contexto tipico do analytics engineer.", oQueAprende: ["SELECT, WHERE e FROM", "GROUP BY, HAVING e agregacoes", "Consultas em BigQuery"], proximoConteudo: "Advanced SQL (Kaggle Learn)" },
-  { id: "kaggle-feature-engineering-ae", certificate: "sim", titulo: "Feature Engineering", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/feature-engineering", areaSlug: "analytics-engineer" as string | null, nivel: "Intermediário", duracao: "Cerca de 5 horas", idioma: "Inglês", descricao: "Curso sobre criacao e transformacao de variaveis para tornar os dados mais uteis, incluindo encoding, agregacoes e novas features derivadas.", motivoIndicacao: "Transformar dados brutos em tabelas analiticas confiaveis e parte do trabalho do analytics engineer; o curso cobre essa logica.", oQueAprende: ["Criacao de variaveis derivadas", "Target e count encoding", "Reducao de dimensionalidade aplicada a features"], proximoConteudo: "Pratica de modelagem analitica em SQL" },
-  { id: "fcc-sql-databases-ae", certificate: "nao", titulo: "SQL and Databases - Full Course for Beginners", canal: "freeCodeCamp", plataforma: "YouTube (freeCodeCamp.org)", link: "https://www.freecodecamp.org/news/sql-and-databases-full-course/", areaSlug: "analytics-engineer" as string | null, nivel: "Iniciante", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso completo de SQL e bancos de dados com MySQL, cobrindo design de schema, CRUD, joins, subconsultas, triggers e diagramas ER.", motivoIndicacao: "Aborda modelagem de banco e relacionamentos, conhecimento essencial para quem estrutura camadas de dados; gratuito e sem anuncios.", oQueAprende: ["Design de tabelas, chaves e schema", "CRUD, joins e subconsultas", "Triggers e diagramas entidade relacionamento"], proximoConteudo: "Advanced SQL (Kaggle Learn)" },
-  { id: "kaggle-intro-ml-cientista", certificate: "sim", titulo: "Intro to Machine Learning", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/intro-to-machine-learning", areaSlug: "cientista-dados" as string | null, nivel: "Intermediário", duracao: "Cerca de 3 horas", idioma: "Inglês", descricao: "Curso que introduz as ideias centrais de machine learning e ensina a construir e validar os primeiros modelos preditivos.", motivoIndicacao: "E o primeiro passo classico para a ciencia de dados, com pratica imediata em modelos reais e gratuito.", oQueAprende: ["Como modelos de ML aprendem", "Construcao de arvores de decisao e random forests", "Validacao e overfitting"], proximoConteudo: "Intermediate Machine Learning e Feature Engineering (Kaggle Learn)" },
-  { id: "kaggle-python-cientista", certificate: "sim", titulo: "Python", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/python", areaSlug: "cientista-dados" as string | null, nivel: "Iniciante", duracao: "Cerca de 5 horas", idioma: "Inglês", descricao: "Curso de Python orientado a ciencia de dados, cobrindo a linguagem do zero ate uso de bibliotecas.", motivoIndicacao: "Python e a base de quase todo trabalho de cientista de dados; o curso prepara o terreno gratuitamente.", oQueAprende: ["Sintaxe e estruturas de Python", "Funcoes e logica", "Uso de bibliotecas externas"], proximoConteudo: "Pandas (Kaggle Learn)" },
-  { id: "kaggle-pandas-cientista", certificate: "sim", titulo: "Pandas", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/pandas", areaSlug: "cientista-dados" as string | null, nivel: "Intermediário", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso pratico de manipulacao de dados com Pandas, em desafios curtos e aplicados.", motivoIndicacao: "Manipulacao de dados e pre-requisito para qualquer modelagem; o curso e enxuto e gratuito.", oQueAprende: ["DataFrames e selecao de dados", "Agrupamentos e combinacoes", "Tratamento de dados ausentes"], proximoConteudo: "Data Cleaning (Kaggle Learn)" },
-  { id: "kaggle-intro-deep-learning-cientista", certificate: "sim", titulo: "Intro to Deep Learning", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/intro-to-deep-learning", areaSlug: "cientista-dados" as string | null, nivel: "Avançado", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso que ensina a construir e treinar redes neurais com TensorFlow e Keras para dados estruturados.", motivoIndicacao: "Para o cientista que ja domina o basico e quer entrar em deep learning, com pratica real e gratuito.", oQueAprende: ["Redes neurais e camadas densas", "Treinamento com TensorFlow e Keras", "Tecnicas contra overfitting como dropout"], proximoConteudo: "Computer Vision (Kaggle Learn)" },
-  { id: "kaggle-time-series-cientista", certificate: "sim", titulo: "Time Series", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/time-series", areaSlug: "cientista-dados" as string | null, nivel: "Avançado", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso de previsao com series temporais, cobrindo tendencia, sazonalidade e modelos aplicados a problemas reais de forecasting.", motivoIndicacao: "Previsao temporal e demanda comum em projetos de dados; poucos cursos gratuitos tratam o tema tao bem.", oQueAprende: ["Tendencia e sazonalidade", "Features para series temporais", "Modelos de previsao aplicados"], proximoConteudo: "Machine Learning Explainability (Kaggle Learn)" },
-  { id: "kaggle-geospatial-cientista", certificate: "sim", titulo: "Geospatial Analysis", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/geospatial-analysis", areaSlug: "cientista-dados" as string | null, nivel: "Intermediário", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso para analisar dados geograficos, criar mapas interativos e descobrir padroes espaciais.", motivoIndicacao: "Adiciona uma especializacao util e diferenciada ao cientista de dados, gratuitamente.", oQueAprende: ["Manipulacao de dados geoespaciais", "Criacao de mapas interativos", "Analise de proximidade e padroes espaciais"], proximoConteudo: "Projetos proprios com dados geograficos" },
-  { id: "fcc-py-analise-dados-cientista", certificate: "sim", titulo: "Analise de Dados com Python", canal: "freeCodeCamp", plataforma: "freeCodeCamp (em portugues)", link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python", areaSlug: "cientista-dados" as string | null, nivel: "Intermediário", duracao: "Aprox. 30 horas (autoinstrucional)", idioma: "Português", descricao: "Certificacao em portugues sobre analise de dados com Python, NumPy e Pandas, base solida antes da modelagem.", motivoIndicacao: "Da ao futuro cientista de dados uma base pratica em portugues, com certificacao gratuita.", oQueAprende: ["Leitura e limpeza de dados", "Analise exploratoria com Pandas", "Projetos avaliados"], proximoConteudo: "Intro to Machine Learning (Kaggle Learn)" },
-  { id: "ms-learn-engenharia-dados", certificate: "nao_informado", titulo: "Treinamento para Engenheiros de Dados (plano de carreira)", canal: "Microsoft Learn", plataforma: "Microsoft Learn", link: "https://learn.microsoft.com/pt-br/training/career-paths/data-engineer", areaSlug: "engenharia-dados" as string | null, nivel: "Intermediário", duracao: "Trilha com varios modulos (autoinstrucional)", idioma: "Português", descricao: "Plano de carreira oficial da Microsoft, em portugues, com modulos sobre integracao, transformacao e consolidacao de dados, pipelines e armazenamento.", motivoIndicacao: "E a trilha gratuita mais estruturada de engenharia de dados em portugues, organizando o caminho ate a certificacao DP-203.", oQueAprende: ["Integracao e transformacao de dados", "Construcao de pipelines de dados", "Armazenamento e solucoes de analise"], proximoConteudo: "Avaliacao pratica do exame DP-203" },
-  { id: "bradesco-administrando-banco-dados-eng", certificate: "sim", titulo: "Administrando Banco de Dados", canal: "Fundacao Bradesco", plataforma: "Escola Virtual (Fundacao Bradesco)", link: "https://www.ev.org.br/cursos/administrando-banco-de-dados", areaSlug: "engenharia-dados" as string | null, nivel: "Avançado", duracao: "15 horas", idioma: "Português", descricao: "Curso sobre administracao de banco de dados, arquitetura de SGBD, modelos de dados, SQL, esquemas, instancias e tabelas, alem da rotina de manutencao.", motivoIndicacao: "Fundamentos de banco de dados sao base da engenharia de dados; este curso e gratuito, em portugues e com certificado.", oQueAprende: ["Arquitetura de um SGBD", "Modelos de dados, esquemas e SQL", "Gerenciamento e manutencao de bases"], proximoConteudo: "Intro to SQL e Advanced SQL (Kaggle Learn)" },
-  { id: "dio-sql-engenharia-dados", certificate: "sim", titulo: "Formacao SQL Database Specialist", canal: "DIO", plataforma: "DIO", link: "https://www.dio.me/curso-sql", areaSlug: "engenharia-dados" as string | null, nivel: "Intermediário", duracao: "Formacao com varios modulos e projetos", idioma: "Português", descricao: "Formacao gratuita que ensina a modelar bancos de dados conforme regras de negocio e a construir, de ponta a ponta, um banco para um e-commerce com MySQL.", motivoIndicacao: "Modelagem e SQL aplicados sao a base do engenheiro de dados; a formacao entrega projeto pratico, portfolio e certificado.", oQueAprende: ["Modelagem entidade relacional", "Consultas e tecnicas avancadas em MySQL", "Transacoes, backup e recovery"], proximoConteudo: "Plano de Engenheiros de Dados (Microsoft Learn)" },
-  { id: "kaggle-advanced-sql-eng", certificate: "sim", titulo: "Advanced SQL", canal: "Kaggle Learn", plataforma: "Kaggle", link: "https://www.kaggle.com/learn/advanced-sql", areaSlug: "engenharia-dados" as string | null, nivel: "Avançado", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso de SQL avancado em BigQuery, com joins complexos, funcoes analiticas e consultas eficientes em grandes volumes.", motivoIndicacao: "SQL eficiente em data warehouse e tarefa diaria na engenharia de dados; o curso e gratuito e usa um warehouse real.", oQueAprende: ["JOINs e UNIONs avancados", "Funcoes analiticas", "Otimizacao de consultas em grande escala"], proximoConteudo: "Modulos de pipelines no plano da Microsoft" },
-  { id: "fcc-sql-databases-eng", certificate: "nao", titulo: "SQL and Databases - Full Course for Beginners", canal: "freeCodeCamp", plataforma: "YouTube (freeCodeCamp.org)", link: "https://www.freecodecamp.org/news/sql-and-databases-full-course/", areaSlug: "engenharia-dados" as string | null, nivel: "Iniciante", duracao: "Cerca de 4 horas", idioma: "Inglês", descricao: "Curso completo de SQL e bancos com MySQL, do design de schema a CRUD, joins, subconsultas, triggers e diagramas ER.", motivoIndicacao: "Cobre modelagem e relacionamentos de banco, base estrutural para a engenharia de dados; gratuito e sem anuncios.", oQueAprende: ["Design de schema e chaves", "CRUD, joins e subconsultas", "Triggers e diagramas ER"], proximoConteudo: "Administrando Banco de Dados (Escola Virtual)" },
-  { id: "android-basics-compose-google", certificate: "nao", titulo: "Android Basics with Compose", canal: "Android Developers (Google)", plataforma: "Android Developers", link: "https://developer.android.com/courses/android-basics-compose/course", areaSlug: "mobile" as string | null, nivel: "Iniciante", duracao: "Aproximadamente 100 horas (autoguiado)", idioma: "Inglês", descricao: "Curso oficial do Google que parte do zero e ensina a construir aplicativos Android usando Kotlin e Jetpack Compose, com codelabs praticos e quizzes a cada unidade.", motivoIndicacao: "E a trilha recomendada pelo proprio Google para quem nunca programou, totalmente gratuita e sempre atualizada com as praticas atuais de Android.", oQueAprende: ["Fundamentos de Kotlin", "Interfaces com Jetpack Compose", "Arquitetura de apps e armazenamento de dados", "Consumo de APIs e exibicao de listas"], proximoConteudo: "Jetpack Compose for Android Developers (nivel intermediario)" },
-  { id: "dio-mobile-nativo-android", certificate: "sim", titulo: "Desenvolvimento Mobile Nativo Para Android", canal: "DIO", plataforma: "DIO", link: "https://www.dio.me/courses/desenvolvimento-mobile-nativo-para-android", areaSlug: "mobile" as string | null, nivel: "Iniciante", duracao: "Curta (modulos introdutorios)", idioma: "Português", descricao: "Curso introdutorio em portugues sobre desenvolvimento mobile nativo para Android, cobrindo o ambiente de desenvolvimento e a estrutura de projetos.", motivoIndicacao: "Otimo ponto de partida em portugues para entender como funciona um projeto Android antes de mergulhar em codigo mais avancado.", oQueAprende: ["Introducao ao desenvolvimento mobile", "Configuracao do ambiente Android", "Estrutura de um projeto Android"], proximoConteudo: "Android Basics with Compose do Google" },
-  { id: "codelabs-android-google", certificate: "nao", titulo: "Android Codelabs", canal: "Android Developers (Google)", plataforma: "Google Codelabs", link: "https://developer.android.com/get-started/codelabs", areaSlug: "mobile" as string | null, nivel: "Intermediário", duracao: "Variavel (cada codelab leva de 30 a 90 minutos)", idioma: "Inglês", descricao: "Coletanea oficial de tutoriais praticos curtos do Google que mostram passo a passo como implementar recursos especificos de apps Android.", motivoIndicacao: "Perfeito para praticar topicos pontuais sob demanda e fixar o que se aprende nas trilhas maiores, sempre com material oficial.", oQueAprende: ["Implementacao guiada de recursos Android", "Boas praticas de codigo", "Uso de bibliotecas Jetpack"], proximoConteudo: "Trilha de arquitetura de apps Android" },
-  { id: "android-dev-kotlin-classroom", certificate: "nao", titulo: "Desenvolvimento para Android com Kotlin (curso para sala de aula)", canal: "Android Developers (Google)", plataforma: "Android Developers", link: "https://developer.android.com/courses/android-development-with-kotlin/course", areaSlug: "android-nativo" as string | null, nivel: "Intermediário", duracao: "Curso completo (varias unidades)", idioma: "Inglês", descricao: "Curso oficial estruturado para ensino formal que cobre o desenvolvimento Android nativo usando a linguagem Kotlin.", motivoIndicacao: "Material oficial e gratuito pensado para um aprendizado estruturado de Android nativo com Kotlin, util tambem para autoestudo.", oQueAprende: ["Sintaxe e recursos de Kotlin", "Ciclo de vida de Activities", "Componentes de UI nativos", "Persistencia de dados"], proximoConteudo: "Trilha de arquitetura de apps Android" },
-  { id: "android-jetpack-compose-devs", certificate: "nao", titulo: "Jetpack Compose for Android Developers", canal: "Android Developers (Google)", plataforma: "Android Developers", link: "https://developer.android.com/courses/jetpack-compose/course", areaSlug: "android-nativo" as string | null, nivel: "Intermediário", duracao: "5 trilhas (pathways)", idioma: "Inglês", descricao: "Curso oficial dividido em cinco trilhas que aprofunda o uso do Jetpack Compose para criar interfaces nativas modernas no Android.", motivoIndicacao: "Indicado para quem ja conhece o basico e quer dominar o toolkit de UI atual e recomendado pelo Google para Android.", oQueAprende: ["Funcoes composable", "Layouts, tema e animacao", "Arquitetura e estado", "Acessibilidade, testes e performance"], proximoConteudo: "Trilha de Kotlin Multiplatform" },
-  { id: "android-architecture-pathway", certificate: "nao", titulo: "Android App Architecture (trilha)", canal: "Android Developers (Google)", plataforma: "Android Developers", link: "https://developer.android.com/courses/pathways/android-architecture", areaSlug: "android-nativo" as string | null, nivel: "Intermediário", duracao: "Trilha (varios codelabs)", idioma: "Inglês", descricao: "Trilha oficial que apresenta as boas praticas e a arquitetura recomendada para construir apps Android robustos e de qualidade de producao.", motivoIndicacao: "Essencial para sair do nivel iniciante e estruturar apps de forma profissional, com camadas bem definidas.", oQueAprende: ["Camadas de arquitetura recomendada", "ViewModel e gerenciamento de estado", "Boas praticas de testabilidade"], proximoConteudo: "Trilha de acessibilidade em apps Android" },
-  { id: "android-acessibilidade-pathway", certificate: "nao", titulo: "Acessibilidade em apps Android (trilha)", canal: "Android Developers (Google)", plataforma: "Android Developers", link: "https://developer.android.com/courses/pathways/make-your-android-app-accessible", areaSlug: "android-nativo" as string | null, nivel: "Intermediário", duracao: "Trilha (varios codelabs)", idioma: "Inglês", descricao: "Trilha oficial que ensina a tornar aplicativos Android utilizaveis por todas as pessoas, incluindo quem tem necessidades de acessibilidade.", motivoIndicacao: "Acessibilidade e diferencial de mercado e requisito de qualidade; este material oficial cobre o tema de forma pratica.", oQueAprende: ["Principios de acessibilidade", "Suporte a leitores de tela", "Ajustes de contraste e navegacao"], proximoConteudo: "Trilha de arquitetura de apps Android" },
-  { id: "dio-android-kotlin-curso-pt", certificate: "sim", titulo: "Curso Desenvolvedor Android com Kotlin (modulos gratuitos)", canal: "DIO", plataforma: "DIO", link: "https://www.dio.me/curso-android-kotlin", areaSlug: "android-nativo" as string | null, nivel: "Iniciante", duracao: "Modulos com atividades praticas", idioma: "Português", descricao: "Conteudo em portugues que apresenta a linguagem Kotlin e os fundamentos para criacao de apps Android, com projetos praticos de portfolio.", motivoIndicacao: "Boa opcao em portugues para quem prefere comecar Android nativo no idioma nativo antes de partir para o material oficial em ingles.", oQueAprende: ["Linguagem Kotlin", "Fundamentos de Android", "Android Jetpack", "Projeto pratico de app"], proximoConteudo: "Android Basics with Compose do Google" },
-  { id: "kotlin-iniciantes-stackmobile-yt", certificate: "nao", titulo: "Curso de Kotlin Para Iniciantes - Programacao Mobile", canal: "Stack Mobile (YouTube)", plataforma: "YouTube", link: "https://www.youtube.com/playlist?list=PLizN3WA8HR1z1HJy0uSjNe4zhmzJNplb3", areaSlug: "android-nativo" as string | null, nivel: "Iniciante", duracao: "Playlist com varias aulas", idioma: "Português", descricao: "Playlist em portugues que ensina os fundamentos da linguagem Kotlin, a linguagem oficial recomendada pelo Google para Android.", motivoIndicacao: "Aulas em portugues e gratuitas para quem quer dominar Kotlin antes de construir apps, com ritmo de iniciante.", oQueAprende: ["Sintaxe basica de Kotlin", "Variaveis, funcoes e tipos", "Logica aplicada a mobile"], proximoConteudo: "Curso Android com Kotlin da DIO" },
-  { id: "apple-develop-in-swift-tutorials", certificate: "nao", titulo: "Develop in Swift Tutorials", canal: "Apple", plataforma: "Apple Developer", link: "https://developer.apple.com/tutorials/develop-in-swift", areaSlug: "ios-nativo" as string | null, nivel: "Iniciante", duracao: "Serie de tutoriais (autoguiado)", idioma: "Inglês", descricao: "Tutoriais oficiais da Apple que ensinam a programar em Swift e a construir apps para o ecossistema Apple do zero.", motivoIndicacao: "Por ser material oficial da Apple, e a fonte mais confiavel e atualizada para iniciar em desenvolvimento iOS de forma gratuita.", oQueAprende: ["Fundamentos de Swift", "Construcao de apps com SwiftUI", "Modelagem de dados", "Boas praticas Apple"], proximoConteudo: "Tutoriais de SwiftUI da Apple" },
-  { id: "apple-swiftui-tutorials", certificate: "nao", titulo: "Introducing SwiftUI", canal: "Apple", plataforma: "Apple Developer", link: "https://developer.apple.com/tutorials/swiftui", areaSlug: "ios-nativo" as string | null, nivel: "Intermediário", duracao: "Serie de tutoriais (autoguiado)", idioma: "Inglês", descricao: "Tutoriais oficiais da Apple focados em SwiftUI, o framework declarativo para criar interfaces em todas as plataformas Apple.", motivoIndicacao: "SwiftUI e o caminho atual para UI no iOS; este material oficial e gratuito mostra na pratica como montar telas e fluxos.", oQueAprende: ["Criacao de views com SwiftUI", "Estado e ligacao de dados", "Navegacao e listas", "Animacoes"], proximoConteudo: "Aprofundar em arquitetura de apps iOS" },
-  { id: "dio-react-native-curso-pt", certificate: "sim", titulo: "Curso React Native Developer (modulos gratuitos)", canal: "DIO", plataforma: "DIO", link: "https://www.dio.me/curso-react-native", areaSlug: "react-native" as string | null, nivel: "Iniciante", duracao: "Modulos com atividades praticas", idioma: "Português", descricao: "Conteudo em portugues que ensina a criar aplicacoes moveis com React Native usando JavaScript e TypeScript, da interface ate integracao com APIs.", motivoIndicacao: "Trilha em portugues com projetos praticos de portfolio, boa para quem ja conhece um pouco de JavaScript e quer entrar no mobile.", oQueAprende: ["Fundamentos de React Native", "Navegacao entre telas", "Componentes e estado", "Consumo de APIs"], proximoConteudo: "Tutorial pratico de React Native no YouTube" },
-  { id: "rn-tutorial-iniciante-yt", certificate: "nao", titulo: "Tutorial Iniciante de React Native (Curso Pratico Completo)", canal: "YouTube (curso em portugues)", plataforma: "YouTube", link: "https://www.youtube.com/playlist?list=PLUbb2i4BuuzBrD7yLahzYlM5WPCDv_vGl", areaSlug: "react-native" as string | null, nivel: "Iniciante", duracao: "Playlist com varias aulas", idioma: "Português", descricao: "Curso pratico e gratuito em portugues que mostra como construir aplicativos moveis do zero com React Native.", motivoIndicacao: "Abordagem mao na massa em portugues, ideal para acompanhar codando junto e montar o primeiro app.", oQueAprende: ["Configuracao do ambiente React Native", "Componentes basicos", "Estilizacao e layout", "Construcao de um app pratico"], proximoConteudo: "Aprofundar com Expo e integracao de APIs" },
-  { id: "freecodecamp-react-native-pt", certificate: "nao", titulo: "Aprenda React Native (artigos)", canal: "freeCodeCamp em Portugues", plataforma: "freeCodeCamp", link: "https://www.freecodecamp.org/portuguese/news/aprenda-react-native/", areaSlug: "react-native" as string | null, nivel: "Iniciante", duracao: "Leitura e pratica autoguiada", idioma: "Português", descricao: "Material em portugues do freeCodeCamp que introduz os conceitos centrais do React Native para iniciar no desenvolvimento mobile multiplataforma.", motivoIndicacao: "freeCodeCamp e uma referencia gratuita e confiavel; o conteudo em portugues ajuda a fixar conceitos sem custo.", oQueAprende: ["Conceitos centrais do React Native", "Componentes e props", "Primeiros passos no mobile"], proximoConteudo: "Tutorial pratico de React Native no YouTube" },
-  { id: "flutter-learn-pathway-oficial", certificate: "nao", titulo: "Learn Flutter (trilha oficial)", canal: "Flutter (Google)", plataforma: "docs.flutter.dev", link: "https://docs.flutter.dev/get-started/learn-flutter", areaSlug: "flutter" as string | null, nivel: "Iniciante", duracao: "Trilha autoguiada", idioma: "Inglês", descricao: "Trilha oficial de aprendizado do Flutter que reune os recursos recomendados pela equipe do Google para comecar do zero.", motivoIndicacao: "Fonte oficial, gratuita e sempre atualizada; o melhor ponto de partida confiavel para Flutter.", oQueAprende: ["Estrutura de um app Flutter", "Widgets e layout", "Gerenciamento de estado basico", "Recursos recomendados de estudo"], proximoConteudo: "Codelab oficial de introducao ao Flutter" },
-  { id: "flutter-codelab-oficial", certificate: "nao", titulo: "Write your first Flutter app (codelab)", canal: "Flutter (Google)", plataforma: "docs.flutter.dev", link: "https://docs.flutter.dev/get-started/codelab", areaSlug: "flutter" as string | null, nivel: "Iniciante", duracao: "Aproximadamente 1 a 2 horas", idioma: "Inglês", descricao: "Codelab oficial que guia a criacao do primeiro aplicativo Flutter passo a passo.", motivoIndicacao: "Pratica guiada e rapida para sair do zero ao primeiro app rodando, direto da documentacao oficial.", oQueAprende: ["Criacao de projeto Flutter", "Composicao de widgets", "Interatividade basica", "Execucao do app"], proximoConteudo: "Introducao a linguagem Dart" },
-  { id: "dart-language-oficial", certificate: "nao", titulo: "Introduction to Dart", canal: "Dart (Google)", plataforma: "dart.dev", link: "https://dart.dev/language", areaSlug: "flutter" as string | null, nivel: "Iniciante", duracao: "Leitura e pratica autoguiada", idioma: "Inglês", descricao: "Documentacao oficial da linguagem Dart, base do Flutter, cobrindo sintaxe e principais conceitos.", motivoIndicacao: "Entender Dart acelera muito o aprendizado de Flutter; este e o material oficial e gratuito da linguagem.", oQueAprende: ["Sintaxe de Dart", "Tipos e null safety", "Funcoes e classes", "Programacao assincrona"], proximoConteudo: "Aprofundar em widgets e estado no Flutter" },
-  { id: "flutter-para-iniciantes-livro", certificate: "nao", titulo: "Flutter para Iniciantes", canal: "Rubens de Melo", plataforma: "flutterparainiciantes.com.br", link: "https://flutterparainiciantes.com.br/", areaSlug: "flutter" as string | null, nivel: "Iniciante", duracao: "Livro online (autoguiado)", idioma: "Português", descricao: "Livro online e aberto, em portugues, mantido desde 2019, que ensina Flutter e Dart de forma progressiva para iniciantes.", motivoIndicacao: "Conteudo gratuito e bem cuidado em portugues, otimo para quem prefere aprender lendo no proprio idioma.", oQueAprende: ["Fundamentos de Dart", "Estrutura de apps Flutter", "Widgets essenciais", "Boas praticas iniciais"], proximoConteudo: "Curso completo de Flutter da Flutterando no YouTube" },
-  { id: "flutterando-curso-completo-yt", certificate: "nao", titulo: "Curso COMPLETO de Flutter", canal: "Flutterando (YouTube)", plataforma: "YouTube", link: "https://www.youtube.com/playlist?list=PLlBnICoI-g-d-J57QIz6Tx5xtUDGQdBFB", areaSlug: "flutter" as string | null, nivel: "Iniciante", duracao: "Playlist com varias aulas", idioma: "Português", descricao: "Curso gratuito em portugues da comunidade Flutterando, referencia brasileira em Flutter, cobrindo do basico em diante.", motivoIndicacao: "A Flutterando e a maior comunidade brasileira de Flutter; o curso e gratuito e bastante didatico em portugues.", oQueAprende: ["Fundamentos de Flutter e Dart", "Construcao de interfaces", "Navegacao", "Boas praticas da comunidade"], proximoConteudo: "Documentacao oficial do Flutter para aprofundar" },
-  { id: "flutterando-canal", certificate: "nao", titulo: "Canal Flutterando (tutoriais e series)", canal: "Flutterando (YouTube)", plataforma: "YouTube", link: "https://www.youtube.com/@Flutterando", areaSlug: "flutter" as string | null, nivel: "Intermediário", duracao: "Conteudo continuo", idioma: "Português", descricao: "Canal da comunidade Flutterando com series, tutoriais e conteudos avancados sobre Flutter em portugues.", motivoIndicacao: "Fonte continua e gratuita em portugues para evoluir alem do basico, com temas de arquitetura e estado.", oQueAprende: ["Gerenciamento de estado", "Arquitetura de apps Flutter", "Pacotes e integracoes", "Boas praticas avancadas"], proximoConteudo: "Praticar com projetos proprios em Flutter" },
-  { id: "godot-docs-pt-br", certificate: "nao", titulo: "Documentacao oficial da Godot Engine (pt-BR)", canal: "Godot Engine", plataforma: "docs.godotengine.org", link: "https://docs.godotengine.org/pt_br/4.x/getting_started/introduction/index.html", areaSlug: "gamedev" as string | null, nivel: "Iniciante", duracao: "Leitura e pratica autoguiada", idioma: "Português", descricao: "Documentacao oficial da Godot, engine gratuita e open source, com a secao de primeiros passos traduzida para portugues.", motivoIndicacao: "Material oficial, gratuito e em portugues; base solida para aprender uma engine 100 por cento livre.", oQueAprende: ["Conceitos basicos da Godot", "Cenas e nos", "Linguagem GDScript", "Estrutura de um projeto de jogo"], proximoConteudo: "Minicurso de Godot para iniciantes no YouTube" },
-  { id: "godot-minicurso-iniciantes-yt", certificate: "nao", titulo: "Aprenda Godot: Minicurso completo para Iniciantes", canal: "YouTube (curso em portugues)", plataforma: "YouTube", link: "https://www.youtube.com/playlist?list=PLXiMbAkZF_BlKDfPoIOwFmmzC4dHX1eQt", areaSlug: "gamedev" as string | null, nivel: "Iniciante", duracao: "Playlist (minicurso)", idioma: "Português", descricao: "Minicurso gratuito em portugues que ensina Godot 4 do zero criando um jogo completo passo a passo.", motivoIndicacao: "Abordagem pratica em portugues para quem quer ver um jogo nascendo do inicio ao fim com a Godot.", oQueAprende: ["Interface da Godot", "Criacao de cenas e personagens", "Logica de jogo com GDScript", "Montagem de um jogo completo"], proximoConteudo: "Documentacao oficial da Godot para aprofundar" },
-  { id: "unity-learn-oficial", certificate: "nao", titulo: "Unity Learn", canal: "Unity", plataforma: "Unity Learn", link: "https://learn.unity.com/", areaSlug: "gamedev" as string | null, nivel: "Iniciante", duracao: "Varios cursos e tutoriais (autoguiado)", idioma: "Inglês", descricao: "Plataforma oficial da Unity com cursos e tutoriais gratuitos para aprender a criar jogos com a engine Unity.", motivoIndicacao: "Fonte oficial e gratuita da Unity, com trilhas guiadas para quem quer entrar no desenvolvimento de jogos com uma das engines mais usadas.", oQueAprende: ["Fundamentos da Unity", "Scripting em C#", "Fisica e cenas", "Publicacao de jogos"], proximoConteudo: "Projetos praticos de jogos 2D na Unity" },
-  { id: "dio-unity-3d-curso-pt", certificate: "sim", titulo: "Curso Unity 3D - Construa seu proprio jogo Zelda (modulos gratuitos)", canal: "DIO", plataforma: "DIO", link: "https://www.dio.me/curso-unity-3d", areaSlug: "gamedev" as string | null, nivel: "Iniciante", duracao: "Modulos com atividades praticas", idioma: "Português", descricao: "Conteudo em portugues que ensina os primeiros passos com Unity 3D e a construir um clone inspirado em Zelda como projeto de portfolio.", motivoIndicacao: "Opcao em portugues com um projeto pratico motivador para quem quer comecar gamedev com Unity no idioma nativo.", oQueAprende: ["Primeiros passos com Unity", "Programacao em Unity", "Tecnicas artisticas basicas", "Construcao de um jogo completo"], proximoConteudo: "Unity Learn oficial para aprofundar" },
-  { id: "recriando-games-canal-yt", certificate: "nao", titulo: "Canal Recriando Games (desenvolvimento de jogos)", canal: "Recriando Games (YouTube)", plataforma: "YouTube", link: "https://www.youtube.com/@RecriandoGames", areaSlug: "gamedev" as string | null, nivel: "Intermediário", duracao: "Conteudo continuo", idioma: "Português", descricao: "Canal em portugues voltado ao desenvolvimento de jogos usando diversas engines, incluindo Unity, Unreal e Godot.", motivoIndicacao: "Fonte continua e gratuita em portugues para quem quer ver na pratica a recriacao de jogos em diferentes engines.", oQueAprende: ["Recriacao de mecanicas de jogos", "Uso de diferentes engines", "Logica de gameplay", "Boas praticas de producao"], proximoConteudo: "Aprofundar em uma engine especifica (Unity ou Godot)" },
+  {
+    id: "kaggle-python-dados",
+    certificate: "sim",
+    titulo: "Python",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/python",
+    areaSlug: "dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Cerca de 5 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso introdutorio que cobre a linguagem mais usada na area de dados, do zero ate funcoes, listas, loops e bibliotecas externas, tudo em notebooks praticos.",
+    motivoIndicacao:
+      "E o ponto de partida natural para quem ainda nao programa e quer entrar em dados, ja preparando o terreno para Pandas e analise.",
+    oQueAprende: [
+      "Sintaxe basica, variaveis e tipos em Python",
+      "Funcoes, condicionais e estruturas de repeticao",
+      "Listas, dicionarios e uso de bibliotecas externas",
+    ],
+    proximoConteudo: "Pandas (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-intro-programming-dados",
+    certificate: "sim",
+    titulo: "Intro to Programming",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/intro-to-programming",
+    areaSlug: "dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Trilha para quem nunca escreveu uma linha de codigo, apresentando logica de programacao e os primeiros passos com Python de forma guiada.",
+    motivoIndicacao:
+      "Indicado para iniciantes absolutos que sentem que o curso de Python ja pressupoe alguma base; aqui o ritmo e mais lento.",
+    oQueAprende: [
+      "Conceitos de variaveis e calculos",
+      "Funcoes e condicionais do zero",
+      "Introducao a listas e ao pensamento computacional",
+    ],
+    proximoConteudo: "Python (Kaggle Learn)",
+  },
+  {
+    id: "fcc-py-analise-dados-br",
+    certificate: "sim",
+    titulo: "Analise de Dados com Python",
+    canal: "freeCodeCamp",
+    plataforma: "freeCodeCamp (em portugues)",
+    link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python",
+    areaSlug: "dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Aprox. 30 horas (autoinstrucional)",
+    idioma: "Português",
+    descricao:
+      "Certificacao do freeCodeCamp, em portugues, que ensina a ler, limpar e analisar dados usando Python com NumPy e Pandas, com projetos avaliados ao final.",
+    motivoIndicacao:
+      "Reune teoria e pratica em portugues, com emissao de certificacao gratuita, algo raro em conteudo desse nivel.",
+    oQueAprende: [
+      "Leitura de dados de CSV, Excel e SQL",
+      "Manipulacao com NumPy e Pandas",
+      "Projetos praticos de analise para certificacao",
+    ],
+    proximoConteudo: "Visualizacao de dados com Pandas e Matplotlib",
+  },
+  {
+    id: "hashtag-canal-programacao-dados",
+    certificate: "nao",
+    titulo: "Canal Hashtag Programacao",
+    canal: "Hashtag Programacao",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/@HashtagProgramacao",
+    areaSlug: "dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Conteudo continuo",
+    idioma: "Português",
+    descricao:
+      "Canal brasileiro com aulas e mini cursos gratuitos de Python, SQL e ciencia de dados, com foco pratico em projetos reais e didatica direta.",
+    motivoIndicacao:
+      "Boa fonte em portugues para complementar os estudos com exemplos aplicados ao mercado, sem custo.",
+    oQueAprende: [
+      "Fundamentos de Python aplicados a dados",
+      "Uso de Pandas e Jupyter na pratica",
+      "Construcao de projetos de analise e automacao",
+    ],
+    proximoConteudo: "Curso de analise de dados com Python da propria Hashtag",
+  },
+  {
+    id: "fcc-canal-portugues-dados",
+    certificate: "nao",
+    titulo: "Canal freeCodeCamp em Portugues",
+    canal: "freeCodeCamp em Portugues",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/@freecodecampemportugues",
+    areaSlug: "dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Conteudo continuo (cursos completos)",
+    idioma: "Português",
+    descricao:
+      "Canal oficial do freeCodeCamp em portugues, com cursos completos dublados ou produzidos em portugues sobre programacao, dados e ciencia da computacao.",
+    motivoIndicacao:
+      "Traz o conteudo serio do freeCodeCamp para quem prefere estudar em portugues, de forma totalmente gratuita.",
+    oQueAprende: [
+      "Logica e fundamentos de programacao",
+      "Introducao a dados e ferramentas",
+      "Trilhas completas em video",
+    ],
+    proximoConteudo: "Certificacoes em portugues no site do freeCodeCamp",
+  },
+  {
+    id: "bradesco-intro-analise-dados-powerbi",
+    certificate: "sim",
+    titulo: "Introducao a Analise de Dados - Microsoft Power BI",
+    canal: "Fundacao Bradesco / Microsoft",
+    plataforma: "Escola Virtual (Fundacao Bradesco)",
+    link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "5 horas",
+    idioma: "Português",
+    descricao:
+      "Curso que apresenta o papel do analista de dados, as categorias de analise e os blocos de construcao do Power BI, com conteudo produzido pela Microsoft.",
+    motivoIndicacao:
+      "Otimo primeiro contato com a carreira de analise de dados, gratuito, em portugues e com certificado emitido apos aprovacao.",
+    oQueAprende: [
+      "Dados, informacoes e tipos de analise",
+      "Funcoes exercidas por quem trabalha com dados",
+      "Primeiros passos no servico do Power BI",
+    ],
+    proximoConteudo: "Analise de Dados no Power BI (Escola Virtual)",
+  },
+  {
+    id: "fcc-py-analise-dados-analise",
+    certificate: "sim",
+    titulo: "Analise de Dados com Python",
+    canal: "freeCodeCamp",
+    plataforma: "freeCodeCamp (em portugues)",
+    link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Aprox. 30 horas (autoinstrucional)",
+    idioma: "Português",
+    descricao:
+      "Certificacao em portugues focada em transformar dados brutos em insights usando Python, com enfase em limpeza, transformacao e analise com Pandas.",
+    motivoIndicacao:
+      "Para quem quer sair do Power BI e analisar dados com codigo, e a opcao gratuita mais completa em portugues com certificacao.",
+    oQueAprende: [
+      "Importacao e limpeza de dados",
+      "Analise exploratoria com Pandas e NumPy",
+      "Projetos de analise avaliados",
+    ],
+    proximoConteudo: "Visualizacao de dados (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-pandas-analise",
+    certificate: "sim",
+    titulo: "Pandas",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/pandas",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso pratico, em desafios curtos, para dominar manipulacao de dados tabulares com a biblioteca Pandas.",
+    motivoIndicacao:
+      "Pandas e a ferramenta central do dia a dia do analista; este curso e direto ao ponto e gratuito.",
+    oQueAprende: [
+      "Criacao e leitura de DataFrames",
+      "Selecao, filtragem e agrupamento de dados",
+      "Tratamento de valores ausentes e combinacao de tabelas",
+    ],
+    proximoConteudo: "Data Cleaning (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-data-viz-analise",
+    certificate: "sim",
+    titulo: "Data Visualization",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/data-visualization",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso para criar visualizacoes com a biblioteca Seaborn, cobrindo graficos de linha, dispersao, barras e distribuicoes.",
+    motivoIndicacao:
+      "Saber visualizar e parte essencial da analise; o curso entrega resultados visuais rapidos e bem fundamentados.",
+    oQueAprende: [
+      "Graficos de linha, barra e dispersao",
+      "Visualizacao de distribuicoes",
+      "Escolha do grafico certo para cada dado",
+    ],
+    proximoConteudo: "Pandas (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-data-cleaning-analise",
+    certificate: "sim",
+    titulo: "Data Cleaning",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/data-cleaning",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso dedicado a limpeza de dados: valores ausentes, escalonamento, inconsistencias de texto e problemas de codificacao e datas.",
+    motivoIndicacao:
+      "Limpeza costuma consumir a maior parte do tempo de um analista, e poucos cursos gratuitos tratam o tema com essa profundidade.",
+    oQueAprende: [
+      "Tratamento de dados faltantes",
+      "Normalizacao e escalonamento",
+      "Correcao de datas, encoding e entradas inconsistentes",
+    ],
+    proximoConteudo: "Feature Engineering (Kaggle Learn)",
+  },
+  {
+    id: "hashtag-canal-analise-dados",
+    certificate: "nao",
+    titulo: "Canal Hashtag Programacao",
+    canal: "Hashtag Programacao",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/@HashtagProgramacao",
+    areaSlug: "analise-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Conteudo continuo",
+    idioma: "Português",
+    descricao:
+      "Canal brasileiro com aulas gratuitas de analise de dados usando Python, Pandas e Jupyter, com projetos aplicados a situacoes reais.",
+    motivoIndicacao:
+      "Complemento pratico em portugues para fixar a teoria com exemplos do mercado brasileiro.",
+    oQueAprende: [
+      "Analise de dados com Pandas",
+      "Uso do Jupyter na pratica",
+      "Mini projetos de analise",
+    ],
+    proximoConteudo: "Curso de analise de dados com Python da Hashtag",
+  },
+  {
+    id: "ms-learn-plano-analista-dados",
+    certificate: "nao_informado",
+    titulo: "Treinamento para analistas de dados (plano de carreira)",
+    canal: "Microsoft Learn",
+    plataforma: "Microsoft Learn",
+    link: "https://learn.microsoft.com/pt-br/training/career-paths/data-analyst",
+    areaSlug: "analista-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Trilha com varios modulos (autoinstrucional)",
+    idioma: "Português",
+    descricao:
+      "Plano de carreira oficial da Microsoft, em portugues, que reune modulos para formar um analista de dados com foco em Power BI.",
+    motivoIndicacao:
+      "Trilha gratuita, estruturada e em portugues, que organiza o aprendizado do iniciante ate a preparacao para certificacao.",
+    oQueAprende: [
+      "Perfilamento, limpeza e transformacao de dados",
+      "Modelagem de dados no Power BI",
+      "Criacao de relatorios e recursos analiticos",
+    ],
+    proximoConteudo: "Avaliacao pratica do exame PL-300",
+  },
+  {
+    id: "dio-power-bi-analista-dados",
+    certificate: "sim",
+    titulo: "Formacao Power BI Analyst",
+    canal: "DIO",
+    plataforma: "DIO",
+    link: "https://www.dio.me/curso-power-bi",
+    areaSlug: "analista-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Formacao com varios modulos e projetos",
+    idioma: "Português",
+    descricao:
+      "Formacao gratuita em portugues que leva da fundamentacao em BI ate modelagem, DAX, storytelling e gerenciamento de workspaces no Power BI.",
+    motivoIndicacao:
+      "Combina teoria, projetos para portfolio e certificado, sendo uma trilha completa de analista de BI sem custo.",
+    oQueAprende: [
+      "Fundamentos de analise de dados e BI",
+      "Modelagem e transformacao com DAX e Power Query",
+      "Construcao de dashboards e storytelling com dados",
+    ],
+    proximoConteudo: "Construcao de um dashboard de vendas para portfolio",
+  },
+  {
+    id: "bradesco-intro-analise-analista-dados",
+    certificate: "sim",
+    titulo: "Introducao a Analise de Dados - Microsoft Power BI",
+    canal: "Fundacao Bradesco / Microsoft",
+    plataforma: "Escola Virtual (Fundacao Bradesco)",
+    link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi",
+    areaSlug: "analista-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "5 horas",
+    idioma: "Português",
+    descricao:
+      "Curso introdutorio sobre o papel do analista de dados e as ferramentas do Power BI, com conteudo produzido pela Microsoft.",
+    motivoIndicacao:
+      "Apresenta de forma rapida e gratuita o que faz um analista de dados, com certificado ao final.",
+    oQueAprende: [
+      "Atribuicoes e tarefas do analista de dados",
+      "Categorias de analise de dados",
+      "Uso inicial do Power BI",
+    ],
+    proximoConteudo: "Analise de Dados no Power BI (Escola Virtual)",
+  },
+  {
+    id: "fcc-py-analise-dados-analista",
+    certificate: "sim",
+    titulo: "Analise de Dados com Python",
+    canal: "freeCodeCamp",
+    plataforma: "freeCodeCamp (em portugues)",
+    link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python",
+    areaSlug: "analista-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Aprox. 30 horas (autoinstrucional)",
+    idioma: "Português",
+    descricao:
+      "Certificacao gratuita em portugues que ensina o analista a trabalhar dados com Python, da importacao a analise exploratoria.",
+    motivoIndicacao:
+      "Para o analista que quer ir alem das ferramentas visuais e analisar dados com codigo, com certificacao gratuita.",
+    oQueAprende: [
+      "Leitura e limpeza de dados",
+      "Analise exploratoria com Pandas",
+      "Projetos avaliados",
+    ],
+    proximoConteudo: "Visualizacao de dados (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-data-viz-analista",
+    certificate: "sim",
+    titulo: "Data Visualization",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/data-visualization",
+    areaSlug: "analista-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso pratico de visualizacao de dados com Seaborn, ensinando a escolher e construir os graficos mais comuns.",
+    motivoIndicacao:
+      "Visualizacao e parte central do trabalho do analista; o curso e curto, pratico e gratuito.",
+    oQueAprende: [
+      "Graficos de linha, barra e dispersao",
+      "Distribuicoes e comparacoes",
+      "Boas praticas de escolha de grafico",
+    ],
+    proximoConteudo: "Pandas (Kaggle Learn)",
+  },
+  {
+    id: "dio-power-bi-analista-bi",
+    certificate: "sim",
+    titulo: "Formacao Power BI Analyst",
+    canal: "DIO",
+    plataforma: "DIO",
+    link: "https://www.dio.me/curso-power-bi",
+    areaSlug: "analista-bi" as string | null,
+    nivel: "Iniciante",
+    duracao: "Formacao com varios modulos e projetos",
+    idioma: "Português",
+    descricao:
+      "Formacao gratuita em portugues voltada a formar analistas de BI, cobrindo visualizacao, processamento, modelagem e gestao no Power BI.",
+    motivoIndicacao:
+      "E uma das trilhas gratuitas mais completas de BI em portugues, com projetos para portfolio e certificado.",
+    oQueAprende: [
+      "Fundamentos de BI e analise de dados",
+      "Modelagem com DAX e Power Query",
+      "Dashboards, storytelling e gestao de workspaces",
+    ],
+    proximoConteudo: "Modelagem e transformacao de dados para portfolio",
+  },
+  {
+    id: "bradesco-analise-dados-powerbi-bi",
+    certificate: "sim",
+    titulo: "Analise de Dados no Power BI",
+    canal: "Fundacao Bradesco / Microsoft",
+    plataforma: "Escola Virtual (Fundacao Bradesco)",
+    link: "https://www.ev.org.br/cursos/analise-de-dados-no-power-bi",
+    areaSlug: "analista-bi" as string | null,
+    nivel: "Avançado",
+    duracao: "4 horas",
+    idioma: "Português",
+    descricao:
+      "Curso avancado da trilha de Power BI da Escola Virtual, com recursos de IA como Principais Influenciadores, Arvore Hierarquica e Perguntas e Respostas.",
+    motivoIndicacao:
+      "Aprofunda recursos analiticos do Power BI que vao alem do basico, de graca e em portugues, com certificado.",
+    oQueAprende: [
+      "Visuais de IA no Power BI",
+      "Analise de causa raiz com Arvore Hierarquica",
+      "Apresentacao coesa de relatorios",
+    ],
+    proximoConteudo: "Pratica com datasets proprios no Power BI",
+  },
+  {
+    id: "bradesco-intro-analise-bi",
+    certificate: "sim",
+    titulo: "Introducao a Analise de Dados - Microsoft Power BI",
+    canal: "Fundacao Bradesco / Microsoft",
+    plataforma: "Escola Virtual (Fundacao Bradesco)",
+    link: "https://www.ev.org.br/cursos/introducao-a-analise-de-dados-microsoft-power-bi",
+    areaSlug: "analista-bi" as string | null,
+    nivel: "Iniciante",
+    duracao: "5 horas",
+    idioma: "Português",
+    descricao:
+      "Porta de entrada da trilha de Power BI, apresentando o papel do analista e os blocos de construcao da ferramenta.",
+    motivoIndicacao:
+      "Ideal como primeiro modulo antes do curso avancado de Power BI, gratuito e com certificado.",
+    oQueAprende: [
+      "Conceitos de dados e analise",
+      "Funcoes na area de dados",
+      "Servico e ferramentas do Power BI",
+    ],
+    proximoConteudo: "Analise de Dados no Power BI (Escola Virtual)",
+  },
+  {
+    id: "ms-learn-analista-bi",
+    certificate: "nao_informado",
+    titulo: "Treinamento para analistas de dados (plano de carreira)",
+    canal: "Microsoft Learn",
+    plataforma: "Microsoft Learn",
+    link: "https://learn.microsoft.com/pt-br/training/career-paths/data-analyst",
+    areaSlug: "analista-bi" as string | null,
+    nivel: "Intermediário",
+    duracao: "Trilha com varios modulos (autoinstrucional)",
+    idioma: "Português",
+    descricao:
+      "Plano de carreira da Microsoft em portugues centrado em Power BI, com modulos de modelagem, visualizacao e relatorios.",
+    motivoIndicacao:
+      "Trilha oficial e gratuita que prepara o analista de BI inclusive para a certificacao PL-300.",
+    oQueAprende: [
+      "Modelagem de dados escalavel",
+      "Recursos analiticos avancados em relatorios",
+      "Preparo para certificacao PL-300",
+    ],
+    proximoConteudo: "Avaliacao pratica do exame PL-300",
+  },
+  {
+    id: "kaggle-advanced-sql-ae",
+    certificate: "sim",
+    titulo: "Advanced SQL",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/advanced-sql",
+    areaSlug: "analytics-engineer" as string | null,
+    nivel: "Avançado",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso de SQL avancado sobre BigQuery, com JOINs e UNIONs complexos, funcoes analiticas e tecnicas para consultas eficientes em grande escala.",
+    motivoIndicacao:
+      "SQL avancado e a competencia central do analytics engineer; o curso e gratuito e direto ao que a funcao exige.",
+    oQueAprende: [
+      "JOINs e UNIONs avancados",
+      "Funcoes analiticas e janelas",
+      "Consultas otimizadas em dados grandes",
+    ],
+    proximoConteudo: "Modulos de modelagem e transformacao em data warehouse",
+  },
+  {
+    id: "kaggle-intro-sql-ae",
+    certificate: "sim",
+    titulo: "Intro to SQL",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/intro-to-sql",
+    areaSlug: "analytics-engineer" as string | null,
+    nivel: "Intermediário",
+    duracao: "Cerca de 3 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso introdutorio de SQL usando Google BigQuery, do SELECT basico a agrupamentos e ordenacao de resultados.",
+    motivoIndicacao:
+      "Base obrigatoria antes do SQL avancado; ja usa um data warehouse real, contexto tipico do analytics engineer.",
+    oQueAprende: [
+      "SELECT, WHERE e FROM",
+      "GROUP BY, HAVING e agregacoes",
+      "Consultas em BigQuery",
+    ],
+    proximoConteudo: "Advanced SQL (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-feature-engineering-ae",
+    certificate: "sim",
+    titulo: "Feature Engineering",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/feature-engineering",
+    areaSlug: "analytics-engineer" as string | null,
+    nivel: "Intermediário",
+    duracao: "Cerca de 5 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso sobre criacao e transformacao de variaveis para tornar os dados mais uteis, incluindo encoding, agregacoes e novas features derivadas.",
+    motivoIndicacao:
+      "Transformar dados brutos em tabelas analiticas confiaveis e parte do trabalho do analytics engineer; o curso cobre essa logica.",
+    oQueAprende: [
+      "Criacao de variaveis derivadas",
+      "Target e count encoding",
+      "Reducao de dimensionalidade aplicada a features",
+    ],
+    proximoConteudo: "Pratica de modelagem analitica em SQL",
+  },
+  {
+    id: "fcc-sql-databases-ae",
+    certificate: "nao",
+    titulo: "SQL and Databases - Full Course for Beginners",
+    canal: "freeCodeCamp",
+    plataforma: "YouTube (freeCodeCamp.org)",
+    link: "https://www.freecodecamp.org/news/sql-and-databases-full-course/",
+    areaSlug: "analytics-engineer" as string | null,
+    nivel: "Iniciante",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso completo de SQL e bancos de dados com MySQL, cobrindo design de schema, CRUD, joins, subconsultas, triggers e diagramas ER.",
+    motivoIndicacao:
+      "Aborda modelagem de banco e relacionamentos, conhecimento essencial para quem estrutura camadas de dados; gratuito e sem anuncios.",
+    oQueAprende: [
+      "Design de tabelas, chaves e schema",
+      "CRUD, joins e subconsultas",
+      "Triggers e diagramas entidade relacionamento",
+    ],
+    proximoConteudo: "Advanced SQL (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-intro-ml-cientista",
+    certificate: "sim",
+    titulo: "Intro to Machine Learning",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/intro-to-machine-learning",
+    areaSlug: "cientista-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Cerca de 3 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso que introduz as ideias centrais de machine learning e ensina a construir e validar os primeiros modelos preditivos.",
+    motivoIndicacao:
+      "E o primeiro passo classico para a ciencia de dados, com pratica imediata em modelos reais e gratuito.",
+    oQueAprende: [
+      "Como modelos de ML aprendem",
+      "Construcao de arvores de decisao e random forests",
+      "Validacao e overfitting",
+    ],
+    proximoConteudo:
+      "Intermediate Machine Learning e Feature Engineering (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-python-cientista",
+    certificate: "sim",
+    titulo: "Python",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/python",
+    areaSlug: "cientista-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Cerca de 5 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso de Python orientado a ciencia de dados, cobrindo a linguagem do zero ate uso de bibliotecas.",
+    motivoIndicacao:
+      "Python e a base de quase todo trabalho de cientista de dados; o curso prepara o terreno gratuitamente.",
+    oQueAprende: [
+      "Sintaxe e estruturas de Python",
+      "Funcoes e logica",
+      "Uso de bibliotecas externas",
+    ],
+    proximoConteudo: "Pandas (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-pandas-cientista",
+    certificate: "sim",
+    titulo: "Pandas",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/pandas",
+    areaSlug: "cientista-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso pratico de manipulacao de dados com Pandas, em desafios curtos e aplicados.",
+    motivoIndicacao:
+      "Manipulacao de dados e pre-requisito para qualquer modelagem; o curso e enxuto e gratuito.",
+    oQueAprende: [
+      "DataFrames e selecao de dados",
+      "Agrupamentos e combinacoes",
+      "Tratamento de dados ausentes",
+    ],
+    proximoConteudo: "Data Cleaning (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-intro-deep-learning-cientista",
+    certificate: "sim",
+    titulo: "Intro to Deep Learning",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/intro-to-deep-learning",
+    areaSlug: "cientista-dados" as string | null,
+    nivel: "Avançado",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso que ensina a construir e treinar redes neurais com TensorFlow e Keras para dados estruturados.",
+    motivoIndicacao:
+      "Para o cientista que ja domina o basico e quer entrar em deep learning, com pratica real e gratuito.",
+    oQueAprende: [
+      "Redes neurais e camadas densas",
+      "Treinamento com TensorFlow e Keras",
+      "Tecnicas contra overfitting como dropout",
+    ],
+    proximoConteudo: "Computer Vision (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-time-series-cientista",
+    certificate: "sim",
+    titulo: "Time Series",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/time-series",
+    areaSlug: "cientista-dados" as string | null,
+    nivel: "Avançado",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso de previsao com series temporais, cobrindo tendencia, sazonalidade e modelos aplicados a problemas reais de forecasting.",
+    motivoIndicacao:
+      "Previsao temporal e demanda comum em projetos de dados; poucos cursos gratuitos tratam o tema tao bem.",
+    oQueAprende: [
+      "Tendencia e sazonalidade",
+      "Features para series temporais",
+      "Modelos de previsao aplicados",
+    ],
+    proximoConteudo: "Machine Learning Explainability (Kaggle Learn)",
+  },
+  {
+    id: "kaggle-geospatial-cientista",
+    certificate: "sim",
+    titulo: "Geospatial Analysis",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/geospatial-analysis",
+    areaSlug: "cientista-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso para analisar dados geograficos, criar mapas interativos e descobrir padroes espaciais.",
+    motivoIndicacao:
+      "Adiciona uma especializacao util e diferenciada ao cientista de dados, gratuitamente.",
+    oQueAprende: [
+      "Manipulacao de dados geoespaciais",
+      "Criacao de mapas interativos",
+      "Analise de proximidade e padroes espaciais",
+    ],
+    proximoConteudo: "Projetos proprios com dados geograficos",
+  },
+  {
+    id: "fcc-py-analise-dados-cientista",
+    certificate: "sim",
+    titulo: "Analise de Dados com Python",
+    canal: "freeCodeCamp",
+    plataforma: "freeCodeCamp (em portugues)",
+    link: "https://www.freecodecamp.org/portuguese/learn/data-analysis-with-python",
+    areaSlug: "cientista-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Aprox. 30 horas (autoinstrucional)",
+    idioma: "Português",
+    descricao:
+      "Certificacao em portugues sobre analise de dados com Python, NumPy e Pandas, base solida antes da modelagem.",
+    motivoIndicacao:
+      "Da ao futuro cientista de dados uma base pratica em portugues, com certificacao gratuita.",
+    oQueAprende: [
+      "Leitura e limpeza de dados",
+      "Analise exploratoria com Pandas",
+      "Projetos avaliados",
+    ],
+    proximoConteudo: "Intro to Machine Learning (Kaggle Learn)",
+  },
+  {
+    id: "ms-learn-engenharia-dados",
+    certificate: "nao_informado",
+    titulo: "Treinamento para Engenheiros de Dados (plano de carreira)",
+    canal: "Microsoft Learn",
+    plataforma: "Microsoft Learn",
+    link: "https://learn.microsoft.com/pt-br/training/career-paths/data-engineer",
+    areaSlug: "engenharia-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Trilha com varios modulos (autoinstrucional)",
+    idioma: "Português",
+    descricao:
+      "Plano de carreira oficial da Microsoft, em portugues, com modulos sobre integracao, transformacao e consolidacao de dados, pipelines e armazenamento.",
+    motivoIndicacao:
+      "E a trilha gratuita mais estruturada de engenharia de dados em portugues, organizando o caminho ate a certificacao DP-203.",
+    oQueAprende: [
+      "Integracao e transformacao de dados",
+      "Construcao de pipelines de dados",
+      "Armazenamento e solucoes de analise",
+    ],
+    proximoConteudo: "Avaliacao pratica do exame DP-203",
+  },
+  {
+    id: "bradesco-administrando-banco-dados-eng",
+    certificate: "sim",
+    titulo: "Administrando Banco de Dados",
+    canal: "Fundacao Bradesco",
+    plataforma: "Escola Virtual (Fundacao Bradesco)",
+    link: "https://www.ev.org.br/cursos/administrando-banco-de-dados",
+    areaSlug: "engenharia-dados" as string | null,
+    nivel: "Avançado",
+    duracao: "15 horas",
+    idioma: "Português",
+    descricao:
+      "Curso sobre administracao de banco de dados, arquitetura de SGBD, modelos de dados, SQL, esquemas, instancias e tabelas, alem da rotina de manutencao.",
+    motivoIndicacao:
+      "Fundamentos de banco de dados sao base da engenharia de dados; este curso e gratuito, em portugues e com certificado.",
+    oQueAprende: [
+      "Arquitetura de um SGBD",
+      "Modelos de dados, esquemas e SQL",
+      "Gerenciamento e manutencao de bases",
+    ],
+    proximoConteudo: "Intro to SQL e Advanced SQL (Kaggle Learn)",
+  },
+  {
+    id: "dio-sql-engenharia-dados",
+    certificate: "sim",
+    titulo: "Formacao SQL Database Specialist",
+    canal: "DIO",
+    plataforma: "DIO",
+    link: "https://www.dio.me/curso-sql",
+    areaSlug: "engenharia-dados" as string | null,
+    nivel: "Intermediário",
+    duracao: "Formacao com varios modulos e projetos",
+    idioma: "Português",
+    descricao:
+      "Formacao gratuita que ensina a modelar bancos de dados conforme regras de negocio e a construir, de ponta a ponta, um banco para um e-commerce com MySQL.",
+    motivoIndicacao:
+      "Modelagem e SQL aplicados sao a base do engenheiro de dados; a formacao entrega projeto pratico, portfolio e certificado.",
+    oQueAprende: [
+      "Modelagem entidade relacional",
+      "Consultas e tecnicas avancadas em MySQL",
+      "Transacoes, backup e recovery",
+    ],
+    proximoConteudo: "Plano de Engenheiros de Dados (Microsoft Learn)",
+  },
+  {
+    id: "kaggle-advanced-sql-eng",
+    certificate: "sim",
+    titulo: "Advanced SQL",
+    canal: "Kaggle Learn",
+    plataforma: "Kaggle",
+    link: "https://www.kaggle.com/learn/advanced-sql",
+    areaSlug: "engenharia-dados" as string | null,
+    nivel: "Avançado",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso de SQL avancado em BigQuery, com joins complexos, funcoes analiticas e consultas eficientes em grandes volumes.",
+    motivoIndicacao:
+      "SQL eficiente em data warehouse e tarefa diaria na engenharia de dados; o curso e gratuito e usa um warehouse real.",
+    oQueAprende: [
+      "JOINs e UNIONs avancados",
+      "Funcoes analiticas",
+      "Otimizacao de consultas em grande escala",
+    ],
+    proximoConteudo: "Modulos de pipelines no plano da Microsoft",
+  },
+  {
+    id: "fcc-sql-databases-eng",
+    certificate: "nao",
+    titulo: "SQL and Databases - Full Course for Beginners",
+    canal: "freeCodeCamp",
+    plataforma: "YouTube (freeCodeCamp.org)",
+    link: "https://www.freecodecamp.org/news/sql-and-databases-full-course/",
+    areaSlug: "engenharia-dados" as string | null,
+    nivel: "Iniciante",
+    duracao: "Cerca de 4 horas",
+    idioma: "Inglês",
+    descricao:
+      "Curso completo de SQL e bancos com MySQL, do design de schema a CRUD, joins, subconsultas, triggers e diagramas ER.",
+    motivoIndicacao:
+      "Cobre modelagem e relacionamentos de banco, base estrutural para a engenharia de dados; gratuito e sem anuncios.",
+    oQueAprende: [
+      "Design de schema e chaves",
+      "CRUD, joins e subconsultas",
+      "Triggers e diagramas ER",
+    ],
+    proximoConteudo: "Administrando Banco de Dados (Escola Virtual)",
+  },
+  {
+    id: "android-basics-compose-google",
+    certificate: "nao",
+    titulo: "Android Basics with Compose",
+    canal: "Android Developers (Google)",
+    plataforma: "Android Developers",
+    link: "https://developer.android.com/courses/android-basics-compose/course",
+    areaSlug: "mobile" as string | null,
+    nivel: "Iniciante",
+    duracao: "Aproximadamente 100 horas (autoguiado)",
+    idioma: "Inglês",
+    descricao:
+      "Curso oficial do Google que parte do zero e ensina a construir aplicativos Android usando Kotlin e Jetpack Compose, com codelabs praticos e quizzes a cada unidade.",
+    motivoIndicacao:
+      "E a trilha recomendada pelo proprio Google para quem nunca programou, totalmente gratuita e sempre atualizada com as praticas atuais de Android.",
+    oQueAprende: [
+      "Fundamentos de Kotlin",
+      "Interfaces com Jetpack Compose",
+      "Arquitetura de apps e armazenamento de dados",
+      "Consumo de APIs e exibicao de listas",
+    ],
+    proximoConteudo:
+      "Jetpack Compose for Android Developers (nivel intermediario)",
+  },
+  {
+    id: "dio-mobile-nativo-android",
+    certificate: "sim",
+    titulo: "Desenvolvimento Mobile Nativo Para Android",
+    canal: "DIO",
+    plataforma: "DIO",
+    link: "https://www.dio.me/courses/desenvolvimento-mobile-nativo-para-android",
+    areaSlug: "mobile" as string | null,
+    nivel: "Iniciante",
+    duracao: "Curta (modulos introdutorios)",
+    idioma: "Português",
+    descricao:
+      "Curso introdutorio em portugues sobre desenvolvimento mobile nativo para Android, cobrindo o ambiente de desenvolvimento e a estrutura de projetos.",
+    motivoIndicacao:
+      "Otimo ponto de partida em portugues para entender como funciona um projeto Android antes de mergulhar em codigo mais avancado.",
+    oQueAprende: [
+      "Introducao ao desenvolvimento mobile",
+      "Configuracao do ambiente Android",
+      "Estrutura de um projeto Android",
+    ],
+    proximoConteudo: "Android Basics with Compose do Google",
+  },
+  {
+    id: "codelabs-android-google",
+    certificate: "nao",
+    titulo: "Android Codelabs",
+    canal: "Android Developers (Google)",
+    plataforma: "Google Codelabs",
+    link: "https://developer.android.com/get-started/codelabs",
+    areaSlug: "mobile" as string | null,
+    nivel: "Intermediário",
+    duracao: "Variavel (cada codelab leva de 30 a 90 minutos)",
+    idioma: "Inglês",
+    descricao:
+      "Coletanea oficial de tutoriais praticos curtos do Google que mostram passo a passo como implementar recursos especificos de apps Android.",
+    motivoIndicacao:
+      "Perfeito para praticar topicos pontuais sob demanda e fixar o que se aprende nas trilhas maiores, sempre com material oficial.",
+    oQueAprende: [
+      "Implementacao guiada de recursos Android",
+      "Boas praticas de codigo",
+      "Uso de bibliotecas Jetpack",
+    ],
+    proximoConteudo: "Trilha de arquitetura de apps Android",
+  },
+  {
+    id: "android-dev-kotlin-classroom",
+    certificate: "nao",
+    titulo: "Desenvolvimento para Android com Kotlin (curso para sala de aula)",
+    canal: "Android Developers (Google)",
+    plataforma: "Android Developers",
+    link: "https://developer.android.com/courses/android-development-with-kotlin/course",
+    areaSlug: "android-nativo" as string | null,
+    nivel: "Intermediário",
+    duracao: "Curso completo (varias unidades)",
+    idioma: "Inglês",
+    descricao:
+      "Curso oficial estruturado para ensino formal que cobre o desenvolvimento Android nativo usando a linguagem Kotlin.",
+    motivoIndicacao:
+      "Material oficial e gratuito pensado para um aprendizado estruturado de Android nativo com Kotlin, util tambem para autoestudo.",
+    oQueAprende: [
+      "Sintaxe e recursos de Kotlin",
+      "Ciclo de vida de Activities",
+      "Componentes de UI nativos",
+      "Persistencia de dados",
+    ],
+    proximoConteudo: "Trilha de arquitetura de apps Android",
+  },
+  {
+    id: "android-jetpack-compose-devs",
+    certificate: "nao",
+    titulo: "Jetpack Compose for Android Developers",
+    canal: "Android Developers (Google)",
+    plataforma: "Android Developers",
+    link: "https://developer.android.com/courses/jetpack-compose/course",
+    areaSlug: "android-nativo" as string | null,
+    nivel: "Intermediário",
+    duracao: "5 trilhas (pathways)",
+    idioma: "Inglês",
+    descricao:
+      "Curso oficial dividido em cinco trilhas que aprofunda o uso do Jetpack Compose para criar interfaces nativas modernas no Android.",
+    motivoIndicacao:
+      "Indicado para quem ja conhece o basico e quer dominar o toolkit de UI atual e recomendado pelo Google para Android.",
+    oQueAprende: [
+      "Funcoes composable",
+      "Layouts, tema e animacao",
+      "Arquitetura e estado",
+      "Acessibilidade, testes e performance",
+    ],
+    proximoConteudo: "Trilha de Kotlin Multiplatform",
+  },
+  {
+    id: "android-architecture-pathway",
+    certificate: "nao",
+    titulo: "Android App Architecture (trilha)",
+    canal: "Android Developers (Google)",
+    plataforma: "Android Developers",
+    link: "https://developer.android.com/courses/pathways/android-architecture",
+    areaSlug: "android-nativo" as string | null,
+    nivel: "Intermediário",
+    duracao: "Trilha (varios codelabs)",
+    idioma: "Inglês",
+    descricao:
+      "Trilha oficial que apresenta as boas praticas e a arquitetura recomendada para construir apps Android robustos e de qualidade de producao.",
+    motivoIndicacao:
+      "Essencial para sair do nivel iniciante e estruturar apps de forma profissional, com camadas bem definidas.",
+    oQueAprende: [
+      "Camadas de arquitetura recomendada",
+      "ViewModel e gerenciamento de estado",
+      "Boas praticas de testabilidade",
+    ],
+    proximoConteudo: "Trilha de acessibilidade em apps Android",
+  },
+  {
+    id: "android-acessibilidade-pathway",
+    certificate: "nao",
+    titulo: "Acessibilidade em apps Android (trilha)",
+    canal: "Android Developers (Google)",
+    plataforma: "Android Developers",
+    link: "https://developer.android.com/courses/pathways/make-your-android-app-accessible",
+    areaSlug: "android-nativo" as string | null,
+    nivel: "Intermediário",
+    duracao: "Trilha (varios codelabs)",
+    idioma: "Inglês",
+    descricao:
+      "Trilha oficial que ensina a tornar aplicativos Android utilizaveis por todas as pessoas, incluindo quem tem necessidades de acessibilidade.",
+    motivoIndicacao:
+      "Acessibilidade e diferencial de mercado e requisito de qualidade; este material oficial cobre o tema de forma pratica.",
+    oQueAprende: [
+      "Principios de acessibilidade",
+      "Suporte a leitores de tela",
+      "Ajustes de contraste e navegacao",
+    ],
+    proximoConteudo: "Trilha de arquitetura de apps Android",
+  },
+  {
+    id: "dio-android-kotlin-curso-pt",
+    certificate: "sim",
+    titulo: "Curso Desenvolvedor Android com Kotlin (modulos gratuitos)",
+    canal: "DIO",
+    plataforma: "DIO",
+    link: "https://www.dio.me/curso-android-kotlin",
+    areaSlug: "android-nativo" as string | null,
+    nivel: "Iniciante",
+    duracao: "Modulos com atividades praticas",
+    idioma: "Português",
+    descricao:
+      "Conteudo em portugues que apresenta a linguagem Kotlin e os fundamentos para criacao de apps Android, com projetos praticos de portfolio.",
+    motivoIndicacao:
+      "Boa opcao em portugues para quem prefere comecar Android nativo no idioma nativo antes de partir para o material oficial em ingles.",
+    oQueAprende: [
+      "Linguagem Kotlin",
+      "Fundamentos de Android",
+      "Android Jetpack",
+      "Projeto pratico de app",
+    ],
+    proximoConteudo: "Android Basics with Compose do Google",
+  },
+  {
+    id: "kotlin-iniciantes-stackmobile-yt",
+    certificate: "nao",
+    titulo: "Curso de Kotlin Para Iniciantes - Programacao Mobile",
+    canal: "Stack Mobile (YouTube)",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/playlist?list=PLizN3WA8HR1z1HJy0uSjNe4zhmzJNplb3",
+    areaSlug: "android-nativo" as string | null,
+    nivel: "Iniciante",
+    duracao: "Playlist com varias aulas",
+    idioma: "Português",
+    descricao:
+      "Playlist em portugues que ensina os fundamentos da linguagem Kotlin, a linguagem oficial recomendada pelo Google para Android.",
+    motivoIndicacao:
+      "Aulas em portugues e gratuitas para quem quer dominar Kotlin antes de construir apps, com ritmo de iniciante.",
+    oQueAprende: [
+      "Sintaxe basica de Kotlin",
+      "Variaveis, funcoes e tipos",
+      "Logica aplicada a mobile",
+    ],
+    proximoConteudo: "Curso Android com Kotlin da DIO",
+  },
+  {
+    id: "apple-develop-in-swift-tutorials",
+    certificate: "nao",
+    titulo: "Develop in Swift Tutorials",
+    canal: "Apple",
+    plataforma: "Apple Developer",
+    link: "https://developer.apple.com/tutorials/develop-in-swift",
+    areaSlug: "ios-nativo" as string | null,
+    nivel: "Iniciante",
+    duracao: "Serie de tutoriais (autoguiado)",
+    idioma: "Inglês",
+    descricao:
+      "Tutoriais oficiais da Apple que ensinam a programar em Swift e a construir apps para o ecossistema Apple do zero.",
+    motivoIndicacao:
+      "Por ser material oficial da Apple, e a fonte mais confiavel e atualizada para iniciar em desenvolvimento iOS de forma gratuita.",
+    oQueAprende: [
+      "Fundamentos de Swift",
+      "Construcao de apps com SwiftUI",
+      "Modelagem de dados",
+      "Boas praticas Apple",
+    ],
+    proximoConteudo: "Tutoriais de SwiftUI da Apple",
+  },
+  {
+    id: "apple-swiftui-tutorials",
+    certificate: "nao",
+    titulo: "Introducing SwiftUI",
+    canal: "Apple",
+    plataforma: "Apple Developer",
+    link: "https://developer.apple.com/tutorials/swiftui",
+    areaSlug: "ios-nativo" as string | null,
+    nivel: "Intermediário",
+    duracao: "Serie de tutoriais (autoguiado)",
+    idioma: "Inglês",
+    descricao:
+      "Tutoriais oficiais da Apple focados em SwiftUI, o framework declarativo para criar interfaces em todas as plataformas Apple.",
+    motivoIndicacao:
+      "SwiftUI e o caminho atual para UI no iOS; este material oficial e gratuito mostra na pratica como montar telas e fluxos.",
+    oQueAprende: [
+      "Criacao de views com SwiftUI",
+      "Estado e ligacao de dados",
+      "Navegacao e listas",
+      "Animacoes",
+    ],
+    proximoConteudo: "Aprofundar em arquitetura de apps iOS",
+  },
+  {
+    id: "dio-react-native-curso-pt",
+    certificate: "sim",
+    titulo: "Curso React Native Developer (modulos gratuitos)",
+    canal: "DIO",
+    plataforma: "DIO",
+    link: "https://www.dio.me/curso-react-native",
+    areaSlug: "react-native" as string | null,
+    nivel: "Iniciante",
+    duracao: "Modulos com atividades praticas",
+    idioma: "Português",
+    descricao:
+      "Conteudo em portugues que ensina a criar aplicacoes moveis com React Native usando JavaScript e TypeScript, da interface ate integracao com APIs.",
+    motivoIndicacao:
+      "Trilha em portugues com projetos praticos de portfolio, boa para quem ja conhece um pouco de JavaScript e quer entrar no mobile.",
+    oQueAprende: [
+      "Fundamentos de React Native",
+      "Navegacao entre telas",
+      "Componentes e estado",
+      "Consumo de APIs",
+    ],
+    proximoConteudo: "Tutorial pratico de React Native no YouTube",
+  },
+  {
+    id: "rn-tutorial-iniciante-yt",
+    certificate: "nao",
+    titulo: "Tutorial Iniciante de React Native (Curso Pratico Completo)",
+    canal: "YouTube (curso em portugues)",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/playlist?list=PLUbb2i4BuuzBrD7yLahzYlM5WPCDv_vGl",
+    areaSlug: "react-native" as string | null,
+    nivel: "Iniciante",
+    duracao: "Playlist com varias aulas",
+    idioma: "Português",
+    descricao:
+      "Curso pratico e gratuito em portugues que mostra como construir aplicativos moveis do zero com React Native.",
+    motivoIndicacao:
+      "Abordagem mao na massa em portugues, ideal para acompanhar codando junto e montar o primeiro app.",
+    oQueAprende: [
+      "Configuracao do ambiente React Native",
+      "Componentes basicos",
+      "Estilizacao e layout",
+      "Construcao de um app pratico",
+    ],
+    proximoConteudo: "Aprofundar com Expo e integracao de APIs",
+  },
+  {
+    id: "freecodecamp-react-native-pt",
+    certificate: "nao",
+    titulo: "Aprenda React Native (artigos)",
+    canal: "freeCodeCamp em Portugues",
+    plataforma: "freeCodeCamp",
+    link: "https://www.freecodecamp.org/portuguese/news/aprenda-react-native/",
+    areaSlug: "react-native" as string | null,
+    nivel: "Iniciante",
+    duracao: "Leitura e pratica autoguiada",
+    idioma: "Português",
+    descricao:
+      "Material em portugues do freeCodeCamp que introduz os conceitos centrais do React Native para iniciar no desenvolvimento mobile multiplataforma.",
+    motivoIndicacao:
+      "freeCodeCamp e uma referencia gratuita e confiavel; o conteudo em portugues ajuda a fixar conceitos sem custo.",
+    oQueAprende: [
+      "Conceitos centrais do React Native",
+      "Componentes e props",
+      "Primeiros passos no mobile",
+    ],
+    proximoConteudo: "Tutorial pratico de React Native no YouTube",
+  },
+  {
+    id: "flutter-learn-pathway-oficial",
+    certificate: "nao",
+    titulo: "Learn Flutter (trilha oficial)",
+    canal: "Flutter (Google)",
+    plataforma: "docs.flutter.dev",
+    link: "https://docs.flutter.dev/get-started/learn-flutter",
+    areaSlug: "flutter" as string | null,
+    nivel: "Iniciante",
+    duracao: "Trilha autoguiada",
+    idioma: "Inglês",
+    descricao:
+      "Trilha oficial de aprendizado do Flutter que reune os recursos recomendados pela equipe do Google para comecar do zero.",
+    motivoIndicacao:
+      "Fonte oficial, gratuita e sempre atualizada; o melhor ponto de partida confiavel para Flutter.",
+    oQueAprende: [
+      "Estrutura de um app Flutter",
+      "Widgets e layout",
+      "Gerenciamento de estado basico",
+      "Recursos recomendados de estudo",
+    ],
+    proximoConteudo: "Codelab oficial de introducao ao Flutter",
+  },
+  {
+    id: "flutter-codelab-oficial",
+    certificate: "nao",
+    titulo: "Write your first Flutter app (codelab)",
+    canal: "Flutter (Google)",
+    plataforma: "docs.flutter.dev",
+    link: "https://docs.flutter.dev/get-started/codelab",
+    areaSlug: "flutter" as string | null,
+    nivel: "Iniciante",
+    duracao: "Aproximadamente 1 a 2 horas",
+    idioma: "Inglês",
+    descricao:
+      "Codelab oficial que guia a criacao do primeiro aplicativo Flutter passo a passo.",
+    motivoIndicacao:
+      "Pratica guiada e rapida para sair do zero ao primeiro app rodando, direto da documentacao oficial.",
+    oQueAprende: [
+      "Criacao de projeto Flutter",
+      "Composicao de widgets",
+      "Interatividade basica",
+      "Execucao do app",
+    ],
+    proximoConteudo: "Introducao a linguagem Dart",
+  },
+  {
+    id: "dart-language-oficial",
+    certificate: "nao",
+    titulo: "Introduction to Dart",
+    canal: "Dart (Google)",
+    plataforma: "dart.dev",
+    link: "https://dart.dev/language",
+    areaSlug: "flutter" as string | null,
+    nivel: "Iniciante",
+    duracao: "Leitura e pratica autoguiada",
+    idioma: "Inglês",
+    descricao:
+      "Documentacao oficial da linguagem Dart, base do Flutter, cobrindo sintaxe e principais conceitos.",
+    motivoIndicacao:
+      "Entender Dart acelera muito o aprendizado de Flutter; este e o material oficial e gratuito da linguagem.",
+    oQueAprende: [
+      "Sintaxe de Dart",
+      "Tipos e null safety",
+      "Funcoes e classes",
+      "Programacao assincrona",
+    ],
+    proximoConteudo: "Aprofundar em widgets e estado no Flutter",
+  },
+  {
+    id: "flutter-para-iniciantes-livro",
+    certificate: "nao",
+    titulo: "Flutter para Iniciantes",
+    canal: "Rubens de Melo",
+    plataforma: "flutterparainiciantes.com.br",
+    link: "https://flutterparainiciantes.com.br/",
+    areaSlug: "flutter" as string | null,
+    nivel: "Iniciante",
+    duracao: "Livro online (autoguiado)",
+    idioma: "Português",
+    descricao:
+      "Livro online e aberto, em portugues, mantido desde 2019, que ensina Flutter e Dart de forma progressiva para iniciantes.",
+    motivoIndicacao:
+      "Conteudo gratuito e bem cuidado em portugues, otimo para quem prefere aprender lendo no proprio idioma.",
+    oQueAprende: [
+      "Fundamentos de Dart",
+      "Estrutura de apps Flutter",
+      "Widgets essenciais",
+      "Boas praticas iniciais",
+    ],
+    proximoConteudo: "Curso completo de Flutter da Flutterando no YouTube",
+  },
+  {
+    id: "flutterando-curso-completo-yt",
+    certificate: "nao",
+    titulo: "Curso COMPLETO de Flutter",
+    canal: "Flutterando (YouTube)",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/playlist?list=PLlBnICoI-g-d-J57QIz6Tx5xtUDGQdBFB",
+    areaSlug: "flutter" as string | null,
+    nivel: "Iniciante",
+    duracao: "Playlist com varias aulas",
+    idioma: "Português",
+    descricao:
+      "Curso gratuito em portugues da comunidade Flutterando, referencia brasileira em Flutter, cobrindo do basico em diante.",
+    motivoIndicacao:
+      "A Flutterando e a maior comunidade brasileira de Flutter; o curso e gratuito e bastante didatico em portugues.",
+    oQueAprende: [
+      "Fundamentos de Flutter e Dart",
+      "Construcao de interfaces",
+      "Navegacao",
+      "Boas praticas da comunidade",
+    ],
+    proximoConteudo: "Documentacao oficial do Flutter para aprofundar",
+  },
+  {
+    id: "flutterando-canal",
+    certificate: "nao",
+    titulo: "Canal Flutterando (tutoriais e series)",
+    canal: "Flutterando (YouTube)",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/@Flutterando",
+    areaSlug: "flutter" as string | null,
+    nivel: "Intermediário",
+    duracao: "Conteudo continuo",
+    idioma: "Português",
+    descricao:
+      "Canal da comunidade Flutterando com series, tutoriais e conteudos avancados sobre Flutter em portugues.",
+    motivoIndicacao:
+      "Fonte continua e gratuita em portugues para evoluir alem do basico, com temas de arquitetura e estado.",
+    oQueAprende: [
+      "Gerenciamento de estado",
+      "Arquitetura de apps Flutter",
+      "Pacotes e integracoes",
+      "Boas praticas avancadas",
+    ],
+    proximoConteudo: "Praticar com projetos proprios em Flutter",
+  },
+  {
+    id: "godot-docs-pt-br",
+    certificate: "nao",
+    titulo: "Documentacao oficial da Godot Engine (pt-BR)",
+    canal: "Godot Engine",
+    plataforma: "docs.godotengine.org",
+    link: "https://docs.godotengine.org/pt_br/4.x/getting_started/introduction/index.html",
+    areaSlug: "gamedev" as string | null,
+    nivel: "Iniciante",
+    duracao: "Leitura e pratica autoguiada",
+    idioma: "Português",
+    descricao:
+      "Documentacao oficial da Godot, engine gratuita e open source, com a secao de primeiros passos traduzida para portugues.",
+    motivoIndicacao:
+      "Material oficial, gratuito e em portugues; base solida para aprender uma engine 100 por cento livre.",
+    oQueAprende: [
+      "Conceitos basicos da Godot",
+      "Cenas e nos",
+      "Linguagem GDScript",
+      "Estrutura de um projeto de jogo",
+    ],
+    proximoConteudo: "Minicurso de Godot para iniciantes no YouTube",
+  },
+  {
+    id: "godot-minicurso-iniciantes-yt",
+    certificate: "nao",
+    titulo: "Aprenda Godot: Minicurso completo para Iniciantes",
+    canal: "YouTube (curso em portugues)",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/playlist?list=PLXiMbAkZF_BlKDfPoIOwFmmzC4dHX1eQt",
+    areaSlug: "gamedev" as string | null,
+    nivel: "Iniciante",
+    duracao: "Playlist (minicurso)",
+    idioma: "Português",
+    descricao:
+      "Minicurso gratuito em portugues que ensina Godot 4 do zero criando um jogo completo passo a passo.",
+    motivoIndicacao:
+      "Abordagem pratica em portugues para quem quer ver um jogo nascendo do inicio ao fim com a Godot.",
+    oQueAprende: [
+      "Interface da Godot",
+      "Criacao de cenas e personagens",
+      "Logica de jogo com GDScript",
+      "Montagem de um jogo completo",
+    ],
+    proximoConteudo: "Documentacao oficial da Godot para aprofundar",
+  },
+  {
+    id: "unity-learn-oficial",
+    certificate: "nao",
+    titulo: "Unity Learn",
+    canal: "Unity",
+    plataforma: "Unity Learn",
+    link: "https://learn.unity.com/",
+    areaSlug: "gamedev" as string | null,
+    nivel: "Iniciante",
+    duracao: "Varios cursos e tutoriais (autoguiado)",
+    idioma: "Inglês",
+    descricao:
+      "Plataforma oficial da Unity com cursos e tutoriais gratuitos para aprender a criar jogos com a engine Unity.",
+    motivoIndicacao:
+      "Fonte oficial e gratuita da Unity, com trilhas guiadas para quem quer entrar no desenvolvimento de jogos com uma das engines mais usadas.",
+    oQueAprende: [
+      "Fundamentos da Unity",
+      "Scripting em C#",
+      "Fisica e cenas",
+      "Publicacao de jogos",
+    ],
+    proximoConteudo: "Projetos praticos de jogos 2D na Unity",
+  },
+  {
+    id: "dio-unity-3d-curso-pt",
+    certificate: "sim",
+    titulo:
+      "Curso Unity 3D - Construa seu proprio jogo Zelda (modulos gratuitos)",
+    canal: "DIO",
+    plataforma: "DIO",
+    link: "https://www.dio.me/curso-unity-3d",
+    areaSlug: "gamedev" as string | null,
+    nivel: "Iniciante",
+    duracao: "Modulos com atividades praticas",
+    idioma: "Português",
+    descricao:
+      "Conteudo em portugues que ensina os primeiros passos com Unity 3D e a construir um clone inspirado em Zelda como projeto de portfolio.",
+    motivoIndicacao:
+      "Opcao em portugues com um projeto pratico motivador para quem quer comecar gamedev com Unity no idioma nativo.",
+    oQueAprende: [
+      "Primeiros passos com Unity",
+      "Programacao em Unity",
+      "Tecnicas artisticas basicas",
+      "Construcao de um jogo completo",
+    ],
+    proximoConteudo: "Unity Learn oficial para aprofundar",
+  },
+  {
+    id: "recriando-games-canal-yt",
+    certificate: "nao",
+    titulo: "Canal Recriando Games (desenvolvimento de jogos)",
+    canal: "Recriando Games (YouTube)",
+    plataforma: "YouTube",
+    link: "https://www.youtube.com/@RecriandoGames",
+    areaSlug: "gamedev" as string | null,
+    nivel: "Intermediário",
+    duracao: "Conteudo continuo",
+    idioma: "Português",
+    descricao:
+      "Canal em portugues voltado ao desenvolvimento de jogos usando diversas engines, incluindo Unity, Unreal e Godot.",
+    motivoIndicacao:
+      "Fonte continua e gratuita em portugues para quem quer ver na pratica a recriacao de jogos em diferentes engines.",
+    oQueAprende: [
+      "Recriacao de mecanicas de jogos",
+      "Uso de diferentes engines",
+      "Logica de gameplay",
+      "Boas praticas de producao",
+    ],
+    proximoConteudo: "Aprofundar em uma engine especifica (Unity ou Godot)",
+  },
   {
     id: "ms-learn-introducao-conceitos-ia",
     certificate: "nao_informado",
@@ -13240,7 +14785,12 @@ export const projetos = [
     nivel: "Intermediário",
     objetivo:
       "Criar uma API REST que cria, lista, atualiza e remove tarefas (CRUD completo).",
-    ferramentas: ["Node.js", "Express", "Banco de dados", "Postman ou Insomnia"],
+    ferramentas: [
+      "Node.js",
+      "Express",
+      "Banco de dados",
+      "Postman ou Insomnia",
+    ],
     passosSimplificados: [
       "Configure o servidor Express",
       "Crie as rotas CRUD de tarefas",
@@ -13406,455 +14956,806 @@ export const projetos = [
     nome: "API de Auditoria de Eventos",
     areaSlug: "backend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar uma API que registre ações importantes de um sistema, como login, edição, exclusão e falhas de permissão.",
+    objetivo:
+      "Criar uma API que registre ações importantes de um sistema, como login, edição, exclusão e falhas de permissão.",
     ferramentas: ["Node.js", "Express", "PostgreSQL", "Swagger"],
-    passosSimplificados: ["Definir os eventos que serão auditados", "Criar o modelo de dados no PostgreSQL", "Construir endpoints para registrar e consultar eventos", "Adicionar filtros por usuário, ação e período", "Documentar a API com Swagger"],
-    entregavel: "API funcional com banco de dados, filtros e documentação técnica",
-    comoPublicar: "Publicar o código no GitHub e disponibilizar a documentação pelo Swagger ou README com exemplos de uso",
-    sugestaoLinkedIn: "Concluí uma API de auditoria de eventos para praticar backend com foco em rastreabilidade e segurança. O projeto me ajudou a entender melhor logs, filtros e documentação de APIs.",
-    proximoProjeto: "Sistema de Permissões com Controle de Acesso"
+    passosSimplificados: [
+      "Definir os eventos que serão auditados",
+      "Criar o modelo de dados no PostgreSQL",
+      "Construir endpoints para registrar e consultar eventos",
+      "Adicionar filtros por usuário, ação e período",
+      "Documentar a API com Swagger",
+    ],
+    entregavel:
+      "API funcional com banco de dados, filtros e documentação técnica",
+    comoPublicar:
+      "Publicar o código no GitHub e disponibilizar a documentação pelo Swagger ou README com exemplos de uso",
+    sugestaoLinkedIn:
+      "Concluí uma API de auditoria de eventos para praticar backend com foco em rastreabilidade e segurança. O projeto me ajudou a entender melhor logs, filtros e documentação de APIs.",
+    proximoProjeto: "Sistema de Permissões com Controle de Acesso",
   },
   {
     id: "motor-regras-notificacao",
     nome: "Motor de Regras para Notificações",
     areaSlug: "backend" as string | null,
     nivel: "Avançado",
-    objetivo: "Construir um serviço backend que decide quando enviar notificações com base em regras configuráveis.",
+    objetivo:
+      "Construir um serviço backend que decide quando enviar notificações com base em regras configuráveis.",
     ferramentas: ["Java", "Spring Boot", "Redis", "PostgreSQL", "Docker"],
-    passosSimplificados: ["Modelar regras de notificação por evento", "Criar endpoints para cadastrar regras", "Implementar processamento assíncrono com fila ou cache", "Adicionar logs de execução das regras", "Criar testes para cenários de regra válida, inválida e expirada"],
-    entregavel: "Serviço backend com motor de regras, persistência e ambiente Docker",
-    comoPublicar: "Publicar no GitHub com Docker Compose e exemplos de requisições no README",
-    sugestaoLinkedIn: "Finalizei um motor de regras para notificações usando backend mais avançado. Foi um projeto importante para praticar arquitetura, processamento assíncrono e tomada de decisão no servidor.",
-    proximoProjeto: "Plataforma de Notificações Multicanal"
+    passosSimplificados: [
+      "Modelar regras de notificação por evento",
+      "Criar endpoints para cadastrar regras",
+      "Implementar processamento assíncrono com fila ou cache",
+      "Adicionar logs de execução das regras",
+      "Criar testes para cenários de regra válida, inválida e expirada",
+    ],
+    entregavel:
+      "Serviço backend com motor de regras, persistência e ambiente Docker",
+    comoPublicar:
+      "Publicar no GitHub com Docker Compose e exemplos de requisições no README",
+    sugestaoLinkedIn:
+      "Finalizei um motor de regras para notificações usando backend mais avançado. Foi um projeto importante para praticar arquitetura, processamento assíncrono e tomada de decisão no servidor.",
+    proximoProjeto: "Plataforma de Notificações Multicanal",
   },
   {
     id: "plataforma-eventos-tech",
     nome: "Plataforma de Inscrição em Eventos Tech",
     areaSlug: "fullstack" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar uma aplicação para cadastrar eventos, receber inscrições e gerar lista de participantes.",
+    objetivo:
+      "Criar uma aplicação para cadastrar eventos, receber inscrições e gerar lista de participantes.",
     ferramentas: ["React", "Node.js", "PostgreSQL", "Prisma"],
-    passosSimplificados: ["Criar telas de listagem e detalhe de eventos", "Implementar cadastro de eventos no backend", "Criar fluxo de inscrição de participantes", "Adicionar painel administrativo simples", "Gerar relatório de inscritos por evento"],
-    entregavel: "Aplicação fullstack com frontend, backend e banco de dados integrados",
-    comoPublicar: "Publicar o frontend na Vercel e o backend com instruções de execução no GitHub",
-    sugestaoLinkedIn: "Construí uma plataforma fullstack de inscrição em eventos tech. O projeto me ajudou a conectar frontend, backend e banco de dados em um fluxo real de produto.",
-    proximoProjeto: "Sistema de Check-in com QR Code"
+    passosSimplificados: [
+      "Criar telas de listagem e detalhe de eventos",
+      "Implementar cadastro de eventos no backend",
+      "Criar fluxo de inscrição de participantes",
+      "Adicionar painel administrativo simples",
+      "Gerar relatório de inscritos por evento",
+    ],
+    entregavel:
+      "Aplicação fullstack com frontend, backend e banco de dados integrados",
+    comoPublicar:
+      "Publicar o frontend na Vercel e o backend com instruções de execução no GitHub",
+    sugestaoLinkedIn:
+      "Construí uma plataforma fullstack de inscrição em eventos tech. O projeto me ajudou a conectar frontend, backend e banco de dados em um fluxo real de produto.",
+    proximoProjeto: "Sistema de Check-in com QR Code",
   },
   {
     id: "marketplace-servicos-locais",
     nome: "Marketplace de Serviços Locais",
     areaSlug: "fullstack" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar um marketplace em que prestadores cadastram serviços e clientes fazem solicitações com status de atendimento.",
+    objetivo:
+      "Criar um marketplace em que prestadores cadastram serviços e clientes fazem solicitações com status de atendimento.",
     ferramentas: ["Next.js", "NestJS", "PostgreSQL", "Prisma", "Docker"],
-    passosSimplificados: ["Modelar usuários, serviços e solicitações", "Criar autenticação com perfis diferentes", "Implementar cadastro e busca de serviços", "Criar fluxo de solicitação e atualização de status", "Adicionar painel para prestador e cliente", "Preparar ambiente com Docker"],
-    entregavel: "Marketplace fullstack com autenticação, perfis e fluxo de serviço completo",
-    comoPublicar: "Publicar o frontend na Vercel e manter o backend documentado no GitHub com Docker Compose",
-    sugestaoLinkedIn: "Desenvolvi um marketplace de serviços locais para praticar arquitetura fullstack com múltiplos perfis de usuário. Foi um projeto desafiador para trabalhar regras de negócio reais.",
-    proximoProjeto: "Sistema de Pagamentos Simulado"
+    passosSimplificados: [
+      "Modelar usuários, serviços e solicitações",
+      "Criar autenticação com perfis diferentes",
+      "Implementar cadastro e busca de serviços",
+      "Criar fluxo de solicitação e atualização de status",
+      "Adicionar painel para prestador e cliente",
+      "Preparar ambiente com Docker",
+    ],
+    entregavel:
+      "Marketplace fullstack com autenticação, perfis e fluxo de serviço completo",
+    comoPublicar:
+      "Publicar o frontend na Vercel e manter o backend documentado no GitHub com Docker Compose",
+    sugestaoLinkedIn:
+      "Desenvolvi um marketplace de serviços locais para praticar arquitetura fullstack com múltiplos perfis de usuário. Foi um projeto desafiador para trabalhar regras de negócio reais.",
+    proximoProjeto: "Sistema de Pagamentos Simulado",
   },
   {
     id: "modelo-controle-estoque",
     nome: "Modelo de Banco para Controle de Estoque",
     areaSlug: "banco-de-dados" as string | null,
     nivel: "Intermediário",
-    objetivo: "Modelar um banco relacional para controlar produtos, entradas, saídas, fornecedores e estoque mínimo.",
+    objetivo:
+      "Modelar um banco relacional para controlar produtos, entradas, saídas, fornecedores e estoque mínimo.",
     ferramentas: ["PostgreSQL", "SQL", "DBeaver", "Draw.io"],
-    passosSimplificados: ["Levantar entidades principais do estoque", "Criar modelo entidade relacionamento", "Implementar tabelas com chaves e restrições", "Criar consultas para saldo e movimentações", "Documentar decisões de modelagem"],
+    passosSimplificados: [
+      "Levantar entidades principais do estoque",
+      "Criar modelo entidade relacionamento",
+      "Implementar tabelas com chaves e restrições",
+      "Criar consultas para saldo e movimentações",
+      "Documentar decisões de modelagem",
+    ],
     entregavel: "Modelo relacional com scripts SQL, diagrama e consultas úteis",
-    comoPublicar: "Publicar os scripts, o diagrama e exemplos de consultas no GitHub",
-    sugestaoLinkedIn: "Concluí um projeto de modelagem de banco para controle de estoque. Foi uma prática importante para reforçar SQL, relacionamentos e regras de integridade.",
-    proximoProjeto: "API de Estoque com Relatórios"
+    comoPublicar:
+      "Publicar os scripts, o diagrama e exemplos de consultas no GitHub",
+    sugestaoLinkedIn:
+      "Concluí um projeto de modelagem de banco para controle de estoque. Foi uma prática importante para reforçar SQL, relacionamentos e regras de integridade.",
+    proximoProjeto: "API de Estoque com Relatórios",
   },
   {
     id: "data-mart-comercial",
     nome: "Data Mart Comercial",
     areaSlug: "banco-de-dados" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar um modelo dimensional para análise de vendas, clientes, produtos e metas comerciais.",
+    objetivo:
+      "Criar um modelo dimensional para análise de vendas, clientes, produtos e metas comerciais.",
     ferramentas: ["PostgreSQL", "SQL", "dbdiagram.io", "Power BI"],
-    passosSimplificados: ["Definir fatos e dimensões do domínio comercial", "Criar tabelas dimensionais e tabela fato", "Popular dados simulados", "Criar consultas analíticas com agregações", "Conectar o modelo a um dashboard simples"],
-    entregavel: "Data mart com modelo estrela, scripts SQL e consultas analíticas",
-    comoPublicar: "Publicar scripts e diagrama no GitHub, com prints do dashboard no README",
-    sugestaoLinkedIn: "Finalizei um data mart comercial para praticar modelagem dimensional. O projeto me ajudou a entender como bancos são estruturados para análise e tomada de decisão.",
-    proximoProjeto: "Pipeline ETL para Data Warehouse"
+    passosSimplificados: [
+      "Definir fatos e dimensões do domínio comercial",
+      "Criar tabelas dimensionais e tabela fato",
+      "Popular dados simulados",
+      "Criar consultas analíticas com agregações",
+      "Conectar o modelo a um dashboard simples",
+    ],
+    entregavel:
+      "Data mart com modelo estrela, scripts SQL e consultas analíticas",
+    comoPublicar:
+      "Publicar scripts e diagrama no GitHub, com prints do dashboard no README",
+    sugestaoLinkedIn:
+      "Finalizei um data mart comercial para praticar modelagem dimensional. O projeto me ajudou a entender como bancos são estruturados para análise e tomada de decisão.",
+    proximoProjeto: "Pipeline ETL para Data Warehouse",
   },
   {
     id: "catalogo-dados-publicos",
     nome: "Catálogo de Dados Públicos",
     areaSlug: "dados" as string | null,
     nivel: "Iniciante",
-    objetivo: "Criar um catálogo organizado com bases públicas brasileiras, explicando finalidade, colunas e possíveis análises.",
+    objetivo:
+      "Criar um catálogo organizado com bases públicas brasileiras, explicando finalidade, colunas e possíveis análises.",
     ferramentas: ["Google Sheets", "Markdown", "GitHub"],
-    passosSimplificados: ["Escolher 5 bases públicas", "Registrar origem e descrição de cada base", "Mapear principais colunas", "Sugerir perguntas de análise para cada base", "Publicar o catálogo com organização clara"],
+    passosSimplificados: [
+      "Escolher 5 bases públicas",
+      "Registrar origem e descrição de cada base",
+      "Mapear principais colunas",
+      "Sugerir perguntas de análise para cada base",
+      "Publicar o catálogo com organização clara",
+    ],
     entregavel: "Catálogo de dados documentado para consulta e estudo",
-    comoPublicar: "Publicar no GitHub como README ou página simples no GitHub Pages",
-    sugestaoLinkedIn: "Montei um catálogo de dados públicos brasileiros para praticar documentação e leitura de bases reais. Esse projeto me ajudou a transformar dados soltos em material útil para análise.",
-    proximoProjeto: "Dashboard com Dados Públicos"
+    comoPublicar:
+      "Publicar no GitHub como README ou página simples no GitHub Pages",
+    sugestaoLinkedIn:
+      "Montei um catálogo de dados públicos brasileiros para praticar documentação e leitura de bases reais. Esse projeto me ajudou a transformar dados soltos em material útil para análise.",
+    proximoProjeto: "Dashboard com Dados Públicos",
   },
   {
     id: "analise-churn-streaming",
     nome: "Análise de Churn em Serviço de Streaming",
     areaSlug: "analise-dados" as string | null,
     nivel: "Intermediário",
-    objetivo: "Analisar padrões de cancelamento em uma base simulada de clientes de streaming.",
+    objetivo:
+      "Analisar padrões de cancelamento em uma base simulada de clientes de streaming.",
     ferramentas: ["Python", "Pandas", "Matplotlib", "Jupyter Notebook"],
-    passosSimplificados: ["Carregar e limpar a base de clientes", "Criar métricas de churn por perfil", "Comparar comportamento por plano e tempo de uso", "Gerar gráficos explicativos", "Escrever conclusões e recomendações"],
-    entregavel: "Notebook analítico com gráficos, insights e recomendações de negócio",
-    comoPublicar: "Publicar o notebook no GitHub com README explicando o problema e os principais achados",
-    sugestaoLinkedIn: "Concluí uma análise de churn em um serviço de streaming. O projeto me ajudou a praticar limpeza de dados, análise exploratória e comunicação de insights.",
-    proximoProjeto: "Modelo de Previsão de Churn"
+    passosSimplificados: [
+      "Carregar e limpar a base de clientes",
+      "Criar métricas de churn por perfil",
+      "Comparar comportamento por plano e tempo de uso",
+      "Gerar gráficos explicativos",
+      "Escrever conclusões e recomendações",
+    ],
+    entregavel:
+      "Notebook analítico com gráficos, insights e recomendações de negócio",
+    comoPublicar:
+      "Publicar o notebook no GitHub com README explicando o problema e os principais achados",
+    sugestaoLinkedIn:
+      "Concluí uma análise de churn em um serviço de streaming. O projeto me ajudou a praticar limpeza de dados, análise exploratória e comunicação de insights.",
+    proximoProjeto: "Modelo de Previsão de Churn",
   },
   {
     id: "painel-financeiro-executivo",
     nome: "Painel Financeiro Executivo",
     areaSlug: "analise-dados" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar um painel para acompanhar receita, custos, margem, ticket médio e variação mensal.",
+    objetivo:
+      "Criar um painel para acompanhar receita, custos, margem, ticket médio e variação mensal.",
     ferramentas: ["Power BI", "DAX", "Excel", "SQL"],
-    passosSimplificados: ["Estruturar uma base financeira simulada", "Criar medidas DAX para indicadores principais", "Montar páginas de visão geral e detalhamento", "Adicionar filtros por período, categoria e centro de custo", "Escrever análise executiva dos resultados"],
-    entregavel: "Dashboard financeiro com KPIs, filtros e interpretação de negócio",
-    comoPublicar: "Publicar prints e arquivo do projeto no GitHub, com explicação das medidas no README",
-    sugestaoLinkedIn: "Desenvolvi um painel financeiro executivo com foco em indicadores de negócio. Foi uma ótima prática para transformar dados financeiros em visualizações úteis para decisão.",
-    proximoProjeto: "Previsão de Receita com Séries Temporais"
+    passosSimplificados: [
+      "Estruturar uma base financeira simulada",
+      "Criar medidas DAX para indicadores principais",
+      "Montar páginas de visão geral e detalhamento",
+      "Adicionar filtros por período, categoria e centro de custo",
+      "Escrever análise executiva dos resultados",
+    ],
+    entregavel:
+      "Dashboard financeiro com KPIs, filtros e interpretação de negócio",
+    comoPublicar:
+      "Publicar prints e arquivo do projeto no GitHub, com explicação das medidas no README",
+    sugestaoLinkedIn:
+      "Desenvolvi um painel financeiro executivo com foco em indicadores de negócio. Foi uma ótima prática para transformar dados financeiros em visualizações úteis para decisão.",
+    proximoProjeto: "Previsão de Receita com Séries Temporais",
   },
   {
     id: "pipeline-etl-dados-saude",
     nome: "Pipeline ETL de Dados de Saúde",
     areaSlug: "engenharia-dados" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar um pipeline que coleta, limpa e organiza dados de saúde em tabelas prontas para análise.",
+    objetivo:
+      "Criar um pipeline que coleta, limpa e organiza dados de saúde em tabelas prontas para análise.",
     ferramentas: ["Python", "Pandas", "PostgreSQL", "Docker"],
-    passosSimplificados: ["Escolher uma base pública ou simulada de saúde", "Criar etapa de extração dos arquivos", "Aplicar tratamento e padronização dos dados", "Carregar os dados tratados no PostgreSQL", "Documentar o fluxo de ponta a ponta"],
+    passosSimplificados: [
+      "Escolher uma base pública ou simulada de saúde",
+      "Criar etapa de extração dos arquivos",
+      "Aplicar tratamento e padronização dos dados",
+      "Carregar os dados tratados no PostgreSQL",
+      "Documentar o fluxo de ponta a ponta",
+    ],
     entregavel: "Pipeline ETL funcional com banco populado e documentação",
-    comoPublicar: "Publicar no GitHub com Docker Compose e instruções para executar localmente",
-    sugestaoLinkedIn: "Concluí um pipeline ETL de dados de saúde. Foi uma prática muito boa para entender extração, transformação e carga em um fluxo organizado.",
-    proximoProjeto: "Data Warehouse de Indicadores de Saúde"
+    comoPublicar:
+      "Publicar no GitHub com Docker Compose e instruções para executar localmente",
+    sugestaoLinkedIn:
+      "Concluí um pipeline ETL de dados de saúde. Foi uma prática muito boa para entender extração, transformação e carga em um fluxo organizado.",
+    proximoProjeto: "Data Warehouse de Indicadores de Saúde",
   },
   {
     id: "lakehouse-mini-vendas",
     nome: "Mini Lakehouse de Vendas",
     areaSlug: "engenharia-dados" as string | null,
     nivel: "Avançado",
-    objetivo: "Simular uma arquitetura lakehouse com camadas de dados brutos, tratados e prontos para análise.",
+    objetivo:
+      "Simular uma arquitetura lakehouse com camadas de dados brutos, tratados e prontos para análise.",
     ferramentas: ["Python", "DuckDB", "Parquet", "Docker", "SQL"],
-    passosSimplificados: ["Criar dados simulados de vendas em arquivos CSV", "Organizar camada bruta de dados", "Transformar arquivos para Parquet", "Criar camada analítica com DuckDB", "Escrever consultas de negócio", "Documentar a arquitetura em camadas"],
-    entregavel: "Mini lakehouse local com camadas de dados e consultas analíticas",
-    comoPublicar: "Publicar no GitHub com estrutura de pastas, scripts e diagrama da arquitetura",
-    sugestaoLinkedIn: "Desenvolvi um mini lakehouse de vendas para praticar engenharia de dados. O projeto me ajudou a entender melhor camadas de dados, Parquet e consultas analíticas.",
-    proximoProjeto: "Orquestração de Pipeline com Airflow"
+    passosSimplificados: [
+      "Criar dados simulados de vendas em arquivos CSV",
+      "Organizar camada bruta de dados",
+      "Transformar arquivos para Parquet",
+      "Criar camada analítica com DuckDB",
+      "Escrever consultas de negócio",
+      "Documentar a arquitetura em camadas",
+    ],
+    entregavel:
+      "Mini lakehouse local com camadas de dados e consultas analíticas",
+    comoPublicar:
+      "Publicar no GitHub com estrutura de pastas, scripts e diagrama da arquitetura",
+    sugestaoLinkedIn:
+      "Desenvolvi um mini lakehouse de vendas para praticar engenharia de dados. O projeto me ajudou a entender melhor camadas de dados, Parquet e consultas analíticas.",
+    proximoProjeto: "Orquestração de Pipeline com Airflow",
   },
   {
     id: "ci-cd-api-docker",
     nome: "CI/CD para API com Docker",
     areaSlug: "devops" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar uma esteira de integração contínua para testar, validar e empacotar uma API em Docker.",
+    objetivo:
+      "Criar uma esteira de integração contínua para testar, validar e empacotar uma API em Docker.",
     ferramentas: ["GitHub Actions", "Docker", "Node.js", "Jest"],
-    passosSimplificados: ["Criar uma API simples com testes", "Escrever Dockerfile para a aplicação", "Configurar workflow no GitHub Actions", "Executar testes automaticamente a cada push", "Gerar imagem Docker como artefato"],
-    entregavel: "Pipeline CI/CD funcional com testes automatizados e build Docker",
+    passosSimplificados: [
+      "Criar uma API simples com testes",
+      "Escrever Dockerfile para a aplicação",
+      "Configurar workflow no GitHub Actions",
+      "Executar testes automaticamente a cada push",
+      "Gerar imagem Docker como artefato",
+    ],
+    entregavel:
+      "Pipeline CI/CD funcional com testes automatizados e build Docker",
     comoPublicar: "Publicar no GitHub com badge do workflow no README",
-    sugestaoLinkedIn: "Configurei uma esteira CI/CD para uma API com Docker e GitHub Actions. Foi um projeto importante para praticar automação de testes e build em ambiente real.",
-    proximoProjeto: "Deploy Automatizado em Ambiente Cloud"
+    sugestaoLinkedIn:
+      "Configurei uma esteira CI/CD para uma API com Docker e GitHub Actions. Foi um projeto importante para praticar automação de testes e build em ambiente real.",
+    proximoProjeto: "Deploy Automatizado em Ambiente Cloud",
   },
   {
     id: "observabilidade-microservicos",
     nome: "Observabilidade para Microserviços",
     areaSlug: "devops" as string | null,
     nivel: "Avançado",
-    objetivo: "Montar um ambiente com métricas, logs e dashboards para acompanhar a saúde de serviços.",
+    objetivo:
+      "Montar um ambiente com métricas, logs e dashboards para acompanhar a saúde de serviços.",
     ferramentas: ["Docker", "Prometheus", "Grafana", "Node.js", "Loki"],
-    passosSimplificados: ["Criar dois serviços simples em containers", "Expor métricas de aplicação", "Configurar Prometheus para coletar métricas", "Criar dashboards no Grafana", "Adicionar coleta de logs", "Documentar alertas e indicadores principais"],
-    entregavel: "Ambiente local de observabilidade com dashboards e logs centralizados",
-    comoPublicar: "Publicar no GitHub com Docker Compose, prints dos dashboards e guia de execução",
-    sugestaoLinkedIn: "Finalizei um laboratório de observabilidade para microserviços. Foi uma prática avançada para entender métricas, logs e monitoramento de aplicações.",
-    proximoProjeto: "Kubernetes Local com Monitoramento"
+    passosSimplificados: [
+      "Criar dois serviços simples em containers",
+      "Expor métricas de aplicação",
+      "Configurar Prometheus para coletar métricas",
+      "Criar dashboards no Grafana",
+      "Adicionar coleta de logs",
+      "Documentar alertas e indicadores principais",
+    ],
+    entregavel:
+      "Ambiente local de observabilidade com dashboards e logs centralizados",
+    comoPublicar:
+      "Publicar no GitHub com Docker Compose, prints dos dashboards e guia de execução",
+    sugestaoLinkedIn:
+      "Finalizei um laboratório de observabilidade para microserviços. Foi uma prática avançada para entender métricas, logs e monitoramento de aplicações.",
+    proximoProjeto: "Kubernetes Local com Monitoramento",
   },
   {
     id: "upload-serverless-imagens",
     nome: "Upload Serverless de Imagens",
     areaSlug: "cloud" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar uma arquitetura serverless para upload, armazenamento e listagem de imagens.",
+    objetivo:
+      "Criar uma arquitetura serverless para upload, armazenamento e listagem de imagens.",
     ferramentas: ["AWS S3", "AWS Lambda", "API Gateway", "Node.js"],
-    passosSimplificados: ["Desenhar a arquitetura da solução", "Criar endpoint para gerar URL de upload", "Armazenar imagens no bucket", "Criar função para listar arquivos enviados", "Documentar permissões e fluxo da aplicação"],
+    passosSimplificados: [
+      "Desenhar a arquitetura da solução",
+      "Criar endpoint para gerar URL de upload",
+      "Armazenar imagens no bucket",
+      "Criar função para listar arquivos enviados",
+      "Documentar permissões e fluxo da aplicação",
+    ],
     entregavel: "Arquitetura serverless documentada com código das funções",
-    comoPublicar: "Publicar o código no GitHub com diagrama da arquitetura e instruções de configuração",
-    sugestaoLinkedIn: "Criei uma solução serverless para upload de imagens. Esse projeto me ajudou a entender melhor serviços cloud, permissões e arquitetura sem servidor.",
-    proximoProjeto: "Processamento Automático de Imagens na Cloud"
+    comoPublicar:
+      "Publicar o código no GitHub com diagrama da arquitetura e instruções de configuração",
+    sugestaoLinkedIn:
+      "Criei uma solução serverless para upload de imagens. Esse projeto me ajudou a entender melhor serviços cloud, permissões e arquitetura sem servidor.",
+    proximoProjeto: "Processamento Automático de Imagens na Cloud",
   },
   {
     id: "arquitetura-alta-disponibilidade",
     nome: "Arquitetura de Alta Disponibilidade para Aplicação Web",
     areaSlug: "cloud" as string | null,
     nivel: "Avançado",
-    objetivo: "Projetar uma arquitetura cloud para uma aplicação web com escalabilidade, segurança e tolerância a falhas.",
+    objetivo:
+      "Projetar uma arquitetura cloud para uma aplicação web com escalabilidade, segurança e tolerância a falhas.",
     ferramentas: ["AWS", "Terraform", "Docker", "Nginx", "PostgreSQL"],
-    passosSimplificados: ["Desenhar a arquitetura com camadas de rede e aplicação", "Definir recursos de infraestrutura como código", "Configurar balanceamento e banco gerenciado ou simulado", "Adicionar regras básicas de segurança", "Documentar decisões de custo, disponibilidade e escalabilidade"],
-    entregavel: "Projeto de arquitetura cloud com infraestrutura como código e documentação",
-    comoPublicar: "Publicar no GitHub com Terraform, diagrama e explicação técnica no README",
-    sugestaoLinkedIn: "Desenvolvi um projeto de arquitetura cloud com foco em alta disponibilidade. Foi uma prática avançada para pensar infraestrutura, segurança e escalabilidade de forma integrada.",
-    proximoProjeto: "Deploy Multiambiente com Terraform"
+    passosSimplificados: [
+      "Desenhar a arquitetura com camadas de rede e aplicação",
+      "Definir recursos de infraestrutura como código",
+      "Configurar balanceamento e banco gerenciado ou simulado",
+      "Adicionar regras básicas de segurança",
+      "Documentar decisões de custo, disponibilidade e escalabilidade",
+    ],
+    entregavel:
+      "Projeto de arquitetura cloud com infraestrutura como código e documentação",
+    comoPublicar:
+      "Publicar no GitHub com Terraform, diagrama e explicação técnica no README",
+    sugestaoLinkedIn:
+      "Desenvolvi um projeto de arquitetura cloud com foco em alta disponibilidade. Foi uma prática avançada para pensar infraestrutura, segurança e escalabilidade de forma integrada.",
+    proximoProjeto: "Deploy Multiambiente com Terraform",
   },
   {
     id: "lab-hardening-linux",
     nome: "Laboratório de Hardening Linux",
     areaSlug: "ciberseguranca" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar um checklist prático de endurecimento de segurança em um servidor Linux.",
+    objetivo:
+      "Criar um checklist prático de endurecimento de segurança em um servidor Linux.",
     ferramentas: ["Linux", "UFW", "SSH", "Bash"],
-    passosSimplificados: ["Criar uma máquina Linux local ou em VM", "Revisar usuários e permissões", "Configurar firewall básico", "Endurecer acesso SSH", "Criar script de verificação de configurações", "Documentar antes e depois das mudanças"],
-    entregavel: "Checklist técnico com scripts e evidências de configuração segura",
-    comoPublicar: "Publicar scripts e documentação no GitHub, sem expor credenciais ou dados sensíveis",
-    sugestaoLinkedIn: "Concluí um laboratório de hardening Linux para praticar segurança defensiva. O projeto me ajudou a entender configurações básicas que reduzem riscos em servidores.",
-    proximoProjeto: "Monitoramento de Logs de Segurança"
+    passosSimplificados: [
+      "Criar uma máquina Linux local ou em VM",
+      "Revisar usuários e permissões",
+      "Configurar firewall básico",
+      "Endurecer acesso SSH",
+      "Criar script de verificação de configurações",
+      "Documentar antes e depois das mudanças",
+    ],
+    entregavel:
+      "Checklist técnico com scripts e evidências de configuração segura",
+    comoPublicar:
+      "Publicar scripts e documentação no GitHub, sem expor credenciais ou dados sensíveis",
+    sugestaoLinkedIn:
+      "Concluí um laboratório de hardening Linux para praticar segurança defensiva. O projeto me ajudou a entender configurações básicas que reduzem riscos em servidores.",
+    proximoProjeto: "Monitoramento de Logs de Segurança",
   },
   {
     id: "siem-domestico-logs",
     nome: "SIEM Doméstico com Análise de Logs",
     areaSlug: "ciberseguranca" as string | null,
     nivel: "Avançado",
-    objetivo: "Montar um ambiente para coletar, centralizar e analisar logs de segurança de máquinas locais.",
+    objetivo:
+      "Montar um ambiente para coletar, centralizar e analisar logs de segurança de máquinas locais.",
     ferramentas: ["Wazuh", "Docker", "Linux", "Elastic Stack"],
-    passosSimplificados: ["Subir ambiente de coleta de logs", "Adicionar uma máquina como agente", "Gerar eventos controlados de login e alteração de arquivos", "Criar regras ou filtros de análise", "Montar painel com eventos relevantes", "Documentar hipóteses de detecção"],
-    entregavel: "Laboratório SIEM com coleta de logs, alertas e painel documentado",
-    comoPublicar: "Publicar documentação, prints e arquivos de configuração no GitHub, sem dados privados",
-    sugestaoLinkedIn: "Montei um laboratório SIEM para estudar análise de logs e detecção de eventos. Foi um projeto avançado para entender melhor segurança defensiva na prática.",
-    proximoProjeto: "Playbook de Resposta a Incidentes"
+    passosSimplificados: [
+      "Subir ambiente de coleta de logs",
+      "Adicionar uma máquina como agente",
+      "Gerar eventos controlados de login e alteração de arquivos",
+      "Criar regras ou filtros de análise",
+      "Montar painel com eventos relevantes",
+      "Documentar hipóteses de detecção",
+    ],
+    entregavel:
+      "Laboratório SIEM com coleta de logs, alertas e painel documentado",
+    comoPublicar:
+      "Publicar documentação, prints e arquivos de configuração no GitHub, sem dados privados",
+    sugestaoLinkedIn:
+      "Montei um laboratório SIEM para estudar análise de logs e detecção de eventos. Foi um projeto avançado para entender melhor segurança defensiva na prática.",
+    proximoProjeto: "Playbook de Resposta a Incidentes",
   },
   {
     id: "plano-testes-ecommerce",
     nome: "Plano de Testes para E-commerce",
     areaSlug: "qa" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar um plano de testes completo para os fluxos principais de um e-commerce.",
+    objetivo:
+      "Criar um plano de testes completo para os fluxos principais de um e-commerce.",
     ferramentas: ["Google Sheets", "Jira", "Markdown", "Miro"],
-    passosSimplificados: ["Mapear fluxos críticos do e-commerce", "Definir cenários positivos e negativos", "Criar casos de teste por prioridade", "Registrar critérios de aceite", "Simular abertura de bugs com severidade e evidências"],
-    entregavel: "Plano de testes com casos, critérios e exemplos de bugs documentados",
-    comoPublicar: "Publicar no GitHub como documentação em Markdown ou planilha exportada",
-    sugestaoLinkedIn: "Criei um plano de testes para um e-commerce, cobrindo cenários críticos e critérios de aceite. Esse projeto reforçou minha visão de qualidade antes mesmo da automação.",
-    proximoProjeto: "Automação de Testes para Checkout"
+    passosSimplificados: [
+      "Mapear fluxos críticos do e-commerce",
+      "Definir cenários positivos e negativos",
+      "Criar casos de teste por prioridade",
+      "Registrar critérios de aceite",
+      "Simular abertura de bugs com severidade e evidências",
+    ],
+    entregavel:
+      "Plano de testes com casos, critérios e exemplos de bugs documentados",
+    comoPublicar:
+      "Publicar no GitHub como documentação em Markdown ou planilha exportada",
+    sugestaoLinkedIn:
+      "Criei um plano de testes para um e-commerce, cobrindo cenários críticos e critérios de aceite. Esse projeto reforçou minha visão de qualidade antes mesmo da automação.",
+    proximoProjeto: "Automação de Testes para Checkout",
   },
   {
     id: "app-habitos-offline",
     nome: "App de Hábitos com Modo Offline",
     areaSlug: "mobile" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar um aplicativo para registrar hábitos diários mesmo sem conexão com a internet.",
+    objetivo:
+      "Criar um aplicativo para registrar hábitos diários mesmo sem conexão com a internet.",
     ferramentas: ["Kotlin", "Android Studio", "Room", "Material Design"],
-    passosSimplificados: ["Criar tela de cadastro de hábitos", "Salvar registros localmente com Room", "Adicionar calendário ou histórico simples", "Criar resumo semanal", "Melhorar experiência visual com Material Design"],
+    passosSimplificados: [
+      "Criar tela de cadastro de hábitos",
+      "Salvar registros localmente com Room",
+      "Adicionar calendário ou histórico simples",
+      "Criar resumo semanal",
+      "Melhorar experiência visual com Material Design",
+    ],
     entregavel: "Aplicativo Android funcional com persistência local",
-    comoPublicar: "Publicar o código no GitHub com prints e APK de demonstração em release",
-    sugestaoLinkedIn: "Desenvolvi um app mobile de hábitos com funcionamento offline. O projeto me ajudou a praticar persistência local, telas nativas e experiência de uso no Android.",
-    proximoProjeto: "App de Hábitos com Sincronização em Nuvem"
+    comoPublicar:
+      "Publicar o código no GitHub com prints e APK de demonstração em release",
+    sugestaoLinkedIn:
+      "Desenvolvi um app mobile de hábitos com funcionamento offline. O projeto me ajudou a praticar persistência local, telas nativas e experiência de uso no Android.",
+    proximoProjeto: "App de Hábitos com Sincronização em Nuvem",
   },
   {
     id: "jogo-logica-2d",
     nome: "Jogo 2D de Lógica e Fases",
     areaSlug: "gamedev" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar um jogo 2D com fases curtas, obstáculos e mecânica de resolução de lógica.",
+    objetivo:
+      "Criar um jogo 2D com fases curtas, obstáculos e mecânica de resolução de lógica.",
     ferramentas: ["Godot", "GDScript", "Aseprite", "Git"],
-    passosSimplificados: ["Definir mecânica principal do jogo", "Criar personagem e movimentação", "Construir 5 fases com dificuldade crescente", "Adicionar colisões, pontuação e reinício", "Criar tela inicial e tela de vitória"],
-    entregavel: "Jogo 2D jogável com fases, arte simples e lógica de progressão",
+    passosSimplificados: [
+      "Definir mecânica principal do jogo",
+      "Criar personagem e movimentação",
+      "Construir 5 fases com dificuldade crescente",
+      "Adicionar colisões, pontuação e reinício",
+      "Criar tela inicial e tela de vitória",
+    ],
+    entregavel:
+      "Jogo 2D jogável com fases, arte simples e lógica de progressão",
     comoPublicar: "Publicar no Itch.io e colocar o código ou devlog no GitHub",
-    sugestaoLinkedIn: "Desenvolvi um jogo 2D de lógica com fases progressivas. Foi um projeto divertido para praticar programação, design de níveis e organização de mecânicas.",
-    proximoProjeto: "Jogo 2D com Sistema de Inventário"
+    sugestaoLinkedIn:
+      "Desenvolvi um jogo 2D de lógica com fases progressivas. Foi um projeto divertido para praticar programação, design de níveis e organização de mecânicas.",
+    proximoProjeto: "Jogo 2D com Sistema de Inventário",
   },
   {
     id: "assistente-estudos-rag",
     nome: "Assistente de Estudos com Documentos",
     areaSlug: "ia" as string | null,
     nivel: "Iniciante",
-    objetivo: "Criar um assistente que responde perguntas com base em PDFs ou anotações fornecidas pelo usuário.",
+    objetivo:
+      "Criar um assistente que responde perguntas com base em PDFs ou anotações fornecidas pelo usuário.",
     ferramentas: ["Python", "LangChain", "Streamlit", "OpenAI API"],
-    passosSimplificados: ["Criar interface para upload de documentos", "Extrair texto dos arquivos", "Dividir o conteúdo em trechos", "Enviar perguntas para o modelo com contexto", "Exibir resposta com referência ao trecho usado"],
+    passosSimplificados: [
+      "Criar interface para upload de documentos",
+      "Extrair texto dos arquivos",
+      "Dividir o conteúdo em trechos",
+      "Enviar perguntas para o modelo com contexto",
+      "Exibir resposta com referência ao trecho usado",
+    ],
     entregavel: "Assistente simples de perguntas e respostas sobre documentos",
-    comoPublicar: "Publicar no GitHub e hospedar a interface no Streamlit Community Cloud",
-    sugestaoLinkedIn: "Criei um assistente de estudos com IA que responde perguntas a partir de documentos. Foi meu primeiro passo prático para entender RAG e aplicações reais de IA.",
-    proximoProjeto: "Chatbot com Memória e Histórico"
+    comoPublicar:
+      "Publicar no GitHub e hospedar a interface no Streamlit Community Cloud",
+    sugestaoLinkedIn:
+      "Criei um assistente de estudos com IA que responde perguntas a partir de documentos. Foi meu primeiro passo prático para entender RAG e aplicações reais de IA.",
+    proximoProjeto: "Chatbot com Memória e Histórico",
   },
   {
     id: "agente-triagem-suporte",
     nome: "Agente de Triagem de Suporte",
     areaSlug: "ia" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar um agente que classifica mensagens de suporte por prioridade, assunto e próximo passo recomendado.",
+    objetivo:
+      "Criar um agente que classifica mensagens de suporte por prioridade, assunto e próximo passo recomendado.",
     ferramentas: ["Python", "FastAPI", "OpenAI API", "PostgreSQL"],
-    passosSimplificados: ["Criar base simulada de tickets", "Definir categorias e prioridades", "Construir endpoint de classificação", "Salvar resultado e justificativa no banco", "Criar painel simples para revisar tickets classificados"],
+    passosSimplificados: [
+      "Criar base simulada de tickets",
+      "Definir categorias e prioridades",
+      "Construir endpoint de classificação",
+      "Salvar resultado e justificativa no banco",
+      "Criar painel simples para revisar tickets classificados",
+    ],
     entregavel: "Agente de triagem com API, banco e painel de revisão",
-    comoPublicar: "Publicar no GitHub com exemplos de chamadas e prints do painel",
-    sugestaoLinkedIn: "Finalizei um agente de triagem de suporte com IA. O projeto me ajudou a pensar além do chatbot, aplicando IA em classificação, priorização e apoio operacional.",
-    proximoProjeto: "Agente de Suporte com Base de Conhecimento"
+    comoPublicar:
+      "Publicar no GitHub com exemplos de chamadas e prints do painel",
+    sugestaoLinkedIn:
+      "Finalizei um agente de triagem de suporte com IA. O projeto me ajudou a pensar além do chatbot, aplicando IA em classificação, priorização e apoio operacional.",
+    proximoProjeto: "Agente de Suporte com Base de Conhecimento",
   },
   {
     id: "avaliador-curriculo-ia",
     nome: "Avaliador de Currículos com IA",
     areaSlug: "ia" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar uma aplicação que compara currículos com vagas e gera recomendações de melhoria.",
+    objetivo:
+      "Criar uma aplicação que compara currículos com vagas e gera recomendações de melhoria.",
     ferramentas: ["Python", "FastAPI", "React", "OpenAI API", "PostgreSQL"],
-    passosSimplificados: ["Criar upload de currículo e descrição da vaga", "Extrair informações relevantes dos textos", "Comparar requisitos com experiências", "Gerar pontuação e recomendações", "Salvar análises anteriores", "Criar tela de histórico para o usuário"],
-    entregavel: "Aplicação com análise de currículo, comparação com vaga e histórico",
-    comoPublicar: "Publicar frontend na Vercel e backend no GitHub com instruções de execução local",
-    sugestaoLinkedIn: "Desenvolvi um avaliador de currículos com IA que compara perfil e vaga. Foi um projeto avançado para praticar produto, backend, frontend e uso responsável de modelos generativos.",
-    proximoProjeto: "Plataforma de Preparação para Entrevistas com IA"
+    passosSimplificados: [
+      "Criar upload de currículo e descrição da vaga",
+      "Extrair informações relevantes dos textos",
+      "Comparar requisitos com experiências",
+      "Gerar pontuação e recomendações",
+      "Salvar análises anteriores",
+      "Criar tela de histórico para o usuário",
+    ],
+    entregavel:
+      "Aplicação com análise de currículo, comparação com vaga e histórico",
+    comoPublicar:
+      "Publicar frontend na Vercel e backend no GitHub com instruções de execução local",
+    sugestaoLinkedIn:
+      "Desenvolvi um avaliador de currículos com IA que compara perfil e vaga. Foi um projeto avançado para praticar produto, backend, frontend e uso responsável de modelos generativos.",
+    proximoProjeto: "Plataforma de Preparação para Entrevistas com IA",
   },
   {
     id: "editor-roadmap-interativo",
     nome: "Editor de Roadmap Interativo",
     areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar uma interface em que o usuário monta um roadmap visual com etapas, status e prioridades.",
+    objetivo:
+      "Criar uma interface em que o usuário monta um roadmap visual com etapas, status e prioridades.",
     ferramentas: ["React", "TypeScript", "Zustand", "Tailwind CSS"],
-    passosSimplificados: ["Criar estrutura visual de etapas", "Permitir adicionar, editar e remover cards", "Adicionar status e prioridade", "Salvar dados no localStorage", "Criar exportação simples em JSON"],
+    passosSimplificados: [
+      "Criar estrutura visual de etapas",
+      "Permitir adicionar, editar e remover cards",
+      "Adicionar status e prioridade",
+      "Salvar dados no localStorage",
+      "Criar exportação simples em JSON",
+    ],
     entregavel: "Interface interativa de roadmap com persistência local",
-    comoPublicar: "Publicar na Vercel ou Netlify e disponibilizar o código no GitHub",
-    sugestaoLinkedIn: "Criei um editor de roadmap interativo para praticar frontend além de páginas estáticas. O projeto me ajudou a trabalhar estado, persistência local e experiência de uso.",
-    proximoProjeto: "Roadmap Colaborativo Fullstack"
+    comoPublicar:
+      "Publicar na Vercel ou Netlify e disponibilizar o código no GitHub",
+    sugestaoLinkedIn:
+      "Criei um editor de roadmap interativo para praticar frontend além de páginas estáticas. O projeto me ajudou a trabalhar estado, persistência local e experiência de uso.",
+    proximoProjeto: "Roadmap Colaborativo Fullstack",
   },
   {
     id: "comparador-planos-tech",
     nome: "Comparador de Planos de Ferramentas Tech",
     areaSlug: "frontend" as string | null,
     nivel: "Intermediário",
-    objetivo: "Criar uma página que compara ferramentas, preços, recursos e indica a melhor opção por perfil.",
+    objetivo:
+      "Criar uma página que compara ferramentas, preços, recursos e indica a melhor opção por perfil.",
     ferramentas: ["Vue.js", "TypeScript", "Pinia", "CSS"],
-    passosSimplificados: ["Criar base local de ferramentas e planos", "Montar cards comparativos", "Adicionar filtros por preço e recurso", "Criar lógica de recomendação por perfil", "Adicionar visualização responsiva"],
-    entregavel: "Aplicação frontend com filtros, comparação e recomendação simples",
+    passosSimplificados: [
+      "Criar base local de ferramentas e planos",
+      "Montar cards comparativos",
+      "Adicionar filtros por preço e recurso",
+      "Criar lógica de recomendação por perfil",
+      "Adicionar visualização responsiva",
+    ],
+    entregavel:
+      "Aplicação frontend com filtros, comparação e recomendação simples",
     comoPublicar: "Publicar no Netlify ou GitHub Pages com repositório aberto",
-    sugestaoLinkedIn: "Desenvolvi um comparador de planos de ferramentas tech. Foi um projeto interessante para praticar estado, filtros e tomada de decisão na interface.",
-    proximoProjeto: "Comparador com Backend e Login"
+    sugestaoLinkedIn:
+      "Desenvolvi um comparador de planos de ferramentas tech. Foi um projeto interessante para praticar estado, filtros e tomada de decisão na interface.",
+    proximoProjeto: "Comparador com Backend e Login",
   },
   {
     id: "discovery-funcionalidade-ia",
     nome: "Discovery de Funcionalidade com IA",
     areaSlug: "produto" as string | null,
     nivel: "Intermediário",
-    objetivo: "Estruturar o discovery de uma funcionalidade que usa IA para recomendar trilhas de estudo personalizadas.",
+    objetivo:
+      "Estruturar o discovery de uma funcionalidade que usa IA para recomendar trilhas de estudo personalizadas.",
     ferramentas: ["Notion", "Miro", "Figma", "Google Forms"],
-    passosSimplificados: ["Definir problema e público alvo", "Levantar hipóteses de valor", "Criar matriz de priorização", "Desenhar fluxo da funcionalidade", "Definir critérios de sucesso e riscos"],
-    entregavel: "Documento de discovery com problema, hipóteses, fluxo e métricas",
+    passosSimplificados: [
+      "Definir problema e público alvo",
+      "Levantar hipóteses de valor",
+      "Criar matriz de priorização",
+      "Desenhar fluxo da funcionalidade",
+      "Definir critérios de sucesso e riscos",
+    ],
+    entregavel:
+      "Documento de discovery com problema, hipóteses, fluxo e métricas",
     comoPublicar: "Publicar como case em Notion, PDF ou artigo no LinkedIn",
-    sugestaoLinkedIn: "Estruturei um discovery de produto para uma funcionalidade com IA. O projeto me ajudou a pensar valor, riscos e métricas antes de partir para a solução.",
-    proximoProjeto: "MVP de Recomendação de Trilhas"
+    sugestaoLinkedIn:
+      "Estruturei um discovery de produto para uma funcionalidade com IA. O projeto me ajudou a pensar valor, riscos e métricas antes de partir para a solução.",
+    proximoProjeto: "MVP de Recomendação de Trilhas",
   },
   {
     id: "metricas-retencao-produto",
     nome: "Estratégia de Métricas para Retenção",
     areaSlug: "produto" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar uma estratégia de métricas para acompanhar retenção, ativação e engajamento de um produto digital.",
+    objetivo:
+      "Criar uma estratégia de métricas para acompanhar retenção, ativação e engajamento de um produto digital.",
     ferramentas: ["Amplitude", "Google Sheets", "Notion", "Figma"],
-    passosSimplificados: ["Definir a jornada principal do usuário", "Mapear eventos relevantes do produto", "Criar funil de ativação", "Definir métricas de retenção por coorte", "Propor experimentos para melhorar engajamento", "Documentar decisões em formato de case"],
-    entregavel: "Plano de métricas de produto com eventos, funil, coortes e experimentos",
+    passosSimplificados: [
+      "Definir a jornada principal do usuário",
+      "Mapear eventos relevantes do produto",
+      "Criar funil de ativação",
+      "Definir métricas de retenção por coorte",
+      "Propor experimentos para melhorar engajamento",
+      "Documentar decisões em formato de case",
+    ],
+    entregavel:
+      "Plano de métricas de produto com eventos, funil, coortes e experimentos",
     comoPublicar: "Publicar como case em Notion, PDF ou carrossel no LinkedIn",
-    sugestaoLinkedIn: "Concluí uma estratégia de métricas para retenção de produto digital. Foi um projeto avançado para conectar comportamento do usuário, dados e decisões de produto.",
-    proximoProjeto: "Dashboard de Produto com Eventos Simulados"
+    sugestaoLinkedIn:
+      "Concluí uma estratégia de métricas para retenção de produto digital. Foi um projeto avançado para conectar comportamento do usuário, dados e decisões de produto.",
+    proximoProjeto: "Dashboard de Produto com Eventos Simulados",
   },
   {
     id: "editor-colaborativo-tempo-real",
     nome: "Editor de Texto Colaborativo em Tempo Real",
     areaSlug: "frontend" as string | null,
     nivel: "Avançado",
-    objetivo: "Construir um editor onde várias pessoas editam o mesmo documento ao mesmo tempo, com cursores e sincronização sem conflito.",
+    objetivo:
+      "Construir um editor onde várias pessoas editam o mesmo documento ao mesmo tempo, com cursores e sincronização sem conflito.",
     ferramentas: ["React", "TypeScript", "Yjs", "WebSocket", "Tailwind CSS"],
-    passosSimplificados: ["Criar a interface do editor com área de texto e barra de ferramentas", "Integrar uma estrutura de dados colaborativa (CRDT) para o conteúdo", "Conectar os clientes por WebSocket", "Exibir cursores e seleções de outros usuários", "Tratar reconexão e estado offline temporário"],
-    entregavel: "Editor colaborativo publicado com várias sessões editando o mesmo documento",
-    comoPublicar: "Publicar o frontend na Vercel e o servidor de sincronização no Railway, com código no GitHub",
-    sugestaoLinkedIn: "Construí um editor de texto colaborativo em tempo real para praticar frontend avançado com CRDT e WebSocket. O maior aprendizado foi lidar com sincronização e estado compartilhado sem travar a interface.",
-    proximoProjeto: "Whiteboard Colaborativo com Histórico"
+    passosSimplificados: [
+      "Criar a interface do editor com área de texto e barra de ferramentas",
+      "Integrar uma estrutura de dados colaborativa (CRDT) para o conteúdo",
+      "Conectar os clientes por WebSocket",
+      "Exibir cursores e seleções de outros usuários",
+      "Tratar reconexão e estado offline temporário",
+    ],
+    entregavel:
+      "Editor colaborativo publicado com várias sessões editando o mesmo documento",
+    comoPublicar:
+      "Publicar o frontend na Vercel e o servidor de sincronização no Railway, com código no GitHub",
+    sugestaoLinkedIn:
+      "Construí um editor de texto colaborativo em tempo real para praticar frontend avançado com CRDT e WebSocket. O maior aprendizado foi lidar com sincronização e estado compartilhado sem travar a interface.",
+    proximoProjeto: "Whiteboard Colaborativo com Histórico",
   },
   {
     id: "roguelike-procedural",
     nome: "Roguelike com Geração Procedural",
     areaSlug: "gamedev" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar um jogo roguelike onde mapas, inimigos e itens são gerados proceduralmente a cada partida.",
+    objetivo:
+      "Criar um jogo roguelike onde mapas, inimigos e itens são gerados proceduralmente a cada partida.",
     ferramentas: ["Godot", "GDScript", "Aseprite", "Git"],
-    passosSimplificados: ["Definir as regras de geração de salas e corredores", "Implementar geração procedural de mapas conectados", "Criar sistema de inimigos com dificuldade escalável", "Adicionar itens, inventário e progressão", "Implementar salvamento de progresso e tela de fim de jogo"],
-    entregavel: "Jogo jogável com mapas diferentes a cada partida, inimigos e itens",
+    passosSimplificados: [
+      "Definir as regras de geração de salas e corredores",
+      "Implementar geração procedural de mapas conectados",
+      "Criar sistema de inimigos com dificuldade escalável",
+      "Adicionar itens, inventário e progressão",
+      "Implementar salvamento de progresso e tela de fim de jogo",
+    ],
+    entregavel:
+      "Jogo jogável com mapas diferentes a cada partida, inimigos e itens",
     comoPublicar: "Publicar no Itch.io e manter o código ou devlog no GitHub",
-    sugestaoLinkedIn: "Finalizei um roguelike com geração procedural de mapas e inimigos. Foi um projeto avançado para praticar algoritmos de geração, balanceamento e arquitetura de jogo.",
-    proximoProjeto: "Roguelike com Combate por Turnos"
+    sugestaoLinkedIn:
+      "Finalizei um roguelike com geração procedural de mapas e inimigos. Foi um projeto avançado para praticar algoritmos de geração, balanceamento e arquitetura de jogo.",
+    proximoProjeto: "Roguelike com Combate por Turnos",
   },
   {
     id: "app-offline-first-sync",
     nome: "App Offline-first com Sincronização",
     areaSlug: "mobile" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar um aplicativo que funciona totalmente offline e sincroniza com a nuvem quando há conexão, resolvendo conflitos.",
-    ferramentas: ["Kotlin", "Android Studio", "Room", "WorkManager", "Firebase"],
-    passosSimplificados: ["Modelar dados locais com banco no dispositivo", "Permitir criar, editar e excluir registros offline", "Implementar fila de sincronização em segundo plano", "Resolver conflitos entre versão local e remota", "Mostrar status de sincronização ao usuário"],
-    entregavel: "Aplicativo Android que opera offline e sincroniza com a nuvem de forma confiável",
-    comoPublicar: "Publicar o código no GitHub com prints, vídeo de demonstração e APK em release",
-    sugestaoLinkedIn: "Desenvolvi um app mobile offline-first com sincronização e resolução de conflitos. O desafio foi garantir consistência de dados entre o dispositivo e a nuvem sem perder informação.",
-    proximoProjeto: "App com Sincronização Multiusuário"
+    objetivo:
+      "Criar um aplicativo que funciona totalmente offline e sincroniza com a nuvem quando há conexão, resolvendo conflitos.",
+    ferramentas: [
+      "Kotlin",
+      "Android Studio",
+      "Room",
+      "WorkManager",
+      "Firebase",
+    ],
+    passosSimplificados: [
+      "Modelar dados locais com banco no dispositivo",
+      "Permitir criar, editar e excluir registros offline",
+      "Implementar fila de sincronização em segundo plano",
+      "Resolver conflitos entre versão local e remota",
+      "Mostrar status de sincronização ao usuário",
+    ],
+    entregavel:
+      "Aplicativo Android que opera offline e sincroniza com a nuvem de forma confiável",
+    comoPublicar:
+      "Publicar o código no GitHub com prints, vídeo de demonstração e APK em release",
+    sugestaoLinkedIn:
+      "Desenvolvi um app mobile offline-first com sincronização e resolução de conflitos. O desafio foi garantir consistência de dados entre o dispositivo e a nuvem sem perder informação.",
+    proximoProjeto: "App com Sincronização Multiusuário",
   },
   {
     id: "design-system-multiplataforma",
     nome: "Design System Multiplataforma",
     areaSlug: "uxui" as string | null,
     nivel: "Avançado",
-    objetivo: "Criar um design system completo com tokens, componentes, acessibilidade e documentação para uso em web e mobile.",
+    objetivo:
+      "Criar um design system completo com tokens, componentes, acessibilidade e documentação para uso em web e mobile.",
     ferramentas: ["Figma", "FigJam", "Tokens Studio", "Material Design"],
-    passosSimplificados: ["Definir fundamentos de cor, tipografia, espaçamento e grid", "Criar tokens reutilizáveis e temas claro e escuro", "Desenhar componentes com variantes e estados", "Documentar uso, acessibilidade e regras de cada componente", "Montar telas de exemplo aplicando o sistema"],
-    entregavel: "Design system documentado com tokens, componentes e exemplos de aplicação",
-    comoPublicar: "Publicar o arquivo público do Figma e apresentar o processo em um case no Behance ou LinkedIn",
-    sugestaoLinkedIn: "Concluí um design system multiplataforma com tokens, componentes e documentação de acessibilidade. Foi um projeto avançado para pensar consistência, escala e handoff para desenvolvimento.",
-    proximoProjeto: "Contribuição em Design System de Código Aberto"
+    passosSimplificados: [
+      "Definir fundamentos de cor, tipografia, espaçamento e grid",
+      "Criar tokens reutilizáveis e temas claro e escuro",
+      "Desenhar componentes com variantes e estados",
+      "Documentar uso, acessibilidade e regras de cada componente",
+      "Montar telas de exemplo aplicando o sistema",
+    ],
+    entregavel:
+      "Design system documentado com tokens, componentes e exemplos de aplicação",
+    comoPublicar:
+      "Publicar o arquivo público do Figma e apresentar o processo em um case no Behance ou LinkedIn",
+    sugestaoLinkedIn:
+      "Concluí um design system multiplataforma com tokens, componentes e documentação de acessibilidade. Foi um projeto avançado para pensar consistência, escala e handoff para desenvolvimento.",
+    proximoProjeto: "Contribuição em Design System de Código Aberto",
   },
   {
     id: "gestao-portfolio-indicadores",
     nome: "Gestão de Portfólio de Projetos com Indicadores",
     areaSlug: "gestao" as string | null,
     nivel: "Avançado",
-    objetivo: "Estruturar a gestão de um portfólio de projetos com priorização, acompanhamento de status e indicadores de desempenho.",
+    objetivo:
+      "Estruturar a gestão de um portfólio de projetos com priorização, acompanhamento de status e indicadores de desempenho.",
     ferramentas: ["Notion", "Google Sheets", "Looker Studio", "Miro"],
-    passosSimplificados: ["Definir critérios de priorização de projetos", "Criar um painel de portfólio com status e responsáveis", "Definir indicadores de prazo, escopo e entrega", "Montar visão executiva com gráficos de acompanhamento", "Documentar riscos e decisões por projeto"],
-    entregavel: "Painel de portfólio com priorização, status e indicadores de desempenho",
-    comoPublicar: "Publicar como case em Notion ou PDF, com prints do painel e explicação do método no LinkedIn",
-    sugestaoLinkedIn: "Estruturei a gestão de um portfólio de projetos com priorização e indicadores. Foi um projeto avançado para conectar estratégia, acompanhamento e tomada de decisão.",
-    proximoProjeto: "Escritório de Projetos (PMO) Simplificado"
+    passosSimplificados: [
+      "Definir critérios de priorização de projetos",
+      "Criar um painel de portfólio com status e responsáveis",
+      "Definir indicadores de prazo, escopo e entrega",
+      "Montar visão executiva com gráficos de acompanhamento",
+      "Documentar riscos e decisões por projeto",
+    ],
+    entregavel:
+      "Painel de portfólio com priorização, status e indicadores de desempenho",
+    comoPublicar:
+      "Publicar como case em Notion ou PDF, com prints do painel e explicação do método no LinkedIn",
+    sugestaoLinkedIn:
+      "Estruturei a gestão de um portfólio de projetos com priorização e indicadores. Foi um projeto avançado para conectar estratégia, acompanhamento e tomada de decisão.",
+    proximoProjeto: "Escritório de Projetos (PMO) Simplificado",
   },
   {
     id: "dashboard-gastos-pessoais",
     nome: "Dashboard de Gastos Pessoais",
     areaSlug: "analise-dados" as string | null,
     nivel: "Iniciante",
-    objetivo: "Organizar e visualizar gastos pessoais para entender para onde o dinheiro está indo.",
+    objetivo:
+      "Organizar e visualizar gastos pessoais para entender para onde o dinheiro está indo.",
     ferramentas: ["Google Sheets", "Looker Studio"],
-    passosSimplificados: ["Registrar gastos por categoria e data", "Limpar e padronizar os dados", "Criar gráficos de gasto por categoria e por mês", "Adicionar filtros por período", "Escrever conclusões sobre os hábitos de gasto"],
+    passosSimplificados: [
+      "Registrar gastos por categoria e data",
+      "Limpar e padronizar os dados",
+      "Criar gráficos de gasto por categoria e por mês",
+      "Adicionar filtros por período",
+      "Escrever conclusões sobre os hábitos de gasto",
+    ],
     entregavel: "Dashboard com visão de gastos por categoria e período",
-    comoPublicar: "Publicar o link do painel no Looker Studio e descrever o processo no LinkedIn ou GitHub",
-    sugestaoLinkedIn: "Montei um dashboard de gastos pessoais para praticar análise de dados do início ao fim. Foi ótimo para treinar organização de dados, visualização e leitura de padrões.",
-    proximoProjeto: "Análise de Orçamento com Metas"
+    comoPublicar:
+      "Publicar o link do painel no Looker Studio e descrever o processo no LinkedIn ou GitHub",
+    sugestaoLinkedIn:
+      "Montei um dashboard de gastos pessoais para praticar análise de dados do início ao fim. Foi ótimo para treinar organização de dados, visualização e leitura de padrões.",
+    proximoProjeto: "Análise de Orçamento com Metas",
   },
   {
     id: "modelo-banco-biblioteca",
     nome: "Modelo de Banco para Biblioteca",
     areaSlug: "banco-de-dados" as string | null,
     nivel: "Iniciante",
-    objetivo: "Modelar um banco de dados para controlar livros, autores, usuários e empréstimos de uma biblioteca.",
+    objetivo:
+      "Modelar um banco de dados para controlar livros, autores, usuários e empréstimos de uma biblioteca.",
     ferramentas: ["PostgreSQL", "SQL", "dbdiagram.io"],
-    passosSimplificados: ["Levantar as entidades principais da biblioteca", "Criar o modelo entidade relacionamento", "Implementar as tabelas com chaves e relacionamentos", "Inserir dados de exemplo", "Criar consultas para empréstimos e livros disponíveis"],
+    passosSimplificados: [
+      "Levantar as entidades principais da biblioteca",
+      "Criar o modelo entidade relacionamento",
+      "Implementar as tabelas com chaves e relacionamentos",
+      "Inserir dados de exemplo",
+      "Criar consultas para empréstimos e livros disponíveis",
+    ],
     entregavel: "Modelo de banco com diagrama, tabelas e consultas de exemplo",
-    comoPublicar: "Publicar o diagrama e os scripts SQL no GitHub com explicação do modelo",
-    sugestaoLinkedIn: "Modelei um banco de dados para uma biblioteca para praticar do diagrama às consultas. Foi uma boa base para entender relacionamentos e integridade de dados.",
-    proximoProjeto: "Banco para Sistema de Locadora"
+    comoPublicar:
+      "Publicar o diagrama e os scripts SQL no GitHub com explicação do modelo",
+    sugestaoLinkedIn:
+      "Modelei um banco de dados para uma biblioteca para praticar do diagrama às consultas. Foi uma boa base para entender relacionamentos e integridade de dados.",
+    proximoProjeto: "Banco para Sistema de Locadora",
   },
   {
     id: "higiene-seguranca-contas",
     nome: "Guia de Higiene de Segurança de Contas",
     areaSlug: "ciberseguranca" as string | null,
     nivel: "Iniciante",
-    objetivo: "Aprender e documentar boas práticas para proteger contas pessoais contra acessos indevidos.",
-    ferramentas: ["Gerenciador de senhas", "Autenticação em duas etapas", "Markdown"],
-    passosSimplificados: ["Revisar senhas reutilizadas e fracas em contas próprias", "Ativar autenticação em duas etapas nos principais serviços", "Configurar um gerenciador de senhas", "Revisar permissões de aplicativos conectados", "Documentar um checklist de segurança pessoal"],
-    entregavel: "Checklist de segurança de contas com práticas aplicadas e explicadas",
-    comoPublicar: "Publicar o checklist no GitHub ou como artigo, sem expor dados pessoais ou senhas",
-    sugestaoLinkedIn: "Montei um guia de higiene de segurança de contas aplicando boas práticas na minha própria rotina digital. Foi um primeiro passo prático e responsável em segurança defensiva.",
-    proximoProjeto: "Checklist de Hardening de um Computador Pessoal"
+    objetivo:
+      "Aprender e documentar boas práticas para proteger contas pessoais contra acessos indevidos.",
+    ferramentas: [
+      "Gerenciador de senhas",
+      "Autenticação em duas etapas",
+      "Markdown",
+    ],
+    passosSimplificados: [
+      "Revisar senhas reutilizadas e fracas em contas próprias",
+      "Ativar autenticação em duas etapas nos principais serviços",
+      "Configurar um gerenciador de senhas",
+      "Revisar permissões de aplicativos conectados",
+      "Documentar um checklist de segurança pessoal",
+    ],
+    entregavel:
+      "Checklist de segurança de contas com práticas aplicadas e explicadas",
+    comoPublicar:
+      "Publicar o checklist no GitHub ou como artigo, sem expor dados pessoais ou senhas",
+    sugestaoLinkedIn:
+      "Montei um guia de higiene de segurança de contas aplicando boas práticas na minha própria rotina digital. Foi um primeiro passo prático e responsável em segurança defensiva.",
+    proximoProjeto: "Checklist de Hardening de um Computador Pessoal",
   },
   {
     id: "deploy-site-estatico-cloud",
@@ -13863,89 +15764,327 @@ export const projetos = [
     nivel: "Iniciante",
     objetivo: "Publicar um site estático na nuvem com domínio e HTTPS.",
     ferramentas: ["HTML", "CSS", "Cloudflare Pages", "Git"],
-    passosSimplificados: ["Criar um site estático simples", "Versionar o código no GitHub", "Conectar o repositório a um serviço de hospedagem na nuvem", "Configurar build e publicação automática", "Configurar um domínio e HTTPS"],
+    passosSimplificados: [
+      "Criar um site estático simples",
+      "Versionar o código no GitHub",
+      "Conectar o repositório a um serviço de hospedagem na nuvem",
+      "Configurar build e publicação automática",
+      "Configurar um domínio e HTTPS",
+    ],
     entregavel: "Site publicado na nuvem com domínio e atualização automática",
-    comoPublicar: "Compartilhar o link do site publicado e o repositório no GitHub",
-    sugestaoLinkedIn: "Publiquei meu primeiro site na nuvem com deploy automático e HTTPS. Foi uma introdução prática a hospedagem, domínios e integração com repositório.",
-    proximoProjeto: "Deploy de Aplicação com Backend na Nuvem"
+    comoPublicar:
+      "Compartilhar o link do site publicado e o repositório no GitHub",
+    sugestaoLinkedIn:
+      "Publiquei meu primeiro site na nuvem com deploy automático e HTTPS. Foi uma introdução prática a hospedagem, domínios e integração com repositório.",
+    proximoProjeto: "Deploy de Aplicação com Backend na Nuvem",
   },
   {
     id: "containerizar-app-docker",
     nome: "Containerizar uma Aplicação com Docker",
     areaSlug: "devops" as string | null,
     nivel: "Iniciante",
-    objetivo: "Empacotar uma aplicação simples em um container Docker para rodar em qualquer máquina.",
+    objetivo:
+      "Empacotar uma aplicação simples em um container Docker para rodar em qualquer máquina.",
     ferramentas: ["Docker", "Node.js", "Git"],
-    passosSimplificados: ["Escolher ou criar uma aplicação simples", "Escrever um Dockerfile para a aplicação", "Construir a imagem e rodar o container", "Expor a porta e testar o acesso", "Documentar os comandos no README"],
+    passosSimplificados: [
+      "Escolher ou criar uma aplicação simples",
+      "Escrever um Dockerfile para a aplicação",
+      "Construir a imagem e rodar o container",
+      "Expor a porta e testar o acesso",
+      "Documentar os comandos no README",
+    ],
     entregavel: "Aplicação rodando em container com instruções de uso",
-    comoPublicar: "Publicar o código com Dockerfile no GitHub e explicar como executar",
-    sugestaoLinkedIn: "Containerizei minha primeira aplicação com Docker. Aprendi na prática sobre imagens, containers e por que isso facilita rodar projetos em qualquer ambiente.",
-    proximoProjeto: "Subir Aplicação e Banco com Docker Compose"
+    comoPublicar:
+      "Publicar o código com Dockerfile no GitHub e explicar como executar",
+    sugestaoLinkedIn:
+      "Containerizei minha primeira aplicação com Docker. Aprendi na prática sobre imagens, containers e por que isso facilita rodar projetos em qualquer ambiente.",
+    proximoProjeto: "Subir Aplicação e Banco com Docker Compose",
   },
   {
     id: "pipeline-csv-banco",
     nome: "Pipeline de CSV para Banco de Dados",
     areaSlug: "engenharia-dados" as string | null,
     nivel: "Iniciante",
-    objetivo: "Criar um fluxo que lê arquivos CSV, limpa os dados e carrega em um banco de dados.",
+    objetivo:
+      "Criar um fluxo que lê arquivos CSV, limpa os dados e carrega em um banco de dados.",
     ferramentas: ["Python", "Pandas", "SQLite"],
-    passosSimplificados: ["Escolher uma base pública em CSV", "Ler e inspecionar os dados com Python", "Limpar e padronizar colunas e valores", "Carregar os dados tratados em um banco local", "Criar uma consulta de validação dos dados carregados"],
+    passosSimplificados: [
+      "Escolher uma base pública em CSV",
+      "Ler e inspecionar os dados com Python",
+      "Limpar e padronizar colunas e valores",
+      "Carregar os dados tratados em um banco local",
+      "Criar uma consulta de validação dos dados carregados",
+    ],
     entregavel: "Script que transforma CSV em dados organizados em um banco",
-    comoPublicar: "Publicar o script no GitHub com a base de exemplo e instruções de execução",
-    sugestaoLinkedIn: "Criei meu primeiro pipeline de dados, lendo CSV, limpando e carregando em um banco. Foi uma introdução prática a extração, transformação e carga de dados.",
-    proximoProjeto: "Pipeline Agendado com Atualização Automática"
+    comoPublicar:
+      "Publicar o script no GitHub com a base de exemplo e instruções de execução",
+    sugestaoLinkedIn:
+      "Criei meu primeiro pipeline de dados, lendo CSV, limpando e carregando em um banco. Foi uma introdução prática a extração, transformação e carga de dados.",
+    proximoProjeto: "Pipeline Agendado com Atualização Automática",
   },
   {
     id: "lista-tarefas-fullstack",
     nome: "Lista de Tarefas Fullstack",
     areaSlug: "fullstack" as string | null,
     nivel: "Iniciante",
-    objetivo: "Criar um aplicativo completo de lista de tarefas com interface, servidor e banco de dados.",
+    objetivo:
+      "Criar um aplicativo completo de lista de tarefas com interface, servidor e banco de dados.",
     ferramentas: ["React", "Node.js", "Express", "SQLite"],
-    passosSimplificados: ["Criar a interface para adicionar e listar tarefas", "Criar a API para salvar e buscar tarefas", "Conectar o frontend ao backend", "Salvar as tarefas em um banco", "Permitir concluir e remover tarefas"],
-    entregavel: "Aplicação fullstack funcional com frontend, backend e banco integrados",
-    comoPublicar: "Publicar o frontend na Vercel e o backend no GitHub com instruções de execução",
-    sugestaoLinkedIn: "Construí minha primeira aplicação fullstack, uma lista de tarefas com front, back e banco. Foi ótimo para entender como as partes de uma aplicação se conectam.",
-    proximoProjeto: "Lista de Tarefas com Login de Usuário"
+    passosSimplificados: [
+      "Criar a interface para adicionar e listar tarefas",
+      "Criar a API para salvar e buscar tarefas",
+      "Conectar o frontend ao backend",
+      "Salvar as tarefas em um banco",
+      "Permitir concluir e remover tarefas",
+    ],
+    entregavel:
+      "Aplicação fullstack funcional com frontend, backend e banco integrados",
+    comoPublicar:
+      "Publicar o frontend na Vercel e o backend no GitHub com instruções de execução",
+    sugestaoLinkedIn:
+      "Construí minha primeira aplicação fullstack, uma lista de tarefas com front, back e banco. Foi ótimo para entender como as partes de uma aplicação se conectam.",
+    proximoProjeto: "Lista de Tarefas com Login de Usuário",
   },
   {
     id: "canvas-produto-mvp",
     nome: "Canvas de Produto e Definição de MVP",
     areaSlug: "produto" as string | null,
     nivel: "Iniciante",
-    objetivo: "Estruturar uma ideia de produto definindo problema, público, proposta de valor e escopo do MVP.",
+    objetivo:
+      "Estruturar uma ideia de produto definindo problema, público, proposta de valor e escopo do MVP.",
     ferramentas: ["Notion", "Miro", "Google Forms"],
-    passosSimplificados: ["Escolher um problema real para resolver", "Descrever público, dores e proposta de valor", "Listar funcionalidades e separar o que entra no MVP", "Definir uma métrica inicial de sucesso", "Validar a ideia com algumas pessoas"],
-    entregavel: "Documento de produto com problema, proposta de valor e escopo do MVP",
+    passosSimplificados: [
+      "Escolher um problema real para resolver",
+      "Descrever público, dores e proposta de valor",
+      "Listar funcionalidades e separar o que entra no MVP",
+      "Definir uma métrica inicial de sucesso",
+      "Validar a ideia com algumas pessoas",
+    ],
+    entregavel:
+      "Documento de produto com problema, proposta de valor e escopo do MVP",
     comoPublicar: "Publicar como case em Notion, PDF ou artigo no LinkedIn",
-    sugestaoLinkedIn: "Estruturei uma ideia de produto do problema ao MVP. Foi um primeiro exercício prático de pensar valor, público e escopo antes de construir.",
-    proximoProjeto: "Discovery com Entrevistas de Usuário"
+    sugestaoLinkedIn:
+      "Estruturei uma ideia de produto do problema ao MVP. Foi um primeiro exercício prático de pensar valor, público e escopo antes de construir.",
+    proximoProjeto: "Discovery com Entrevistas de Usuário",
   },
   {
     id: "plano-testes-formulario",
     nome: "Plano de Testes para um Formulário",
     areaSlug: "qa" as string | null,
     nivel: "Iniciante",
-    objetivo: "Criar e executar um plano de testes manual para um formulário de cadastro.",
+    objetivo:
+      "Criar e executar um plano de testes manual para um formulário de cadastro.",
     ferramentas: ["Google Sheets", "Markdown"],
-    passosSimplificados: ["Mapear os campos e regras do formulário", "Escrever cenários positivos e negativos", "Definir o resultado esperado de cada caso", "Executar os testes e registrar o que aconteceu", "Reportar os problemas encontrados com evidências"],
+    passosSimplificados: [
+      "Mapear os campos e regras do formulário",
+      "Escrever cenários positivos e negativos",
+      "Definir o resultado esperado de cada caso",
+      "Executar os testes e registrar o que aconteceu",
+      "Reportar os problemas encontrados com evidências",
+    ],
     entregavel: "Plano de testes com casos, execução e bugs documentados",
-    comoPublicar: "Publicar o plano no GitHub como documentação ou planilha exportada",
-    sugestaoLinkedIn: "Criei meu primeiro plano de testes manual para um formulário, cobrindo cenários positivos e negativos. Foi uma boa introdução à mentalidade de qualidade.",
-    proximoProjeto: "Plano de Testes para um Fluxo de Login"
+    comoPublicar:
+      "Publicar o plano no GitHub como documentação ou planilha exportada",
+    sugestaoLinkedIn:
+      "Criei meu primeiro plano de testes manual para um formulário, cobrindo cenários positivos e negativos. Foi uma boa introdução à mentalidade de qualidade.",
+    proximoProjeto: "Plano de Testes para um Fluxo de Login",
   },
   {
     id: "kanban-projeto-pessoal",
     nome: "Quadro Kanban para um Projeto Pessoal",
     areaSlug: "gestao" as string | null,
     nivel: "Iniciante",
-    objetivo: "Organizar um projeto pessoal usando um quadro Kanban e acompanhamento simples de progresso.",
+    objetivo:
+      "Organizar um projeto pessoal usando um quadro Kanban e acompanhamento simples de progresso.",
     ferramentas: ["Trello", "Notion"],
-    passosSimplificados: ["Definir o objetivo e as entregas do projeto", "Quebrar o trabalho em tarefas", "Criar colunas de a fazer, fazendo e feito", "Definir prioridades e prazos", "Acompanhar o progresso e ajustar a cada semana"],
-    entregavel: "Quadro Kanban organizado com tarefas, prioridades e acompanhamento",
-    comoPublicar: "Compartilhar o quadro público e descrever os aprendizados no LinkedIn",
-    sugestaoLinkedIn: "Organizei um projeto pessoal com um quadro Kanban e acompanhamento semanal. Foi uma forma prática de aprender gestão de tarefas e priorização.",
-    proximoProjeto: "Gestão de Projeto com Cerimônias Ágeis"
+    passosSimplificados: [
+      "Definir o objetivo e as entregas do projeto",
+      "Quebrar o trabalho em tarefas",
+      "Criar colunas de a fazer, fazendo e feito",
+      "Definir prioridades e prazos",
+      "Acompanhar o progresso e ajustar a cada semana",
+    ],
+    entregavel:
+      "Quadro Kanban organizado com tarefas, prioridades e acompanhamento",
+    comoPublicar:
+      "Compartilhar o quadro público e descrever os aprendizados no LinkedIn",
+    sugestaoLinkedIn:
+      "Organizei um projeto pessoal com um quadro Kanban e acompanhamento semanal. Foi uma forma prática de aprender gestão de tarefas e priorização.",
+    proximoProjeto: "Gestão de Projeto com Cerimônias Ágeis",
+  },
+  // TODO(Ana): revisao editorial dos 6 projetos abaixo (criados na Fase 5a
+  // como projeto final das trilhas que nao tinham nenhum candidato de area:
+  // analise-sistemas, blockchain, infraestrutura, iot, mainframe, sre).
+  {
+    id: "especificacao-sistema-real",
+    nome: "Especificação Completa de um Sistema",
+    areaSlug: "analise-sistemas" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Especificar de ponta a ponta um sistema real (ex: agendamento de consultas), do levantamento de requisitos ao protótipo navegável.",
+    ferramentas: ["Google Docs ou Notion", "draw.io", "BPMN.io", "Figma"],
+    passosSimplificados: [
+      "Levantar requisitos entrevistando 2 ou 3 usuários reais do problema",
+      "Escrever o documento de visão com escopo e o que fica de fora",
+      "Detalhar casos de uso e histórias com critérios de aceite",
+      "Modelar os diagramas UML de casos de uso e de classes no draw.io",
+      "Mapear o processo atual e o proposto em BPMN",
+      "Montar o protótipo navegável das telas principais no Figma",
+      "Consolidar tudo num repositório com um README que serve de índice",
+    ],
+    entregavel:
+      "Repositório com a especificação completa: documentos, diagramas exportados e link do protótipo navegável.",
+    comoPublicar: "GitHub (documentos e diagramas) e Figma",
+    sugestaoLinkedIn:
+      "Especifiquei um sistema de ponta a ponta: requisitos, casos de uso, UML, BPMN e protótipo navegável. Análise de sistemas na prática, do problema à solução documentada.",
+    proximoProjeto: "Especificação de uma melhoria em um produto que você usa",
+  },
+  {
+    id: "dapp-registro-testnet",
+    nome: "DApp de Registro Verificável em Testnet",
+    areaSlug: "blockchain" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir um dapp simples que registra a prova de existência de um documento numa testnet, com verificação pública no explorer.",
+    ferramentas: [
+      "Solidity",
+      "Remix IDE",
+      "MetaMask",
+      "Ethers.js",
+      "Testnet Sepolia",
+    ],
+    passosSimplificados: [
+      "Escrever o contrato que guarda hash e timestamp de documentos",
+      "Testar as funções de registrar e consultar no Remix",
+      "Fazer o deploy na testnet usando uma carteira com fundos de teste",
+      "Verificar o código do contrato no explorer da testnet",
+      "Criar uma página web que conecta a MetaMask e envia o hash",
+      "Registrar um documento real e conferir a transação no explorer",
+      "Documentar endereços, prints e o passo a passo no README",
+    ],
+    entregavel:
+      "Contrato verificado em testnet e front simples no repositório, com o endereço público conferível no explorer.",
+    comoPublicar: "GitHub e o endereço do contrato no explorer da testnet",
+    sugestaoLinkedIn:
+      "Publiquei meu primeiro dapp em testnet: um registro verificável de documentos com Solidity, MetaMask e Ethers.js. Contrato verificado e aberto no explorer.",
+    proximoProjeto: "Token simples com casos de uso documentados",
+  },
+  {
+    id: "homelab-documentado",
+    nome: "Homelab Documentado",
+    areaSlug: "infraestrutura" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Montar um laboratório doméstico virtualizado com rede, serviços e monitoramento, documentado como um ambiente profissional.",
+    ferramentas: [
+      "VirtualBox ou Proxmox",
+      "Linux Server",
+      "Docker",
+      "Uptime Kuma",
+      "draw.io",
+    ],
+    passosSimplificados: [
+      "Desenhar o diagrama da rede e dos serviços planejados",
+      "Criar 2 ou 3 máquinas virtuais Linux",
+      "Configurar um servidor de arquivos e um DNS local",
+      "Subir 2 serviços úteis em Docker (ex: wiki e gerenciador de senhas)",
+      "Monitorar tudo com Uptime Kuma e alertas",
+      "Escrever o runbook de 3 incidentes comuns (disco cheio, serviço fora, backup)",
+      "Documentar decisões, configs e prints no repositório",
+    ],
+    entregavel:
+      "Repositório com diagrama de rede, configurações, runbook de incidentes e prints do monitoramento funcionando.",
+    comoPublicar: "GitHub",
+    sugestaoLinkedIn:
+      "Montei e documentei meu homelab: VMs Linux, serviços em Docker, DNS local, monitoramento e runbook de incidentes. Infraestrutura na prática, de ponta a ponta.",
+    proximoProjeto: "Automatizar a criação do ambiente com scripts",
+  },
+  {
+    id: "estacao-monitoramento-iot",
+    nome: "Estação de Monitoramento com Sensor e Dashboard",
+    areaSlug: "iot" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir uma estação que lê temperatura e umidade num microcontrolador e publica num dashboard em tempo real via MQTT.",
+    ferramentas: [
+      "ESP32 (ou simulador Wokwi)",
+      "Sensor DHT22",
+      "MQTT (HiveMQ Cloud)",
+      "Node-RED ou Grafana",
+    ],
+    passosSimplificados: [
+      "Montar o circuito com o sensor (ou simular tudo no Wokwi)",
+      "Ler temperatura e umidade no firmware",
+      "Publicar as leituras num broker MQTT gratuito",
+      "Montar o dashboard que assina o tópico e exibe em tempo real",
+      "Criar um alerta quando a leitura passar de um limite",
+      "Guardar o histórico das últimas horas",
+      "Documentar o circuito, o fluxo e um GIF do funcionamento",
+    ],
+    entregavel:
+      "Firmware e fluxo do dashboard no repositório, com GIF ou vídeo curto da estação funcionando de ponta a ponta.",
+    comoPublicar: "GitHub (e o projeto público no Wokwi, se simulado)",
+    sugestaoLinkedIn:
+      "Minha primeira estação IoT: sensor de temperatura e umidade publicando via MQTT num dashboard em tempo real, com alerta de limite. Do circuito ao gráfico.",
+    proximoProjeto: "Acionar um atuador remoto a partir do dashboard",
+  },
+  {
+    id: "rotina-batch-cobol",
+    nome: "Rotina Batch COBOL com JCL",
+    areaSlug: "mainframe" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir uma rotina batch completa de fechamento diário: crítica de entrada, totalização e relatório, orquestrada por JCL documentado.",
+    ferramentas: [
+      "COBOL (GnuCOBOL ou mainframe de treino)",
+      "JCL",
+      "Arquivos sequenciais ou VSAM",
+    ],
+    passosSimplificados: [
+      "Definir o caso de negócio (ex: fechamento diário de vendas) e os layouts dos arquivos",
+      "Escrever o programa de crítica que valida e separa registros com erro",
+      "Escrever o programa de totalização que gera o relatório do dia",
+      "Montar o JCL com os steps, dependências e códigos de retorno",
+      "Testar com massas válidas e inválidas, conferindo cada saída",
+      "Tratar reprocessamento (rodar de novo sem duplicar totais)",
+      "Documentar o fluxo, os layouts e as massas no README",
+    ],
+    entregavel:
+      "Fontes COBOL, JCL e massas de teste no repositório, com o relatório gerado e o fluxo do job documentado.",
+    comoPublicar: "GitHub",
+    sugestaoLinkedIn:
+      "Construí uma rotina batch completa em COBOL: crítica de entrada, totalização com relatório e JCL orquestrando tudo, com massas de teste e reprocessamento documentados.",
+    proximoProjeto:
+      "Rotina de conciliação entre dois arquivos de origens diferentes",
+  },
+  {
+    id: "stack-observabilidade-slo",
+    nome: "Stack de Observabilidade com SLO e Postmortem",
+    areaSlug: "sre" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Subir uma stack de observabilidade completa para uma API de exemplo, definir SLOs com error budget e conduzir um incidente simulado com postmortem.",
+    ferramentas: [
+      "Docker Compose",
+      "Prometheus",
+      "Grafana",
+      "Uma API de exemplo",
+    ],
+    passosSimplificados: [
+      "Subir uma API de exemplo expondo métricas de latência e erro",
+      "Configurar o Prometheus coletando as métricas",
+      "Montar o dashboard no Grafana com latência, tráfego e erros",
+      "Definir SLI, SLO e o error budget do serviço, por escrito",
+      "Criar o alerta de queima acelerada do error budget",
+      "Injetar uma falha, conduzir o incidente e registrar a linha do tempo",
+      "Escrever o postmortem sem culpados com ações de prevenção",
+    ],
+    entregavel:
+      "Repositório com o docker-compose, dashboards exportados, o documento de SLOs e o postmortem simulado completo.",
+    comoPublicar: "GitHub",
+    sugestaoLinkedIn:
+      "Montei uma stack de observabilidade com Prometheus e Grafana, defini SLOs com error budget e conduzi um incidente simulado até o postmortem. SRE na prática.",
+    proximoProjeto: "Automatizar resposta a incidente com runbook executável",
   },
 ];
 

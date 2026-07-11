@@ -1111,6 +1111,13 @@ export const frontend: RoadmapV2 = {
       description: "Juntar tudo e publicar.",
       children: [
         {
+          id: "projeto.projetofinal",
+          title: "Projeto final: app de clima",
+          description:
+            "A encomenda concreta da reta final: um app de clima consumindo API pública, aplicando a trilha inteira.",
+          project: "app-clima-open-meteo",
+        },
+        {
           id: "projeto.planejar",
           title: "Planejar um projeto real",
           description:
