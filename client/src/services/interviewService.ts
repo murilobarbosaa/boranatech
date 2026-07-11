@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 // retorno DISCRIMINADO (nao excecao) pro form cair no modo de colar texto.
 
 export type InterviewKind = "job" | "general";
+export type InterviewLanguage = "pt" | "en";
 export type InterviewRating = "boa" | "mediana" | "fraca";
 export type InterviewStatus = "active" | "completed";
 
@@ -51,6 +52,7 @@ export interface CreateSessionInput {
   kind: InterviewKind;
   area: string;
   level: string;
+  language: InterviewLanguage;
   jobUrl?: string;
   jobText?: string;
 }

@@ -65,6 +65,7 @@ const CreateSessionSchema = z
     kind: z.enum(["job", "general"]),
     area: z.string().trim().min(1).max(120),
     level: z.string().trim().min(1).max(60),
+    language: z.enum(["pt", "en"]).default("pt"),
     jobUrl: z.string().trim().max(2_000).optional(),
     jobText: z.string().max(60_000).optional(),
   })
@@ -117,6 +118,7 @@ interface SessionRow {
   kind: "job" | "general";
   area: string | null;
   level: string | null;
+  language: "pt" | "en";
   job_context: JobContext | null;
   status: "active" | "completed";
   question_count: number;
@@ -271,11 +273,19 @@ function sessionContextMessage(session: {
   kind: "job" | "general";
   area: string | null;
   level: string | null;
+  language: "pt" | "en";
   job_context: JobContext | null;
 }): ModelMessage {
   const lines = [
     `Contexto da entrevista: area ${session.area ?? "(nao informada)"}, nivel ${session.level ?? "(nao informado)"}.`,
   ];
+  if (session.language === "en") {
+    // Sobrepoe o portugues do prompt base: a pessoa esta treinando o idioma
+    // real da entrevista. So o conteudo muda; o shape JSON e identico.
+    lines.push(
+      "Session language: ENGLISH. This overrides the default Portuguese instruction. Conduct the ENTIRE interview in natural, professional tech-interview English: every question, every evaluation feedback, every hint and the final closing verdict. Keep the interview in English even if the candidate replies in Portuguese (practicing English is the point). The JSON output format and its field names stay exactly the same.",
+    );
+  }
   if (session.kind === "job" && session.job_context?.extractedText) {
     lines.push(
       "Texto da vaga (unico fato sobre a vaga; nao invente nada alem dele):",
@@ -349,7 +359,7 @@ async function loadOwnSession(
     const { data, error } = await supabaseAdmin
       .from("interview_sessions")
       .select(
-        "id, kind, area, level, job_context, status, question_count, good_count, good_streak, verdict, created_at, updated_at",
+        "id, kind, area, level, language, job_context, status, question_count, good_count, good_streak, verdict, created_at, updated_at",
       )
       .eq("user_id", userId)
       .eq("id", sessionId)
@@ -544,6 +554,7 @@ router.post(
           kind: body.kind,
           area: body.area,
           level: body.level,
+          language: body.language,
           job_context: jobContext,
         }),
         FIRST_QUESTION_INSTRUCTION,
@@ -581,6 +592,7 @@ router.post(
           kind: body.kind,
           area: body.area,
           level: body.level,
+          language: body.language,
           job_context: jobContext,
         })
         .select("id")

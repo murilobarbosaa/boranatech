@@ -11,11 +11,13 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { interviewSteps } from "@/lib/careerToolsData";
+import FilterPills from "@/components/shared/FilterPills";
 import {
   createSession,
   listSessions,
   InterviewApiError,
   type InterviewKind,
+  type InterviewLanguage,
   type InterviewSessionSummary,
 } from "@/services/interviewService";
 
@@ -124,6 +126,7 @@ function TrainWithAi() {
   const [intakeKind, setIntakeKind] = useState<InterviewKind | null>(null);
   const [area, setArea] = useState(AREA_OPTIONS[0]);
   const [level, setLevel] = useState(LEVEL_OPTIONS[0]);
+  const [language, setLanguage] = useState<InterviewLanguage>("pt");
   const [jobMode, setJobMode] = useState<"url" | "text">("url");
   const [jobUrl, setJobUrl] = useState("");
   const [jobText, setJobText] = useState("");
@@ -159,6 +162,7 @@ function TrainWithAi() {
         kind: intakeKind,
         area,
         level,
+        language,
         ...(intakeKind === "job"
           ? jobMode === "url"
             ? { jobUrl: jobUrl.trim() }
@@ -245,6 +249,28 @@ function TrainWithAi() {
                 ))}
               </select>
             </label>
+          </div>
+
+          <div className="mt-4">
+            <span className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-600">
+              {/* TODO(Ana): rotulo do seletor de idioma da entrevista. */}
+              Idioma da entrevista
+            </span>
+            <FilterPills
+              options={["pt", "en"]}
+              value={language}
+              onChange={(v) => setLanguage(v as InterviewLanguage)}
+              accent="blue"
+              /* TODO(Ana): rotulos das opcoes de idioma. */
+              labels={{ pt: "Português", en: "English" }}
+            />
+            {language === "en" ? (
+              <p className="mt-2 text-xs font-medium text-slate-600">
+                {/* TODO(Ana): aviso do treino em ingles. */}
+                A entrevista inteira acontece em inglês: perguntas, feedback e
+                veredito. Treino de verdade pro idioma da vaga.
+              </p>
+            ) : null}
           </div>
 
           {intakeKind === "job" ? (
