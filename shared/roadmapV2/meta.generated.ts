@@ -12,8 +12,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Front-end do Zero",
     "level": "Iniciante",
     "description": "Do básico da web até publicar uma aplicação React. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 7,
-    "stepCount": 40,
+    "sectionCount": 11,
+    "stepCount": 62,
     "hasProject": false
   },
   {

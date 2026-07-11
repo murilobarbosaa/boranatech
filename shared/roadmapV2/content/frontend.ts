@@ -1,3 +1,7 @@
+// TODO(Ana): revisao editorial completa desta trilha (estrutura reorganizada
+// pelo curriculo real da area na Fase 3b.1; titulos e descricoes novos ou
+// reescritos precisam de revisao de copy; o conteudo longo esta sendo
+// preenchido por lotes a partir da secao de HTML).
 import type { RoadmapV2 } from "../types";
 
 export const frontend: RoadmapV2 = {
@@ -9,245 +13,253 @@ export const frontend: RoadmapV2 = {
     "Do básico da web até publicar uma aplicação React. Conclua uma etapa pra liberar a próxima.",
   sections: [
     {
-      id: "fundamentos",
-      title: "Fundamentos",
+      id: "web",
+      title: "Fundamentos da web",
       level: "iniciante",
-      description: "Como a web funciona e a base de HTML e CSS.",
+      description:
+        "O que acontece por trás de toda página: navegador, servidor e as ferramentas pra enxergar isso.",
       children: [
         {
-          id: "fundamentos.web",
-          title: "Como a web funciona",
-          children: [
+          id: "web.http",
+          title: "Cliente, servidor, HTTP e HTTPS",
+          description:
+            "Como o navegador e o servidor conversam, e o que o HTTPS protege nessa troca.",
+          resources: [
             {
-              id: "fundamentos.web.http",
-              title: "Cliente, servidor, HTTP e HTTPS",
-              description:
-                "Como o navegador e o servidor conversam, e o que o HTTPS protege nessa troca.",
-              resources: [
-                {
-                  label: "MDN HTTP",
-                  url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP",
-                  kind: "doc",
-                },
-              ],
-            },
-            {
-              id: "fundamentos.web.dns",
-              title: "DNS, domínios e hospedagem",
-              description:
-                "O que acontece entre digitar um endereço e a página aparecer.",
-            },
-            {
-              id: "fundamentos.web.render",
-              title: "Como o navegador renderiza uma página",
-              description:
-                "O caminho do HTML e do CSS até virar o que você vê na tela.",
-            },
-            {
-              id: "fundamentos.web.devtools",
-              title: "DevTools do navegador",
-              description:
-                "As ferramentas embutidas pra inspecionar, depurar e medir sua página.",
-              resources: [
-                {
-                  label: "Chrome DevTools",
-                  url: "https://developer.chrome.com/docs/devtools",
-                  kind: "doc",
-                },
-              ],
+              label: "MDN HTTP",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP",
+              kind: "doc",
             },
           ],
         },
         {
-          id: "fundamentos.html",
-          title: "HTML",
-          children: [
+          id: "web.dns",
+          title: "DNS, domínios e hospedagem",
+          description:
+            "O que acontece entre digitar um endereço e a página aparecer.",
+        },
+        {
+          id: "web.render",
+          title: "Como o navegador renderiza uma página",
+          description:
+            "O caminho do HTML e do CSS até virar o que você vê na tela.",
+        },
+        {
+          id: "web.devtools",
+          title: "DevTools do navegador",
+          description:
+            "As ferramentas embutidas pra inspecionar, depurar e medir sua página.",
+          resources: [
             {
-              id: "fundamentos.html.estrutura",
-              title: "Estrutura do documento",
-              description:
-                "Os elementos básicos que todo HTML precisa pra existir.",
-              resources: [
-                {
-                  label: "MDN HTML",
-                  url: "https://developer.mozilla.org/pt-BR/docs/Web/HTML",
-                  kind: "doc",
-                },
-              ],
+              label: "Chrome DevTools",
+              url: "https://developer.chrome.com/docs/devtools",
+              kind: "doc",
             },
+          ],
+        },
+      ],
+    },
+    {
+      id: "html",
+      title: "HTML",
+      level: "iniciante",
+      description:
+        "A estrutura de toda página: documento, conteúdo, significado e formulários.",
+      children: [
+        {
+          id: "html.estrutura",
+          title: "Estrutura do documento",
+          description:
+            "Os elementos básicos que todo HTML precisa pra existir.",
+          resources: [
             {
-              id: "fundamentos.html.semantica",
-              title: "Tags semânticas",
-              description:
-                "Usar tags que descrevem o significado do conteúdo, não só a aparência.",
-            },
-            {
-              id: "fundamentos.html.forms",
-              title: "Formulários e validação",
-              description:
-                "Capturar dados do usuário e checar se vieram certos.",
-            },
-            {
-              id: "fundamentos.html.a11y",
-              title: "Acessibilidade (alt, label, aria)",
-              description:
-                "Fazer sua página funcionar pra todo mundo, incluindo leitores de tela.",
-              resources: [
-                {
-                  label: "web.dev Acessibilidade",
-                  url: "https://web.dev/learn/accessibility",
-                  kind: "curso",
-                },
-              ],
-            },
-            {
-              id: "fundamentos.html.seo",
-              title: "SEO básico (meta tags, títulos)",
-              description:
-                "O mínimo pra os buscadores entenderem e indexarem sua página.",
-              optional: true,
+              label: "MDN HTML",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTML",
+              kind: "doc",
             },
           ],
         },
         {
-          id: "fundamentos.css",
-          title: "CSS",
-          children: [
+          id: "html.conteudo",
+          title: "Texto, links, imagens e listas",
+          description:
+            "As tags do dia a dia pra colocar conteúdo de verdade na página.",
+        },
+        {
+          id: "html.semantica",
+          title: "Tags semânticas",
+          description:
+            "Usar tags que descrevem o significado do conteúdo, não só a aparência.",
+        },
+        {
+          id: "html.forms",
+          title: "Formulários e validação",
+          description: "Capturar dados do usuário e checar se vieram certos.",
+        },
+        {
+          id: "html.a11y",
+          title: "Acessibilidade básica",
+          description:
+            "Fazer sua página funcionar pra todo mundo, incluindo leitores de tela.",
+          resources: [
             {
-              id: "fundamentos.css.seletores",
-              title: "Seletores e especificidade",
-              description:
-                "Como apontar quais elementos estilizar e quem vence quando há conflito.",
-              resources: [
-                {
-                  label: "MDN CSS",
-                  url: "https://developer.mozilla.org/pt-BR/docs/Web/CSS",
-                  kind: "doc",
-                },
-                {
-                  label: "CSS-Tricks",
-                  url: "https://css-tricks.com",
-                  kind: "artigo",
-                },
-              ],
+              label: "web.dev Acessibilidade",
+              url: "https://web.dev/learn/accessibility",
+              kind: "curso",
+            },
+          ],
+        },
+        {
+          id: "html.seo",
+          title: "SEO básico (meta tags, títulos)",
+          description:
+            "O mínimo pra os buscadores entenderem e indexarem sua página.",
+          optional: true,
+        },
+      ],
+    },
+    {
+      id: "css",
+      title: "CSS básico",
+      level: "iniciante",
+      description:
+        "Aparência e espaçamento: selecionar elementos, entender a caixa e dar vida ao visual.",
+      children: [
+        {
+          id: "css.seletores",
+          title: "Seletores e especificidade",
+          description:
+            "Como apontar quais elementos estilizar e quem vence quando há conflito.",
+          resources: [
+            {
+              label: "MDN CSS",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/CSS",
+              kind: "doc",
             },
             {
-              id: "fundamentos.css.boxmodel",
-              title: "Box model",
-              description:
-                "Entender margin, border, padding e content, a base de todo layout.",
+              label: "CSS-Tricks",
+              url: "https://css-tricks.com",
+              kind: "artigo",
             },
+          ],
+        },
+        {
+          id: "css.boxmodel",
+          title: "Box model e unidades",
+          description:
+            "Margin, border, padding e content, e as medidas (px, rem, %, vh) pra dimensionar tudo.",
+        },
+        {
+          id: "css.posicionamento",
+          title: "Posicionamento e z-index",
+          description:
+            "Controlar onde os elementos ficam e quem aparece na frente.",
+        },
+        {
+          id: "css.animacoes",
+          title: "Transições e animações",
+          description: "Dar movimento e feedback visual com CSS.",
+        },
+      ],
+    },
+    {
+      id: "primeirosite",
+      title: "Primeiro site no ar",
+      level: "iniciante",
+      description:
+        "Ainda no básico, publique uma página de verdade: o hábito de entregar começa aqui.",
+      children: [
+        {
+          id: "primeirosite.ambiente",
+          title: "Editor e ambiente (VS Code)",
+          description:
+            "Preparar o editor e as extensões que aceleram o dia a dia.",
+          resources: [
             {
-              id: "fundamentos.css.unidades",
-              title: "Unidades (px, rem, %, vh)",
-              description: "Quando usar cada medida e por quê.",
+              label: "VS Code",
+              url: "https://code.visualstudio.com/docs",
+              kind: "doc",
             },
+          ],
+        },
+        {
+          id: "primeirosite.pagina",
+          title: "Montar uma página completa",
+          description:
+            "Juntar HTML e CSS num projeto pequeno e real, do zero ao arquivo final.",
+        },
+        {
+          id: "primeirosite.publicar",
+          title: "Publicar na web (GitHub Pages)",
+          description:
+            "Colocar sua primeira página no ar com um endereço público.",
+          resources: [
             {
-              id: "fundamentos.css.posicionamento",
-              title: "Posicionamento e z-index",
-              description:
-                "Controlar onde os elementos ficam e quem aparece na frente.",
+              label: "GitHub Pages",
+              url: "https://docs.github.com/pt/pages",
+              kind: "doc",
             },
+          ],
+        },
+      ],
+    },
+    {
+      id: "layout",
+      title: "Layout e responsividade",
+      level: "intermediario",
+      description:
+        "As ferramentas de layout moderno e a disciplina de funcionar em qualquer tela.",
+      children: [
+        {
+          id: "layout.flexbox",
+          title: "Flexbox",
+          description:
+            "Eixos, container e itens: o modelo que resolve a maioria dos alinhamentos.",
+          resources: [
             {
-              id: "fundamentos.css.flexbox",
-              title: "Flexbox",
-              children: [
-                {
-                  id: "fundamentos.css.flexbox.eixos",
-                  title: "Eixos e container",
-                  description:
-                    "O modelo de eixo principal e cruzado que rege o Flexbox.",
-                  resources: [
-                    {
-                      label: "CSS-Tricks Flexbox",
-                      url: "https://css-tricks.com/snippets/css/a-guide-to-flexbox",
-                      kind: "artigo",
-                    },
-                  ],
-                },
-                {
-                  id: "fundamentos.css.flexbox.itens",
-                  title: "Propriedades dos itens",
-                  description: "Como cada filho cresce, encolhe e se alinha.",
-                },
-                {
-                  id: "fundamentos.css.flexbox.padroes",
-                  title: "Padrões comuns de layout",
-                  description:
-                    "Receitas de Flexbox pros arranjos que você mais vai usar.",
-                },
-              ],
+              label: "CSS-Tricks Flexbox",
+              url: "https://css-tricks.com/snippets/css/a-guide-to-flexbox",
+              kind: "artigo",
             },
+          ],
+        },
+        {
+          id: "layout.grid",
+          title: "Grid",
+          description:
+            "Grades de duas dimensões: linhas, colunas, áreas e alinhamento.",
+          resources: [
             {
-              id: "fundamentos.css.grid",
-              title: "Grid",
-              children: [
-                {
-                  id: "fundamentos.css.grid.colunas",
-                  title: "Linhas, colunas e gaps",
-                  description:
-                    "Montar grades de duas dimensões com espaçamento controlado.",
-                  resources: [
-                    {
-                      label: "CSS-Tricks Grid",
-                      url: "https://css-tricks.com/snippets/css/complete-guide-grid",
-                      kind: "artigo",
-                    },
-                  ],
-                },
-                {
-                  id: "fundamentos.css.grid.areas",
-                  title: "Áreas e alinhamento",
-                  description:
-                    "Nomear regiões da grade e posicionar conteúdo nelas.",
-                },
-              ],
+              label: "CSS-Tricks Grid",
+              url: "https://css-tricks.com/snippets/css/complete-guide-grid",
+              kind: "artigo",
             },
+          ],
+        },
+        {
+          id: "layout.responsivo",
+          title: "Responsividade (mobile-first)",
+          description:
+            "Fazer o layout se adaptar de celulares a telas grandes.",
+          resources: [
             {
-              id: "fundamentos.css.responsivo",
-              title: "Responsividade (mobile-first)",
-              description:
-                "Fazer o layout se adaptar de celulares a telas grandes.",
-              resources: [
-                {
-                  label: "web.dev Responsive",
-                  url: "https://web.dev/learn/design",
-                  kind: "curso",
-                },
-              ],
+              label: "web.dev Responsive",
+              url: "https://web.dev/learn/design",
+              kind: "curso",
             },
+          ],
+        },
+        {
+          id: "layout.arquitetura",
+          title: "Arquitetura de CSS (Sass, BEM)",
+          description:
+            "Variáveis, reúso e convenção de nomes pra manter o CSS organizado em projetos grandes.",
+          optional: true,
+          resources: [
             {
-              id: "fundamentos.css.animacoes",
-              title: "Transições e animações",
-              description: "Dar movimento e feedback visual com CSS.",
-            },
-            {
-              id: "fundamentos.css.arquitetura",
-              title: "Arquitetura de CSS",
-              optional: true,
-              children: [
-                {
-                  id: "fundamentos.css.arquitetura.sass",
-                  title: "Preprocessadores (Sass)",
-                  description:
-                    "Escrever CSS com variáveis, aninhamento e reúso.",
-                  optional: true,
-                  resources: [
-                    {
-                      label: "Sass",
-                      url: "https://sass-lang.com/documentation",
-                      kind: "doc",
-                    },
-                  ],
-                },
-                {
-                  id: "fundamentos.css.arquitetura.bem",
-                  title: "Metodologias (BEM)",
-                  description:
-                    "Uma convenção de nomes pra manter o CSS organizado em projetos grandes.",
-                  optional: true,
-                },
-              ],
+              label: "Sass",
+              url: "https://sass-lang.com/documentation",
+              kind: "doc",
             },
           ],
         },
@@ -255,87 +267,64 @@ export const frontend: RoadmapV2 = {
     },
     {
       id: "javascript",
-      title: "JavaScript",
-      level: "iniciante",
-      description: "A linguagem que dá vida à página.",
+      title: "JavaScript e o DOM",
+      level: "intermediario",
+      description:
+        "A linguagem que dá vida à página, e o DOM, que é onde ela encontra o HTML.",
       children: [
         {
-          id: "javascript.fundamentos",
-          title: "Fundamentos",
-          children: [
+          id: "javascript.tipos",
+          title: "Tipos e variáveis",
+          description:
+            "Os tipos de dados do JavaScript e como guardar valores.",
+          resources: [
             {
-              id: "javascript.fundamentos.tipos",
-              title: "Tipos e variáveis",
-              description:
-                "Os tipos de dados do JavaScript e como guardar valores.",
-              resources: [
-                {
-                  label: "JavaScript.info",
-                  url: "https://javascript.info",
-                  kind: "curso",
-                },
-              ],
-            },
-            {
-              id: "javascript.fundamentos.controle",
-              title: "Condicionais e laços",
-              description: "Tomar decisões e repetir ações no código.",
-            },
-            {
-              id: "javascript.fundamentos.funcoes",
-              title: "Funções e escopo",
-              description:
-                "Empacotar lógica reutilizável e entender onde as variáveis vivem.",
-              resources: [
-                {
-                  label: "MDN Functions",
-                  url: "https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Guide/Functions",
-                  kind: "doc",
-                },
-              ],
-            },
-            {
-              id: "javascript.fundamentos.arrow",
-              title: "Arrow functions e this",
-              description:
-                "A sintaxe enxuta de função e como ela trata o this.",
-            },
-            {
-              id: "javascript.fundamentos.modulos",
-              title: "Módulos (import / export)",
-              description: "Quebrar o código em arquivos que se importam.",
+              label: "JavaScript.info",
+              url: "https://javascript.info",
+              kind: "curso",
             },
           ],
         },
         {
-          id: "javascript.dados",
-          title: "Dados",
-          children: [
+          id: "javascript.controle",
+          title: "Condicionais e laços",
+          description: "Tomar decisões e repetir ações no código.",
+        },
+        {
+          id: "javascript.funcoes",
+          title: "Funções, escopo e arrow functions",
+          description:
+            "Empacotar lógica reutilizável, entender onde as variáveis vivem e como o this muda.",
+          resources: [
             {
-              id: "javascript.dados.arrays",
-              title: "Arrays (map, filter, reduce)",
-              description: "Transformar e filtrar listas sem laços manuais.",
-              resources: [
-                {
-                  label: "MDN Array",
-                  url: "https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Reference/Global_Objects/Array",
-                  kind: "doc",
-                },
-              ],
-            },
-            {
-              id: "javascript.dados.objetos",
-              title: "Objetos e desestruturação",
-              description:
-                "Estruturar dados em pares chave-valor e extrair o que precisa.",
-            },
-            {
-              id: "javascript.dados.json",
-              title: "JSON",
-              description:
-                "O formato que o front e o back usam pra trocar dados.",
+              label: "MDN Functions",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Guide/Functions",
+              kind: "doc",
             },
           ],
+        },
+        {
+          id: "javascript.arrays",
+          title: "Arrays (map, filter, reduce)",
+          description: "Transformar e filtrar listas sem laços manuais.",
+          resources: [
+            {
+              label: "MDN Array",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Reference/Global_Objects/Array",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "javascript.objetos",
+          title: "Objetos, desestruturação e JSON",
+          description:
+            "Estruturar dados em pares chave-valor, extrair o que precisa e trocar dados com o back.",
+        },
+        {
+          id: "javascript.modulos",
+          title: "Módulos (import / export)",
+          description: "Quebrar o código em arquivos que se importam.",
         },
         {
           id: "javascript.dom",
@@ -373,46 +362,14 @@ export const frontend: RoadmapV2 = {
             },
           ],
         },
-        {
-          id: "javascript.async",
-          title: "Assíncrono",
-          children: [
-            {
-              id: "javascript.async.promises",
-              title: "Promises",
-              description: "Lidar com operações que terminam no futuro.",
-              resources: [
-                {
-                  label: "JavaScript.info Promises",
-                  url: "https://javascript.info/promise-basics",
-                  kind: "curso",
-                },
-              ],
-            },
-            {
-              id: "javascript.async.awaitasync",
-              title: "async / await",
-              description: "Escrever código assíncrono que parece síncrono.",
-            },
-            {
-              id: "javascript.async.fetch",
-              title: "fetch e consumo de APIs",
-              description: "Buscar dados de um servidor pela rede.",
-            },
-            {
-              id: "javascript.async.erros",
-              title: "Tratamento de erros",
-              description: "Capturar e tratar o que pode dar errado.",
-            },
-          ],
-        },
       ],
     },
     {
       id: "ferramentas",
-      title: "Ferramentas",
+      title: "Git e ferramentas",
       level: "intermediario",
-      description: "O que todo dev usa no dia a dia.",
+      description:
+        "Controle de versão e o ferramental que todo time de front usa no dia a dia.",
       children: [
         {
           id: "ferramentas.git",
@@ -463,12 +420,6 @@ export const frontend: RoadmapV2 = {
           ],
         },
         {
-          id: "ferramentas.webpack",
-          title: "Webpack e esbuild",
-          description: "Outros bundlers que você vai encontrar por aí.",
-          optional: true,
-        },
-        {
           id: "ferramentas.lint",
           title: "ESLint e Prettier",
           description:
@@ -489,9 +440,89 @@ export const frontend: RoadmapV2 = {
       ],
     },
     {
+      id: "apis",
+      title: "APIs e assincronia",
+      level: "intermediario",
+      description:
+        "Buscar dados de um servidor: promessas, fetch e o que toda API espera de você.",
+      children: [
+        {
+          id: "apis.promises",
+          title: "Promises",
+          description: "Lidar com operações que terminam no futuro.",
+          resources: [
+            {
+              label: "JavaScript.info Promises",
+              url: "https://javascript.info/promise-basics",
+              kind: "curso",
+            },
+          ],
+        },
+        {
+          id: "apis.async",
+          title: "async / await e tratamento de erros",
+          description:
+            "Escrever código assíncrono legível e capturar o que pode dar errado.",
+        },
+        {
+          id: "apis.fetch",
+          title: "fetch e consumo de APIs",
+          description:
+            "Buscar dados de um servidor pela rede, com fetch ou bibliotecas como axios.",
+        },
+        {
+          id: "apis.rest",
+          title: "REST e status HTTP",
+          description:
+            "O padrão mais comum de API e o que cada código de status diz.",
+          resources: [
+            {
+              label: "MDN HTTP Status",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Status",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "apis.estados",
+          title: "Estados de loading e erro",
+          description: "Mostrar carregamento e falhas pro usuário.",
+        },
+        {
+          id: "apis.cors",
+          title: "CORS",
+          description:
+            "Por que o navegador bloqueia certas requisições e como resolver.",
+          resources: [
+            {
+              label: "MDN CORS",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP/CORS",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "apis.auth",
+          title: "Autenticação no front (tokens, sessões)",
+          description:
+            "JWT, cookies de sessão e login via terceiros: o que o front precisa entender.",
+        },
+        {
+          id: "apis.graphql",
+          title: "GraphQL",
+          description:
+            "Uma alternativa ao REST onde o cliente pede exatamente os dados que quer.",
+          optional: true,
+          resources: [
+            { label: "GraphQL", url: "https://graphql.org/learn", kind: "doc" },
+          ],
+        },
+      ],
+    },
+    {
       id: "react",
       title: "React",
-      level: "intermediario",
+      level: "avancado",
       description: "A biblioteca pra construir interfaces de verdade.",
       children: [
         {
@@ -541,15 +572,10 @@ export const frontend: RoadmapV2 = {
               ],
             },
             {
-              id: "react.estado.condicional",
-              title: "Renderização condicional",
-              description: "Mostrar coisas diferentes conforme o estado.",
-            },
-            {
-              id: "react.estado.listas",
-              title: "Listas e keys",
+              id: "react.estado.renderizacao",
+              title: "Renderização condicional e listas",
               description:
-                "Renderizar coleções e ajudar o React a rastreá-las.",
+                "Mostrar coisas diferentes conforme o estado e renderizar coleções com keys.",
             },
             {
               id: "react.estado.useeffect",
@@ -621,26 +647,15 @@ export const frontend: RoadmapV2 = {
         },
         {
           id: "react.estadoglobal",
-          title: "Estado global",
+          title: "Estado global (Context, Redux ou Zustand)",
+          description:
+            "Compartilhar estado entre partes distantes do app, com ou sem biblioteca.",
           optional: true,
-          children: [
+          resources: [
             {
-              id: "react.estadoglobal.context",
-              title: "Context API para estado",
-              description: "Estado global simples sem biblioteca externa.",
-            },
-            {
-              id: "react.estadoglobal.libs",
-              title: "Redux ou Zustand",
-              description: "Bibliotecas pra estado global em apps maiores.",
-              optional: true,
-              resources: [
-                {
-                  label: "Redux",
-                  url: "https://redux.js.org/introduction/getting-started",
-                  kind: "doc",
-                },
-              ],
+              label: "Redux",
+              url: "https://redux.js.org/introduction/getting-started",
+              kind: "doc",
             },
           ],
         },
@@ -654,85 +669,8 @@ export const frontend: RoadmapV2 = {
       ],
     },
     {
-      id: "apis",
-      title: "APIs",
-      level: "intermediario",
-      description: "Conectar o front a um back-end.",
-      children: [
-        {
-          id: "apis.rest",
-          title: "REST e status HTTP",
-          description:
-            "O padrão mais comum de API e o que cada código de status diz.",
-          resources: [
-            {
-              label: "MDN HTTP Status",
-              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Status",
-              kind: "doc",
-            },
-          ],
-        },
-        {
-          id: "apis.clientes",
-          title: "fetch e axios",
-          description: "As duas formas mais usadas de chamar APIs no front.",
-        },
-        {
-          id: "apis.estados",
-          title: "Estados de loading e erro",
-          description: "Mostrar carregamento e falhas pro usuário.",
-        },
-        {
-          id: "apis.cors",
-          title: "CORS",
-          description:
-            "Por que o navegador bloqueia certas requisições e como resolver.",
-          resources: [
-            {
-              label: "MDN CORS",
-              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP/CORS",
-              kind: "doc",
-            },
-          ],
-        },
-        {
-          id: "apis.auth",
-          title: "Autenticação",
-          children: [
-            {
-              id: "apis.auth.jwt",
-              title: "JWT",
-              description:
-                "Tokens pra identificar o usuário em cada requisição.",
-            },
-            {
-              id: "apis.auth.sessoes",
-              title: "Sessões e cookies",
-              description: "A forma clássica de manter o usuário logado.",
-            },
-            {
-              id: "apis.auth.oauth",
-              title: "OAuth",
-              description: "Login via terceiros, como Google e GitHub.",
-              optional: true,
-            },
-          ],
-        },
-        {
-          id: "apis.graphql",
-          title: "GraphQL",
-          description:
-            "Uma alternativa ao REST onde o cliente pede exatamente os dados que quer.",
-          optional: true,
-          resources: [
-            { label: "GraphQL", url: "https://graphql.org/learn", kind: "doc" },
-          ],
-        },
-      ],
-    },
-    {
       id: "qualidade",
-      title: "Qualidade e Boas Práticas",
+      title: "Qualidade profissional",
       level: "avancado",
       description: "O que separa um projeto de estudo de um profissional.",
       children: [
@@ -827,7 +765,7 @@ export const frontend: RoadmapV2 = {
     },
     {
       id: "projeto",
-      title: "Projeto e Deploy",
+      title: "Projeto e deploy",
       level: "avancado",
       description: "Juntar tudo e publicar.",
       children: [
