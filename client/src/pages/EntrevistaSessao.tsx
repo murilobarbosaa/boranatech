@@ -8,6 +8,7 @@ import {
   Loader2,
   Mic,
   Send,
+  Square,
   X,
 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -15,6 +16,13 @@ import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import { Spinner } from "@/components/ui/spinner";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import {
+  MAX_RECORDING_SECONDS,
+  useAudioRecorder,
+} from "@/hooks/useAudioRecorder";
+import { apiUrl } from "@/lib/api";
+import { showErrorToast } from "@/lib/notify";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
   finishSession,
@@ -31,6 +39,69 @@ import {
 // Visual no padrao do CurriculoChatPanel (bolhas, TypingDots, autoscroll), mas
 // o transporte aqui e POST JSON por turno: sem stream, sem typewriter, as
 // respostas chegam inteiras.
+
+// Espelhos do server: cap de bytes do audio (audioTranscribe.ts) e teto de
+// caracteres do answer (AnswerSchema). O client avisa ANTES do server rejeitar.
+const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
+const ANSWER_MAX_CHARS = 4_000;
+const CHAR_COUNTER_THRESHOLD = 3_600;
+
+function formatElapsed(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+// Mesmo padrao do AvatarPhotoPanel: o blob vira data URL base64 no navegador.
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("audio_read_failed"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Chamada direta (com o mesmo Bearer do interviewService): transcricao e
+// pre-envio, devolve texto para o composer e nao cria turno nenhum.
+async function requestTranscription(
+  sessionId: string,
+  audioBase64: string,
+): Promise<string> {
+  const {
+    data: { session },
+  } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
+  const response = await fetch(
+    apiUrl(`/api/interview/sessions/${encodeURIComponent(sessionId)}/transcribe`),
+    { method: "POST", headers, body: JSON.stringify({ audioBase64 }) },
+  );
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    throw new Error(
+      body.error?.message ||
+        // TODO(Ana): erro generico de transcricao no client.
+        "Nao foi possivel transcrever o audio agora. Tente de novo.",
+    );
+  }
+
+  const body = (await response.json()) as { data?: { text?: unknown } };
+  if (typeof body.data?.text !== "string") {
+    // TODO(Ana): erro de resposta inesperada da transcricao.
+    throw new Error("Resposta inesperada ao transcrever o audio.");
+  }
+  return body.data.text;
+}
 
 const RATING_UI: Record<
   InterviewRating,
@@ -155,6 +226,15 @@ export default function EntrevistaSessao() {
   const [confirmingFinish, setConfirmingFinish] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Resposta por voz: o hook grava; a transcricao acontece aqui e o texto
+  // SEMPRE cai no input editavel (nunca envio automatico).
+  const recorder = useAudioRecorder({
+    onRecorded: (blob) => void handleTranscribe(blob),
+  });
+  const recorderBusy =
+    recorder.status === "recording" || recorder.status === "transcribing";
 
   useEffect(() => {
     let alive = true;
@@ -206,10 +286,66 @@ export default function EntrevistaSessao() {
     }
   }
 
+  async function handleTranscribe(blob: Blob) {
+    if (!session) {
+      recorder.reset();
+      return;
+    }
+    if (blob.size > MAX_AUDIO_BYTES) {
+      // TODO(Ana): aviso de gravacao acima do limite de tamanho.
+      showErrorToast(
+        "A gravacao ficou grande demais (limite de 5MB). Descarte e grave um audio mais curto.",
+      );
+      recorder.markError();
+      return;
+    }
+    try {
+      const audioBase64 = await blobToBase64(blob);
+      const text = (await requestTranscription(session.id, audioBase64)).trim();
+      if (!text) {
+        // TODO(Ana): aviso de audio sem fala reconhecivel.
+        showErrorToast(
+          "Nao consegui entender o audio. Tente de novo ou digite a resposta.",
+        );
+        recorder.markError();
+        return;
+      }
+      // Appenda ao que ja existe (um espaco separa) e devolve o foco com o
+      // cursor no final: o texto e da pessoa, ela revisa e envia quando quiser.
+      setInput((prev) => {
+        const base = prev.replace(/\s+$/, "");
+        return base.length > 0 ? `${base} ${text}` : text;
+      });
+      recorder.reset();
+      requestAnimationFrame(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      });
+    } catch (err) {
+      showErrorToast(
+        err instanceof Error && err.message
+          ? err.message
+          : // TODO(Ana): erro generico de transcricao no client.
+            "Nao foi possivel transcrever o audio agora. Tente de novo.",
+      );
+      recorder.markError();
+    }
+  }
+
+  function handleRetryTranscribe() {
+    const blob = recorder.pendingBlob;
+    if (!blob || recorder.status !== "error") return;
+    recorder.markTranscribing();
+    void handleTranscribe(blob);
+  }
+
   async function handleSend() {
-    if (sending || hintLoading || !session || session.status !== "active") return;
+    if (sending || hintLoading || recorderBusy) return;
+    if (!session || session.status !== "active") return;
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || trimmed.length > ANSWER_MAX_CHARS) return;
 
     setBanner("");
     setInput("");
@@ -274,7 +410,8 @@ export default function EntrevistaSessao() {
   }
 
   async function handleHint() {
-    if (hintLoading || sending || !session || session.status !== "active") {
+    if (hintLoading || sending || recorderBusy) return;
+    if (!session || session.status !== "active") {
       return;
     }
     setBanner("");
@@ -392,13 +529,9 @@ export default function EntrevistaSessao() {
       <div className="container py-8">
         <div className="card-brutal mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white">
           <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
+            {/* O microfone saiu do header: agora existe controle REAL de
+                gravacao no composer; dois microfones confundiriam. */}
             <header className="flex shrink-0 items-center gap-3 border-b-2 border-slate-950 bg-[#FFB800] px-4 py-3.5 text-slate-950 sm:px-5 sm:py-4">
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white shadow-[2px_2px_0_#0f172a] sm:h-12 sm:w-12"
-                aria-hidden
-              >
-                <Mic className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
-              </div>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate font-display text-lg font-black tracking-tight sm:text-xl">
                   {/* TODO(Ana): titulo do painel da sessao */}
@@ -528,6 +661,52 @@ export default function EntrevistaSessao() {
                 </div>
               ) : (
                 <>
+                  {recorder.status === "recording" ? (
+                    <div className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-xl border-2 border-red-400 bg-red-50 px-3 py-1.5">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-600 motion-reduce:animate-none"
+                        aria-hidden
+                      />
+                      <p className="text-xs font-bold text-red-900">
+                        {/* TODO(Ana): estado de gravacao em andamento. */}
+                        Gravando... {formatElapsed(recorder.elapsedSeconds)} /{" "}
+                        {formatElapsed(MAX_RECORDING_SECONDS)}
+                      </p>
+                    </div>
+                  ) : null}
+                  {recorder.status === "transcribing" ? (
+                    <div className="mx-auto mb-2 flex w-full max-w-3xl items-center gap-2 rounded-xl border-2 border-slate-300 bg-white px-3 py-1.5">
+                      <Spinner className="h-3.5 w-3.5 shrink-0 text-slate-700" />
+                      <p className="text-xs font-bold text-slate-700">
+                        {/* TODO(Ana): estado de transcricao em andamento. */}
+                        Transcrevendo o audio...
+                      </p>
+                    </div>
+                  ) : null}
+                  {recorder.status === "error" && recorder.pendingBlob ? (
+                    <div className="mx-auto mb-2 flex w-full max-w-3xl flex-wrap items-center gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-1.5">
+                      <p className="text-xs font-bold text-amber-900">
+                        {/* TODO(Ana): aviso de gravacao pendente apos falha. */}
+                        A gravacao ficou guardada.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleRetryTranscribe}
+                        className="rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                      >
+                        {/* TODO(Ana): acao de tentar transcrever de novo. */}
+                        Tentar de novo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => recorder.discard()}
+                        className="rounded-full border-2 border-slate-950 bg-white px-3 py-0.5 text-xs font-black text-slate-600 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-700"
+                      >
+                        {/* TODO(Ana): acao de descartar a gravacao. */}
+                        Descartar
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="mx-auto flex w-full max-w-3xl items-end gap-2 sm:gap-3">
                     <label className="sr-only" htmlFor="entrevista-chat-input">
                       Resposta
@@ -535,6 +714,7 @@ export default function EntrevistaSessao() {
                     <div className="flex min-h-[48px] flex-1 items-end rounded-2xl border-2 border-slate-950 bg-white shadow-[3px_3px_0_#0f172a]">
                       <textarea
                         id="entrevista-chat-input"
+                        ref={inputRef}
                         rows={1}
                         className="max-h-32 min-h-[48px] w-full resize-y rounded-2xl border-0 bg-transparent px-4 py-3 font-body text-[15px] leading-relaxed text-slate-900 outline-none placeholder:text-slate-500 disabled:opacity-60 sm:py-3.5 sm:text-base"
                         placeholder="Manda tua resposta"
@@ -544,10 +724,60 @@ export default function EntrevistaSessao() {
                         onKeyDown={onKeyDown}
                       />
                     </div>
+                    {recorder.supported ? (
+                      recorder.status === "recording" ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => recorder.stop()}
+                            /* TODO(Ana): label do botao de parar gravacao. */
+                            aria-label="Parar gravacao e transcrever"
+                            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-red-600 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px sm:h-[52px] sm:w-[52px]"
+                          >
+                            <Square className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => recorder.discard()}
+                            /* TODO(Ana): label do botao de descartar gravacao. */
+                            aria-label="Descartar gravacao"
+                            className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white text-slate-600 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-700 sm:h-[52px] sm:w-[52px]"
+                          >
+                            <X className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void recorder.start()}
+                          disabled={
+                            sending ||
+                            hintLoading ||
+                            recorder.status === "transcribing" ||
+                            recorder.status === "error"
+                          }
+                          /* TODO(Ana): label do botao de gravar resposta. */
+                          aria-label="Gravar resposta por voz"
+                          className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-white text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
+                        >
+                          {recorder.status === "transcribing" ? (
+                            <Spinner className="h-5 w-5 text-slate-950 sm:h-6 sm:w-6" />
+                          ) : (
+                            <Mic className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.5} />
+                          )}
+                        </button>
+                      )
+                    ) : null}
                     <button
                       type="button"
                       className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
-                      disabled={sending || hintLoading || !input.trim()}
+                      disabled={
+                        sending ||
+                        hintLoading ||
+                        recorderBusy ||
+                        !input.trim() ||
+                        input.trim().length > ANSWER_MAX_CHARS
+                      }
                       aria-label="Enviar resposta"
                       onClick={() => void handleSend()}
                     >
@@ -563,11 +793,24 @@ export default function EntrevistaSessao() {
                       <p className="text-xs font-bold text-slate-600">
                         Enter envia · Shift+Enter nova linha
                       </p>
+                      {input.length > CHAR_COUNTER_THRESHOLD ? (
+                        <p
+                          className={cn(
+                            "text-xs font-bold",
+                            input.length > ANSWER_MAX_CHARS
+                              ? "text-red-700"
+                              : "text-slate-500",
+                          )}
+                        >
+                          {/* TODO(Ana): contador de caracteres do composer. */}
+                          {input.length}/{ANSWER_MAX_CHARS}
+                        </p>
+                      ) : null}
                       {canAskHint ? (
                         <button
                           type="button"
                           onClick={() => void handleHint()}
-                          disabled={hintLoading || sending}
+                          disabled={hintLoading || sending || recorderBusy}
                           className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
                         >
                           {hintLoading ? (
