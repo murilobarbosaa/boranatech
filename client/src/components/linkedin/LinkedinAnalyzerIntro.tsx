@@ -155,12 +155,9 @@ export function ResultShowcase() {
 
       {/* (a) mini nota-hero */}
       <ShowcaseCard index={0} reduce={reduce} className="w-[88%] -rotate-2">
-        <div
-          className={cn(
-            "flex items-center gap-4 rounded-xl p-4",
-            EXAMPLE_FAIXA_UI.cardBg,
-          )}
-        >
+        {/* Fundo neutro de proposito: a faixa se expressa so no anel e no
+            chip, sem tingir o card e destoar do cenario sky/cream. */}
+        <div className="flex items-center gap-4 rounded-xl bg-white p-4">
           <MiniScoreRing
             score={EXAMPLE_SCORE}
             stroke={EXAMPLE_RING_STROKE}
