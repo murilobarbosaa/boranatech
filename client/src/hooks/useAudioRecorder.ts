@@ -62,6 +62,10 @@ export function useAudioRecorder({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+  // Contador do timer fora do estado: o updater de setElapsedSeconds precisa
+  // ser PURO (em dev o StrictMode roda updaters duas vezes; um stop() dentro
+  // dele dispararia dobrado). O ref conta, o estado so exibe.
+  const elapsedTicksRef = useRef(0);
   const discardedRef = useRef(false);
 
   function clearTimer() {
@@ -127,6 +131,7 @@ export function useAudioRecorder({
       clearTimer();
       const chunks = chunksRef.current;
       chunksRef.current = [];
+      elapsedTicksRef.current = 0;
       setElapsedSeconds(0);
       if (discardedRef.current) {
         setStatus("idle");
@@ -138,20 +143,18 @@ export function useAudioRecorder({
       onRecordedRef.current(blob);
     };
 
+    elapsedTicksRef.current = 0;
     setElapsedSeconds(0);
     setStatus("recording");
     recorder.start();
 
     timerRef.current = window.setInterval(() => {
-      setElapsedSeconds((prev) => {
-        const next = prev + 1;
-        if (next >= MAX_RECORDING_SECONDS) {
-          // Auto-stop pelo MESMO caminho do stop manual.
-          stop();
-          return MAX_RECORDING_SECONDS;
-        }
-        return next;
-      });
+      elapsedTicksRef.current += 1;
+      setElapsedSeconds(elapsedTicksRef.current);
+      if (elapsedTicksRef.current >= MAX_RECORDING_SECONDS) {
+        // Auto-stop pelo MESMO caminho do stop manual.
+        stop();
+      }
     }, 1000);
   }
 
@@ -166,6 +169,7 @@ export function useAudioRecorder({
     }
     // Pos-erro (ou pos-stop): descarta o blob retido.
     setPendingBlob(null);
+    elapsedTicksRef.current = 0;
     setElapsedSeconds(0);
     setStatus("idle");
   }
@@ -182,6 +186,7 @@ export function useAudioRecorder({
 
   function reset() {
     setPendingBlob(null);
+    elapsedTicksRef.current = 0;
     setElapsedSeconds(0);
     setStatus("idle");
   }
