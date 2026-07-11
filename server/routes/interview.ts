@@ -76,6 +76,7 @@ const CreateSessionSchema = z
     area: z.string().trim().min(1).max(120),
     level: z.string().trim().min(1).max(60),
     language: z.enum(["pt", "en"]).default("pt"),
+    voiceMode: z.boolean().default(false),
     jobUrl: z.string().trim().max(2_000).optional(),
     jobText: z.string().max(60_000).optional(),
   })
@@ -153,6 +154,7 @@ interface SessionRow {
   area: string | null;
   level: string | null;
   language: "pt" | "en";
+  voice_mode: boolean;
   job_context: JobContext | null;
   status: "active" | "completed";
   question_count: number;
@@ -495,7 +497,7 @@ async function loadOwnSession(
     const { data, error } = await supabaseAdmin
       .from("interview_sessions")
       .select(
-        "id, kind, area, level, language, job_context, status, question_count, good_count, good_streak, verdict, created_at, updated_at",
+        "id, kind, area, level, language, voice_mode, job_context, status, question_count, good_count, good_streak, verdict, created_at, updated_at",
       )
       .eq("user_id", userId)
       .eq("id", sessionId)
@@ -753,6 +755,7 @@ router.post(
           area: body.area,
           level: body.level,
           language: body.language,
+          voice_mode: body.voiceMode,
           job_context: jobContext,
         })
         .select("id")
