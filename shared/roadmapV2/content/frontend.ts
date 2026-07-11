@@ -336,7 +336,7 @@ export const frontend: RoadmapV2 = {
           description:
             "Mobile-first, media queries, breakpoints pelo conteúdo e imagens que nunca estouram.",
           content:
-            "Responsividade é o compromisso de a página funcionar de um celular de 360px a um monitor de 1440px. Mobile-first é a estratégia que torna isso administrável: escreva o CSS base pra tela pequena e adicione ajustes conforme a tela CRESCE, nunca o contrário.\n\nA ferramenta dos ajustes é a **media query**: `@media (min-width: 768px) { ... }` aplica as regras dali de dentro só quando a janela tem pelo menos 768px. No fluxo mobile-first, você empilha blocos de `min-width` progressivos: a base pro celular, um bloco pra tablet, outro pra desktop.\n\nE onde ficam os cortes? **Breakpoints se escolhem pelo conteúdo, não por dispositivo.** Estique a janela devagar: no ponto em que o layout começa a ficar estranho (linha de texto longa demais, espaço sobrando), ali nasce um breakpoint. Perseguir medidas de aparelhos específicos é enxugar gelo; aparelhos mudam todo ano.\n\nDuas práticas completam o kit. As unidades relativas que você viu no box model (`rem`, `%`, `vh`) fazem o layout esticar sozinho entre um breakpoint e outro, diminuindo quantos você precisa. E toda imagem leva `max-width: 100%`: ela encolhe junto com o container e nunca estoura pro lado.\n\nVocê domina este passo quando abre o modo responsivo do DevTools, arrasta a largura de 360px a 1200px e a sua página não quebra em nenhum ponto do caminho.",
+            "Responsividade é o compromisso de a página funcionar de um celular de 360px a um monitor de 1440px. Mobile-first é a estratégia que torna isso administrável: escreva o CSS base pra tela pequena e adicione ajustes conforme a tela CRESCE, nunca o contrário.\n\nA ferramenta dos ajustes é a **media query**, e o empilhamento mobile-first tem essa cara:\n\n```css\n.galeria { grid-template-columns: 1fr; }\n\n@media (min-width: 768px) {\n  .galeria { grid-template-columns: 1fr 1fr; }\n}\n```\n\nA base vale pro celular; o bloco de `min-width` só entra quando a janela tem pelo menos 768px. Telas maiores, mais blocos progressivos.\n\nE onde ficam os cortes? **Breakpoints se escolhem pelo conteúdo, não por dispositivo.** Estique a janela devagar: no ponto em que o layout começa a ficar estranho (linha de texto longa demais, espaço sobrando), ali nasce um breakpoint. Perseguir medidas de aparelhos específicos é enxugar gelo; aparelhos mudam todo ano.\n\nDuas práticas completam o kit. As unidades relativas que você viu no box model (`rem`, `%`, `vh`) fazem o layout esticar sozinho entre um breakpoint e outro, diminuindo quantos você precisa. E toda imagem leva `max-width: 100%`: ela encolhe junto com o container e nunca estoura pro lado.\n\nVocê domina este passo quando abre o modo responsivo do DevTools, arrasta a largura de 360px a 1200px e a sua página não quebra em nenhum ponto do caminho.",
           resources: [
             {
               label: "web.dev Responsive",
@@ -399,7 +399,7 @@ export const frontend: RoadmapV2 = {
           description:
             "Parâmetros, retorno, escopo, função como valor e arrow functions com a noção de this.",
           content:
-            "Função é um bloco de código com nome que você define uma vez e executa quantas vezes quiser: a unidade básica de organização de qualquer programa. Ela recebe **parâmetros**, faz o trabalho e devolve um resultado com `return`: definida `function somar(a, b) { return a + b; }`, a expressão `somar(2, 3)` vale `5` em qualquer lugar do código.\n\nO que separa o JavaScript de muitas linguagens: função é **valor**. Dá pra guardar numa variável, passar como argumento e devolver de outra função. É isso que os métodos de array do próximo passo exploram: `numeros.map(dobrar)` entrega a função `dobrar` pro `map` aplicar em cada item.\n\nCada função cria um **escopo**: variáveis declaradas dentro só existem dentro. De dentro se enxerga o lado de fora; de fora, nunca o lado de dentro. Esse cerco é o que deixa duas funções usarem nomes iguais sem conflito.\n\nA **arrow function** é a sintaxe enxuta pra função como valor: `const dobrar = (n) => n * 2` retorna a expressão direto, sem `return` nem chaves. Em callbacks curtos ela reina: `numeros.map((n) => n * 2)`. Além da sintaxe, uma diferença real: a arrow não tem `this` próprio, herda o do lugar onde foi escrita. Por ora guarde a noção: se um `this` se comportar estranho um dia, lembre que a arrow existe e aprofunde na hora.\n\nVocê domina este passo quando escreve a mesma lógica nas duas sintaxes e passa uma função pra outra sem executá-la por engano (passar `dobrar`, não `dobrar()`).",
+            "Função é um bloco de código com nome que você define uma vez e executa quantas vezes quiser: a unidade básica de organização de qualquer programa. Ela recebe **parâmetros**, faz o trabalho e devolve um resultado com `return`: definida `function somar(a, b) { return a + b; }`, a expressão `somar(2, 3)` vale `5` em qualquer lugar do código.\n\nO que separa o JavaScript de muitas linguagens: função é **valor**. Dá pra guardar numa variável, passar como argumento e devolver de outra função. É isso que os métodos de array do próximo passo exploram: `numeros.map(dobrar)` entrega a função `dobrar` pro `map` aplicar em cada item.\n\nCada função cria um **escopo**: variáveis declaradas dentro só existem dentro. De dentro se enxerga o lado de fora; de fora, nunca o lado de dentro. Esse cerco é o que deixa duas funções usarem nomes iguais sem conflito.\n\nA **arrow function** é a sintaxe enxuta pra função como valor. As duas formas abaixo são equivalentes:\n\n```js\nfunction dobrar(n) {\n  return n * 2;\n}\n\nconst dobrarArrow = (n) => n * 2;\n```\n\nSem chaves, a arrow retorna a expressão direto, e em callbacks curtos ela reina: `numeros.map((n) => n * 2)`. Uma diferença real além da sintaxe: a arrow não tem `this` próprio, herda o do lugar onde foi escrita. Se um `this` se comportar estranho um dia, lembre desta diferença e aprofunde na hora.\n\nVocê domina este passo quando passa uma função pra outra sem executá-la por engano (passar `dobrar`, não `dobrar()`).",
           resources: [
             {
               label: "MDN Functions",
@@ -478,7 +478,7 @@ export const frontend: RoadmapV2 = {
               description:
                 "addEventListener, o objeto de evento, preventDefault no formulário e a noção de delegação.",
               content:
-                'Evento é qualquer coisa que acontece na página: clique, tecla, envio de formulário, rolagem. O DOM anuncia esses acontecimentos, e o JavaScript escuta com `addEventListener`: `botao.addEventListener("click", aoClicar)` registra a função `aoClicar` pra rodar a cada clique. Repare que a função é passada como valor, sem parênteses: quem a executa é o navegador, na hora certa.\n\nA função ouvinte recebe um **objeto de evento** cheio de contexto: `event.target` é o elemento onde o evento aconteceu, `event.key` diz a tecla pressionada, e por aí vai.\n\nO caso central do começo é o formulário. Por padrão, enviar um `<form>` recarrega a página inteira (o comportamento clássico da web). Numa aplicação, você intercepta: escuta o evento `submit` e chama `event.preventDefault()` na primeira linha; dali em diante, quem decide o que fazer com os dados é o seu código. Esse padrão (escutar, prevenir o comportamento padrão, tratar) vai se repetir em toda aplicação que você construir.\n\nUma técnica pra guardar como noção: **delegação**. Em vez de um ouvinte por item de uma lista longa (ou de itens que ainda nem existem), registra-se um só no pai e usa-se `event.target` pra descobrir qual filho originou o evento. Menos ouvintes, e itens criados depois já nascem cobertos.\n\nVocê domina este passo quando o seu formulário valida e responde na tela sem recarregar a página.',
+                'Evento é qualquer coisa que acontece na página: clique, tecla, envio de formulário, rolagem. O DOM anuncia esses acontecimentos, e o JavaScript escuta com `addEventListener`: `botao.addEventListener("click", aoClicar)` registra a função `aoClicar` pra rodar a cada clique. Repare que a função é passada como valor, sem parênteses: quem a executa é o navegador, na hora certa.\n\nA função ouvinte recebe um **objeto de evento** cheio de contexto: `event.target` é o elemento onde o evento aconteceu, `event.key` diz a tecla pressionada, e por aí vai.\n\nO caso central do começo é o formulário. Por padrão, enviar um `<form>` recarrega a página inteira (o comportamento clássico da web). Numa aplicação, você intercepta:\n\n```js\nform.addEventListener("submit", (event) => {\n  event.preventDefault();\n  // daqui em diante, quem decide é o seu código\n});\n```\n\nEsse padrão (escutar, prevenir o comportamento padrão, tratar) vai se repetir em toda aplicação que você construir.\n\nUma técnica pra guardar como noção: **delegação**. Em vez de um ouvinte por item de uma lista longa (ou de itens que ainda nem existem), registra-se um só no pai e usa-se `event.target` pra descobrir qual filho originou o evento. Menos ouvintes, e itens criados depois já nascem cobertos.\n\nVocê domina este passo quando o seu formulário valida e responde na tela sem recarregar a página.',
               resources: [
                 {
                   label: "MDN addEventListener",
@@ -520,7 +520,10 @@ export const frontend: RoadmapV2 = {
             {
               id: "ferramentas.git.basico",
               title: "add, commit, push",
-              description: "O ciclo básico de salvar e enviar seu código.",
+              description:
+                "O problema que o Git resolve e o ciclo status, add e commit com mensagem que explica o porquê.",
+              content:
+                'O Git resolve o problema que todo projeto encontra: e se eu quebrar tudo? Ele guarda o histórico do seu código em fotografias chamadas **commits**; cada uma é um ponto de restauração pro qual dá pra voltar. É o ctrl+z do projeto inteiro, com a vantagem de nunca esquecer nada.\n\nLá em Primeiro site no ar ficou prometido o jeito profissional de publicar: é este. O upload manual se aposenta aqui; de agora em diante, seus projetos vivem com histórico.\n\nA configuração é uma vez por projeto: `git init` dentro da pasta a transforma num repositório. Daí em diante, o ciclo do dia a dia tem três batidas:\n\n```bash\ngit status\ngit add .\ngit commit -m "adiciona seção de contato"\n```\n\nO `git status` é a bússola: mostra o que mudou desde a última fotografia, e rode sem medo, ele nunca altera nada. O `git add` coloca as mudanças na **área de preparo**, o rascunho da próxima fotografia (o ponto adiciona tudo; dá pra escolher arquivo a arquivo). O `git commit` tira a fotografia com uma mensagem curta, e a boa mensagem explica o PORQUÊ da mudança, não o óbvio que o código já mostra.\n\nVocê domina este passo quando o ciclo status, add e commit vira reflexo ao fim de cada sessão de trabalho.',
               resources: [
                 {
                   label: "Documentação Git",
@@ -532,12 +535,32 @@ export const frontend: RoadmapV2 = {
             {
               id: "ferramentas.git.branches",
               title: "Branches e merge",
-              description: "Trabalhar em paralelo e juntar as mudanças.",
+              description:
+                "Linhas do tempo paralelas com switch e merge, e o conflito como decisão normal, não catástrofe.",
+              content:
+                "Branch é uma linha do tempo paralela do seu projeto: você cria uma, experimenta à vontade nela, e a linha principal (a `main`) continua intacta. É o que permite tentar uma ideia arriscada sem medo e, em time, é o que permite dez pessoas trabalharem sem se atropelar.\n\nA mecânica: `git switch -c ajuste-menu` cria a branch e já muda pra ela (o `-c` é de criar); `git switch main` volta pra principal. Cada commit feito na branch fica só nela. Terminou e gostou? De volta à `main`, `git merge ajuste-menu` traz as mudanças pra linha principal.\n\nE quando as duas linhas mexeram no MESMO trecho do mesmo arquivo, acontece o **conflito**. A palavra assusta; a realidade é mansa. O Git não escolhe por você: ele marca o trecho disputado no arquivo com as duas versões, você abre, decide o que fica (uma, outra ou uma mistura), apaga as marcações e commita. Conflito não é catástrofe nem erro seu: é o Git sendo honesto sobre uma decisão que só um humano pode tomar.\n\nVocê domina este passo quando cria uma branch pra cada experimento e resolve um conflito simples sem pânico.",
+              resources: [
+                {
+                  label: "Pro Git (livro oficial, em português)",
+                  url: "https://git-scm.com/book/pt-br/v2",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "ferramentas.git.pr",
               title: "Pull requests",
-              description: "Propor e revisar mudanças antes de integrar.",
+              description:
+                "Push pro GitHub, o PR como conversa sobre código e o critério entre fork e branch.",
+              content:
+                "Até aqui o Git trabalhou só na sua máquina. O `git push` sobe seus commits pro GitHub (o repositório remoto, que o Git conhece pelo apelido `origin`), e o `git pull` traz o que mudou por lá. Com isso, aquele upload por arrastar e soltar do começo da trilha se aposenta de vez: publicar vira commitar e dar push.\n\nO **pull request** (PR) é o ritual que nasce daí: em vez de mandar sua branch direto pra `main`, você abre no GitHub um pedido pra integrá-la. O PR mostra o diff completo do que muda e abre um espaço de conversa: comentários linha a linha, sugestões, ajustes, aprovação. É assim que times revisam código antes de ele entrar, e é assim que se aprende de verdade: **review não é tribunal, é a cultura de olhar o trabalho junto**.\n\nFork ou branch? Critério prático: no projeto em que você tem acesso de escrita (o seu, o do seu time), crie branches. No projeto dos outros (uma biblioteca open source, por exemplo), você primeiro faz um **fork**, a sua cópia inteira do repositório, trabalha nela e abre o PR do fork pro projeto original. É exatamente assim que acontece uma primeira contribuição open source, e ela conta muito num portfólio iniciante.",
+              resources: [
+                {
+                  label: "GitHub Docs: Pull requests",
+                  url: "https://docs.github.com/pt/pull-requests",
+                  kind: "doc",
+                },
+              ],
             },
           ],
         },
@@ -545,18 +568,39 @@ export const frontend: RoadmapV2 = {
           id: "ferramentas.terminal",
           title: "Terminal básico",
           description:
-            "Os comandos essenciais pra se virar na linha de comando.",
+            "O shell sem medo: navegar com pwd, ls e cd, organizar com mkdir e mv, e ler o erro sempre.",
+          content:
+            "O terminal (ou shell) é o jeito de dar ordens ao computador por texto: você digita um comando, ele executa e responde. Parece arcaico perto de janelas e cliques, mas é ferramenta diária de quem desenvolve: rápida, precisa e igual em qualquer servidor. O Git do próximo passo, o npm e o Vite logo adiante: todos vivem aqui.\n\nO medo some com meia dúzia de comandos. Os de orientação: `pwd` mostra em que pasta você está, `ls` lista o que tem nela, `cd` entra numa pasta (e `cd ..` volta uma). Os de organização: `mkdir` cria pasta, `cp` copia, `mv` move ou renomeia. Uma sessão típica:\n\n```bash\npwd\nls\ncd meu-site\nmkdir imagens\n```\n\nDois hábitos aceleram tudo: a tecla Tab autocompleta nomes (digite `cd me` e aperte Tab) e a seta pra cima repete comandos anteriores.\n\nE o hábito mais importante da carreira inteira nasce aqui: **ler a mensagem de erro**. Um `command not found` diz que o programa não existe ou não está instalado; um `no such file or directory` diz que o caminho está errado. O terminal sempre explica o que houve; quem lê, resolve.\n\nAbra o terminal integrado do VS Code (menu Terminal) e refaça a sessão acima na sua pasta de projetos.",
+          resources: [
+            {
+              label: "Ubuntu: linha de comando pra iniciantes",
+              url: "https://ubuntu.com/tutorials/command-line-for-beginners",
+              kind: "artigo",
+            },
+          ],
         },
         {
           id: "ferramentas.npm",
           title: "Gerenciadores de pacote (npm, pnpm)",
-          description: "Instalar e gerenciar as bibliotecas do projeto.",
+          description:
+            "package.json como identidade do projeto, node_modules fora do Git e scripts como atalhos.",
+          content:
+            'Nenhum projeto real se escreve sozinho: você vai usar bibliotecas, código pronto de terceiros. O npm é o gerenciador desses pacotes no mundo JavaScript, e o `package.json` é a identidade do projeto: nome, versão, a lista de dependências e os scripts. É o primeiro arquivo que um dev abre pra entender um projeto desconhecido.\n\n`npm install nome-do-pacote` baixa a biblioteca e a registra no `package.json`. Os arquivos baixados vão pra pasta `node_modules`, que engorda rápido e **nunca vai pro Git**: qualquer pessoa que clonar o projeto roda `npm install` e a reconstrói inteira a partir do `package.json`. É por isso que ela mora no `.gitignore`.\n\nOs **scripts** são atalhos com nome: um `"dev": "vite"` no `package.json` permite rodar `npm run dev` em vez de decorar o comando real. Todo projeto que você pegar terá seus scripts; olhe-os primeiro.\n\nE o `package-lock.json`? Uma frase honesta: ele congela as versões exatas instaladas pra todo mundo ter o mesmo ambiente; vai pro Git e você não o edita na mão.\n\nO bundler do próximo passo chega justamente por aqui: um `npm create` e o projeto nasce montado.',
+          resources: [
+            {
+              label: "Documentação npm",
+              url: "https://docs.npmjs.com",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "ferramentas.bundler",
           title: "Bundler (Vite)",
           description:
-            "A ferramenta que junta e serve seu código em dev e produção.",
+            "Por que o navegador não roda seu projeto cru, e o Vite como dev server e build da trilha.",
+          content:
+            "O navegador entende HTML, CSS e JavaScript, mas não entende um PROJETO: dezenas de módulos se importando, TypeScript, imagens pra otimizar, código pra minificar. O bundler é a ferramenta que fica entre o seu código e o navegador, resolvendo essa distância nos dois momentos da vida do projeto.\n\nEm desenvolvimento, ele é o **dev server**: serve a página localmente e atualiza o navegador a cada salvamento (o Live Server que você usou, em versão profissional). Na hora de publicar, ele faz o **build**: junta os módulos, descarta o que não é usado, minifica e entrega uma pasta `dist` pronta pra produção.\n\nO padrão desta trilha é o **Vite**, o mais usado no ecossistema atual e famoso pela velocidade: o dev server abre em milissegundos. O portão de entrada é um comando só: `npm create vite@latest meu-app` pergunta nome e template e monta o projeto inteiro configurado. Guarde esse comando: é exatamente ele que a seção de React vai usar pra criar o seu primeiro app.\n\nUma frase de história pra você não boiar em vaga antiga: o **webpack** dominou a era anterior dos bundlers (e o esbuild trabalha por baixo de várias ferramentas atuais); os nomes mudam, o conceito é o mesmo.\n\nRode o `npm create vite@latest` hoje, escolha o template vanilla e explore o que ele gerou.",
           resources: [
             { label: "Vite", url: "https://vite.dev/guide", kind: "doc" },
           ],
@@ -565,7 +609,9 @@ export const frontend: RoadmapV2 = {
           id: "ferramentas.lint",
           title: "ESLint e Prettier",
           description:
-            "Padronizar e achar problemas no código automaticamente.",
+            "Prettier cuida da forma, ESLint da qualidade: format on save e erro pego antes de rodar.",
+          content:
+            "Duas ferramentas cuidam do seu código por ângulos diferentes, e a distinção importa: o **Prettier** cuida da FORMA (indentação, aspas, quebras de linha) e o **ESLint** cuida da QUALIDADE (variável nunca usada, comparação suspeita, import quebrado).\n\nO Prettier é inegociável e libertador: com o formatar ao salvar ligado no VS Code (você ativou lá no ambiente), o código se arruma sozinho a cada `Ctrl+S`, e a discussão de estilo simplesmente deixa de existir. Ninguém gasta review debatendo vírgula: a máquina decide, todo mundo aceita, o diff fica limpo.\n\nO ESLint é o par de olhos que nunca cansa: analisa o código parado (sem executar nada) e sublinha o que cheira a erro antes de você rodar qualquer coisa. Um `const nome` declarado e nunca usado? Sublinhado. Um `if (x = 5)` onde você queria `===`? Sublinhado. Boa parte dos bugs de digitação morre ainda no editor.\n\nNos projetos criados com Vite, os dois chegam quase de graça nos templates. O hábito que fica é o mesmo do terminal: sublinhou, leia; a mensagem do lint sempre diz o que é e onde está.",
           resources: [
             {
               label: "ESLint",
@@ -591,7 +637,10 @@ export const frontend: RoadmapV2 = {
         {
           id: "apis.promises",
           title: "Promises",
-          description: "Lidar com operações que terminam no futuro.",
+          description:
+            "O recibo de valor futuro: os três estados e o encadeamento com then e catch.",
+          content:
+            "Até aqui, todo código seu foi **síncrono**: uma linha termina, a próxima roda. Buscar dados pela rede quebra esse conforto: uma requisição leva 50 milissegundos ou 5 segundos, e o navegador não pode congelar a página esperando. O JavaScript resolve com um contrato: a operação demorada devolve na hora uma **Promise**, um recibo de valor futuro.\n\nO recibo tem três estados: **pending** (a operação ainda rodando), **fulfilled** (deu certo, o valor chegou) e **rejected** (falhou, com um erro explicando). E ele só muda de estado uma vez: ou cumpre, ou rejeita.\n\nO que se faz com um recibo? Registra-se o que deve acontecer quando ele resolver: `promessa.then(usarOValor)` agenda uma função pro sucesso, e `promessa.catch(tratarErro)` agenda o plano B da falha. Como o `then` devolve outra promise, dá pra encadear etapas (busca, depois transforma, depois exibe), com um único `catch` no fim cobrindo a corrente inteira.\n\nPor que aprender a mecânica se o próximo passo traz uma sintaxe mais confortável? Porque o `async/await` é açúcar em cima exatamente disto: toda API moderna do navegador devolve promises, e as mensagens de erro falam a língua delas. Entendendo o recibo e os três estados, o resto da seção desce redondo.",
           resources: [
             {
               label: "JavaScript.info Promises",
@@ -604,19 +653,39 @@ export const frontend: RoadmapV2 = {
           id: "apis.async",
           title: "async / await e tratamento de erros",
           description:
-            "Escrever código assíncrono legível e capturar o que pode dar errado.",
+            "await que se lê como código síncrono, try/catch como cinto de segurança e Promise.all em noção.",
+          content:
+            "O `async/await` é o jeito de consumir promises escrevendo código que se lê como síncrono. Duas palavras, dois papéis: `async` marca a função (e faz ela sempre devolver uma promise); `await` pausa aquela função (só ela, a página segue viva) até a promise resolver, e entrega o valor direto.\n\nO cinto de segurança é o `try/catch`: se qualquer `await` do bloco `try` rejeitar, a execução salta pro `catch`, um único lugar pra tratar qualquer falha da sequência:\n\n```js\nasync function carregarPerfil() {\n  try {\n    const dados = await buscarPerfil();\n    mostrar(dados);\n  } catch (erro) {\n    mostrarErro(erro);\n  }\n}\n```\n\nSem o `try/catch`, uma falha de rede vira erro solto no console e tela quebrada sem explicação; com ele, vira o estado de erro que a interface mostra com dignidade (assunto de um passo adiante).\n\nUma noção pra guardar: `await` em sequência espera um terminar pra começar o outro. Quando as operações são independentes (buscar o perfil E as notificações), o `Promise.all([a, b])` dispara as duas juntas e espera ambas, na metade do tempo.\n\nVocê domina este passo quando escreve uma função `async` com `try/catch` de memória e explica o que cada `await` está esperando.",
+          resources: [
+            {
+              label: "MDN async function",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/JavaScript/Reference/Statements/async_function",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "apis.fetch",
           title: "fetch e consumo de APIs",
           description:
-            "Buscar dados de um servidor pela rede, com fetch ou bibliotecas como axios.",
+            "fetch com await, a checagem do response.ok, o .json() e o POST em noção; axios como menção.",
+          content:
+            'O `fetch` é a função nativa do navegador pra fazer requisições HTTP: `const resposta = await fetch(url)` executa um GET e devolve o objeto de resposta. A partir daí, dois movimentos que valem decorar.\n\nPrimeiro, a checagem que todo mundo esquece: **o fetch não rejeita em erro HTTP**. Um 404 ou um 500 chegam como resposta normal; a promise só rejeita se a rede falhar de vez. Por isso a primeira linha depois do fetch é `if (!resposta.ok) throw new Error(...)`: o `ok` só é `true` na faixa 2xx dos status que você conhece.\n\nSegundo, o corpo vem em etapa própria: `const dados = await resposta.json()` lê o corpo e o converte de JSON pra objeto (outro `await`, porque o corpo também chega pela rede).\n\nPra enviar dados, o fetch recebe um segundo argumento de opções, em noção: `method: "POST"`, um `headers` com `"Content-Type": "application/json"` e o `body` com `JSON.stringify(objeto)`. O trio método, cabeçalho e corpo cobre o formulário que você vai enviar pra uma API de verdade.\n\nE o **axios**? Uma biblioteca popular que faz o mesmo com açúcar: rejeita em erro HTTP e converte o JSON sozinha. Você vai encontrá-la em muitos projetos; sabendo fetch, ela se aprende numa tarde.',
+          resources: [
+            {
+              label: "MDN Fetch API",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/API/Fetch_API",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "apis.rest",
           title: "REST e status HTTP",
           description:
-            "O padrão mais comum de API e o que cada código de status diz.",
+            "A URL nomeia o recurso, o verbo diz a ação, o status resume o resultado: o cardápio das APIs.",
+          content:
+            "REST é o estilo de API mais comum da web, e o modelo mental é um cardápio de **recursos**: a URL nomeia a coisa, o verbo HTTP diz a ação. `GET /produtos` lista, `GET /produtos/42` busca um, `POST /produtos` cria, `PUT /produtos/42` atualiza, `DELETE /produtos/42` remove. O mesmo endereço, ações diferentes conforme o verbo: essa é a elegância do padrão.\n\nAs respostas falam pelos **status codes** que você conheceu nos fundamentos da web, agora com leitura de consumidor de API: `200` veio o que pedi, `201` criado com sucesso, `400` meu pedido estava malformado, `401` preciso me identificar, `404` esse recurso não existe, `500` o problema é do lado deles. Ler o status antes do corpo economiza horas de depuração.\n\nE o corpo, na ida e na volta, é quase sempre **JSON**, a língua franca que você já converte com `parse` e `stringify`.\n\nO exercício que fixa: a PokeAPI, uma API pública e gratuita, expõe `https://pokeapi.co/api/v2/pokemon/pikachu`. Leia a URL com olhos novos: recurso `pokemon`, identificador `pikachu`, verbo GET implícito ao abrir no navegador. Abra o endereço, veja o JSON cru e depois busque-o com `fetch` no Console: a sua primeira conversa com uma API de verdade.",
           resources: [
             {
               label: "MDN HTTP Status",
@@ -628,13 +697,18 @@ export const frontend: RoadmapV2 = {
         {
           id: "apis.estados",
           title: "Estados de loading e erro",
-          description: "Mostrar carregamento e falhas pro usuário.",
+          description:
+            "Carregando, sucesso, erro e vazio: desenhar os quatro estados antes de codar a tela.",
+          content:
+            "Toda tela que depende de dados de fora vive em um de quatro estados, sem exceção: **carregando** (a requisição partiu, nada chegou ainda), **sucesso** (dados na tela), **erro** (a busca falhou) e **vazio** (deu certo, mas não há o que mostrar: a lista sem itens, a busca sem resultados).\n\nO padrão de esquecimento é previsível: o dev implementa o sucesso, lembra do carregando e esquece os dois últimos, porque no ambiente de desenvolvimento a rede é rápida e sempre tem dado de teste. O usuário real percebe: a tela que congela sem aviso quando a conexão cai, a página em branco que parece bug quando a lista está vazia.\n\nOs remédios são de design, não de biblioteca. Pro carregando, um indicador honesto (um spinner, um esqueleto da tela). Pro erro, mensagem em linguagem humana e um botão de tentar de novo. Pro vazio, uma frase que orienta o próximo passo em vez do nada silencioso.\n\nO hábito profissional que este passo instala: antes de codar qualquer tela que dependa de dados, desenhe (nem que seja no papel) como ela fica nos QUATRO estados. As ferramentas pra implementar evoluem ao longo da trilha; a disciplina de pensar nos quatro vale pra carreira inteira.",
         },
         {
           id: "apis.cors",
           title: "CORS",
           description:
-            "Por que o navegador bloqueia certas requisições e como resolver.",
+            "A política de mesma origem, por que o navegador (não o servidor) bloqueia e onde mora a liberação.",
+          content:
+            "Mais cedo ou mais tarde, todo dev front vive isso: o fetch funciona no navegador direto, mas na SUA página explode com um erro vermelho falando em CORS. Entender o que acontece transforma o susto em rotina.\n\nA raiz é a **política de mesma origem**: por segurança, o navegador não deixa a página de um site ler respostas de OUTRA origem (outro domínio, porta ou protocolo) sem permissão explícita. É ela que impede um site malicioso de, aproveitando a sua aba logada, ler seus dados de outros serviços.\n\nO ponto que confunde todo mundo: **quem bloqueia é o navegador, não o servidor**. A requisição muitas vezes até chega lá e volta; o navegador é que se recusa a entregar a resposta ao seu código. Por isso a mesma URL funciona aberta direto e falha dentro da página.\n\nO CORS é o mecanismo de permissão: o servidor declara, em cabeçalhos de resposta (`Access-Control-Allow-Origin`), quais origens podem consumi-lo. A consequência honesta: **a liberação mora no servidor**. Se a API não é sua, nenhuma linha de front resolve; o dono é quem precisa liberar a sua origem.\n\nNo dia a dia de desenvolvimento, a palavra a reconhecer é **proxy**: o dev server (o Vite, inclusive) pode repassar suas chamadas pro back como se fossem da mesma origem. Quando o erro aparecer, leia a mensagem do console com calma: ela diz exatamente qual origem foi bloqueada.",
           resources: [
             {
               label: "MDN CORS",
@@ -647,14 +721,18 @@ export const frontend: RoadmapV2 = {
           id: "apis.auth",
           title: "Autenticação no front (tokens, sessões)",
           description:
-            "JWT, cookies de sessão e login via terceiros: o que o front precisa entender.",
+            "O crachá (token) no Authorization header, onde guardá-lo com que riscos, e o OAuth em duas frases.",
+          content:
+            "Autenticação em API segue um modelo mental de portaria: você prova quem é uma vez (o login com e-mail e senha) e recebe um **crachá**; nas requisições seguintes, mostra o crachá em vez de provar tudo de novo. O crachá é um **token**, geralmente no formato JWT: um texto assinado pelo servidor dizendo quem você é e até quando vale.\n\nNo front, o crachá viaja num cabeçalho padrão: `Authorization: Bearer <token>`. Recebeu um `401` de volta? O crachá falta ou venceu: hora de renovar ou de mandar o usuário logar de novo (olha os status de REST trabalhando).\n\nOnde guardar o crachá é decisão com riscos reais, em noção honesta: no `localStorage` é simples, mas qualquer script injetado na página consegue ler (o ataque XSS que a seção de qualidade detalha); em **cookies httpOnly**, o script não lê, e quem o envia e recebe é o navegador conversando com o servidor. A escolha costuma vir do back-end do projeto; a sua parte é saber o que está em jogo.\n\nE o botão **entrar com Google**? É o rosto do OAuth: você prova quem é pro Google, e ele garante ao site que você é você, sem a sua senha trocar de mãos. Duas frases bastam por agora.\n\nEmitir, validar e renovar o crachá: a profundidade desse outro lado mora na trilha de back-end. No front, portaria e crachá levam você longe.",
         },
         {
           id: "apis.graphql",
           title: "GraphQL",
           description:
-            "Uma alternativa ao REST onde o cliente pede exatamente os dados que quer.",
+            "Cardápios prontos (REST) versus balcão sob medida (GraphQL), e quando cada um brilha.",
           optional: true,
+          content:
+            "GraphQL é uma alternativa ao REST pra conversar com o servidor, e o contraste cabe numa imagem: o REST oferece vários cardápios prontos (`/produtos`, `/usuarios/42`, cada um devolvendo a sua estrutura fixa); o GraphQL oferece um balcão único onde você descreve exatamente os campos que quer (o `nome` e o `preco` de cada produto, nada mais) e recebe só isso.\n\nA dor que ele ataca: no REST, telas complexas ou pedem demais (a resposta traz trinta campos e você usa três) ou pedem várias vezes (três endpoints pra montar uma tela só). No GraphQL, uma requisição única traz a forma exata que a tela precisa.\n\nQuando cada um brilha, em noção: o REST segue imbatível em simplicidade, cache e onipresença (a grande maioria das APIs públicas é REST); o GraphQL compensa em produtos grandes, com muitas telas diferentes consumindo os mesmos dados de jeitos diferentes, e times de front e back que evoluem separados.\n\nVocê não precisa dele agora: reconhecer uma query GraphQL quando vir e explicar esse contraste em voz alta já cumprem o papel deste passo opcional.",
           resources: [
             { label: "GraphQL", url: "https://graphql.org/learn", kind: "doc" },
           ],
