@@ -16105,6 +16105,259 @@ export const projetos: ProjetoCatalogo[] = [
       "Montei uma stack de observabilidade com Prometheus e Grafana, defini SLOs com error budget e conduzi um incidente simulado até o postmortem. SRE na prática.",
     proximoProjeto: "Automatizar resposta a incidente com runbook executável",
   },
+  // TODO(Ana): revisao editorial dos 8 projetos Pro abaixo (primeira leva do
+  // tier premium, Fase 5a.2). Entregaveis escritos como criterios objetivos
+  // verificaveis num repositorio GitHub, pra validacao futura pelo leitor
+  // de GitHub (fase 5c).
+  {
+    id: "pro-saas-dashboard",
+    nome: "Painel SaaS com Autenticação e Assinaturas Simuladas",
+    areaSlug: "frontend" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir o front-end completo de um SaaS: autenticação real, painel com CRUD, gráficos, tema claro e escuro e testes, publicado em produção.",
+    ferramentas: [
+      "React",
+      "TypeScript",
+      "Supabase (auth e dados)",
+      "TanStack Query",
+      "Vitest",
+      "Vercel",
+    ],
+    passosSimplificados: [
+      "Modelar as telas: login, cadastro, painel, configurações e uma entidade central com CRUD",
+      "Implementar autenticação com cadastro, login, logout e rota protegida",
+      "Construir o CRUD completo da entidade central com estados de carregando, erro e vazio",
+      "Adicionar um dashboard com pelo menos 2 gráficos alimentados pelos dados reais do usuário",
+      "Implementar tema claro e escuro persistido entre visitas",
+      "Escrever testes de unidade das regras principais e ligar num workflow de CI",
+      "Publicar na Vercel com variáveis de ambiente e escrever o README profissional",
+    ],
+    entregavel:
+      "Repositório público contendo: README com link do deploy funcionando no topo, print das telas e instruções de setup com .env.example; código com autenticação (telas de login e cadastro presentes); pelo menos 3 rotas protegidas; pasta de testes com Vitest e workflow de CI em .github/workflows rodando lint, testes e build.",
+    comoPublicar: "Vercel (app) e GitHub (código)",
+    sugestaoLinkedIn:
+      "Publiquei um painel SaaS completo: autenticação, CRUD com estados de interface, gráficos, tema escuro, testes e CI. Front-end de produção, de ponta a ponta.",
+    proximoProjeto: "Adicionar cobrança simulada com página de planos",
+    pro: true,
+  },
+  {
+    id: "pro-api-ecommerce",
+    nome: "API de E-commerce com Pedidos e Pagamentos Simulados",
+    areaSlug: "backend" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir a API completa de um e-commerce: catálogo, carrinho, pedidos com transação, autenticação JWT, webhook de pagamento simulado e documentação OpenAPI.",
+    ferramentas: [
+      "Node.js ou linguagem da trilha",
+      "PostgreSQL",
+      "JWT",
+      "OpenAPI/Swagger",
+      "Docker",
+      "Render ou Railway",
+    ],
+    passosSimplificados: [
+      "Modelar o banco: usuários, produtos, carrinho, pedidos e itens de pedido",
+      "Implementar autenticação JWT com cadastro, login e middleware de proteção",
+      "Construir o catálogo com paginação, busca e filtro por categoria",
+      "Implementar carrinho e fechamento de pedido com transação no banco",
+      "Simular o pagamento com um webhook que muda o status do pedido",
+      "Documentar todos os endpoints com OpenAPI servida pela própria API",
+      "Escrever testes dos fluxos críticos e publicar com Docker",
+    ],
+    entregavel:
+      "Repositório público contendo: README com URL da API no ar e da documentação OpenAPI acessível; arquivo de definição OpenAPI no repositório; migrações ou schema do banco versionados; pasta de testes cobrindo autenticação e fechamento de pedido; Dockerfile presente; workflow de CI rodando os testes.",
+    comoPublicar: "Render ou Railway (API) e GitHub (código)",
+    sugestaoLinkedIn:
+      "Publiquei uma API de e-commerce completa: JWT, catálogo paginado, pedidos com transação, webhook de pagamento simulado e OpenAPI documentada. Back-end de verdade.",
+    proximoProjeto:
+      "Adicionar fila para processar os pedidos de forma assíncrona",
+    pro: true,
+  },
+  {
+    id: "pro-kanban-colaborativo",
+    nome: "Kanban Colaborativo em Tempo Real",
+    areaSlug: "fullstack" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir um quadro kanban multiusuário com colaboração em tempo real: dois navegadores vendo o mesmo quadro se atualizarem ao vivo.",
+    ferramentas: [
+      "React",
+      "Node.js",
+      "Supabase Realtime ou WebSocket",
+      "PostgreSQL",
+      "Vercel e Render",
+    ],
+    passosSimplificados: [
+      "Modelar quadros, colunas, cartões e membros no banco",
+      "Implementar autenticação e o convite de membros pra um quadro",
+      "Construir o arrastar e soltar de cartões entre colunas",
+      "Sincronizar as mudanças em tempo real entre os clientes conectados",
+      "Tratar conflito básico: a última escrita vence, com a interface reagindo",
+      "Registrar um histórico de atividades por quadro",
+      "Publicar front e back e documentar a arquitetura no README",
+    ],
+    entregavel:
+      "Repositório público (ou monorepo) contendo: README com link do app no ar, GIF da colaboração em tempo real entre duas janelas e diagrama da arquitetura; código do front e do back no repositório; migrações ou schema versionados; autenticação presente; workflow de CI com build dos dois lados.",
+    comoPublicar: "Vercel (front), Render (back) e GitHub (código)",
+    sugestaoLinkedIn:
+      "Construí um kanban colaborativo em tempo real: dois navegadores editando o mesmo quadro ao vivo, com histórico de atividades. Full-stack com sincronização de verdade.",
+    proximoProjeto: "Adicionar comentários nos cartões com menções",
+    pro: true,
+  },
+  {
+    id: "pro-pipeline-dados-abertos",
+    nome: "Plataforma de Dados Abertos de Ponta a Ponta",
+    areaSlug: "dados" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir o ciclo completo de dados: coleta automatizada de uma fonte pública, limpeza reprodutível, análise documentada e dashboard público atualizável.",
+    ferramentas: [
+      "Python",
+      "pandas",
+      "Jupyter",
+      "GitHub Actions (agendamento)",
+      "Streamlit",
+    ],
+    passosSimplificados: [
+      "Escolher uma fonte de dados abertos com atualização recorrente",
+      "Escrever o coletor que baixa e versiona os dados brutos",
+      "Agendar a coleta com GitHub Actions",
+      "Construir a limpeza reprodutível em scripts, não só no notebook",
+      "Analisar num notebook com no mínimo 5 perguntas respondidas e visualizações",
+      "Publicar um dashboard Streamlit com os principais indicadores",
+      "Documentar o dicionário de dados e as decisões de limpeza no README",
+    ],
+    entregavel:
+      "Repositório público contendo: README com link do dashboard no ar e dicionário de dados; workflow de agendamento em .github/workflows; scripts de coleta e limpeza separados do notebook; notebook de análise com visualizações renderizadas; pasta de dados (ou instrução de download) e requirements.txt reprodutível.",
+    comoPublicar: "Streamlit Community Cloud (dashboard) e GitHub (código)",
+    sugestaoLinkedIn:
+      "Publiquei uma plataforma de dados de ponta a ponta: coleta agendada de dados abertos, limpeza reprodutível, análise documentada e dashboard público. Dados na prática, do bruto ao insight.",
+    proximoProjeto: "Adicionar testes de qualidade de dados na pipeline",
+    pro: true,
+  },
+  {
+    id: "pro-assistente-rag",
+    nome: "Assistente de Perguntas sobre Documentos (RAG)",
+    areaSlug: "ia" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir um assistente que responde perguntas sobre um conjunto de documentos seus, com busca vetorial, citação das fontes e avaliação de qualidade.",
+    ferramentas: [
+      "Python",
+      "Modelo de embeddings",
+      "Banco vetorial (pgvector ou similar)",
+      "API de LLM com camada gratuita",
+      "Streamlit ou FastAPI",
+    ],
+    passosSimplificados: [
+      "Escolher um corpus real (apostilas, documentação, artigos) e fatiar em trechos",
+      "Gerar embeddings dos trechos e indexar num banco vetorial",
+      "Implementar a busca dos trechos mais relevantes pra cada pergunta",
+      "Montar o prompt com contexto recuperado e gerar a resposta com citações",
+      "Construir a interface de chat que exibe as fontes de cada resposta",
+      "Criar um conjunto de 15 perguntas com respostas esperadas e medir acerto",
+      "Documentar arquitetura, limitações e resultados da avaliação no README",
+    ],
+    entregavel:
+      "Repositório público contendo: README com demonstração (link ou GIF), diagrama do fluxo RAG e a tabela de resultados da avaliação com as 15 perguntas; código de indexação e de consulta separados; as respostas exibindo citações das fontes (visível no GIF ou screenshots); requirements.txt e instruções de reprodução completas.",
+    comoPublicar: "Streamlit Cloud ou Hugging Face Spaces e GitHub",
+    sugestaoLinkedIn:
+      "Construí um assistente RAG sobre meus próprios documentos: busca vetorial, respostas com citação de fontes e avaliação de qualidade com métricas. IA aplicada com engenharia de verdade.",
+    proximoProjeto: "Comparar dois modelos de embeddings na mesma avaliação",
+    pro: true,
+  },
+  {
+    id: "pro-app-financas",
+    nome: "App de Finanças Pessoais Completo",
+    areaSlug: "mobile" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Construir um app de controle financeiro com autenticação, funcionamento offline, gráficos por categoria e lembretes locais, com build instalável.",
+    ferramentas: [
+      "React Native (Expo) ou Flutter",
+      "SQLite ou armazenamento local",
+      "Gráficos da stack escolhida",
+      "Notificações locais",
+      "EAS Build ou APK",
+    ],
+    passosSimplificados: [
+      "Modelar transações, categorias e orçamento mensal",
+      "Implementar o cadastro de receitas e despesas com categorias",
+      "Garantir funcionamento offline com armazenamento local",
+      "Construir o resumo mensal com gráficos por categoria",
+      "Adicionar lembrete local configurável de lançamento diário",
+      "Implementar exportação dos dados em CSV",
+      "Gerar o build instalável e documentar a instalação no README",
+    ],
+    entregavel:
+      "Repositório público contendo: README com GIF do fluxo principal, instruções de execução e o link ou arquivo do build instalável (APK ou build Expo); código com telas de cadastro, listagem, resumo com gráficos e configuração de lembrete identificáveis; funcionamento offline documentado com o mecanismo de armazenamento usado.",
+    comoPublicar: "Build Expo ou APK anexado ao repositório e GitHub",
+    sugestaoLinkedIn:
+      "Publiquei um app de finanças pessoais completo: offline-first, gráficos por categoria, lembretes locais e build instalável. Mobile de ponta a ponta, do modelo de dados ao APK.",
+    proximoProjeto: "Sincronizar os dados com um back-end quando online",
+    pro: true,
+  },
+  {
+    id: "pro-plataforma-deploy-iac",
+    nome: "Infraestrutura como Código com Deploy Automatizado",
+    areaSlug: "devops" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Provisionar a infraestrutura de uma aplicação com Terraform e construir o pipeline completo: build, testes, deploy automático e monitoramento com rollback documentado.",
+    ferramentas: [
+      "Terraform",
+      "GitHub Actions",
+      "Docker",
+      "Um provedor com camada gratuita",
+      "Prometheus ou o monitoramento do provedor",
+    ],
+    passosSimplificados: [
+      "Containerizar uma aplicação de exemplo com Docker",
+      "Descrever toda a infraestrutura em Terraform com estado versionado",
+      "Construir o pipeline: lint, testes e build a cada push",
+      "Automatizar o deploy pra um ambiente de produção a cada merge na main",
+      "Adicionar monitoramento básico com alerta de indisponibilidade",
+      "Executar e documentar um rollback real de uma versão quebrada",
+      "Escrever o runbook de operação no repositório",
+    ],
+    entregavel:
+      "Repositório público contendo: README com URL da aplicação no ar e diagrama da infraestrutura; diretório terraform com os módulos aplicáveis; workflows de CI e de deploy em .github/workflows; Dockerfile presente; runbook de operação e o registro do rollback executado (documento com passos e prints).",
+    comoPublicar: "Provedor de nuvem (app) e GitHub (código e IaC)",
+    sugestaoLinkedIn:
+      "Provisionei infraestrutura com Terraform e montei o ciclo completo: CI, deploy automático, monitoramento e um rollback executado e documentado. DevOps de produção, não de tutorial.",
+    proximoProjeto: "Adicionar ambiente de staging com promoção manual",
+    pro: true,
+  },
+  {
+    id: "pro-redesign-design-system",
+    nome: "Redesign Completo com Design System e Teste de Usabilidade",
+    areaSlug: "uxui" as string | null,
+    nivel: "Avançado",
+    objetivo:
+      "Conduzir um redesign de produto real de ponta a ponta: pesquisa, design system próprio, protótipo de alta fidelidade e teste de usabilidade com resultados documentados.",
+    ferramentas: [
+      "Figma",
+      "Maze ou teste moderado por chamada",
+      "Notion ou Google Docs",
+    ],
+    passosSimplificados: [
+      "Escolher um produto real com problemas visíveis de usabilidade",
+      "Conduzir pesquisa com pelo menos 3 usuários e mapear as dores",
+      "Definir o design system: cores, tipografia, espaçamento e 10 componentes",
+      "Redesenhar os 3 fluxos principais em alta fidelidade",
+      "Montar o protótipo navegável dos fluxos",
+      "Testar com 3 a 5 pessoas e registrar taxa de sucesso por tarefa",
+      "Documentar o case completo, do problema aos resultados, no repositório",
+    ],
+    entregavel:
+      "Repositório público contendo: README que apresenta o case com link público do protótipo Figma e do design system; documento de pesquisa com os achados; biblioteca de componentes visível no arquivo Figma público; relatório do teste de usabilidade com tarefas, taxa de sucesso e mudanças feitas a partir dos achados; antes e depois das telas em imagens no repositório.",
+    comoPublicar: "Figma (protótipo público) e GitHub (case documentado)",
+    sugestaoLinkedIn:
+      "Concluí um redesign de ponta a ponta: pesquisa com usuários, design system próprio, protótipo de alta fidelidade e teste de usabilidade com métricas. UX com processo, não só tela bonita.",
+    proximoProjeto: "Documentar o design system como site navegável",
+    pro: true,
+  },
 ];
 
 export const vagasInfo = {
