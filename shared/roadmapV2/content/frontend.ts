@@ -1002,26 +1002,24 @@ export const frontend: RoadmapV2 = {
           id: "qualidade.typescript",
           title: "TypeScript no front",
           description:
-            "Adicionar tipos ao JavaScript pra pegar erros antes de rodar.",
+            "Tipos checados antes de rodar: anotar parâmetro e retorno, inferência e o any como armadilha.",
+          content:
+            'TypeScript é o JavaScript que você já escreve, com tipos checados **antes de rodar**. O valor real aparece em dois momentos do dia a dia: o erro surge em tempo de escrita (o editor sublinha o `produto.nomee` na hora, não o usuário na sexta à noite) e o autocomplete vira documentação que não mente: digite o ponto e o editor lista o que aquele valor realmente tem.\n\nA prática central é anotar as fronteiras: parâmetros e retorno de função, e o formato dos objetos com `type` ou `interface`:\n\n```ts\ntype Produto = {\n  nome: string;\n  preco: number;\n};\n\nfunction formatarPreco(p: Produto): string {\n  return `R$ ${p.preco.toFixed(2)}`;\n}\n```\n\nDentro das fronteiras, deixe a **inferência** trabalhar: `const nome = "Bia"` já é `string` sem anotação nenhuma; anotar o óbvio é ruído.\n\nO portão de entrada você conhece da seção de ferramentas: o `npm create vite@latest` tem o template **react-ts**, que entrega o projeto React tipado e configurado.\n\nE a honestidade sobre o `any`: ele é a válvula de escape que desliga a checagem daquele valor, e cada `any` espalhado devolve exatamente os bugs que o TypeScript veio evitar. Use como exceção consciente, não como rotina.\n\nVocê domina este passo quando o sublinhado vermelho do editor vira o seu primeiro revisor, antes de qualquer refresh.',
           resources: [
             {
-              label: "TypeScript",
-              url: "https://www.typescriptlang.org/docs",
+              label: "TypeScript (pt)",
+              url: "https://www.typescriptlang.org/pt/docs",
               kind: "doc",
             },
           ],
         },
         {
           id: "qualidade.estilo",
-          title: "Estilização em escala (Tailwind, CSS Modules)",
-          description: "Manter o CSS organizado conforme o projeto cresce.",
-          resources: [
-            {
-              label: "Tailwind CSS",
-              url: "https://tailwindcss.com/docs",
-              kind: "doc",
-            },
-          ],
+          title: "Estilo de código e legibilidade",
+          description:
+            "Nomes que dizem o que são, funções pequenas, comentário do porquê e consistência acima de preferência.",
+          content:
+            "Código se escreve uma vez e se lê dezenas: pra revisar, pra caçar bug, pra estender daqui a seis meses. Estilo de código é otimizar pra esse leitor, que na maioria das vezes é você do futuro.\n\nO fundamento é o **nome que diz o que é**: `calcularFrete` conta a história, `processar` esconde; `diasAteVencimento` dispensa comentário, `x` cobra um. Vale pra variável, função e componente: se o nome precisa de explicação pra fazer sentido, o nome está errado.\n\nTamanho importa: função e componente pequenos, com uma responsabilidade clara, como a seção de React pregou pros componentes. E o **early return** que você carrega desde condicionais e laços é a ferramenta de forma: trate as exceções primeiro e deixe o caminho principal reto, sem escadaria de `if`.\n\nComentário tem papel específico: explicar o **porquê** (a regra de negócio, a restrição, o motivo da escolha estranha), nunca narrar o que o código já mostra. Um `// soma 1 ao contador` é ruído; um `// o gateway arredonda pra cima, replicamos aqui` salva horas de arqueologia.\n\nA divisão com as ferramentas que você configurou: o Prettier e o ESLint automatizam o combinável, forma e erro detectável; estilo é o julgamento que a máquina não pega: nome, tamanho, clareza. E em time vale a regra de ouro: **a consistência do projeto vence a sua preferência pessoal**. Código bom parece escrito por uma pessoa só.",
         },
         {
           id: "qualidade.testes",
@@ -1030,8 +1028,16 @@ export const frontend: RoadmapV2 = {
             {
               id: "qualidade.testes.unit",
               title: "Unitários (Vitest, Testing Library)",
-              description: "Testar pedaços do código de forma automática.",
+              description:
+                "Preparar, agir e conferir com Vitest: o teste como confiança pra mudar código sem medo.",
+              content:
+                'Lembra do "e se eu quebrar tudo?" que o Git respondeu? O Git protege o passado: sempre dá pra voltar. O teste protege o presente: ele diz, em segundos, se a mudança de agora quebrou o que já funcionava. É isso que teste compra: **confiança pra mexer no código sem medo**.\n\nTeste unitário é o menor deles: verifica uma unidade isolada (uma função, um componente) com entradas conhecidas. A anatomia é sempre a mesma, preparar, agir, conferir:\n\n```js\nimport { test, expect } from "vitest";\nimport { calcularFrete } from "./frete";\n\ntest("frete grátis acima de 200 reais", () => {\n  expect(calcularFrete(250)).toBe(0);\n});\n```\n\nO **Vitest** é a escolha natural em projeto Vite: mesma configuração, mesmo ecossistema, roda com `npx vitest`. E o nome não engana: a sintaxe de `test` e `expect` é o padrão da área.\n\nComece por onde o retorno é imediato: **funções puras**, aquelas que só calculam (frete, validação, formatação). Entrada, saída, sem tela no meio: fáceis de testar e onde moram as regras de negócio.\n\nComponente também se testa, com a **Testing Library**: renderiza e verifica o que o usuário veria, em noção por enquanto.\n\nVocê domina este passo quando escreve o teste de uma função sua e o vê falhar de propósito antes de passar.',
               resources: [
+                {
+                  label: "Vitest",
+                  url: "https://vitest.dev",
+                  kind: "doc",
+                },
                 {
                   label: "Testing Library",
                   url: "https://testing-library.com/docs",
@@ -1042,8 +1048,11 @@ export const frontend: RoadmapV2 = {
             {
               id: "qualidade.testes.e2e",
               title: "End-to-end (Playwright)",
-              description: "Testar o app inteiro como um usuário usaria.",
+              description:
+                "O navegador automatizado nos fluxos críticos, a pirâmide de testes e o custo honesto do e2e.",
               optional: true,
+              content:
+                "Teste end-to-end é um navegador de verdade sendo pilotado por script: abre a página, digita no formulário, clica no botão e confere o que apareceu, exatamente como um usuário faria. Enquanto o unitário verifica peças isoladas, o e2e verifica a experiência inteira montada: front, rotas, API, tudo junto.\n\nO nome a conhecer é o **Playwright**: você descreve o fluxo (visite a página, preencha o e-mail, clique em entrar, espere o painel aparecer) e ele executa em navegadores reais, tirando screenshot de onde falhou.\n\nOnde ele paga o preço: nos **fluxos críticos**, os caminhos que não podem quebrar nunca. Login, cadastro, compra, envio do formulário principal. Um punhado de testes cobrindo essas espinhas dorsais avisa na hora se um deploy quebrou o que importa.\n\nA dosagem vem da **pirâmide de testes**, em noção: muitos testes unitários na base (baratos, rápidos, apontam o erro com precisão) e poucos e2e no topo (caros, lentos, mas verificam o conjunto real).\n\nE o custo honesto: e2e é lento por natureza (navegador de verdade, rede de verdade) e fica quebradiço quando mal escrito, falhando por timing ou seletor frágil sem bug nenhum. Teste e2e instável que todo mundo ignora é pior que teste nenhum: comece pequeno, nos dois ou três fluxos que definem o seu app.",
               resources: [
                 {
                   label: "Playwright",
@@ -1057,7 +1066,10 @@ export const frontend: RoadmapV2 = {
         {
           id: "qualidade.performance",
           title: "Performance (Core Web Vitals, Lighthouse)",
-          description: "Medir e melhorar a velocidade percebida da página.",
+          description:
+            "LCP, CLS e INP como percepção medida, a imagem como vilã e o Lighthouse do DevTools como régua.",
+          content:
+            'Performance, no front, é a percepção do usuário: a página parece rápida ou parece travada? O Google transformou essa percepção em métricas, os **Core Web Vitals**, e são três siglas a reconhecer: **LCP** mede quanto demora pro conteúdo principal aparecer; **CLS** mede quanto a página pula enquanto carrega (o botão que foge do dedo); **INP** mede quanto ela demora pra responder a uma interação.\n\nA vilã número um, de longe, é a **imagem**: foto de 4MB numa vitrine de 300px afunda qualquer LCP. O kit de defesa: dimensione pro tamanho real de exibição, use formato moderno (WebP ou AVIF no lugar de PNG e JPEG pesados) e adie o que está fora da tela com `loading="lazy"`. Só isso resolve a maior parte dos problemas de página lenta de iniciante.\n\nA régua você carrega desde os fundamentos: o DevTools que virou sua lupa lá no comecinho da trilha tem a aba **Lighthouse**, que audita a página e devolve nota com a lista do que consertar, apontando cada Vital.\n\nBundle entra em noção: todo JavaScript importado viaja até o usuário, e dividir o código pra cada página carregar só o seu pedaço é a evolução natural (o Vite ajuda nisso).\n\nE a filosofia é a mesma do useMemo: **medir antes de otimizar**. Rode o Lighthouse, ataque o pior item, meça de novo. Otimização sem medida é chute.',
           resources: [
             {
               label: "web.dev Vitals",
@@ -1069,7 +1081,10 @@ export const frontend: RoadmapV2 = {
         {
           id: "qualidade.seguranca",
           title: "Segurança (XSS, CSRF, CSP)",
-          description: "As ameaças comuns do front e como se proteger.",
+          description:
+            "XSS como risco central, o escape padrão do React, validação de servidor e segredo fora do front.",
+          content:
+            "Segurança de front tem escopo honesto: o navegador é território do usuário, então a última palavra mora sempre no servidor. Ainda assim, o front tem responsabilidades próprias, e uma delas é o risco central.\n\nO **XSS** (cross-site scripting) é injetar código executável através de conteúdo: se o app insere na página um texto vindo de fora (um comentário, um nome de perfil) sem tratamento, e esse texto contém um script, o navegador o executa como se fosse seu, com acesso a tudo que a página vê. O comentário malicioso vira código rodando na conta de quem o lê.\n\nA boa notícia: o React escapa por padrão. Texto interpolado em JSX vira TEXTO na tela, nunca HTML interpretado; a mesma string com script dentro aparece literal, inofensiva. A exceção tem nome de aviso: `dangerouslySetInnerHTML` injeta HTML cru de verdade, e o nome é assustador de propósito. Se um dia precisar dele, o conteúdo tem que ser sanitizado antes.\n\nSobre validação, a divisão que você viu nascer nos formulários HTML: a do client é conforto de UX (feedback imediato); a do **servidor é a segurança**. Qualquer um dispara requisições sem passar pela sua tela: nunca confie só no front.\n\nDuas linhas pra fechar o kit: segredo (chave de API, senha de serviço) não vive em código de front, e o próximo passo de variáveis de ambiente explica o porquê; e o HTTPS dos fundamentos é o que impede a rede no meio do caminho de ler ou trocar o que trafega.",
           resources: [
             {
               label: "OWASP",
@@ -1082,8 +1097,10 @@ export const frontend: RoadmapV2 = {
           id: "qualidade.a11y",
           title: "Acessibilidade avançada (ARIA, teclado, leitor de tela)",
           description:
-            "Ir além do básico pra uma experiência inclusiva de verdade.",
+            "Teclado com foco visível, contraste, ARIA como complemento cauteloso e o teste com as próprias mãos.",
           optional: true,
+          content:
+            'A base você plantou lá na acessibilidade do HTML: semântica, `alt`, `label`, headings em ordem. Este passo é o resto do caminho, o que transforma página tecnicamente acessível em experiência utilizável de verdade.\n\nA primeira frente é o **teclado**: muita gente navega só com ele. Percorra seu app com Tab: dá pra alcançar tudo que é clicável? A ordem faz sentido? E o **foco visível**: aquele contorno que mostra onde você está é um recurso de orientação, não um defeito estético; um `outline: none` sem substituto à altura deixa o usuário de teclado às cegas.\n\nA segunda é o **contraste**: texto cinza claro sobre fundo branco pode ser bonito no seu monitor e ilegível no sol, na tela barata, no olho com baixa visão. E o `alt` segue como hábito contínuo, não checklist de um dia.\n\nSobre o **ARIA**: é o vocabulário de atributos pra quando a semântica nativa não basta (um dropdown customizado, um modal). A honestidade obrigatória: ARIA mal usado é PIOR que ARIA nenhum, porque mente pro leitor de tela. A primeira regra do ARIA é não usar ARIA quando existe elemento nativo: `<button>` antes de `role="button"`.\n\nO teste começa com as próprias mãos: navegue seu projeto inteiro sem mouse, e rode a auditoria de acessibilidade do Lighthouse que você conheceu na performance. O que essas duas passadas apontarem já é um plano de trabalho.',
         },
       ],
     },
@@ -1096,29 +1113,49 @@ export const frontend: RoadmapV2 = {
         {
           id: "projeto.planejar",
           title: "Planejar um projeto real",
-          description: "Definir escopo e estrutura antes de codar.",
+          description:
+            "Escopo pequeno terminado, telas com os quatro estados desenhados e a lista explícita do que fica pra depois.",
+          content:
+            'A regra número um de projeto pessoal: **escopo pequeno terminado vence escopo grande abandonado**. O portfólio que impressiona não é o clone de rede social pela metade; é o app modesto, completo, no ar e bem documentado. Planejar é decidir o que NÃO entra.\n\nComece listando as telas. Pra cada uma, o hábito que você trouxe da seção de APIs e viu virar código no React: desenhe os **quatro estados** (carregando, sucesso, erro, vazio) antes de codar. O rabisco vale mais que a ferramenta: papel resolve; Figma, em noção, se quiser evoluir o desenho.\n\nCom as telas na mão, quebre cada uma na **árvore de componentes** que a seção de React ensinou a enxergar: o que se repete vira componente, o que tem responsabilidade própria também. Essa árvore rabiscada é o seu mapa de construção.\n\nE o corte de escopo ganha forma concreta: escolha **3 a 5 funcionalidades pra v1** e escreva uma lista explícita de "depois" pra todo o resto. A lista de depois não é lixeira, é promessa organizada: ela tira as ideias da cabeça (e da v1) sem perdê-las.\n\nVocê domina este passo quando entrega um plano de uma página: telas, estados, árvore de componentes e as funcionalidades da v1 com a lista de depois ao lado.',
         },
         {
           id: "projeto.construir",
           title: "Construir aplicando tudo",
           description:
-            "Juntar o que você aprendeu num projeto de ponta a ponta.",
+            "Estático, depois estado, depois dados; commit a cada marco e a v1 feia terminada antes do polimento.",
+          content:
+            "Com o plano na mão, a ordem de construção que funciona tem três camadas. Primeiro a **marcação estática**: todas as telas com HTML e CSS, dados de mentira escritos na mão, nada clicável. Depois o **estado**: os useState e os eventos que fazem a interface reagir, ainda com dados falsos. Por último os **dados de verdade**: o fetch, os quatro estados renderizados, a API real. Cada camada se apoia na anterior, e você nunca depura duas coisas ao mesmo tempo.\n\nA cada marco funcionando, o ciclo que virou reflexo na seção de ferramentas: `git status`, `git add`, `git commit`. Marco pequeno, commit pequeno; quando algo quebrar (vai quebrar), o histórico diz exatamente onde o mundo ainda estava de pé.\n\nDois chapéus, um de cada vez: o de **construir** e o de **polir** não se usam juntos. Ajustar sombra de botão com a busca ainda quebrada é a receita do projeto eterno. Termine a v1 feia e funcional; o embelezamento é uma fase própria, depois.\n\nE quando travar: reduza o problema. Isole o pedaço que falha, interrogue com `console.log`, abra o Network do DevTools pra ver o que realmente foi e voltou. Travamento de horas quase sempre é um problema pequeno escondido num contexto grande.\n\nVocê domina este passo quando o seu histórico de commits conta a história da construção em passos pequenos e funcionais.",
         },
         {
           id: "projeto.env",
           title: "Variáveis de ambiente (.env)",
-          description: "Guardar configs e segredos fora do código.",
+          description:
+            "Config fora do código com prefixo VITE_, o .env fora do Git e o aviso: env de front é pública.",
+          content:
+            "Variável de ambiente é o valor que muda conforme ONDE o app roda, mantido fora do código: a URL da API é `localhost:3100` na sua máquina e `api.seuapp.com` em produção, e o código não deveria saber disso; ele lê `import.meta.env.VITE_API_URL` e cada ambiente fornece o seu valor.\n\nNo Vite, os valores de desenvolvimento vivem num arquivo `.env` na raiz do projeto, e a primeira providência é ele entrar no `.gitignore`: configuração de ambiente é local, não vai pro histórico. O que o time compartilha é um `.env.example` com as chaves sem os valores, mostrando o que precisa existir.\n\nO detalhe do Vite: só as variáveis com prefixo **`VITE_`** chegam ao código do client. É um portão de segurança deliberado, pra uma variável sensível do sistema não vazar pro bundle por acidente.\n\nE aqui entra o aviso central, que a seção de segurança deixou engatilhado: **variável de ambiente de front é PÚBLICA**. Ela é embutida no JavaScript final, e qualquer pessoa com o DevTools que você mesmo usa a encontra em segundos. Serve pra URL de API e configuração não sensível; chave secreta, senha de serviço, token privado vivem no servidor, sempre. Se o serviço exige a chave escondida, a chamada passa por um back-end seu.\n\nVocê domina este passo quando explica por que o `VITE_` no nome não torna o valor secreto.",
+          resources: [
+            {
+              label: "Vite: variáveis de ambiente",
+              url: "https://vite.dev/guide/env-and-mode",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "projeto.readme",
           title: "Documentar (README)",
           description:
-            "Explicar seu projeto pra quem chega depois, inclusive você.",
+            "A porta de entrada do repositório: o que é, screenshot, link no ar, como rodar e próximos passos.",
+          content:
+            'O README é a porta de entrada do repositório: é a primeira (e muitas vezes única) coisa que alguém lê sobre o seu projeto. A verdade do mercado que dá peso a este passo: **recrutador lê README, não código**. Um projeto bom com README vazio simplesmente não existe pra quem olha de fora.\n\nA receita do README que trabalha por você, de cima pra baixo: **o que é**, em uma ou duas frases sem jargão; o **link do site no ar**, no topo, clicável (o deploy do próximo passo garante que ele existe); um **screenshot** ou GIF curto, porque projeto visual se vende visualmente; **como rodar** (clonar, `npm install`, `npm run dev`, e as variáveis do `.env.example` que precisam existir); as **tecnologias** usadas, em lista curta; e os **próximos passos**, que mostram que você enxerga a evolução (a lista de "depois" do planejamento encontra sua vitrine aqui).\n\nO teste de qualidade é um só: escreva pra quem nunca viu o projeto e não tem você do lado. Se a pessoa consegue entender o que é, ver funcionando e rodar localmente sem te perguntar nada, o README cumpriu o papel.\n\nEscreva o do seu projeto agora, antes do deploy: quando o link público existir, ele já terá casa.',
         },
         {
           id: "projeto.deploy",
           title: "Deploy",
-          description: "Colocar seu projeto no ar pra qualquer um acessar.",
+          description:
+            "Do build à Vercel conectada ao repositório: push na main virando deploy automático, o arco completo.",
+          content:
+            "Lá no comecinho da trilha, em Primeiro site no ar, você publicou arrastando arquivos pra dentro do GitHub. Aquele era o começo do arco; este passo o fecha do jeito profissional.\n\nPrimeiro, o que vai ao ar de fato: `npm run build` roda o Vite no modo produção e gera a pasta `dist`, seu app minificado e otimizado. É ela que os servidores servem, nunca o código fonte cru.\n\nSó que você não vai fazer upload da `dist`: plataformas como **Vercel** e **Netlify** se conectam direto ao seu repositório. O fluxo, uma vez só: crie a conta com o próprio GitHub, importe o repositório, confirme o framework detectado (build e pasta de saída já vêm certos pra Vite) e configure no painel as variáveis de ambiente que o `.env` local guardava, como o passo de env ensinou.\n\nDaí em diante, a mágica que junta a trilha inteira: **todo push na main vira deploy automático**. O ciclo do Git que virou reflexo, o commit e o push de ferramentas, agora termina com o site atualizado no ar em um ou dois minutos. Domínio próprio, em noção: as plataformas dão um endereço gratuito, e apontar um domínio seu é uma configuração de DNS, aquele mesmo dos fundamentos.\n\nOlhe o caminho percorrido: de uma página estática arrastada pro GitHub a um app React com histórico, testes e deploy automático a cada push. Você atravessou a trilha. O endereço público que existe agora é seu, pra colocar no README, no currículo e no LinkedIn.",
           resources: [
             { label: "Vercel", url: "https://vercel.com/docs", kind: "doc" },
             { label: "Netlify", url: "https://docs.netlify.com", kind: "doc" },
@@ -1127,8 +1164,11 @@ export const frontend: RoadmapV2 = {
         {
           id: "projeto.ssr",
           title: "SSR e SSG (conceito, Next.js)",
-          description: "Renderizar no servidor pra ganhar performance e SEO.",
+          description:
+            "A limitação da SPA pura, o render no servidor como resposta e o critério honesto pra Next.js.",
           optional: true,
+          content:
+            "A SPA que você construiu tem uma característica estrutural: o HTML que chega do servidor é quase vazio, uma casca com um `<div>` e um script; a página de verdade só existe depois que o JavaScript baixa e o React renderiza. Pra app logado, irrelevante. Mas tem dois preços, em noção: buscadores e previews de link enxergam melhor conteúdo que já chega pronto (SEO), e em conexão lenta o usuário encara tela branca até o JS chegar (primeira pintura).\n\nO **SSR** (server-side rendering) inverte: o servidor roda o React e envia o HTML já montado; o navegador mostra conteúdo imediatamente e o JavaScript assume em seguida. O primo **SSG** gera as páginas prontas no build, perfeito pra conteúdo que muda pouco, como um blog.\n\nO nome de mercado é o **Next.js**, o framework React que empacota SSR, SSG, rotas e mais decisões prontas; é ele que você verá em vaga e em tutorial.\n\nO critério honesto: **portfólio e app logado em SPA estão ótimos**, e o deploy que você acabou de fazer não fica devendo nada. SSR entra quando o conteúdo precisa indexar: e-commerce, blog, landing que vive de busca orgânica. E o conselho de sequência: não aprenda Next antes do React estar sólido; ele assume tudo que esta seção construiu e adiciona camadas por cima.",
           resources: [
             { label: "Next.js", url: "https://nextjs.org/docs", kind: "doc" },
           ],
@@ -1136,8 +1176,18 @@ export const frontend: RoadmapV2 = {
         {
           id: "projeto.ci",
           title: "CI básico",
-          description: "Automatizar testes e build a cada mudança.",
+          description:
+            "O robô que roda lint, testes e build a cada push, com preview por PR fechando a cultura de review.",
           optional: true,
+          content:
+            "CI (integração contínua) é um robô que roda as suas checagens a cada push: lint, testes, build. O que você roda na sua máquina quando lembra, ele roda sempre, em ambiente limpo, e conta o resultado no GitHub com um check verde ou vermelho no commit e no PR.\n\nPra quem já vive no GitHub, a escolha natural é o **GitHub Actions**: um arquivo de configuração descrevendo os passos (instalar dependências, rodar os scripts) e o gatilho (a cada push, a cada PR). Os templates prontos pra Node cobrem o essencial e se ajustam em minutos.\n\nO que automatizar primeiro é exatamente o que você já tem: o `npm run lint`, os testes do Vitest e o `npm run build`. Build quebrado que só aparece na hora do deploy é o tipo de surpresa que o CI extingue: se quebrar, quebra no PR, com contexto e antes de encostar na main.\n\nE o complemento que a Vercel dá de graça, em noção: **preview por PR**. Cada pull request ganha uma URL própria com aquela versão no ar, e a conversa de review que a seção de ferramentas plantou sobe de nível: além de ler o diff, quem revisa CLICA na mudança funcionando. Check verde do CI mais preview navegável: é assim que time profissional integra mudança com confiança, e o seu projeto solo pode trabalhar igual desde já.",
+          resources: [
+            {
+              label: "GitHub Actions",
+              url: "https://docs.github.com/pt/actions",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
