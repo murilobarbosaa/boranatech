@@ -82,8 +82,6 @@ const nivelColors: Record<string, string> = {
   Avançado: "bg-violet-100 text-violet-700",
 };
 
-const SAMPLE_SIZE = 6;
-
 export default function Projetos() {
   const { isPro, loading } = useSubscription();
   const search = useSearch();
@@ -133,13 +131,9 @@ export default function Projetos() {
       ),
     [projectItems],
   );
-  const freeProjectIds = useMemo(
-    () => new Set(projectItems.slice(0, SAMPLE_SIZE).map((p) => p.id)),
-    [projectItems],
-  );
-  const lockedTotal = isPro
-    ? 0
-    : Math.max(projectItems.length - SAMPLE_SIZE, 0);
+  // Modelo de acesso: projeto sem `pro` e gratuito pra todo mundo (inclusive
+  // anonimo); projeto `pro` so abre pra assinante. A amostra de 6 morreu.
+  const hasProItems = projectItems.some((p) => p.pro === true);
 
   const q = query.trim().toLowerCase();
   const baseFiltered = projectItems.filter((p) => {
@@ -364,16 +358,16 @@ export default function Projetos() {
               está a lista completa.
             </p>
           )}
-          {!isPro && !loading && lockedTotal > 0 ? (
+          {!isPro && !loading && hasProItems ? (
             <Link
               href="/planos"
               className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
             >
               <span className="flex items-center gap-2 text-sm font-black">
                 <Lock className="h-4 w-4 text-amber-300" aria-hidden />
-                {/* TODO(Ana): copy do banner de projetos Pro */}
-                Você está vendo uma amostra grátis. Mais {lockedTotal} projetos
-                liberam no Pro.
+                {/* TODO(Ana): copy do banner do tier Pro de projetos */}
+                Todos os projetos das trilhas são gratuitos. Os com selo Pro são
+                desafios premium pra quem quer ir além.
               </span>
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-slate-950">
                 Assinar o Pro <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -403,7 +397,7 @@ export default function Projetos() {
                 </h2>
                 <div className="space-y-4">
                   {grupo.itens.map((projeto) => {
-                    const locked = !isPro && !freeProjectIds.has(projeto.id);
+                    const locked = projeto.pro === true && !isPro;
                     return (
                       <div
                         key={projeto.id}
@@ -423,15 +417,17 @@ export default function Projetos() {
                             tabIndex={0}
                             aria-expanded={expanded === projeto.id}
                             aria-controls={`projeto-detalhe-${projeto.id}`}
-                            onClick={() =>
+                            onClick={() => {
+                              if (locked) return;
                               setExpanded(
                                 expanded === projeto.id ? null : projeto.id,
-                              )
-                            }
+                              );
+                            }}
                             onKeyDown={(e) => {
                               if (e.target !== e.currentTarget) return;
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
+                                if (locked) return;
                                 setExpanded(
                                   expanded === projeto.id ? null : projeto.id,
                                 );
@@ -466,6 +462,12 @@ export default function Projetos() {
                                 >
                                   {projeto.nivel}
                                 </span>
+                                {projeto.pro === true && (
+                                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-xs font-black text-slate-950">
+                                    <ProStarIcon className="h-3 w-3" />
+                                    Pro
+                                  </span>
+                                )}
                               </div>
                               <h3 className="font-display font-bold text-xl text-slate-900">
                                 {projeto.nome}
@@ -502,7 +504,9 @@ export default function Projetos() {
                             </div>
                           </div>
 
-                          {expanded === projeto.id && (
+                          {/* Blur nao e seguranca: o corpo de um projeto pro
+                              bloqueado NAO renderiza (nem por tras do blur). */}
+                          {expanded === projeto.id && !locked && (
                             <div
                               id={`projeto-detalhe-${projeto.id}`}
                               role="region"

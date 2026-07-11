@@ -13628,7 +13628,26 @@ export { EVENTO_UF_NACIONAL, estadosBrasil } from "./eventosData";
 // pela home); reexportado aqui para os consumidores existentes.
 export { eventos } from "./eventosData";
 
-export const projetos = [
+// Tier do catalogo de projetos: sem `pro` = gratuito (todos os projetos
+// vinculados a trilhas sao gratuitos por design); `pro: true` = desafio
+// premium, navegavel por assinantes em /projetos e consumido pelo roadmap
+// com IA (fase 5c). Trilha estatica nunca aponta pra projeto pro.
+export type ProjetoCatalogo = {
+  id: string;
+  nome: string;
+  areaSlug: string | null;
+  nivel: string;
+  objetivo: string;
+  ferramentas: string[];
+  passosSimplificados: string[];
+  entregavel: string;
+  comoPublicar: string;
+  sugestaoLinkedIn: string;
+  proximoProjeto: string;
+  pro?: true;
+};
+
+export const projetos: ProjetoCatalogo[] = [
   {
     id: "landing-page-pessoal",
     nome: "Página Pessoal / Portfólio",
