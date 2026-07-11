@@ -112,20 +112,33 @@ function ProjectCard({
   );
 }
 
+const RESOURCE_CHIP_CLASS =
+  "rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]";
+
 function ResourceChips({ resources }: { resources: RoadmapResource[] }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {resources.map((resource) => (
-        <a
-          key={`${resource.label}-${resource.url}`}
-          href={resource.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
-        >
-          {resource.label}
-        </a>
-      ))}
+      {resources.map((resource) =>
+        resource.url.startsWith("/") ? (
+          <Link
+            key={`${resource.label}-${resource.url}`}
+            href={resource.url}
+            className={RESOURCE_CHIP_CLASS}
+          >
+            {resource.label}
+          </Link>
+        ) : (
+          <a
+            key={`${resource.label}-${resource.url}`}
+            href={resource.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={RESOURCE_CHIP_CLASS}
+          >
+            {resource.label}
+          </a>
+        ),
+      )}
     </div>
   );
 }
