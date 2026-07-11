@@ -10,6 +10,13 @@
 // Requisito estruturado e verificavel num repositorio publico. Por ora
 // exclusivo de projetos pro: e o contrato que a validacao via leitor de
 // GitHub (fase 5c) confere requisito a requisito.
+//
+// REGRA PERMANENTE: todo requisito precisa ser verificavel pelas fontes do
+// modo validacao (README, arvore de caminhos do repositorio, package.json,
+// workflows de .github/workflows e as checagens automaticas). Nada de
+// requisito que exija ler codigo ou julgar logica: a prova e sempre um
+// artefato observavel (arquivo ou pasta na arvore, dependencia ou script no
+// package.json, passo declarado no workflow, secao, print ou link no README).
 export type ProjetoRequisito = {
   id: string;
   descricao: string;
@@ -2541,27 +2548,27 @@ export const projetos: ProjetoCatalogo[] = [
       },
       {
         id: "auth-telas",
-        descricao: "Telas de login e cadastro implementadas",
+        descricao: "Telas de login e cadastro presentes e documentadas",
         verificacao:
-          "Existem componentes ou rotas de login e cadastro no codigo (arquivos de autenticacao identificaveis)",
+          "A arvore de arquivos mostra paginas ou componentes de login e cadastro (nomes identificaveis), ou o README documenta as telas com prints",
       },
       {
         id: "rotas-protegidas",
-        descricao: "Pelo menos 3 rotas protegidas por autenticacao",
+        descricao: "Rotas protegidas documentadas (pelo menos 3)",
         verificacao:
-          "O codigo de rotas mostra guarda de autenticacao aplicada a 3 ou mais telas",
+          "O README lista as rotas protegidas com prints delas logadas, ou a arvore mostra a estrutura de paginas protegidas com nomes identificaveis",
       },
       {
         id: "crud-completo",
-        descricao: "CRUD completo da entidade central",
+        descricao: "CRUD completo da entidade central, documentado",
         verificacao:
-          "O codigo contem as operacoes de criar, listar, editar e excluir da entidade principal",
+          "O README documenta as quatro operacoes com prints, ou a arvore mostra as telas ou rotas de criar, listar, editar e excluir com nomes identificaveis",
       },
       {
         id: "graficos-dashboard",
         descricao: "Dashboard com pelo menos 2 graficos",
         verificacao:
-          "Componentes de grafico presentes no codigo e visiveis nos prints do README",
+          "Prints do dashboard no README mostram os graficos, e o package.json tem a dependencia de graficos",
       },
       {
         id: "testes-vitest",
@@ -2630,20 +2637,21 @@ export const projetos: ProjetoCatalogo[] = [
       },
       {
         id: "auth-jwt",
-        descricao: "Autenticacao JWT com middleware de protecao",
+        descricao: "Autenticacao JWT presente e documentada",
         verificacao:
-          "Codigo com cadastro, login e middleware aplicado as rotas protegidas",
+          "O package.json tem dependencia de JWT, a arvore mostra arquivos de autenticacao ou middleware, e o README indica quais endpoints exigem token",
       },
       {
         id: "pedidos-transacao",
-        descricao: "Fechamento de pedido com transacao no banco",
+        descricao: "Fluxo de pedido com transacao, documentado",
         verificacao:
-          "Codigo do fluxo de pedido usando transacao (begin/commit ou equivalente do ORM)",
+          "A arvore mostra o modulo de pedidos e o README documenta o fechamento de pedido explicando a transacao",
       },
       {
         id: "testes-criticos",
-        descricao: "Testes cobrindo autenticacao e fechamento de pedido",
-        verificacao: "Pasta de testes com casos dos dois fluxos criticos",
+        descricao: "Testes automatizados dos fluxos criticos",
+        verificacao:
+          "A arvore mostra arquivos de teste e o README cita que autenticacao e fechamento de pedido estao cobertos",
       },
       {
         id: "dockerfile-ci",
@@ -2710,14 +2718,15 @@ export const projetos: ProjetoCatalogo[] = [
       },
       {
         id: "auth-membros",
-        descricao: "Autenticacao e convite de membros implementados",
+        descricao: "Autenticacao e convite de membros, documentados",
         verificacao:
-          "Codigo de autenticacao e fluxo de convite ou associacao de membros a um quadro",
+          "A arvore mostra os modulos de autenticacao e o README documenta o fluxo de convite ou associacao de membros com prints",
       },
       {
         id: "historico-atividades",
-        descricao: "Historico de atividades por quadro",
-        verificacao: "Codigo que registra e exibe as atividades do quadro",
+        descricao: "Historico de atividades por quadro, documentado",
+        verificacao:
+          "O README mostra o historico de atividades em print ou GIF, ou a arvore mostra o modulo de atividades com nome identificavel",
       },
       {
         id: "ci-build",
@@ -2782,10 +2791,9 @@ export const projetos: ProjetoCatalogo[] = [
       },
       {
         id: "notebook-analise",
-        descricao:
-          "Notebook com ao menos 5 perguntas respondidas e visualizacoes",
+        descricao: "Notebook de analise com as perguntas respondidas",
         verificacao:
-          "Notebook presente com as perguntas, respostas e graficos renderizados",
+          "A arvore tem o notebook (.ipynb) e o README resume as pelo menos 5 perguntas respondidas na analise",
       },
       {
         id: "dados-reproduziveis",
@@ -2846,15 +2854,15 @@ export const projetos: ProjetoCatalogo[] = [
       },
       {
         id: "avaliacao-perguntas",
-        descricao: "Avaliacao com 15 perguntas e resultados em tabela",
+        descricao: "Avaliacao com 15 perguntas e resultados registrados",
         verificacao:
-          "README ou documento com a tabela de perguntas, respostas esperadas e acerto medido",
+          "A arvore tem um arquivo de avaliacao (ou o README traz a secao) com a tabela de perguntas e o acerto medido",
       },
       {
         id: "codigo-separado",
-        descricao: "Indexacao e consulta em codigos separados",
+        descricao: "Indexacao e consulta em modulos separados",
         verificacao:
-          "Arquivos distintos pra gerar o indice e pra responder consultas",
+          "A arvore mostra arquivos distintos pra gerar o indice e pra responder consultas, com nomes identificaveis",
       },
       {
         id: "citacoes-fontes",
@@ -2909,31 +2917,34 @@ export const projetos: ProjetoCatalogo[] = [
       },
       {
         id: "telas-nucleo",
-        descricao: "Telas de cadastro, listagem, resumo e lembrete presentes",
-        verificacao: "Codigo com as quatro telas identificaveis",
+        descricao:
+          "Telas de cadastro, listagem, resumo e lembrete, demonstradas",
+        verificacao:
+          "O GIF ou os prints do README mostram as quatro telas, ou a arvore as evidencia com nomes identificaveis",
       },
       {
         id: "offline-documentado",
         descricao: "Funcionamento offline documentado com o mecanismo usado",
         verificacao:
-          "README explica o armazenamento local e o codigo mostra o mecanismo (SQLite ou equivalente)",
+          "O README explica o armazenamento local e o package.json (ou a arvore) evidencia a dependencia usada (SQLite ou equivalente)",
       },
       {
         id: "graficos-categoria",
         descricao: "Resumo mensal com graficos por categoria",
         verificacao:
-          "Componentes de grafico no codigo e visiveis no GIF ou screenshots",
+          "O GIF ou os prints do README mostram os graficos e o package.json tem a dependencia de graficos da stack",
       },
       {
         id: "lembrete-local",
-        descricao: "Lembrete local configuravel implementado",
+        descricao: "Lembrete local configuravel, documentado",
         verificacao:
-          "Codigo de notificacao local com configuracao pelo usuario",
+          "O README documenta o lembrete com print da configuracao e o package.json tem a dependencia de notificacoes locais",
       },
       {
         id: "export-csv",
-        descricao: "Exportacao dos dados em CSV",
-        verificacao: "Codigo da exportacao presente e citado no README",
+        descricao: "Exportacao dos dados em CSV, documentada",
+        verificacao:
+          "O README documenta a exportacao com print ou exemplo, ou a arvore tem um arquivo CSV de exemplo",
       },
     ],
   },
@@ -3052,13 +3063,17 @@ export const projetos: ProjetoCatalogo[] = [
       },
       {
         id: "design-system",
-        descricao: "Design system com cores, tipografia e 10 componentes",
-        verificacao: "Biblioteca visivel no arquivo Figma publico linkado",
+        descricao:
+          "Design system com cores, tipografia e 10 componentes, documentado no repositorio",
+        verificacao:
+          "O README traz o link publico do Figma e o repositorio contem imagens exportadas dos componentes (visiveis na arvore e no README)",
       },
       {
         id: "prototipo-navegavel",
-        descricao: "Prototipo navegavel dos 3 fluxos principais",
-        verificacao: "Link do Figma abre o prototipo com os fluxos navegaveis",
+        descricao:
+          "Prototipo navegavel dos 3 fluxos principais, documentado no repositorio",
+        verificacao:
+          "O README traz o link publico do prototipo e o repositorio contem imagens dos fluxos (visiveis na arvore e no README)",
       },
       {
         id: "relatorio-usabilidade",
