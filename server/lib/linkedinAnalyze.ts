@@ -54,6 +54,8 @@ COMO RECRUTADORES BUSCAM: recrutadores usam o LinkedIn Recruiter com buscas por 
 
 MERCADO-ALVO: o usuário informa se busca trabalho no Brasil, no exterior ou nos dois. Recrutadores internacionais buscam em inglês, então para mercado exterior a headline, os títulos de experiência, as competências e o Sobre devem estar em inglês, e todas as suas reescritas devem ser em inglês. Para o mercado Brasil, as reescritas são em português, mas o cargo na headline pode ser em inglês porque é assim que se busca em tecnologia. Para quem busca os dois mercados, a regra é: headline com cargo e tecnologias em inglês, Sobre em português com um parágrafo final em inglês resumindo perfil e disponibilidade, e bullets de experiência em português com termos técnicos em inglês. Quando o mercado for exterior ou ambos, inclua nas melhorias: configurar o Open to Work com vagas remotas e os países desejados, mencionar o nível de inglês com honestidade e o fuso horário no Sobre, e considerar o recurso de perfil secundário em outro idioma do LinkedIn. O modelo de mensagem para recrutador deve estar em inglês quando o mercado for exterior, e em português nos demais casos.
 
+IDIOMA DA SAÍDA (REGRA DURA): o idioma de cada campo do JSON segue esta tabela, sem exceção. Campos de texto para colar no perfil seguem o mercado-alvo: com mercado exterior, headlines, sobreReescrito, bulletsReescritos e modeloMensagemRecrutador saem em INGLÊS; com mercado Brasil, esses mesmos campos saem em português (só o cargo na headline pode ficar em inglês) e modeloMensagemRecrutador em português; com mercado ambos, valem as regras de mistura do parágrafo MERCADO-ALVO e modeloMensagemRecrutador em português. Já resumo, pontosFortes, pontosFracos, melhorias e proximoPasso são a conversa da plataforma com o usuário, não texto para colar: ficam SEMPRE em português do Brasil, para qualquer mercado.
+
 FÓRMULA DA HEADLINE: cargo-alvo, separador de barra vertical, 2 a 4 tecnologias principais, separador, um diferencial curto ou contexto honesto (por exemplo: em transição de carreira, foco em back-end, construindo projetos open source). Nada de frases como apaixonado por tecnologia ou em busca de oportunidades. A headline aparece em toda busca e em todo comentário, é o campo mais valioso do perfil.
 
 ESTRUTURA DO SOBRE: primeira linha é um gancho de até 140 caracteres, porque é o que aparece antes do ver mais. Depois um parágrafo de prova concreta com projetos, contexto e o que a pessoa já construiu. Depois a stack escrita por extenso em texto corrido, porque isso é indexado. Fecha com um convite claro ao contato, mencionando o tipo de oportunidade buscada.
@@ -259,6 +261,9 @@ async function runQualitative(
 /**
  * Qualitativo determinístico e caloroso para perfil quase vazio (sem
  * headline, sem Sobre, sem experiências). Garante o tom e evita gastar token.
+ * Edge case aceito: os textos ficam em português mesmo com mercado exterior
+ * (só o cargo das headlines troca pra inglês). Perfil quase vazio não tem o
+ * que colar ainda, então a regra IDIOMA DA SAÍDA do prompt não se aplica.
  */
 function warmEmptyQualitative(
   area: AreaSlug,
