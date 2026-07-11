@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Flag, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,6 +30,9 @@ interface CareerTrailProps {
   // bandeira de chegada, gaps maiores e cards maiores no desktop. A vitrine
   // da entrada NAO passa a prop e continua com o visual compacto.
   decorated?: boolean;
+  // Area maior que captura o wheel da trilha (a faixa full-bleed inteira no
+  // PlanResult). Sem ela, o wheel fica no container de scroll.
+  wheelAreaRef?: RefObject<HTMLDivElement | null>;
 }
 
 // Trilha horizontal do plano de carreira: scroll nativo com CSS scroll-snap,
@@ -41,10 +50,11 @@ export default function CareerTrail({
   catalogVersion = null,
   autoScrollToCurrent = false,
   decorated = false,
+  wheelAreaRef,
 }: CareerTrailProps) {
   const reduce = useReducedMotion() ?? false;
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const { dragging, handlers } = useTrailScroll(scrollRef);
+  const { dragging, handlers } = useTrailScroll(scrollRef, wheelAreaRef);
   const wrapperRefs = useRef<Array<HTMLDivElement | null>>([]);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const didAutoScroll = useRef(false);
@@ -166,7 +176,7 @@ export default function CareerTrail({
             className="pointer-events-none absolute left-0 right-0 top-12 z-0 h-16 w-full text-slate-950/25"
           >
             <path
-              d="M0 32 Q 75 16 150 32 T 300 32 T 450 32 T 600 32 T 750 32 T 900 32 T 1050 32 T 1200 32"
+              d="M0 32 Q 100 12 200 32 T 400 32 T 600 32 T 800 32 T 1000 32 T 1200 32"
               stroke="currentColor"
               strokeWidth="3"
               strokeDasharray="10 12"
@@ -186,7 +196,7 @@ export default function CareerTrail({
           style={{ scrollSnapType: dragging ? "none" : undefined }}
           className={cn(
             "relative z-10 -mx-2 flex snap-x snap-proximity items-start overflow-x-auto px-2 pb-4 pt-2",
-            decorated ? "gap-6 md:gap-12" : "gap-5",
+            decorated ? "gap-8 md:gap-16 lg:gap-20" : "gap-5",
             dragging
               ? "cursor-grabbing select-none [&_*]:pointer-events-none"
               : "cursor-grab",
@@ -201,9 +211,13 @@ export default function CareerTrail({
               // Largura fluida no mobile (com espiada dos vizinhos via
               // snap-center), fixa no desktop. Sem altura fixa: overflow
               // vertical proibido.
+              // No modo destaque o card mobile encolhe um pouco (75vw) para a
+              // espiada do proximo card sobreviver ao gap-8 em 375px.
               className={cn(
-                "relative w-[min(82vw,340px)] shrink-0 snap-center pt-4",
-                decorated ? "lg:w-[400px]" : "lg:w-[360px]",
+                "relative shrink-0 snap-center pt-4",
+                decorated
+                  ? "w-[min(75vw,340px)] lg:w-[400px]"
+                  : "w-[min(82vw,340px)] lg:w-[360px]",
               )}
               initial={reduce ? false : { opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
@@ -214,11 +228,12 @@ export default function CareerTrail({
               }}
             >
               {decorated && index < stations.length - 1 ? (
-                // Marco discreto no meio do caminho entre esta estacao e a
-                // proxima (centro do gap: gap-6 no mobile, gap-12 no md+).
+                // Marco discreto no centro do caminho entre esta estacao e a
+                // proxima: offset = metade do gap + metade do marco (gap-8 no
+                // mobile, gap-16 no md, gap-20 no lg).
                 <span
                   aria-hidden
-                  className="absolute -right-[17px] top-[67px] z-0 h-2.5 w-2.5 rotate-45 rounded-[2px] border-2 border-slate-950/60 bg-amber-300 md:-right-[29px]"
+                  className="absolute -right-[21px] top-[67px] z-0 h-2.5 w-2.5 rotate-45 rounded-[2px] border-2 border-slate-950/60 bg-amber-300 md:-right-[37px] lg:-right-[45px]"
                 />
               ) : null}
               {currentStationIndex === index ? (

@@ -33,7 +33,13 @@ interface TrailScrollHandlers {
   onClickCapture: (event: MouseEvent<HTMLDivElement>) => void;
 }
 
-export function useTrailScroll(scrollRef: RefObject<HTMLDivElement | null>): {
+export function useTrailScroll(
+  scrollRef: RefObject<HTMLDivElement | null>,
+  // Area maior que captura o wheel (ex.: a faixa full-bleed inteira da
+  // trilha). O scroll continua sendo aplicado no scrollRef; sem ela, o wheel
+  // anexa no proprio container de scroll.
+  wheelAreaRef?: RefObject<HTMLDivElement | null>,
+): {
   dragging: boolean;
   handlers: TrailScrollHandlers;
 } {
@@ -46,7 +52,8 @@ export function useTrailScroll(scrollRef: RefObject<HTMLDivElement | null>): {
   // usuario. Trackpad com deltaX dominante nao sofre interferencia.
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    const area = wheelAreaRef?.current ?? el;
+    if (!el || !area) return;
     function onWheel(event: WheelEvent) {
       if (!el) return;
       if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
@@ -65,9 +72,9 @@ export function useTrailScroll(scrollRef: RefObject<HTMLDivElement | null>): {
       event.preventDefault();
       el.scrollLeft += delta;
     }
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [scrollRef]);
+    area.addEventListener("wheel", onWheel, { passive: false });
+    return () => area.removeEventListener("wheel", onWheel);
+  }, [scrollRef, wheelAreaRef]);
 
   function endDrag(event: PointerEvent<HTMLDivElement>) {
     const state = dragRef.current;
