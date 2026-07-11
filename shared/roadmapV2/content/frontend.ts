@@ -753,11 +753,13 @@ export const frontend: RoadmapV2 = {
               id: "react.base.jsx",
               title: "JSX",
               description:
-                "A sintaxe que mistura marcação e JavaScript no React.",
+                "O projeto React nascendo do create vite e a sintaxe que parece HTML dentro do JavaScript.",
+              content:
+                'Lembra do comando que a seção de ferramentas mandou guardar? A hora dele é agora: `npm create vite@latest meu-app` com o template **react** monta seu primeiro projeto React configurado. Rode `npm install`, depois `npm run dev`, e abra o arquivo `App.jsx`: o que tem dentro é JSX.\n\nJSX é a sintaxe do React que parece HTML escrito dentro do JavaScript:\n\n```jsx\nfunction App() {\n  const nome = "Bia";\n  return <h1>Olá, {nome}!</h1>;\n}\n```\n\nAs regras que mudam em relação ao HTML são poucas e aparecem logo. **Chaves interpolam JavaScript**: dentro de `{}` vai qualquer expressão (variável, conta, chamada de função), exatamente como no template literal. **`className` no lugar de `class`**, porque `class` é palavra reservada do JavaScript. E todo retorno precisa de **um elemento raiz**: dois irmãos soltos não podem; embrulhe numa tag ou num fragmento vazio `<>...</>`.\n\nA noção honesta que desfaz o mistério: JSX não é HTML. Cada tag compila pra uma chamada de função JavaScript que descreve o elemento; é por isso que ele vive dentro do JS e aceita expressões nas chaves sem cerimônia. Parece marcação, é código.\n\nVocê domina este passo quando cria o projeto com o Vite, edita o `App.jsx` e interpola uma variável sua no meio da marcação sem consultar nada.',
               resources: [
                 {
-                  label: "React Docs",
-                  url: "https://react.dev/learn",
+                  label: "React Docs (pt-BR)",
+                  url: "https://pt-br.react.dev/learn",
                   kind: "doc",
                 },
               ],
@@ -765,12 +767,32 @@ export const frontend: RoadmapV2 = {
             {
               id: "react.base.componentes",
               title: "Componentes",
-              description: "Os blocos reutilizáveis que montam a interface.",
+              description:
+                "Função que retorna JSX, nome com maiúscula e a página inteira como árvore de componentes.",
+              content:
+                "Componente é uma função que retorna JSX. Só isso, de verdade: `function Cabecalho() { return <header>...</header>; }` é um componente completo, e usá-lo é escrever `<Cabecalho />` onde ele deve aparecer.\n\nA maiúscula no nome não é estilo, é contrato: é assim que o React distingue um componente seu (`<Cabecalho />`) de uma tag HTML comum (`<header>`). Nome minúsculo, ele procura uma tag; maiúsculo, ele chama a sua função.\n\nO modelo mental é Lego: peças pequenas que se combinam em peças maiores. Um `<CardDeProduto />` usa `<Preco />` e `<BotaoComprar />`; a `<PaginaDeBusca />` usa uma fileira de `<CardDeProduto />`. No topo, o `<App />` contém tudo. A página inteira vira uma **árvore de componentes**, e essa imagem não é nova pra você: é a mesma árvore que o navegador monta desde os fundamentos da web, só que agora cada galho é uma função sua que descreve aquele pedaço.\n\nO hábito que separa projeto legível de emaranhado: **um componente, uma responsabilidade**. Se a função cresceu e faz três coisas (busca, lista e rodapé), são três componentes pedindo pra nascer. Componente pequeno se entende, se testa e se reusa.\n\nVocê domina este passo quando olha uma tela qualquer (a da sua página pessoal, inclusive) e desenha de cabeça a árvore de componentes que a construiria.",
+              resources: [
+                {
+                  label: "React: seu primeiro componente (pt-BR)",
+                  url: "https://pt-br.react.dev/learn/your-first-component",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "react.base.props",
               title: "Props",
-              description: "Passar dados de um componente pai pro filho.",
+              description:
+                "Os argumentos do componente: somente leitura, desestruturados na assinatura, incluindo children e funções.",
+              content:
+                'Se componente é função, **props são os argumentos dela**: os dados que o pai entrega pro filho renderizar. `<CardDeProduto nome="Caneca" preco={29} />` passa duas props; o filho as recebe num objeto único, quase sempre desestruturado direto na assinatura: `function CardDeProduto({ nome, preco })`. A desestruturação que você aprendeu em objetos trabalhando todo dia.\n\nA regra de ouro: **props são somente leitura**. O filho usa, exibe, calcula em cima, mas nunca altera; quem muda dado é o dono do dado (assunto do próximo grupo, estado). Essa disciplina de mão única é o que mantém o fluxo de dados do React rastreável: dados descem, e você sempre sabe de onde vieram.\n\nDuas props especiais completam o quadro. O `children` é o que o pai escreve ENTRE as tags do filho: `<Painel><p>Qualquer coisa</p></Painel>` chega em `function Painel({ children })` pronto pra ser posicionado; é assim que se fazem componentes-moldura. E lembra que em JavaScript **função é valor**, lá de funções e escopo? Aqui essa ideia vira arquitetura: o pai passa uma função como prop (`<BotaoComprar aoComprar={adicionarAoCarrinho} />`) e o filho a chama na hora certa. Dados descem por props; avisos sobem por funções. Esse é o canal filho pra pai.\n\nVocê domina este passo quando monta um componente que recebe dados, children e uma função, e explica qual viaja em cada direção.',
+              resources: [
+                {
+                  label: "React: passando props (pt-BR)",
+                  url: "https://pt-br.react.dev/learn/passing-props-to-a-component",
+                  kind: "doc",
+                },
+              ],
             },
           ],
         },
@@ -782,11 +804,13 @@ export const frontend: RoadmapV2 = {
               id: "react.estado.usestate",
               title: "useState",
               description:
-                "Guardar e atualizar estado dentro de um componente.",
+                "O par valor e setter, o re-render a cada mudança e o onClick como novo addEventListener.",
+              content:
+                "Tente guardar um contador numa variável comum dentro do componente e dois problemas aparecem: a cada re-render a função roda de novo e a variável renasce zerada, e mesmo que sobrevivesse, mudar uma variável não avisa a tela. **Estado** é a solução do React pras duas coisas: memória que sobrevive aos renders e que, ao mudar, re-renderiza o componente.\n\nO `useState` entrega um par: o valor atual e a função que o troca. Em ação:\n\n```jsx\nfunction Contador() {\n  const [cliques, setCliques] = useState(0);\n  const somar = () => setCliques(cliques + 1);\n  return (\n    <button onClick={somar}>Total: {cliques}</button>\n  );\n}\n```\n\nRepare no `onClick`: é o jeito React do que o `addEventListener` fazia lá no DOM. Mesma ideia (uma função escutando o clique), agora declarada direto na marcação, sem buscar o elemento antes.\n\nO ciclo completo: clique chama `somar`, que chama `setCliques`, que troca o valor E re-renderiza o componente; o JSX roda de novo com `cliques` novo e a tela atualiza. Você nunca toca no DOM; descreve a tela a partir do estado e o React cuida do resto.\n\nA regra inegociável: **nunca mute o estado direto**. Nada de `lista.push(item)`: crie um novo com `[...lista, item]` e entregue ao setter. O spread e o map que você já domina existem pra isso.\n\nVocê domina este passo quando explica por que a tela atualiza sem você tocar no DOM.",
               resources: [
                 {
-                  label: "React useState",
-                  url: "https://react.dev/reference/react/useState",
+                  label: "React useState (pt-BR)",
+                  url: "https://pt-br.react.dev/reference/react/useState",
                   kind: "doc",
                 },
               ],
@@ -795,17 +819,28 @@ export const frontend: RoadmapV2 = {
               id: "react.estado.renderizacao",
               title: "Renderização condicional e listas",
               description:
-                "Mostrar coisas diferentes conforme o estado e renderizar coleções com keys.",
+                "Ternário e &&, map com key como identidade, e os quatro estados de dados virando interface.",
+              content:
+                "Se a tela é uma função do estado, renderizar condicionalmente é só usar as ferramentas do JavaScript dentro do JSX. O ternário escolhe entre dois caminhos: `{logado ? <Perfil /> : <BotaoEntrar />}`. O `&&` mostra ou omite: `{temAviso && <Banner />}` (cuidado com número à esquerda: `{0 && ...}` renderiza o próprio 0).\n\nListas saem do `map` que você já domina: `{produtos.map((p) => <Card key={p.id} nome={p.nome} />)}`. A novidade é a prop **`key`**: a identidade de cada item, que permite ao React saber quem entrou, saiu ou se moveu entre um render e outro. Use um id estável do dado. O índice do array parece funcionar, mas é armadilha em lista que muda: remova o primeiro item e todos os índices mudam, e o React confunde quem é quem (estado de input indo parar no item errado é o sintoma clássico).\n\nE aqui os **quatro estados** que você desenhou na seção de APIs viram interface de verdade:\n\n```jsx\nif (carregando) return <Spinner />;\nif (erro) return <Erro aoTentar={buscar} />;\nif (itens.length === 0) return <Vazio />;\nreturn <Lista itens={itens} />;\n```\n\nCarregando, erro, vazio e sucesso, cada um com seu retorno; o early return de condicionais e laços organizando componente.\n\nVocê domina este passo quando renderiza uma lista real com keys estáveis e os quatro estados cobertos.",
+              resources: [
+                {
+                  label: "React: renderizando listas (pt-BR)",
+                  url: "https://pt-br.react.dev/learn/rendering-lists",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "react.estado.useeffect",
               title: "useEffect",
               description:
-                "Rodar efeitos colaterais, como buscar dados, no ciclo do componente.",
+                "O canal com o mundo fora do render: dependências como contrato, limpeza e menos efeitos do que parece.",
+              content:
+                "Render, no React, é cálculo puro: estado e props entram, JSX sai. Mas aplicações reais conversam com o mundo fora desse cálculo: buscar dados na rede, iniciar um timer, mudar o título da aba. O `useEffect` é o canal oficial pra esses **efeitos**: `useEffect(funcao, dependencias)` roda a função DEPOIS de o componente renderizar.\n\nO array de dependências é um contrato de quando rodar. Vazio (`[]`): uma vez, quando o componente monta; o lugar clássico do fetch inicial. Com valores (`[id]`): de novo sempre que `id` mudar; o produto trocou, busca o novo. Sem array: depois de todo render, o que quase nunca é o que você quer.\n\nSe o efeito devolve uma função, ela é a **limpeza**: roda antes do efeito repetir e quando o componente sai de cena. Timer criado, timer cancelado; é o que evita vazamento.\n\nO erro clássico de iniciante, em noção: efeito que altera um estado do qual ele mesmo depende dispara render, que dispara o efeito, que dispara render: o loop infinito. Quando o console avisar, olhe as dependências.\n\nE a honestidade que a documentação moderna martela: **você precisa de menos efeitos do que parece**. Valor derivado de estado (o total do carrinho, a lista filtrada) não é efeito, é cálculo durante o render. Reserve o `useEffect` pro que realmente sai do componente.\n\nVocê domina este passo quando explica o contrato do seu array de dependências em voz alta.",
               resources: [
                 {
-                  label: "React useEffect",
-                  url: "https://react.dev/reference/react/useEffect",
+                  label: "React useEffect (pt-BR)",
+                  url: "https://pt-br.react.dev/reference/react/useEffect",
                   kind: "doc",
                 },
               ],
@@ -820,43 +855,103 @@ export const frontend: RoadmapV2 = {
               id: "react.hooks.usecontext",
               title: "useContext",
               description:
-                "Compartilhar dados sem passar props por vários níveis.",
+                "O prop drilling como dor, o contexto como valor da subárvore e o critério do que merece ser global.",
+              content:
+                "A dor tem nome: **prop drilling**. O usuário logado vive no `<App />`, mas quem o exibe é um `<Avatar />` cinco níveis abaixo; a prop atravessa `<Layout />`, `<Header />` e `<Menu />`, que não a usam pra nada, só repassam. Cada intermediário fica acoplado a um dado que não é dele.\n\nO **contexto** é o atalho oficial: um valor publicado uma vez fica disponível pra qualquer componente da subárvore, sem escala nos intermediários. A mecânica, em noção: cria-se o contexto com `createContext`, o componente de cima embrulha os filhos num **Provider** com o valor, e qualquer descendente lê com `useContext(MeuContexto)`. Três peças, e o `<Avatar />` pega o usuário direto da fonte.\n\nQuando o valor do Provider muda, quem consome re-renderiza; é assim que o tema trocado se propaga na hora (esta plataforma faz exatamente isso com tema e sessão).\n\nO critério honesto pra não transformar o app numa sopa de contextos: contexto é pra dado genuinamente **transversal**, que muitos pontos distantes leem. Tema, usuário logado, idioma: sim. O estado de um formulário, a aba selecionada: não; isso é local, e local é mais simples de raciocinar. Comece local, promova a contexto quando o drilling doer de verdade.\n\nVocê domina este passo quando identifica num app real qual dado merece contexto e qual está bem onde está.",
+              resources: [
+                {
+                  label: "React useContext (pt-BR)",
+                  url: "https://pt-br.react.dev/reference/react/useContext",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "react.hooks.useref",
               title: "useRef",
               description:
-                "Guardar valores ou referenciar elementos sem re-renderizar.",
+                "A caixa que sobrevive a renders sem causar render: valor mutável e acesso ao DOM, como o focus.",
+              content:
+                "O `useRef` entrega uma caixa com um único compartimento, `ref.current`, com duas propriedades que a tornam única: o conteúdo **sobrevive aos re-renders** (como estado) e trocá-lo **não dispara render nenhum** (ao contrário de estado). O contraste é o jeito de decorar: estado avisa a tela, ref não avisa ninguém.\n\nPrimeiro uso: valor mutável de bastidor, que precisa persistir mas não aparece na interface. O id de um timer pra cancelar depois, a contagem de quantas vezes algo rodou: coisas que a tela não mostra e que seriam desperdício de render como estado.\n\nSegundo uso, o mais visível: **segurar um elemento do DOM**. Crie a ref, pendure no JSX com `<input ref={inputRef} />`, e depois do render `inputRef.current` é o elemento de verdade, aquele mesmo das APIs de DOM que você já conhece. O caso central: focar o campo de busca quando a tela abre, com `inputRef.current.focus()` dentro de um efeito. O React não tem prop pra foco; a ref é a porta de saída pro DOM real quando ela é necessária.\n\nA disciplina: ref não é atalho pra burlar estado. Se o valor influencia o que aparece na tela, ele é estado; se é bastidor ou elemento, é ref. Errar essa escolha é a fonte clássica de tela que não atualiza.",
+              resources: [
+                {
+                  label: "React useRef (pt-BR)",
+                  url: "https://pt-br.react.dev/reference/react/useRef",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "react.hooks.usememo",
               title: "useMemo e useCallback",
-              description: "Evitar recálculos e re-renders desnecessários.",
+              description:
+                "Memoizar valor derivado caro, com a regra honesta: calcule no render por padrão, otimize quando medir.",
+              content:
+                "O `useMemo` memoiza um valor derivado: `const visiveis = useMemo(() => filtrarEOrdenar(itens), [itens])` só refaz o cálculo quando `itens` muda; nos demais renders, devolve o resultado guardado. É a ferramenta pra derivação genuinamente **cara**: filtrar e ordenar milhares de linhas, processar um texto grande.\n\nA regra honesta vem antes da ferramenta: **o React é rápido, e recalcular no render é o padrão certo**. O total do carrinho, a lista com meia dúzia de filtros: calcule direto no corpo do componente, sem cerimônia, como o passo de useEffect já pregou. Memoização espalhada por reflexo é ruído: cada `useMemo` é mais código pra ler e uma lista de dependências pra manter em dia.\n\nO critério profissional é medir antes de otimizar: a interface engasgou de verdade? O Profiler das DevTools do React aponta o componente lento? Aí sim o `useMemo` entra, cirúrgico, no cálculo culpado.\n\nO primo em uma frase: o `useCallback` faz o mesmo pra funções (memoiza a função em vez do valor), útil quando uma função criada no render desce como prop pra componentes otimizados.\n\nVocê domina este passo justamente quando resiste a usá-lo sem motivo: derivação simples no render, `useMemo` guardado pra quando a medição apontar o gargalo.",
+              resources: [
+                {
+                  label: "React useMemo (pt-BR)",
+                  url: "https://pt-br.react.dev/reference/react/useMemo",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "react.hooks.custom",
               title: "Hooks customizados",
               description:
-                "Extrair lógica reutilizável pros seus próprios hooks.",
+                "Extrair lógica repetida pra funções use, as duas regras dos hooks e hooks compondo hooks.",
+              content:
+                'Quando a mesma lógica com estado aparece em dois componentes (o mesmo par de `useState` com `useEffect`, a mesma assinatura), o React tem um mecanismo de extração: o **hook customizado**. É uma função comum cujo nome começa com `use` e que pode chamar outros hooks por dentro; o componente vira uma linha, e a lógica ganha casa própria e reutilizável.\n\nO exemplo mental perfeito junta duas pontas da trilha: um `useLocalStorage(chave, valorInicial)` que embrulha um `useState` e persiste cada mudança com o `localStorage` que você aprendeu no DOM. Escreveu uma vez, e todo componente que precisar de preferência salva usa `const [tema, setTema] = useLocalStorage("tema", "claro")`, com a mesma cara do useState.\n\nO prefixo `use` não é decoração: ele sinaliza que a função obedece às **duas regras dos hooks**. Um: hooks só se chamam no topo do componente ou de outro hook, nunca dentro de `if`, loop ou callback. Dois: só componentes e hooks chamam hooks. O porquê, em noção: o React identifica cada hook pela ORDEM de chamada a cada render; um hook dentro de `if` embaralha a fila inteira. O ESLint dos templates React vigia as duas regras por você.\n\nHooks compõem hooks, e é assim que a lógica de um app grande se organiza. Você domina este passo quando extrai seu primeiro `use` de uma repetição real entre dois componentes.',
+              resources: [
+                {
+                  label:
+                    "React: reutilizando lógica com hooks customizados (pt-BR)",
+                  url: "https://pt-br.react.dev/learn/reusing-logic-with-custom-hooks",
+                  kind: "doc",
+                },
+              ],
             },
           ],
         },
         {
           id: "react.forms",
           title: "Formulários controlados",
-          description: "Ligar os inputs ao estado do React.",
+          description:
+            "value com onChange como fonte única, o preventDefault de volta no submit e validação antes de enviar.",
+          content:
+            'No React, o padrão pra formulário é o **input controlado**: o valor do campo mora no estado, e o input só reflete e reporta:\n\n```jsx\nconst [email, setEmail] = useState("");\n\n<input\n  value={email}\n  onChange={(e) => setEmail(e.target.value)}\n/>\n```\n\nO ciclo: a pessoa digita, o `onChange` atualiza o estado, o re-render devolve o valor pro `value`. Parece uma volta longa pra digitar uma letra, mas compra a vantagem central: **uma única fonte de verdade**. O que está no estado É o que está na tela, e validar, limpar, preencher ou desabilitar o botão de enviar viram operações sobre estado, sem caçar valores no DOM.\n\nO envio é um reencontro: o mesmo `event.preventDefault()` que você aprendeu nos eventos do DOM abre o handler de `onSubmit` do form, impedindo o reload; dali em diante, é o seu código com os valores já em mãos no estado.\n\nValidação simples entra antes do envio, em noção: e-mail sem `@`, campo vazio? Guarde a mensagem num estado de erro, renderize-a condicionalmente (os quatro estados, sempre eles) e só chame a API quando estiver tudo certo.\n\nFormulário grande, com dezenas de campos e validações cruzadas, tem bibliotecas dedicadas no ecossistema; fica a menção. O controlado na mão é a base que faz qualquer uma delas fazer sentido.',
+          resources: [
+            {
+              label: "React: input (pt-BR)",
+              url: "https://pt-br.react.dev/reference/react-dom/components/input",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "react.routing",
           title: "Roteamento (React Router)",
-          description: "Navegar entre páginas numa SPA.",
+          description:
+            "URL mapeada pra componente, Link sem reload com estado preservado e parâmetros de rota em noção.",
+          content:
+            'Até aqui seu app React é uma tela só. Uma SPA de verdade tem várias: perfil, busca, detalhe do produto, cada uma com sua URL, mas **sem recarregar a página** na troca. Quem faz essa mágica é o roteador: uma biblioteca que observa a URL e decide qual componente renderizar.\n\nO modelo mental é um mapa: `/` renderiza `<Home />`, `/produtos` renderiza `<Lista />`, `/produtos/:id` renderiza `<Detalhe />`. Você declara o mapa uma vez e navega o resto da vida.\n\nA troca de página usa `<Link to="/produtos">` no lugar do `<a href>`, e o porquê importa: o `<a>` dispara navegação completa (nova requisição, tela branca, todo o estado do app perdido); o `<Link>` intercepta o clique, atualiza a URL e deixa o roteador trocar o componente. Sem reload, estado global preservado, transição instantânea. A URL continua real: dá pra copiar, favoritar e compartilhar.\n\nO `:id` do mapa é o **parâmetro de rota**, em noção: `/produtos/42` casa com `/produtos/:id` e o componente lê o `42` pra buscar o produto certo, casando com o efeito que refaz o fetch quando o id muda.\n\nO nome de mercado é o **React Router**, o roteador dominante do ecossistema; alternativas mais leves existem (esta plataforma usa uma, o wouter). Os conceitos são os mesmos em todas: mapa, Link, parâmetro.',
+          resources: [
+            {
+              label: "React Router",
+              url: "https://reactrouter.com",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "react.fetching",
           title: "Data fetching (TanStack Query)",
           description:
-            "Buscar, cachear e sincronizar dados do servidor com menos código.",
+            "O combo cru de fetch com useEffect que você deve dominar, e o que uma biblioteca de dados acrescenta.",
           optional: true,
+          content:
+            "Você já sabe buscar dados no React, e essa combinação crua é pré-requisito deste passo, não o que ele substitui: um `useEffect` que dispara o `fetch` na montagem, estados pra carregando, erro e dados, os quatro estados renderizados por condição. Todo dev React precisa saber montar esse combo de memória, e ele basta pra apps pequenos.\n\nO que ele não dá conta, conforme o app cresce: **cache** (duas telas pedem o mesmo usuário e o app busca duas vezes), **revalidação** (o dado envelhece e nada o atualiza sozinho), sincronização entre abas, retry de falha, e a repetição do mesmo trio de estados em cada tela.\n\nBibliotecas de dados existem pra essa camada, e o nome a conhecer é o **TanStack Query** (ex React Query): você declara a chave e a função que busca, e recebe de volta dados, estados prontos, cache compartilhado e revalidação automática. O boilerplate que você escrevia em toda tela vira uma chamada.\n\nO critério prático de adoção: duas ou três telas com fetch simples, siga no combo cru, sem dependência nova. O app cresceu, os mesmos dados aparecem em vários lugares, o cache manual começou a nascer em contexto? É o sinal. E a base que você dominou continua valendo: a biblioteca automatiza exatamente o que você sabe fazer na mão.",
           resources: [
             {
               label: "TanStack Query",
@@ -869,9 +964,16 @@ export const frontend: RoadmapV2 = {
           id: "react.estadoglobal",
           title: "Estado global (Context, Redux ou Zustand)",
           description:
-            "Compartilhar estado entre partes distantes do app, com ou sem biblioteca.",
+            "Quando subir estado deixa de bastar, o custo honesto do contexto e o critério de global como exceção.",
           optional: true,
+          content:
+            "O primeiro remédio pra estado compartilhado você já conhece: **subir o estado** pro ancestral comum e descê-lo por props. Ele resolve a maioria dos casos e deve ser sempre a primeira tentativa. Este passo existe pra quando ele deixa de bastar: o carrinho lido pelo header, pela página de produto e pelo checkout, componentes distantes demais pra um ancestral razoável.\n\nO contexto, que você conheceu nos hooks, resolve a **leitura** global. O custo honesto, em noção: quando o valor muda, toda a subárvore consumidora re-renderiza; pra tema (muda raro), perfeito; pra estado que muda a cada tecla, vira peso.\n\nDaí as bibliotecas dedicadas. O **Zustand** é a porta de entrada simples do ecossistema atual: uma store criada fora da árvore, componentes assinam só a fatia que usam, e só quem usa a fatia re-renderiza. O **Redux** é o nome histórico que dominou uma era e segue vivo em bases grandes; o padrão de ações e reducers que ele consagrou vale conhecer quando você o encontrar num projeto.\n\nO critério que evita arquitetura prematura: **comece local, suba quando doer, global é exceção**. A maior parte do estado de qualquer app é local de uma tela; a fatia genuinamente global costuma ser pequena (sessão, tema, carrinho). Desconfie do impulso de globalizar por conveniência.",
           resources: [
+            {
+              label: "Zustand",
+              url: "https://zustand.docs.pmnd.rs",
+              kind: "doc",
+            },
             {
               label: "Redux",
               url: "https://redux.js.org/introduction/getting-started",
@@ -883,8 +985,10 @@ export const frontend: RoadmapV2 = {
           id: "react.errorboundary",
           title: "Error boundaries",
           description:
-            "Capturar erros de renderização sem quebrar o app inteiro.",
+            "A rede que segura erro de render com fallback, o que ela não pega e a granularidade por seção.",
           optional: true,
+          content:
+            "Sem proteção, um erro lançado durante o render (o clássico: ler propriedade de um dado que veio `undefined`) derruba a árvore inteira: tela branca, app morto, usuário sem explicação. O **error boundary** é a rede de segurança: um componente que embrulha uma parte da árvore e, se algo quebrar no render dali pra baixo, mostra um fallback amigável no lugar do desastre.\n\nA noção de uso: o boundary embrulha a região (`<ErrorBoundary fallback={<Aviso />}>`), captura o erro dos descendentes e renderiza o plano B. Na prática dos projetos, usa-se um pacote pronto ou o componente que o time já tem; o valor está em ONDE colocar.\n\nTão importante quanto saber o que ele pega é saber o que **não** pega: erro dentro de handler de evento e falha em código assíncrono (o fetch que rejeitou) não passam pelo render, então o boundary nem os vê. Pra esses, as ferramentas continuam as que você já domina: o `try/catch` do async e o estado de erro renderizado com dignidade. O boundary cobre a terceira via: o erro inesperado no meio do render.\n\nGranularidade, em noção: um boundary global evita a tela branca total, e boundaries por seção (a sidebar, o feed, o painel) deixam o resto do app vivo quando uma região quebra. Quebrou o feed, a navegação continua funcionando.",
         },
       ],
     },
