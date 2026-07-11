@@ -15,8 +15,18 @@ import {
   fetchExternalPageText,
   JobFetchError,
 } from "../lib/fetchExternalPage";
+import {
+  AudioTranscribeError,
+  decodeAudioInput,
+  detectAudioMime,
+  transcribeAudio,
+} from "../lib/audioTranscribe";
 import { fetchWithTimeout } from "../lib/http";
-import { buildOpenAIHeaders, OPENAI_BASE_URL } from "../lib/openai";
+import {
+  buildOpenAIHeaders,
+  OPENAI_BASE_URL,
+  TRANSCRIPTION_MODEL,
+} from "../lib/openai";
 import { toOpenAIStrictSchema } from "../lib/openaiStrictSchema";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -79,6 +89,10 @@ const CreateSessionSchema = z
 
 const AnswerSchema = z.object({
   answer: z.string().min(1).max(4_000),
+});
+
+const TranscribeSchema = z.object({
+  audioBase64: z.string().min(1),
 });
 
 const EvaluationSchema = z.object({
@@ -1276,6 +1290,146 @@ router.post(
     });
 
     res.json({ data: { hint } });
+  },
+);
+
+// POST /api/interview/sessions/:id/transcribe: transcreve o audio gravado no
+// navegador e devolve o texto para o composer. PRE-ENVIO: nao cria turno, nao
+// toca contadores, streak nem veredito; o texto so vira resposta quando a
+// pessoa revisar e enviar pelo fluxo normal. Nenhum audio e persistido: o
+// buffer vive apenas neste request. Cadeia identica a da rota de hint.
+router.post(
+  "/sessions/:id/transcribe",
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isPro) {
+      return next(
+        createError(
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para continuar a entrevista.",
+        ),
+      );
+    }
+
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    const loaded = await loadOwnSession(userId, id);
+    if (!loaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    if (!loaded.session) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+    const session = loaded.session;
+    if (session.status !== "active") {
+      return next(
+        createError(409, "session_completed", "Esta sessao ja foi encerrada."),
+      );
+    }
+
+    const usage = await checkInterviewTurnDailyLimit(userId);
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TURN_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "rate_limited",
+      });
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          `Limite diario de ${usage.limit} turnos de entrevista atingido. Tente novamente amanha.`,
+        ),
+      );
+    }
+
+    const parsedBody = TranscribeSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      // TODO(Ana): mensagem de body de transcricao invalido.
+      return next(
+        createError(400, "invalid_request", "Audio invalido ou vazio."),
+      );
+    }
+
+    let buffer: Buffer;
+    let detected: ReturnType<typeof detectAudioMime>;
+    try {
+      buffer = decodeAudioInput(parsedBody.data.audioBase64);
+      detected = detectAudioMime(buffer);
+    } catch (err) {
+      if (err instanceof AudioTranscribeError) {
+        // Mensagens destes codes ja sao voltadas ao usuario (400/413/415).
+        return next(createError(err.status, err.code, err.message));
+      }
+      return next(err);
+    }
+
+    let text: string;
+    try {
+      // language SEMPRE da sessao carregada do banco, nunca do body.
+      text = await transcribeAudio({
+        buffer,
+        mime: detected.mime,
+        filename: detected.filename,
+        language: session.language,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: message,
+      });
+      // Detalhe do upstream fica no log; o client recebe o generico.
+      // TODO(Ana): mensagem de falha na transcricao.
+      return next(
+        createError(
+          502,
+          "transcription_failed",
+          "Nao foi possivel transcrever o audio agora. Tente de novo.",
+        ),
+      );
+    }
+
+    // Custo 0 e tokens zerados de proposito, com o model fiel: a transcricao
+    // cobra por MINUTO de audio, nao por token, e nao ha fonte de preco no
+    // repo. TODO: calibrar o custo por minuto quando houver fonte (mesma
+    // pratica de custo 0 das rotas irmas da entrevista).
+    await logAiUsage({
+      userId,
+      tool: INTERVIEW_TURN_TOOL,
+      requestId,
+      status: "success",
+      model: TRANSCRIPTION_MODEL,
+    });
+
+    res.json({ data: { text } });
   },
 );
 

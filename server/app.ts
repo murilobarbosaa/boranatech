@@ -311,6 +311,13 @@ app.use("/api/billing/webhook", (req, _res, next) => {
 // do json global; requisicoes ja parseadas (req._body) sao ignoradas pelo global.
 app.use("/api/me/avatar", express.json({ limit: "10mb" }));
 
+// Transcricao de audio da entrevista tambem envia base64 (pode passar de 2mb).
+// Mesmo padrao do avatar: parser dedicado ANTES do json global.
+app.use(
+  "/api/interview/sessions/:id/transcribe",
+  express.json({ limit: "10mb" }),
+);
+
 app.use(express.json({ limit: "2mb" }));
 
 app.use("/api/affiliates", affiliatesRouter);
