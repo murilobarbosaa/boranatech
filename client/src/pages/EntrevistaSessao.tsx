@@ -16,6 +16,7 @@ import {
   TypingDots,
   UserRow,
 } from "@/components/interview/SessionChatSkin";
+import InterviewBackdrop from "@/components/interview/InterviewBackdrop";
 import SessionProgress from "@/components/interview/SessionProgress";
 import SessionVerdict from "@/components/interview/SessionVerdict";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -401,9 +402,15 @@ export default function EntrevistaSessao() {
     return (
       <Layout>
         <SEO title="Entrevista simulada" url="/entrevistas" />
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <Spinner className="size-8" />
-        </div>
+        {/* Mesmo fundo da arena tambem no loading: sem piscar branco antes
+            do card montar. O backdrop e aria-hidden e pointer-events-none
+            por construcao. */}
+        <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+          <InterviewBackdrop reduce={reduce} />
+          <div className="relative z-10 flex min-h-[50vh] items-center justify-center">
+            <Spinner className="size-8" />
+          </div>
+        </section>
       </Layout>
     );
   }
@@ -412,7 +419,9 @@ export default function EntrevistaSessao() {
     return (
       <Layout>
         <SEO title="Entrevista simulada" url="/entrevistas" />
-        <div className="container py-20 text-center">
+        <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+          <InterviewBackdrop reduce={reduce} />
+          <div className="container relative z-10 py-20 text-center">
           <h1 className="font-display text-2xl font-black text-slate-950">
             {/* TODO(Ana): titulo da tela de sessao nao encontrada */}
             {notFound ? "Entrevista não encontrada" : "Algo deu errado"}
@@ -429,7 +438,8 @@ export default function EntrevistaSessao() {
             {/* TODO(Ana): label do link de volta */}
             Voltar pra Entrevistas
           </Link>
-        </div>
+          </div>
+        </section>
       </Layout>
     );
   }
@@ -446,7 +456,12 @@ export default function EntrevistaSessao() {
   return (
     <Layout>
       <SEO title="Entrevista simulada" url="/entrevistas" />
-      <div className="container py-8">
+      {/* Fundo da ARENA (mesma familia da pagina principal da E3): cream +
+          micro-pontilhado + cenario vivo atras do card, fechando a identidade
+          entre as duas telas. */}
+      <section className="relative overflow-hidden bg-[#faf8f4] [background-image:radial-gradient(rgba(15,23,42,0.07)_1.4px,transparent_1.4px)] [background-size:22px_22px]">
+        <InterviewBackdrop reduce={reduce} />
+        <div className="container relative z-10 py-8">
         <div className="card-brutal mx-auto w-full max-w-4xl overflow-hidden rounded-2xl bg-white">
           <div className="flex h-[min(88vh,720px)] min-h-[420px] flex-col">
             {/* Header re-skin BLUE (o microfone saiu na E2: o controle real de
@@ -734,8 +749,12 @@ export default function EntrevistaSessao() {
                       )}
                     </button>
                   </div>
-                  <div className="mx-auto mt-2 flex w-full max-w-3xl flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  {/* Rodape com respiro: texto do Enter (e o contador, quando
+                      aparece) a esquerda; dica e encerrar lado a lado num
+                      grupo a direita com alturas iguais. Em 375px os itens
+                      quebram em linhas sem scroll horizontal. */}
+                  <div className="mx-auto mt-2 flex w-full max-w-3xl flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                       <p className="text-xs font-bold text-slate-600">
                         Enter envia · Shift+Enter nova linha
                       </p>
@@ -752,13 +771,15 @@ export default function EntrevistaSessao() {
                           {input.length}/{ANSWER_MAX_CHARS}
                         </p>
                       ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
                       {canAskHint ? (
                         <button
                           type="button"
                           onClick={() => void handleHint()}
                           disabled={hintLoading || sending || recorderBusy}
                           className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1 text-xs font-bold text-blue-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0",
+                            "inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 px-3 py-1.5 text-xs font-bold text-blue-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0",
                             ac.panelSoft,
                           )}
                         >
@@ -774,52 +795,53 @@ export default function EntrevistaSessao() {
                           Pedir uma dica
                         </button>
                       ) : null}
+                      {confirmingFinish ? (
+                        <span className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-700">
+                          {/* TODO(Ana): confirmacao de encerramento */}
+                          Encerrar mesmo?
+                          <button
+                            type="button"
+                            onClick={() => void handleFinish()}
+                            disabled={finishing}
+                            className="rounded-full border-2 border-slate-950 bg-red-200 px-3 py-1.5 font-black text-slate-950 disabled:opacity-60"
+                          >
+                            {finishing ? (
+                              <Loader2
+                                className="h-3.5 w-3.5 animate-spin"
+                                aria-hidden
+                              />
+                            ) : (
+                              "Sim, encerrar"
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingFinish(false)}
+                            className="rounded-full border-2 border-slate-950 bg-white px-3 py-1.5 font-black text-slate-950"
+                          >
+                            Continuar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingFinish(true)}
+                          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                        >
+                          <Flag className="h-3.5 w-3.5" aria-hidden />
+                          {/* TODO(Ana): label do botao de encerrar */}
+                          Encerrar entrevista
+                        </button>
+                      )}
                     </div>
-                    {confirmingFinish ? (
-                      <span className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                        {/* TODO(Ana): confirmacao de encerramento */}
-                        Encerrar mesmo?
-                        <button
-                          type="button"
-                          onClick={() => void handleFinish()}
-                          disabled={finishing}
-                          className="rounded-full border-2 border-slate-950 bg-red-200 px-3 py-1 font-black text-slate-950 disabled:opacity-60"
-                        >
-                          {finishing ? (
-                            <Loader2
-                              className="h-3.5 w-3.5 animate-spin"
-                              aria-hidden
-                            />
-                          ) : (
-                            "Sim, encerrar"
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmingFinish(false)}
-                          className="rounded-full border-2 border-slate-950 bg-white px-3 py-1 font-black text-slate-950"
-                        >
-                          Continuar
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmingFinish(true)}
-                        className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
-                      >
-                        <Flag className="h-3.5 w-3.5" aria-hidden />
-                        {/* TODO(Ana): label do botao de encerrar */}
-                        Encerrar entrevista
-                      </button>
-                    )}
                   </div>
                 </>
               )}
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </section>
     </Layout>
   );
 }
