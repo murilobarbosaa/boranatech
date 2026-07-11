@@ -24,6 +24,8 @@ import { AiCtaLink } from "@/components/shared/AiCta";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
+import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
+import { listProjectValidations } from "@/services/projectValidationService";
 import { areasTI, projetos } from "@/lib/data";
 import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
 
@@ -141,6 +143,29 @@ export default function Projetos() {
   // Modelo de acesso: projeto sem `pro` e gratuito pra todo mundo (inclusive
   // anonimo); projeto `pro` so abre pra assinante. A amostra de 6 morreu.
   const hasProItems = projectItems.some((p) => p.pro === true);
+
+  // Aprovacoes de validacao (camada validada, 5c): UMA chamada de lista pro
+  // selo do header; o detalhe requisito a requisito hidrata por card, ao
+  // expandir (dentro do ProjectValidationBlock).
+  const [validatedIds, setValidatedIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!isPro) {
+      setValidatedIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    void listProjectValidations().then((rows) => {
+      if (cancelled) return;
+      setValidatedIds(
+        new Set(
+          rows.filter((r) => r.status === "aprovado").map((r) => r.projectId),
+        ),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPro]);
 
   const q = query.trim().toLowerCase();
   const baseFiltered = projectItems.filter((p) => {
@@ -487,7 +512,19 @@ export default function Projetos() {
                                     Pro
                                   </span>
                                 )}
-                                {!locked &&
+                                {/* Validado e o selo mais forte: quando existe,
+                                    substitui o chip de concluido no header. */}
+                                {!locked && validatedIds.has(projeto.id) ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-emerald-400 px-2 py-0.5 text-xs font-black text-slate-950">
+                                    <Check
+                                      className="h-3 w-3"
+                                      strokeWidth={3.5}
+                                    />
+                                    {/* TODO(Ana): label do selo validado no header */}
+                                    Validado
+                                  </span>
+                                ) : (
+                                  !locked &&
                                   completionReady &&
                                   projectsDone.has(projeto.id) && (
                                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
@@ -498,7 +535,8 @@ export default function Projetos() {
                                       {/* TODO(Ana): label do badge de projeto concluido */}
                                       Concluído
                                     </span>
-                                  )}
+                                  )
+                                )}
                               </div>
                               <h3 className="font-display font-bold text-xl text-slate-900">
                                 {projeto.nome}
@@ -642,6 +680,16 @@ export default function Projetos() {
                                   </div>
                                 </div>
                               </div>
+                              {projeto.pro === true && (
+                                <ProjectValidationBlock
+                                  projeto={projeto}
+                                  onApproved={(id) =>
+                                    setValidatedIds((prev) =>
+                                      new Set(prev).add(id),
+                                    )
+                                  }
+                                />
+                              )}
                               {completionReady && (
                                 <div className="mt-5 border-t border-slate-100 pt-4">
                                   <button
