@@ -129,7 +129,9 @@ export default function PraVoce() {
             className="mt-4 font-display font-black text-slate-950 leading-[1.05]"
             style={{ fontSize: "clamp(40px, 6vw, 72px)" }}
           >
-            Conteúdo curado pra{" "}
+            {/* TODO(Ana): confirmar a palavra final (selecionado, pronto, ou
+                outra). "curado" soava estranho pra parte dos usuarios. */}
+            Conteúdo selecionado pra{" "}
             {/* Text-stroke transparente em "começar.", palavra curta isolada
                 lê melhor com outline 2px do que duas palavras com stroke. */}
             <span className="text-[#0369a1] sm:text-transparent sm:[-webkit-text-stroke:2.5px_#0369a1]">
@@ -409,7 +411,7 @@ function CursoCard({
           </div>
 
           {/* Título do curso */}
-          <h3 className="mt-3 font-display text-xl font-black text-slate-950 leading-tight">
+          <h3 className="mt-3 font-display text-xl font-black text-slate-950 leading-tight text-balance break-words">
             {curso.titulo}
           </h3>
 
@@ -419,7 +421,7 @@ function CursoCard({
           </p>
 
           {/* Footer: nível + duração + CTA */}
-          <div className="mt-auto pt-4 flex items-center justify-between gap-2">
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-2 pt-4">
             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
               <Clock size={12} className="text-emerald-700" strokeWidth={2.5} />
               <span>{curso.duracao}</span>

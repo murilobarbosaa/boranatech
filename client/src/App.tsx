@@ -26,7 +26,7 @@ const CheckoutSucesso = lazy(() => import("@/pages/CheckoutSucesso"));
 const Comparador = lazy(() => import("@/pages/Comparador"));
 const Comunidades = lazy(() => import("@/pages/Comunidades"));
 const Conquistas = lazy(() => import("@/pages/conquistas/Conquistas"));
-const Curriculo = lazy(() => import("@/pages/Curriculo"));
+const Creators = lazy(() => import("@/pages/Creators"));
 const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
 const CurriculoGerar = lazy(() => import("@/pages/CurriculoGerar"));
 const CurriculoLinkedin = lazy(() => import("@/pages/CurriculoLinkedin"));
@@ -47,7 +47,6 @@ const Evolucao = lazy(() => import("@/pages/Evolucao"));
 const FaculdadeDetalhe = lazy(() => import("@/pages/FaculdadeDetalhe"));
 const Faculdades = lazy(() => import("@/pages/Faculdades"));
 const Ferramentas = lazy(() => import("@/pages/Ferramentas"));
-const Freelance = lazy(() => import("@/pages/Freelance"));
 const GuiaIa = lazy(() => import("@/pages/GuiaIa"));
 const Ingles = lazy(() => import("@/pages/Ingles"));
 const InglesEntrevista = lazy(() => import("@/pages/InglesEntrevista"));
@@ -64,7 +63,6 @@ const PerfilFavoritos = lazy(() => import("@/pages/PerfilFavoritos"));
 const PerguntasFrequentes = lazy(() => import("@/pages/PerguntasFrequentes"));
 const PlanoCarreira = lazy(() => import("@/pages/PlanoCarreira"));
 const Plataformas = lazy(() => import("@/pages/Plataformas"));
-const Portfolio = lazy(() => import("@/pages/Portfolio"));
 const PortfolioAnalisar = lazy(() => import("@/pages/PortfolioAnalisar"));
 const Privacidade = lazy(() => import("@/pages/Privacidade"));
 const Projetos = lazy(() => import("@/pages/Projetos"));
@@ -103,6 +101,7 @@ function Router() {
     >
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/creators" component={Creators} />
         <Route path="/areas" component={Areas} />
         <Route path="/areas/:parent/:subarea">
           {() => (
@@ -176,9 +175,13 @@ function Router() {
           )}
         </Route>
         <Route path="/entrevistas/desafios" component={EntrevistaDesafios} />
-        <Route path="/portfolio" component={Portfolio} />
+        <Route path="/portfolio">
+          {() => <Redirect to="/portfolio/analisar" />}
+        </Route>
         <Route path="/portfolio/analisar" component={PortfolioAnalisar} />
-        <Route path="/curriculo" component={Curriculo} />
+        <Route path="/curriculo">
+          {() => <Redirect to="/curriculo/analisar" />}
+        </Route>
         <Route path="/curriculo/analisar" component={CurriculoAnalisar} />
         <Route path="/curriculo/gerar" component={CurriculoGerar} />
         <Route path="/curriculo/linkedin" component={CurriculoLinkedin} />
@@ -193,7 +196,9 @@ function Router() {
         </Route>
         {/* TODO: remover redirect após 90 dias em prod */}
         <Route path="/networking">{() => <Redirect to="/comunidades" />}</Route>
-        <Route path="/freelance" component={Freelance} />
+        <Route path="/freelance">
+          {() => <Redirect to="/estagio/freelance" />}
+        </Route>
         <Route path="/evolucao" component={Evolucao} />
         <Route path="/simulador" component={Simulador} />
         <Route path="/ingles" component={Ingles} />
@@ -261,9 +266,14 @@ function Router() {
         <Route path="/faculdades" component={Faculdades} />
         <Route path="/eventos" component={Eventos} />
         <Route path="/projetos" component={Projetos} />
+        <Route path="/estagio/freelance">
+          {() => <Estagio initialTab={2} />}
+        </Route>
         <Route path="/estagio">{() => <Estagio />}</Route>
-        <Route path="/carreiras">{() => <Estagio initialTab={1} />}</Route>
-        <Route path="/portifolio">{() => <Estagio initialTab={2} />}</Route>
+        <Route path="/carreiras">
+          {() => <Redirect to="/curriculo/linkedin" />}
+        </Route>
+        <Route path="/portifolio">{() => <Redirect to="/portfolio" />}</Route>
         <Route path="/noticias" component={Noticias} />
         <Route path="/comunidades" component={Comunidades} />
         <Route path="/sobre" component={Sobre} />

@@ -172,7 +172,7 @@ export default function Tecnologias() {
         >
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[#faf8f4] to-transparent sm:w-24" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[#faf8f4] to-transparent sm:w-24" />
-          <div className="bnt-marquee-track flex w-max items-center gap-8 motion-reduce:animate-none">
+          <div className="bnt-marquee-track flex w-max items-center gap-10 motion-reduce:animate-none">
             {[...marqueeItems, ...marqueeItems].map((technology, index) => (
               <Link
                 key={`${technology.slug}-${index}`}
@@ -188,8 +188,8 @@ export default function Tecnologias() {
                   name={technology.name}
                   icon={technology.icon}
                   logoUrl={technology.logoUrl}
-                  className="h-14 w-14 border-0 bg-transparent shadow-none brightness-0 transition-all duration-300 group-hover:scale-110 group-hover:brightness-100"
-                  imageClassName="h-9 w-9"
+                  className="h-20 w-20 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[4px_4px_0_#c4b5fd]"
+                  imageClassName="h-11 w-11"
                 />
               </Link>
             ))}

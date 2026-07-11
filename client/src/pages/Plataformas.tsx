@@ -5,6 +5,7 @@
 */
 
 import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import {
   ArrowRight,
   ExternalLink,
@@ -13,6 +14,7 @@ import {
   Sparkles,
   Star,
   Award,
+  Lock,
   RotateCcw,
   SlidersHorizontal,
   Gamepad2,
@@ -23,6 +25,8 @@ import { motion, type Variants } from "framer-motion";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
+import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import MiniQuiz, {
   type MiniQuizPergunta,
@@ -298,8 +302,18 @@ const QUIZ_RESULTADOS: Record<string, MiniQuizResultado> = Object.fromEntries(
   ]),
 );
 
+const SAMPLE_SIZE = 6;
+
 export default function Plataformas() {
   const platformItems = plataformas;
+  const { isPro, loading } = useSubscription();
+  const freePlatformIds = useMemo(
+    () => new Set(platformItems.slice(0, SAMPLE_SIZE).map((p) => p.id)),
+    [platformItems],
+  );
+  const lockedTotal = isPro
+    ? 0
+    : Math.max(platformItems.length - SAMPLE_SIZE, 0);
   const [categoriaFilter, setCategoriaFilter] = useState("Todas");
   const [tipoFilter, setTipoFilter] = useState("Todos");
   const [areaFilter, setAreaFilter] = useState("Todas");
@@ -698,11 +712,30 @@ export default function Plataformas() {
             </div>
           ) : null}
 
+          {!isPro && !loading && lockedTotal > 0 ? (
+            <Link
+              href="/planos"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+            >
+              <span className="flex items-center gap-2 text-sm font-black">
+                <Lock className="h-4 w-4 text-amber-300" aria-hidden />
+                {/* TODO(Ana): copy do banner de plataformas Pro */}
+                Você está vendo uma amostra grátis. Mais {lockedTotal}{" "}
+                plataformas liberam no Pro.
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-slate-950">
+                Assinar o Pro <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            </Link>
+          ) : null}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((plat) => (
+            {filtered.map((plat) => {
+              const locked = !isPro && !freePlatformIds.has(plat.id);
+              return (
+              <div key={plat.id} className="relative">
               <motion.div
-                key={plat.id}
-                className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#6ee7b7]"
+                className={`card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#6ee7b7] ${locked ? "pointer-events-none select-none blur-[3px]" : ""}`}
+                aria-hidden={locked}
                 {...(plat.categoria === "Jogo"
                   ? {
                       initial: "rest",
@@ -903,7 +936,30 @@ export default function Plataformas() {
                   </a>
                 </div>
               </motion.div>
-            ))}
+              {locked ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
+                    <Lock className="h-6 w-6 text-slate-950" aria-hidden />
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
+                    <ProStarIcon className="h-3.5 w-3.5" /> Pro
+                  </span>
+                  {/* TODO(Ana): copy do card de plataforma travada */}
+                  <p className="max-w-[15rem] text-sm font-black text-slate-950">
+                    Esta plataforma faz parte do Plano Pro.
+                  </p>
+                  <Link
+                    href="/planos"
+                    className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                  >
+                    Assine o Pro pra desbloquear todos{" "}
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                  </Link>
+                </div>
+              ) : null}
+              </div>
+              );
+            })}
           </div>
 
           {filtered.length === 0 && (

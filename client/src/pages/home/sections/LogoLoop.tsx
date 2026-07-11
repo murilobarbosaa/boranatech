@@ -59,12 +59,14 @@ function LogoLink({ item }: { item: LogoItem }) {
       aria-label={label}
       className="group flex shrink-0 cursor-pointer items-center justify-center rounded-xl outline-none focus-visible:ring-4 focus-visible:ring-violet-300"
     >
-      <Icon
-        icon={item.icon}
-        width={48}
-        height={48}
-        className="text-slate-950 transition-all duration-300 group-hover:scale-110 group-hover:text-violet-600"
-      />
+      <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-slate-900 bg-white shadow-[2px_2px_0_#0f172a] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[4px_4px_0_#8b5cf6]">
+        <Icon
+          icon={item.icon}
+          width={44}
+          height={44}
+          className="text-slate-900 transition-transform duration-300 group-hover:scale-110"
+        />
+      </div>
     </Link>
   );
 }
@@ -161,7 +163,7 @@ export default function LogoLoop() {
             aria-hidden="true"
           />
 
-          <div className="flex w-max items-center gap-14 py-2 animate-loop-slow will-change-transform">
+          <div className="flex w-max items-center gap-10 py-2 animate-loop-slow will-change-transform">
             {duplicatedLogos.map((logo, idx) => (
               <LogoLink key={`${logo.name}-${idx}`} item={logo} />
             ))}

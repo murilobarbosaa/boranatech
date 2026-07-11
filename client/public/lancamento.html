@@ -864,7 +864,8 @@
     <div class="grid4 stg">
       <div class="card vcard">
         <div class="vchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v12H4z"/><path d="M8 21h8M12 17v4"/><path d="M8 9l2.5 2L8 13"/></svg></div>
-        <h3>Conteúdo curado</h3>
+        <!-- TODO(Ana): confirmar a palavra final (selecionado, pronto, ou outra). -->
+        <h3>Conteúdo selecionado</h3>
         <p>Cursos, materiais e referências filtrados, sem se afogar em link solto.</p>
         <span class="freebadge">Grátis</span>
       </div>
@@ -1110,7 +1111,10 @@
       { name: "Ketlyn", handle: "ketlyncode", photo: "/creators/ketlyncode.jpg", url: "https://instagram.com/ketlyncode" },
       { name: "Ray", handle: "raibyhei", photo: "/creators/raibyhei.jpg", url: "https://instagram.com/raibyhei" },
       { name: "Dio Augusto", handle: "dioaugusto.dev", photo: "/creators/dioaugusto-dev.jpg", url: "https://instagram.com/dioaugusto.dev" },
-      { name: "Nicole", handle: "devnicolelobo", photo: "/creators/devnicolelobo.jpg", url: "https://instagram.com/devnicolelobo" }
+      { name: "Nicole", handle: "devnicolelobo", photo: "/creators/devnicolelobo.jpg", url: "https://instagram.com/devnicolelobo" },
+      { name: "Andre", handle: "andrebrito.dev", photo: "/creators/andrebrito-dev.jpg", url: "https://instagram.com/andrebrito.dev" },
+      { name: "Vanessa", handle: "vua_nessa", photo: "/creators/vua_nessa.jpg", url: "https://instagram.com/vua_nessa" },
+      { name: "Moni", handle: "monihillman", photo: "/creators/monihillman.jpg", url: "https://instagram.com/monihillman" }
     ];
     var AV_COLORS = ["av-y", "av-v", "av-l"];
     var CARD_COLORS = ["cc-yellow", "cc-violet-deep", "cc-lavender", "cc-violet-bright"];
@@ -1146,10 +1150,8 @@
       CREATORS.forEach(function (creator) {
         var link = document.createElement("a");
         link.className = "creator";
-        link.href = creator.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.setAttribute("aria-label", "Instagram de @" + creator.handle);
+        link.href = "/creators";
+        link.setAttribute("aria-label", "Ver " + creator.name + " na pagina de creators");
         var ava = document.createElement("span");
         ava.className = "ava";
         fillAvatar(ava, creator);
@@ -1168,10 +1170,8 @@
       function buildChip(creator, idx) {
         var link = document.createElement("a");
         link.className = "cchip " + CARD_COLORS[idx % CARD_COLORS.length];
-        link.href = creator.url;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.setAttribute("aria-label", "Instagram de @" + creator.handle);
+        link.href = "/creators";
+        link.setAttribute("aria-label", "Ver " + creator.name + " na pagina de creators");
         var ava = document.createElement("span");
         ava.className = "ava " + AV_COLORS[idx % AV_COLORS.length];
         fillAvatar(ava, creator);

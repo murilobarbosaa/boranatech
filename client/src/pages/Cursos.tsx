@@ -5,7 +5,7 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import {
   ArrowRight,
   Search,
@@ -17,6 +17,7 @@ import {
   BadgeCheck,
   Award,
   ChevronDown,
+  Lock,
   X,
 } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
@@ -25,7 +26,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
-import ProGate from "@/components/pro/ProGate";
+import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, cursosGratuitos } from "@/lib/data";
 import { getCourses } from "@/services/contentService";
@@ -208,7 +209,7 @@ function CursoQuiz({
   );
 }
 
-const PREVIEW_MS = 15000;
+const SAMPLE_SIZE = 6;
 
 export default function Cursos() {
   const { isPro, loading } = useSubscription();
@@ -225,15 +226,12 @@ export default function Cursos() {
   const [aberto, setAberto] = useState(false);
   const [quizAberto, setQuizAberto] = useState(false);
   const [quizAplicado, setQuizAplicado] = useState(false);
-  const [previewExpirado, setPreviewExpirado] = useState(false);
 
-  useEffect(() => {
-    if (isPro || loading) return;
-    const timer = setTimeout(() => setPreviewExpirado(true), PREVIEW_MS);
-    return () => clearTimeout(timer);
-  }, [isPro, loading]);
-
-  const blocked = !isPro && !loading && previewExpirado;
+  const freeCourseIds = useMemo(
+    () => new Set(courses.slice(0, SAMPLE_SIZE).map((c) => c.id)),
+    [courses],
+  );
+  const lockedTotal = isPro ? 0 : Math.max(courses.length - SAMPLE_SIZE, 0);
 
   function aplicarQuiz(areaVal: string, nivelVal: string, tipoVal: string) {
     setArea(areaVal);
@@ -596,29 +594,36 @@ export default function Cursos() {
             </div>
           ) : null}
           <div id="cursos-resultados" />
-          <div className="relative">
-            <div
-              aria-hidden={blocked}
-              className={
-                blocked
-                  ? `pointer-events-none select-none blur-md${reduce ? "" : " transition-[filter] duration-500"}`
-                  : ""
-              }
+          {!isPro && !loadingCourses && lockedTotal > 0 ? (
+            <Link
+              href="/planos"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
             >
-              {loadingCourses ? (
+              <span className="flex items-center gap-2 text-sm font-black">
+                <Lock className="h-4 w-4 text-amber-300" aria-hidden />
+                {/* TODO(Ana): copy do banner de cursos Pro */}
+                Você está vendo uma amostra grátis. Mais {lockedTotal} cursos
+                liberam no Pro.
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-slate-950">
+                Assinar o Pro <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            </Link>
+          ) : null}
+          {loadingCourses ? (
+            <div
+              className="grid gap-5 md:grid-cols-2 lg:grid-cols-3"
+              aria-busy="true"
+              aria-label="Carregando cursos"
+            >
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div
-                  className="grid gap-5 md:grid-cols-2 lg:grid-cols-3"
-                  aria-busy="true"
-                  aria-label="Carregando cursos"
-                >
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-64 rounded-2xl border-2 border-slate-200 bg-white motion-safe:animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : filtered.length === 0 ? (
+                  key={i}
+                  className="h-64 rounded-2xl border-2 border-slate-200 bg-white motion-safe:animate-pulse"
+                />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-3xl mb-3">📚</p>
               <p className="text-slate-600 font-medium">
@@ -642,11 +647,19 @@ export default function Cursos() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filtered.map((curso) => (
-                <div
-                  key={curso.id}
-                  className="group flex flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#fbbf24] transition-all duration-200"
-                >
+              {filtered.map((curso) => {
+                const locked = !isPro && !freeCourseIds.has(curso.id);
+                return (
+                  <div key={curso.id} className="relative">
+                    <div
+                      aria-hidden={locked}
+                      className={
+                        locked
+                          ? "pointer-events-none select-none blur-[3px]"
+                          : ""
+                      }
+                    >
+                      <div className="group flex flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#fbbf24] transition-all duration-200">
                   {/* Tags */}
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="flex flex-wrap gap-2">
@@ -782,24 +795,33 @@ export default function Cursos() {
                     )}
                   </div>
                 </div>
-              ))}
+                    </div>
+                    {locked ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
+                          <Lock className="h-6 w-6 text-slate-950" aria-hidden />
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
+                          <ProStarIcon className="h-3.5 w-3.5" /> Pro
+                        </span>
+                        {/* TODO(Ana): copy do card de curso travado */}
+                        <p className="max-w-[15rem] text-sm font-black text-slate-950">
+                          Este curso faz parte do Plano Pro.
+                        </p>
+                        <Link
+                          href="/planos"
+                          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                        >
+                          Assine o Pro pra desbloquear{" "}
+                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                        </Link>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           )}
-            </div>
-            {blocked ? (
-              <motion.div
-                className="absolute inset-0 flex items-start justify-center bg-white/40 px-4 pt-10"
-                initial={reduce ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: reduce ? 0 : 0.4 }}
-              >
-                <ProGate
-                  description="A lista completa de cursos faz parte do Pro. Assine para explorar todos os cursos e filtros sem limite de tempo."
-                  className="w-full max-w-lg"
-                />
-              </motion.div>
-            ) : null}
-          </div>
 
           {/* Disclaimer */}
           <div className="mt-10 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-center">

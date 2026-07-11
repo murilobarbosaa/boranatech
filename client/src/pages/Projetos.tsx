@@ -4,12 +4,14 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearch } from "wouter";
+import { Link, useSearch } from "wouter";
 import {
+  ArrowRight,
   ChevronDown,
   ChevronUp,
   Lightbulb,
   ExternalLink,
+  Lock,
   PlayCircle,
   Search,
   X,
@@ -18,6 +20,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
+import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, projetos } from "@/lib/data";
 import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
@@ -87,6 +90,8 @@ const nivelColors: Record<string, string> = {
   Avançado: "bg-violet-100 text-violet-700",
 };
 
+const SAMPLE_SIZE = 6;
+
 export default function Projetos() {
   const { isPro, loading } = useSubscription();
   const search = useSearch();
@@ -111,6 +116,13 @@ export default function Projetos() {
       ),
     [projectItems],
   );
+  const freeProjectIds = useMemo(
+    () => new Set(projectItems.slice(0, SAMPLE_SIZE).map((p) => p.id)),
+    [projectItems],
+  );
+  const lockedTotal = isPro
+    ? 0
+    : Math.max(projectItems.length - SAMPLE_SIZE, 0);
 
   useEffect(() => {
     getProjects()
@@ -332,6 +344,22 @@ export default function Projetos() {
           >
             {filtered.length} projeto{filtered.length !== 1 ? "s" : ""}
           </p>
+          {!isPro && !loading && lockedTotal > 0 ? (
+            <Link
+              href="/planos"
+              className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+            >
+              <span className="flex items-center gap-2 text-sm font-black">
+                <Lock className="h-4 w-4 text-amber-300" aria-hidden />
+                {/* TODO(Ana): copy do banner de projetos Pro */}
+                Você está vendo uma amostra grátis. Mais {lockedTotal} projetos
+                liberam no Pro.
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-slate-900 bg-amber-400 px-4 py-2 text-xs font-black uppercase text-slate-950">
+                Assinar o Pro <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            </Link>
+          ) : null}
           <div className="space-y-10">
             {grupos.map((grupo) => (
               <section
@@ -354,13 +382,16 @@ export default function Projetos() {
                   </span>
                 </h2>
                 <div className="space-y-4">
-                  {grupo.itens.map((projeto) => (
+                  {grupo.itens.map((projeto) => {
+                    const locked = !isPro && !freeProjectIds.has(projeto.id);
+                    return (
+                    <div key={projeto.id} className="relative">
                     <div
-                      key={projeto.id}
                       style={{
                         boxShadow: `5px 5px 0 ${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}`,
                       }}
-                      className="card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5"
+                      className={`card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 ${locked ? "pointer-events-none select-none blur-[3px]" : ""}`}
+                      aria-hidden={locked}
                     >
                 <div
                   className="flex w-full cursor-pointer items-start justify-between rounded-xl p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
@@ -545,7 +576,30 @@ export default function Projetos() {
                   </div>
                 )}
                     </div>
-                  ))}
+                    {locked ? (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
+                          <Lock className="h-6 w-6 text-slate-950" aria-hidden />
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
+                          <ProStarIcon className="h-3.5 w-3.5" /> Pro
+                        </span>
+                        {/* TODO(Ana): copy do card de projeto travado */}
+                        <p className="max-w-[15rem] text-sm font-black text-slate-950">
+                          Este projeto faz parte do Plano Pro.
+                        </p>
+                        <Link
+                          href="/planos"
+                          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                        >
+                          Assine o Pro pra desbloquear todos{" "}
+                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                        </Link>
+                      </div>
+                    ) : null}
+                    </div>
+                    );
+                  })}
                 </div>
               </section>
             ))}

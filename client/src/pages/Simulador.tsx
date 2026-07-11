@@ -211,8 +211,8 @@ export default function Simulador() {
     portfolioDiscounts[portfolio] < 2
       ? {
           text: "Transformar estudos em projetos publicáveis com README, prints e contexto do problema.",
-          href: "/portfolio",
-          cta: "Ver portfólio",
+          href: "/portfolio/analisar",
+          cta: "Analisar portfólio",
         }
       : null,
     projectCadenceDiscounts[projectCadence] < 2
@@ -225,7 +225,7 @@ export default function Simulador() {
     jobMaterialsDiscounts[jobMaterials] < 2
       ? {
           text: "Organizar currículo, LinkedIn e apresentação curta antes de aplicar em volume.",
-          href: "/curriculo",
+          href: "/curriculo/analisar",
           cta: "Arrumar currículo",
         }
       : null,

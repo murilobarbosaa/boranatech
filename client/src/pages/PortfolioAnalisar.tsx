@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
+import PortfolioFreeGuide from "@/components/portfolio/PortfolioFreeGuide";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
@@ -1034,7 +1035,10 @@ export default function PortfolioAnalisar() {
           </motion.div>
 
           {!isPro ? (
-            <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
+            <div className="space-y-10">
+              <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
+              <PortfolioFreeGuide />
+            </div>
           ) : (
             <div className="space-y-8">
               {/* Ordem narrativa do estado de entrada: explicacao (timeline +

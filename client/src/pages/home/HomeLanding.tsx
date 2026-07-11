@@ -5,6 +5,7 @@ import UltimaNoticia from "./sections/UltimaNoticia";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import Hero from "./sections/Hero";
+import DorSolucao from "./sections/DorSolucao";
 import OQueEncontra from "./sections/OQueEncontra";
 import LogoLoop from "./sections/LogoLoop";
 import ProQuemE from "./sections/ProQuemE";
@@ -26,6 +27,7 @@ export default function HomeLanding() {
       />
       <CreatorsBand />
       <Hero />
+      <DorSolucao />
       <OQueEncontra />
       <LogoLoop />
       <ProQuemE />

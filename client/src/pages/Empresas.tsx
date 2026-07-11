@@ -43,7 +43,7 @@ export default function Empresas() {
       <PageHero
         accent="blue"
         eyebrow="mercado brasileiro"
-        title="Empresas Tech no Brasil"
+        title="Empresas no Brasil"
         subtitle="Conheça as empresas, o que usam e quem elas contratam."
       />
       <section className="sticky top-16 z-40 border-b-2 border-blue-200 bg-blue-50/95 py-4 backdrop-blur supports-[backdrop-filter]:bg-blue-50/90">

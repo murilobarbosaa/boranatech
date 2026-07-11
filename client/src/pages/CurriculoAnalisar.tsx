@@ -93,6 +93,15 @@ const COPY = {
   historyToggle: "Análises anteriores",
   historyEmpty: "Você ainda não analisou nenhum currículo.",
   historyOpen: "Ver",
+  // TODO(Ana): escrever a dica gratis definitiva (mini-guia de curriculo).
+  // Os textos abaixo sao rascunho: uma amostra gratis, visivel a todos, que
+  // da valor e convida pro Pro sem depender de dado inventado.
+  freeTipEyebrow: "Dica grátis",
+  freeTipTitle: "Antes de analisar: o básico que já melhora seu currículo",
+  freeTipBody:
+    "Comece cada experiência com um verbo de ação e mostre o resultado, não só a tarefa. Mantenha o currículo em uma página e deixe as tecnologias que você domina visíveis logo no topo.",
+  freeTipProInvite:
+    "Quer uma análise completa, com nota e sugestões por seção? É o que o analisador Pro faz.",
   scoreTransparency:
     "A nota é calculada pela estrutura do texto do currículo e não muda com o objetivo ou a vaga; eles direcionam a avaliação qualitativa abaixo.",
 } as const;
@@ -264,6 +273,22 @@ export default function CurriculoAnalisar() {
       />
       <section className={cn(ac.contentBg, "py-12")}>
         <div className="container space-y-10">
+          <div className="mx-auto max-w-3xl">
+            <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
+              <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                {COPY.freeTipEyebrow}
+              </p>
+              <h2 className="mt-1 font-display text-xl font-black text-slate-950">
+                {COPY.freeTipTitle}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                {COPY.freeTipBody}
+              </p>
+              <p className="mt-3 text-sm font-bold text-slate-700">
+                {COPY.freeTipProInvite}
+              </p>
+            </div>
+          </div>
           {!isPro ? (
             <ProGate description={COPY.proGateDescription} />
           ) : result ? (

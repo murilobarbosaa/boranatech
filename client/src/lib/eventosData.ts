@@ -37,6 +37,10 @@ export const estadosBrasil: { sigla: string; nome: string }[] = [
 export const EVENTO_UF_NACIONAL = "NA" as const;
 
 export const eventos = [
+  // TODO: adicionar mais eventos e webinars aqui via curadoria verificada
+  // (eventos reais, com data e link oficial). Depende da Ana ou do Cowork
+  // fornecer a lista; nao inventar evento. A home (ProximosEventos) ja le desta
+  // fonte e mostra os proximos que tem link/material publico.
   {
     id: "campus-party",
     nome: "Campus Party Brasil",

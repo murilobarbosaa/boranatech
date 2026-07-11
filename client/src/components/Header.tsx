@@ -13,6 +13,7 @@ import {
   Menu,
   ShieldCheck,
   Sparkles,
+  Star,
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +33,9 @@ type MenuItem = {
   description?: string;
   path: string;
   isPro?: boolean;
+  // Conteudo freemium: amostra gratis + parte travada no Pro. Marcado diferente
+  // do isPro (100% Pro) pra nao parecer pagina 100% paga.
+  isFreemium?: boolean;
   isWomen?: boolean;
   badge?: string;
 };
@@ -136,11 +140,13 @@ const menuData: DropdownMenu[] = [
             label: "Cursos",
             description: "Cursos gratuitos e pagos",
             path: "/cursos",
+            isFreemium: true,
           },
           {
             label: "Plataformas",
             description: "Onde estudar com clareza",
             path: "/plataformas",
+            isFreemium: true,
           },
         ],
       },
@@ -151,6 +157,7 @@ const menuData: DropdownMenu[] = [
             label: "Projetos",
             description: "Ideias para seu portfólio",
             path: "/projetos",
+            isFreemium: true,
           },
           {
             label: "Inglês",
@@ -186,14 +193,9 @@ const menuData: DropdownMenu[] = [
             path: "/estagio",
           },
           {
-            label: "Empresas Tech",
+            label: "Empresas",
             description: "Conheça quem contrata",
             path: "/empresas",
-          },
-          {
-            label: "Freelance",
-            description: "Como ganhar dinheiro com tech",
-            path: "/freelance",
           },
           {
             // TODO(Ana): rotulo provisorio, decidir nome final (a ferramenta estima o prazo ate a sua meta)
@@ -212,11 +214,6 @@ const menuData: DropdownMenu[] = [
             description: "Preparação para vaga e treino com IA",
             path: "/entrevistas",
             isPro: true,
-          },
-          {
-            label: "Currículo",
-            description: "Apareça para os recrutadores certos",
-            path: "/curriculo",
           },
           {
             // TODO(Ana): revisar label e description do gerador de curriculo.
@@ -369,6 +366,26 @@ function ProStarBadge() {
   return <ProStarIcon className="ml-1.5 mt-[1px]" />;
 }
 
+// Marcador de conteudo freemium (amostra gratis + parte Pro). Estrela
+// CONTORNADA (fill none), diferente do ProStarBadge cheio (100% Pro), pra
+// sinalizar "tem Pro aqui, mas comeca de graca" sem parecer pagina 100% paga.
+function FreemiumStarBadge() {
+  return (
+    <span
+      className="ml-1.5 mt-[1px] inline-flex shrink-0 items-center"
+      title="Amostra grátis, mais no Pro"
+    >
+      <Star
+        className="h-3.5 w-3.5 text-amber-500"
+        strokeWidth={2.8}
+        fill="none"
+        aria-hidden="true"
+      />
+      <span className="sr-only">amostra grátis, mais no Pro</span>
+    </span>
+  );
+}
+
 function dropdownItemClass({
   isActive,
   isPro,
@@ -412,12 +429,14 @@ function ActiveRouteDot() {
 function DropdownItemTitle({
   active,
   isPro,
+  isFreemium,
   isWomen,
   label,
   badge,
 }: {
   active: boolean;
   isPro?: boolean;
+  isFreemium?: boolean;
   isWomen?: boolean;
   label: string;
   badge?: string;
@@ -448,7 +467,7 @@ function DropdownItemTitle({
           {badge}
         </span>
       ) : null}
-      {isPro ? <ProStarBadge /> : null}
+      {isPro ? <ProStarBadge /> : isFreemium ? <FreemiumStarBadge /> : null}
       {active ? <ActiveRouteDot /> : null}
     </span>
   );
@@ -596,6 +615,7 @@ function DesktopMenuItem({
                         <DropdownItemTitle
                           active={itemActive}
                           isPro={item.isPro}
+                          isFreemium={item.isFreemium}
                           isWomen={item.isWomen}
                           label={item.label}
                           badge={item.badge}
@@ -728,6 +748,7 @@ function MobileAccordion({
                     <DropdownItemTitle
                       active={itemActive}
                       isPro={item.isPro}
+                      isFreemium={item.isFreemium}
                       isWomen={item.isWomen}
                       label={item.label}
                       badge={item.badge}
