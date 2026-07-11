@@ -1,12 +1,18 @@
 import { CompletionCtaLinks } from "@/components/roadmapV2/RoadmapCompletionModal";
 import type { CompletionCta } from "@/lib/roadmapV2/completionCtas";
+import { requiredLeaves } from "@/lib/roadmapV2/progress";
 import type { RoadmapCompletion } from "@/services/roadmapCompletionService";
 import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 
 // Card persistente de conclusao no topo da trilha estatica. Molde visual do
 // card equivalente em RoadmapIAView (emerald, borda grossa, sombra flat).
-// Variante discreta: completion registrada mas allComplete false, ou seja, a
-// trilha ganhou conteudo novo depois da conclusao (cenario da Fase 3).
+// completion && !allComplete se divide em dois estados, distinguidos pelo
+// required_count congelado no registro versus o count atual do catalogo:
+// - count atual maior: a trilha ganhou conteudo novo depois da conclusao
+//   (cenario da Fase 3) e o card diz isso;
+// - count igual (ou menor): o usuario so desmarcou um passo ja concluido. A
+//   conclusao e duravel (desmarcar checkbox nao a revoga), entao o card fica
+//   neutro, sem falar em conteudo novo.
 type RoadmapCompletionCardProps = {
   roadmap: RoadmapV2;
   completion: RoadmapCompletion | null;
@@ -31,13 +37,30 @@ export default function RoadmapCompletionCard({
   const completedDate = completion ? formatDate(completion.completedAt) : "";
 
   if (completion && !allComplete) {
+    const currentRequiredCount = roadmap.sections.reduce(
+      (sum, section) => sum + requiredLeaves(section).length,
+      0,
+    );
+    const hasNewContent = completion.requiredCount < currentRequiredCount;
+
     return (
       <div className="mt-6 rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]">
         <p className="text-sm font-bold text-slate-900">
-          {/* TODO(Ana): copy do estado "concluida antes, tem conteudo novo" */}
-          Você concluiu esta trilha
-          {completedDate ? ` em ${completedDate}` : ""}. Ela ganhou conteúdo
-          novo desde então: revisite os passos pendentes quando quiser.
+          {hasNewContent ? (
+            <>
+              {/* TODO(Ana): copy do estado "concluida antes, tem conteudo novo" */}
+              Você concluiu esta trilha
+              {completedDate ? ` em ${completedDate}` : ""}. Ela ganhou
+              conteúdo novo desde então: revisite os passos pendentes quando
+              quiser.
+            </>
+          ) : (
+            <>
+              {/* TODO(Ana): copy do estado "concluida, sem conteudo novo" */}
+              Você concluiu esta trilha
+              {completedDate ? ` em ${completedDate}` : ""}.
+            </>
+          )}
         </p>
         <div className="mt-4">
           <CompletionCtaLinks

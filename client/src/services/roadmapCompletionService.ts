@@ -4,6 +4,9 @@ import { supabase } from "@/lib/supabase";
 export interface RoadmapCompletion {
   roadmapSlug: string;
   completedAt: string;
+  // Required leaves da trilha no momento da conclusao (congelado no server).
+  // Comparado com o count atual do catalogo pra detectar conteudo novo.
+  requiredCount: number;
 }
 
 async function authHeader(): Promise<Record<string, string>> {
@@ -69,6 +72,7 @@ export async function registerCompletion(
     const completion: RoadmapCompletion = {
       roadmapSlug: slug,
       completedAt: json.data.completedAt,
+      requiredCount: json.data.requiredCount,
     };
     if (cachedUserId === userId && cachedCompletions !== null) {
       const rest = cachedCompletions.filter((c) => c.roadmapSlug !== slug);

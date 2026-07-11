@@ -60,32 +60,77 @@ router.post("/:slug", async (req, res, next) => {
       );
     }
 
-    // ignoreDuplicates preserva o completed_at da primeira conclusao; o
-    // select depois do upsert devolve o registro persistido (original em
-    // caso de repeticao).
-    const { error: upsertError } = await supabaseAdmin
-      .from("roadmap_completions")
-      .upsert(
-        {
-          user_id: req.user!.id,
-          roadmap_slug: slug,
-          required_count: requiredCount,
-        },
-        { onConflict: "user_id,roadmap_slug", ignoreDuplicates: true },
-      );
-
-    if (upsertError) {
-      return next(createError(500, "db_error", "Erro ao registrar conclusão."));
-    }
-
-    const { data: row, error: readError } = await supabaseAdmin
+    // completed_at e imutavel (a primeira conclusao vale pra sempre), mas
+    // required_count acompanha o catalogo: se a trilha ganhou passos
+    // obrigatorios e o usuario concluiu tudo de novo, o registro sobe pro
+    // count atual. Nunca desce: um count menor (passo removido do catalogo)
+    // nao reescreve o congelado, senao o card de "conteudo novo" oscilaria.
+    const { data: existing, error: selectError } = await supabaseAdmin
       .from("roadmap_completions")
       .select("completed_at, required_count")
       .eq("user_id", req.user!.id)
       .eq("roadmap_slug", slug)
-      .single();
+      .maybeSingle();
 
-    if (readError || !row) {
+    if (selectError) {
+      return next(createError(500, "db_error", "Erro ao ler conclusão."));
+    }
+
+    let row = existing;
+
+    if (!existing) {
+      const { data: inserted, error: insertError } = await supabaseAdmin
+        .from("roadmap_completions")
+        .insert({
+          user_id: req.user!.id,
+          roadmap_slug: slug,
+          required_count: requiredCount,
+        })
+        .select("completed_at, required_count")
+        .single();
+
+      if (insertError) {
+        // 23505: outro request concorrente inseriu primeiro. Re-le e segue
+        // (idempotente).
+        if (insertError.code === "23505") {
+          const { data: raced, error: racedError } = await supabaseAdmin
+            .from("roadmap_completions")
+            .select("completed_at, required_count")
+            .eq("user_id", req.user!.id)
+            .eq("roadmap_slug", slug)
+            .single();
+          if (racedError || !raced) {
+            return next(
+              createError(500, "db_error", "Erro ao registrar conclusão."),
+            );
+          }
+          row = raced;
+        } else {
+          return next(
+            createError(500, "db_error", "Erro ao registrar conclusão."),
+          );
+        }
+      } else {
+        row = inserted;
+      }
+    } else if (existing.required_count < requiredCount) {
+      const { data: updated, error: updateError } = await supabaseAdmin
+        .from("roadmap_completions")
+        .update({ required_count: requiredCount })
+        .eq("user_id", req.user!.id)
+        .eq("roadmap_slug", slug)
+        .select("completed_at, required_count")
+        .single();
+
+      if (updateError || !updated) {
+        return next(
+          createError(500, "db_error", "Erro ao atualizar conclusão."),
+        );
+      }
+      row = updated;
+    }
+
+    if (!row) {
       return next(createError(500, "db_error", "Erro ao ler conclusão."));
     }
 
@@ -104,7 +149,7 @@ router.get("/", async (req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("roadmap_completions")
-      .select("roadmap_slug, completed_at")
+      .select("roadmap_slug, completed_at, required_count")
       .eq("user_id", req.user!.id)
       .order("completed_at", { ascending: false });
 
@@ -116,6 +161,7 @@ router.get("/", async (req, res, next) => {
       data: (data ?? []).map((row) => ({
         roadmapSlug: row.roadmap_slug,
         completedAt: row.completed_at,
+        requiredCount: row.required_count,
       })),
     });
   } catch (err) {
