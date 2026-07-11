@@ -1,19 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import {
-  History,
-  MessageCircle,
-  MessageSquare,
-  Plus,
-  Send,
-  Trash2,
-  X,
-} from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { History, MessageCircle, Plus, Send, Trash2, X } from "lucide-react";
 
 import AuthGateModal from "@/components/gate/AuthGateModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthGate } from "@/hooks/useAuthGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { cn } from "@/lib/utils";
 import {
   streamAgentChat,
   type AgentChatMessage,
@@ -54,6 +48,20 @@ const TOOL_STATUS_LABELS: Record<string, string> = {
 // TODO(Ana): rotulo de status padrao.
 const DEFAULT_STATUS_LABEL = "Buscando...";
 
+// Chips de partida do estado vazio: APENAS preenchem o input (nao enviam).
+// Somem na primeira mensagem e nao aparecem quando ha prefill da ponte.
+// TODO(Ana): revisar os textos dos chips de partida.
+const STARTER_CHIPS_FREE = [
+  "Onde comeco na plataforma?",
+  "Me indica um proximo passo",
+  "Como funciona o Pro?",
+];
+const STARTER_CHIPS_PRO = [
+  "Onde comeco na plataforma?",
+  "Como esta meu progresso?",
+  "Como funciona o Pro?",
+];
+
 // Velocidade do typewriter, mesmo padrao do CurriculoChatPanel: os tokens vao
 // para um buffer e um timer revela 1 caractere por tick em ritmo fixo. O texto
 // final e identico ao recebido; so a velocidade de revelacao muda.
@@ -81,6 +89,24 @@ function friendlyError(err: unknown): string {
   return "Algo deu errado. Tente de novo.";
 }
 
+// Datas da gaveta: derivadas SOMENTE do updated_at que a lista ja traz.
+function shortDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function relativeDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const days = Math.floor((Date.now() - date.getTime()) / 86_400_000);
+  // TODO(Ana): revisar os rotulos de data relativa da gaveta.
+  if (days <= 0) return "hoje";
+  if (days === 1) return "ontem";
+  if (days < 7) return `ha ${days} dias`;
+  return date.toLocaleDateString("pt-BR");
+}
+
 // Renderiza texto puro do assistente preservando quebras de linha e fazendo
 // auto-link apenas de caminhos internos (que comecam com "/"). NUNCA usa
 // dangerouslySetInnerHTML: nada de HTML do modelo e interpretado.
@@ -105,75 +131,156 @@ function AssistantText({ text }: { text: string }) {
   );
 }
 
-// Lista de conversas (icone NEUTRO para todas neste marco; titulo no hover via
-// title/aria-label). A classificacao por categoria/icone e o segundo marco.
-function ConversationList({
+// Avatar mini do agente, na primeira bolha de cada sequencia do assistente
+// (caixinha brutal violeta, familia do avatar do Natechinho no atelie).
+function AgentAvatar() {
+  return (
+    <span
+      className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-violet-600 shadow-[2px_2px_0_#0f172a]"
+      aria-hidden
+    >
+      <MessageCircle className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+    </span>
+  );
+}
+
+// Gaveta de historico: desce do cabecalho POR CIMA do miolo, com backdrop
+// clicavel e Escape fechando (listener no widget). Le SOMENTE dados que a
+// lista ja carregou (title/updated_at do ConversationSummary); titulo derivado
+// da primeira mensagem exigiria endpoint novo, fica como melhoria futura.
+// Exclusao em dois passos inline, mesmo padrao da galeria do curriculo.
+function HistoryDrawer({
   conversations,
   activeId,
+  reduce,
   onSelect,
   onDelete,
+  onClose,
 }: {
   conversations: ConversationSummary[];
   activeId: string | null;
+  reduce: boolean;
   onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
+  onClose: () => void;
 }) {
-  if (conversations.length === 0) {
-    // TODO(Ana): copy de lista de conversas vazia.
-    return (
-      <p className="px-2 py-3 text-xs text-slate-400">
-        Nenhuma conversa salva ainda.
-      </p>
-    );
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDeleteClick(id: string) {
+    setDeletingId(id);
+    try {
+      await onDelete(id);
+    } finally {
+      setDeletingId(null);
+      setConfirmingId(null);
+    }
   }
+
   return (
-    <div className="flex flex-col gap-1">
-      {conversations.map((c) => {
-        // TODO(Ana): titulo padrao quando a conversa nao tem titulo.
-        const label = c.title && c.title.trim().length > 0 ? c.title : "Conversa";
-        return (
-          <div
-            key={c.id}
-            className={`flex items-center gap-1 rounded-lg ${
-              activeId === c.id ? "bg-violet-100" : ""
-            }`}
+    <div className="absolute inset-0 z-20">
+      <div className="absolute inset-0 bg-slate-950/25" onClick={onClose} aria-hidden />
+      <motion.div
+        initial={reduce ? false : { opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+        className="absolute inset-x-0 top-0 max-h-[75%] overflow-y-auto border-b-2 border-slate-950 bg-white"
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+          {/* TODO(Ana): titulo do painel de conversas. */}
+          <span className="text-xs font-black uppercase tracking-[0.15em] text-slate-700">
+            Conversas
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+            /* TODO(Ana): label de acessibilidade do botao fechar conversas. */
+            aria-label="Fechar conversas"
+            title="Fechar conversas"
           >
-            <button
-              type="button"
-              onClick={() => onSelect(c.id)}
-              title={label}
-              aria-label={label}
-              className="flex flex-1 items-center gap-2 rounded-lg px-2 py-2 hover:bg-violet-50"
-            >
-              <MessageSquare className="h-4 w-4 shrink-0 text-violet-800" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(c.id)}
-              /* TODO(Ana): label de acessibilidade do botao apagar conversa. */
-              aria-label="Apagar conversa"
-              title="Apagar conversa"
-              className="rounded-md p-1.5 text-slate-400 transition hover:text-rose-600"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        );
-      })}
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {conversations.length === 0 ? (
+          /* TODO(Ana): copy de lista de conversas vazia. */
+          <p className="px-4 py-4 text-xs text-slate-400">
+            Nenhuma conversa salva ainda.
+          </p>
+        ) : (
+          <ul className="flex flex-col">
+            {conversations.map((c) => {
+              const title =
+                c.title && c.title.trim().length > 0
+                  ? c.title.trim()
+                  : /* TODO(Ana): titulo padrao quando a conversa nao tem titulo. */
+                    `Conversa de ${shortDate(c.updated_at)}`;
+              return (
+                <li
+                  key={c.id}
+                  className={cn(
+                    "flex items-center gap-2 border-b border-slate-200 px-3 py-2 last:border-b-0",
+                    activeId === c.id && "bg-violet-50",
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onSelect(c.id)}
+                    aria-label={`Abrir conversa: ${title}`}
+                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 rounded-lg px-1.5 py-1 text-left hover:bg-violet-50"
+                  >
+                    <span className="w-full truncate text-sm font-bold text-slate-900">
+                      {title}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">
+                      {relativeDate(c.updated_at)}
+                    </span>
+                  </button>
+                  {confirmingId === c.id ? (
+                    <button
+                      type="button"
+                      disabled={deletingId === c.id}
+                      onClick={() => void handleDeleteClick(c.id)}
+                      className="shrink-0 rounded-full border-2 border-slate-950 bg-rose-600 px-3 py-1 text-[11px] font-black text-white shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
+                    >
+                      {/* TODO(Ana): rotulos da exclusao em dois passos. */}
+                      {deletingId === c.id ? "Excluindo..." : "Confirmar"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(c.id)}
+                      /* TODO(Ana): label de acessibilidade do botao apagar conversa. */
+                      aria-label={`Apagar conversa: ${title}`}
+                      title="Apagar conversa"
+                      className="shrink-0 rounded-lg border-2 border-slate-950 bg-white p-1.5 text-slate-500 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </motion.div>
     </div>
   );
 }
 
-// Indicador "digitando": tres bolinhas animadas. Reusa a classe global
-// ai-chat-typing-dot (index.css), a mesma do CurriculoChatPanel, com acento
-// violet do widget. Aparece na bolha do assistente enquanto nada foi revelado.
-function TypingDots() {
+// Indicador "digitando": tres bolinhas, classe global ai-chat-typing-dot
+// (index.css), a mesma do CurriculoChatPanel, com acento violet do widget.
+// Sob reduced-motion as bolinhas ficam estaticas (a bolha ja comunica).
+function TypingDots({ reduce }: { reduce: boolean }) {
   return (
     <span className="flex items-center gap-1 py-1" aria-hidden>
       {[0, 1, 2].map((dot) => (
         <span
           key={dot}
-          className="ai-chat-typing-dot h-2 w-2 rounded-full bg-violet-700"
+          className={cn(
+            "h-2 w-2 rounded-full bg-violet-700",
+            !reduce && "ai-chat-typing-dot",
+          )}
         />
       ))}
     </span>
@@ -183,11 +290,12 @@ function TypingDots() {
 export default function AgentWidget() {
   const { user, loading } = useAuth();
   const [location] = useLocation();
+  const reduce = useReducedMotion() ?? false;
   // Mesmo gate de login do resto do app. Usado SO quando o launcher e clicado por
   // um usuario deslogado: abre o modal de login em vez do chat.
   const { requireAuth, modalProps } = useAuthGate();
   // isPro vem do contexto de assinatura. Aqui ele decide APENAS O QUE MOSTRAR
-  // (a coluna de historico); o gating de acesso real e server-side (403 nos
+  // (a gaveta de historico); o gating de acesso real e server-side (403 nos
   // endpoints, persistencia so para Pro no stream). A UI nao e a barreira.
   const { isPro } = useSubscription();
 
@@ -197,12 +305,14 @@ export default function AgentWidget() {
   const [streaming, setStreaming] = useState(false);
   const [statusLabel, setStatusLabel] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Prefill da ponte esconde os chips de partida (o input ja chega ocupado).
+  const [hadPrefill, setHadPrefill] = useState(false);
 
   // Estado do historico (so usado quando Pro).
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyAvailable, setHistoryAvailable] = useState(true);
-  const [historyOpen, setHistoryOpen] = useState(false); // drawer mobile
+  const [historyOpen, setHistoryOpen] = useState(false); // gaveta de historico
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -223,6 +333,7 @@ export default function AgentWidget() {
       setOpen(true);
       if (typeof detail?.prefill === "string" && detail.prefill.length > 0) {
         setInput(detail.prefill);
+        setHadPrefill(true);
       }
     }
     window.addEventListener(AGENT_OPEN_EVENT, onOpenEvent);
@@ -250,14 +361,25 @@ export default function AgentWidget() {
     };
   }, [open, isPro, user]);
 
+  // Escape fecha a gaveta de historico (backdrop cobre o clique fora).
+  useEffect(() => {
+    if (!historyOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setHistoryOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [historyOpen]);
+
   // Enquanto o estado de auth carrega, nao renderiza nada (evita piscar). Depois
   // disso o launcher aparece para todos; o comportamento do clique e que muda
   // conforme estar logado ou nao (ver handleLauncherClick).
   if (loading) return null;
 
-  // So mostra a coluna de historico para Pro com historico disponivel. Free e
-  // estado degradado caem no chat de coluna unica, identico ao de hoje.
+  // So mostra o historico (botao + gaveta) para Pro com historico disponivel.
+  // Free e estado degradado ficam no chat puro, identico ao de hoje.
   const showHistory = isPro && historyAvailable;
+  const starterChips = isPro ? STARTER_CHIPS_PRO : STARTER_CHIPS_FREE;
 
   function handleLauncherClick() {
     // Deslogado: NAO abre o chat. Dispara o mesmo gate de login do resto do app.
@@ -288,6 +410,7 @@ export default function AgentWidget() {
     setErrorMsg(null);
     setStatusLabel(null);
     setHistoryOpen(false);
+    setHadPrefill(false);
   }
 
   function handleStatus(status: AgentStatusEvent) {
@@ -302,7 +425,7 @@ export default function AgentWidget() {
 
   async function loadConversation(id: string) {
     if (streaming) return;
-    setHistoryOpen(false); // fecha o drawer no mobile apos escolher
+    setHistoryOpen(false); // fecha a gaveta apos escolher
     try {
       const detail = await fetchConversation(id);
       setMessages(
@@ -316,11 +439,8 @@ export default function AgentWidget() {
     }
   }
 
+  // A confirmacao agora e em dois passos inline na gaveta (sem window.confirm).
   async function handleDelete(id: string) {
-    // TODO(Ana): texto de confirmacao de apagar conversa.
-    if (!window.confirm("Apagar esta conversa? Esta acao nao pode ser desfeita.")) {
-      return;
-    }
     try {
       await requestDeleteConversation(id);
       removeFromList(id);
@@ -435,36 +555,52 @@ export default function AgentWidget() {
   return (
     <>
       {open && user && (
-        <div
-          className={`fixed bottom-24 right-5 z-40 flex h-[min(70vh,560px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#faf8f4] shadow-[6px_6px_0_#0f172a] ${
-            showHistory ? "md:w-[min(92vw,640px)]" : ""
-          }`}
-        >
-          <div className="flex items-center justify-between border-b-2 border-slate-950 bg-violet-800 px-4 py-3 text-white">
-            <div className="flex items-center gap-2">
-              {showHistory && (
+        <div className="fixed bottom-24 right-5 z-40 flex h-[min(70vh,560px)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#faf8f4] shadow-[6px_6px_0_#0f172a]">
+          {/* Cabecalho no padrao da casa: fundo branco, borda inferior, mascote
+              em caixinha brutal violeta e acoes compactas a direita. */}
+          <div className="flex items-center justify-between gap-2 border-b-2 border-slate-950 bg-white px-3 py-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-600 shadow-[2px_2px_0_#0f172a]"
+                aria-hidden
+              >
+                <MessageCircle className="h-5 w-5 text-white" strokeWidth={2.5} />
+              </span>
+              <div className="min-w-0">
+                {/* TODO(Ana): titulo do assistente. */}
+                <p className="font-display text-sm font-black uppercase tracking-[0.15em] text-slate-950">
+                  Assistente
+                </p>
+                {/* TODO(Ana): status curto sob o titulo (free vs Pro). */}
+                <p className="truncate text-[11px] font-semibold text-slate-500">
+                  {isPro ? "Seu copiloto Pro" : "Guia do BoraNaTech"}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {showHistory && conversations.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setHistoryOpen(true)}
-                  className="rounded-md p-1.5 transition hover:bg-white/15 md:hidden"
-                  /* TODO(Ana): label de acessibilidade do botao de conversas. */
-                  aria-label="Ver conversas"
-                  title="Ver conversas"
+                  onClick={() => setHistoryOpen((v) => !v)}
+                  className="relative flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
+                  /* TODO(Ana): label de acessibilidade do botao de historico. */
+                  aria-label={`Historico de conversas (${conversations.length})`}
+                  title="Historico de conversas"
                 >
                   <History className="h-4 w-4" />
+                  <span
+                    className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-slate-950 bg-violet-600 px-1 text-[9px] font-black text-white"
+                    aria-hidden
+                  >
+                    {conversations.length}
+                  </span>
                 </button>
               )}
-              {/* TODO(Ana): titulo do assistente. */}
-              <span className="font-display text-sm font-black uppercase tracking-[0.15em]">
-                Assistente
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={startNewConversation}
                 disabled={streaming}
-                className="rounded-md p-1.5 transition hover:bg-white/15 disabled:opacity-40"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-40 disabled:hover:translate-y-0"
                 /* TODO(Ana): label de acessibilidade do botao nova conversa. */
                 aria-label="Nova conversa"
                 title="Nova conversa"
@@ -474,7 +610,7 @@ export default function AgentWidget() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md p-1.5 transition hover:bg-white/15"
+                className="flex h-8 w-8 items-center justify-center rounded-lg border-2 border-slate-950 bg-white text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px"
                 /* TODO(Ana): label de acessibilidade do botao fechar. */
                 aria-label="Fechar"
                 title="Fechar"
@@ -484,73 +620,108 @@ export default function AgentWidget() {
             </div>
           </div>
 
-          <div className="relative flex min-h-0 flex-1">
-            {/* Desktop: coluna lateral de historico. */}
-            {showHistory && (
-              <aside className="hidden w-44 shrink-0 flex-col overflow-y-auto border-r-2 border-slate-950 bg-white p-2 md:flex">
-                <ConversationList
-                  conversations={conversations}
-                  activeId={activeConversationId}
-                  onSelect={loadConversation}
-                  onDelete={handleDelete}
-                />
-              </aside>
-            )}
-
-            {/* Coluna do chat. */}
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                {messages.length === 0 && (
-                  /* TODO(Ana): copy do estado inicial do chat. */
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {/* Miolo: papel do agente (micro-pontilhado violeta sutil). */}
+            <div
+              ref={scrollRef}
+              className="flex-1 space-y-3 overflow-y-auto bg-[#fdfcff] px-4 py-4 [background-image:radial-gradient(rgba(109,40,217,0.06)_1.2px,transparent_1.2px)] [background-size:18px_18px]"
+            >
+              {messages.length === 0 && (
+                <div className="relative flex h-full flex-col items-center justify-center gap-4 px-2 text-center">
+                  {/* Marca-dagua central: decoracao estatica. */}
+                  <MessageCircle
+                    className="pointer-events-none absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 -rotate-12 text-violet-800 opacity-5"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                  {/* TODO(Ana): copy do estado inicial do chat. */}
                   <p className="text-sm text-slate-500">
                     Posso ajudar voce a navegar pelo BoraNaTech e encontrar
                     conteudo. Sobre o que voce quer saber?
                   </p>
-                )}
-                {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={
-                      m.role === "user" ? "flex justify-end" : "flex justify-start"
-                    }
-                  >
-                    <div
-                      className={
-                        m.role === "user"
-                          ? "max-w-[85%] rounded-2xl rounded-br-sm border-2 border-slate-950 bg-violet-800 px-3 py-2 text-sm text-white"
-                          : "max-w-[85%] rounded-2xl rounded-bl-sm border-2 border-slate-950 bg-white px-3 py-2 text-sm text-slate-900"
-                      }
+                  {!hadPrefill && (
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {starterChips.map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => setInput(chip)}
+                          className="rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-800 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:bg-violet-50"
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {messages.map((m, i) => {
+                // Avatar so na primeira bolha de cada sequencia do assistente;
+                // as demais recebem um spacer para manter o alinhamento.
+                const groupStart = i === 0 || messages[i - 1].role !== m.role;
+                if (m.role === "assistant") {
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={reduce ? false : { opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="flex items-start justify-start gap-2"
                     >
-                      {m.role === "assistant" ? (
-                        m.content.length === 0 ? (
-                          <TypingDots />
+                      {groupStart ? (
+                        <AgentAvatar />
+                      ) : (
+                        <span className="w-7 shrink-0" aria-hidden />
+                      )}
+                      <div className="max-w-[80%] rounded-2xl rounded-tl-sm border-2 border-slate-950 bg-violet-50 px-3 py-2 text-sm text-slate-900 shadow-[2px_2px_0_#0f172a]">
+                        {m.content.length === 0 ? (
+                          <>
+                            {/* TODO(Ana): texto sr-only do indicador digitando. */}
+                            <span className="sr-only">Assistente digitando</span>
+                            <TypingDots reduce={reduce} />
+                          </>
                         ) : (
                           <AssistantText text={m.content} />
-                        )
-                      ) : (
-                        <span className="whitespace-pre-wrap break-words">
-                          {m.content}
-                        </span>
-                      )}
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                }
+                return (
+                  <motion.div
+                    key={i}
+                    initial={reduce ? false : { opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="flex justify-end"
+                  >
+                    <div className="max-w-[80%] rounded-2xl rounded-br-sm border-2 border-slate-950 bg-white px-3 py-2 text-sm text-slate-900 shadow-[2px_2px_0_#0f172a]">
+                      <span className="whitespace-pre-wrap break-words">
+                        {m.content}
+                      </span>
                     </div>
+                  </motion.div>
+                );
+              })}
+              {statusLabel && (
+                <div className="flex justify-start">
+                  <div className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-500">
+                    {statusLabel}
                   </div>
-                ))}
-                {statusLabel && (
-                  <div className="flex justify-start">
-                    <div className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-500">
-                      {statusLabel}
-                    </div>
-                  </div>
-                )}
-                {errorMsg && (
-                  <div className="rounded-lg border-2 border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                    {errorMsg}
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
+              {errorMsg && (
+                <div className="rounded-lg border-2 border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                  {errorMsg}
+                </div>
+              )}
+            </div>
 
-              <div className="border-t-2 border-slate-950 bg-white p-3">
-                <div className="flex items-end gap-2">
+            {/* Barra de input: anatomia brutal (tokens violeta em focus-within,
+                enviar em circulo solido). */}
+            <div className="border-t-2 border-slate-950 bg-white p-3">
+              <div className="flex items-end gap-2">
+                <div className="flex min-h-[40px] flex-1 items-end rounded-xl border-2 border-violet-200 bg-white shadow-[2px_2px_0_#0f172a] focus-within:border-violet-600 focus-within:ring-2 focus-within:ring-violet-200">
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -563,51 +734,32 @@ export default function AgentWidget() {
                     rows={1}
                     /* TODO(Ana): placeholder do campo de mensagem. */
                     placeholder="Escreva sua mensagem..."
-                    className="max-h-28 flex-1 resize-none rounded-lg border-2 border-slate-950 px-3 py-2 text-sm outline-none focus:border-violet-800"
+                    className="max-h-28 w-full resize-none rounded-xl border-0 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-500"
                   />
-                  <button
-                    type="button"
-                    onClick={() => void send()}
-                    disabled={streaming || input.trim().length === 0}
-                    className="bnt-pressable rounded-lg border-2 border-slate-950 bg-violet-800 p-2 text-white shadow-[3px_3px_0_#0f172a] disabled:opacity-40"
-                    /* TODO(Ana): label de acessibilidade do botao enviar. */
-                    aria-label="Enviar"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void send()}
+                  disabled={streaming || input.trim().length === 0}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-600 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-40 disabled:hover:translate-y-0"
+                  /* TODO(Ana): label de acessibilidade do botao enviar. */
+                  aria-label="Enviar"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            {/* Mobile: historico como overlay POR CIMA do chat (nao coluna fixa).
-                Contido no painel (absolute inset-0), com botao de fechar. */}
+            {/* Gaveta de historico POR CIMA do miolo (Pro). */}
             {showHistory && historyOpen && (
-              <div className="absolute inset-0 z-10 flex flex-col bg-[#faf8f4] md:hidden">
-                <div className="flex items-center justify-between border-b-2 border-slate-950 bg-white px-3 py-2">
-                  {/* TODO(Ana): titulo do painel de conversas. */}
-                  <span className="text-xs font-black uppercase tracking-[0.15em] text-slate-700">
-                    Conversas
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setHistoryOpen(false)}
-                    className="rounded-md p-1.5 text-slate-600 transition hover:bg-slate-100"
-                    /* TODO(Ana): label de acessibilidade do botao fechar conversas. */
-                    aria-label="Fechar conversas"
-                    title="Fechar conversas"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-2">
-                  <ConversationList
-                    conversations={conversations}
-                    activeId={activeConversationId}
-                    onSelect={loadConversation}
-                    onDelete={handleDelete}
-                  />
-                </div>
-              </div>
+              <HistoryDrawer
+                conversations={conversations}
+                activeId={activeConversationId}
+                reduce={reduce}
+                onSelect={loadConversation}
+                onDelete={handleDelete}
+                onClose={() => setHistoryOpen(false)}
+              />
             )}
           </div>
         </div>
@@ -616,7 +768,7 @@ export default function AgentWidget() {
       <button
         type="button"
         onClick={handleLauncherClick}
-        className="bnt-pressable fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-800 text-white shadow-[4px_4px_0_#0f172a]"
+        className="bnt-pressable fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-600 text-white shadow-[4px_4px_0_#0f172a]"
         /* TODO(Ana): label de acessibilidade do launcher. */
         aria-label="Abrir assistente"
       >
