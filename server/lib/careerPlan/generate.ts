@@ -160,7 +160,8 @@ function catalogBlock(items: CareerCatalogItem[]): string {
   return lines.join("\n");
 }
 
-const SYSTEM_PROMPT =
+// Exportado para teste (assert da presenca das regras no prompt do sistema).
+export const SYSTEM_PROMPT =
   "Você é o Natechinho, mentor de carreira tech do BoraNaTech, em voz masculina. Você monta uma ROTA DE CARREIRA honesta e realista em português do Brasil, no formato JSON pedido.\n\n" +
   "Esqueleto do plano:\n" +
   "- objectiveLogic: o objetivo da pessoa e a LÓGICA da rota (por que esta ordem, o que destrava o quê). Entre 300 e 900 caracteres.\n" +
@@ -170,6 +171,7 @@ const SYSTEM_PROMPT =
   "- outOfScope: 1 a 4 itens que ficaram DE FORA de propósito, com reason honesta (60 a 250 caracteres) explicando por que não entram agora.\n\n" +
   "REGRA DOS ITENS CITÁVEIS (crítica): você vai receber a lista ITENS CITÁVEIS com ids do catálogo. Qualquer certificação ou curso pago citado DEVE entrar apenas por catalogId dessa lista (em items.catalogId ou certifications.catalogId). Itens de degrau sem catálogo (prática, projeto pessoal, conteúdo gratuito genérico) usam catalogId null e o label descreve a ação. NUNCA invente id, nome, sigla ou provedor de certificação fora da lista.\n\n" +
   "REGRA DE ANCORAGEM (crítica): cada certificação deve declarar em stepId o id do degrau em que ela deve ser conquistada, escolhido entre os ids de steps que você mesmo gerou. Use null apenas se a certificação for transversal à rota inteira. Cada bloco do cronograma deve listar em stepIds os ids dos degraus que aquele período cobre (array vazio para bloco sem degrau específico, como revisão geral). A sequência dos blocos deve respeitar a ordem dos degraus. NUNCA invente id de degrau.\n\n" +
+  "REGRA DE ORÇAMENTO (crítica): com orçamento zero, cite apenas itens gratuitos do catálogo (free_resource ou preço gratuito) e prática com catalogId null; certificação paga só pode aparecer em outOfScope, com reason explicando o motivo. Com orçamento até R$ 500, priorize os itens gratuitos e cite no máximo os itens pagos que caibam no orçamento; o total dos itens pagos citados NUNCA deve estourar o orçamento declarado.\n\n" +
   "PROIBIDO mencionar preço, valor ou moeda em QUALQUER campo de texto: quem exibe preço é a plataforma, direto do catálogo.\n\n" +
   "Não invente fatos sobre a pessoa além do contexto fornecido. Em conflito entre o contexto histórico e o que a pessoa pediu agora, vale o pedido atual. Tom direto, encorajador e concreto, sem condescendência.";
 
@@ -180,15 +182,21 @@ async function buildUserContext(
   const pool = await fetchUserContextPool(userId);
   const lines: string[] = [];
 
-  lines.push("Pedido atual da pessoa (prevalece sobre o contexto em conflito):");
+  lines.push(
+    "Pedido atual da pessoa (prevalece sobre o contexto em conflito):",
+  );
   lines.push(`- Objetivo declarado agora: ${intake.goal}`);
   lines.push(`- Área alvo: ${intake.area}.`);
   lines.push(`- Nível atual: ${intake.level}.`);
   lines.push(`- Horas de estudo por semana: ${intake.hoursPerWeek}.`);
   lines.push(`- Horizonte do plano: ${intake.horizonMonths} meses.`);
-  lines.push(`- Orçamento para certificações: ${BUDGET_LABELS[intake.budget]}.`);
+  lines.push(
+    `- Orçamento para certificações: ${BUDGET_LABELS[intake.budget]}.`,
+  );
   lines.push("");
-  lines.push("Contexto da pessoa na plataforma (fatos; não invente além disto):");
+  lines.push(
+    "Contexto da pessoa na plataforma (fatos; não invente além disto):",
+  );
 
   if (pool.quiz.ok && pool.quiz.data) {
     const quiz = pool.quiz.data;
@@ -196,7 +204,8 @@ async function buildUserContext(
       quiz.area ? `área indicada ${quiz.area}` : null,
       quiz.level ? `nível ${quiz.level}` : null,
     ].filter((p): p is string => p !== null);
-    if (parts.length > 0) lines.push(`- Quiz de carreira: ${parts.join(", ")}.`);
+    if (parts.length > 0)
+      lines.push(`- Quiz de carreira: ${parts.join(", ")}.`);
   }
 
   if (pool.profile.ok && pool.profile.data) {
@@ -235,14 +244,18 @@ async function buildUserContext(
   if (pool.github.ok && pool.github.data) {
     const gh = pool.github.data;
     if (typeof gh.score === "number") {
-      lines.push(`- Análise de GitHub mais recente: nota ${gh.score}${gh.faixa ? `, faixa ${gh.faixa}` : ""}.`);
+      lines.push(
+        `- Análise de GitHub mais recente: nota ${gh.score}${gh.faixa ? `, faixa ${gh.faixa}` : ""}.`,
+      );
     }
   }
 
   if (pool.linkedin.ok && pool.linkedin.data) {
     const li = pool.linkedin.data;
     if (typeof li.score === "number") {
-      lines.push(`- Análise de LinkedIn mais recente: nota ${li.score}${li.faixa ? `, faixa ${li.faixa}` : ""}.`);
+      lines.push(
+        `- Análise de LinkedIn mais recente: nota ${li.score}${li.faixa ? `, faixa ${li.faixa}` : ""}.`,
+      );
     }
   }
 

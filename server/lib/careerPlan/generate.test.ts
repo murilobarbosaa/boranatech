@@ -4,6 +4,7 @@ import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import {
   CareerPlanResultSchema,
   findInvalidStepRefs,
+  SYSTEM_PROMPT,
   type CareerPlanResult,
   type CareerPlanStoredResult,
 } from "./generate";
@@ -112,6 +113,23 @@ describe("schema strict de geracao", () => {
     const block = schema.properties.schedule.items;
     expect(block?.additionalProperties).toBe(false);
     expect(block?.required).toEqual(expect.arrayContaining(["stepIds"]));
+  });
+});
+
+describe("regra de orcamento no prompt do sistema", () => {
+  // A infra de teste do prompt e de string: o assert garante que a regra
+  // esta presente no prompt montado, sem chamar o modelo.
+  it("mantem a regra de orcamento com os dois niveis (zero e ate 500)", () => {
+    expect(SYSTEM_PROMPT).toContain("REGRA DE ORÇAMENTO");
+    expect(SYSTEM_PROMPT).toContain(
+      "com orçamento zero, cite apenas itens gratuitos do catálogo",
+    );
+    expect(SYSTEM_PROMPT).toContain(
+      "certificação paga só pode aparecer em outOfScope",
+    );
+    expect(SYSTEM_PROMPT).toContain(
+      "NUNCA deve estourar o orçamento declarado",
+    );
   });
 });
 
