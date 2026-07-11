@@ -322,17 +322,21 @@ export default function InterviewIntake({
             </p>
           ) : null}
 
-          <BrutalActionButton
-            variant="ai"
-            icon={<Sparkles className="h-4 w-4" aria-hidden />}
-            loading={creating}
-            onClick={() => void handleCreate()}
-            disabled={creating || !canCreate}
-            className="mt-5"
-          >
-            {/* TODO(Ana): label do botao de iniciar */}
-            {creating ? "Preparando a entrevista" : "Começar entrevista"}
-          </BrutalActionButton>
+          {/* CTA centralizado, na cor de ACAO da casa (primary FFB800, a
+              mesma familia do selo "Comece aqui"): o violeta de IA destoava
+              do palco blue. */}
+          <div className="mt-5 flex justify-center">
+            <BrutalActionButton
+              variant="primary"
+              icon={<Sparkles className="h-4 w-4" aria-hidden />}
+              loading={creating}
+              onClick={() => void handleCreate()}
+              disabled={creating || !canCreate}
+            >
+              {/* TODO(Ana): label do botao de iniciar */}
+              {creating ? "Preparando a entrevista" : "Começar entrevista"}
+            </BrutalActionButton>
+          </div>
         </div>
       ) : null}
     </div>
