@@ -84,7 +84,7 @@ function friendlyError(err: unknown): string {
     return "Esta conversa ficou longa demais. Comece uma nova conversa.";
   }
   if (msg === "AGENT_UNAVAILABLE") {
-    return "O assistente esta indisponivel agora. Tente de novo em instantes.";
+    return "O Natechinho esta indisponivel agora. Tente de novo em instantes.";
   }
   return "Algo deu errado. Tente de novo.";
 }
@@ -569,7 +569,7 @@ export default function AgentWidget() {
               <div className="min-w-0">
                 {/* TODO(Ana): titulo do assistente. */}
                 <p className="font-display text-sm font-black uppercase tracking-[0.15em] text-slate-950">
-                  Assistente
+                  Natechinho
                 </p>
                 {/* TODO(Ana): status curto sob o titulo (free vs Pro). */}
                 <p className="truncate text-[11px] font-semibold text-slate-500">
@@ -677,7 +677,7 @@ export default function AgentWidget() {
                         {m.content.length === 0 ? (
                           <>
                             {/* TODO(Ana): texto sr-only do indicador digitando. */}
-                            <span className="sr-only">Assistente digitando</span>
+                            <span className="sr-only">Natechinho digitando</span>
                             <TypingDots reduce={reduce} />
                           </>
                         ) : (
@@ -741,11 +741,11 @@ export default function AgentWidget() {
                   type="button"
                   onClick={() => void send()}
                   disabled={streaming || input.trim().length === 0}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-600 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-40 disabled:hover:translate-y-0"
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-violet-600 text-white shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-violet-300 disabled:shadow-[1px_1px_0_#0f172a] disabled:hover:translate-y-0"
                   /* TODO(Ana): label de acessibilidade do botao enviar. */
-                  aria-label="Enviar"
+                  aria-label="Enviar mensagem"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" strokeWidth={2.5} />
                 </button>
               </div>
             </div>
@@ -770,7 +770,7 @@ export default function AgentWidget() {
         onClick={handleLauncherClick}
         className="bnt-pressable fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border-2 border-slate-950 bg-violet-600 text-white shadow-[4px_4px_0_#0f172a]"
         /* TODO(Ana): label de acessibilidade do launcher. */
-        aria-label="Abrir assistente"
+        aria-label="Abrir o Natechinho"
       >
         {open && user ? (
           <X className="h-6 w-6" />
