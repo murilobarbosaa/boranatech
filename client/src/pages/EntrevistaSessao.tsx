@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Check,
   Flag,
+  Lightbulb,
   Loader2,
   Mic,
   Send,
@@ -19,6 +20,7 @@ import {
   finishSession,
   getSession,
   InterviewApiError,
+  requestHint,
   sendAnswer,
   type InterviewEvaluation,
   type InterviewRating,
@@ -88,6 +90,26 @@ function AnswerBubble({ content }: { content: string }) {
   );
 }
 
+// Dica pedida pelo candidato (turno kind hint): cartao proprio, visualmente
+// distinto da pergunta (borda tracejada), deixando claro que a pergunta segue
+// aberta.
+function HintCard({ content }: { content: string }) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[min(100%,86%)] rounded-[14px] border-2 border-dashed border-blue-400 bg-blue-50 px-3.5 py-3 sm:max-w-[min(100%,82%)] sm:px-4">
+        <span className="inline-flex items-center gap-1.5 text-[0.6rem] font-black uppercase tracking-wide text-blue-800">
+          <Lightbulb className="h-3 w-3" aria-hidden />
+          {/* TODO(Ana): rotulo do cartao de dica. */}
+          Dica
+        </span>
+        <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
+          {content}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function FeedbackCard({ evaluation }: { evaluation: InterviewEvaluation }) {
   const ui = RATING_UI[evaluation.rating];
   const Icon = ui.icon;
@@ -128,6 +150,7 @@ export default function EntrevistaSessao() {
   const [turns, setTurns] = useState<InterviewTurn[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [hintLoading, setHintLoading] = useState(false);
   const [banner, setBanner] = useState("");
   const [confirmingFinish, setConfirmingFinish] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -171,7 +194,7 @@ export default function EntrevistaSessao() {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, [turns, sending]);
+  }, [turns, sending, hintLoading]);
 
   async function reloadSession() {
     try {
@@ -184,7 +207,7 @@ export default function EntrevistaSessao() {
   }
 
   async function handleSend() {
-    if (sending || !session || session.status !== "active") return;
+    if (sending || hintLoading || !session || session.status !== "active") return;
     const trimmed = input.trim();
     if (!trimmed) return;
 
@@ -196,6 +219,7 @@ export default function EntrevistaSessao() {
       role: "user",
       content: trimmed,
       evaluation: null,
+      kind: "answer",
       created_at: now,
     };
     setTurns((prev) => [...prev, optimistic]);
@@ -215,6 +239,7 @@ export default function EntrevistaSessao() {
               ? result.evaluation.feedback
               : (result.nextQuestion ?? ""),
             evaluation: result.evaluation,
+            kind: "answer",
             created_at: new Date().toISOString(),
           });
         }
@@ -245,6 +270,41 @@ export default function EntrevistaSessao() {
       }
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleHint() {
+    if (hintLoading || sending || !session || session.status !== "active") {
+      return;
+    }
+    setBanner("");
+    setHintLoading(true);
+    try {
+      const hint = await requestHint(session.id);
+      setTurns((prev) => [
+        ...prev,
+        {
+          id: `local-hint-${Date.now()}`,
+          role: "assistant",
+          content: hint,
+          evaluation: null,
+          kind: "hint",
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } catch (err) {
+      if (err instanceof InterviewApiError && err.code === "session_completed") {
+        await reloadSession();
+        // TODO(Ana): aviso de sessao encerrada em outro lugar
+        setBanner("Esta entrevista já foi encerrada em outra aba.");
+      } else if (err instanceof InterviewApiError) {
+        setBanner(err.message);
+      } else {
+        // TODO(Ana): erro generico ao pedir dica
+        setBanner("Não foi possível pedir a dica agora. Tente de novo.");
+      }
+    } finally {
+      setHintLoading(false);
     }
   }
 
@@ -319,6 +379,12 @@ export default function EntrevistaSessao() {
 
   const verdict = session.verdict;
   const completed = session.status === "completed";
+  // Dica disponivel quando ha uma pergunta em aberto aguardando resposta (a
+  // ultima fala e do entrevistador e nao e ela mesma uma dica): uma dica por
+  // pergunta, a proxima libera apos a resposta real.
+  const lastTurn = turns[turns.length - 1];
+  const canAskHint =
+    !completed && lastTurn?.role === "assistant" && lastTurn.kind === "answer";
 
   return (
     <Layout>
@@ -370,6 +436,9 @@ export default function EntrevistaSessao() {
                     if (t.role === "user") {
                       return <AnswerBubble key={t.id} content={t.content} />;
                     }
+                    if (t.kind === "hint") {
+                      return <HintCard key={t.id} content={t.content} />;
+                    }
                     // Turno de closing persistido: o veredito abaixo ja o
                     // renderiza, entao nao duplica como bolha.
                     if (
@@ -396,10 +465,12 @@ export default function EntrevistaSessao() {
                     return <QuestionBubble key={t.id} content={t.content} />;
                   })}
 
-                  {sending ? (
+                  {sending || hintLoading ? (
                     <div className="flex justify-start">
                       <div className="flex max-w-[min(100%,86%)] items-center rounded-[14px] rounded-tl-sm border-2 border-slate-950 bg-white px-3 py-2.5 shadow-[2px_2px_0_#0f172a] sm:px-4">
-                        <span className="sr-only">Avaliando sua resposta</span>
+                        <span className="sr-only">
+                          {sending ? "Avaliando sua resposta" : "Preparando a dica"}
+                        </span>
                         <TypingDots />
                       </div>
                     </div>
@@ -417,6 +488,14 @@ export default function EntrevistaSessao() {
                         {verdict.goodCount} respostas boas de{" "}
                         {verdict.questionCount} avaliadas
                       </p>
+                      {typeof verdict.hintsUsed === "number" &&
+                      verdict.hintsUsed > 0 ? (
+                        <p className="mt-0.5 text-xs font-bold text-slate-600">
+                          {/* TODO(Ana): frase do uso de dicas no resumo final. */}
+                          Você pediu dica em {verdict.hintsUsed} de{" "}
+                          {verdict.questionCount} perguntas
+                        </p>
+                      ) : null}
                       {verdict.closing ? (
                         <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">
                           {verdict.closing}
@@ -472,7 +551,7 @@ export default function EntrevistaSessao() {
                     <button
                       type="button"
                       className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800] text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-45 disabled:hover:translate-y-0 sm:h-[52px] sm:w-[52px]"
-                      disabled={sending || !input.trim()}
+                      disabled={sending || hintLoading || !input.trim()}
                       aria-label="Enviar resposta"
                       onClick={() => void handleSend()}
                     >
@@ -483,10 +562,31 @@ export default function EntrevistaSessao() {
                       )}
                     </button>
                   </div>
-                  <div className="mx-auto mt-2 flex w-full max-w-3xl items-center justify-between gap-3">
-                    <p className="text-xs font-bold text-slate-600">
-                      Enter envia · Shift+Enter nova linha
-                    </p>
+                  <div className="mx-auto mt-2 flex w-full max-w-3xl flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <p className="text-xs font-bold text-slate-600">
+                        Enter envia · Shift+Enter nova linha
+                      </p>
+                      {canAskHint ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleHint()}
+                          disabled={hintLoading || sending}
+                          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-900 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
+                        >
+                          {hintLoading ? (
+                            <Loader2
+                              className="h-3.5 w-3.5 animate-spin"
+                              aria-hidden
+                            />
+                          ) : (
+                            <Lightbulb className="h-3.5 w-3.5" aria-hidden />
+                          )}
+                          {/* TODO(Ana): label do botao de pedir dica. */}
+                          Pedir uma dica
+                        </button>
+                      ) : null}
+                    </div>
                     {confirmingFinish ? (
                       <span className="flex items-center gap-2 text-xs font-bold text-slate-700">
                         {/* TODO(Ana): confirmacao de encerramento */}

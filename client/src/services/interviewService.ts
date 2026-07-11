@@ -16,10 +16,13 @@ export interface InterviewEvaluation {
   feedback: string;
 }
 
+export type InterviewTurnKind = "answer" | "hint" | "closing";
+
 export interface InterviewVerdict {
   result: "prepared" | "question_cap" | "stopped_early";
   goodCount: number;
   questionCount: number;
+  hintsUsed?: number;
   closing?: string;
 }
 
@@ -39,6 +42,7 @@ export interface InterviewTurn {
   role: "assistant" | "user";
   content: string;
   evaluation: InterviewEvaluation | null;
+  kind: InterviewTurnKind;
   created_at: string;
 }
 
@@ -225,6 +229,26 @@ export async function sendAnswer(
     );
   }
   return body.data;
+}
+
+export async function requestHint(sessionId: string): Promise<string> {
+  const response = await request(
+    `/sessions/${encodeURIComponent(sessionId)}/hint`,
+    { method: "POST" },
+  );
+
+  if (!response.ok) {
+    throw toApiError(response.status, await readBody(response));
+  }
+
+  const body = (await response.json()) as { data?: { hint?: string } };
+  if (!body.data?.hint) {
+    throw new InterviewApiError(
+      "unavailable",
+      "Resposta inesperada ao pedir a dica.",
+    );
+  }
+  return body.data.hint;
 }
 
 export async function finishSession(

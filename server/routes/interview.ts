@@ -99,6 +99,18 @@ const INTERVIEW_TURN_JSON_SCHEMA = toOpenAIStrictSchema(
   InterviewTurnResultSchema,
 );
 
+// Dica pedida pelo candidato: schema proprio, fora do turno de avaliacao.
+const HintResultSchema = z.object({
+  hint: z.string(),
+});
+
+const HINT_JSON_SCHEMA = toOpenAIStrictSchema(HintResultSchema);
+
+// Tipo do turno persistido (coluna kind de interview_turns): 'answer' e o
+// fluxo historico, 'hint' e a dica (nunca avaliada, fora dos criterios de
+// preparo), 'closing' marca o fechamento de forma estruturada.
+type TurnKind = "answer" | "hint" | "closing";
+
 interface JobContext {
   source: "url" | "text";
   url?: string;
@@ -110,6 +122,8 @@ type SessionVerdict = {
   result: "prepared" | "question_cap" | "stopped_early";
   goodCount: number;
   questionCount: number;
+  // Dado honesto de treino: quantas dicas o candidato pediu na sessao.
+  hintsUsed?: number;
   closing?: string;
 };
 
@@ -134,6 +148,7 @@ interface TurnRow {
   role: "assistant" | "user";
   content: string;
   evaluation: Evaluation | null;
+  kind: TurnKind;
   created_at: string;
 }
 
@@ -239,6 +254,101 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function callHintModelOnce(
+  messages: ModelMessage[],
+  onIo: (io: AiIo) => void,
+): Promise<string> {
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: TOOL_CONFIG.model,
+        temperature: TOOL_CONFIG.temperature,
+        max_tokens: MAX_TOKENS,
+        messages,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "interview_hint",
+            strict: true,
+            schema: HINT_JSON_SCHEMA,
+          },
+        },
+      }),
+    },
+    { service: "openai", timeoutMs: AI_TIMEOUT_MS },
+  );
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
+    );
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = payload.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("A IA nao retornou conteudo.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Resposta da IA nao veio em JSON valido: ${detail}.`);
+  }
+
+  const validation = HintResultSchema.safeParse(parsed);
+  if (!validation.success) {
+    const issues = JSON.stringify(validation.error.issues).slice(0, 300);
+    throw new Error(`Resposta da IA nao bateu com o schema: ${issues}`);
+  }
+
+  const hint = validation.data.hint.trim();
+  if (hint.length === 0) {
+    throw new Error("A IA retornou uma dica vazia.");
+  }
+
+  const inputChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+  onIo({ inputChars, outputChars: content.length });
+  return hint;
+}
+
+async function callHintModel(
+  messages: ModelMessage[],
+  onIo: (io: AiIo) => void,
+): Promise<string> {
+  if (!env.openaiApiKey) {
+    throw new Error("Servico de IA nao configurado.");
+  }
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await callHintModelOnce(messages, onIo);
+    } catch (err) {
+      lastError = err;
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[interview] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} (hint) falhou: ${detail}`,
+      );
+      if (attempt < AI_MAX_ATTEMPTS) {
+        await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Falha ao gerar a dica.");
+}
+
 async function callInterviewModel(
   messages: ModelMessage[],
   expect: ExpectMode,
@@ -334,6 +444,12 @@ const EVALUATE_INSTRUCTION: ModelMessage = {
     "Estado do turno: entrevista em andamento. Avalie a ultima resposta do candidato em evaluation (rating e feedback) e faca a proxima pergunta em nextQuestion. Deixe closing como null.",
 };
 
+const HINT_INSTRUCTION: ModelMessage = {
+  role: "system",
+  content:
+    "Estado do turno: o candidato pediu uma DICA para a pergunta em aberto (a ultima pergunta que voce fez). Escreva em hint uma dica CURTA de abordagem, com no maximo 300 caracteres: um caminho de raciocinio, uma estrutura de resposta ou o que vale considerar. NUNCA entregue a resposta pronta, nem exemplos completos, nem a solucao. A pergunta continua em aberto aguardando a resposta real do candidato.",
+};
+
 function closingInstruction(goodCount: number, questionCount: number, reason: "prepared" | "question_cap"): ModelMessage {
   const reasonLine =
     reason === "prepared"
@@ -382,7 +498,7 @@ async function loadTurns(
   try {
     const { data, error } = await supabaseAdmin
       .from("interview_turns")
-      .select("id, role, content, evaluation, created_at")
+      .select("id, role, content, evaluation, kind, created_at")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true });
 
@@ -402,6 +518,7 @@ async function insertTurn(
   role: "assistant" | "user",
   content: string,
   evaluation: Evaluation | null,
+  kind: TurnKind = "answer",
 ): Promise<boolean> {
   try {
     const { error } = await supabaseAdmin.from("interview_turns").insert({
@@ -409,6 +526,7 @@ async function insertTurn(
       role,
       content,
       evaluation,
+      kind,
     });
     if (error) {
       console.warn("[interview] insertTurn falhou:", error.message);
@@ -418,6 +536,28 @@ async function insertTurn(
   } catch (err) {
     console.warn("[interview] insertTurn lancou:", err);
     return false;
+  }
+}
+
+// Conta as dicas da sessao para o verdict. Fail-soft: erro vira 0 (a frase de
+// dicas simplesmente nao aparece no resumo; nada critico depende disto).
+async function countHintTurns(sessionId: string): Promise<number> {
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("interview_turns")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId)
+      .eq("kind", "hint");
+    if (error || typeof count !== "number") {
+      if (error) {
+        console.warn("[interview] countHintTurns falhou:", error.message);
+      }
+      return 0;
+    }
+    return count;
+  } catch (err) {
+    console.warn("[interview] countHintTurns lancou:", err);
+    return 0;
   }
 }
 
@@ -786,6 +926,7 @@ router.post(
         result: "question_cap",
         goodCount: session.good_count,
         questionCount: session.question_count,
+        hintsUsed: await countHintTurns(session.id),
         closing,
       };
 
@@ -961,6 +1102,7 @@ router.post(
       result: closeReason,
       goodCount,
       questionCount,
+      hintsUsed: await countHintTurns(session.id),
       closing,
     };
 
@@ -995,6 +1137,145 @@ router.post(
   },
 );
 
+// POST /api/interview/sessions/:id/hint: dica CURTA de abordagem para a
+// pergunta em aberto. NUNCA avalia, NUNCA mexe em question_count, good_count ou
+// good_streak: a pergunta segue aberta e o criterio de preparo nao ve a dica.
+// Consome 1 unidade da quota de turno existente (INTERVIEW_TURN_TOOL).
+router.post(
+  "/sessions/:id/hint",
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isPro) {
+      return next(
+        createError(
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para continuar a entrevista.",
+        ),
+      );
+    }
+
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    const loaded = await loadOwnSession(userId, id);
+    if (!loaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    if (!loaded.session) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+    const session = loaded.session;
+    if (session.status !== "active") {
+      return next(
+        createError(409, "session_completed", "Esta sessao ja foi encerrada."),
+      );
+    }
+
+    const usage = await checkInterviewTurnDailyLimit(userId);
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TURN_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "rate_limited",
+      });
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          `Limite diario de ${usage.limit} turnos de entrevista atingido. Tente novamente amanha.`,
+        ),
+      );
+    }
+
+    const turnsLoaded = await loadTurns(session.id);
+    if (!turnsLoaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    const history = turnsToMessages(turnsLoaded.turns);
+
+    const systemMessages: ModelMessage[] = [
+      { role: "system", content: TOOL_CONFIG.systemPrompt },
+      sessionContextMessage(session),
+    ];
+    const fixedChars =
+      systemMessages[0].content.length +
+      systemMessages[1].content.length +
+      HINT_INSTRUCTION.content.length;
+
+    let aiIo: AiIo = { inputChars: 0, outputChars: 0 };
+    let hint: string;
+    try {
+      hint = await callHintModel(
+        [
+          ...systemMessages,
+          ...trimHistory(history, fixedChars),
+          HINT_INSTRUCTION,
+        ],
+        (io) => {
+          aiIo = io;
+        },
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: message,
+      });
+      return next(
+        createError(
+          502,
+          "upstream_error",
+          "Nao foi possivel gerar a dica agora. Tente de novo.",
+        ),
+      );
+    }
+
+    // Persiste SO o turno de dica (kind hint). Nenhum contador da sessao muda:
+    // a resposta real, quando vier, passa pelo fluxo normal de avaliacao.
+    const wrote = await insertTurn(session.id, "assistant", hint, null, "hint");
+    if (!wrote) {
+      return next(createError(500, "db_error", "Erro ao salvar a dica."));
+    }
+
+    await logAiUsage({
+      userId,
+      tool: INTERVIEW_TURN_TOOL,
+      requestId,
+      status: "success",
+      inputChars: aiIo.inputChars,
+      outputChars: aiIo.outputChars,
+    });
+
+    res.json({ data: { hint } });
+  },
+);
+
 // POST /api/interview/sessions/:id/finish: encerramento manual, sem IA. Nao
 // exige Pro: apenas fecha uma sessao do proprio dono (nao da acesso a nada).
 router.post(
@@ -1023,6 +1304,7 @@ router.post(
       result: "stopped_early",
       goodCount: loaded.session.good_count,
       questionCount: loaded.session.question_count,
+      hintsUsed: await countHintTurns(loaded.session.id),
     };
 
     const wrote = await updateSession(userId, id, {
