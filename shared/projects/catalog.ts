@@ -7,6 +7,15 @@
 // vinculados a trilhas sao gratuitos por design); `pro: true` = desafio
 // premium, navegavel por assinantes em /projetos e consumido pelo roadmap
 // com IA (fase 5c). Trilha estatica nunca aponta pra projeto pro.
+// Requisito estruturado e verificavel num repositorio publico. Por ora
+// exclusivo de projetos pro: e o contrato que a validacao via leitor de
+// GitHub (fase 5c) confere requisito a requisito.
+export type ProjetoRequisito = {
+  id: string;
+  descricao: string;
+  verificacao: string;
+};
+
 export type ProjetoCatalogo = {
   id: string;
   nome: string;
@@ -20,6 +29,7 @@ export type ProjetoCatalogo = {
   sugestaoLinkedIn: string;
   proximoProjeto: string;
   pro?: true;
+  requisitos?: ProjetoRequisito[];
 };
 
 export const projetos: ProjetoCatalogo[] = [
@@ -2482,8 +2492,9 @@ export const projetos: ProjetoCatalogo[] = [
   },
   // TODO(Ana): revisao editorial dos 8 projetos Pro abaixo (primeira leva do
   // tier premium, Fase 5a.2). Entregaveis escritos como criterios objetivos
-  // verificaveis num repositorio GitHub, pra validacao futura pelo leitor
-  // de GitHub (fase 5c).
+  // verificaveis num repositorio GitHub, pra validacao pelo leitor de GitHub
+  // (fase 5c). TODO(Ana): revisar tambem os arrays `requisitos` (5c.1), que
+  // sao o contrato requisito a requisito dessa validacao.
   {
     id: "pro-saas-dashboard",
     nome: "Painel SaaS com Autenticação e Assinaturas Simuladas",
@@ -2515,6 +2526,56 @@ export const projetos: ProjetoCatalogo[] = [
       "Publiquei um painel SaaS completo: autenticação, CRUD com estados de interface, gráficos, tema escuro, testes e CI. Front-end de produção, de ponta a ponta.",
     proximoProjeto: "Adicionar cobrança simulada com página de planos",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-deploy-link",
+        descricao: "README com o link do deploy funcionando no topo",
+        verificacao:
+          "Abrir o README.md e conferir a URL de producao na secao inicial, acessivel",
+      },
+      {
+        id: "readme-setup-env",
+        descricao: "Instrucoes de setup no README e um .env.example na raiz",
+        verificacao:
+          "README.md contem os passos de instalacao e o arquivo .env.example existe no repositorio",
+      },
+      {
+        id: "auth-telas",
+        descricao: "Telas de login e cadastro implementadas",
+        verificacao:
+          "Existem componentes ou rotas de login e cadastro no codigo (arquivos de autenticacao identificaveis)",
+      },
+      {
+        id: "rotas-protegidas",
+        descricao: "Pelo menos 3 rotas protegidas por autenticacao",
+        verificacao:
+          "O codigo de rotas mostra guarda de autenticacao aplicada a 3 ou mais telas",
+      },
+      {
+        id: "crud-completo",
+        descricao: "CRUD completo da entidade central",
+        verificacao:
+          "O codigo contem as operacoes de criar, listar, editar e excluir da entidade principal",
+      },
+      {
+        id: "graficos-dashboard",
+        descricao: "Dashboard com pelo menos 2 graficos",
+        verificacao:
+          "Componentes de grafico presentes no codigo e visiveis nos prints do README",
+      },
+      {
+        id: "testes-vitest",
+        descricao: "Testes de unidade com Vitest presentes",
+        verificacao:
+          "Arquivos .test. existem no repositorio e o vitest aparece nas dependencias do package.json",
+      },
+      {
+        id: "ci-workflow",
+        descricao: "Workflow de CI rodando lint, testes e build",
+        verificacao:
+          "Arquivo em .github/workflows com os tres passos declarados",
+      },
+    ],
   },
   {
     id: "pro-api-ecommerce",
@@ -2548,6 +2609,49 @@ export const projetos: ProjetoCatalogo[] = [
     proximoProjeto:
       "Adicionar fila para processar os pedidos de forma assíncrona",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-api-url",
+        descricao: "README com a URL da API no ar e da documentacao",
+        verificacao:
+          "README.md traz o endereco da API publicada e o caminho da documentacao OpenAPI acessivel",
+      },
+      {
+        id: "openapi-def",
+        descricao: "Definicao OpenAPI versionada no repositorio",
+        verificacao:
+          "Arquivo de especificacao OpenAPI (yaml ou json) presente no repositorio",
+      },
+      {
+        id: "migracoes-versionadas",
+        descricao: "Migracoes ou schema do banco versionados",
+        verificacao:
+          "Pasta de migracoes ou arquivo de schema do banco presente no repositorio",
+      },
+      {
+        id: "auth-jwt",
+        descricao: "Autenticacao JWT com middleware de protecao",
+        verificacao:
+          "Codigo com cadastro, login e middleware aplicado as rotas protegidas",
+      },
+      {
+        id: "pedidos-transacao",
+        descricao: "Fechamento de pedido com transacao no banco",
+        verificacao:
+          "Codigo do fluxo de pedido usando transacao (begin/commit ou equivalente do ORM)",
+      },
+      {
+        id: "testes-criticos",
+        descricao: "Testes cobrindo autenticacao e fechamento de pedido",
+        verificacao: "Pasta de testes com casos dos dois fluxos criticos",
+      },
+      {
+        id: "dockerfile-ci",
+        descricao: "Dockerfile presente e CI rodando os testes",
+        verificacao:
+          "Dockerfile na raiz e workflow em .github/workflows executando a suite",
+      },
+    ],
   },
   {
     id: "pro-kanban-colaborativo",
@@ -2579,6 +2683,48 @@ export const projetos: ProjetoCatalogo[] = [
       "Construí um kanban colaborativo em tempo real: dois navegadores editando o mesmo quadro ao vivo, com histórico de atividades. Full-stack com sincronização de verdade.",
     proximoProjeto: "Adicionar comentários nos cartões com menções",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-demo",
+        descricao:
+          "README com link do app no ar e GIF da colaboracao em tempo real",
+        verificacao:
+          "README.md contem a URL publicada e um GIF mostrando duas janelas sincronizando",
+      },
+      {
+        id: "diagrama-arquitetura",
+        descricao: "Diagrama da arquitetura no repositorio",
+        verificacao:
+          "Imagem ou arquivo de diagrama presente e referenciado no README",
+      },
+      {
+        id: "front-back-presentes",
+        descricao: "Codigo do front e do back no repositorio",
+        verificacao:
+          "Diretorios ou pacotes distintos de front e back identificaveis",
+      },
+      {
+        id: "migracoes-schema",
+        descricao: "Migracoes ou schema versionados",
+        verificacao: "Pasta de migracoes ou schema do banco presente",
+      },
+      {
+        id: "auth-membros",
+        descricao: "Autenticacao e convite de membros implementados",
+        verificacao:
+          "Codigo de autenticacao e fluxo de convite ou associacao de membros a um quadro",
+      },
+      {
+        id: "historico-atividades",
+        descricao: "Historico de atividades por quadro",
+        verificacao: "Codigo que registra e exibe as atividades do quadro",
+      },
+      {
+        id: "ci-build",
+        descricao: "CI com build dos dois lados",
+        verificacao: "Workflow em .github/workflows buildando front e back",
+      },
+    ],
   },
   {
     id: "pro-pipeline-dados-abertos",
@@ -2610,6 +2756,50 @@ export const projetos: ProjetoCatalogo[] = [
       "Publiquei uma plataforma de dados de ponta a ponta: coleta agendada de dados abertos, limpeza reprodutível, análise documentada e dashboard público. Dados na prática, do bruto ao insight.",
     proximoProjeto: "Adicionar testes de qualidade de dados na pipeline",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-dashboard-link",
+        descricao: "README com link do dashboard publico no ar",
+        verificacao: "README.md contem a URL do dashboard acessivel",
+      },
+      {
+        id: "dicionario-dados",
+        descricao: "Dicionario de dados documentado",
+        verificacao:
+          "Secao ou arquivo de dicionario de dados presente e referenciado no README",
+      },
+      {
+        id: "workflow-agendado",
+        descricao: "Coleta agendada com GitHub Actions",
+        verificacao:
+          "Workflow em .github/workflows com gatilho de agendamento (schedule)",
+      },
+      {
+        id: "scripts-separados",
+        descricao: "Coleta e limpeza em scripts, fora do notebook",
+        verificacao:
+          "Arquivos de script de coleta e de limpeza existem separados do notebook",
+      },
+      {
+        id: "notebook-analise",
+        descricao:
+          "Notebook com ao menos 5 perguntas respondidas e visualizacoes",
+        verificacao:
+          "Notebook presente com as perguntas, respostas e graficos renderizados",
+      },
+      {
+        id: "dados-reproduziveis",
+        descricao: "Dados versionados ou instrucao clara de obtencao",
+        verificacao:
+          "Pasta de dados presente ou README com o passo a passo de download",
+      },
+      {
+        id: "requirements",
+        descricao: "Ambiente reproduzivel",
+        verificacao:
+          "requirements.txt (ou equivalente) presente e suficiente pra rodar o projeto",
+      },
+    ],
   },
   {
     id: "pro-assistente-rag",
@@ -2641,6 +2831,44 @@ export const projetos: ProjetoCatalogo[] = [
       "Construí um assistente RAG sobre meus próprios documentos: busca vetorial, respostas com citação de fontes e avaliação de qualidade com métricas. IA aplicada com engenharia de verdade.",
     proximoProjeto: "Comparar dois modelos de embeddings na mesma avaliação",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-demo",
+        descricao: "README com demonstracao (link ou GIF)",
+        verificacao:
+          "README.md contem link publico ou GIF do assistente respondendo",
+      },
+      {
+        id: "diagrama-rag",
+        descricao: "Diagrama do fluxo RAG",
+        verificacao:
+          "Imagem do fluxo (ingestao, busca, geracao) presente e referenciada no README",
+      },
+      {
+        id: "avaliacao-perguntas",
+        descricao: "Avaliacao com 15 perguntas e resultados em tabela",
+        verificacao:
+          "README ou documento com a tabela de perguntas, respostas esperadas e acerto medido",
+      },
+      {
+        id: "codigo-separado",
+        descricao: "Indexacao e consulta em codigos separados",
+        verificacao:
+          "Arquivos distintos pra gerar o indice e pra responder consultas",
+      },
+      {
+        id: "citacoes-fontes",
+        descricao: "Respostas exibem citacoes das fontes",
+        verificacao:
+          "GIF ou screenshots mostrando as fontes citadas em cada resposta",
+      },
+      {
+        id: "requirements-repro",
+        descricao: "Instrucoes completas de reproducao",
+        verificacao:
+          "requirements.txt presente e README com passos pra rodar do zero",
+      },
+    ],
   },
   {
     id: "pro-app-financas",
@@ -2672,6 +2900,42 @@ export const projetos: ProjetoCatalogo[] = [
       "Publiquei um app de finanças pessoais completo: offline-first, gráficos por categoria, lembretes locais e build instalável. Mobile de ponta a ponta, do modelo de dados ao APK.",
     proximoProjeto: "Sincronizar os dados com um back-end quando online",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-gif-build",
+        descricao: "README com GIF do fluxo principal e o build instalavel",
+        verificacao:
+          "README.md contem GIF do app em uso e link ou arquivo do APK/build",
+      },
+      {
+        id: "telas-nucleo",
+        descricao: "Telas de cadastro, listagem, resumo e lembrete presentes",
+        verificacao: "Codigo com as quatro telas identificaveis",
+      },
+      {
+        id: "offline-documentado",
+        descricao: "Funcionamento offline documentado com o mecanismo usado",
+        verificacao:
+          "README explica o armazenamento local e o codigo mostra o mecanismo (SQLite ou equivalente)",
+      },
+      {
+        id: "graficos-categoria",
+        descricao: "Resumo mensal com graficos por categoria",
+        verificacao:
+          "Componentes de grafico no codigo e visiveis no GIF ou screenshots",
+      },
+      {
+        id: "lembrete-local",
+        descricao: "Lembrete local configuravel implementado",
+        verificacao:
+          "Codigo de notificacao local com configuracao pelo usuario",
+      },
+      {
+        id: "export-csv",
+        descricao: "Exportacao dos dados em CSV",
+        verificacao: "Codigo da exportacao presente e citado no README",
+      },
+    ],
   },
   {
     id: "pro-plataforma-deploy-iac",
@@ -2703,6 +2967,47 @@ export const projetos: ProjetoCatalogo[] = [
       "Provisionei infraestrutura com Terraform e montei o ciclo completo: CI, deploy automático, monitoramento e um rollback executado e documentado. DevOps de produção, não de tutorial.",
     proximoProjeto: "Adicionar ambiente de staging com promoção manual",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-url-diagrama",
+        descricao:
+          "README com URL da aplicacao no ar e diagrama da infraestrutura",
+        verificacao: "README.md contem a URL acessivel e a imagem do diagrama",
+      },
+      {
+        id: "terraform-dir",
+        descricao: "Infraestrutura descrita em Terraform",
+        verificacao:
+          "Diretorio terraform com os arquivos .tf do provisionamento",
+      },
+      {
+        id: "ci-workflow",
+        descricao: "Workflow de CI com lint, testes e build",
+        verificacao:
+          "Arquivo em .github/workflows executando as checagens a cada push",
+      },
+      {
+        id: "deploy-workflow",
+        descricao: "Deploy automatico a cada merge na main",
+        verificacao:
+          "Workflow de deploy em .github/workflows com gatilho na main",
+      },
+      {
+        id: "dockerfile",
+        descricao: "Aplicacao containerizada",
+        verificacao: "Dockerfile presente na raiz ou no diretorio do app",
+      },
+      {
+        id: "runbook",
+        descricao: "Runbook de operacao no repositorio",
+        verificacao: "Documento de runbook presente e referenciado no README",
+      },
+      {
+        id: "rollback-registrado",
+        descricao: "Rollback executado e documentado",
+        verificacao: "Documento com os passos e prints do rollback realizado",
+      },
+    ],
   },
   {
     id: "pro-redesign-design-system",
@@ -2732,5 +3037,41 @@ export const projetos: ProjetoCatalogo[] = [
       "Concluí um redesign de ponta a ponta: pesquisa com usuários, design system próprio, protótipo de alta fidelidade e teste de usabilidade com métricas. UX com processo, não só tela bonita.",
     proximoProjeto: "Documentar o design system como site navegável",
     pro: true,
+    requisitos: [
+      {
+        id: "readme-case",
+        descricao: "README apresentando o case com links publicos do Figma",
+        verificacao:
+          "README.md contem os links do prototipo e do design system acessiveis",
+      },
+      {
+        id: "pesquisa-achados",
+        descricao: "Documento de pesquisa com os achados",
+        verificacao:
+          "Arquivo de pesquisa presente com metodo e descobertas das entrevistas",
+      },
+      {
+        id: "design-system",
+        descricao: "Design system com cores, tipografia e 10 componentes",
+        verificacao: "Biblioteca visivel no arquivo Figma publico linkado",
+      },
+      {
+        id: "prototipo-navegavel",
+        descricao: "Prototipo navegavel dos 3 fluxos principais",
+        verificacao: "Link do Figma abre o prototipo com os fluxos navegaveis",
+      },
+      {
+        id: "relatorio-usabilidade",
+        descricao: "Relatorio do teste de usabilidade com taxa de sucesso",
+        verificacao:
+          "Documento com tarefas, participantes, taxa de sucesso e mudancas feitas",
+      },
+      {
+        id: "antes-depois",
+        descricao: "Antes e depois das telas em imagens",
+        verificacao:
+          "Imagens comparativas presentes no repositorio e exibidas no README",
+      },
+    ],
   },
 ];
