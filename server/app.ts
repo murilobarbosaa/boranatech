@@ -32,6 +32,7 @@ import meRouter from "./routes/me";
 import newsletterRouter from "./routes/newsletter";
 import profilesRouter from "./routes/profiles";
 import progressRouter from "./routes/progress";
+import projectValidationsRouter from "./routes/projectValidations";
 import quizRouter from "./routes/quiz";
 import roadmapCompletionsRouter from "./routes/roadmapCompletions";
 import resumeAnalysisRouter from "./routes/resumeAnalysis";
@@ -102,7 +103,10 @@ function sweepRateLimitStore(now: number) {
   });
 }
 
-setInterval(() => sweepRateLimitStore(Date.now()), RATE_LIMIT_WINDOW_MS).unref();
+setInterval(
+  () => sweepRateLimitStore(Date.now()),
+  RATE_LIMIT_WINDOW_MS,
+).unref();
 
 function isRateLimitExempt(pathname: string) {
   return (
@@ -352,6 +356,7 @@ app.use("/api/billing", billingRouter);
 app.use("/api/bookmarks", bookmarksRouter);
 app.use("/api/career-plan", careerPlanRouter);
 app.use("/api/progress", progressRouter);
+app.use("/api/project-validations", projectValidationsRouter);
 app.use("/api/roadmap-completions", roadmapCompletionsRouter);
 app.use("/api/study", studyRouter);
 app.use("/api/quiz", quizRouter);
