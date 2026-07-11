@@ -169,7 +169,9 @@ app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+    // microphone=(self): a resposta por voz da entrevista (E2) grava audio
+    // via getUserMedia na propria origem. Video segue bloqueado (camera=()).
+    "camera=(), microphone=(self), geolocation=(), browsing-topics=()",
   );
   res.setHeader(
     "Strict-Transport-Security",
