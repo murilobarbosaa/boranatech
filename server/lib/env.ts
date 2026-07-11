@@ -83,6 +83,19 @@ export const env = {
     process.env.INTERVIEW_DAILY_TURN_LIMIT_PRO || "150",
     10,
   ),
+  // Voz do Natechinho nas entrevistas (E5). Chave e voice id OPCIONAIS no
+  // padrao currentsApiKey: vazios desligam a feature (a rota de fala responde
+  // 503 tts_unavailable e nada mais quebra).
+  elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || "",
+  elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || "",
+  elevenLabsModelId:
+    process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2",
+  // Teto diario de geracoes de fala da entrevista.
+  // TODO: calibrar INTERVIEW_TTS_DAILY_LIMIT_PRO.
+  interviewTtsDailyLimitPro: parseInt(
+    process.env.INTERVIEW_TTS_DAILY_LIMIT_PRO || "200",
+    10,
+  ),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;
