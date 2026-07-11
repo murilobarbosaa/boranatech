@@ -6,7 +6,8 @@ export type ProgressContext =
   | "favorites"
   | "course_progress"
   | "quiz_history"
-  | "career_plan";
+  | "career_plan"
+  | "project_progress";
 
 export interface ProgressEntry {
   itemKey: string;

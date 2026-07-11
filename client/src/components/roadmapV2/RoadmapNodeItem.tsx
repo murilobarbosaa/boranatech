@@ -9,6 +9,8 @@ import type {
   RoadmapResource,
 } from "@/lib/roadmapV2/types";
 import { displayProgress } from "@/lib/roadmapV2/progress";
+import { mirrorProjectFromTrail } from "@/lib/projectProgress";
+import { useAuth } from "@/contexts/AuthContext";
 import { projetos } from "@/lib/data";
 
 type RoadmapNodeItemProps = {
@@ -241,6 +243,8 @@ function GroupItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
 }
 
 function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [bodyOpen, setBodyOpen] = useState(false);
   const checked = done.has(node.id);
   const optional = node.optional === true;
@@ -336,7 +340,13 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
                 <ProjectCard
                   project={project}
                   checked={checked}
-                  onToggleDone={() => onToggle(node.id)}
+                  onToggleDone={() => {
+                    onToggle(node.id);
+                    // Espelho trilha -> projeto (Fase 5b): o project_progress
+                    // acompanha o toggle do no. Projeto que nao resolve no
+                    // catalogo (card indisponivel) nao passa por aqui.
+                    mirrorProjectFromTrail(project.id, !checked, userId);
+                  }}
                 />
               )}
               {projectUnresolved && (

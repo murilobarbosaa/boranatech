@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearch } from "wouter";
 import {
   ArrowRight,
+  Check,
   ChevronDown,
   ChevronUp,
   Lightbulb,
@@ -22,6 +23,7 @@ import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useProjectCompletion } from "@/hooks/useProjectCompletion";
 import { areasTI, projetos } from "@/lib/data";
 import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
 
@@ -84,6 +86,11 @@ const nivelColors: Record<string, string> = {
 
 export default function Projetos() {
   const { isPro, loading } = useSubscription();
+  const {
+    done: projectsDone,
+    ready: completionReady,
+    toggle: toggleCompletion,
+  } = useProjectCompletion();
   const search = useSearch();
   const params = useParams<{ id?: string }>();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
@@ -350,6 +357,18 @@ export default function Projetos() {
             aria-live="polite"
           >
             {filtered.length} projeto{filtered.length !== 1 ? "s" : ""}
+            {completionReady &&
+              filtered.some((p) => projectsDone.has(p.id)) && (
+                <span className="text-emerald-700">
+                  {" "}
+                  · {filtered.filter((p) => projectsDone.has(p.id)).length}{" "}
+                  {/* TODO(Ana): label do contador de concluidos */}
+                  concluído
+                  {filtered.filter((p) => projectsDone.has(p.id)).length !== 1
+                    ? "s"
+                    : ""}
+                </span>
+              )}
           </p>
           {deepLinkMissing && (
             <p className="mb-6 rounded-xl border-2 border-slate-900 bg-amber-50 px-4 py-3 text-sm font-bold text-slate-700 shadow-[3px_3px_0_#0f172a]">
@@ -468,6 +487,18 @@ export default function Projetos() {
                                     Pro
                                   </span>
                                 )}
+                                {!locked &&
+                                  completionReady &&
+                                  projectsDone.has(projeto.id) && (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                                      <Check
+                                        className="h-3 w-3"
+                                        strokeWidth={3.5}
+                                      />
+                                      {/* TODO(Ana): label do badge de projeto concluido */}
+                                      Concluído
+                                    </span>
+                                  )}
                               </div>
                               <h3 className="font-display font-bold text-xl text-slate-900">
                                 {projeto.nome}
@@ -611,6 +642,31 @@ export default function Projetos() {
                                   </div>
                                 </div>
                               </div>
+                              {completionReady && (
+                                <div className="mt-5 border-t border-slate-100 pt-4">
+                                  <button
+                                    type="button"
+                                    aria-pressed={projectsDone.has(projeto.id)}
+                                    onClick={() => toggleCompletion(projeto.id)}
+                                    className={`inline-flex items-center gap-1.5 rounded-[9px] border-[2.5px] border-slate-900 px-3.5 py-2 text-sm font-extrabold shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a] ${
+                                      projectsDone.has(projeto.id)
+                                        ? "bg-emerald-500 text-white shadow-[2px_2px_0_#047857]"
+                                        : "bg-white text-slate-900"
+                                    }`}
+                                  >
+                                    {projectsDone.has(projeto.id) && (
+                                      <Check
+                                        className="h-4 w-4"
+                                        strokeWidth={4}
+                                      />
+                                    )}
+                                    {/* TODO(Ana): labels do toggle de conclusao de projeto */}
+                                    {projectsDone.has(projeto.id)
+                                      ? "Projeto concluído"
+                                      : "Marcar como concluído"}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
