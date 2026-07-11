@@ -20,7 +20,7 @@ import SEO from "@/components/SEO";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import { areasTI } from "@/lib/data";
-import { roadmapsV2 } from "@/lib/roadmapV2/content";
+import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 
 interface PriorityAction {
   text: string;
@@ -279,7 +279,7 @@ export default function Simulador() {
   const areaSlug = areasTI.find((entry) => entry.nome === area)?.slug;
   const areaPageHref = areaSlug ? `/areas/${areaSlug}` : "/areas";
   const roadmapHref =
-    areaSlug && roadmapsV2.some((entry) => entry.slug === areaSlug)
+    areaSlug && roadmapsMeta.some((entry) => entry.slug === areaSlug)
       ? `/roadmaps/${areaSlug}`
       : "/roadmaps";
   const areaPath = [
@@ -580,7 +580,8 @@ export default function Simulador() {
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
                     <p className="text-sm font-bold text-amber-800">
                       É uma estimativa pra te orientar, não uma promessa.
-                      Carreira depende de muita coisa que nenhum simulador prevê.
+                      Carreira depende de muita coisa que nenhum simulador
+                      prevê.
                     </p>
                   </div>
                 </motion.div>

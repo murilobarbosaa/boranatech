@@ -64,26 +64,32 @@ export const roadmapsMeta: RoadmapMeta[] = ${JSON.stringify(meta, null, 2)};
 `;
 
 // Validacao textual do mapa de loaders (client/src/lib/roadmapV2/loaders.ts):
-// procura as chaves "<slug>": no fonte. E leitura de texto simples, nao AST;
-// suficiente porque o arquivo e um mapa literal com uma chave por linha. Se o
-// formato do mapa mudar, esta checagem precisa acompanhar.
+// extrai as chaves do mapa por regex (com ou sem aspas, ja que o prettier
+// desaspa chaves simples) e compara com os slugs do agregado nos dois
+// sentidos. E leitura de texto simples, nao AST; suficiente porque o arquivo
+// e um mapa literal com uma chave de loader por linha no formato
+// `slug: () =>`. Se o formato do mapa mudar, esta checagem precisa acompanhar.
 function checkLoaders(): string[] {
   if (!existsSync(LOADERS)) return [];
   const problems: string[] = [];
   const source = readFileSync(LOADERS, "utf8");
   const slugs = new Set(roadmapsV2.map((roadmap) => roadmap.slug));
 
+  const keyPattern = /^\s*"?([a-z0-9-]+)"?:\s*\(\)\s*=>/gm;
+  const loaderKeys = new Set<string>();
+  for (const match of source.matchAll(keyPattern)) {
+    loaderKeys.add(match[1]);
+  }
+
   for (const slug of slugs) {
-    if (!source.includes(`"${slug}":`)) {
+    if (!loaderKeys.has(slug)) {
       problems.push(`loaders.ts sem entrada para o slug "${slug}"`);
     }
   }
-
-  const keyPattern = /"([a-z0-9-]+)":\s*\(\)\s*=>/g;
-  for (const match of source.matchAll(keyPattern)) {
-    if (!slugs.has(match[1])) {
+  for (const key of loaderKeys) {
+    if (!slugs.has(key)) {
       problems.push(
-        `loaders.ts tem entrada "${match[1]}" que nao existe no agregado`,
+        `loaders.ts tem entrada "${key}" que nao existe no agregado`,
       );
     }
   }

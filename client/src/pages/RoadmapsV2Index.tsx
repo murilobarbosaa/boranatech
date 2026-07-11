@@ -19,8 +19,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
-import { roadmapsV2 } from "@/lib/roadmapV2/content";
-import type { RoadmapNode } from "@/lib/roadmapV2/types";
+import { roadmapsMeta } from "@/lib/roadmapV2/meta";
+import { prefetchRoadmap } from "@/lib/roadmapV2/loaders";
 import { areasTI } from "@/lib/data";
 
 // Trilhas kind "carreira" nao tem entrada em areasTI, entao icone e cor dos
@@ -119,14 +119,6 @@ const HERO_DOODLES = [
     delay: 1.2,
   },
 ];
-
-function hasProjectNode(nodes: RoadmapNode[]): boolean {
-  return nodes.some(
-    (node) =>
-      Boolean(node.project) ||
-      (node.children ? hasProjectNode(node.children) : false),
-  );
-}
 
 function HeroDoodles({ reduce }: { reduce: boolean | null }) {
   return (
@@ -261,7 +253,7 @@ export default function RoadmapsV2Index() {
   const search = useSearch();
   const reduce = useReducedMotion();
   const areaParam = new URLSearchParams(search).get("area");
-  if (areaParam && roadmapsV2.some((r) => r.slug === areaParam)) {
+  if (areaParam && roadmapsMeta.some((r) => r.slug === areaParam)) {
     return <Redirect to={`/roadmaps/${areaParam}`} />;
   }
 
@@ -339,22 +331,17 @@ export default function RoadmapsV2Index() {
           </motion.div>
 
           <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {roadmapsV2
+            {roadmapsMeta
               .filter((r) => r.kind !== "carreira")
               .map((r, index) => {
                 const area = areasTI.find((x) => x.slug === r.slug);
                 if (!area) return null;
                 const Icon = area.icon;
-                const hasProject = r.sections.some((section) =>
-                  hasProjectNode(section.children),
-                );
+                const hasProject = r.hasProject;
                 const isMultiStack = Boolean(
                   r.languages && r.languages.length > 0,
                 );
-                const stepCount = r.sections.reduce(
-                  (sum, section) => sum + section.children.length,
-                  0,
-                );
+                const stepCount = r.stepCount;
 
                 return (
                   <motion.div
@@ -368,6 +355,8 @@ export default function RoadmapsV2Index() {
                   >
                     <Link
                       href={`/roadmaps/${r.slug}`}
+                      onMouseEnter={() => prefetchRoadmap(r.slug)}
+                      onFocus={() => prefetchRoadmap(r.slug)}
                       className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
                     >
                       <span
@@ -391,7 +380,7 @@ export default function RoadmapsV2Index() {
 
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                          {r.sections.length} etapas
+                          {r.sectionCount} etapas
                         </span>
                         <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
                           {stepCount} passos
@@ -436,16 +425,13 @@ export default function RoadmapsV2Index() {
             </motion.div>
 
             <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {roadmapsV2
+              {roadmapsMeta
                 .filter((r) => r.kind === "carreira")
                 .map((r, index) => {
                   const style =
                     CAREER_CARD_STYLE[r.slug] ?? CAREER_CARD_FALLBACK;
                   const Icon = style.icon;
-                  const stepCount = r.sections.reduce(
-                    (sum, section) => sum + section.children.length,
-                    0,
-                  );
+                  const stepCount = r.stepCount;
                   return (
                     <motion.div
                       key={r.slug}
@@ -458,6 +444,8 @@ export default function RoadmapsV2Index() {
                     >
                       <Link
                         href={`/roadmaps/${r.slug}`}
+                        onMouseEnter={() => prefetchRoadmap(r.slug)}
+                        onFocus={() => prefetchRoadmap(r.slug)}
                         className="bnt-pressable group flex h-full flex-col overflow-hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700] transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-600 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[6px_6px_0_#FCC700]"
                       >
                         <span
@@ -484,7 +472,7 @@ export default function RoadmapsV2Index() {
                             carreira
                           </span>
                           <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
-                            {r.sections.length} etapas
+                            {r.sectionCount} etapas
                           </span>
                           <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
                             {stepCount} passos

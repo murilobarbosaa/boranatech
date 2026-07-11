@@ -20,7 +20,10 @@ export const COMPLETION_MODAL_DELAY_MS =
   SECTION_CELEBRATION_TOTAL_MS + MODAL_OPEN_SLACK_MS;
 
 type UseRoadmapCompletionArgs = {
-  roadmap: RoadmapV2;
+  // null enquanto o conteudo da trilha carrega (import() por slug). Todos os
+  // efeitos toleram o null: allComplete fica false e o seed anti-replay so
+  // assenta quando conteudo E progresso estiverem prontos.
+  roadmap: RoadmapV2 | null;
   done: Set<string>;
   ready: boolean;
 };
@@ -32,14 +35,17 @@ export function useRoadmapCompletion({
 }: UseRoadmapCompletionArgs) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const slug = roadmap.slug;
+  const slug = roadmap?.slug ?? null;
+  // Assentado de verdade: progresso carregado E conteudo resolvido. O caller
+  // ja combina os dois no `ready`, mas o hook re-garante por conta propria.
+  const settled = ready && roadmap !== null;
 
   const [completion, setCompletion] = useState<RoadmapCompletion | null>(null);
   const [listLoaded, setListLoaded] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
   const allComplete = useMemo(() => {
-    if (!ready) return false;
+    if (!settled || !roadmap) return false;
     let total = 0;
     for (const section of roadmap.sections) {
       const progress = nodeProgress(section, done);
@@ -47,19 +53,30 @@ export function useRoadmapCompletion({
       if (progress.done < progress.total) return false;
     }
     return total > 0;
-  }, [roadmap, done, ready]);
+  }, [roadmap, done, settled]);
 
-  // Mesma mecanica anti-replay do useTrailCelebration: null ate o progresso
-  // assentar; o primeiro render assentado semeia com o estado carregado e nao
-  // dispara nada. So a transicao false -> true NESTA sessao abre o modal.
+  // Mesma mecanica anti-replay do useTrailCelebration: null ate assentar
+  // (progresso E conteudo); o primeiro render assentado semeia com o estado
+  // carregado e nao dispara nada. So a transicao false -> true NESTA sessao
+  // abre o modal. Reload em trilha ja concluida semeia allComplete=true e
+  // nunca dispara.
   const prevAllComplete = useRef<boolean | null>(null);
   // Marca que houve transicao ao vivo nesta sessao, pra reconciliacao
   // silenciosa nao disparar um segundo POST.
   const liveTransition = useRef(false);
+  const reconciled = useRef(false);
   const modalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Troca de trilha sem remontar o componente: estado por-trilha zera.
   useEffect(() => {
-    if (!ready) {
+    liveTransition.current = false;
+    reconciled.current = false;
+    prevAllComplete.current = null;
+    setShowModal(false);
+  }, [slug]);
+
+  useEffect(() => {
+    if (!settled || !slug) {
       prevAllComplete.current = null;
       return;
     }
@@ -81,7 +98,7 @@ export function useRoadmapCompletion({
       }
     }
     prevAllComplete.current = allComplete;
-  }, [allComplete, ready, userId, slug]);
+  }, [allComplete, settled, userId, slug]);
 
   useEffect(() => {
     return () => {
@@ -91,7 +108,7 @@ export function useRoadmapCompletion({
 
   // Carga unica (cacheada em memoria) das conclusoes do usuario logado.
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !slug) {
       setCompletion(null);
       setListLoaded(false);
       return;
@@ -110,11 +127,11 @@ export function useRoadmapCompletion({
   // Reconciliacao silenciosa: usuario concluiu como anonimo (ou o POST da
   // transicao falhou) e agora esta logado com tudo completo, mas sem registro
   // no server. Registra sem mostrar modal.
-  const reconciled = useRef(false);
   useEffect(() => {
     if (
       !userId ||
-      !ready ||
+      !slug ||
+      !settled ||
       !allComplete ||
       !listLoaded ||
       completion !== null ||
@@ -127,10 +144,10 @@ export function useRoadmapCompletion({
     void registerCompletion(userId, slug).then((record) => {
       if (record) setCompletion(record);
     });
-  }, [userId, ready, allComplete, listLoaded, completion, slug]);
+  }, [userId, settled, allComplete, listLoaded, completion, slug]);
 
   const ctas: CompletionCta[] = useMemo(
-    () => buildCompletionCtas(roadmap),
+    () => (roadmap ? buildCompletionCtas(roadmap) : []),
     [roadmap],
   );
 
