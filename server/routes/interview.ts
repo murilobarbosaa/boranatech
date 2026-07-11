@@ -1485,7 +1485,7 @@ router.get(
       const { data, error } = await supabaseAdmin
         .from("interview_sessions")
         .select(
-          "id, kind, area, level, status, question_count, good_count, created_at",
+          "id, kind, area, level, language, status, question_count, good_count, verdict, created_at",
         )
         .eq("user_id", req.user!.id)
         .order("created_at", { ascending: false })

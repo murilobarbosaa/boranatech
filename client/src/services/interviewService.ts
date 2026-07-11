@@ -31,9 +31,15 @@ export interface InterviewSessionSummary {
   kind: InterviewKind;
   area: string | null;
   level: string | null;
+  // not null no banco (default 'pt' desde a migration da E1).
+  language: InterviewLanguage;
   status: InterviewStatus;
   question_count: number;
   good_count: number;
+  // null enquanto a sessao esta ativa. A UI e fail-closed: badge de Preparado
+  // SO quando verdict.result === "prepared"; null/ausente = sem badge, nunca
+  // inferido dos contadores.
+  verdict: InterviewVerdict | null;
   created_at: string;
 }
 
