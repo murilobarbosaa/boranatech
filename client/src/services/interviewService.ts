@@ -273,6 +273,17 @@ export async function finishSession(
   return body.data.verdict;
 }
 
+export async function deleteSession(sessionId: string): Promise<void> {
+  const response = await request(
+    `/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" },
+  );
+  // 404 vira not_found: a sessao ja nao existia; o caller remove da lista.
+  if (!response.ok) {
+    throw toApiError(response.status, await readBody(response));
+  }
+}
+
 export async function listSessions(): Promise<InterviewSessionSummary[]> {
   const response = await request("/sessions");
   if (!response.ok) {

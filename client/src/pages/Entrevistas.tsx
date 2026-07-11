@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Briefcase, Dumbbell, Loader2 } from "lucide-react";
+import { Briefcase, Dumbbell, Loader2, Trash2 } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
@@ -14,6 +14,7 @@ import { interviewSteps } from "@/lib/careerToolsData";
 import FilterPills from "@/components/shared/FilterPills";
 import {
   createSession,
+  deleteSession,
   listSessions,
   InterviewApiError,
   type InterviewKind,
@@ -23,7 +24,9 @@ import {
 
 const ac = getPageAccentUi("sky");
 
-// Opcoes herdadas do form do simulador antigo (aposentado nesta fase).
+// HERANCA do form do simulador antigo (aposentado): listas fechadas, sem texto
+// livre nem areas como Mobile/QA/Seguranca. O intake definitivo (formato,
+// opcoes e origem dos dados) e decisao do redesign E3; nao mexer antes dele.
 const AREA_OPTIONS = ["Front-end", "Back-end", "Dados", "UX/UI", "DevOps"];
 const LEVEL_OPTIONS = ["Estágio", "Trainee", "Júnior", "Pleno"];
 
@@ -57,6 +60,10 @@ const selectClass =
 function SessionHistory() {
   const [, navigate] = useLocation();
   const [sessions, setSessions] = useState<InterviewSessionSummary[]>([]);
+  // Exclusao em dois passos inline (clique em excluir pede confirmacao),
+  // mesmo padrao da galeria de curriculos salvos.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -72,6 +79,23 @@ function SessionHistory() {
     };
   }, []);
 
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await deleteSession(id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+    } catch (err) {
+      if (err instanceof InterviewApiError && err.code === "not_found") {
+        // Ja nao existia: some da lista do mesmo jeito.
+        setSessions((prev) => prev.filter((s) => s.id !== id));
+      }
+      // Outras falhas: o botao volta ao estado normal e o item fica.
+    } finally {
+      setDeletingId(null);
+      setConfirmingId(null);
+    }
+  }
+
   if (sessions.length === 0) return null;
 
   return (
@@ -82,39 +106,72 @@ function SessionHistory() {
           Suas entrevistas
         </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {sessions.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => navigate(`/entrevistas/sessao/${s.id}`)}
-              className="card-brutal rounded-2xl bg-white p-4 text-left transition-transform hover:-translate-y-0.5"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-display text-base font-black text-slate-950">
-                  {s.kind === "job" ? "Preparação para vaga" : "Treino geral"}
-                </span>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full border-2 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wide",
-                    s.status === "active"
-                      ? "border-blue-400 bg-blue-100 text-blue-900"
-                      : "border-emerald-400 bg-emerald-100 text-emerald-900",
-                  )}
+          {sessions.map((s) => {
+            const title =
+              s.kind === "job" ? "Preparação para vaga" : "Treino geral";
+            return (
+              <div
+                key={s.id}
+                className="card-brutal rounded-2xl bg-white p-4 transition-transform hover:-translate-y-0.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => navigate(`/entrevistas/sessao/${s.id}`)}
+                  className="block w-full text-left"
                 >
-                  {s.status === "active" ? "Em andamento" : "Concluída"}
-                </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-display text-base font-black text-slate-950">
+                      {title}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full border-2 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wide",
+                        s.status === "active"
+                          ? "border-blue-400 bg-blue-100 text-blue-900"
+                          : "border-emerald-400 bg-emerald-100 text-emerald-900",
+                      )}
+                    >
+                      {s.status === "active" ? "Em andamento" : "Concluída"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm font-bold text-slate-600">
+                    {s.area ?? "Área não informada"} ·{" "}
+                    {s.level ?? "nível não informado"}
+                  </p>
+                  <p className="mt-2 text-xs font-medium text-slate-500">
+                    {s.question_count > 0
+                      ? `${s.good_count} boas de ${s.question_count} respostas · `
+                      : ""}
+                    {new Date(s.created_at).toLocaleDateString("pt-BR")}
+                  </p>
+                </button>
+                <div className="mt-3 flex justify-end">
+                  {confirmingId === s.id ? (
+                    <button
+                      type="button"
+                      disabled={deletingId === s.id}
+                      onClick={() => void handleDelete(s.id)}
+                      className="rounded-full border-2 border-slate-950 bg-rose-600 px-4 py-1.5 text-xs font-black text-white shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px disabled:opacity-60 disabled:hover:translate-y-0"
+                    >
+                      {/* TODO(Ana): rotulos da exclusao em dois passos. */}
+                      {deletingId === s.id ? "Excluindo..." : "Confirmar exclusão"}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(s.id)}
+                      /* TODO(Ana): label de acessibilidade do botao excluir. */
+                      aria-label={`Excluir ${title}`}
+                      title="Excluir entrevista"
+                      className="rounded-full border-2 border-slate-950 bg-white p-2 text-slate-600 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px hover:text-rose-700"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
+                    </button>
+                  )}
+                </div>
               </div>
-              <p className="mt-1 text-sm font-bold text-slate-600">
-                {s.area ?? "Área não informada"} · {s.level ?? "nível não informado"}
-              </p>
-              <p className="mt-2 text-xs font-medium text-slate-500">
-                {s.question_count > 0
-                  ? `${s.good_count} boas de ${s.question_count} respostas · `
-                  : ""}
-                {new Date(s.created_at).toLocaleDateString("pt-BR")}
-              </p>
-            </button>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

@@ -439,13 +439,9 @@ export default function EntrevistaSessao() {
                     if (t.kind === "hint") {
                       return <HintCard key={t.id} content={t.content} />;
                     }
-                    // Turno de closing persistido: o veredito abaixo ja o
-                    // renderiza, entao nao duplica como bolha.
-                    if (
-                      completed &&
-                      !t.evaluation &&
-                      verdict?.closing === t.content
-                    ) {
+                    // Turno de fechamento (kind closing, marcado pelo server):
+                    // o veredito abaixo ja o renderiza, nao duplica como bolha.
+                    if (t.kind === "closing") {
                       return null;
                     }
                     if (t.evaluation) {

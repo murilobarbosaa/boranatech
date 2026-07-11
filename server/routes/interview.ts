@@ -932,7 +932,8 @@ router.post(
 
       const wroteUser = await insertTurn(session.id, "user", answer, null);
       const wroteClosing =
-        wroteUser && (await insertTurn(session.id, "assistant", closing, null));
+        wroteUser &&
+        (await insertTurn(session.id, "assistant", closing, null, "closing"));
       const wroteSession =
         wroteClosing &&
         (await updateSession(userId, session.id, {
@@ -1000,15 +1001,6 @@ router.post(
       );
     }
 
-    await logAiUsage({
-      userId,
-      tool: INTERVIEW_TURN_TOOL,
-      requestId,
-      status: "success",
-      inputChars: evalIo.inputChars,
-      outputChars: evalIo.outputChars,
-    });
-
     const questionCount = session.question_count + 1;
     const goodCount =
       evaluation.rating === "boa" ? session.good_count + 1 : session.good_count;
@@ -1044,6 +1036,14 @@ router.post(
     }
 
     if (!shouldClose) {
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "success",
+        inputChars: evalIo.inputChars,
+        outputChars: evalIo.outputChars,
+      });
       return res.json({
         data: { evaluation, nextQuestion, done: false },
       });
@@ -1111,6 +1111,7 @@ router.post(
       "assistant",
       closing,
       null,
+      "closing",
     );
     const wroteCompleted =
       wroteClosing &&
@@ -1122,13 +1123,15 @@ router.post(
       return next(createError(500, "db_error", "Erro ao encerrar a sessao."));
     }
 
+    // Cobranca UNICA do turno de fechamento: 1 acao do usuario = 1 unidade de
+    // quota, somando o IO das duas chamadas (avaliacao + veredito) num log so.
     await logAiUsage({
       userId,
       tool: INTERVIEW_TURN_TOOL,
       requestId,
       status: "success",
-      inputChars: closeIo.inputChars,
-      outputChars: closeIo.outputChars,
+      inputChars: evalIo.inputChars + closeIo.inputChars,
+      outputChars: evalIo.outputChars + closeIo.outputChars,
     });
 
     return res.json({
@@ -1372,6 +1375,40 @@ router.get(
     res.json({
       data: { ...loaded.session, turns: turnsLoaded.turns },
     });
+  },
+);
+
+// DELETE /api/interview/sessions/:id: exclusao pelo dono. 404 identico para
+// UUID invalido, sessao inexistente e sessao de outro usuario (nao vaza
+// existencia). Os turnos caem pelo on delete cascade da FK. Sem gate Pro:
+// apagar o proprio historico nao da acesso a nada.
+router.delete(
+  "/sessions/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("interview_sessions")
+        .delete()
+        .eq("user_id", req.user!.id)
+        .eq("id", id)
+        .select("id");
+
+      if (error) {
+        console.warn("[interview] delete de sessao falhou:", error.message);
+        return next(createError(500, "db_error", "Erro ao excluir a sessao."));
+      }
+      if (!data || data.length === 0) {
+        return next(createError(404, "not_found", "Sessao nao encontrada."));
+      }
+      res.json({ data: { deleted: true } });
+    } catch (err) {
+      next(err);
+    }
   },
 );
 
