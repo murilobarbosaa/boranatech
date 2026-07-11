@@ -4,15 +4,7 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import FavoriteButton from "@/components/FavoriteButton";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import RoadmapTrail from "@/components/roadmapV2/RoadmapTrail";
 import TrailDrawer from "@/components/roadmapV2/TrailDrawer";
 import { frontend, roadmapsV2 } from "@/lib/roadmapV2/content";
@@ -101,50 +93,16 @@ export default function RoadmapsV2() {
               Todos os roadmaps
             </Link>
 
-            <Dialog>
-              <DialogTrigger asChild>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Monte seu roadmap com IA
-                  <span className="rounded-full border-2 border-slate-900 bg-amber-300 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-900">
-                    em breve
-                  </span>
-                </button>
-              </DialogTrigger>
-              <DialogContent className="border-[2.5px] border-slate-900">
-                <DialogHeader>
-                  <DialogTitle className="font-display text-xl font-black text-slate-950">
-                    Roadmap personalizado com IA
-                  </DialogTitle>
-                  <DialogDescription className="text-sm text-slate-600">
-                    Em breve você vai poder gerar um roadmap sob medida pro seu
-                    objetivo. Enquanto isso, faça o quiz de carreira ou explore
-                    os roadmaps grátis.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                  <DialogClose asChild>
-                    <Link
-                      href="/quiz-carreira"
-                      className="inline-flex flex-1 items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
-                    >
-                      Fazer o quiz de carreira
-                    </Link>
-                  </DialogClose>
-                  <DialogClose asChild>
-                    <Link
-                      href="/roadmaps"
-                      className="inline-flex flex-1 items-center justify-center rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
-                    >
-                      Ver roadmaps grátis
-                    </Link>
-                  </DialogClose>
-                </div>
-              </DialogContent>
-            </Dialog>
+            {/* roadmap-generator e Pro (requiresPro em server/lib/aiTools.ts),
+                por isso o selo Pro; o gate em si vive na pagina /roadmaps/ia. */}
+            <Link
+              href="/roadmaps/ia"
+              className="inline-flex items-center gap-2 rounded-full border-[2.5px] border-slate-900 bg-violet-600 px-4 py-2 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+            >
+              <Sparkles className="h-4 w-4" />
+              Monte seu roadmap com IA
+              <ProStarIcon className="ml-0.5" />
+            </Link>
           </div>
 
           <div className="flex items-start justify-between gap-4">
