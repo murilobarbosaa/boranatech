@@ -14,6 +14,18 @@ export type InterviewStatus = "active" | "completed";
 export interface InterviewEvaluation {
   rating: InterviewRating;
   feedback: string;
+  // Marcador estrutural do turno avaliado que FECHOU a sessao (content =
+  // feedback, sem proxima pergunta). Ausente em turnos normais e em sessoes
+  // anteriores ao marcador (o client mantem fallback legado).
+  terminal?: boolean;
+}
+
+// Contadores pos-turno vindos DIRETO do server (dado real, nunca calculado
+// no client): alimentam o indicador de preparo ao vivo.
+export interface InterviewProgress {
+  questionCount: number;
+  goodCount: number;
+  goodStreak: number;
 }
 
 export type InterviewTurnKind = "answer" | "hint" | "closing";
@@ -54,6 +66,9 @@ export interface InterviewTurn {
 
 export interface InterviewSessionDetail extends InterviewSessionSummary {
   verdict: InterviewVerdict | null;
+  // Sequencia atual de respostas boas (o select do getSession ja a traz);
+  // inicializa o indicador de preparo na retomada.
+  good_streak: number;
   updated_at: string;
   turns: InterviewTurn[];
 }
@@ -76,6 +91,7 @@ export interface AnswerResult {
   nextQuestion: string | null;
   done: boolean;
   verdict?: InterviewVerdict;
+  progress?: InterviewProgress;
 }
 
 export type InterviewErrorCode =

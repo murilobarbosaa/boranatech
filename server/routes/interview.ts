@@ -109,6 +109,12 @@ const InterviewTurnResultSchema = z.object({
 type InterviewTurnResult = z.infer<typeof InterviewTurnResultSchema>;
 type Evaluation = z.infer<typeof EvaluationSchema>;
 
+// Evaluation como PERSISTIDA/RESPONDIDA: no turno avaliado que FECHA a sessao
+// (content = feedback, sem proxima pergunta) ela ganha terminal: true, o
+// marcador estrutural que o client usa no lugar da heuristica de igualdade de
+// string. O schema do MODELO nao muda; o marcador e adicionado pelo server.
+type PersistedEvaluation = Evaluation & { terminal?: boolean };
+
 const INTERVIEW_TURN_JSON_SCHEMA = toOpenAIStrictSchema(
   InterviewTurnResultSchema,
 );
@@ -161,7 +167,7 @@ interface TurnRow {
   id: string;
   role: "assistant" | "user";
   content: string;
-  evaluation: Evaluation | null;
+  evaluation: PersistedEvaluation | null;
   kind: TurnKind;
   created_at: string;
 }
@@ -531,7 +537,7 @@ async function insertTurn(
   sessionId: string,
   role: "assistant" | "user",
   content: string,
-  evaluation: Evaluation | null,
+  evaluation: PersistedEvaluation | null,
   kind: TurnKind = "answer",
 ): Promise<boolean> {
   try {
@@ -968,7 +974,19 @@ router.post(
       });
 
       return res.json({
-        data: { evaluation: null, nextQuestion: null, done: true, verdict },
+        data: {
+          evaluation: null,
+          nextQuestion: null,
+          done: true,
+          verdict,
+          // Teto na entrada: nenhum turno avaliado novo; devolve os contadores
+          // atuais da sessao.
+          progress: {
+            questionCount: session.question_count,
+            goodCount: session.good_count,
+            goodStreak: session.good_streak,
+          },
+        },
       });
     }
 
@@ -1028,6 +1046,12 @@ router.post(
     const capped = questionCount >= QUESTION_CAP;
     const shouldClose = prepared || capped;
 
+    // Marcador estrutural do turno terminal (fechamentos prepared e
+    // question_cap): banco e res.json carregam o MESMO objeto.
+    const storedEvaluation: PersistedEvaluation = shouldClose
+      ? { ...evaluation, terminal: true }
+      : evaluation;
+
     // Persiste o turno avaliado antes de qualquer fechamento. Quando a sessao
     // vai fechar, a proxima pergunta nunca sera feita e ficaria pendurada no
     // historico recarregado: o content do turno vira o feedback da avaliacao
@@ -1037,7 +1061,12 @@ router.post(
     const wroteUser = await insertTurn(session.id, "user", answer, null);
     const wroteAssistant =
       wroteUser &&
-      (await insertTurn(session.id, "assistant", assistantContent, evaluation));
+      (await insertTurn(
+        session.id,
+        "assistant",
+        assistantContent,
+        storedEvaluation,
+      ));
     const wroteCounters =
       wroteAssistant &&
       (await updateSession(userId, session.id, {
@@ -1059,7 +1088,12 @@ router.post(
         outputChars: evalIo.outputChars,
       });
       return res.json({
-        data: { evaluation, nextQuestion, done: false },
+        data: {
+          evaluation: storedEvaluation,
+          nextQuestion,
+          done: false,
+          progress: { questionCount, goodCount, goodStreak },
+        },
       });
     }
 
@@ -1149,7 +1183,13 @@ router.post(
     });
 
     return res.json({
-      data: { evaluation, nextQuestion: null, done: true, verdict },
+      data: {
+        evaluation: storedEvaluation,
+        nextQuestion: null,
+        done: true,
+        verdict,
+        progress: { questionCount, goodCount, goodStreak },
+      },
     });
   },
 );
