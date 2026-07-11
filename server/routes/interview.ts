@@ -535,29 +535,39 @@ async function loadTurns(
   }
 }
 
+// Retorna o ID PERSISTIDO do turno (ou null em falha): o client precisa do id
+// real da pergunta para pedir a fala por turnId (E5); null preserva a
+// semantica falsy dos encadeamentos de escrita existentes.
 async function insertTurn(
   sessionId: string,
   role: "assistant" | "user",
   content: string,
   evaluation: PersistedEvaluation | null,
   kind: TurnKind = "answer",
-): Promise<boolean> {
+): Promise<string | null> {
   try {
-    const { error } = await supabaseAdmin.from("interview_turns").insert({
-      session_id: sessionId,
-      role,
-      content,
-      evaluation,
-      kind,
-    });
-    if (error) {
-      console.warn("[interview] insertTurn falhou:", error.message);
-      return false;
+    const { data, error } = await supabaseAdmin
+      .from("interview_turns")
+      .insert({
+        session_id: sessionId,
+        role,
+        content,
+        evaluation,
+        kind,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      console.warn(
+        "[interview] insertTurn falhou:",
+        error?.message ?? "sem dados",
+      );
+      return null;
     }
-    return true;
+    return (data as { id: string }).id;
   } catch (err) {
     console.warn("[interview] insertTurn lancou:", err);
-    return false;
+    return null;
   }
 }
 
@@ -778,8 +788,13 @@ router.post(
       );
     }
 
-    const turnOk = await insertTurn(sessionId, "assistant", firstQuestion, null);
-    if (!turnOk) {
+    const questionTurnId = await insertTurn(
+      sessionId,
+      "assistant",
+      firstQuestion,
+      null,
+    );
+    if (!questionTurnId) {
       // Sessao sem primeira pergunta e estado quebrado: desfaz (best-effort).
       await supabaseAdmin
         .from("interview_sessions")
@@ -800,7 +815,7 @@ router.post(
       outputChars: aiIo.outputChars,
     });
 
-    res.json({ data: { sessionId, question: firstQuestion } });
+    res.json({ data: { sessionId, question: firstQuestion, questionTurnId } });
   },
 );
 
@@ -1062,16 +1077,20 @@ router.post(
     // proxima pergunta.
     const assistantContent = shouldClose ? evaluation.feedback : nextQuestion;
     const wroteUser = await insertTurn(session.id, "user", answer, null);
-    const wroteAssistant =
-      wroteUser &&
-      (await insertTurn(
-        session.id,
-        "assistant",
-        assistantContent,
-        storedEvaluation,
-      ));
+    // Id persistido do turno do assistente: quando a sessao SEGUE, o content
+    // e a proxima pergunta e o id vai na resposta (o player de voz pede a
+    // fala por turnId real). No fechamento o content e o feedback e o id nao
+    // e exposto.
+    const assistantTurnId = wroteUser
+      ? await insertTurn(
+          session.id,
+          "assistant",
+          assistantContent,
+          storedEvaluation,
+        )
+      : null;
     const wroteCounters =
-      wroteAssistant &&
+      assistantTurnId &&
       (await updateSession(userId, session.id, {
         question_count: questionCount,
         good_count: goodCount,
@@ -1095,6 +1114,7 @@ router.post(
           evaluation: storedEvaluation,
           nextQuestion,
           done: false,
+          questionTurnId: assistantTurnId,
           progress: { questionCount, goodCount, goodStreak },
         },
       });
