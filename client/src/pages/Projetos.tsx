@@ -3,7 +3,7 @@
   Style: Neo-Brutalism Suavizado
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useSearch } from "wouter";
 import {
   ArrowRight,
@@ -24,21 +24,15 @@ import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, projetos } from "@/lib/data";
 import { getAreaAccent, projectHelpVideos } from "@/lib/platformData";
-import { getProjects } from "@/services/contentService";
 
 type Projeto = (typeof projetos)[number];
 
-const niveis = ["Todos", "Iniciante", "Básico", "Intermediário", "Avançado"];
+const niveis = ["Todos", "Iniciante", "Intermediário", "Avançado"];
 const nivelGuides = [
   {
     label: "Iniciante",
     desc: "Para quem não sabe absolutamente nada e precisa de entregas sem pressão.",
     className: "bg-emerald-100 text-emerald-800 shadow-[4px_4px_0_#34d399]",
-  },
-  {
-    label: "Básico",
-    desc: "Para quem já entende fundamentos e quer praticar com pequenas interações.",
-    className: "bg-amber-100 text-amber-800 shadow-[4px_4px_0_#fbbf24]",
   },
   {
     label: "Intermediário",
@@ -82,10 +76,8 @@ function projectHelpVideo(projeto: Projeto): { title: string; url: string } {
   };
 }
 
-
 const nivelColors: Record<string, string> = {
   Iniciante: "bg-emerald-100 text-emerald-700",
-  Básico: "bg-amber-100 text-amber-700",
   Intermediário: "bg-blue-100 text-blue-700",
   Avançado: "bg-violet-100 text-violet-700",
 };
@@ -96,7 +88,10 @@ export default function Projetos() {
   const { isPro, loading } = useSubscription();
   const search = useSearch();
   const initialAreaFromUrl = new URLSearchParams(search).get("area");
-  const [projectItems, setProjectItems] = useState(projetos);
+  // Fonte canonica: o catalogo estatico versionado (client/src/lib/data.ts).
+  // A tabela projects do Supabase segue existindo pra outras superficies, mas
+  // esta pagina nao a consome mais.
+  const projectItems = projetos;
   const [area, setArea] = useState(initialAreaFromUrl ?? AREA_ALL);
   const [nivel, setNivel] = useState("Todos");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -123,12 +118,6 @@ export default function Projetos() {
   const lockedTotal = isPro
     ? 0
     : Math.max(projectItems.length - SAMPLE_SIZE, 0);
-
-  useEffect(() => {
-    getProjects()
-      .then(setProjectItems)
-      .catch(() => setProjectItems(projetos));
-  }, []);
 
   const q = query.trim().toLowerCase();
   const baseFiltered = projectItems.filter((p) => {
@@ -265,49 +254,51 @@ export default function Projetos() {
               />
             </div>
             <div className="flex flex-wrap gap-3">
-            <select
-              value={area}
-              onChange={(e) => setArea(e.target.value)}
-              aria-label="Filtrar por área"
-              className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
-            >
-              {areaSlugOptions.map((slug) => {
-                const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
-                const key = slug ?? "__null__";
-                const label =
-                  slug === AREA_ALL ? "Todas as áreas" : labelForAreaSlug(slug);
-                return (
-                  <option key={key} value={value}>
-                    {label}
+              <select
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                aria-label="Filtrar por área"
+                className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+              >
+                {areaSlugOptions.map((slug) => {
+                  const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
+                  const key = slug ?? "__null__";
+                  const label =
+                    slug === AREA_ALL
+                      ? "Todas as áreas"
+                      : labelForAreaSlug(slug);
+                  return (
+                    <option key={key} value={value}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+              <select
+                value={nivel}
+                onChange={(e) => setNivel(e.target.value)}
+                aria-label="Filtrar por nível"
+                className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+              >
+                {niveis.map((n) => (
+                  <option key={n} value={n}>
+                    {n === "Todos" ? "Todos os níveis" : n} ({nivelCounts[n]})
                   </option>
-                );
-              })}
-            </select>
-            <select
-              value={nivel}
-              onChange={(e) => setNivel(e.target.value)}
-              aria-label="Filtrar por nível"
-              className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
-            >
-              {niveis.map((n) => (
-                <option key={n} value={n}>
-                  {n === "Todos" ? "Todos os níveis" : n} ({nivelCounts[n]})
-                </option>
-              ))}
-            </select>
-            <select
-              value={tech}
-              onChange={(e) => setTech(e.target.value)}
-              aria-label="Filtrar por tecnologia"
-              className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
-            >
-              <option value={TECH_ALL}>Todas as tecnologias</option>
-              {techOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+                ))}
+              </select>
+              <select
+                value={tech}
+                onChange={(e) => setTech(e.target.value)}
+                aria-label="Filtrar por tecnologia"
+                className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+              >
+                <option value={TECH_ALL}>Todas as tecnologias</option>
+                {techOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </div>
             {activeFilters.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
@@ -385,219 +376,232 @@ export default function Projetos() {
                   {grupo.itens.map((projeto) => {
                     const locked = !isPro && !freeProjectIds.has(projeto.id);
                     return (
-                    <div key={projeto.id} className="relative">
-                    <div
-                      style={{
-                        boxShadow: `5px 5px 0 ${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}`,
-                      }}
-                      className={`card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 ${locked ? "pointer-events-none select-none blur-[3px]" : ""}`}
-                      aria-hidden={locked}
-                    >
-                <div
-                  className="flex w-full cursor-pointer items-start justify-between rounded-xl p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={expanded === projeto.id}
-                  aria-controls={`projeto-detalhe-${projeto.id}`}
-                  onClick={() =>
-                    setExpanded(expanded === projeto.id ? null : projeto.id)
-                  }
-                  onKeyDown={(e) => {
-                    if (e.target !== e.currentTarget) return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setExpanded(expanded === projeto.id ? null : projeto.id);
-                    }
-                  }}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold"
-                        style={{
-                          backgroundColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}1a`,
-                          color: getAreaAccent(labelForAreaSlug(projeto.areaSlug)),
-                          borderColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}55`,
-                        }}
-                      >
-                        <span
-                          className="h-1.5 w-1.5 rounded-full"
+                      <div key={projeto.id} className="relative">
+                        <div
                           style={{
-                            backgroundColor: getAreaAccent(
-                              labelForAreaSlug(projeto.areaSlug),
-                            ),
+                            boxShadow: `5px 5px 0 ${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}`,
                           }}
-                          aria-hidden
-                        />
-                        {labelForAreaSlug(projeto.areaSlug)}
-                      </span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}
-                      >
-                        {projeto.nivel}
-                      </span>
-                    </div>
-                    <h3 className="font-display font-bold text-xl text-slate-900">
-                      {projeto.nome}
-                    </h3>
-                    <p className="text-sm text-slate-600 mt-1">
-                      {projeto.objetivo}
-                    </p>
-                  </div>
-                  <div className="ml-4 flex shrink-0 items-center gap-3">
-                    <span
-                      className="inline-flex"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
-                      <FavoriteButton
-                        compact
-                        item={{
-                          id: projeto.id,
-                          type: "projeto",
-                          title: projeto.nome,
-                          subtitle: labelForAreaSlug(projeto.areaSlug),
-                        }}
-                      />
-                    </span>
-                    <span className="text-slate-400" aria-hidden>
-                      {expanded === projeto.id ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                {expanded === projeto.id && (
-                  <div
-                    id={`projeto-detalhe-${projeto.id}`}
-                    role="region"
-                    aria-label={`Detalhes de ${projeto.nome}`}
-                    className="px-6 pb-6 border-t border-slate-100 pt-4"
-                  >
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div>
-                        {/* Ferramentas */}
-                        <div className="mb-4">
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                            Ferramentas
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {projeto.ferramentas.map((f) => (
-                              <span
-                                key={f}
-                                className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono"
-                              >
-                                {f}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Passo a passo */}
-                        <div>
-                          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                            Passo a passo
-                          </p>
-                          <ol className="space-y-2">
-                            {projeto.passosSimplificados.map((passo, i) => (
-                              <li
-                                key={i}
-                                className="flex items-start gap-2 text-sm text-slate-700"
-                              >
-                                <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                                  {i + 1}
+                          className={`card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 ${locked ? "pointer-events-none select-none blur-[3px]" : ""}`}
+                          aria-hidden={locked}
+                        >
+                          <div
+                            className="flex w-full cursor-pointer items-start justify-between rounded-xl p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={expanded === projeto.id}
+                            aria-controls={`projeto-detalhe-${projeto.id}`}
+                            onClick={() =>
+                              setExpanded(
+                                expanded === projeto.id ? null : projeto.id,
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (e.target !== e.currentTarget) return;
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setExpanded(
+                                  expanded === projeto.id ? null : projeto.id,
+                                );
+                              }
+                            }}
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span
+                                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold"
+                                  style={{
+                                    backgroundColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}1a`,
+                                    color: getAreaAccent(
+                                      labelForAreaSlug(projeto.areaSlug),
+                                    ),
+                                    borderColor: `${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}55`,
+                                  }}
+                                >
+                                  <span
+                                    className="h-1.5 w-1.5 rounded-full"
+                                    style={{
+                                      backgroundColor: getAreaAccent(
+                                        labelForAreaSlug(projeto.areaSlug),
+                                      ),
+                                    }}
+                                    aria-hidden
+                                  />
+                                  {labelForAreaSlug(projeto.areaSlug)}
                                 </span>
-                                {passo}
-                              </li>
-                            ))}
-                          </ol>
-                        </div>
-                      </div>
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full font-bold ${nivelColors[projeto.nivel] || "bg-slate-100 text-slate-600"}`}
+                                >
+                                  {projeto.nivel}
+                                </span>
+                              </div>
+                              <h3 className="font-display font-bold text-xl text-slate-900">
+                                {projeto.nome}
+                              </h3>
+                              <p className="text-sm text-slate-600 mt-1">
+                                {projeto.objetivo}
+                              </p>
+                            </div>
+                            <div className="ml-4 flex shrink-0 items-center gap-3">
+                              <span
+                                className="inline-flex"
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                              >
+                                <FavoriteButton
+                                  compact
+                                  item={{
+                                    id: projeto.id,
+                                    type: "projeto",
+                                    title: projeto.nome,
+                                    subtitle: labelForAreaSlug(
+                                      projeto.areaSlug,
+                                    ),
+                                  }}
+                                />
+                              </span>
+                              <span className="text-slate-400" aria-hidden>
+                                {expanded === projeto.id ? (
+                                  <ChevronUp className="w-5 h-5" />
+                                ) : (
+                                  <ChevronDown className="w-5 h-5" />
+                                )}
+                              </span>
+                            </div>
+                          </div>
 
-                      <div>
-                        <a
-                          href={projectHelpVideo(projeto).url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="card-brutal mb-4 flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
-                        >
-                          <PlayCircle className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                              Vídeo de ajuda
-                            </p>
-                            <p className="text-sm font-bold text-slate-900">
-                              {projectHelpVideo(projeto).title}
-                            </p>
-                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
-                              Assistir referência{" "}
-                              <ExternalLink className="h-3 w-3" />
+                          {expanded === projeto.id && (
+                            <div
+                              id={`projeto-detalhe-${projeto.id}`}
+                              role="region"
+                              aria-label={`Detalhes de ${projeto.nome}`}
+                              className="px-6 pb-6 border-t border-slate-100 pt-4"
+                            >
+                              <div className="grid md:grid-cols-2 gap-6">
+                                <div>
+                                  {/* Ferramentas */}
+                                  <div className="mb-4">
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                                      Ferramentas
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {projeto.ferramentas.map((f) => (
+                                        <span
+                                          key={f}
+                                          className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full font-mono"
+                                        >
+                                          {f}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* Passo a passo */}
+                                  <div>
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                                      Passo a passo
+                                    </p>
+                                    <ol className="space-y-2">
+                                      {projeto.passosSimplificados.map(
+                                        (passo, i) => (
+                                          <li
+                                            key={i}
+                                            className="flex items-start gap-2 text-sm text-slate-700"
+                                          >
+                                            <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                              {i + 1}
+                                            </span>
+                                            {passo}
+                                          </li>
+                                        ),
+                                      )}
+                                    </ol>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <a
+                                    href={projectHelpVideo(projeto).url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="card-brutal mb-4 flex items-start gap-3 rounded-lg border-amber-300 bg-amber-50 p-4"
+                                  >
+                                    <PlayCircle className="mt-0.5 h-5 w-5 shrink-0 text-slate-900" />
+                                    <div>
+                                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                        Vídeo de ajuda
+                                      </p>
+                                      <p className="text-sm font-bold text-slate-900">
+                                        {projectHelpVideo(projeto).title}
+                                      </p>
+                                      <span className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-950">
+                                        Assistir referência{" "}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </span>
+                                    </div>
+                                  </a>
+                                  {/* Entregável */}
+                                  <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
+                                    <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">
+                                      Entregável final
+                                    </p>
+                                    <p className="text-sm text-slate-700">
+                                      {projeto.entregavel}
+                                    </p>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                      📤 Publicar em: {projeto.comoPublicar}
+                                    </p>
+                                  </div>
+
+                                  {/* LinkedIn */}
+                                  <div className="card-brutal bg-orange-50 rounded-lg p-4 border-orange-200">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Lightbulb className="w-4 h-4 text-orange-700" />
+                                      <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">
+                                        Sugestão de post no LinkedIn
+                                      </p>
+                                    </div>
+                                    <p className="text-xs text-slate-700 italic">
+                                      "{projeto.sugestaoLinkedIn}"
+                                    </p>
+                                  </div>
+
+                                  {/* Sugestão editorial pra praticar depois (não-clicável) */}
+                                  <div className="mt-4 text-sm text-slate-700">
+                                    <span className="font-medium">
+                                      Sugestão pra praticar depois:
+                                    </span>{" "}
+                                    <span>{projeto.proximoProjeto}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {locked ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
+                            <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
+                              <Lock
+                                className="h-6 w-6 text-slate-950"
+                                aria-hidden
+                              />
                             </span>
-                          </div>
-                        </a>
-                        {/* Entregável */}
-                        <div className="card-brutal bg-orange-50 rounded-lg p-4 mb-4 border-orange-200">
-                          <p className="text-xs font-medium text-orange-700 uppercase tracking-wide mb-1">
-                            Entregável final
-                          </p>
-                          <p className="text-sm text-slate-700">
-                            {projeto.entregavel}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            📤 Publicar em: {projeto.comoPublicar}
-                          </p>
-                        </div>
-
-                        {/* LinkedIn */}
-                        <div className="card-brutal bg-orange-50 rounded-lg p-4 border-orange-200">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Lightbulb className="w-4 h-4 text-orange-700" />
-                            <p className="text-xs font-medium text-orange-700 uppercase tracking-wide">
-                              Sugestão de post no LinkedIn
+                            <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
+                              <ProStarIcon className="h-3.5 w-3.5" /> Pro
+                            </span>
+                            {/* TODO(Ana): copy do card de projeto travado */}
+                            <p className="max-w-[15rem] text-sm font-black text-slate-950">
+                              Este projeto faz parte do Plano Pro.
                             </p>
+                            <Link
+                              href="/planos"
+                              className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                            >
+                              Assine o Pro pra desbloquear todos{" "}
+                              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                            </Link>
                           </div>
-                          <p className="text-xs text-slate-700 italic">
-                            "{projeto.sugestaoLinkedIn}"
-                          </p>
-                        </div>
-
-                        {/* Sugestão editorial pra praticar depois (não-clicável) */}
-                        <div className="mt-4 text-sm text-slate-700">
-                          <span className="font-medium">
-                            Sugestão pra praticar depois:
-                          </span>{" "}
-                          <span>{projeto.proximoProjeto}</span>
-                        </div>
+                        ) : null}
                       </div>
-                    </div>
-                  </div>
-                )}
-                    </div>
-                    {locked ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
-                          <Lock className="h-6 w-6 text-slate-950" aria-hidden />
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
-                          <ProStarIcon className="h-3.5 w-3.5" /> Pro
-                        </span>
-                        {/* TODO(Ana): copy do card de projeto travado */}
-                        <p className="max-w-[15rem] text-sm font-black text-slate-950">
-                          Este projeto faz parte do Plano Pro.
-                        </p>
-                        <Link
-                          href="/planos"
-                          className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
-                        >
-                          Assine o Pro pra desbloquear todos{" "}
-                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                        </Link>
-                      </div>
-                    ) : null}
-                    </div>
                     );
                   })}
                 </div>

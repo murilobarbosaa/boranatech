@@ -12109,7 +12109,7 @@ export const projetos = [
     id: "todo-list",
     nome: "To-Do List com JavaScript",
     areaSlug: "frontend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo: "Criar uma lista de tarefas funcional com JavaScript puro.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
     passosSimplificados: [
@@ -12129,7 +12129,7 @@ export const projetos = [
     id: "dashboard-figma",
     nome: "Dashboard no Figma",
     areaSlug: "uxui" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo: "Criar um dashboard de dados fictícios no Figma.",
     ferramentas: ["Figma"],
     passosSimplificados: [
@@ -12172,7 +12172,7 @@ export const projetos = [
     id: "plano-testes",
     nome: "Plano de Testes para App",
     areaSlug: "qa" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo: "Criar um plano de testes completo para um aplicativo existente.",
     ferramentas: ["Google Docs ou Notion", "Postman (para APIs)"],
     passosSimplificados: [
@@ -12256,7 +12256,7 @@ export const projetos = [
     id: "calculadora-js",
     nome: "Calculadora com JavaScript",
     areaSlug: "frontend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Criar uma calculadora simples para praticar eventos, funções e manipulação do DOM.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
@@ -12403,7 +12403,7 @@ export const projetos = [
     id: "clone-landing-one-page",
     nome: "Clone de landing page famosa",
     areaSlug: "frontend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Reproduzir visual e layout de uma landing conhecida para treinar HTML, CSS e detalhamento.",
     ferramentas: ["HTML", "CSS", "Figma ou inspetor do navegador"],
@@ -12424,7 +12424,7 @@ export const projetos = [
     id: "cronometro-pomodoro",
     nome: "Cronômetro Pomodoro",
     areaSlug: "frontend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Criar timer de foco com intervalos curtos para praticar estado, timers e UX simples.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
@@ -12445,7 +12445,7 @@ export const projetos = [
     id: "jogo-memoria-cartas",
     nome: "Jogo da memória com cartas",
     areaSlug: "frontend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Implementar lógica de jogo, embaralhamento e comparação de pares.",
     ferramentas: ["HTML", "CSS", "JavaScript"],
@@ -12508,7 +12508,7 @@ export const projetos = [
     id: "cli-tarefas-terminal",
     nome: "CLI de tarefas no terminal",
     areaSlug: "backend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Criar ferramenta de linha de comando para adicionar/listar tarefas sem interface gráfica.",
     ferramentas: ["Node.js ou Python", "Arquivo JSON local"],
@@ -12617,7 +12617,7 @@ export const projetos = [
     id: "formulario-pesquisa-usuario",
     nome: "Formulário de pesquisa com análise",
     areaSlug: "dados" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Coletar respostas fictícias ou reais (amigos) e resumir em gráficos.",
     ferramentas: ["Google Forms ou Tally", "Python", "Pandas", "Matplotlib"],
@@ -12680,7 +12680,7 @@ export const projetos = [
     id: "metricas-produto-north-star",
     nome: "Definir métricas e hipóteses de produto",
     areaSlug: "gestao" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Para um app fictício, escolher north star, métrias de entrada e experimentos.",
     ferramentas: ["Notion", "Planilha"],
@@ -12763,7 +12763,7 @@ export const projetos = [
     id: "ranking-filmes-tmdb",
     nome: "Explorador de filmes com TMDB",
     areaSlug: "frontend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Listar filmes populares, buscar por título e mostrar detalhes usando API do The Movie Database.",
     ferramentas: ["JavaScript ou React", "API TMDB", "CSS"],
@@ -13086,7 +13086,7 @@ export const projetos = [
     id: "dashboard-streamlit-produto",
     nome: "Dashboard executivo de produto (Streamlit)",
     areaSlug: "dados" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Entregar painel interativo para ‘stakeholders’, formato pedido para cases de dados em negócios e produto.",
     ferramentas: ["Python", "Streamlit", "Pandas", "CSV ou API mock"],
@@ -13128,7 +13128,7 @@ export const projetos = [
     id: "n8n-automacao-workflow",
     nome: "Automação de processo com n8n (ou Make)",
     areaSlug: "backend" as string | null,
-    nivel: "Básico",
+    nivel: "Iniciante",
     objetivo:
       "Integrar sistemas sem código pesado, competência crescente em operações, growth e squads enxutos.",
     ferramentas: [
