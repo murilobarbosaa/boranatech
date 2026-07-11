@@ -241,7 +241,7 @@ const menuData: DropdownMenu[] = [
           {
             label: "Avaliador LinkedIn",
             description: "Headline, Sobre e visibilidade para recrutadores",
-            path: "/curriculo/linkedin",
+            path: "/linkedin/analisar",
             isPro: true,
           },
           {

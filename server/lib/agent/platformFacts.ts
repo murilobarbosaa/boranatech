@@ -26,7 +26,7 @@ const CANCELLATION_FACT =
 
 // Fatos das ferramentas Pro (atualizados na frente de features Pro de 2026-07).
 const PRO_TOOLS_FACT =
-  "Ferramentas Pro atuais: analise de curriculo (/curriculo/analisar), geracao de curriculo (/curriculo/gerar), otimizacao de LinkedIn (/curriculo/linkedin), analise de LinkedIn (/linkedin/analisar), analise de portfolio com base no GitHub (/portfolio/analisar), treino de entrevista com IA (/entrevistas), plano de carreira com IA (/plano-carreira) e Roadmap com IA (/roadmaps/ia).";
+  "Ferramentas Pro atuais: analise de curriculo (/curriculo/analisar), geracao de curriculo (/curriculo/gerar), analise de LinkedIn com nota, checklist de recrutador e textos prontos (/linkedin/analisar), analise de portfolio com base no GitHub (/portfolio/analisar), treino de entrevista com IA (/entrevistas), plano de carreira com IA (/plano-carreira) e Roadmap com IA (/roadmaps/ia).";
 const INTERVIEW_FACT =
   "Entrevistas: a pagina /entrevistas reune o guia gratuito do processo seletivo (com banco de perguntas e desafios) e o treino de entrevista com IA (Pro), com feedback por resposta e veredito de preparo. O antigo simulador separado foi unificado nessa pagina.";
 const CAREER_PLAN_FACT =

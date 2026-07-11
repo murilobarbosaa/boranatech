@@ -4,6 +4,11 @@
   "redirects": [
     { "source": "/pro", "destination": "/planos", "permanent": true },
     {
+      "source": "/curriculo/linkedin",
+      "destination": "/linkedin/analisar",
+      "permanent": true
+    },
+    {
       "source": "/empregabilidade",
       "destination": "/entrevistas",
       "permanent": true

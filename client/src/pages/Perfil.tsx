@@ -1411,10 +1411,11 @@ export default function Perfil() {
                   icon={<FileText className="h-5 w-5" strokeWidth={2.5} />}
                   title="Analisar currículo"
                 />
+                {/* TODO(Ana): validar titulo do card do Analisador de LinkedIn */}
                 <ProToolCard
-                  href="/curriculo/linkedin"
+                  href="/linkedin/analisar"
                   icon={<Linkedin className="h-5 w-5" strokeWidth={2.5} />}
-                  title="Otimizar LinkedIn"
+                  title="Analise seu LinkedIn"
                 />
                 <ProToolCard
                   href="/portfolio/analisar"

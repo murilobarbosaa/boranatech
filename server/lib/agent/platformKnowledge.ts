@@ -91,8 +91,7 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   // Rotas Pro: analise personalizada por IA (server/lib/aiTools.ts requiresPro).
   { route: "/curriculo/analisar", tier: "pro", label: "Analise de curriculo por IA." },
   { route: "/curriculo/gerar", tier: "pro", label: "Geracao de curriculo por IA." },
-  { route: "/curriculo/linkedin", tier: "pro", label: "Otimizacao de LinkedIn por IA." },
-  { route: "/linkedin/analisar", tier: "pro", label: "Analise de perfil de LinkedIn por IA." },
+  { route: "/linkedin/analisar", tier: "pro", label: "Analise de perfil de LinkedIn por IA: nota, checklist de recrutador e textos prontos para colar." },
   { route: "/portfolio/analisar", tier: "pro", label: "Analise de portfolio por IA com base no GitHub (a analise de GitHub)." },
   // TODO(Ana): revisar o label do Roadmap com IA.
   { route: "/roadmaps/ia", tier: "pro", label: "Roadmap com IA: gera uma trilha de estudos sob medida." },

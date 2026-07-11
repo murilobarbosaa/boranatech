@@ -177,7 +177,7 @@ export default function Checkout() {
           "plano pro bora na tech",
           "ia carreira ti",
           "analisador currículo ia",
-          "otimizador linkedin",
+          "analisador linkedin",
         ]}
         url="/planos"
         schemaType="Product"

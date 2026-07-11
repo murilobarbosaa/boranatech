@@ -204,10 +204,11 @@ const PRO_TOOLS: ProTool[] = [
     desc: "A rota da sua carreira com IA",
   },
   {
+    // TODO(Ana): validar desc do card do Analisador de LinkedIn
     label: "linkedin",
     title: "LinkedIn",
-    route: "/curriculo/linkedin",
-    desc: "Otimiza seu perfil do LinkedIn",
+    route: "/linkedin/analisar",
+    desc: "Analise seu LinkedIn",
   },
   {
     label: "portfolio",
