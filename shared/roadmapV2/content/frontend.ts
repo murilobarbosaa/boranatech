@@ -23,7 +23,9 @@ export const frontend: RoadmapV2 = {
           id: "web.http",
           title: "Cliente, servidor, HTTP e HTTPS",
           description:
-            "Como o navegador e o servidor conversam, e o que o HTTPS protege nessa troca.",
+            "Requisição e resposta, verbos GET e POST e os códigos de status que resumem cada conversa.",
+          content:
+            "A web inteira funciona numa conversa de duas falas: o **cliente** pede, o **servidor** responde. O cliente é o navegador que você está usando agora; o servidor é um computador ligado o tempo todo esperando pedidos. Cada pedido se chama requisição, e cada resposta, bem, resposta: request e response, os dois termos que você vai ler em inglês em todo lugar.\n\nQuando você digita uma URL como `https://site.com/produtos`, está montando um pedido: o `https` diz o protocolo da conversa, o `site.com` diz com qual servidor falar e o `/produtos` diz o que você quer lá dentro.\n\nTodo pedido carrega um **verbo** que declara a intenção. Os dois primeiros que importam: `GET` busca alguma coisa (abrir uma página, carregar uma imagem) e `POST` envia dados (mandar um formulário de cadastro). Existem outros, mas esses dois cobrem o seu início inteiro.\n\nA resposta sempre vem com um **código de status**, um número de três dígitos que resume o resultado: `200` é deu certo, `404` é o servidor não achou o que você pediu, `500` é o servidor quebrou tentando responder. Ler esses códigos vira diagnóstico instantâneo.\n\nE o HTTPS? É o HTTP com criptografia: o conteúdo viaja embaralhado, e ninguém no meio do caminho (o wifi do café, o provedor) consegue ler nem alterar o que passa.\n\nVocê domina este passo quando consegue narrar, em termos de requisição e resposta, o que acontece ao abrir um site e ao enviar um formulário.",
           resources: [
             {
               label: "MDN HTTP",
@@ -36,19 +38,25 @@ export const frontend: RoadmapV2 = {
           id: "web.dns",
           title: "DNS, domínios e hospedagem",
           description:
-            "O que acontece entre digitar um endereço e a página aparecer.",
+            "Do nome que você digita ao IP do servidor: domínio, hospedagem e a ponte entre eles.",
+          content:
+            'DNS é a agenda de contatos da internet: traduz nomes que humanos decoram, como `boranatech.com.br`, em endereços IP que as máquinas usam pra se encontrar, números como `76.76.21.21`. Servidores se localizam por número; nomes existem pra você não precisar decorá-los.\n\nO caminho completo, simplificado: você digita o endereço, o navegador pergunta ao DNS qual é o IP daquele domínio, recebe o número, abre a conexão com o servidor naquele IP e só então faz a requisição HTTP do passo anterior. Tudo em milissegundos, com camadas de cache no meio pra não repetir a mesma pergunta a cada clique.\n\nTrês nomes que você vai ouvir junto e o que cada um é na prática: **domínio** é o nome que alguém registrou e renova anualmente (`seusite.com.br`); **hospedagem** é o computador ou serviço onde os arquivos do site realmente moram; **DNS** é a ponte que aponta o primeiro pro segundo. São três serviços independentes, e é por isso que dá pra trocar de hospedagem mantendo o mesmo domínio: basta atualizar o apontamento.\n\nGuarde o mapa mental: nome, tradução pra IP, conexão, requisição. Quando um site "não abre", esse mapa diz onde procurar o problema. E mais à frente, quando você publicar um projeto com endereço próprio, essas três peças voltam a aparecer.',
         },
         {
           id: "web.render",
           title: "Como o navegador renderiza uma página",
           description:
-            "O caminho do HTML e do CSS até virar o que você vê na tela.",
+            "DOM, estilos, layout e pintura: as etapas entre o HTML chegar e a página aparecer.",
+          content:
+            'Renderizar é transformar texto em pixels. O servidor manda um arquivo de texto (o HTML); o que aparece na tela é o resultado de um processo do navegador que vale conhecer em quatro etapas.\n\nPrimeiro, o navegador lê o HTML de cima pra baixo e monta o **DOM**, uma árvore de objetos em memória onde cada tag vira um nó pendurado no pai. É essa árvore, e não o arquivo original, que o navegador enxerga dali em diante (e é ela que o JavaScript vai manipular mais adiante na trilha).\n\nSegundo, ele processa o CSS e calcula o estilo final de cada elemento da árvore, resolvendo conflitos pelas regras de especificidade e cascata que a seção de CSS ensina.\n\nTerceiro, o **layout**: com os estilos definidos, o navegador calcula a posição e o tamanho de cada caixa na página. Quarto, a **pintura**: desenha tudo na tela, camada por camada.\n\nA consequência prática de ler de cima pra baixo é que a ordem dos arquivos importa. O CSS entra no `<head>` pra página já nascer estilizada, e os scripts costumam ficar no fim do `<body>` (ou marcados com atributo próprio) pra não travar a leitura do HTML no meio.\n\nVocê domina este passo quando consegue explicar por que uma página pode aparecer "pelada" por um instante quando o CSS demora a carregar.',
         },
         {
           id: "web.devtools",
           title: "DevTools do navegador",
           description:
-            "As ferramentas embutidas pra inspecionar, depurar e medir sua página.",
+            "F12 e mãos na massa: inspecionar elementos, editar ao vivo, ler o Console e a aba Network.",
+          content:
+            "O DevTools é o raio-x embutido em todo navegador: um painel que mostra a página por dentro, ao vivo. Abra com F12, com clique direito e Inspecionar, ou com `Ctrl+Shift+I` (`Cmd+Option+I` no Mac). Ele vai ser sua lupa na trilha inteira, então este passo é mão na massa desde já.\n\nA aba **Elements** mostra o DOM montado (aquela árvore do passo anterior) e os estilos aplicados a cada elemento selecionado. O truque que muda tudo: dá pra editar ali mesmo. Clique duas vezes num texto e troque; desmarque uma propriedade CSS e veja o layout reagir na hora. Nada disso altera o site de verdade, é um rascunho local seu; recarregou, voltou ao original.\n\nO **Console** mostra os erros e avisos da página (e vai ser por onde o seu JavaScript conversa com você mais adiante). A aba **Network** lista cada requisição que a página fez: o HTML, cada CSS, cada imagem, com status e tamanho. É o modelo de requisição e resposta acontecendo na sua frente.\n\nO exercício que fecha o passo: abra um site que você usa todo dia e passe cinco minutos fuçando. Troque o título da página, esconda um banner mudando o `display` dele, ache no Network uma requisição com status `200` e alguma com `404`. Fuçar sem medo é o hábito que fica: o DevTools não quebra nada.",
           resources: [
             {
               label: "Chrome DevTools",
@@ -175,7 +183,9 @@ export const frontend: RoadmapV2 = {
           id: "css.seletores",
           title: "Seletores e especificidade",
           description:
-            "Como apontar quais elementos estilizar e quem vence quando há conflito.",
+            "Tipo, classe e id, quem vence os conflitos e por que quase tudo se estiliza com classe.",
+          content:
+            'Seletor é o endereço de um estilo: a parte da regra CSS que diz **quais** elementos recebem **quais** propriedades. Em `p { color: blue; }`, o `p` é o seletor e pinta todos os parágrafos da página.\n\nOs três fundamentais: o seletor de **tipo** mira a tag (`h1`, `p`, `button`); o de **classe** mira o atributo `class` e se escreve com ponto (`.destaque` pega todo elemento com `class="destaque"`); o de **id** mira o `id` único e usa cerquilha (`#menu`). Combinações simples ampliam a mira: `article p` pega parágrafos dentro de artigos, `.card.ativo` pega quem tem as duas classes, `button:hover` pega o botão sob o mouse.\n\nQuando duas regras disputam o mesmo elemento, vence a mais **específica**: id ganha de classe, classe ganha de tipo. Empatou a especificidade? Vence a que aparece por último no arquivo; essa ordem de desempate é a **cascata** que dá nome ao CSS.\n\nDuas decisões práticas evitam a maioria dos problemas antes de existirem: estilize quase tudo com classes (reutilizáveis, de especificidade baixa e previsível) e evite id pra estilo (específico demais, ganha toda disputa e vira dor de cabeça pra sobrescrever depois).\n\nVocê domina este passo quando bate o olho em duas regras conflitantes e prevê qual vence antes de testar no DevTools.',
           resources: [
             {
               label: "MDN CSS",
@@ -193,18 +203,46 @@ export const frontend: RoadmapV2 = {
           id: "css.boxmodel",
           title: "Box model e unidades",
           description:
-            "Margin, border, padding e content, e as medidas (px, rem, %, vh) pra dimensionar tudo.",
+            "As quatro camadas de toda caixa, o border-box como padrão e o critério pra px, rem, % e vh.",
+          content:
+            "No CSS, todo elemento é uma caixa retangular, e o **box model** descreve as quatro camadas dela, de dentro pra fora: o **content** (o conteúdo em si), o **padding** (o respiro interno entre conteúdo e borda), a **border** (a moldura) e a **margin** (o afastamento pros vizinhos). Inspecione qualquer elemento no DevTools e você vê esse diagrama colorido; ele responde quase toda dúvida de espaçamento.\n\nUma pegadinha histórica: por padrão, `width: 200px` define só o content, e padding e borda crescem pra fora, deixando a caixa final maior que 200px. A correção virou padrão de projeto: `box-sizing: border-box` faz a largura declarada incluir padding e borda. Praticamente todo projeto começa aplicando isso a todos os elementos.\n\nPra dimensionar as caixas, quatro unidades cobrem o dia a dia. `px` é fixo: bom pra bordas finas e detalhes que não devem escalar. `rem` é relativo ao tamanho de fonte raiz da página: a unidade padrão pra fontes e espaçamentos, porque respeita o ajuste de tamanho que o usuário fizer no navegador. `%` é relativo ao elemento pai: útil pra larguras fluidas. `vh` e `vw` são fatias da janela: `100vh` é a altura exata da tela, clássico em seções de abertura.\n\nO critério prático: fonte e espaçamento em `rem`, largura fluida em `%`, altura de tela em `vh`, detalhe fino em `px`. Com isso e `border-box`, o layout para de estourar misteriosamente.",
+          resources: [
+            {
+              label: "web.dev Learn CSS",
+              url: "https://web.dev/learn/css",
+              kind: "curso",
+            },
+          ],
         },
         {
           id: "css.posicionamento",
           title: "Posicionamento e z-index",
           description:
-            "Controlar onde os elementos ficam e quem aparece na frente.",
+            "Static, relative, absolute, fixed e sticky com um caso mental de cada, e o empilhamento com z-index.",
+          content:
+            "A propriedade `position` define as regras do jogo pra onde cada caixa pode ir. São cinco valores, cada um com um caso mental claro.\n\n`static` é o padrão: o elemento segue o fluxo normal do documento, um depois do outro, e ignora `top`, `left` e afins.\n\n`relative` mantém o elemento no fluxo, mas permite deslocá-lo em relação a onde ele estaria (`top: 8px` o empurra 8px pra baixo). O uso mais importante é outro, silencioso: um pai com `position: relative` vira o ponto de referência pros filhos absolutos.\n\n`absolute` tira o elemento do fluxo (os vizinhos fecham o espaço como se ele não existisse) e o posiciona em relação ao ancestral posicionado mais próximo. Caso mental: o balãozinho vermelho de notificação ancorado no canto do ícone.\n\n`fixed` prega o elemento na janela: ele fica parado enquanto a página rola. Caso mental: o botão de contato flutuando no canto da tela.\n\n`sticky` é o híbrido: rola junto com a página até encostar num limite (`top: 0`) e ali gruda. Caso mental: a barra de menu que fica presa no topo depois que o cabeçalho some.\n\nQuando caixas se sobrepõem, o `z-index` decide quem fica por cima, e ele só funciona em elemento posicionado (qualquer valor exceto `static`). Números maiores vencem; resista ao `z-index: 9999` e mantenha uma escala pequena e intencional.",
+          resources: [
+            {
+              label: "MDN position",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/CSS/position",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "css.animacoes",
           title: "Transições e animações",
-          description: "Dar movimento e feedback visual com CSS.",
+          description:
+            "Transition pra feedback de hover e focus, transform pra mover sem quebrar layout, keyframes como noção.",
+          content:
+            "Movimento em CSS começa com uma ideia simples: em vez de uma propriedade saltar de um valor pro outro, ela pode viajar suavemente entre eles. Quem faz essa viagem é a `transition`.\n\nA receita: declare no elemento o que anima e em quanto tempo, como `transition: background-color 0.2s ease`. Depois mude o valor em outro estado, tipo o `:hover`, e o navegador anima a passagem sozinho. O caso de uso central é exatamente esse: **feedback**. Botão que escurece no hover, borda que acende no `:focus` de um campo, card que levanta sob o mouse: microssinais de que a interface está viva e respondendo ao usuário.\n\nPra mover e escalar, prefira `transform`: `translate` desloca, `scale` amplia, `rotate` gira, tudo sem tirar o elemento do fluxo nem empurrar os vizinhos. Animar `margin` ou `width` obriga o navegador a recalcular o layout inteiro a cada quadro e engasga; `transform` e `opacity` são as propriedades baratas de animar.\n\nQuando o movimento precisa de várias etapas ou de repetição, entra o `@keyframes`: você descreve os quadros e aplica com a propriedade `animation`. Por enquanto basta saber que existe; o spinner de carregamento é o exemplo clássico.\n\nComece pequeno: pegue a página que você já tem e adicione transições de hover nos links e botões. Duração entre 0.15s e 0.3s quase sempre acerta; muito mais que isso, a interface parece lenta.",
+          resources: [
+            {
+              label: "MDN transition",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/CSS/transition",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
@@ -219,7 +257,9 @@ export const frontend: RoadmapV2 = {
           id: "primeirosite.ambiente",
           title: "Editor e ambiente (VS Code)",
           description:
-            "Preparar o editor e as extensões que aceleram o dia a dia.",
+            "VS Code, Live Server e o ciclo editar, salvar e ver mudar rodando sem fricção.",
+          content:
+            "Ambiente de desenvolvimento é o seu posto de trabalho: o editor onde o código nasce e os atalhos que tiram fricção do caminho. O padrão da área é o **VS Code**, gratuito, e é ele que a trilha assume daqui pra frente. Baixe no site oficial, instale e pronto: metade do passo está feita.\n\nDentro dele, instale extensões pela aba de Extensions (o ícone de blocos na barra lateral). Três bastam agora: **Live Server**, que abre sua página no navegador e a recarrega sozinha a cada salvamento; **Prettier**, que formata o código automaticamente (ative o formatar ao salvar nas preferências); e o **Portuguese (Brazil) Language Pack**, se preferir a interface em português.\n\nO fluxo que você vai repetir milhares de vezes: crie uma pasta pro projeto (algo como `meu-site`, sem espaços nem acentos, hábito que evita dor de cabeça futura), abra a pasta no VS Code, crie um arquivo `index.html` dentro dela, clique em Go Live no rodapé do editor e veja a página abrir no navegador. Edite qualquer coisa, salve com `Ctrl+S` e observe o navegador recarregar sozinho.\n\nVocê domina este passo quando esse ciclo (editar, salvar, ver mudar) roda sem você pensar nele. É nesse ritmo que o próximo passo constrói uma página inteira.",
           resources: [
             {
               label: "VS Code",
@@ -232,13 +272,17 @@ export const frontend: RoadmapV2 = {
           id: "primeirosite.pagina",
           title: "Montar uma página completa",
           description:
-            "Juntar HTML e CSS num projeto pequeno e real, do zero ao arquivo final.",
+            "Sua página pessoal com o HTML e o CSS vistos até aqui: conteúdo primeiro, estilo depois.",
+          content:
+            "Chegou a hora de sair dos pedaços soltos e montar uma página completa, de verdade: a sua página pessoal. O desafio é usar SÓ o que a trilha cobriu até aqui, e isso é proposital: você vai descobrir que já sabe o suficiente pra construir algo apresentável.\n\nComece pelo conteúdo, sem nenhum estilo: o esqueleto que você sabe de memória (doctype, `html`, `head`, `body`), um `<header>` com seu nome num `<h1>` e uma frase de apresentação, um `<main>` com uma seção sobre você (dois ou três parágrafos honestos), sua foto com um `alt` decente, uma lista do que você está estudando e um `<footer>` com um link pro seu LinkedIn ou e-mail. Tags semânticas no lugar, headings em ordem.\n\nSó depois de o HTML ficar de pé, crie o `estilo.css`, linke no `<head>` e estilize: uma fonte melhor, cores com bom contraste, `max-width` no conteúdo pra não esticar em tela grande, espaçamento generoso com padding e margin, a foto num tamanho civilizado e uma transição de hover nos links. Nada de framework, nada de copiar template pronto: o valor do exercício está em cada decisão ser sua.\n\nVai ficar simples, e está ótimo assim: essa página evolui junto com você pela trilha inteira. O próximo passo coloca ela no ar, com endereço público pra mandar pra qualquer pessoa.",
         },
         {
           id: "primeirosite.publicar",
           title: "Publicar na web (GitHub Pages)",
           description:
-            "Colocar sua primeira página no ar com um endereço público.",
+            "Conta no GitHub, upload pela interface e Pages ativado: sua página com URL pública, sem git.",
+          content:
+            "Um site no ar é só isso: seus arquivos copiados pra um servidor que fica ligado o tempo todo respondendo requisições, como você viu nos fundamentos. Vários serviços fazem essa hospedagem de graça pra sites simples; a trilha usa o **GitHub Pages**, porque o GitHub vai ser sua casa profissional em breve e já vale ir criando intimidade.\n\nO caminho inteiro acontece no navegador, sem instalar nada. Primeiro, crie uma conta gratuita no GitHub com um nome de usuário apresentável (ele aparece na URL do site e, mais tarde, no seu portfólio). Depois, crie um repositório novo pela interface: pense nele, por enquanto, como uma pasta pública pro seu projeto; dê um nome simples como `minha-pagina` e marque como público.\n\nCom o repositório criado, use a opção de upload de arquivos e arraste pra lá o seu `index.html`, o `estilo.css` e a foto, confirmando a operação no botão verde. Por fim, abra as configurações do repositório, ache a seção **Pages**, escolha publicar a partir da branch principal e salve. Em um ou dois minutos o GitHub mostra a URL pública, algo como `seuusuario.github.io/minha-pagina`. Abra, veja sua página e mande o link pra alguém hoje.\n\nExiste um jeito profissional de publicar, com controle de versão e histórico de cada mudança: é o Git, e ele tem seção própria mais à frente na trilha. Por enquanto, celebre: você tem um site na internet.",
           resources: [
             {
               label: "GitHub Pages",
