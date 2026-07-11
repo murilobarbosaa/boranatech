@@ -45,10 +45,39 @@ async function isAdminUser(userId: string) {
 // Allowlist dev-only: fora de producao, forca isPro apenas para user ids
 // listados em DEV_PRO_USER_IDS. Substitui o antigo gatilho por Host header
 // (que era forjavel pelo cliente). Em producao retorna sempre false.
-function isDevProUser(req: AuthRequest) {
+export function isDevProUser(req: AuthRequest) {
   if (env.isProd) return false;
   if (!req.user) return false;
   return env.devProUserIds.includes(req.user.id);
+}
+
+// Resolucao standalone do status Pro (cache Redis primeiro, RPCs como fonte
+// de verdade), reutilizavel FORA do middleware: gates pontuais por recurso em
+// rotas que nao podem pagar essa latencia em todo request (ex: o toggle de
+// project_progress so resolve Pro quando o projeto alvo e premium).
+// Fail-closed: qualquer erro vira false.
+export async function resolveProStatus(userId: string): Promise<boolean> {
+  const cached = await getCachedProStatus(userId);
+  if (cached !== null) return cached;
+
+  try {
+    const [{ data: proData, error: proError }, adminAccess] = await Promise.all(
+      [
+        supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
+        isAdminUser(userId),
+      ],
+    );
+    const isPro = (!proError && proData === true) || adminAccess;
+    // So cacheia se a RPC de Pro nao deu erro, pra nao persistir um possivel
+    // falso negativo causado por falha transitoria. Falha do Redis e ignorada
+    // dentro do setCachedProStatus.
+    if (!proError) {
+      await setCachedProStatus(userId, isPro);
+    }
+    return isPro;
+  } catch {
+    return false;
+  }
 }
 
 // JWKS remoto do Supabase, construido UMA vez no load do modulo. A `jose` cacheia
@@ -134,34 +163,7 @@ export async function checkProStatus(
     return next();
   }
 
-  const userId = req.user.id;
-
-  // Cache primeiro. null = nao sei, recalcula via RPC (fonte de verdade).
-  const cached = await getCachedProStatus(userId);
-  if (cached !== null) {
-    req.isPro = cached;
-    return next();
-  }
-
-  try {
-    const [{ data: proData, error: proError }, adminAccess] = await Promise.all(
-      [
-        supabaseAdmin.rpc("is_user_pro", { p_user_id: userId }),
-        isAdminUser(userId),
-      ],
-    );
-    const isPro = (!proError && proData === true) || adminAccess;
-    req.isPro = isPro;
-    // So cacheia se a RPC de Pro nao deu erro, pra nao persistir um possivel falso
-    // negativo causado por falha transitoria. Falha do Redis e ignorada dentro do
-    // setCachedProStatus.
-    if (!proError) {
-      await setCachedProStatus(userId, isPro);
-    }
-  } catch {
-    req.isPro = false;
-  }
-
+  req.isPro = await resolveProStatus(req.user.id);
   next();
 }
 

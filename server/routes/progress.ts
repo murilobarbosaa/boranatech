@@ -1,7 +1,12 @@
 import { Router } from "express";
 
+import { projetos } from "../../shared/projects/catalog";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { requireAuth } from "../middleware/auth";
+import {
+  isDevProUser,
+  requireAuth,
+  resolveProStatus,
+} from "../middleware/auth";
 import { createError } from "../middleware/error";
 
 const router = Router();
@@ -12,6 +17,7 @@ const VALID_CONTEXTS = [
   "course_progress",
   "quiz_history",
   "career_plan",
+  "project_progress",
 ];
 
 function isValidContext(value: string) {
@@ -63,6 +69,33 @@ router.put("/:context/:itemKey", async (req, res, next) => {
       return next(
         createError(400, "invalid_request", "itemKey é obrigatório."),
       );
+    }
+
+    // project_progress: conclusao AUTODECLARADA de projeto (mesmo nivel de
+    // confianca dos checkboxes de trilha). A conclusao VALIDADA pelo leitor
+    // de GitHub e assunto da fase 5c, em tabela propria escrita so pelo
+    // server. item_key precisa resolver no catalogo (que e publico, entao
+    // 404 direto, sem anti-enumeracao); projeto premium exige Pro, resolvido
+    // AQUI dentro e so quando o alvo e pro, pra os toggles dos demais
+    // contextos (trilha, checklists) nao pagarem cache+RPC a cada clique.
+    if (context === "project_progress") {
+      const project = projetos.find((p) => p.id === itemKey);
+      if (!project) {
+        return next(createError(404, "not_found", "Projeto não encontrado."));
+      }
+      if (project.pro === true) {
+        const isPro =
+          isDevProUser(req) || (await resolveProStatus(req.user!.id));
+        if (!isPro) {
+          return next(
+            createError(
+              403,
+              "forbidden",
+              "Recurso Pro. Assine o Plano Pro para concluir projetos premium.",
+            ),
+          );
+        }
+      }
     }
 
     const { state } = req.body as { state?: Record<string, unknown> };
