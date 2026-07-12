@@ -175,7 +175,7 @@ async function checkQuizPools(): Promise<string[]> {
   if (!existsSync(QUIZ_DIR)) return [];
   const problems: string[] = [];
   const files = readdirSync(QUIZ_DIR)
-    .filter((file) => file.endsWith(".ts"))
+    .filter((file) => file.endsWith(".ts") && file !== "index.ts")
     .sort();
   for (const file of files) {
     const fileSlug = file.replace(/\.ts$/, "");
@@ -188,6 +188,38 @@ async function checkQuizPools(): Promise<string[]> {
     }
     const roadmap = roadmapsV2.find((entry) => entry.slug === fileSlug) ?? null;
     problems.push(...validateQuizPool(mod.default, fileSlug, roadmap));
+  }
+
+  // Registry de runtime (index.ts): o Express importa os pools por slug do
+  // mapa estatico, entao todo pool do disco precisa estar exportado la e
+  // vice-versa; divergencia e erro.
+  if (files.length > 0) {
+    const registryPath = path.join(QUIZ_DIR, "index.ts");
+    if (!existsSync(registryPath)) {
+      problems.push(
+        "server/data/roadmapQuizzes/index.ts (registry de pools) nao existe",
+      );
+    } else {
+      const registry = (await import(pathToFileURL(registryPath).href)) as {
+        roadmapQuizPools?: Record<string, QuizPool>;
+      };
+      const keys = new Set(Object.keys(registry.roadmapQuizPools ?? {}));
+      for (const file of files) {
+        const fileSlug = file.replace(/\.ts$/, "");
+        if (!keys.has(fileSlug)) {
+          problems.push(
+            `registry de pools sem entrada para "${fileSlug}" (roadmapQuizzes/index.ts)`,
+          );
+        }
+      }
+      for (const key of keys) {
+        if (!files.includes(`${key}.ts`)) {
+          problems.push(
+            `registry de pools tem "${key}" sem arquivo roadmapQuizzes/${key}.ts`,
+          );
+        }
+      }
+    }
   }
   return problems;
 }
