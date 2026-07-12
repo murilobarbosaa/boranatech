@@ -13,11 +13,19 @@ import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 // - count igual (ou menor): o usuario so desmarcou um passo ja concluido. A
 //   conclusao e duravel (desmarcar checkbox nao a revoga), entao o card fica
 //   neutro, sem falar em conteudo novo.
+// Aprovacao na prova final da trilha (null = sem aprovacao ou trilha sem
+// quiz). Com aprovacao, o card exibe o selo com o score e a CTA do slot quiz
+// vira "rever a prova".
+export type RoadmapQuizApproval = {
+  score: number | null;
+};
+
 type RoadmapCompletionCardProps = {
   roadmap: RoadmapV2;
   completion: RoadmapCompletion | null;
   allComplete: boolean;
   ctas: CompletionCta[];
+  quizApproval?: RoadmapQuizApproval | null;
 };
 
 function formatDate(iso: string): string {
@@ -26,15 +34,36 @@ function formatDate(iso: string): string {
   return date.toLocaleDateString("pt-BR");
 }
 
+function QuizApprovalBadge({ approval }: { approval: RoadmapQuizApproval }) {
+  return (
+    <p className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-emerald-200 px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-950 shadow-[2px_2px_0_#0f172a]">
+      {/* TODO(Ana): copy do selo de aprovacao na prova final */}
+      Prova final aprovada
+      {approval.score != null ? ` (${approval.score}/10)` : ""}
+    </p>
+  );
+}
+
 export default function RoadmapCompletionCard({
   roadmap,
   completion,
   allComplete,
   ctas,
+  quizApproval = null,
 }: RoadmapCompletionCardProps) {
   if (!completion && !allComplete) return null;
 
   const completedDate = completion ? formatDate(completion.completedAt) : "";
+
+  // Aprovado na prova: a CTA do slot quiz muda de "fazer" pra "rever".
+  const effectiveCtas = quizApproval
+    ? ctas.map((cta) =>
+        cta.kind === "quiz"
+          ? // TODO(Ana): copy da CTA de rever a prova aprovada
+            { ...cta, label: "Rever a prova" }
+          : cta,
+      )
+    : ctas;
 
   if (completion && !allComplete) {
     const currentRequiredCount = roadmap.sections.reduce(
@@ -50,9 +79,8 @@ export default function RoadmapCompletionCard({
             <>
               {/* TODO(Ana): copy do estado "concluida antes, tem conteudo novo" */}
               Você concluiu esta trilha
-              {completedDate ? ` em ${completedDate}` : ""}. Ela ganhou
-              conteúdo novo desde então: revisite os passos pendentes quando
-              quiser.
+              {completedDate ? ` em ${completedDate}` : ""}. Ela ganhou conteúdo
+              novo desde então: revisite os passos pendentes quando quiser.
             </>
           ) : (
             <>
@@ -62,9 +90,10 @@ export default function RoadmapCompletionCard({
             </>
           )}
         </p>
+        {quizApproval && <QuizApprovalBadge approval={quizApproval} />}
         <div className="mt-4">
           <CompletionCtaLinks
-            ctas={ctas.filter((cta) => cta.variant === "primary")}
+            ctas={effectiveCtas.filter((cta) => cta.variant === "primary")}
           />
         </div>
       </div>
@@ -83,8 +112,9 @@ export default function RoadmapCompletionCard({
           ? `Conclusão registrada em ${completedDate}. Continue o movimento com os próximos passos abaixo.`
           : "Todos os passos obrigatórios estão concluídos. Continue o movimento com os próximos passos abaixo."}
       </p>
+      {quizApproval && <QuizApprovalBadge approval={quizApproval} />}
       <div className="mt-4">
-        <CompletionCtaLinks ctas={ctas} />
+        <CompletionCtaLinks ctas={effectiveCtas} />
       </div>
     </div>
   );

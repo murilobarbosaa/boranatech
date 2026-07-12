@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, CheckCircle2, Send } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { fireProCelebration } from "@/lib/proConfetti";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import {
   getHistory,
@@ -13,9 +15,10 @@ import {
   type QuizReviewItem,
   type QuizSubmitResult,
 } from "@/services/roadmapQuizService";
-import type {
-  PublicQuizQuestion,
-  QuizAlternativaId,
+import {
+  QUESTIONS_PER_ATTEMPT,
+  type PublicQuizQuestion,
+  type QuizAlternativaId,
 } from "@shared/roadmapQuiz/types";
 
 // Pagina da prova final de roadmap (fase 4.3), tela cheia focada, sem o
@@ -505,49 +508,210 @@ export default function RoadmapQuiz() {
           </div>
         )}
 
-        {phase.kind === "result" && (
+        {phase.kind === "result" && phase.result.status === "reprovada" && (
           <div className={frameClass()}>
             <h2 className="font-display text-lg font-black text-slate-950">
-              {/* TODO(Ana): titulo provisorio do resultado (estados completos na proxima fase) */}
-              {phase.result.status === "aprovada"
-                ? "Prova aprovada!"
-                : "Ainda não foi dessa vez"}
+              {/* TODO(Ana): titulo do estado reprovado */}
+              Ainda não foi dessa vez
             </h2>
             <p className="mt-2 text-sm font-semibold text-slate-600">
-              {/* TODO(Ana): corpo provisorio do resultado */}
+              {/* TODO(Ana): corpo do estado reprovado */}
               Você acertou {phase.result.score} de{" "}
-              {phase.result.porPergunta.length} (mínimo {phase.result.passScore}
-              ).
+              {phase.result.porPergunta.length} (o mínimo é{" "}
+              {phase.result.passScore}). Revise os passos da trilha e refaça a
+              prova quando quiser: cada tentativa sorteia perguntas novas.
             </p>
-            <div className="mt-4">
-              <Link href={trailHref} className={primaryBtn}>
-                {/* TODO(Ana): CTA de volta a trilha no resultado */}
-                Voltar à trilha
+            <ul className="mt-4 space-y-1.5">
+              {phase.result.porPergunta.map((grade, i) => (
+                <li
+                  key={grade.id}
+                  className="flex items-center justify-between rounded-xl border-2 border-slate-200 bg-white px-3 py-2"
+                >
+                  <span className="text-sm font-bold text-slate-900">
+                    {/* TODO(Ana): rotulo do item da lista de resultado */}
+                    Pergunta {i + 1}
+                  </span>
+                  <span
+                    className={`rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-xs font-black ${
+                      grade.anulada
+                        ? "bg-sky-200 text-slate-950"
+                        : grade.acertou
+                          ? "bg-emerald-200 text-slate-950"
+                          : "bg-rose-200 text-slate-950"
+                    }`}
+                  >
+                    {/* TODO(Ana): pills acertou/errou/anulada do resultado */}
+                    {grade.anulada
+                      ? "Anulada a seu favor"
+                      : grade.acertou
+                        ? "Acertou"
+                        : "Errou"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => void start()}
+                className={primaryBtn}
+              >
+                {/* TODO(Ana): CTA de refazer a prova */}
+                Refazer a prova
+              </button>
+              <Link href={trailHref} className={secondaryBtn}>
+                {/* TODO(Ana): CTA de volta a trilha no reprovado */}
+                Revisar a trilha
               </Link>
             </div>
           </div>
         )}
 
-        {phase.kind === "approved" && (
-          <div
-            className={frameClass(
-              "border-emerald-600 shadow-[4px_4px_0_#10b981]",
-            )}
-          >
-            <h2 className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              {/* TODO(Ana): titulo provisorio do estado aprovado persistente */}
-              Prova aprovada
-              {phase.score != null ? ` com ${phase.score}/10` : ""}
-            </h2>
-            <div className="mt-4">
-              <Link href={trailHref} className={primaryBtn}>
-                {/* TODO(Ana): CTA de volta a trilha no aprovado */}
-                Voltar à trilha
-              </Link>
-            </div>
-          </div>
+        {phase.kind === "result" && phase.result.status === "aprovada" && (
+          <ApprovedResult
+            score={phase.result.score}
+            total={phase.result.porPergunta.length}
+            review={phase.result.revisao ?? []}
+            trailHref={trailHref}
+          />
         )}
+
+        {phase.kind === "approved" && (
+          <ApprovedResult
+            score={phase.score}
+            total={QUESTIONS_PER_ATTEMPT}
+            review={phase.review}
+            trailHref={trailHref}
+            persistent
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Mesma janela curta de confete do modal de conclusao da F2: burst inicial e
+// um ou dois ticks, nada alem.
+const APPROVAL_CONFETTI_MS = 700;
+
+type ApprovedResultProps = {
+  score: number | null;
+  total: number;
+  review: QuizReviewItem[];
+  trailHref: string;
+  // Visita posterior de quem ja foi aprovado: mostra o estado sem re-celebrar.
+  persistent?: boolean;
+};
+
+function ApprovedResult({
+  score,
+  total,
+  review,
+  trailHref,
+  persistent = false,
+}: ApprovedResultProps) {
+  const reduce = useReducedMotion();
+
+  useEffect(() => {
+    if (persistent || reduce) return;
+    const stop = fireProCelebration({ x: 0.5, y: 0.35 });
+    const timer = setTimeout(stop, APPROVAL_CONFETTI_MS);
+    return () => {
+      clearTimeout(timer);
+      stop();
+    };
+  }, [persistent, reduce]);
+
+  return (
+    <div
+      className={frameClass(
+        "border-emerald-600 bg-emerald-50 shadow-[4px_4px_0_#10b981]",
+      )}
+    >
+      <h2 className="flex items-center gap-2 font-display text-xl font-black text-slate-950">
+        <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+        {/* TODO(Ana): titulo do estado aprovado */}
+        Prova aprovada{score != null ? ` com ${score} de ${total}` : ""}!
+      </h2>
+      <p className="mt-2 text-sm font-semibold text-slate-600">
+        {/* TODO(Ana): corpo do estado aprovado */}
+        Aprovação registrada para sempre nesta trilha. Revise abaixo cada
+        pergunta com a resposta correta e a explicação.
+      </p>
+
+      {review.length > 0 && (
+        <div className="mt-5">
+          <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">
+            {/* TODO(Ana): titulo da secao de revisao da prova */}
+            Revisão da prova
+          </h3>
+          <div className="mt-3 space-y-2">
+            {review.map((item, i) => (
+              <details
+                key={item.id}
+                className="rounded-xl border-2 border-slate-900 bg-white"
+              >
+                <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-slate-900">
+                  {/* TODO(Ana): rotulo do item expansivel da revisao */}
+                  Pergunta {i + 1}
+                  {item.respostaDoUsuario === item.correta
+                    ? " (acertou)"
+                    : " (errou)"}
+                </summary>
+                <div className="border-t-2 border-slate-200 px-4 py-3">
+                  <p className="text-sm font-bold text-slate-950">
+                    {item.pergunta}
+                  </p>
+                  <ul className="mt-3 space-y-1.5">
+                    {item.alternativas.map((alternativa, j) => {
+                      const isCorrect = alternativa.id === item.correta;
+                      const isUser = alternativa.id === item.respostaDoUsuario;
+                      return (
+                        <li
+                          key={alternativa.id}
+                          className={`rounded-lg border-2 px-3 py-2 text-sm font-semibold text-slate-800 ${
+                            isCorrect
+                              ? "border-emerald-600 bg-emerald-50"
+                              : isUser
+                                ? "border-rose-400 bg-rose-50"
+                                : "border-slate-200 bg-white"
+                          }`}
+                        >
+                          <span className="font-black">
+                            {String.fromCharCode(65 + j)})
+                          </span>{" "}
+                          {alternativa.texto}
+                          {isCorrect && (
+                            <span className="ml-2 rounded-full border border-slate-900 bg-emerald-200 px-2 py-0.5 text-[10px] font-black uppercase">
+                              {/* TODO(Ana): marcador de alternativa correta */}
+                              Correta
+                            </span>
+                          )}
+                          {isUser && (
+                            <span className="ml-2 rounded-full border border-slate-900 bg-white px-2 py-0.5 text-[10px] font-black uppercase">
+                              {/* TODO(Ana): marcador da resposta do usuario */}
+                              Sua resposta
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="mt-3 text-sm font-semibold text-slate-600">
+                    {item.explicacao}
+                  </p>
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-5">
+        <Link href={trailHref} className={primaryBtn}>
+          {/* TODO(Ana): CTA de volta a trilha no aprovado */}
+          Voltar à trilha
+        </Link>
       </div>
     </div>
   );

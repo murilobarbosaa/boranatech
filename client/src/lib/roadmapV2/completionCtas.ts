@@ -1,9 +1,10 @@
 import type { RoadmapV2 } from "@/lib/roadmapV2/types";
 import { areasTI } from "@/lib/data";
+import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 
-// CTAs mostradas no modal e no card de conclusao de roadmap. Os kinds "quiz"
-// e "final-project" sao slots reservados pras proximas fases (quiz de
-// validacao e projeto final); ainda nao ha builder que os produza.
+// CTAs mostradas no modal e no card de conclusao de roadmap. O kind "quiz" e
+// preenchido quando a trilha tem pool de prova (hasQuiz no meta gerado); o
+// kind "final-project" segue como slot reservado pra fase futura.
 export type CompletionCta = {
   id: string;
   label: string;
@@ -33,13 +34,32 @@ const NEXT_TRAIL_BY_SLUG: Partial<Record<string, string>> = {
 export function buildCompletionCtas(roadmap: RoadmapV2): CompletionCta[] {
   const ctas: CompletionCta[] = [];
 
+  // Trilha com prova final: a prova e a CTA primaria da conclusao e a
+  // sugestao de proxima trilha desce pra secundaria. Trilhas sem quiz ficam
+  // exatamente como antes.
+  const hasQuiz =
+    roadmapsMeta.find((meta) => meta.slug === roadmap.slug)?.hasQuiz ?? false;
+  const nextTrailVariant: CompletionCta["variant"] = hasQuiz
+    ? "secondary"
+    : "primary";
+  if (hasQuiz) {
+    ctas.push({
+      id: "quiz-final",
+      // TODO(Ana): copy da CTA da prova final
+      label: "Fazer a prova final",
+      href: `/roadmaps/${roadmap.slug}/prova`,
+      variant: "primary",
+      kind: "quiz",
+    });
+  }
+
   if (roadmap.slug === "comecar-do-zero") {
     ctas.push({
       id: "quiz-carreira",
       // TODO(Ana): copy da CTA pos-conclusao da trilha comecar-do-zero
       label: "Descobrir minha área ideal",
       href: "/quiz-carreira",
-      variant: "primary",
+      variant: nextTrailVariant,
       kind: "next-trail",
     });
   } else if (roadmap.slug === "linkedin") {
@@ -48,7 +68,7 @@ export function buildCompletionCtas(roadmap: RoadmapV2): CompletionCta[] {
       // TODO(Ana): copy da CTA pos-conclusao da trilha de LinkedIn
       label: "Analisar meu perfil com IA",
       href: "/linkedin/analisar",
-      variant: "primary",
+      variant: nextTrailVariant,
       kind: "next-trail",
     });
   } else {
@@ -59,7 +79,7 @@ export function buildCompletionCtas(roadmap: RoadmapV2): CompletionCta[] {
         // TODO(Ana): copy da CTA de proxima trilha
         label: "Começar a próxima trilha",
         href: `/roadmaps/${nextSlug}`,
-        variant: "primary",
+        variant: nextTrailVariant,
         kind: "next-trail",
       });
     } else {
@@ -68,7 +88,7 @@ export function buildCompletionCtas(roadmap: RoadmapV2): CompletionCta[] {
         // TODO(Ana): copy da CTA fallback de proxima trilha
         label: "Explorar outras trilhas",
         href: "/roadmaps",
-        variant: "primary",
+        variant: nextTrailVariant,
         kind: "next-trail",
       });
     }
