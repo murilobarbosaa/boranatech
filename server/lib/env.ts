@@ -106,6 +106,16 @@ export const env = {
   })(),
   currentsApiKey: process.env.CURRENTS_API_KEY || "",
   joobleApiKey: process.env.JOOBLE_API_KEY || "",
+  // Vagas multi-fonte (fase 2). Opcionais no padrao currentsApiKey: vazias
+  // desligam a fonte com warn no sync, nada mais quebra.
+  adzunaAppId: process.env.ADZUNA_APP_ID || "",
+  adzunaAppKey: process.env.ADZUNA_APP_KEY || "",
+  // Token de leitura dos repos de vagas do GitHub. Precedencia: a env
+  // dedicada GITHUB_VAGAS_TOKEN ganha; sem ela, reusa o GITHUB_TOKEN do
+  // avaliador de GitHub (leitura publica, qualquer token serve); sem nenhum,
+  // o adapter roda sem auth em modo reduzido (1 pagina) com warn.
+  githubVagasToken:
+    process.env.GITHUB_VAGAS_TOKEN || process.env.GITHUB_TOKEN || "",
   posthogApiKey: process.env.POSTHOG_API_KEY || "",
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
   resendApiKey: process.env.RESEND_API_KEY || "",
