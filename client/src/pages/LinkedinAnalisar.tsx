@@ -520,6 +520,11 @@ function Reveal({
 // Icones das secoes do prontuario (mapa unico, na ordem de leitura).
 const SECTION_ICON_CLASS = "h-5 w-5 text-sky-700";
 
+// Nota honesta de estado vazio dos cards do prontuario: diz so o que a
+// analise detectou (ou nao detectou), nunca inventa conteudo.
+const EMPTY_NOTE_CLASS =
+  "mt-5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-3 text-sm font-medium text-slate-600";
+
 export default function LinkedinAnalisar() {
   const { isPro } = useSubscription();
   const { profile } = useAuth();
@@ -1482,8 +1487,8 @@ export default function LinkedinAnalisar() {
                         {!analysisId ? (
                           <FeedbackBanner variant="warn">
                             {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
-                            O progresso de melhorias está indisponível para
-                            esta análise.
+                            O progresso de melhorias está indisponível para esta
+                            análise.
                           </FeedbackBanner>
                         ) : null}
                         {progressError ? (
@@ -1538,7 +1543,16 @@ export default function LinkedinAnalisar() {
                             )}
                           </ul>
                         }
-                      />
+                      >
+                        {result.deterministic.headline === null ? (
+                          // TODO(Ana): revisar a nota de headline nao detectada.
+                          <p className={EMPTY_NOTE_CLASS}>
+                            Não detectamos uma headline no texto analisado.
+                            Comece pelas versões prontas abaixo e cole a sua
+                            preferida no perfil.
+                          </p>
+                        ) : null}
+                      </SectionReport>
                     </Reveal>
 
                     <Reveal>
@@ -1570,7 +1584,24 @@ export default function LinkedinAnalisar() {
                             </p>
                           </div>
                         }
-                      />
+                      >
+                        {result.deterministic.sobreTamanho === 0 ? (
+                          // TODO(Ana): revisar a nota de Sobre nao detectado.
+                          <p className={EMPTY_NOTE_CLASS}>
+                            Não detectamos a seção Sobre no texto analisado. O
+                            texto pronto abaixo resolve isso: é só colar no seu
+                            perfil.
+                          </p>
+                        ) : sobreAtual === null ? (
+                          // TODO(Ana): revisar a nota do Sobre sem texto salvo.
+                          <p className={EMPTY_NOTE_CLASS}>
+                            Detectamos um Sobre com{" "}
+                            {result.deterministic.sobreTamanho} caracteres nesta
+                            análise (o texto completo não fica salvo no
+                            histórico).
+                          </p>
+                        ) : null}
+                      </SectionReport>
                     </Reveal>
 
                     <Reveal>
@@ -1639,7 +1670,28 @@ export default function LinkedinAnalisar() {
                             </div>
                           ) : null
                         }
-                      />
+                      >
+                        {result.deterministic.experienciasContagem === 0 ? (
+                          // TODO(Ana): revisar a nota de experiencias nao detectadas.
+                          <p className={EMPTY_NOTE_CLASS}>
+                            Não detectamos experiências no texto analisado.
+                            Comece pela melhoria priorizada correspondente:
+                            cadastre um projeto seu como experiência.
+                          </p>
+                        ) : experienciasAtual === null ? (
+                          // TODO(Ana): revisar a nota das experiencias sem titulos salvos.
+                          <p className={EMPTY_NOTE_CLASS}>
+                            Detectamos{" "}
+                            {result.deterministic.experienciasContagem}{" "}
+                            experiência
+                            {result.deterministic.experienciasContagem === 1
+                              ? ""
+                              : "s"}{" "}
+                            nesta análise (os títulos não ficam salvos no
+                            histórico).
+                          </p>
+                        ) : null}
+                      </SectionReport>
                     </Reveal>
 
                     <Reveal>
@@ -1652,8 +1704,7 @@ export default function LinkedinAnalisar() {
                         atual={
                           result.deterministic.skillsContagem > 0 ? (
                             <p>
-                              {result.deterministic.skillsContagem}{" "}
-                              competência
+                              {result.deterministic.skillsContagem} competência
                               {result.deterministic.skillsContagem === 1
                                 ? " informada"
                                 : "s informadas"}{" "}
@@ -1666,9 +1717,9 @@ export default function LinkedinAnalisar() {
                             <div>
                               <div className="flex items-start justify-between gap-3">
                                 <p className="text-sm text-slate-600">
-                                  Sugestões a partir do que falta no seu
-                                  perfil. Adicione só o que você realmente
-                                  sabe, mesmo que no básico.
+                                  Sugestões a partir do que falta no seu perfil.
+                                  Adicione só o que você realmente sabe, mesmo
+                                  que no básico.
                                 </p>
                                 <CopyButton
                                   text={result.qualitative.skillsSugeridas.join(
@@ -1691,7 +1742,16 @@ export default function LinkedinAnalisar() {
                             </div>
                           ) : null
                         }
-                      />
+                      >
+                        {result.deterministic.skillsContagem === 0 ? (
+                          // TODO(Ana): revisar a nota de competencias nao informadas.
+                          <p className={EMPTY_NOTE_CLASS}>
+                            Você não informou competências nesta análise.
+                            Cadastre as suas na seção Competências do LinkedIn e
+                            cole aqui na próxima análise.
+                          </p>
+                        ) : null}
+                      </SectionReport>
                     </Reveal>
 
                     <Reveal>
