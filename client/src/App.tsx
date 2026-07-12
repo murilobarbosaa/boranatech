@@ -73,6 +73,7 @@ const RecuperarSenha = lazy(() => import("@/pages/RecuperarSenha"));
 const RedefinirSenha = lazy(() => import("@/pages/RedefinirSenha"));
 const RoadmapIA = lazy(() => import("@/pages/RoadmapIA"));
 const RoadmapIAView = lazy(() => import("@/pages/RoadmapIAView"));
+const RoadmapQuiz = lazy(() => import("@/pages/RoadmapQuiz"));
 const RoadmapsV2 = lazy(() => import("@/pages/RoadmapsV2"));
 const RoadmapsV2Index = lazy(() => import("@/pages/RoadmapsV2Index"));
 const Salarios = lazy(() => import("@/pages/Salarios"));
@@ -226,6 +227,16 @@ function Router() {
           {() => (
             <RequireAuth>
               <RoadmapIAView />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Tambem ANTES de /roadmaps/:slug (ordem do wouter). Nao conflita
+            com as rotas de IA acima: /roadmaps/ia e /roadmaps/ia/:slug ja
+            casaram antes desta. */}
+        <Route path="/roadmaps/:slug/prova">
+          {() => (
+            <RequireAuth>
+              <RoadmapQuiz />
             </RequireAuth>
           )}
         </Route>
