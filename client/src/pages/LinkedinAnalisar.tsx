@@ -2,17 +2,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
+  Award,
+  BadgeCheck,
+  Briefcase,
   ChevronDown,
+  FileText,
   FileUp,
   History,
   Linkedin,
-  Lightbulb,
+  MessageSquare,
+  Search,
   Shield,
   Sparkles,
+  Type,
 } from "lucide-react";
 import Layout from "@/components/Layout";
 import ProGate from "@/components/pro/ProGate";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
+import CopyButton from "@/components/shared/CopyButton";
 import ReanalyzeCta from "@/components/shared/ReanalyzeCta";
 import SectionLabel from "@/components/shared/SectionLabel";
 import SEO from "@/components/SEO";
@@ -30,15 +37,14 @@ import {
   ResultShowcase,
 } from "@/components/linkedin/LinkedinAnalyzerIntro";
 import LinkedinBackdrop from "@/components/linkedin/LinkedinBackdrop";
-import LinkedinChecklist from "@/components/linkedin/LinkedinChecklist";
 import LinkedinHistory from "@/components/linkedin/LinkedinHistory";
 import LinkedinResultBackdrop from "@/components/linkedin/LinkedinResultBackdrop";
 import LinkedinScanCard from "@/components/linkedin/LinkedinScanCard";
 import LinkedinScoreHero from "@/components/linkedin/LinkedinScoreHero";
 import { LinkedinError } from "@/components/linkedin/LinkedinStates";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
-import ReadyTexts from "@/components/linkedin/ReadyTexts";
 import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
+import SectionReport from "@/components/linkedin/SectionReport";
 import { openAgentWidget } from "@/components/agent/AgentWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -70,6 +76,7 @@ import {
   type Atividade,
   type Conexoes,
   type LinkedinAnalysisResponse,
+  type LinkedinCheckCategory,
   type LinkedinAnalysisSummary,
   type LinkedinLevel,
   type Mercado,
@@ -510,31 +517,8 @@ function Reveal({
   );
 }
 
-function SkillsSuggested({ skills }: { skills: string[] }) {
-  if (skills.length === 0) return null;
-  return (
-    <div className="card-brutal rounded-2xl border-slate-950 bg-white p-5">
-      <h3 className="mb-2 flex items-center gap-2 font-display text-lg font-black text-slate-950">
-        <Lightbulb className="h-5 w-5 text-amber-500" />
-        Skills para adicionar
-      </h3>
-      <p className="mb-3 text-sm text-slate-600">
-        Sugestões a partir do que falta no seu perfil. Adicione só o que você
-        realmente sabe, mesmo que no básico.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {skills.map((skill) => (
-          <span
-            key={skill}
-            className="inline-flex rounded-full border-2 border-amber-400 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800"
-          >
-            {skill}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
+// Icones das secoes do prontuario (mapa unico, na ordem de leitura).
+const SECTION_ICON_CLASS = "h-5 w-5 text-sky-700";
 
 export default function LinkedinAnalisar() {
   const { isPro } = useSubscription();
@@ -863,6 +847,35 @@ export default function LinkedinAnalisar() {
   // saida e o link Nova analise do header); erro mantem o palco pra pessoa
   // corrigir o texto e tentar de novo.
   const showResult = !loading && !error && result !== null;
+
+  // Checks da analise exibida agrupados por categoria: cada secao do
+  // prontuario recebe SO os seus (checks nao aplicaveis ao mercado nem vem
+  // no array, entao a lista ja chega filtrada do server).
+  const checksByCategory = (category: LinkedinCheckCategory) =>
+    result?.deterministic.checks.filter(
+      (check) => check.category === category,
+    ) ?? [];
+
+  // Fonte honesta da camada "seu atual" do prontuario: o result NAO carrega
+  // o texto do Sobre nem os titulos das experiencias; so o parsed do form
+  // tem. Ao abrir uma analise do historico o form pode conter OUTRO texto,
+  // entao o parsed so vale quando a impressao digital bate com a analise
+  // exibida (tamanho do Sobre, contagem de experiencias). Sem match, os
+  // cards degradam para as contagens do proprio deterministic; nunca texto
+  // de outra analise.
+  const sobreAtual =
+    result !== null &&
+    parsed?.sobre &&
+    parsed.sobre.trim().length === result.deterministic.sobreTamanho
+      ? parsed.sobre
+      : null;
+  const experienciasAtual =
+    result !== null &&
+    parsed !== null &&
+    parsed.experiencias.length > 0 &&
+    parsed.experiencias.length === result.deterministic.experienciasContagem
+      ? parsed.experiencias
+      : null;
 
   // Checklist de prontidao: o minimo REAL do backend (200 caracteres, o
   // schema da rota) bloqueia; a ausencia de Sobre e experiencias e aviso (o
@@ -1438,100 +1451,328 @@ export default function LinkedinAnalisar() {
                     />
                   </motion.div>
 
-                  {/* Corpo revista: coluna narrativa (7) + trilho lateral
-                      consultavel (5). No mobile os wrappers viram display
-                      contents e as classes order-* definem a ordem de leitura
-                      empilhada: resumo, fortes/fracos, raio-X, melhorias,
-                      recrutador, textos prontos, proximos passos, skills,
-                      reanalise. */}
-                  <div className="mt-14 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
-                    <div className="contents lg:col-span-7 lg:block lg:space-y-8">
-                      <Reveal className="order-1 lg:order-none">
-                        <AiSummary
-                          resumo={result.qualitative.resumo}
+                  {/* Corpo prontuario: coluna unica de leitura vertical (o
+                      grid revista 7/5 morreu). Resumo curto da IA, o bloco
+                      compacto de fortes/fracos justificando o veredito
+                      geral, o loop de melhorias intacto e um card por secao
+                      do perfil: veredito derivado dos checks, o atual
+                      detectado e o texto pronto pra colar. */}
+                  <div className="mx-auto mt-14 max-w-3xl space-y-8">
+                    <Reveal>
+                      <AiSummary
+                        resumo={result.qualitative.resumo}
+                        accent={ac}
+                        onAskAgent={() =>
+                          // TODO(Ana): revisar o texto pre-preenchido da ponte.
+                          openAgentWidget(
+                            "Sobre minha análise de LinkedIn de hoje: ",
+                          )
+                        }
+                      />
+                    </Reveal>
+                    <Reveal delay={0.05}>
+                      <StrengthsWeaknesses
+                        pontosFortes={result.qualitative.pontosFortes}
+                        pontosFracos={result.qualitative.pontosFracos}
+                        accent={ac}
+                      />
+                    </Reveal>
+                    <Reveal delay={0.05}>
+                      <div className="space-y-3">
+                        {!analysisId ? (
+                          <FeedbackBanner variant="warn">
+                            {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
+                            O progresso de melhorias está indisponível para
+                            esta análise.
+                          </FeedbackBanner>
+                        ) : null}
+                        {progressError ? (
+                          <FeedbackBanner variant="error">
+                            {progressError}
+                          </FeedbackBanner>
+                        ) : null}
+                        <Improvements
+                          melhorias={result.qualitative.melhorias}
                           accent={ac}
-                          onAskAgent={() =>
-                            // TODO(Ana): revisar o texto pre-preenchido da ponte.
-                            openAgentWidget(
-                              "Sobre minha análise de LinkedIn de hoje: ",
-                            )
-                          }
+                          applied={analysisId ? applied : undefined}
+                          onToggle={analysisId ? toggleImprovement : undefined}
                         />
-                      </Reveal>
-                      <Reveal className="order-2 lg:order-none" delay={0.05}>
-                        <StrengthsWeaknesses
-                          pontosFortes={result.qualitative.pontosFortes}
-                          pontosFracos={result.qualitative.pontosFracos}
-                          accent={ac}
-                        />
-                      </Reveal>
-                      <Reveal className="order-4 lg:order-none" delay={0.05}>
-                        <div className="space-y-3">
-                          {!analysisId ? (
-                            <FeedbackBanner variant="warn">
-                              {/* TODO(Ana): revisar o aviso de progresso indisponivel. */}
-                              O progresso de melhorias está indisponível para
-                              esta análise.
-                            </FeedbackBanner>
-                          ) : null}
-                          {progressError ? (
-                            <FeedbackBanner variant="error">
-                              {progressError}
-                            </FeedbackBanner>
-                          ) : null}
-                          <Improvements
-                            melhorias={result.qualitative.melhorias}
-                            accent={ac}
-                            applied={analysisId ? applied : undefined}
-                            onToggle={
-                              analysisId ? toggleImprovement : undefined
-                            }
-                          />
-                        </div>
-                      </Reveal>
-                      <Reveal className="order-6 lg:order-none">
-                        <ReadyTexts qualitative={result.qualitative} />
-                      </Reveal>
-                      <Reveal className="order-8 lg:order-none">
-                        <SkillsSuggested
-                          skills={result.qualitative.skillsSugeridas}
-                        />
-                      </Reveal>
-                      {/* Climax do loop fechando a COLUNA PRINCIPAL, com a
-                          confirmacao em 2 passos e o custo explicito de
-                          sempre, celebrando no N de N. */}
-                      <Reveal className="order-9 lg:order-none">
-                        <ReanalyzeCta
-                          confirming={confirmReanalyze}
-                          onStart={() => setConfirmReanalyze(true)}
-                          onConfirm={() => void runAnalysis()}
-                          onCancel={() => setConfirmReanalyze(false)}
-                          spotlight
-                          celebrate={allApplied}
-                        />
-                      </Reveal>
-                    </div>
+                      </div>
+                    </Reveal>
 
-                    <div className="contents lg:col-span-5 lg:block lg:space-y-8">
-                      <Reveal className="order-3 lg:order-none" delay={0.1}>
-                        <div className="space-y-4">
-                          {/* TODO(Ana): revisar o rotulo do trilho lateral. */}
-                          <SectionLabel ac={ac}>Raio-X completo</SectionLabel>
-                          <LinkedinChecklist
-                            checks={result.deterministic.checks}
+                    <Reveal>
+                      {/* TODO(Ana): revisar o rotulo do prontuario. */}
+                      <SectionLabel ac={ac}>
+                        Prontuário do seu perfil
+                      </SectionLabel>
+                    </Reveal>
+
+                    <Reveal>
+                      <SectionReport
+                        title="Headline"
+                        icon={
+                          <Type className={SECTION_ICON_CLASS} aria-hidden />
+                        }
+                        checks={checksByCategory("headline")}
+                        atual={
+                          result.deterministic.headline ? (
+                            <p className="break-words">
+                              {result.deterministic.headline}
+                            </p>
+                          ) : null
+                        }
+                        paste={
+                          <ul className="space-y-3">
+                            {result.qualitative.headlines.map(
+                              (headline, index) => (
+                                <li
+                                  key={index}
+                                  className="flex items-start justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-3"
+                                >
+                                  <p className="min-w-0 text-sm font-medium text-slate-800">
+                                    {headline}
+                                  </p>
+                                  <CopyButton text={headline} />
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        }
+                      />
+                    </Reveal>
+
+                    <Reveal>
+                      <SectionReport
+                        title="Sobre"
+                        icon={
+                          <FileText
+                            className={SECTION_ICON_CLASS}
+                            aria-hidden
                           />
-                        </div>
-                      </Reveal>
-                      <Reveal className="order-5 lg:order-none">
+                        }
+                        checks={checksByCategory("sobre")}
+                        atual={
+                          sobreAtual ? (
+                            <p className="whitespace-pre-wrap leading-relaxed">
+                              {sobreAtual}
+                            </p>
+                          ) : null
+                        }
+                        paste={
+                          <div>
+                            <div className="mb-2 flex justify-end">
+                              <CopyButton
+                                text={result.qualitative.sobreReescrito}
+                              />
+                            </div>
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                              {result.qualitative.sobreReescrito}
+                            </p>
+                          </div>
+                        }
+                      />
+                    </Reveal>
+
+                    <Reveal>
+                      <SectionReport
+                        title="Experiências"
+                        icon={
+                          <Briefcase
+                            className={SECTION_ICON_CLASS}
+                            aria-hidden
+                          />
+                        }
+                        checks={checksByCategory("experiencias")}
+                        atual={
+                          experienciasAtual ? (
+                            <ul className="space-y-2">
+                              {experienciasAtual.map((exp, index) => (
+                                <li key={index}>
+                                  <span className="font-bold text-slate-900">
+                                    {exp.titulo || "(sem título)"}
+                                  </span>
+                                  {exp.descricao ? (
+                                    <span>
+                                      {" "}
+                                      · {exp.descricao.slice(0, 160)}
+                                      {exp.descricao.length > 160 ? "..." : ""}
+                                    </span>
+                                  ) : null}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null
+                        }
+                        paste={
+                          result.qualitative.bulletsReescritos.length > 0 ? (
+                            <div className="space-y-4">
+                              {result.qualitative.bulletsReescritos.map(
+                                (item, index) => (
+                                  <div
+                                    key={index}
+                                    className="rounded-xl border-2 border-slate-200 bg-white p-4"
+                                  >
+                                    <div className="mb-2 flex items-start justify-between gap-3">
+                                      <p className="min-w-0 text-sm font-black text-slate-900">
+                                        {item.contexto}
+                                      </p>
+                                      <CopyButton
+                                        text={item.bullets.join("\n")}
+                                      />
+                                    </div>
+                                    <ul className="space-y-2">
+                                      {item.bullets.map(
+                                        (bullet, bulletIndex) => (
+                                          <li
+                                            key={bulletIndex}
+                                            className="flex items-start gap-2 text-sm text-slate-700"
+                                          >
+                                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-500" />
+                                            {bullet}
+                                          </li>
+                                        ),
+                                      )}
+                                    </ul>
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                          ) : null
+                        }
+                      />
+                    </Reveal>
+
+                    <Reveal>
+                      <SectionReport
+                        title="Competências"
+                        icon={
+                          <Award className={SECTION_ICON_CLASS} aria-hidden />
+                        }
+                        checks={checksByCategory("skills")}
+                        atual={
+                          result.deterministic.skillsContagem > 0 ? (
+                            <p>
+                              {result.deterministic.skillsContagem}{" "}
+                              competência
+                              {result.deterministic.skillsContagem === 1
+                                ? " informada"
+                                : "s informadas"}{" "}
+                              nesta análise.
+                            </p>
+                          ) : null
+                        }
+                        paste={
+                          result.qualitative.skillsSugeridas.length > 0 ? (
+                            <div>
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="text-sm text-slate-600">
+                                  Sugestões a partir do que falta no seu
+                                  perfil. Adicione só o que você realmente
+                                  sabe, mesmo que no básico.
+                                </p>
+                                <CopyButton
+                                  text={result.qualitative.skillsSugeridas.join(
+                                    ", ",
+                                  )}
+                                />
+                              </div>
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                {result.qualitative.skillsSugeridas.map(
+                                  (skill) => (
+                                    <span
+                                      key={skill}
+                                      className="inline-flex rounded-full border-2 border-amber-400 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800"
+                                    >
+                                      {skill}
+                                    </span>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+                          ) : null
+                        }
+                      />
+                    </Reveal>
+
+                    <Reveal>
+                      <SectionReport
+                        title="Sinais do perfil"
+                        icon={
+                          <BadgeCheck
+                            className={SECTION_ICON_CLASS}
+                            aria-hidden
+                          />
+                        }
+                        checks={checksByCategory("sinais")}
+                      />
+                    </Reveal>
+
+                    {/* RecruiterFinder dentro do prontuario: agrupado logo
+                        abaixo do card da secao (card-brutal aninhado em
+                        card-brutal ficaria pesado). */}
+                    <Reveal>
+                      <div className="space-y-4">
+                        <SectionReport
+                          title="Como recrutadores te encontram"
+                          icon={
+                            <Search
+                              className={SECTION_ICON_CLASS}
+                              aria-hidden
+                            />
+                          }
+                          checks={checksByCategory("encontrabilidade")}
+                        />
                         <RecruiterFinder
                           deterministic={result.deterministic}
                           mercado={result.mercado}
                         />
-                      </Reveal>
-                      <Reveal className="order-7 lg:order-none">
-                        <NextStepsByArea area={result.area} />
-                      </Reveal>
-                    </div>
+                      </div>
+                    </Reveal>
+
+                    <Reveal>
+                      <SectionReport
+                        title="Mensagem para recrutador"
+                        icon={
+                          <MessageSquare
+                            className={SECTION_ICON_CLASS}
+                            aria-hidden
+                          />
+                        }
+                        checks={[]}
+                        paste={
+                          <div>
+                            <div className="mb-2 flex justify-end">
+                              <CopyButton
+                                text={
+                                  result.qualitative.modeloMensagemRecrutador
+                                }
+                              />
+                            </div>
+                            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+                              {result.qualitative.modeloMensagemRecrutador}
+                            </p>
+                          </div>
+                        }
+                      />
+                    </Reveal>
+
+                    <Reveal>
+                      <NextStepsByArea area={result.area} />
+                    </Reveal>
+
+                    {/* Climax do loop fechando o prontuario, com a
+                        confirmacao em 2 passos e o custo explicito de
+                        sempre, celebrando no N de N. */}
+                    <Reveal>
+                      <ReanalyzeCta
+                        confirming={confirmReanalyze}
+                        onStart={() => setConfirmReanalyze(true)}
+                        onConfirm={() => void runAnalysis()}
+                        onCancel={() => setConfirmReanalyze(false)}
+                        spotlight
+                        celebrate={allApplied}
+                      />
+                    </Reveal>
                   </div>
                 </div>
               ) : null}
