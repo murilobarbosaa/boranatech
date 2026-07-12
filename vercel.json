@@ -28,6 +28,13 @@
       "destination": "/plano-carreira",
       "permanent": true
     },
+    { "source": "/estagio", "destination": "/vagas", "permanent": true },
+    {
+      "source": "/estagio/freelance",
+      "destination": "/vagas",
+      "permanent": true
+    },
+    { "source": "/freelance", "destination": "/vagas", "permanent": true },
     {
       "source": "/pro/sucesso",
       "destination": "/planos/sucesso",
