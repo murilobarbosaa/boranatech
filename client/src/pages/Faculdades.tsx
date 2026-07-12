@@ -103,6 +103,67 @@ const criteriosFaculdade = [
   },
 ];
 
+// TODO(Ana): revisar a copy da seção "O que olhar antes de escolher".
+const comparativosEscolha = [
+  {
+    titulo: "Presencial vs EAD",
+    ladoA: {
+      rotulo: "Presencial",
+      pontos: [
+        "Rotina fixa e contato direto com professores e colegas",
+        "Laboratórios, projetos em grupo e vida no campus",
+        "Bom pra quem rende melhor com estrutura e networking",
+      ],
+    },
+    ladoB: {
+      rotulo: "EAD",
+      pontos: [
+        "Estuda no seu horário, de qualquer lugar",
+        "Costuma custar menos e evita deslocamento",
+        "Exige disciplina; em TI funciona bem por ser digital e prática",
+      ],
+    },
+  },
+  {
+    titulo: "Bacharelado vs Tecnólogo",
+    ladoA: {
+      rotulo: "Bacharelado (4 a 5 anos)",
+      pontos: [
+        "Mais teórico, com base sólida em fundamentos",
+        "Abre caminho pra pós e pesquisa",
+        "Ex: Ciência da Computação, Sistemas de Informação, Engenharia de Computação",
+      ],
+    },
+    ladoB: {
+      rotulo: "Tecnólogo (2 a 3 anos)",
+      pontos: [
+        "Mais prático e focado numa área específica",
+        "Entra mais rápido no mercado",
+        "Ex: Análise e Desenvolvimento de Sistemas, Redes de Computadores, Gestão da TI",
+      ],
+    },
+  },
+  {
+    titulo: "Pública vs Privada",
+    ladoA: {
+      rotulo: "Pública",
+      pontos: [
+        "Gratuita, com entrada via ENEM e SISU",
+        "Forte peso em pesquisa e extensão",
+        "Concorrida: exige boa nota no ENEM",
+      ],
+    },
+    ladoB: {
+      rotulo: "Privada",
+      pontos: [
+        "Paga, mas com FIES, ProUni e bolsas próprias",
+        "Mais vagas, horários flexíveis e opções EAD",
+        "Qualidade varia: confira a nota no e-MEC",
+      ],
+    },
+  },
+];
+
 const caminhosFormacao = [
   {
     titulo: "Graduação",
@@ -795,7 +856,98 @@ export default function Faculdades() {
           transition={{ duration: 0.25 }}
         >
       <section className="border-b-2 border-slate-900 bg-white py-8">
-        <div className="container space-y-4">
+        <div className="container space-y-6">
+          <div className="space-y-5">
+            <div>
+              <h2 className="font-display text-2xl font-black text-slate-950">
+                O que olhar antes de escolher
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-slate-600">
+                Escolher uma faculdade de TI é comparar alguns pontos-chave.
+                Veja os principais pra decidir com calma.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border-2 border-slate-900 bg-amber-50 p-5 shadow-[4px_4px_0_#fcd34d]">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-amber-300 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <Award className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="space-y-2">
+                  <h3 className="font-display text-lg font-black text-slate-950">
+                    A nota do MEC
+                  </h3>
+                  <p className="text-sm text-slate-700">
+                    As notas vão de 1 a 5. O <strong>CPC</strong> avalia o
+                    curso e o <strong>IGC</strong> avalia a instituição como um
+                    todo. Nota <strong>3 é o mínimo aceitável</strong>; 4 e 5
+                    são bons sinais. Como a nota muda com o tempo, confira
+                    sempre a atual no e-MEC.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              {comparativosEscolha.map((cmp) => (
+                <div
+                  key={cmp.titulo}
+                  className="flex h-full flex-col rounded-2xl border-2 border-slate-900 bg-white p-5 shadow-[4px_4px_0_#0f172a]"
+                >
+                  <h3 className="font-display text-lg font-black text-slate-950">
+                    {cmp.titulo}
+                  </h3>
+                  <div className="mt-3 grid gap-3">
+                    {[cmp.ladoA, cmp.ladoB].map((lado) => (
+                      <div
+                        key={lado.rotulo}
+                        className="rounded-xl border-2 border-slate-200 bg-violet-50/60 p-3"
+                      >
+                        <p className="text-sm font-black text-violet-800">
+                          {lado.rotulo}
+                        </p>
+                        <ul className="mt-1 space-y-1">
+                          {lado.pontos.map((p) => (
+                            <li
+                              key={p}
+                              className="flex items-start gap-1.5 text-xs text-slate-700"
+                            >
+                              <Check
+                                className="mt-0.5 h-3 w-3 shrink-0 text-violet-600"
+                                aria-hidden
+                              />
+                              {p}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-5 shadow-[4px_4px_0_#0f172a]">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <BookOpen className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="space-y-1">
+                  <h3 className="font-display text-lg font-black text-slate-950">
+                    Grade curricular
+                  </h3>
+                  <p className="text-sm text-slate-700">
+                    Abra a matriz do curso no site da faculdade e veja se as
+                    disciplinas acompanham o mercado: lógica e programação
+                    desde o começo, bancos de dados, redes, projetos práticos e
+                    temas atuais como nuvem, dados e segurança. Grade
+                    atualizada e com projeto real vale mais que só teoria.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {TIP_CHIPS.map((chip) => (
               <button
@@ -971,6 +1123,48 @@ export default function Faculdades() {
         >
       <section className="border-b-2 border-slate-900 bg-white py-6">
         <div className="container space-y-4">
+          <div className="rounded-2xl border-2 border-slate-900 bg-violet-100 p-5 shadow-[4px_4px_0_#0f172a] sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border-2 border-slate-900 bg-violet-300 text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                  <MapPin className="h-5 w-5" aria-hidden />
+                </span>
+                <div>
+                  <p className="font-display text-lg font-black text-slate-950">
+                    Comece escolhendo seu estado
+                  </p>
+                  <p className="text-sm font-medium text-slate-700">
+                    Selecione a UF pra ver as faculdades de TI da sua região.
+                    Sem estado escolhido, a lista fica escondida.
+                  </p>
+                </div>
+              </div>
+              <div className="relative w-full shrink-0 sm:w-72">
+                <MapPin
+                  className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500"
+                  aria-hidden
+                />
+                <select
+                  aria-label="Escolha seu estado"
+                  value={selectedUf}
+                  onChange={(event) => setSelectedUf(event.target.value)}
+                  className="w-full cursor-pointer appearance-none rounded-xl border-2 border-slate-900 bg-white py-3 pl-11 pr-9 text-sm font-black text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
+                >
+                  <option value="">Todos os estados</option>
+                  <option value="__ead__">EAD / Nacional</option>
+                  {brazilianStates.map(({ uf, name }) => (
+                    <option key={uf} value={uf}>
+                      {name} ({uf})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
+                  aria-hidden
+                />
+              </div>
+            </div>
+          </div>
           <p className="text-sm font-bold text-slate-700">{GUIA_GRAU}</p>
           <nav
             aria-label="Atalhos por subárea"
@@ -994,7 +1188,7 @@ export default function Faculdades() {
           <div
             className="flex flex-wrap items-center gap-2"
             role="group"
-            aria-label="Filtrar faculdades por grau, rede e estado"
+            aria-label="Filtrar faculdades por grau e rede"
           >
             {GRAUS_FILTRO.map((g) => (
               <button
@@ -1027,31 +1221,6 @@ export default function Faculdades() {
                 {r}
               </button>
             ))}
-            <span className="mx-1 hidden h-5 w-px self-center bg-slate-300 sm:block" />
-            <div className="relative">
-              <MapPin
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                aria-hidden
-              />
-              <select
-                aria-label="Filtrar por estado"
-                value={selectedUf}
-                onChange={(event) => setSelectedUf(event.target.value)}
-                className="cursor-pointer appearance-none rounded-full border-2 border-slate-300 bg-white py-1.5 pl-9 pr-8 text-xs font-black text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
-              >
-                <option value="">Todos os estados</option>
-                <option value="__ead__">EAD / Nacional</option>
-                {brazilianStates.map(({ uf, name }) => (
-                  <option key={uf} value={uf}>
-                    {name} ({uf})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600"
-                aria-hidden
-              />
-            </div>
           </div>
         </div>
       </section>
