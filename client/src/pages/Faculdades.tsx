@@ -3,8 +3,8 @@
   Style: Neo-Brutalism Suavizado
 */
 
-import { useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
@@ -357,6 +357,13 @@ for (const cursoGenerico of faculdades.cursos) {
   cursoExplicacaoPorNome.set(normalizeCurso(cursoGenerico.nome), cursoGenerico);
 }
 
+const FAC_TABS = [
+  { id: "Buscar por estado", slug: "estados", icon: MapPin },
+  { id: "Tipos de curso", slug: "tipos", icon: GraduationCap },
+  { id: "Como escolher", slug: "como-escolher", icon: BookOpen },
+  { id: "Descubra seu caminho", slug: "descubra", icon: Sparkles },
+];
+
 export default function Faculdades() {
   const { gateNavigate, requireAuth, modalProps, status } = useAuthGate();
   const [tipo, setTipo] = useState("Todos");
@@ -367,6 +374,37 @@ export default function Faculdades() {
   const [openTips, setOpenTips] = useState<Record<string, boolean>>({});
   const [quizAberto, setQuizAberto] = useState(false);
   const reduce = useReducedMotion();
+
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const matchedTab =
+    FAC_TABS.find(
+      (tab) => tab.slug === new URLSearchParams(search).get("aba"),
+    )?.id ?? FAC_TABS[0].id;
+  const [aba, setAba] = useState(matchedTab);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    setAba(matchedTab);
+  }, [matchedTab]);
+
+  function selectTab(id: string) {
+    const slug = FAC_TABS.find((tab) => tab.id === id)?.slug ?? FAC_TABS[0].slug;
+    navigate(`/faculdades?aba=${slug}`, { replace: true });
+    setAba(id);
+  }
+
+  function onTabKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) {
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    event.preventDefault();
+    const dir = event.key === "ArrowRight" ? 1 : -1;
+    const next = (index + dir + FAC_TABS.length) % FAC_TABS.length;
+    selectTab(FAC_TABS[next].id);
+    tabRefs.current[next]?.focus();
+  }
 
   const handleQuizBeforeAnswer = () => {
     if (status === "authenticated") return true;
@@ -443,6 +481,55 @@ export default function Faculdades() {
         </div>
       </section>
 
+      <div className="border-b-2 border-slate-900 bg-white">
+        <div className="container py-4">
+          <div
+            role="tablist"
+            aria-label="Seções de faculdades"
+            className="flex flex-wrap gap-2"
+          >
+            {FAC_TABS.map((tab, index) => {
+              const Icon = tab.icon;
+              const active = aba === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  ref={(node) => {
+                    tabRefs.current[index] = node;
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`tab-${tab.slug}`}
+                  aria-selected={active}
+                  aria-controls={`panel-${tab.slug}`}
+                  tabIndex={active ? 0 : -1}
+                  onClick={() => selectTab(tab.id)}
+                  onKeyDown={(event) => onTabKeyDown(event, index)}
+                  className={`inline-flex items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-black transition-all ${
+                    active
+                      ? "border-slate-900 bg-slate-900 text-white shadow-[2px_2px_0_#0f172a]"
+                      : "border-slate-300 bg-white text-slate-700 hover:border-violet-400"
+                  }`}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                  {tab.id}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {aba === "Tipos de curso" ? (
+        <motion.div
+          key="tipos"
+          role="tabpanel"
+          id="panel-tipos"
+          aria-labelledby="tab-tipos"
+          initial={reduce ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
       <section className="border-b-2 border-slate-900 bg-white py-12">
         <div className="container space-y-4">
           <h2 className="font-display text-2xl font-black text-slate-950">
@@ -694,7 +781,19 @@ export default function Faculdades() {
           )}
         </div>
       </section>
+        </motion.div>
+      ) : null}
 
+      {aba === "Como escolher" ? (
+        <motion.div
+          key="como-a"
+          role="tabpanel"
+          id="panel-como-escolher"
+          aria-labelledby="tab-como-escolher"
+          initial={reduce ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
       <section className="border-b-2 border-slate-900 bg-white py-8">
         <div className="container space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -857,7 +956,19 @@ export default function Faculdades() {
           ) : null}
         </div>
       </section>
+        </motion.div>
+      ) : null}
 
+      {aba === "Buscar por estado" ? (
+        <motion.div
+          key="estados"
+          role="tabpanel"
+          id="panel-estados"
+          aria-labelledby="tab-estados"
+          initial={reduce ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
       <section className="border-b-2 border-slate-900 bg-white py-6">
         <div className="container space-y-4">
           <p className="text-sm font-bold text-slate-700">{GUIA_GRAU}</p>
@@ -1200,7 +1311,20 @@ export default function Faculdades() {
             </div>
           </div>
           ) : null}
+        </div>
+      </section>
+        </motion.div>
+      ) : null}
 
+      {aba === "Como escolher" ? (
+        <motion.div
+          key="como-b"
+          initial={reduce ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+      <section className="bg-violet-50 py-12">
+        <div className="container">
           <div className="mt-6 rounded-xl border-2 border-violet-200 bg-white p-6">
             <h3 className="font-display text-2xl font-black text-slate-950">
               Outros caminhos de formação
@@ -1232,7 +1356,23 @@ export default function Faculdades() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+        </motion.div>
+      ) : null}
 
+      {aba === "Descubra seu caminho" ? (
+        <motion.div
+          key="descubra"
+          role="tabpanel"
+          id="panel-descubra"
+          aria-labelledby="tab-descubra"
+          initial={reduce ? false : { opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+      <section className="bg-violet-50 py-12">
+        <div className="container">
           <div className="mt-6">
             {!quizAberto ? (
               <button
@@ -1281,9 +1421,10 @@ export default function Faculdades() {
               />
             </div>
           </div>
-
         </div>
       </section>
+        </motion.div>
+      ) : null}
 
       <AuthGateModal {...modalProps} />
     </Layout>
