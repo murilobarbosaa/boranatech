@@ -566,6 +566,9 @@ export default function LinkedinAnalisar() {
   const [confirmReanalyze, setConfirmReanalyze] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const areaTouched = useRef(false);
+  // Ancora do topo do cenario (container do header integrado): alvo da
+  // rolagem nas trocas de estado.
+  const stageTopRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (areaTouched.current) return;
@@ -713,6 +716,16 @@ export default function LinkedinAnalisar() {
     void handleFile(event.dataTransfer.files?.[0]);
   }
 
+  // Rolagem ao topo do cenario nas trocas de estado (analisar, resultado,
+  // historico): ancora no container do header, que tem scroll-mt pra
+  // compensar o header fixo do site; smooth vira auto com reduce.
+  function scrollToStageTop() {
+    stageTopRef.current?.scrollIntoView({
+      behavior: reduce ? "auto" : "smooth",
+      block: "start",
+    });
+  }
+
   async function runAnalysis() {
     if (loading) return;
     // Destructuring narra o tipo: depois do guard, os 5 sinais sao os tipos
@@ -732,6 +745,8 @@ export default function LinkedinAnalisar() {
     setLoading(true);
     setError("");
     setConfirmReanalyze(false);
+    // A pessoa dispara o submit no fim do form: sobe pro scan card no topo.
+    scrollToStageTop();
 
     // Nota da analise imediatamente anterior, capturada ANTES da nova entrar
     // no historico (a lista vem em ordem decrescente).
@@ -760,6 +775,9 @@ export default function LinkedinAnalisar() {
           ? { from: priorScore, to: data.deterministic.score }
           : null,
       );
+      // Resultado chegou: de volta ao topo (a pessoa pode ter rolado
+      // durante o loading).
+      scrollToStageTop();
       const fresh = await listLinkedinAnalyses();
       setAnalyses(fresh);
     } catch (err) {
@@ -790,9 +808,7 @@ export default function LinkedinAnalisar() {
             ? { from: prior, to: record.result.deterministic.score }
             : null,
         );
-        if (typeof window !== "undefined") {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
+        scrollToStageTop();
       }
     } finally {
       setOpeningId(null);
@@ -923,10 +939,11 @@ export default function LinkedinAnalisar() {
               "voltar": no resultado vira o link Nova analise; na entrada e no
               scan fica vazio. */}
           <motion.div
+            ref={stageTopRef}
             initial={reduce ? false : { opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="mb-10"
+            className="mb-10 scroll-mt-24"
           >
             {showResult ? (
               <button
