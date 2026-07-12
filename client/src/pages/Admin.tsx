@@ -33,6 +33,7 @@ import {
   Server,
   ShieldCheck,
   Sparkles,
+  Star,
   Tag,
   Trophy,
   UserRound,
@@ -42,6 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import PendingIntegration from "@/components/admin/PendingIntegration";
+import VagasDestaqueAdmin from "@/components/admin/VagasDestaqueAdmin";
 import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
@@ -136,7 +138,8 @@ type AdminSectionId =
   | "afiliados"
   | "newsletter"
   | "emails"
-  | "beta";
+  | "beta"
+  | "vagas";
 
 type UserProfile = {
   userId?: string;
@@ -310,6 +313,11 @@ const adminNavItems: AdminNavItem[] = [
     href: "#conteudo",
     label: "Conteúdo",
     icon: <FileText className="h-4 w-4" />,
+  },
+  {
+    href: "#vagas",
+    label: "Vagas",
+    icon: <Star className="h-4 w-4" />,
   },
   {
     href: "#usuarios",
@@ -5512,6 +5520,8 @@ export default function Admin() {
           ) : null}
 
           {activeSection === "conteudo" ? <ContentAdminSection /> : null}
+
+          {activeSection === "vagas" ? <VagasDestaqueAdmin /> : null}
 
           {activeSection === "usuarios" ? (
             <AdminSection

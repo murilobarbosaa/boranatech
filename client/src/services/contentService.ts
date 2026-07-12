@@ -4,7 +4,6 @@ import {
   areasTI,
   cursosGratuitos,
   plataformas,
-  projetos,
   roadmaps,
   type AreaTI,
 } from "@/lib/data";
@@ -20,7 +19,6 @@ import { usageEvidence } from "@/lib/surveyData2025";
 // a API publica dos consumidores lazy.
 export {
   getContentSourceStatus,
-  getJobs,
   getNews,
   inferKeyword,
 } from "./contentApi";
@@ -104,22 +102,6 @@ function platformFromApi(row: any) {
     boaParaIniciantes: true,
     preco: row.price_label || "",
     link: row.url || "#",
-  };
-}
-
-function projectFromApi(row: any) {
-  return {
-    id: row.slug || row.id,
-    nome: row.title,
-    areaSlug: row.area_slug || null,
-    nivel: row.level || "Iniciante",
-    objetivo: row.objective || row.description || "",
-    ferramentas: row.tools || [],
-    passosSimplificados: row.simplified_steps || [],
-    entregavel: row.portfolio_tips || "",
-    comoPublicar: "GitHub, Notion ou LinkedIn",
-    sugestaoLinkedIn: row.linkedin_suggestion || "",
-    proximoProjeto: "",
   };
 }
 
@@ -279,18 +261,6 @@ export async function getPlatforms() {
     return json.data.map(platformFromApi);
   } catch {
     return plataformas;
-  }
-}
-
-export async function getProjects(params?: { area?: string; level?: string }) {
-  try {
-    const qs = new URLSearchParams();
-    if (params?.area) qs.set("area", params.area);
-    if (params?.level) qs.set("level", params.level);
-    const json = await apiFetch(`/projects${qs.toString() ? `?${qs}` : ""}`);
-    return json.data.map(projectFromApi);
-  } catch {
-    return projetos;
   }
 }
 

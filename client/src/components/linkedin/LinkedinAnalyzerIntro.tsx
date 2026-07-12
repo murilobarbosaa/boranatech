@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { FileText, Gauge, Search, Sparkles, Type } from "lucide-react";
 import { FAIXA_UI } from "@/components/linkedin/faixaUi";
+import { FAIXA_LABELS, faixaFromScore } from "@shared/linkedin/schema";
 import MiniScoreRing from "@/components/portfolio/MiniScoreRing";
 import { cn } from "@/lib/utils";
 
@@ -28,11 +29,15 @@ const TIMELINE_STEPS: { title: string; text: string }[] = [
 ];
 
 // Constantes ILUSTRATIVAS da vitrine (nunca dado real do usuario).
-const EXAMPLE_SCORE = 76;
-// Cores da faixa "forte" direto do FAIXA_UI compartilhado (fonte unica).
-const EXAMPLE_FAIXA_UI = FAIXA_UI.forte;
-// TODO(Ana): revisar o rotulo de faixa do exemplo.
-const EXAMPLE_FAIXA_LABEL = "Forte";
+// Nota RUIM de proposito (decisao de produto): o exemplo provoca "quanto
+// sera a minha?" em vez de exibir um ideal.
+const EXAMPLE_SCORE = 25;
+// Faixa REAL da nota de exemplo: cores e rotulo da fonte unica compartilhada.
+const EXAMPLE_FAIXA = faixaFromScore(EXAMPLE_SCORE);
+const EXAMPLE_FAIXA_UI = FAIXA_UI[EXAMPLE_FAIXA];
+const EXAMPLE_FAIXA_LABEL = FAIXA_LABELS[EXAMPLE_FAIXA];
+// red-600: o vermelho legivel da familia da faixa inicio para o anel.
+const EXAMPLE_RING_STROKE = "#dc2626";
 // TODO(Ana): revisar as headlines de exemplo (antes fraca, depois forte).
 const EXAMPLE_HEADLINE_ANTES =
   "Estudante de tecnologia em busca de oportunidades";
@@ -150,14 +155,12 @@ export function ResultShowcase() {
 
       {/* (a) mini nota-hero */}
       <ShowcaseCard index={0} reduce={reduce} className="w-[88%] -rotate-2">
-        <div
-          className={cn(
-            "flex items-center gap-4 rounded-xl p-4",
-            EXAMPLE_FAIXA_UI.cardBg,
-          )}
-        >
+        {/* Fundo neutro de proposito: a faixa se expressa so no anel e no
+            chip, sem tingir o card e destoar do cenario sky/cream. */}
+        <div className="flex items-center gap-4 rounded-xl bg-white p-4">
           <MiniScoreRing
             score={EXAMPLE_SCORE}
+            stroke={EXAMPLE_RING_STROKE}
             className="h-[72px] w-[72px] text-xl"
           />
           <div>

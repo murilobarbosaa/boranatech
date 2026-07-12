@@ -103,3 +103,31 @@ export const RoadmapSectionContentSchema = z.object({
 });
 
 export type RoadmapSectionContent = z.infer<typeof RoadmapSectionContentSchema>;
+
+// Variante por chamada do schema de secao (fase 5c.2), mesmo racional da
+// variante de requisitos em shared/github/schema.ts: na ULTIMA secao o campo
+// project vira enum dos ids REAIS oferecidos no prompt (ou null); em todas as
+// secoes anteriores project e null ESTRITO. Isso impede a IA de inventar id
+// de projeto ou de solta-lo no meio da trilha.
+export function buildSectionContentSchema(offeredProjectIds: string[] | null) {
+  const projectField =
+    offeredProjectIds && offeredProjectIds.length > 0
+      ? z
+          .enum(offeredProjectIds as [string, ...string[]])
+          .nullable()
+          .describe(
+            "Id de um projeto do catalogo oferecido no prompt. Exatamente UM passo desta secao recebe um id; nos demais passos use null.",
+          )
+      : z
+          .null()
+          .describe(
+            "Sempre null nesta secao (o projeto vive na ultima secao).",
+          );
+  const child = SectionContentChildSchema.extend({ project: projectField });
+  return z.object({
+    children: z
+      .array(child.extend({ children: z.array(child).max(5).nullable() }))
+      .min(6)
+      .max(10),
+  });
+}

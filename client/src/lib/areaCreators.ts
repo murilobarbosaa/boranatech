@@ -1,3 +1,5 @@
+import { creators, type Creator } from "@/lib/creatorsData";
+
 export type AreaCreator = {
   name: string;
   platform: string;
@@ -6,21 +8,31 @@ export type AreaCreator = {
   avatarUrl?: string;
 };
 
-// Mapa de criadores por SLUG de area (ex.: "back-end": [...]). A Ana preenche
-// com criadores reais por area. Nada de nome, @ ou link inventado aqui.
-//
-// "Desenvolvimento de Software" e uma CATEGORIA (frontend/backend/fullstack/
-// mobile/gamedev), nao uma area unica; code.evelyn entra no slug mais geral de
-// dev de software (fullstack). Dados reaproveitados de lib/creatorsData (mesma
-// foto, @ e link) -- nada duplicado nem inventado.
-export const areaCreators: Record<string, AreaCreator[]> = {
-  fullstack: [
-    {
-      name: "Evelyn",
-      handle: "code.evelyn",
+// Deriva do dado canonico em creatorsData.ts (fonte unica dos creators).
+// Nada de nome, @, foto ou link duplicado ou inventado aqui: se o creator
+// nao existe la, ele nao aparece em area nenhuma.
+function fromHandles(...handles: string[]): AreaCreator[] {
+  return handles
+    .map((handle) => creators.find((c) => c.handle === handle))
+    .filter((c): c is Creator => Boolean(c))
+    .map((c) => ({
+      name: c.name,
       platform: "Instagram",
-      url: "https://instagram.com/code.evelyn",
-      avatarUrl: "/creators/code-evelyn.jpg",
-    },
-  ],
+      url: c.instagram,
+      handle: `@${c.handle}`,
+      avatarUrl: c.photo,
+    }));
+}
+
+// Mapa de criadores por SLUG de area (slugs reais de client/src/lib/data.ts).
+// Areas sem entrada caem no placeholder "Em breve" da pagina.
+export const areaCreators: Record<string, AreaCreator[]> = {
+  uxui: fromHandles("vua_nessa"),
+  frontend: fromHandles("monihillman"),
+  // backend: Erika pendente, aguardando handle e foto (Murilo).
+  sre: fromHandles("andrebrito.dev"),
+  // Andre cobre SRE e DevOps de proposito, mesma pessoa nas duas areas.
+  devops: fromHandles("andrebrito.dev"),
+  // TODO(Ana): confirmar area da Evelyn, mapeada provisoriamente como fullstack.
+  fullstack: fromHandles("dioaugusto.dev", "code.evelyn"),
 };

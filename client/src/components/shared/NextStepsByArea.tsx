@@ -1,17 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight, BookOpen, ExternalLink, FolderGit2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCourses, getProjects } from "@/services/contentService";
+import { getCourses } from "@/services/contentService";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { projetos } from "@/lib/data";
 import { areaLabel, GENERAL_AREA, type AreaSelection } from "@shared/areas";
-
-interface ProjectCard {
-  id: string;
-  nome: string;
-  objetivo: string;
-  nivel: string;
-  areaSlug: string | null;
-}
 
 interface CourseCard {
   id: string;
@@ -27,34 +21,35 @@ const MAX_ITEMS = 3;
 export default function NextStepsByArea({ area }: { area: AreaSelection }) {
   const isGeneral = area === GENERAL_AREA;
   const label = areaLabel(area);
+  const { isPro } = useSubscription();
 
   const [loading, setLoading] = useState(!isGeneral);
-  const [projects, setProjects] = useState<ProjectCard[]>([]);
   const [courses, setCourses] = useState<CourseCard[]>([]);
+
+  // Projetos vem do catalogo estatico (mesma fonte da pagina /projetos).
+  // Sugestao nunca oferece projeto pro a quem nao e assinante: seria um
+  // convite pra uma porta trancada.
+  const projects = useMemo(() => {
+    if (isGeneral) return [];
+    return projetos
+      .filter((p) => p.areaSlug === area && (p.pro !== true || isPro))
+      .slice(0, MAX_ITEMS);
+  }, [area, isGeneral, isPro]);
 
   useEffect(() => {
     if (isGeneral) return;
     let alive = true;
     setLoading(true);
 
-    Promise.all([
-      getProjects({ area }).catch(() => [] as unknown[]),
-      getCourses({ area }).catch(() => [] as unknown[]),
-    ])
-      .then(([proj, crs]) => {
+    getCourses({ area })
+      .catch(() => [] as unknown[])
+      .then((crs) => {
         if (!alive) return;
-        const p = (proj as ProjectCard[])
-          .filter((x) => x.areaSlug === area)
-          .slice(0, MAX_ITEMS);
         const c = (crs as CourseCard[])
           .filter((x) => x.areaSlug === area)
           .slice(0, MAX_ITEMS);
-        setProjects(p);
         setCourses(c);
         setLoading(false);
-      })
-      .catch(() => {
-        if (alive) setLoading(false);
       });
 
     return () => {

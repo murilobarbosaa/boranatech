@@ -71,7 +71,7 @@ const VIEWBOX_H = 600;
 
 const PRO_SHORTCUTS: Array<{ icon: LucideIcon; name: string; href: string }> = [
   { icon: FileText, name: "Currículo", href: "/curriculo/analisar" },
-  { icon: Linkedin, name: "LinkedIn", href: "/curriculo/linkedin" },
+  { icon: Linkedin, name: "LinkedIn", href: "/linkedin/analisar" },
   { icon: Github, name: "Portfólio", href: "/portfolio/analisar" },
   { icon: Mic, name: "Entrevistas", href: "/entrevistas" }, // TODO(Ana): validar nome do atalho
 ];

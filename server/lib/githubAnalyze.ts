@@ -1,11 +1,17 @@
 import { env } from "./env";
-import { fetchProfileData, fetchRepoData } from "./github";
+import {
+  fetchProfileData,
+  fetchRepoData,
+  fetchValidationEvidence,
+  type ValidationEvidence,
+} from "./github";
 import { analyzeProfile, analyzeRepo } from "./githubChecks";
 import { fetchWithTimeout } from "./http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "./openai";
 import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 import { areaLabel, type AreaSelection } from "../../shared/areas";
 import {
+  buildQualitativeWithRequirementsSchema,
   GithubQualitativeSchema,
   type AnalysisMode,
   type DeterministicResult,
@@ -14,7 +20,9 @@ import {
   type GithubQualitative,
   type GithubRepoData,
   type ProfileTopRepo,
+  type ProjectValidationContext,
 } from "../../shared/github/schema";
+import type { ZodTypeAny } from "zod";
 
 /**
  * Orquestracao do analisador de GitHub.
@@ -35,6 +43,26 @@ const AI_MAX_ATTEMPTS = 3;
 const AI_BACKOFF_MS = [400, 800];
 
 const QUALITATIVE_JSON_SCHEMA = toOpenAIStrictSchema(GithubQualitativeSchema);
+
+// Apendice do system prompt usado SOMENTE quando a analise carrega contexto
+// de validacao de projeto (modo repo). Sem contexto, o prompt e o schema sao
+// os de sempre, byte a byte.
+const PROJECT_VALIDATION_PROMPT =
+  "TAREFA ADICIONAL DE VALIDACAO DE PROJETO: a entrada traz um bloco de contexto de validacao com a lista de requisitos do projeto. Alem dos campos usuais, preencha requisitosAvaliacao com EXATAMENTE um item por requisito listado, usando o id exato de cada requisito, sem repetir nem omitir nenhum. " +
+  "Veredito por requisito: atende quando ha evidencia concreta e visivel no material da entrada (um arquivo ou pasta listado na raiz, um trecho do README, uma checagem automatica aprovada); parcial quando a evidencia mostra o requisito comecado mas incompleto; nao_atende quando nao ha evidencia. " +
+  "A evidencia e OBRIGATORIA e CONCRETA em todos os vereditos: cite o arquivo, o trecho do README ou a checagem que sustenta a decisao. E PROIBIDO inferir sem evidencia: na duvida, o veredito e nao_atende. " +
+  "Alem do README, da listagem da raiz e das checagens, sao evidencia admissivel quando presentes na entrada: a arvore de caminhos do repositorio, o conteudo do package.json (dependencias e scripts) e o conteudo dos workflows de .github/workflows. Quando o material anotar que uma dessas fontes falhou ou foi cortada, trate o que dependeria dela de acordo, sem supor o que nao esta la. " +
+  "Se um requisito nao for verificavel com o material disponivel na entrada, use nao_atende e explique essa limitacao na evidencia. " +
+  "Os vereditos de requisito nao mudam a nota, as checagens nem os demais campos da resposta.";
+
+// Opcoes de chamada da IA: ausentes, a chamada usa o prompt e o schema padrao
+// (caminho sem contexto identico ao de sempre).
+type QualitativeCallOptions = {
+  systemPrompt: string;
+  zodSchema: ZodTypeAny;
+  jsonSchema: Record<string, unknown>;
+  schemaName: string;
+};
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -96,10 +124,59 @@ function selectTopRepos(data: GithubProfileData): ProfileTopRepo[] {
     }));
 }
 
+function buildEvidenceLines(evidence: ValidationEvidence): string[] {
+  const lines: string[] = [
+    "",
+    "Evidencia adicional do repositorio (admissivel pros vereditos de requisito):",
+  ];
+
+  if (evidence.treePaths === null) {
+    lines.push(
+      "Arvore de arquivos: (falha ao listar; requisitos que dependem dela nao sao verificaveis por esta fonte)",
+    );
+  } else {
+    lines.push(
+      evidence.treeTruncated
+        ? `Arvore de arquivos (caminhos; LISTA CORTADA em ${evidence.treePaths.length} itens, pode haver mais arquivos alem destes):`
+        : "Arvore de arquivos (caminhos, completa):",
+      ...evidence.treePaths,
+    );
+  }
+
+  lines.push("", "package.json da raiz (pode estar truncado):");
+  if (evidence.packageJsonError) {
+    lines.push(
+      "(falha ao buscar o package.json; requisitos que dependem dele nao sao verificaveis por esta fonte)",
+    );
+  } else {
+    lines.push(evidence.packageJson ?? "(sem package.json na raiz)");
+  }
+
+  lines.push(
+    "",
+    "Workflows de .github/workflows (ate 2, podem estar truncados):",
+  );
+  if (evidence.workflowsError) {
+    lines.push(
+      "(falha ao listar os workflows; requisitos que dependem deles nao sao verificaveis por esta fonte)",
+    );
+  } else if (evidence.workflows.length === 0) {
+    lines.push("(nenhum workflow encontrado)");
+  } else {
+    for (const wf of evidence.workflows) {
+      lines.push(`--- ${wf.name} ---`, wf.content);
+    }
+  }
+
+  return lines;
+}
+
 function buildRepoPrompt(
   data: GithubRepoData,
   deterministic: DeterministicResult,
   label: string | null,
+  projectContext?: ProjectValidationContext,
+  evidence?: ValidationEvidence | null,
 ): string {
   const languages = Object.keys(data.languages);
   const areaLines = label
@@ -107,6 +184,22 @@ function buildRepoPrompt(
         `Area alvo: ${label}.`,
         `Enquadre a leitura e os proximos passos pensando em quem quer trabalhar com ${label}, citando o que importa pra esse papel quando fizer sentido. Nao invente que o repo e dessa area se os dados nao mostrarem isso.`,
         "",
+      ]
+    : [];
+  // Sem contexto de projeto, este bloco e vazio e o prompt fica identico ao
+  // caminho de sempre.
+  const projectLines = projectContext
+    ? [
+        "",
+        "Contexto de validacao de projeto:",
+        `Projeto: ${projectContext.nome}`,
+        `Objetivo: ${projectContext.objetivo}`,
+        "Requisitos a avaliar, um a um, com o id exato de cada um:",
+        ...projectContext.requisitos.map(
+          (req) =>
+            `- [${req.id}] ${req.descricao} | Como conferir: ${req.verificacao}`,
+        ),
+        ...(evidence ? buildEvidenceLines(evidence) : []),
       ]
     : [];
   return [
@@ -128,6 +221,7 @@ function buildRepoPrompt(
     "",
     `Nota deterministica ja calculada: ${deterministic.score} de 100 (faixa ${deterministic.band}). Nao recalcule a nota.`,
     `Suficiencia da leitura: ${deterministic.suficiencia}. Use pra calibrar o tom e o quanto a leitura e parcial.`,
+    ...projectLines,
     "",
     "README (texto cru, pode estar truncado):",
     data.readme ? truncate(data.readme, README_LIMIT) : "(sem README)",
@@ -208,6 +302,7 @@ async function runQualitativeOnce(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
   signal?: AbortSignal,
+  options?: QualitativeCallOptions,
 ): Promise<GithubQualitative> {
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
@@ -219,15 +314,15 @@ async function runQualitativeOnce(
         model: DEFAULT_MODEL,
         temperature: 0.5,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: options?.systemPrompt ?? SYSTEM_PROMPT },
           { role: "user", content: userText },
         ],
         response_format: {
           type: "json_schema",
           json_schema: {
-            name: "github_qualitative",
+            name: options?.schemaName ?? "github_qualitative",
             strict: true,
-            schema: QUALITATIVE_JSON_SCHEMA,
+            schema: options?.jsonSchema ?? QUALITATIVE_JSON_SCHEMA,
           },
         },
       }),
@@ -260,7 +355,8 @@ async function runQualitativeOnce(
     );
   }
 
-  const validation = GithubQualitativeSchema.safeParse(parsed);
+  const schema = options?.zodSchema ?? GithubQualitativeSchema;
+  const validation = schema.safeParse(parsed);
   if (!validation.success) {
     const issues = JSON.stringify(validation.error.issues).slice(0, 300);
     throw new Error(
@@ -269,13 +365,14 @@ async function runQualitativeOnce(
   }
 
   onAiIo?.({ inputChars: userText.length, outputChars: content.length });
-  return validation.data;
+  return validation.data as GithubQualitative;
 }
 
 async function runQualitative(
   userText: string,
   onAiIo?: (io: AnalyzeAiIo) => void,
   signal?: AbortSignal,
+  options?: QualitativeCallOptions,
 ): Promise<GithubQualitative> {
   if (!env.openaiApiKey) {
     throw new Error("Servico de IA nao configurado.");
@@ -284,7 +381,7 @@ async function runQualitative(
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      return await runQualitativeOnce(userText, onAiIo, signal);
+      return await runQualitativeOnce(userText, onAiIo, signal, options);
     } catch (err) {
       lastError = err;
       // Budget global da rota estourado: re-tentar so queimaria tempo, toda
@@ -368,6 +465,9 @@ export async function analyzeGithub(
   area: AreaSelection,
   onAiIo?: (io: AnalyzeAiIo) => void,
   signal?: AbortSignal,
+  // Contexto de validacao de projeto (fase 5c): so tem efeito no modo repo.
+  // Ausente, o caminho inteiro (prompt, schema, system prompt) fica identico.
+  projectContext?: ProjectValidationContext,
 ): Promise<GithubAnalysisResponse> {
   const label = areaLabel(area);
 
@@ -375,14 +475,53 @@ export async function analyzeGithub(
     const { owner, repo } = parsed as ParsedRepo;
     const data = await fetchRepoData(owner, repo, signal);
     const deterministic = analyzeRepo(data);
-    // Repo essencialmente vazio: atalho deterministico caloroso, sem IA.
+
+    let aiOptions: QualitativeCallOptions | undefined;
+    if (projectContext) {
+      const zodSchema = buildQualitativeWithRequirementsSchema(
+        projectContext.requisitos.map((req) => req.id),
+      );
+      aiOptions = {
+        systemPrompt: `${SYSTEM_PROMPT} ${PROJECT_VALIDATION_PROMPT}`,
+        zodSchema,
+        jsonSchema: toOpenAIStrictSchema(zodSchema),
+        schemaName: "github_qualitative_validation",
+      };
+    }
+
+    // Repo essencialmente vazio: atalho deterministico caloroso, sem IA. Com
+    // contexto de validacao, os requisitos viram nao_atende sinteticos (nao
+    // ha material pra verificar nada), tambem sem gastar IA.
     const isEmptyRepo = deterministic.suficiencia === "baixa";
+    // Evidencia estendida (arvore, package.json, workflows) SO no modo
+    // validacao e so quando a IA vai rodar; a analise avulsa nao paga esses
+    // fetches. Falha de qualquer fonte degrada com nota no material.
+    const evidence =
+      projectContext && !isEmptyRepo
+        ? await fetchValidationEvidence(
+            data.owner,
+            data.name,
+            data.defaultBranch,
+            signal,
+          )
+        : null;
     const qualitative = isEmptyRepo
-      ? emptyRepoQualitative()
+      ? projectContext
+        ? {
+            ...emptyRepoQualitative(),
+            requisitosAvaliacao: projectContext.requisitos.map((req) => ({
+              id: req.id,
+              veredito: "nao_atende" as const,
+              evidencia:
+                "Repositorio sem material suficiente pra verificar este requisito (leitura de suficiencia baixa).",
+            })),
+          }
+        : emptyRepoQualitative()
       : await runQualitative(
-          buildRepoPrompt(data, deterministic, label),
+          buildRepoPrompt(data, deterministic, label, projectContext, evidence),
           onAiIo,
           signal,
+          aiOptions,
         );
 
     return {

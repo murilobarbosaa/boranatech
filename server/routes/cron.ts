@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 
 import { enrichBacklog } from "../jobs/enrichBacklog";
-import { syncJobs } from "../jobs/syncJobs";
+import { runVagasSync } from "../jobs/syncJobs";
 import { syncNews } from "../jobs/syncNews";
 import { reindexSearchDocuments } from "../lib/searchIndex";
 import {
@@ -235,19 +235,40 @@ router.post("/sync-news", withCronLock("sync-news", 1200, async (_req, res, next
   }
 }));
 
-// TTL 600s: 3 chamadas Jooble (teto 15s cada) + upserts, tipico abaixo de
-// 1min; aplicado o minimo de 10min.
+// TTL 600s: ~22 unidades de fetch (teto 15s cada) rodando por fonte com
+// allSettled + upserts em lote, tipico bem abaixo de 10min.
 router.post("/sync-jobs", withCronLock("sync-jobs", 600, async (_req, res, next) => {
   const startedAt = new Date();
 
   try {
-    const result = await syncJobs();
-    await recordSync("jooble", startedAt, result);
+    const result = await runVagasSync();
+    // Um content_sync_log por fonte que rodou (getSource ignora codes sem
+    // linha em content_sources; hoje so "jooble" existe, os demais viram
+    // no-op ate o cadastro das fontes novas).
+    const bySource = new Map<
+      string,
+      { found: number; created: number; updated: number; failed: number }
+    >();
+    for (const r of result.results) {
+      const acc = bySource.get(r.source) ?? {
+        found: 0,
+        created: 0,
+        updated: 0,
+        failed: 0,
+      };
+      acc.found += r.fetched;
+      acc.created += r.upserted;
+      acc.failed += r.failed + (r.error ? 1 : 0);
+      bySource.set(r.source, acc);
+    }
+    for (const [code, totals] of Array.from(bySource.entries())) {
+      await recordSync(code, startedAt, totals);
+    }
     await recordCronRun({
       jobName: "sync-jobs",
-      status: result.failed > 0 ? "partial" : "success",
+      status: result.totals.failed > 0 ? "partial" : "success",
       startedAt,
-      payload: { ...result },
+      payload: { ...result.totals, skipped: result.skippedSources },
     });
     await reindexAfterSync("sync-jobs", ["job"]);
     res.json({ data: result });

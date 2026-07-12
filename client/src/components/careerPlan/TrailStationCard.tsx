@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { getCatalogItem } from "@shared/careerCatalog";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
+import type { FxRate } from "@/services/careerPlanService";
 import TrophyCard from "./TrophyCard";
 import type { TrailStationVM } from "./types";
 
@@ -19,6 +20,8 @@ interface TrailStationCardProps {
   readonly?: boolean;
   // Versao do catalogo do plano (repassada aos trofeus ancorados).
   catalogVersion?: string | null;
+  // Cotacao PTAX (ou null), repassada aos trofeus ancorados.
+  fx?: FxRate | null;
   // Ref do botao de cabecalho, usada pelo CareerTrail na navegacao por setas.
   buttonRef?: (el: HTMLButtonElement | null) => void;
 }
@@ -31,6 +34,7 @@ export default function TrailStationCard({
   onToggleItem,
   readonly = false,
   catalogVersion = null,
+  fx = null,
   buttonRef,
 }: TrailStationCardProps) {
   const reduce = useReducedMotion() ?? false;
@@ -48,7 +52,8 @@ export default function TrailStationCard({
     <article
       className={cn(
         "card-brutal flex h-full flex-col rounded-2xl bg-white pb-4",
-        current && "ring-2 ring-[#FFB800] ring-offset-2 ring-offset-transparent",
+        current &&
+          "ring-2 ring-[#FFB800] ring-offset-2 ring-offset-transparent",
       )}
     >
       <button
@@ -77,8 +82,7 @@ export default function TrailStationCard({
           </span>
           <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <span className="rounded-full border-2 border-slate-950 bg-amber-100 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wide text-slate-900">
-              {/* TODO(Ana): badge de duracao estimada */}~
-              {step.estimatedWeeks}{" "}
+              {/* TODO(Ana): badge de duracao estimada */}~{step.estimatedWeeks}{" "}
               {step.estimatedWeeks === 1 ? "semana" : "semanas"}
             </span>
             {scheduleLabel ? (
@@ -132,6 +136,7 @@ export default function TrailStationCard({
               onToggle={readonly ? undefined : onToggleItem}
               readonly={readonly}
               catalogVersion={catalogVersion}
+              fx={fx}
             />
           ))}
         </div>
@@ -194,7 +199,9 @@ export default function TrailStationCard({
                         ) : null}
                       </span>
                       <span
-                        className={cn(done && "line-through decoration-slate-400")}
+                        className={cn(
+                          done && "line-through decoration-slate-400",
+                        )}
                       >
                         {label}
                       </span>

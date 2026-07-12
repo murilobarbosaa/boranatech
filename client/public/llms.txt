@@ -19,7 +19,7 @@ O Bora na Tech? (https://boranatech.com.br) reúne, em português, as ferramenta
 - [Entrevistas](https://boranatech.com.br/entrevistas): guia do processo seletivo em tecnologia, com banco de perguntas, desafios técnicos e treino de entrevista com IA (plano Pro).
 - [Currículo e LinkedIn](https://boranatech.com.br/curriculo): como montar um currículo no padrão da área e aparecer para os recrutadores certos.
 - [Portfólio](https://boranatech.com.br/portfolio): o que incluir e como organizar projetos para se destacar em vagas.
-- [Vagas e estágio](https://boranatech.com.br/estagio): vagas de estágio e júnior em tecnologia, com guia de candidatura.
+- [Vagas](https://boranatech.com.br/vagas): feed de vagas reais de estágio, trainee e júnior em tecnologia, com busca e filtros (plano Pro).
 - [Empresas](https://boranatech.com.br/empresas): empresas de tecnologia que contratam no Brasil e o que cada uma usa.
 - [Plano Pro](https://boranatech.com.br/planos): o que o plano pago adiciona sobre a base gratuita.
 - [Sobre](https://boranatech.com.br/sobre): o que é o Bora na Tech? e como a plataforma funciona.

@@ -75,7 +75,8 @@ export const PRO_FEATURES: ProFeature[] = [
     number: "05",
     iconName: "Linkedin",
     title: "LinkedIn",
-    label: "Otimizador de LinkedIn com IA",
+    // TODO(Ana): validar label do Analisador de LinkedIn na pagina de planos
+    label: "Analisador de LinkedIn com IA",
     description:
       "Headline, sobre, experiências. Sua presença profissional traduzida pra linguagem de recrutador.",
     color: "sky",

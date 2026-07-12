@@ -135,20 +135,6 @@ function newsFromApi(row: any): NewsItem {
   };
 }
 
-function jobFromApi(row: any) {
-  return {
-    id: row.id,
-    title: row.title,
-    company: row.company || "Empresa não informada",
-    location: row.remote ? "Remoto" : row.location || "Brasil",
-    remote: row.remote === true,
-    seniority: row.seniority || "junior",
-    url: row.url,
-    areaSlug: row.area_slug || "",
-    publishedAt: row.published_at || null,
-  };
-}
-
 export async function getContentSourceStatus(): Promise<ContentSourceStatus[]> {
   try {
     const json = await apiFetch("/sources/status");
@@ -213,21 +199,3 @@ export async function getNews(
   }
 }
 
-export async function getJobs(params?: {
-  area?: string;
-  seniority?: string;
-  limit?: number;
-  offset?: number;
-}) {
-  try {
-    const qs = new URLSearchParams();
-    if (params?.area) qs.set("area", params.area);
-    if (params?.seniority) qs.set("seniority", params.seniority);
-    if (params?.limit) qs.set("limit", String(params.limit));
-    if (params?.offset) qs.set("offset", String(params.offset));
-    const json = await apiFetch(`/jobs${qs.toString() ? `?${qs}` : ""}`);
-    return json.data.map(jobFromApi);
-  } catch {
-    return [];
-  }
-}

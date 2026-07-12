@@ -5,8 +5,10 @@ import { z } from "zod";
 import { AI_TOOLS } from "../lib/aiTools";
 import {
   checkAiDailyLimit,
+  checkInterviewTtsDailyLimit,
   checkInterviewTurnDailyLimit,
   INTERVIEW_SESSION_TOOL,
+  INTERVIEW_TTS_TOOL,
   INTERVIEW_TURN_TOOL,
   logAiUsage,
 } from "../lib/aiUsage";
@@ -15,8 +17,23 @@ import {
   fetchExternalPageText,
   JobFetchError,
 } from "../lib/fetchExternalPage";
+import {
+  AudioTranscribeError,
+  decodeAudioInput,
+  detectAudioMime,
+  transcribeAudio,
+} from "../lib/audioTranscribe";
+import {
+  ElevenLabsTtsError,
+  synthesizeSpeech,
+} from "../lib/elevenLabsTts";
 import { fetchWithTimeout } from "../lib/http";
-import { buildOpenAIHeaders, OPENAI_BASE_URL } from "../lib/openai";
+import {
+  buildOpenAIHeaders,
+  DEFAULT_MODEL,
+  OPENAI_BASE_URL,
+  TRANSCRIPTION_MODEL,
+} from "../lib/openai";
 import { toOpenAIStrictSchema } from "../lib/openaiStrictSchema";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { checkProStatus, requireAuth } from "../middleware/auth";
@@ -65,6 +82,8 @@ const CreateSessionSchema = z
     kind: z.enum(["job", "general"]),
     area: z.string().trim().min(1).max(120),
     level: z.string().trim().min(1).max(60),
+    language: z.enum(["pt", "en"]).default("pt"),
+    voiceMode: z.boolean().default(false),
     jobUrl: z.string().trim().max(2_000).optional(),
     jobText: z.string().max(60_000).optional(),
   })
@@ -80,6 +99,24 @@ const AnswerSchema = z.object({
   answer: z.string().min(1).max(4_000),
 });
 
+const TranscribeSchema = z.object({
+  audioBase64: z.string().min(1),
+});
+
+const SpeechSchema = z.object({
+  turnId: z.string().uuid(),
+  target: z.enum(["session", "pt"]).default("session"),
+});
+
+// Cap DEFENSIVO de caracteres falados: o prompt pede perguntas de ate 400
+// chars mas NAO garante, e a ElevenLabs cobra por caractere. Acima disso a
+// rota recusa (422) SEM truncar: fala cortada seria teatro desonesto.
+const TTS_MAX_CHARS = 600;
+
+// Traducao da pergunta para pt-BR (botao "ouvir em portugues" em sessao EN).
+const TRANSLATE_SYSTEM_PROMPT =
+  "Voce e um tradutor. Traduza a pergunta de entrevista a seguir para portugues do Brasil, de forma natural e fiel. Responda SOMENTE com a traducao, sem aspas nem comentarios.";
+
 const EvaluationSchema = z.object({
   rating: z.enum(["boa", "mediana", "fraca"]),
   feedback: z.string(),
@@ -94,9 +131,27 @@ const InterviewTurnResultSchema = z.object({
 type InterviewTurnResult = z.infer<typeof InterviewTurnResultSchema>;
 type Evaluation = z.infer<typeof EvaluationSchema>;
 
+// Evaluation como PERSISTIDA/RESPONDIDA: no turno avaliado que FECHA a sessao
+// (content = feedback, sem proxima pergunta) ela ganha terminal: true, o
+// marcador estrutural que o client usa no lugar da heuristica de igualdade de
+// string. O schema do MODELO nao muda; o marcador e adicionado pelo server.
+type PersistedEvaluation = Evaluation & { terminal?: boolean };
+
 const INTERVIEW_TURN_JSON_SCHEMA = toOpenAIStrictSchema(
   InterviewTurnResultSchema,
 );
+
+// Dica pedida pelo candidato: schema proprio, fora do turno de avaliacao.
+const HintResultSchema = z.object({
+  hint: z.string(),
+});
+
+const HINT_JSON_SCHEMA = toOpenAIStrictSchema(HintResultSchema);
+
+// Tipo do turno persistido (coluna kind de interview_turns): 'answer' e o
+// fluxo historico, 'hint' e a dica (nunca avaliada, fora dos criterios de
+// preparo), 'closing' marca o fechamento de forma estruturada.
+type TurnKind = "answer" | "hint" | "closing";
 
 interface JobContext {
   source: "url" | "text";
@@ -109,6 +164,8 @@ type SessionVerdict = {
   result: "prepared" | "question_cap" | "stopped_early";
   goodCount: number;
   questionCount: number;
+  // Dado honesto de treino: quantas dicas o candidato pediu na sessao.
+  hintsUsed?: number;
   closing?: string;
 };
 
@@ -117,6 +174,8 @@ interface SessionRow {
   kind: "job" | "general";
   area: string | null;
   level: string | null;
+  language: "pt" | "en";
+  voice_mode: boolean;
   job_context: JobContext | null;
   status: "active" | "completed";
   question_count: number;
@@ -131,7 +190,8 @@ interface TurnRow {
   id: string;
   role: "assistant" | "user";
   content: string;
-  evaluation: Evaluation | null;
+  evaluation: PersistedEvaluation | null;
+  kind: TurnKind;
   created_at: string;
 }
 
@@ -237,6 +297,101 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function callHintModelOnce(
+  messages: ModelMessage[],
+  onIo: (io: AiIo) => void,
+): Promise<string> {
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: TOOL_CONFIG.model,
+        temperature: TOOL_CONFIG.temperature,
+        max_tokens: MAX_TOKENS,
+        messages,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "interview_hint",
+            strict: true,
+            schema: HINT_JSON_SCHEMA,
+          },
+        },
+      }),
+    },
+    { service: "openai", timeoutMs: AI_TIMEOUT_MS },
+  );
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
+    );
+  }
+
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = payload.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("A IA nao retornou conteudo.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(`Resposta da IA nao veio em JSON valido: ${detail}.`);
+  }
+
+  const validation = HintResultSchema.safeParse(parsed);
+  if (!validation.success) {
+    const issues = JSON.stringify(validation.error.issues).slice(0, 300);
+    throw new Error(`Resposta da IA nao bateu com o schema: ${issues}`);
+  }
+
+  const hint = validation.data.hint.trim();
+  if (hint.length === 0) {
+    throw new Error("A IA retornou uma dica vazia.");
+  }
+
+  const inputChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+  onIo({ inputChars, outputChars: content.length });
+  return hint;
+}
+
+async function callHintModel(
+  messages: ModelMessage[],
+  onIo: (io: AiIo) => void,
+): Promise<string> {
+  if (!env.openaiApiKey) {
+    throw new Error("Servico de IA nao configurado.");
+  }
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await callHintModelOnce(messages, onIo);
+    } catch (err) {
+      lastError = err;
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error(
+        `[interview] IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} (hint) falhou: ${detail}`,
+      );
+      if (attempt < AI_MAX_ATTEMPTS) {
+        await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Falha ao gerar a dica.");
+}
+
 async function callInterviewModel(
   messages: ModelMessage[],
   expect: ExpectMode,
@@ -271,11 +426,19 @@ function sessionContextMessage(session: {
   kind: "job" | "general";
   area: string | null;
   level: string | null;
+  language: "pt" | "en";
   job_context: JobContext | null;
 }): ModelMessage {
   const lines = [
     `Contexto da entrevista: area ${session.area ?? "(nao informada)"}, nivel ${session.level ?? "(nao informado)"}.`,
   ];
+  if (session.language === "en") {
+    // Sobrepoe o portugues do prompt base: a pessoa esta treinando o idioma
+    // real da entrevista. So o conteudo muda; o shape JSON e identico.
+    lines.push(
+      "Session language: ENGLISH. This overrides the default Portuguese instruction. Conduct the ENTIRE interview in natural, professional tech-interview English: every question, every evaluation feedback, every hint and the final closing verdict. Keep the interview in English even if the candidate replies in Portuguese (practicing English is the point). The JSON output format and its field names stay exactly the same.",
+    );
+  }
   if (session.kind === "job" && session.job_context?.extractedText) {
     lines.push(
       "Texto da vaga (unico fato sobre a vaga; nao invente nada alem dele):",
@@ -324,6 +487,12 @@ const EVALUATE_INSTRUCTION: ModelMessage = {
     "Estado do turno: entrevista em andamento. Avalie a ultima resposta do candidato em evaluation (rating e feedback) e faca a proxima pergunta em nextQuestion. Deixe closing como null.",
 };
 
+const HINT_INSTRUCTION: ModelMessage = {
+  role: "system",
+  content:
+    "Estado do turno: o candidato pediu uma DICA para a pergunta em aberto (a ultima pergunta que voce fez). Escreva em hint uma dica CURTA de abordagem, com no maximo 300 caracteres: um caminho de raciocinio, uma estrutura de resposta ou o que vale considerar. NUNCA entregue a resposta pronta, nem exemplos completos, nem a solucao. A pergunta continua em aberto aguardando a resposta real do candidato.",
+};
+
 function closingInstruction(goodCount: number, questionCount: number, reason: "prepared" | "question_cap"): ModelMessage {
   const reasonLine =
     reason === "prepared"
@@ -349,7 +518,7 @@ async function loadOwnSession(
     const { data, error } = await supabaseAdmin
       .from("interview_sessions")
       .select(
-        "id, kind, area, level, job_context, status, question_count, good_count, good_streak, verdict, created_at, updated_at",
+        "id, kind, area, level, language, voice_mode, job_context, status, question_count, good_count, good_streak, verdict, created_at, updated_at",
       )
       .eq("user_id", userId)
       .eq("id", sessionId)
@@ -372,7 +541,7 @@ async function loadTurns(
   try {
     const { data, error } = await supabaseAdmin
       .from("interview_turns")
-      .select("id, role, content, evaluation, created_at")
+      .select("id, role, content, evaluation, kind, created_at")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true });
 
@@ -387,27 +556,61 @@ async function loadTurns(
   }
 }
 
+// Retorna o ID PERSISTIDO do turno (ou null em falha): o client precisa do id
+// real da pergunta para pedir a fala por turnId (E5); null preserva a
+// semantica falsy dos encadeamentos de escrita existentes.
 async function insertTurn(
   sessionId: string,
   role: "assistant" | "user",
   content: string,
-  evaluation: Evaluation | null,
-): Promise<boolean> {
+  evaluation: PersistedEvaluation | null,
+  kind: TurnKind = "answer",
+): Promise<string | null> {
   try {
-    const { error } = await supabaseAdmin.from("interview_turns").insert({
-      session_id: sessionId,
-      role,
-      content,
-      evaluation,
-    });
-    if (error) {
-      console.warn("[interview] insertTurn falhou:", error.message);
-      return false;
+    const { data, error } = await supabaseAdmin
+      .from("interview_turns")
+      .insert({
+        session_id: sessionId,
+        role,
+        content,
+        evaluation,
+        kind,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      console.warn(
+        "[interview] insertTurn falhou:",
+        error?.message ?? "sem dados",
+      );
+      return null;
     }
-    return true;
+    return (data as { id: string }).id;
   } catch (err) {
     console.warn("[interview] insertTurn lancou:", err);
-    return false;
+    return null;
+  }
+}
+
+// Conta as dicas da sessao para o verdict. Fail-soft: erro vira 0 (a frase de
+// dicas simplesmente nao aparece no resumo; nada critico depende disto).
+async function countHintTurns(sessionId: string): Promise<number> {
+  try {
+    const { count, error } = await supabaseAdmin
+      .from("interview_turns")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId)
+      .eq("kind", "hint");
+    if (error || typeof count !== "number") {
+      if (error) {
+        console.warn("[interview] countHintTurns falhou:", error.message);
+      }
+      return 0;
+    }
+    return count;
+  } catch (err) {
+    console.warn("[interview] countHintTurns lancou:", err);
+    return 0;
   }
 }
 
@@ -544,6 +747,7 @@ router.post(
           kind: body.kind,
           area: body.area,
           level: body.level,
+          language: body.language,
           job_context: jobContext,
         }),
         FIRST_QUESTION_INSTRUCTION,
@@ -581,6 +785,8 @@ router.post(
           kind: body.kind,
           area: body.area,
           level: body.level,
+          language: body.language,
+          voice_mode: body.voiceMode,
           job_context: jobContext,
         })
         .select("id")
@@ -603,8 +809,13 @@ router.post(
       );
     }
 
-    const turnOk = await insertTurn(sessionId, "assistant", firstQuestion, null);
-    if (!turnOk) {
+    const questionTurnId = await insertTurn(
+      sessionId,
+      "assistant",
+      firstQuestion,
+      null,
+    );
+    if (!questionTurnId) {
       // Sessao sem primeira pergunta e estado quebrado: desfaz (best-effort).
       await supabaseAdmin
         .from("interview_sessions")
@@ -625,7 +836,7 @@ router.post(
       outputChars: aiIo.outputChars,
     });
 
-    res.json({ data: { sessionId, question: firstQuestion } });
+    res.json({ data: { sessionId, question: firstQuestion, questionTurnId } });
   },
 );
 
@@ -774,12 +985,14 @@ router.post(
         result: "question_cap",
         goodCount: session.good_count,
         questionCount: session.question_count,
+        hintsUsed: await countHintTurns(session.id),
         closing,
       };
 
       const wroteUser = await insertTurn(session.id, "user", answer, null);
       const wroteClosing =
-        wroteUser && (await insertTurn(session.id, "assistant", closing, null));
+        wroteUser &&
+        (await insertTurn(session.id, "assistant", closing, null, "closing"));
       const wroteSession =
         wroteClosing &&
         (await updateSession(userId, session.id, {
@@ -800,7 +1013,19 @@ router.post(
       });
 
       return res.json({
-        data: { evaluation: null, nextQuestion: null, done: true, verdict },
+        data: {
+          evaluation: null,
+          nextQuestion: null,
+          done: true,
+          verdict,
+          // Teto na entrada: nenhum turno avaliado novo; devolve os contadores
+          // atuais da sessao.
+          progress: {
+            questionCount: session.question_count,
+            goodCount: session.good_count,
+            goodStreak: session.good_streak,
+          },
+        },
       });
     }
 
@@ -847,15 +1072,6 @@ router.post(
       );
     }
 
-    await logAiUsage({
-      userId,
-      tool: INTERVIEW_TURN_TOOL,
-      requestId,
-      status: "success",
-      inputChars: evalIo.inputChars,
-      outputChars: evalIo.outputChars,
-    });
-
     const questionCount = session.question_count + 1;
     const goodCount =
       evaluation.rating === "boa" ? session.good_count + 1 : session.good_count;
@@ -869,6 +1085,12 @@ router.post(
     const capped = questionCount >= QUESTION_CAP;
     const shouldClose = prepared || capped;
 
+    // Marcador estrutural do turno terminal (fechamentos prepared e
+    // question_cap): banco e res.json carregam o MESMO objeto.
+    const storedEvaluation: PersistedEvaluation = shouldClose
+      ? { ...evaluation, terminal: true }
+      : evaluation;
+
     // Persiste o turno avaliado antes de qualquer fechamento. Quando a sessao
     // vai fechar, a proxima pergunta nunca sera feita e ficaria pendurada no
     // historico recarregado: o content do turno vira o feedback da avaliacao
@@ -876,10 +1098,23 @@ router.post(
     // proxima pergunta.
     const assistantContent = shouldClose ? evaluation.feedback : nextQuestion;
     const wroteUser = await insertTurn(session.id, "user", answer, null);
-    const wroteAssistant =
-      wroteUser &&
-      (await insertTurn(session.id, "assistant", assistantContent, evaluation));
-    const wroteCounters =
+    // Id persistido do turno do assistente: quando a sessao SEGUE, o content
+    // e a proxima pergunta e o id vai na resposta (o player de voz pede a
+    // fala por turnId real). No fechamento o content e o feedback e o id nao
+    // e exposto.
+    const assistantTurnId = wroteUser
+      ? await insertTurn(
+          session.id,
+          "assistant",
+          assistantContent,
+          storedEvaluation,
+        )
+      : null;
+    // Id do turno e sucesso de escrita sao estados SEPARADOS de proposito
+    // (classe de bug conhecida da casa: nunca colapsar estado): o id segue
+    // para a resposta HTTP; o boolean guarda o encadeamento de escrita.
+    const wroteAssistant: boolean = assistantTurnId !== null;
+    const wroteCounters: boolean =
       wroteAssistant &&
       (await updateSession(userId, session.id, {
         question_count: questionCount,
@@ -891,8 +1126,22 @@ router.post(
     }
 
     if (!shouldClose) {
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "success",
+        inputChars: evalIo.inputChars,
+        outputChars: evalIo.outputChars,
+      });
       return res.json({
-        data: { evaluation, nextQuestion, done: false },
+        data: {
+          evaluation: storedEvaluation,
+          nextQuestion,
+          done: false,
+          questionTurnId: assistantTurnId,
+          progress: { questionCount, goodCount, goodStreak },
+        },
       });
     }
 
@@ -949,6 +1198,7 @@ router.post(
       result: closeReason,
       goodCount,
       questionCount,
+      hintsUsed: await countHintTurns(session.id),
       closing,
     };
 
@@ -957,6 +1207,7 @@ router.post(
       "assistant",
       closing,
       null,
+      "closing",
     );
     const wroteCompleted =
       wroteClosing &&
@@ -968,17 +1219,604 @@ router.post(
       return next(createError(500, "db_error", "Erro ao encerrar a sessao."));
     }
 
+    // Cobranca UNICA do turno de fechamento: 1 acao do usuario = 1 unidade de
+    // quota, somando o IO das duas chamadas (avaliacao + veredito) num log so.
     await logAiUsage({
       userId,
       tool: INTERVIEW_TURN_TOOL,
       requestId,
       status: "success",
-      inputChars: closeIo.inputChars,
-      outputChars: closeIo.outputChars,
+      inputChars: evalIo.inputChars + closeIo.inputChars,
+      outputChars: evalIo.outputChars + closeIo.outputChars,
     });
 
     return res.json({
-      data: { evaluation, nextQuestion: null, done: true, verdict },
+      data: {
+        evaluation: storedEvaluation,
+        nextQuestion: null,
+        done: true,
+        verdict,
+        progress: { questionCount, goodCount, goodStreak },
+      },
+    });
+  },
+);
+
+// POST /api/interview/sessions/:id/hint: dica CURTA de abordagem para a
+// pergunta em aberto. NUNCA avalia, NUNCA mexe em question_count, good_count ou
+// good_streak: a pergunta segue aberta e o criterio de preparo nao ve a dica.
+// Consome 1 unidade da quota de turno existente (INTERVIEW_TURN_TOOL).
+router.post(
+  "/sessions/:id/hint",
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isPro) {
+      return next(
+        createError(
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para continuar a entrevista.",
+        ),
+      );
+    }
+
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    const loaded = await loadOwnSession(userId, id);
+    if (!loaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    if (!loaded.session) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+    const session = loaded.session;
+    if (session.status !== "active") {
+      return next(
+        createError(409, "session_completed", "Esta sessao ja foi encerrada."),
+      );
+    }
+
+    const usage = await checkInterviewTurnDailyLimit(userId);
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TURN_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "rate_limited",
+      });
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          `Limite diario de ${usage.limit} turnos de entrevista atingido. Tente novamente amanha.`,
+        ),
+      );
+    }
+
+    const turnsLoaded = await loadTurns(session.id);
+    if (!turnsLoaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    const history = turnsToMessages(turnsLoaded.turns);
+
+    const systemMessages: ModelMessage[] = [
+      { role: "system", content: TOOL_CONFIG.systemPrompt },
+      sessionContextMessage(session),
+    ];
+    const fixedChars =
+      systemMessages[0].content.length +
+      systemMessages[1].content.length +
+      HINT_INSTRUCTION.content.length;
+
+    let aiIo: AiIo = { inputChars: 0, outputChars: 0 };
+    let hint: string;
+    try {
+      hint = await callHintModel(
+        [
+          ...systemMessages,
+          ...trimHistory(history, fixedChars),
+          HINT_INSTRUCTION,
+        ],
+        (io) => {
+          aiIo = io;
+        },
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: message,
+      });
+      return next(
+        createError(
+          502,
+          "upstream_error",
+          "Nao foi possivel gerar a dica agora. Tente de novo.",
+        ),
+      );
+    }
+
+    // Persiste SO o turno de dica (kind hint). Nenhum contador da sessao muda:
+    // a resposta real, quando vier, passa pelo fluxo normal de avaliacao.
+    const wrote = await insertTurn(session.id, "assistant", hint, null, "hint");
+    if (!wrote) {
+      return next(createError(500, "db_error", "Erro ao salvar a dica."));
+    }
+
+    await logAiUsage({
+      userId,
+      tool: INTERVIEW_TURN_TOOL,
+      requestId,
+      status: "success",
+      inputChars: aiIo.inputChars,
+      outputChars: aiIo.outputChars,
+    });
+
+    res.json({ data: { hint } });
+  },
+);
+
+// POST /api/interview/sessions/:id/transcribe: transcreve o audio gravado no
+// navegador e devolve o texto para o composer. PRE-ENVIO: nao cria turno, nao
+// toca contadores, streak nem veredito; o texto so vira resposta quando a
+// pessoa revisar e enviar pelo fluxo normal. Nenhum audio e persistido: o
+// buffer vive apenas neste request. Cadeia identica a da rota de hint.
+router.post(
+  "/sessions/:id/transcribe",
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isPro) {
+      return next(
+        createError(
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para continuar a entrevista.",
+        ),
+      );
+    }
+
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    const loaded = await loadOwnSession(userId, id);
+    if (!loaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    if (!loaded.session) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+    const session = loaded.session;
+    if (session.status !== "active") {
+      return next(
+        createError(409, "session_completed", "Esta sessao ja foi encerrada."),
+      );
+    }
+
+    const usage = await checkInterviewTurnDailyLimit(userId);
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TURN_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "rate_limited",
+      });
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          `Limite diario de ${usage.limit} turnos de entrevista atingido. Tente novamente amanha.`,
+        ),
+      );
+    }
+
+    const parsedBody = TranscribeSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      // TODO(Ana): mensagem de body de transcricao invalido.
+      return next(
+        createError(400, "invalid_request", "Audio invalido ou vazio."),
+      );
+    }
+
+    let buffer: Buffer;
+    let detected: ReturnType<typeof detectAudioMime>;
+    try {
+      buffer = decodeAudioInput(parsedBody.data.audioBase64);
+      detected = detectAudioMime(buffer);
+    } catch (err) {
+      if (err instanceof AudioTranscribeError) {
+        // Mensagens destes codes ja sao voltadas ao usuario (400/413/415).
+        return next(createError(err.status, err.code, err.message));
+      }
+      return next(err);
+    }
+
+    let text: string;
+    try {
+      // language SEMPRE da sessao carregada do banco, nunca do body.
+      text = await transcribeAudio({
+        buffer,
+        mime: detected.mime,
+        filename: detected.filename,
+        language: session.language,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TURN_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: message,
+      });
+      // Detalhe do upstream fica no log; o client recebe o generico.
+      // TODO(Ana): mensagem de falha na transcricao.
+      return next(
+        createError(
+          502,
+          "transcription_failed",
+          "Nao foi possivel transcrever o audio agora. Tente de novo.",
+        ),
+      );
+    }
+
+    // Custo 0 e tokens zerados de proposito, com o model fiel: a transcricao
+    // cobra por MINUTO de audio, nao por token, e nao ha fonte de preco no
+    // repo. TODO: calibrar o custo por minuto quando houver fonte (mesma
+    // pratica de custo 0 das rotas irmas da entrevista).
+    await logAiUsage({
+      userId,
+      tool: INTERVIEW_TURN_TOOL,
+      requestId,
+      status: "success",
+      model: TRANSCRIPTION_MODEL,
+    });
+
+    res.json({ data: { text } });
+  },
+);
+
+// Chamada unica de traducao (temperature 0, sem retry: a retentativa e o
+// clique do usuario). Lanca Error com detalhe pro log; a rota responde generico.
+async function translateQuestionToPt(
+  text: string,
+  onIo: (io: AiIo) => void,
+): Promise<string> {
+  if (!env.openaiApiKey) {
+    throw new Error("Servico de IA nao configurado.");
+  }
+  const messages: ModelMessage[] = [
+    { role: "system", content: TRANSLATE_SYSTEM_PROMPT },
+    { role: "user", content: text },
+  ];
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: 0,
+        max_tokens: 400,
+        messages,
+      }),
+    },
+    { service: "openai", timeoutMs: AI_TIMEOUT_MS },
+  );
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `OpenAI respondeu ${response.status}: ${body.slice(0, 300)}`,
+    );
+  }
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = payload.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error("A traducao nao retornou texto.");
+  }
+  const inputChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+  onIo({ inputChars, outputChars: content.length });
+  return content;
+}
+
+// POST /api/interview/sessions/:id/speech: gera a fala de UMA pergunta da
+// sessao (voz do Natechinho), lazy no primeiro play do client. DESVIO
+// DELIBERADO do padrao das rotas irmas: NAO ha checagem de status da sessao,
+// porque re-ouvir uma pergunta de sessao ENCERRADA (replay/estudo) e uso
+// legitimo; todas as demais barreiras seguem identicas. Nenhum audio e
+// persistido; o cache e do client.
+router.post(
+  "/sessions/:id/speech",
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isPro) {
+      return next(
+        createError(
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para continuar a entrevista.",
+        ),
+      );
+    }
+
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    const loaded = await loadOwnSession(userId, id);
+    if (!loaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    if (!loaded.session) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+    const session = loaded.session;
+
+    const usage = await checkInterviewTtsDailyLimit(userId);
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TTS_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TTS_TOOL,
+        requestId,
+        status: "rate_limited",
+      });
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          // TODO(Ana): mensagem do limite diario de fala.
+          `Limite diario de ${usage.limit} audios de entrevista atingido. Tente novamente amanha.`,
+        ),
+      );
+    }
+
+    const parsedBody = SpeechSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      // TODO(Ana): mensagem de pedido de fala invalido.
+      return next(
+        createError(400, "invalid_request", "Pedido de fala invalido."),
+      );
+    }
+
+    if (!session.voice_mode) {
+      // TODO(Ana): mensagem de modo voz desligado na sessao.
+      return next(
+        createError(
+          400,
+          "voice_mode_disabled",
+          "Esta sessao nao esta com o modo voz ligado.",
+        ),
+      );
+    }
+
+    // Turno carregado por id SEMPRE filtrado pela sessao ja validada acima
+    // (dono garantido): turnId de outra sessao/usuario cai no 404 padrao.
+    interface SpeechTurnRow {
+      id: string;
+      role: "assistant" | "user";
+      content: string;
+      evaluation: PersistedEvaluation | null;
+      kind: TurnKind;
+    }
+    let turn: SpeechTurnRow | null = null;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("interview_turns")
+        .select("id, role, content, evaluation, kind")
+        .eq("session_id", session.id)
+        .eq("id", parsedBody.data.turnId)
+        .maybeSingle();
+      if (error) {
+        console.warn("[interview] busca de turno para fala falhou:", error.message);
+        return next(createError(500, "db_error", "Erro ao buscar o turno."));
+      }
+      turn = (data as SpeechTurnRow | null) ?? null;
+    } catch (err) {
+      return next(err);
+    }
+    if (!turn) {
+      // TODO(Ana): mensagem de turno nao encontrado.
+      return next(createError(404, "not_found", "Turno nao encontrado."));
+    }
+
+    // Predicado de PERGUNTA, o mesmo da skin (E4): fala so o que o usuario ve
+    // como QuestionBubble. Exclui hint, closing e o turno terminal (cujo
+    // content e o feedback). Anti-abuso: a rota nunca vira TTS generico.
+    const evaluation = turn.evaluation;
+    const isTerminal =
+      evaluation !== null &&
+      (evaluation.terminal === true || turn.content === evaluation.feedback);
+    const isQuestion =
+      turn.role === "assistant" && turn.kind === "answer" && !isTerminal;
+    if (!isQuestion) {
+      // TODO(Ana): mensagem de turno que nao e pergunta.
+      return next(
+        createError(400, "not_a_question", "Este turno nao e uma pergunta."),
+      );
+    }
+
+    const text = turn.content.trim();
+    if (text.length > TTS_MAX_CHARS) {
+      // TODO(Ana): mensagem de pergunta longa demais para audio.
+      return next(
+        createError(
+          422,
+          "tts_text_too_long",
+          "Esta pergunta e longa demais para virar audio.",
+        ),
+      );
+    }
+
+    let spokenText = text;
+    let translatedText: string | undefined;
+    if (parsedBody.data.target === "pt" && session.language === "en") {
+      let trIo: AiIo = { inputChars: 0, outputChars: 0 };
+      try {
+        translatedText = await translateQuestionToPt(text, (io) => {
+          trIo = io;
+        });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Erro desconhecido";
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TTS_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: message,
+        });
+        // TODO(Ana): mensagem de falha na traducao da pergunta.
+        return next(
+          createError(
+            502,
+            "tts_failed",
+            "Nao foi possivel gerar o audio em portugues agora. Tente de novo.",
+          ),
+        );
+      }
+      // Consumo REAL da traducao registrado antes de qualquer outra barreira
+      // (a chamada aconteceu; honestidade acima de contabilidade bonita).
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TTS_TOOL,
+        requestId,
+        status: "success",
+        model: DEFAULT_MODEL,
+        inputChars: trIo.inputChars,
+        outputChars: trIo.outputChars,
+      });
+      if (translatedText.length > TTS_MAX_CHARS) {
+        // TODO(Ana): mensagem de pergunta longa demais para audio.
+        return next(
+          createError(
+            422,
+            "tts_text_too_long",
+            "Esta pergunta e longa demais para virar audio.",
+          ),
+        );
+      }
+      spokenText = translatedText;
+    }
+    // target "pt" em sessao ja pt fala o proprio content (sem traducao).
+
+    let audio: { buffer: Buffer; mime: "audio/mpeg" };
+    try {
+      audio = await synthesizeSpeech({ text: spokenText });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TTS_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: message,
+      });
+      if (err instanceof ElevenLabsTtsError && err.code === "tts_unavailable") {
+        // TODO(Ana): mensagem de voz nao configurada/indisponivel.
+        return next(
+          createError(
+            503,
+            "tts_unavailable",
+            "A voz do Natechinho nao esta disponivel agora.",
+          ),
+        );
+      }
+      // TODO(Ana): mensagem de falha na geracao do audio.
+      return next(
+        createError(
+          502,
+          "tts_failed",
+          "Nao foi possivel gerar o audio agora. Tente de novo.",
+        ),
+      );
+    }
+
+    // Custo 0 com consumo AUDITAVEL: parceria de embaixador (sem fatura), mas
+    // os caracteres falados ficam em input_chars.
+    // TODO: calibrar costEstimate quando houver fonte de preco por caractere.
+    await logAiUsage({
+      userId,
+      tool: INTERVIEW_TTS_TOOL,
+      requestId,
+      status: "success",
+      model: env.elevenLabsModelId,
+      inputChars: spokenText.length,
+    });
+
+    res.json({
+      data: {
+        audioBase64: audio.buffer.toString("base64"),
+        mimeType: audio.mime,
+        text,
+        ...(translatedText ? { translatedText } : {}),
+      },
     });
   },
 );
@@ -1011,6 +1849,7 @@ router.post(
       result: "stopped_early",
       goodCount: loaded.session.good_count,
       questionCount: loaded.session.question_count,
+      hintsUsed: await countHintTurns(loaded.session.id),
     };
 
     const wrote = await updateSession(userId, id, {
@@ -1034,7 +1873,7 @@ router.get(
       const { data, error } = await supabaseAdmin
         .from("interview_sessions")
         .select(
-          "id, kind, area, level, status, question_count, good_count, created_at",
+          "id, kind, area, level, language, status, question_count, good_count, verdict, created_at",
         )
         .eq("user_id", req.user!.id)
         .order("created_at", { ascending: false })
@@ -1078,6 +1917,40 @@ router.get(
     res.json({
       data: { ...loaded.session, turns: turnsLoaded.turns },
     });
+  },
+);
+
+// DELETE /api/interview/sessions/:id: exclusao pelo dono. 404 identico para
+// UUID invalido, sessao inexistente e sessao de outro usuario (nao vaza
+// existencia). Os turnos caem pelo on delete cascade da FK. Sem gate Pro:
+// apagar o proprio historico nao da acesso a nada.
+router.delete(
+  "/sessions/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("interview_sessions")
+        .delete()
+        .eq("user_id", req.user!.id)
+        .eq("id", id)
+        .select("id");
+
+      if (error) {
+        console.warn("[interview] delete de sessao falhou:", error.message);
+        return next(createError(500, "db_error", "Erro ao excluir a sessao."));
+      }
+      if (!data || data.length === 0) {
+        return next(createError(404, "not_found", "Sessao nao encontrada."));
+      }
+      res.json({ data: { deleted: true } });
+    } catch (err) {
+      next(err);
+    }
   },
 );
 

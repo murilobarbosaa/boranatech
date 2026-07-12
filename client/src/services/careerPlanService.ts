@@ -88,6 +88,12 @@ export interface CareerPlanContext {
   weeklyMinutes30d: number | null;
 }
 
+export interface FxRate {
+  usdBrl: number;
+  // Data da cotacao PTAX usada, AAAA-MM-DD.
+  quoteDate: string;
+}
+
 export type CareerPlanErrorCode =
   | "login_required"
   | "not_pro"
@@ -193,9 +199,7 @@ export async function getContext(): Promise<CareerPlanContext> {
   return body.data;
 }
 
-export async function generatePlan(
-  intake: CareerPlanIntake,
-): Promise<string> {
+export async function generatePlan(intake: CareerPlanIntake): Promise<string> {
   const response = await request("/generate", {
     method: "POST",
     body: JSON.stringify(intake),
@@ -220,6 +224,26 @@ export async function listPlans(): Promise<CareerPlanSummary[]> {
   }
   const body = (await response.json()) as { data?: unknown };
   return Array.isArray(body.data) ? (body.data as CareerPlanSummary[]) : [];
+}
+
+// Cotacao PTAX para o total em reais. 204 (cotacao indisponivel) e qualquer
+// erro viram null: a UI trata a ausencia em silencio, nunca quebra por
+// cambio. NAO entra no sessionStorage (o cache de verdade vive no server).
+export async function getFxRate(): Promise<FxRate | null> {
+  try {
+    const response = await request("/fx");
+    if (response.status !== 200) return null;
+    const body = (await response.json()) as {
+      usdBrl?: unknown;
+      quoteDate?: unknown;
+    };
+    if (typeof body.usdBrl !== "number" || typeof body.quoteDate !== "string") {
+      return null;
+    }
+    return { usdBrl: body.usdBrl, quoteDate: body.quoteDate };
+  } catch {
+    return null;
+  }
 }
 
 export async function getPlan(planId: string): Promise<CareerPlanDetail> {

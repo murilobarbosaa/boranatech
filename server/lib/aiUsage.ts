@@ -101,6 +101,9 @@ export async function checkAgentDailyLimit(
 // excluidos da global pela migration 20260707121000_split_interview_turn_quota.
 export const INTERVIEW_SESSION_TOOL = "interview-session";
 export const INTERVIEW_TURN_TOOL = "interview-turn";
+// Geracoes de fala (TTS) da entrevista: teto proprio via a MESMA RPC generica;
+// conta na quota global (sem exclusao; decisao consciente, sem migration).
+export const INTERVIEW_TTS_TOOL = "interview-tts";
 
 /**
  * Rate limit dos turnos da entrevista simulada, espelhando checkAgentDailyLimit:
@@ -127,6 +130,34 @@ export async function checkInterviewTurnDailyLimit(
     return { allowed: false, count: 0, limit, verificationFailed: true };
   } catch {
     console.warn(`${logScope} Falha ao verificar rate limit de turnos para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  }
+}
+
+/**
+ * Rate limit das geracoes de fala (TTS) da entrevista, molde exato de
+ * checkInterviewTurnDailyLimit: RPC generica por tool, mesma janela, mesmo
+ * fail-closed. Sem variante free: a feature e Pro-only.
+ */
+export async function checkInterviewTtsDailyLimit(
+  userId: string,
+  logScope = "[interview]",
+): Promise<AiDailyLimitResult> {
+  const limit = env.interviewTtsDailyLimitPro;
+  try {
+    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc(
+      "get_ai_usage_today_by_tool",
+      { p_user_id: userId, p_tool: INTERVIEW_TTS_TOOL },
+    );
+
+    if (!usageError && usageCount !== null) {
+      return { allowed: usageCount < limit, count: usageCount, limit };
+    }
+
+    console.warn(`${logScope} RPC de rate limit de TTS retornou erro/null para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  } catch {
+    console.warn(`${logScope} Falha ao verificar rate limit de TTS para`, userId);
     return { allowed: false, count: 0, limit, verificationFailed: true };
   }
 }

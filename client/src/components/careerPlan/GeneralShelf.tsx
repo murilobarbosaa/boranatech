@@ -1,4 +1,8 @@
+import { useRef } from "react";
+import { cn } from "@/lib/utils";
+import type { FxRate } from "@/services/careerPlanService";
 import TrophyCard from "./TrophyCard";
+import { useTrailScroll } from "./useTrailScroll";
 import type { StationCertVM } from "./types";
 
 interface GeneralShelfProps {
@@ -10,17 +14,24 @@ interface GeneralShelfProps {
   readonly?: boolean;
   // Versao do catalogo do plano (linha de preco do trofeu expandido).
   catalogVersion?: string | null;
+  // Cotacao PTAX (ou null), repassada aos trofeus.
+  fx?: FxRate | null;
 }
 
 // Prateleira horizontal das certificacoes transversais (ou de todas, em
-// planos antigos). Mesmo padrao de scroll nativo com snap do CareerTrail.
+// planos antigos). Mesmo padrao de scroll nativo do CareerTrail, incluindo o
+// arrasto com maozinha do useTrailScroll (snap-proximity, sem mandatory).
 export default function GeneralShelf({
   certs,
   unanchored,
   onToggleCert,
   readonly = false,
   catalogVersion = null,
+  fx = null,
 }: GeneralShelfProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const { dragging, handlers } = useTrailScroll(scrollRef);
+
   if (certs.length === 0) return null;
 
   // TODO(Ana): titulos da prateleira (plano antigo vs certs transversais)
@@ -37,7 +48,17 @@ export default function GeneralShelf({
       <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
         {title}
       </p>
-      <div className="-mx-2 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2">
+      <div
+        ref={scrollRef}
+        {...handlers}
+        style={{ scrollSnapType: dragging ? "none" : undefined }}
+        className={cn(
+          "-mx-2 mt-3 flex snap-x snap-proximity gap-3 overflow-x-auto px-2 pb-2",
+          dragging
+            ? "cursor-grabbing select-none [&_*]:pointer-events-none"
+            : "cursor-grab",
+        )}
+      >
         {certs.map((cert) => (
           <div
             key={cert.itemId}
@@ -48,6 +69,7 @@ export default function GeneralShelf({
               onToggle={readonly ? undefined : onToggleCert}
               readonly={readonly}
               catalogVersion={catalogVersion}
+              fx={fx}
             />
           </div>
         ))}

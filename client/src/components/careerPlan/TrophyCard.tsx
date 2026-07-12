@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Check, ChevronDown, ExternalLink, Trophy } from "lucide-react";
-import {
-  getCatalogItem,
-  type CareerCatalogLevel,
-} from "@shared/careerCatalog";
+import { getCatalogItem, type CareerCatalogLevel } from "@shared/careerCatalog";
 import { cn } from "@/lib/utils";
-import { formatPrice, type StationCertVM } from "./types";
+import type { FxRate } from "@/services/careerPlanService";
+import { formatAmount, formatPrice, type StationCertVM } from "./types";
 
 // TODO(Ana): labels dos niveis do catalogo
 const LEVEL_LABELS: Record<CareerCatalogLevel, string> = {
@@ -25,6 +23,9 @@ interface TrophyCardProps {
   // Versao do catalogo do plano exibido; alimenta a linha de preco do
   // detalhe. Ausente (ex: vitrine), a linha de versao e omitida.
   catalogVersion?: string | null;
+  // Cotacao PTAX (ou null): preco em USD ganha "≈ R$" ao lado no detalhe.
+  // Ausente, so o USD como sempre.
+  fx?: FxRate | null;
 }
 
 // Cartao-trofeu de certificacao. O preco vive APENAS no detalhe expandido e
@@ -36,6 +37,7 @@ export default function TrophyCard({
   onToggle,
   readonly = false,
   catalogVersion = null,
+  fx = null,
 }: TrophyCardProps) {
   const reduce = useReducedMotion() ?? false;
   const [expanded, setExpanded] = useState(false);
@@ -172,9 +174,20 @@ export default function TrophyCard({
                         gratuito
                       </span>
                     ) : (
-                      <span className="font-black text-slate-900">
-                        {formatPrice(cert.catalogId)}
-                      </span>
+                      <>
+                        <span className="font-black text-slate-900">
+                          {formatPrice(cert.catalogId)}
+                        </span>
+                        {fx && item.price.currency === "USD" ? (
+                          <span className="text-xs font-bold text-slate-600">
+                            ≈{" "}
+                            {formatAmount(
+                              Math.round(item.price.amount * fx.usdBrl),
+                              "BRL",
+                            )}
+                          </span>
+                        ) : null}
+                      </>
                     )}
                     {catalogVersion ? (
                       <span className="text-xs font-medium text-slate-500">

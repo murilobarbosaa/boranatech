@@ -1,3 +1,6 @@
+// TODO(Ana): revisao editorial do upgrade da fase 3c, lote 1 (reescritas de
+// HTTP, framework e projeto final, fechos de criterio de dominio, conexoes
+// nominais, blocos de codigo e resources novos).
 import type { RoadmapV2 } from "../types";
 
 export const backend: RoadmapV2 = {
@@ -46,7 +49,7 @@ export const backend: RoadmapV2 = {
               description:
                 "A linguagem que o navegador e o servidor usam pra conversar.",
               content:
-                "HTTP é o protocolo que o cliente (navegador, app, outra API) e o servidor usam pra trocar mensagens pela internet. Toda interação segue o mesmo ritmo: o cliente manda uma requisição pedindo alguma coisa, o servidor processa e devolve uma resposta.\n\nCada requisição carrega um método, que diz a intenção: GET pra buscar, POST pra criar, PUT e PATCH pra atualizar, DELETE pra apagar. É a base do CRUD que você constrói mais pra frente.\n\nA resposta sempre vem com um código de status de três dígitos: a faixa 2xx é sucesso (200 ok, 201 criado), 4xx é erro de quem pediu (404 não encontrado, 401 não autorizado) e 5xx é erro do servidor. Responder com o código certo é o que separa uma API amadora de uma profissional.",
+                "HTTP é o protocolo que cliente e servidor usam pra conversar, e nesta trilha você está do lado que **responde**: cada detalhe do protocolo deixa de ser curiosidade e vira decisão sua em cada rota.\n\nToda requisição chega com um **método**, que carrega a intenção de quem pede: GET busca, POST cria, PUT e PATCH atualizam, DELETE apaga. Respeitar essa semântica é um contrato com quem consome sua API: um GET nunca pode alterar dados, e um POST repetido pode criar duas vezes; é você quem garante isso.\n\nA resposta que você monta tem três partes. O **status code** conta o resultado em três dígitos: 2xx deu certo, 4xx quem pediu errou, 5xx o seu servidor falhou. Escolher o código certo é responsabilidade sua, e o passo de Status codes, na seção de APIs REST, transforma essa escolha em vocabulário fluente. Os **headers** são os metadados da conversa: o `Content-Type: application/json` avisa o formato do corpo, e é em headers que viajam autenticação e cache. E o **corpo** carrega o dado em si, quase sempre JSON.\n\nO modelo mental pra guardar: um formulário de pedido e uma etiqueta de resposta, sempre nesse par. Você domina este passo quando olha uma requisição real (método, caminho, headers, corpo) e sabe descrever o que o servidor deve devolver em cada parte.",
               resources: [
                 {
                   label: "MDN HTTP",
@@ -92,7 +95,7 @@ export const backend: RoadmapV2 = {
           description:
             "A forma de conversar com o computador por texto, ferramenta diária de quem faz back-end.",
           content:
-            "O terminal é um programa onde você dá ordens pro computador digitando comandos em vez de clicar em janelas. Parece antiquado, mas é o contrário: é a ferramenta mais usada por quem trabalha com back-end, porque é rápida, precisa e funciona em qualquer servidor, inclusive nos que não têm tela nenhuma.\n\nVocê vai usar o terminal pra tudo nesta trilha: instalar a linguagem, rodar seu servidor, usar o Git, ver logs de erro e publicar seu projeto. Servidores em produção são controlados quase só assim.\n\nO básico cabe em poucos comandos: `cd` entra numa pasta, `ls` lista o que tem nela (no Windows, `dir`), `mkdir` cria uma pasta e `pwd` mostra onde você está. Com esses quatro você já navega por qualquer projeto.\n\nNão precisa decorar dezenas de comandos agora. A fluência vem do uso: abra o terminal, navegue até uma pasta sua, crie outra, entre nela. Em uma semana de prática isso vira automático, e cada etapa seguinte da trilha vai reforçar o hábito.",
+            "O terminal é um programa onde você dá ordens pro computador digitando comandos em vez de clicar em janelas. Parece antiquado, mas é o contrário: é a ferramenta mais usada por quem trabalha com back-end, porque é rápida, precisa e funciona em qualquer servidor, inclusive nos que não têm tela nenhuma.\n\nVocê vai usar o terminal pra tudo nesta trilha: instalar a linguagem, rodar seu servidor, usar o Git, ver logs de erro e publicar seu projeto. Servidores em produção são controlados quase só assim.\n\nO básico cabe em poucos comandos: `cd` entra numa pasta, `ls` lista o que tem nela (no Windows, `dir`), `mkdir` cria uma pasta e `pwd` mostra onde você está. Com esses quatro você já navega por qualquer projeto.\n\nNão precisa decorar dezenas de comandos agora. A fluência vem do uso: abra o terminal, navegue até uma pasta sua, crie outra, entre nela. Você domina este passo quando chega em qualquer pasta do computador e monta a estrutura de um projeto sem tocar no mouse; cada etapa seguinte da trilha vai reforçar o hábito.",
           resources: [
             {
               label: "Ubuntu: linha de comando pra iniciantes",
@@ -111,7 +114,7 @@ export const backend: RoadmapV2 = {
               description:
                 "O ciclo básico de salvar versões do código e enviar pro GitHub.",
               content:
-                'Git é um sistema de controle de versão: ele guarda o histórico do seu código em "fotografias" chamadas **commits**. Com isso você pode voltar atrás quando algo quebra, comparar o que mudou e trabalhar em equipe sem sobrescrever o trabalho dos outros. O GitHub é o site onde esses repositórios ficam hospedados na nuvem.\n\nO ciclo do dia a dia tem três passos. `git add` marca quais arquivos entram na próxima fotografia. `git commit -m "mensagem"` tira a fotografia, com uma mensagem curta dizendo o que mudou. `git push` envia seus commits pro GitHub, deixando tudo salvo fora da sua máquina.\n\nA mensagem do commit importa mais do que parece: "corrige cálculo do frete" ajuda; "mudanças" não diz nada. Acostume-se a commits pequenos e frequentes, cada um com uma mudança que faz sentido sozinha.\n\nIsso não é opcional na carreira: todo time de tecnologia usa Git, e seu GitHub funciona como vitrine do seu trabalho pra recrutadores. Cada projeto desta trilha deve terminar publicado lá.',
+                'Git é um sistema de controle de versão: ele guarda o histórico do seu código em "fotografias" chamadas **commits**. Com isso você pode voltar atrás quando algo quebra, comparar o que mudou e trabalhar em equipe sem sobrescrever o trabalho dos outros. O GitHub é o site onde esses repositórios ficam hospedados na nuvem.\n\nO ciclo do dia a dia tem três passos. `git add` marca quais arquivos entram na próxima fotografia. `git commit -m "mensagem"` tira a fotografia, com uma mensagem curta dizendo o que mudou. `git push` envia seus commits pro GitHub, deixando tudo salvo fora da sua máquina.\n\nA mensagem do commit importa mais do que parece: "corrige cálculo do frete" ajuda; "mudanças" não diz nada. Acostume-se a commits pequenos e frequentes, cada um com uma mudança que faz sentido sozinha.\n\nIsso não é opcional na carreira: todo time de tecnologia usa Git, e seu GitHub funciona como vitrine do seu trabalho pra recrutadores. Cada projeto desta trilha deve terminar publicado lá. O domínio aqui é mecânico: o ciclo add, commit e push saindo sem consulta, com mensagens que contam a história do projeto.',
               resources: [
                 {
                   label: "Pro Git (livro oficial, em português)",
@@ -126,7 +129,7 @@ export const backend: RoadmapV2 = {
               description:
                 "Linhas paralelas de trabalho que depois se juntam ao código principal.",
               content:
-                "Uma **branch** é uma linha paralela do seu código. A principal costuma se chamar `main` e representa a versão estável. Quando você vai fazer algo novo (uma funcionalidade, uma correção), cria uma branch separada com `git checkout -b nome-da-branch` e trabalha nela à vontade, sem risco de quebrar o que já funciona.\n\nQuando o trabalho fica pronto, você junta a branch de volta na principal com um **merge**: o Git combina os dois históricos. Se você e outra pessoa mexeram na mesma linha do mesmo arquivo, o Git não sabe qual versão vale e sinaliza um **conflito**, que você resolve escolhendo manualmente o que fica. Conflito assusta no começo, mas é rotina, não acidente.\n\nA ideia central é isolar o trabalho em andamento do código que funciona. Mesmo sozinho num projeto pessoal, vale praticar o fluxo de criar branch, terminar a mudança e fazer merge, porque é exatamente assim que os times profissionais operam, e chegar numa equipe já fluente nisso conta muitos pontos.",
+                "Uma **branch** é uma linha paralela do seu código. A principal costuma se chamar `main` e representa a versão estável. Quando você vai fazer algo novo (uma funcionalidade, uma correção), cria uma branch separada com `git checkout -b nome-da-branch` e trabalha nela à vontade, sem risco de quebrar o que já funciona.\n\nQuando o trabalho fica pronto, você junta a branch de volta na principal com um **merge**: o Git combina os dois históricos. Se você e outra pessoa mexeram na mesma linha do mesmo arquivo, o Git não sabe qual versão vale e sinaliza um **conflito**, que você resolve escolhendo manualmente o que fica. Conflito assusta no começo, mas é rotina, não acidente.\n\nA ideia central é isolar o trabalho em andamento do código que funciona. Mesmo sozinho num projeto pessoal, vale praticar o fluxo de criar branch, terminar a mudança e fazer merge, porque é exatamente assim que os times profissionais operam, e chegar numa equipe já fluente nisso conta muitos pontos. Considere o passo vencido no dia em que criar branch, resolver um conflito e fazer merge deixar de dar frio na barriga.",
               resources: [
                 {
                   label: "Pro Git: branches em poucas palavras",
@@ -175,7 +178,7 @@ export const backend: RoadmapV2 = {
           description:
             "Deixar a linguagem instalada na sua máquina e rodar o primeiro programa.",
           content:
-            "Antes de aprender qualquer sintaxe, você precisa do ambiente funcionando: a linguagem instalada, um editor de código e a capacidade de rodar um arquivo e ver o resultado no terminal.\n\nO editor recomendado pra qualquer uma das quatro linguagens é o **VS Code**, gratuito e padrão de mercado (pra Java, o IntelliJ IDEA Community também é uma ótima escolha). O ritual é o mesmo em todas: instalar, abrir o terminal, confirmar a versão com um comando e rodar um programa que imprime uma mensagem na tela.\n\nNão pule esta etapa nem deixe pela metade. Boa parte da frustração de iniciante não é com lógica, é com ambiente quebrado. Vale gastar uma hora aqui pra não travar depois. Escolha sua linguagem acima pra ver o passo a passo dela.",
+            "Antes de aprender qualquer sintaxe, você precisa do ambiente funcionando: a linguagem instalada, um editor de código e a capacidade de rodar um arquivo e ver o resultado no terminal.\n\nO editor recomendado pra qualquer uma das quatro linguagens é o **VS Code**, gratuito e padrão de mercado (pra Java, o IntelliJ IDEA Community também é uma ótima escolha). O ritual é o mesmo em todas: instalar, abrir o terminal, confirmar a versão com um comando e rodar um programa que imprime uma mensagem na tela.\n\nNão pule esta etapa nem deixe pela metade. Boa parte da frustração de iniciante não é com lógica, é com ambiente quebrado. Vale gastar uma hora aqui pra não travar depois. O critério de pronto é binário: editar um arquivo, rodar no terminal e ver a mensagem aparecer. Escolha sua linguagem acima pra ver o passo a passo dela.",
           byLanguage: {
             node: {
               content:
@@ -400,7 +403,7 @@ export const backend: RoadmapV2 = {
           description:
             "As duas estruturas que guardam quase todos os dados de um programa.",
           content:
-            "Duas estruturas resolvem a maior parte dos problemas de organização de dados. A **lista** guarda valores em ordem: os produtos de um carrinho, as mensagens de um chat. O **mapa** (também chamado de dicionário) guarda pares de chave e valor: o nome aponta pro telefone, o id aponta pro usuário.\n\nA escolha entre elas é sobre **como você vai buscar o dado depois**. Precisa manter ordem e percorrer tudo? Lista. Precisa achar um item direto pela chave, sem procurar um por um? Mapa.\n\nNo back-end isso é onipresente: o corpo JSON de uma requisição vira um mapa, o resultado de uma consulta ao banco vira uma lista de mapas, a resposta da sua API é montada combinando os dois. Dominar criar, ler, adicionar, remover e percorrer essas estruturas na sua linguagem é pré-requisito direto pra tudo que vem nas próximas seções.",
+            "Duas estruturas resolvem a maior parte dos problemas de organização de dados. A **lista** guarda valores em ordem: os produtos de um carrinho, as mensagens de um chat. O **mapa** (também chamado de dicionário) guarda pares de chave e valor: o nome aponta pro telefone, o id aponta pro usuário.\n\nA escolha entre elas é sobre **como você vai buscar o dado depois**. Precisa manter ordem e percorrer tudo? Lista. Precisa achar um item direto pela chave, sem procurar um por um? Mapa.\n\nNo back-end isso é onipresente: o corpo JSON de uma requisição vira um mapa, o resultado de uma consulta ao banco vira uma lista de mapas, a resposta da sua API é montada combinando os dois. Você domina este passo quando cria, percorre e transforma uma lista de mapas (a forma de quase todo dado de API) sem consultar a documentação; é pré-requisito direto pra tudo que vem nas próximas seções.",
           byLanguage: {
             node: {
               content:
@@ -644,48 +647,68 @@ export const backend: RoadmapV2 = {
           description:
             "A ferramenta que cuida de rotas, requisições e respostas pra você.",
           content:
-            "Dá pra escrever um servidor na mão, mas ninguém faz isso em produção. Um framework web resolve o repetitivo: receber requisições, separar por rota, ler dados que chegam, rodar middlewares (funções no meio do caminho, como checar login) e devolver a resposta. Você foca na regra do sistema, não no encanamento.\n\nO conceito é o mesmo em qualquer linguagem; o que muda é a ferramenta. Escolha sua linguagem acima pra ver a recomendação.",
+            "Dá pra escrever um servidor inteiro em cima do HTTP puro que você acabou de conhecer, mas ninguém entrega produto assim. Um **framework web** é a biblioteca que resolve o encanamento repetitivo de todo servidor: receber a requisição, descobrir qual rota atende, interpretar params, query e corpo, encadear os middlewares e serializar a resposta. Sem ele, cada projeto reinventa esse arroz com feijão e tropeça em detalhes que a comunidade já resolveu há uma década.\n\nO modelo mental: o framework é o chassi do carro. Ele não decide pra onde você vai (as regras do sistema continuam sendo suas), mas motor, freio e direção chegam prontos e testados por milhares de projetos.\n\nA escolha honesta usa dois critérios: **o que a comunidade da sua linguagem mais usa** (mais material de estudo, mais resposta pronta, mais vaga) e o quanto a ferramenta deixa você enxergar o HTTP por baixo. Framework que esconde demais atrapalha justamente quem está aprendendo o protocolo; framework de menos vira trabalho braçal.\n\nEscolha sua linguagem acima pra ver a recomendação. E guarde uma promessa: os **middlewares**, o recurso mais reaproveitado dessa camada, ganham um passo inteiro logo adiante.",
           byLanguage: {
             node: {
               content:
-                "No Node, o Express é o mais usado e o melhor pra começar: minimalista e com comunidade enorme. O Fastify é a alternativa focada em desempenho. Comece pelo Express.",
+                "No Node, o **Express** é o padrão de fato há uma década: minimalista, comunidade gigante, e o vocabulário dele (app, rotas, middlewares) virou a língua comum do ecossistema. O **Fastify** é a alternativa moderna, focada em desempenho e com validação embutida, cada vez mais comum em projeto novo. O critério pra agora: comece pelo Express, que tem o material de estudo mais abundante; migrar pro Fastify depois é barato, porque os conceitos são os mesmos.",
               resources: [
                 {
                   label: "Express",
                   url: "https://expressjs.com/pt-br/",
                   kind: "doc",
                 },
+                {
+                  label: "Fastify",
+                  url: "https://fastify.dev",
+                  kind: "doc",
+                },
               ],
             },
             python: {
               content:
-                "No Python, o FastAPI é a escolha moderna pra APIs: rápido, com validação embutida e docs automáticas. O Django REST Framework é a opção mais completa. Comece pelo FastAPI.",
+                "No Python, o **FastAPI** é a escolha moderna pra APIs e o framework desta trilha: rápido, com validação e documentação automáticas nascendo dos type hints que você já escreve. O **Django** (com o Django REST Framework) é o veterano completo: admin pronto, ORM próprio e baterias inclusas, muito forte quando o produto é mais que uma API. O critério pra agora: FastAPI pra aprender API enxuta; Django quando um projeto pedir o pacote completo.",
               resources: [
                 {
                   label: "FastAPI",
                   url: "https://fastapi.tiangolo.com",
                   kind: "doc",
                 },
+                {
+                  label: "Django",
+                  url: "https://docs.djangoproject.com/pt-br/",
+                  kind: "doc",
+                },
               ],
             },
             java: {
               content:
-                "No Java, o Spring Boot é o padrão de mercado e domina as vagas corporativas. Tem mais conceitos no começo, mas é o que mais cai em processo de empresa grande.",
+                "No Java, o **Spring Boot** domina o mercado corporativo com folga: rotas, injeção de dependências, segurança e acesso a dados resolvidos no mesmo guarda-chuva, e presença constante em vaga formal. Ele tem mais conceitos de partida que os pares das outras linguagens; o **Spring Initializr** gera o esqueleto do projeto e amortece a curva. Alternativas como Quarkus e Micronaut existem no mercado, mas pra aprender (e pra empregar), Spring Boot é o caminho.",
               resources: [
                 {
                   label: "Spring Boot",
                   url: "https://spring.io/projects/spring-boot",
                   kind: "doc",
                 },
+                {
+                  label: "Spring Initializr",
+                  url: "https://start.spring.io",
+                  kind: "doc",
+                },
               ],
             },
             go: {
               content:
-                "No Go dá pra ir longe só com a net/http da biblioteca padrão. Pra rotas e middlewares mais confortáveis, o Gin é o mais popular. Comece pela net/http, depois experimente o Gin.",
+                "No Go, a conversa começa diferente: a **net/http** da biblioteca padrão já é um servidor completo, e nas versões recentes ela roteia método e partes variáveis do caminho nativamente; muita API de produção roda só com ela. Quando o projeto pede mais conforto, o **Gin** é o framework mais popular (rotas enxutas, middlewares e leitura de JSON prontas), com o Echo logo atrás. O critério pra agora: comece na net/http pra ver o HTTP de perto, adote o Gin quando o código repetitivo incomodar.",
               resources: [
                 {
                   label: "Gin",
                   url: "https://gin-gonic.com/en/docs/",
+                  kind: "doc",
+                },
+                {
+                  label: "Go: pacote net/http",
+                  url: "https://pkg.go.dev/net/http",
                   kind: "doc",
                 },
               ],
@@ -702,7 +725,7 @@ export const backend: RoadmapV2 = {
           byLanguage: {
             node: {
               content:
-                'No Express, cada rota é um método do app: `app.get("/produtos", handler)` e `app.post("/produtos", handler)`. O handler é uma função `(req, res)` que termina chamando `res.json(...)`. Parte variável usa dois pontos: `app.get("/produtos/:id", ...)`. Pra organizar por arquivo, use o `express.Router()`, que agrupa rotas de um recurso e é plugado no app com `app.use("/produtos", router)`.',
+                'No Express, cada rota é um método do app, e a forma diz tudo:\n\n```js\napp.get("/produtos/:id", (req, res) => {\n  res.json({ id: req.params.id });\n});\n```\n\nO handler é a função `(req, res)` que termina respondendo, e a parte variável (`:id`) chega em `req.params`. Pra organizar por arquivo, use o `express.Router()`, que agrupa as rotas de um recurso e é plugado no app com `app.use("/produtos", router)`.',
               resources: [
                 {
                   label: "Express: roteamento",
@@ -713,7 +736,7 @@ export const backend: RoadmapV2 = {
             },
             python: {
               content:
-                'No FastAPI, rotas são **decorators** em cima de funções: `@app.get("/produtos")` seguido de `def listar_produtos():`. O retorno da função vira a resposta JSON automaticamente. Parte variável vai entre chaves no caminho e vira parâmetro da função: `@app.get("/produtos/{id}")` com `def buscar(id: int):`. Pra organizar por arquivo, o `APIRouter` agrupa rotas e é plugado no app com `include_router`.',
+                'No FastAPI, rotas são **decorators** em cima de funções, e ver a forma ensina mais que descrevê-la:\n\n```python\n@app.get("/produtos/{id}")\ndef buscar(id: int):\n    return {"id": id}\n```\n\nO retorno da função vira a resposta JSON automaticamente, e a parte variável do caminho vira parâmetro tipado (o FastAPI converte e valida o `id` sozinho). Pra organizar por arquivo, o `APIRouter` agrupa as rotas de um recurso e é plugado no app com `include_router`.',
               resources: [
                 {
                   label: "FastAPI: primeiros passos",
@@ -724,7 +747,7 @@ export const backend: RoadmapV2 = {
             },
             java: {
               content:
-                'No Spring Boot, rotas vivem numa classe anotada com `@RestController`. Cada método ganha uma anotação de rota: `@GetMapping("/produtos")`, `@PostMapping("/produtos")`. O retorno do método é convertido pra JSON automaticamente. Parte variável vai entre chaves e chega via anotação: `@GetMapping("/produtos/{id}")` com `@PathVariable Long id` no parâmetro. Um controller por recurso é a organização padrão.',
+                'No Spring Boot, rotas vivem numa classe anotada com `@RestController`, e cada método ganha a sua anotação:\n\n```java\n@GetMapping("/produtos/{id}")\nProduto buscar(@PathVariable Long id) {\n  return service.buscar(id);\n}\n```\n\nO retorno do método é convertido pra JSON automaticamente, e a parte variável do caminho chega pelo `@PathVariable`. Um controller por recurso é a organização padrão do ecossistema.',
               resources: [
                 {
                   label: "Spring: construindo um serviço REST",
@@ -752,11 +775,11 @@ export const backend: RoadmapV2 = {
           description:
             "Funções que rodam no meio do caminho, entre a requisição chegar e a rota responder.",
           content:
-            "Algumas tarefas precisam acontecer em **todas** (ou quase todas) as requisições: registrar no log o que chegou, verificar se o usuário está logado, interpretar o JSON do corpo. Copiar esse código em cada rota seria um desastre. O **middleware** resolve isso: é uma função que roda no meio do caminho, antes do handler da rota.\n\nPense numa esteira: a requisição entra, passa por uma fila de middlewares (cada um pode inspecionar, modificar ou até barrar a requisição) e só então chega na rota. Se o middleware de autenticação detecta que não há login, ele responde 401 ali mesmo e a rota nem executa.\n\nÉ um dos conceitos mais reaproveitados da trilha: validação, autenticação, CORS, rate limiting e tratamento de erros, tudo que vem nas próximas seções se encaixa nesse formato. A ideia central: **comportamento que se repete entre rotas vira middleware**, escrito uma vez e aplicado onde precisar, no app inteiro ou só num grupo de rotas.",
+            "Algumas tarefas precisam acontecer em **todas** (ou quase todas) as requisições: registrar no log o que chegou, verificar se o usuário está logado, interpretar o JSON do corpo. Copiar esse código em cada rota seria um desastre. O **middleware** resolve isso: é uma função que roda no meio do caminho, antes do handler da rota.\n\nPense numa esteira: a requisição entra, passa por uma fila de middlewares (cada um pode inspecionar, modificar ou até barrar a requisição) e só então chega na rota. Se o middleware de autenticação detecta que não há login, ele responde 401 ali mesmo e a rota nem executa.\n\nÉ um dos conceitos mais reaproveitados da trilha: validação, CORS, rate limiting e tratamento de erros se encaixam nesse formato, e o passo de Middleware de autenticação, lá na seção de segurança, é esta mesma ideia protegendo rotas inteiras. A ideia central: **comportamento que se repete entre rotas vira middleware**, escrito uma vez e aplicado onde precisar, no app inteiro ou só num grupo de rotas.",
           byLanguage: {
             node: {
               content:
-                'No Express, middleware é uma função `(req, res, next)`: faz seu trabalho e chama `next()` pra passar adiante, ou responde e encerra ali. Aplica-se com `app.use(minhaFuncao)` no app todo, ou por rota: `app.get("/admin", checarLogin, handler)`. Você já usa um desde o início sem perceber: `app.use(express.json())` é o middleware que interpreta o corpo JSON.',
+                'No Express, middleware é uma função `(req, res, next)`, e a assinatura é a própria lição:\n\n```js\nfunction logger(req, res, next) {\n  console.log(req.method, req.path);\n  next();\n}\napp.use(logger);\n```\n\nEle faz o trabalho e chama `next()` pra passar adiante, ou responde e encerra ali. Além do `app.use` global, dá pra aplicar por rota: `app.get("/admin", checarLogin, handler)`. Você já usa um desde o início sem perceber: `app.use(express.json())` é o middleware que interpreta o corpo JSON.',
               resources: [
                 {
                   label: "Express: usando middlewares",
@@ -893,7 +916,7 @@ export const backend: RoadmapV2 = {
           title: "Status codes",
           description: "Escolher o código certo pra cada resposta da sua API.",
           content:
-            'Você já conhece as faixas (2xx sucesso, 4xx erro do cliente, 5xx erro do servidor). Agora a parte prática: escolher o código certo em cada rota que escreve. Esse é o vocabulário do dia a dia de uma API:\n\n- **200 OK**: deu certo, segue o resultado (buscas e atualizações).\n- **201 Created**: recurso criado, a resposta do POST bem-sucedido.\n- **204 No Content**: deu certo e não há nada pra devolver (comum no DELETE).\n- **400 Bad Request**: o pedido veio malformado ou com dados inválidos.\n- **401 Unauthorized**: não sabemos quem você é (faltou login ou token).\n- **403 Forbidden**: sabemos quem você é, mas você não pode fazer isso.\n- **404 Not Found**: o recurso não existe.\n- **409 Conflict**: o pedido conflita com o estado atual (e-mail já cadastrado).\n- **500 Internal Server Error**: o seu código quebrou.\n\nA dupla que mais confunde iniciante é 401 e 403: **401 é "quem é você?", 403 é "você não pode"**. E o erro mais comum é devolver 200 com uma mensagem de erro dentro do JSON: o cliente (e qualquer ferramenta de monitoramento) confia no status, então ele precisa contar a verdade.',
+            'Você já conhece as faixas (2xx sucesso, 4xx erro do cliente, 5xx erro do servidor). Agora a parte prática: escolher o código certo em cada rota que escreve. Esse é o vocabulário do dia a dia de uma API:\n\n- **200 OK**: deu certo, segue o resultado (buscas e atualizações).\n- **201 Created**: recurso criado, a resposta do POST bem-sucedido.\n- **204 No Content**: deu certo e não há nada pra devolver (comum no DELETE).\n- **400 Bad Request**: o pedido veio malformado ou com dados inválidos.\n- **401 Unauthorized**: não sabemos quem você é (faltou login ou token).\n- **403 Forbidden**: sabemos quem você é, mas você não pode fazer isso.\n- **404 Not Found**: o recurso não existe.\n- **409 Conflict**: o pedido conflita com o estado atual (e-mail já cadastrado).\n- **500 Internal Server Error**: o seu código quebrou.\n\nA dupla que mais confunde iniciante é 401 e 403: **401 é "quem é você?", 403 é "você não pode"**. E o erro mais comum é devolver 200 com uma mensagem de erro dentro do JSON: o cliente (e qualquer ferramenta de monitoramento) confia no status, então ele precisa contar a verdade.\n\nA promessa feita lá em HTTP, métodos e status se cumpre aqui. Você domina este passo quando escolhe o código de cada rota sem olhar a lista, e sente incômodo ao ver um 200 carregando erro.',
           resources: [
             {
               label: "MDN: códigos de status HTTP",
@@ -909,6 +932,13 @@ export const backend: RoadmapV2 = {
             "As quatro operações que formam o esqueleto de quase toda API.",
           content:
             "CRUD é a sigla de **Create, Read, Update, Delete**: criar, ler, atualizar e apagar. É o ciclo de vida de qualquer dado, e a espinha dorsal da maioria das APIs. Um recurso completo em REST vira exatamente cinco rotas:\n\n- `POST /produtos` cria um produto (Create), responde 201.\n- `GET /produtos` lista todos (Read), responde 200.\n- `GET /produtos/42` busca um pelo id (Read), responde 200 ou 404.\n- `PUT /produtos/42` atualiza o 42 (Update), responde 200.\n- `DELETE /produtos/42` apaga o 42 (Delete), responde 204.\n\nSobre atualização, há dois métodos: **PUT** substitui o recurso inteiro (você manda todos os campos) e **PATCH** altera só os campos enviados. Pra começar, PUT resolve; saiba que PATCH existe.\n\nEsse conjunto é o exercício definitivo desta fase da trilha: implemente o CRUD completo de um recurso guardando os dados numa lista em memória mesmo, sem banco ainda. Se cada rota responder com o status certo e o JSON esperado, você entendeu o coração do back-end. Na seção seguinte, essa lista em memória vira um banco de dados de verdade, e o resto do código quase não muda.",
+          resources: [
+            {
+              label: "MDN: métodos de requisição HTTP",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Methods",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "apis.validacao",
@@ -920,7 +950,7 @@ export const backend: RoadmapV2 = {
           byLanguage: {
             node: {
               content:
-                "No Node, a biblioteca mais adotada é o **Zod**: você declara um schema (`z.object({ nome: z.string().min(2), email: z.string().email() })`) e valida o `req.body` com `schema.safeParse(req.body)`; se falhar, devolve 400 com a lista de erros que o Zod já monta. Combina muito bem com TypeScript, que entra mais adiante na trilha: o schema gera o tipo de graça.",
+                "No Node, a biblioteca mais adotada é o **Zod**. Você declara o formato uma vez e valida tudo que chega:\n\n```js\nconst schema = z.object({\n  nome: z.string().min(2),\n  email: z.string().email(),\n});\nconst dados = schema.safeParse(req.body);\n```\n\nSe `dados.success` for falso, devolve 400 com a lista de erros que o Zod já monta. Combina muito bem com TypeScript, que entra mais adiante na trilha: o schema gera o tipo de graça.",
               resources: [
                 {
                   label: "Zod (documentação oficial)",
@@ -1001,6 +1031,13 @@ export const backend: RoadmapV2 = {
                 "As duas grandes famílias de banco de dados e quando usar cada uma.",
               content:
                 "Banco de dados é o programa especializado em guardar dados de forma permanente, segura e consultável. Sua API reinicia, o servidor cai, e os dados continuam lá. Existem duas grandes famílias.\n\nOs bancos **relacionais (SQL)** organizam tudo em **tabelas** com colunas fixas, como planilhas que se referenciam: a tabela de pedidos aponta pra tabela de usuários. Você conversa com eles em **SQL**, uma linguagem padrão que existe há décadas. PostgreSQL e MySQL são os nomes mais fortes.\n\nOs bancos **NoSQL** abrem mão dessa estrutura rígida em troca de flexibilidade. O tipo mais comum é o de **documentos** (MongoDB), que guarda registros parecidos com JSON, cada um podendo ter campos diferentes. Há também os de chave-valor (Redis), entre outros.\n\nPra quem está começando, a escolha é tranquila: **comece pelo relacional**. A maioria esmagadora dos sistemas usa um, SQL é habilidade cobrada em quase toda vaga de back-end, e quem aprende o modelo relacional entende NoSQL depois sem esforço. O contrário é menos verdade. Nesta trilha, o banco principal é o PostgreSQL.",
+              resources: [
+                {
+                  label: "PostgreSQL: sobre o projeto",
+                  url: "https://www.postgresql.org/about/",
+                  kind: "doc",
+                },
+              ],
             },
             {
               id: "bancodedados.conceitos.modelagem",
@@ -1008,7 +1045,14 @@ export const backend: RoadmapV2 = {
               description:
                 "Decidir quais tabelas existem, quais campos têm e como se ligam.",
               content:
-                "Antes de escrever qualquer SQL, vem a pergunta de design: **quais tabelas o sistema precisa, com quais campos, ligadas como?** Isso é modelagem de dados, e errar aqui custa caro, porque tudo que vem depois se apoia nessa estrutura.\n\nO caminho prático: liste as **entidades** do sistema (os substantivos: usuário, produto, pedido), e cada uma vira uma tabela. Liste os **atributos** de cada entidade (nome, e-mail, preço), e cada um vira uma coluna com um tipo (texto, número, data, booleano). Toda tabela ganha um **id** pra identificar cada linha sem ambiguidade.\n\nDepois, as **relações**: um usuário faz vários pedidos (relação um-pra-muitos, a mais comum), um pedido contém vários produtos e um produto aparece em vários pedidos (muitos-pra-muitos). Identificar essas relações agora é o que vai virar chave estrangeira no nó de relacionamentos.\n\nUma regra de ouro pra evitar a armadilha clássica: **não repita dado, referencie**. Se o nome do cliente está na tabela de usuários, a tabela de pedidos guarda só o id do usuário, não o nome de novo. Dado duplicado desatualiza, e aí o sistema mente. Desenhe o modelo no papel antes de criar qualquer tabela; dez minutos de rabisco economizam semanas.",
+                "Antes de escrever qualquer SQL, vem a pergunta de design: **quais tabelas o sistema precisa, com quais campos, ligadas como?** Isso é modelagem de dados, e errar aqui custa caro, porque tudo que vem depois se apoia nessa estrutura.\n\nO caminho prático: liste as **entidades** do sistema (os substantivos: usuário, produto, pedido), e cada uma vira uma tabela. Liste os **atributos** de cada entidade (nome, e-mail, preço), e cada um vira uma coluna com um tipo (texto, número, data, booleano). Toda tabela ganha um **id** pra identificar cada linha sem ambiguidade.\n\nDepois, as **relações**: um usuário faz vários pedidos (relação um-pra-muitos, a mais comum), um pedido contém vários produtos e um produto aparece em vários pedidos (muitos-pra-muitos). Identificar essas relações agora é o que vai virar chave estrangeira no passo de relacionamentos e chaves.\n\nUma regra de ouro pra evitar a armadilha clássica: **não repita dado, referencie**. Se o nome do cliente está na tabela de usuários, a tabela de pedidos guarda só o id do usuário, não o nome de novo. Dado duplicado desatualiza, e aí o sistema mente. Desenhe o modelo no papel antes de criar qualquer tabela; dez minutos de rabisco economizam semanas.",
+              resources: [
+                {
+                  label: "PostgreSQL: definição de dados (DDL)",
+                  url: "https://www.postgresql.org/docs/current/ddl.html",
+                  kind: "doc",
+                },
+              ],
             },
           ],
         },
@@ -1075,7 +1119,7 @@ export const backend: RoadmapV2 = {
           description:
             "A camada que liga as tabelas do banco aos objetos da sua linguagem.",
           content:
-            "Sua API não vai abrir o psql: ela precisa consultar o banco **de dentro do código**. Dá pra mandar SQL puro por uma biblioteca de conexão, e é bom saber que esse caminho existe. Mas o mais comum em aplicações é usar um **ORM** (mapeamento objeto-relacional): uma biblioteca que liga as tabelas do banco às estruturas da sua linguagem.\n\nCom um ORM, você descreve o modelo (um produto tem nome e preço) uma vez, e consulta com código idiomático em vez de montar strings de SQL: algo como `produtos.buscarPorId(42)` em vez de `SELECT * FROM produtos WHERE id = 42`. O ORM gera o SQL, executa e devolve objetos prontos. De quebra, ele cuida de um ponto sério de segurança: parametriza as consultas, fechando a porta da injeção de SQL que você verá na seção de segurança.\n\nO equilíbrio importante: **ORM não substitui saber SQL**. Quando uma consulta complexa ficar lenta ou se comportar estranho, é lendo o SQL gerado que você entende o porquê. Aprenda SQL primeiro (você já fez isso), use ORM pra produtividade depois. Escolha sua linguagem acima pra ver a ferramenta dela.",
+            "Sua API não vai abrir o psql: ela precisa consultar o banco **de dentro do código**. Dá pra mandar SQL puro por uma biblioteca de conexão, e é bom saber que esse caminho existe. Mas o mais comum em aplicações é usar um **ORM** (mapeamento objeto-relacional): uma biblioteca que liga as tabelas do banco às estruturas da sua linguagem.\n\nCom um ORM, você descreve o modelo (um produto tem nome e preço) uma vez, e consulta com código idiomático em vez de montar strings de SQL: algo como `produtos.buscarPorId(42)` em vez de `SELECT * FROM produtos WHERE id = 42`. O ORM gera o SQL, executa e devolve objetos prontos. De quebra, ele cuida de um ponto sério de segurança: parametriza as consultas, fechando a porta da injeção de SQL que você verá na seção de segurança.\n\nO equilíbrio importante: **ORM não substitui saber SQL**. Quando uma consulta complexa ficar lenta ou se comportar estranho, é lendo o SQL gerado que você entende o porquê. Aprenda SQL primeiro (você já fez isso), use ORM pra produtividade depois. E a promessa do passo de CRUD se cumpre aqui: aquela lista em memória finalmente vira tabela de verdade, com o resto do código quase intacto. Escolha sua linguagem acima pra ver a ferramenta dela.",
           byLanguage: {
             node: {
               content:
@@ -1144,7 +1188,7 @@ export const backend: RoadmapV2 = {
           description:
             "Versionar as mudanças de estrutura do banco como se fossem commits.",
           content:
-            'Seu modelo de dados vai mudar: surge a tabela nova, a coluna que faltava, o campo que muda de tipo. Fazer essas mudanças na mão, direto no banco, funciona até o dia em que ninguém mais sabe qual estrutura o banco de produção tem, e o da sua máquina é diferente do banco do colega.\n\n**Migrations** resolvem isso: cada mudança de estrutura vira um **arquivo versionado** no projeto ("cria tabela produtos", "adiciona coluna preco"), e uma ferramenta aplica os arquivos em ordem, registrando o que já rodou. É o Git do esquema do banco. Qualquer pessoa (ou servidor) que rode as migrations chega na mesma estrutura, sem passo manual.\n\nAs regras de convivência são simples: toda mudança de estrutura entra por migration, nunca direto no banco; migration que já rodou em produção não se edita, se cria outra corrigindo; e os arquivos vão pro repositório junto com o código que depende deles.\n\nNa prática, você quase nunca instala uma ferramenta separada pra isso: os ORMs do nó anterior (Prisma, SQLAlchemy com Alembic, Spring com Flyway, GORM) já trazem ou se integram a um sistema de migrations. O hábito a criar é um só: **mudou o modelo, gerou migration, commitou junto**.',
+            'Seu modelo de dados vai mudar: surge a tabela nova, a coluna que faltava, o campo que muda de tipo. Fazer essas mudanças na mão, direto no banco, funciona até o dia em que ninguém mais sabe qual estrutura o banco de produção tem, e o da sua máquina é diferente do banco do colega.\n\n**Migrations** resolvem isso: cada mudança de estrutura vira um **arquivo versionado** no projeto ("cria tabela produtos", "adiciona coluna preco"), e uma ferramenta aplica os arquivos em ordem, registrando o que já rodou. É o Git do esquema do banco. Qualquer pessoa (ou servidor) que rode as migrations chega na mesma estrutura, sem passo manual.\n\nAs regras de convivência são simples: toda mudança de estrutura entra por migration, nunca direto no banco; migration que já rodou em produção não se edita, se cria outra corrigindo; e os arquivos vão pro repositório junto com o código que depende deles.\n\nNa prática, você quase nunca instala uma ferramenta separada pra isso: os ORMs do passo anterior (Prisma, SQLAlchemy com Alembic, Spring com Flyway, GORM) já trazem ou se integram a um sistema de migrations. O hábito a criar é um só: **mudou o modelo, gerou migration, commitou junto**.',
         },
         {
           id: "bancodedados.nosql",
@@ -1153,7 +1197,7 @@ export const backend: RoadmapV2 = {
             "O banco de documentos mais popular, pra conhecer o outro lado do mundo dos dados.",
           optional: true,
           content:
-            "O **MongoDB** é o banco de documentos mais conhecido. Em vez de tabelas com colunas fixas, ele guarda **documentos** (estruturas no estilo JSON) dentro de **coleções**. Cada documento pode ter campos diferentes do vizinho, e dados que no relacional virariam outra tabela podem viver aninhados dentro do próprio documento: o pedido carrega a lista de itens dentro dele.\n\nIsso brilha quando a estrutura dos dados varia muito ou evolui rápido: catálogos com atributos diferentes por tipo de produto, eventos de formatos variados, protótipos em que o modelo ainda está se descobrindo. E cobra o preço no que o relacional dá de graça: as garantias de integridade entre dados ligados e os JOINs ficam, em grande parte, por conta da sua aplicação.\n\nO mapa mental pra quem vem do SQL: tabela vira coleção, linha vira documento, coluna vira campo. As consultas são feitas por métodos como `find` e `insertOne`, com filtros em formato de documento.\n\nEste nó é opcional de propósito: o mercado espera SQL primeiro. Vale conhecer o MongoDB pra entender as conversas e saber quando ele é a ferramenta certa, sem precisar dominar agora.",
+            "O **MongoDB** é o banco de documentos mais conhecido. Em vez de tabelas com colunas fixas, ele guarda **documentos** (estruturas no estilo JSON) dentro de **coleções**. Cada documento pode ter campos diferentes do vizinho, e dados que no relacional virariam outra tabela podem viver aninhados dentro do próprio documento: o pedido carrega a lista de itens dentro dele.\n\nIsso brilha quando a estrutura dos dados varia muito ou evolui rápido: catálogos com atributos diferentes por tipo de produto, eventos de formatos variados, protótipos em que o modelo ainda está se descobrindo. E cobra o preço no que o relacional dá de graça: as garantias de integridade entre dados ligados e os JOINs ficam, em grande parte, por conta da sua aplicação.\n\nO mapa mental pra quem vem do SQL: tabela vira coleção, linha vira documento, coluna vira campo. As consultas são feitas por métodos como `find` e `insertOne`, com filtros em formato de documento.\n\nEste passo é opcional de propósito: o mercado espera SQL primeiro. Vale conhecer o MongoDB pra entender as conversas e saber quando ele é a ferramenta certa, sem precisar dominar agora.",
           resources: [
             {
               label: "MongoDB: documentação oficial",
@@ -1193,7 +1237,7 @@ export const backend: RoadmapV2 = {
           description:
             "Por que senha nunca se guarda em texto puro, e como guardar do jeito certo.",
           content:
-            "Regra absoluta: **nenhum sistema guarda a senha do usuário**. Se o seu banco vazar (e bancos vazam) com senhas legíveis, você expôs não só o seu sistema, mas todas as outras contas em que o usuário repete aquela senha.\n\nO que se guarda é o **hash** da senha: o resultado de uma função matemática de mão única. Transformar a senha em hash é fácil; recuperar a senha a partir do hash é inviável. No cadastro, você calcula e guarda o hash. No login, calcula o hash do que a pessoa digitou e compara com o guardado. A senha original nunca toca o banco.\n\nDois detalhes separam o certo do quebrado. Primeiro, **não é qualquer hash**: funções rápidas como MD5 ou SHA-256 puro são quebráveis por força bruta com hardware moderno; usam-se algoritmos feitos pra senha, que são propositalmente lentos, como **bcrypt** e **argon2**. Segundo, o **salt**: um valor aleatório misturado a cada senha antes do hash, pra que duas pessoas com a mesma senha tenham hashes diferentes. As bibliotecas de bcrypt cuidam do salt sozinhas.\n\nNa prática: use a biblioteca consolidada da sua linguagem e nunca invente criptografia própria. É a regra número um da segurança.",
+            "Regra absoluta: **nenhum sistema guarda a senha do usuário**. Se o seu banco vazar (e bancos vazam) com senhas legíveis, você expôs não só o seu sistema, mas todas as outras contas em que o usuário repete aquela senha.\n\nO que se guarda é o **hash** da senha: o resultado de uma função matemática de mão única. Transformar a senha em hash é fácil; recuperar a senha a partir do hash é inviável. No cadastro, você calcula e guarda o hash. No login, calcula o hash do que a pessoa digitou e compara com o guardado. A senha original nunca toca o banco.\n\nDois detalhes separam o certo do quebrado. Primeiro, **não é qualquer hash**: funções rápidas como MD5 ou SHA-256 puro são quebráveis por força bruta com hardware moderno; usam-se algoritmos feitos pra senha, que são propositalmente lentos, como **bcrypt** e **argon2**. Segundo, o **salt**: um valor aleatório misturado a cada senha antes do hash, pra que duas pessoas com a mesma senha tenham hashes diferentes. As bibliotecas de bcrypt cuidam do salt sozinhas.\n\nNa prática: use a biblioteca consolidada da sua linguagem e nunca invente criptografia própria. É a regra número um da segurança. E o teste de domínio é direto: seu cadastro guarda só o hash, seu login compara pela biblioteca, e a senha em texto puro não toca banco nem log em momento algum.",
           byLanguage: {
             node: {
               content:
@@ -1256,7 +1300,7 @@ export const backend: RoadmapV2 = {
               description:
                 "O jeito clássico de lembrar quem é o usuário entre uma requisição e outra.",
               content:
-                'HTTP tem um detalhe que muda tudo: ele é **sem estado**. Cada requisição chega sozinha, sem memória da anterior. O servidor não sabe que o GET de agora veio da mesma pessoa que fez login há um minuto. Manter o usuário logado é, na essência, resolver esse problema.\n\nA solução clássica é a **sessão**: no login bem-sucedido, o servidor gera um identificador aleatório (o id de sessão), guarda do lado dele a associação "esse id pertence ao usuário 7" e envia o id pro navegador dentro de um **cookie**. Cookie é um pedacinho de dado que o navegador guarda e **reenvia automaticamente** em toda requisição pro mesmo site. A cada pedido, o servidor lê o id do cookie, consulta quem é, e pronto: o usuário está "lembrado". Logout é apagar a sessão do lado do servidor.\n\nCookies de sessão pedem três configurações que você verá nos exemplos: `HttpOnly` (o JavaScript da página não consegue ler o cookie, proteção contra roubo via script), `Secure` (só viaja em HTTPS) e `SameSite` (limita o envio a partir de outros sites).\n\nA característica central do modelo: **o estado mora no servidor**, que tem controle total (dá pra derrubar uma sessão na hora). O próximo nó mostra o modelo oposto.',
+                'HTTP tem um detalhe que muda tudo: ele é **sem estado**. Cada requisição chega sozinha, sem memória da anterior. O servidor não sabe que o GET de agora veio da mesma pessoa que fez login há um minuto. Manter o usuário logado é, na essência, resolver esse problema.\n\nA solução clássica é a **sessão**: no login bem-sucedido, o servidor gera um identificador aleatório (o id de sessão), guarda do lado dele a associação "esse id pertence ao usuário 7" e envia o id pro navegador dentro de um **cookie**. Cookie é um pedacinho de dado que o navegador guarda e **reenvia automaticamente** em toda requisição pro mesmo site. A cada pedido, o servidor lê o id do cookie, consulta quem é, e pronto: o usuário está "lembrado". Logout é apagar a sessão do lado do servidor.\n\nCookies de sessão pedem três configurações que você verá nos exemplos: `HttpOnly` (o JavaScript da página não consegue ler o cookie, proteção contra roubo via script), `Secure` (só viaja em HTTPS) e `SameSite` (limita o envio a partir de outros sites).\n\nA característica central do modelo: **o estado mora no servidor**, que tem controle total (dá pra derrubar uma sessão na hora). O passo seguinte, o JWT, mostra o modelo oposto.',
               resources: [
                 {
                   label: "MDN: cookies HTTP",
@@ -1411,6 +1455,13 @@ export const backend: RoadmapV2 = {
           optional: true,
           content:
             'Sem limite, nada impede um cliente (ou um robô) de fazer milhares de requisições por segundo à sua API: tentando adivinhar senhas no login por força bruta, raspando seus dados ou simplesmente derrubando o serviço pra todo mundo. **Rate limiting** é a defesa: um teto de requisições por cliente por período, algo como "100 por minuto por IP".\n\nA mecânica: a cada requisição, o servidor identifica o cliente (em geral pelo IP, ou pelo usuário autenticado), incrementa um contador com janela de tempo e, estourado o limite, responde **429 Too Many Requests** em vez de processar. O cliente espera a janela virar e volta ao normal.\n\nDois pontos de atenção. Limites não precisam ser iguais pra tudo: rotas sensíveis como **login merecem limite bem mais apertado** que o resto, justamente por serem alvo de força bruta. E se sua API roda em mais de uma instância, o contador precisa viver num lugar compartilhado; é um dos usos clássicos do Redis visto na seção de banco.\n\nNa prática, é middleware pronto em todos os ecossistemas (procure por "rate limit" junto do nome do seu framework). Pro projeto da trilha, um limite global simples mais um limite apertado no login já demonstram a competência.',
+          resources: [
+            {
+              label: "MDN: status 429 Too Many Requests",
+              url: "https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Status/429",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
@@ -1486,7 +1537,7 @@ export const backend: RoadmapV2 = {
           description:
             "Separar rotas, regras de negócio e acesso ao banco em camadas com papéis claros.",
           content:
-            'Seu projeto começou com tudo dentro das rotas: validação, regra de negócio, consulta ao banco, montagem da resposta. Funciona até crescer; aí toda mudança vira caça ao tesouro. A solução clássica é a **estrutura em camadas**, e ela aparece, com nomes parecidos, em praticamente todo back-end profissional:\n\n- **Camada de rotas** (controllers/handlers): recebe a requisição, aciona quem resolve e monta a resposta HTTP. Fina de propósito: nada de regra de negócio aqui.\n- **Camada de serviços**: o coração. As regras do sistema ("não pode comprar com estoque zerado", "e-mail duplicado é conflito") vivem aqui, **sem saber nada de HTTP**.\n- **Camada de repositórios**: todo o acesso ao banco. É a única que conhece SQL ou ORM.\n\nA regra que sustenta o desenho: **cada camada só fala com a vizinha de baixo**. Rota chama serviço, serviço chama repositório; rota nunca pula direto pro banco.\n\nO ganho é concreto: regra de negócio testável sem subir servidor (gancho pro nó de testes), troca de banco sem tocar nas regras, e qualquer pessoa do time sabe onde procurar cada coisa. Pro projeto da trilha, três pastas (`routes`, `services`, `repositories`, ou os nomes idiomáticos da sua linguagem) já entregam o benefício inteiro.',
+            'Seu projeto começou com tudo dentro das rotas: validação, regra de negócio, consulta ao banco, montagem da resposta. Funciona até crescer; aí toda mudança vira caça ao tesouro. A solução clássica é a **estrutura em camadas**, e ela aparece, com nomes parecidos, em praticamente todo back-end profissional:\n\n- **Camada de rotas** (controllers/handlers): recebe a requisição, aciona quem resolve e monta a resposta HTTP. Fina de propósito: nada de regra de negócio aqui.\n- **Camada de serviços**: o coração. As regras do sistema ("não pode comprar com estoque zerado", "e-mail duplicado é conflito") vivem aqui, **sem saber nada de HTTP**.\n- **Camada de repositórios**: todo o acesso ao banco. É a única que conhece SQL ou ORM.\n\nA regra que sustenta o desenho: **cada camada só fala com a vizinha de baixo**. Rota chama serviço, serviço chama repositório; rota nunca pula direto pro banco.\n\nO ganho é concreto: regra de negócio testável sem subir servidor (gancho pro passo de testes), troca de banco sem tocar nas regras, e qualquer pessoa do time sabe onde procurar cada coisa. Pro projeto da trilha, três pastas (`routes`, `services`, `repositories`, ou os nomes idiomáticos da sua linguagem) já entregam o benefício inteiro.',
         },
         {
           id: "qualidade.erros",
@@ -1509,6 +1560,13 @@ export const backend: RoadmapV2 = {
             "Registrar o que o sistema fez pra conseguir investigar quando algo der errado.",
           content:
             'Em produção, você não tem o console aberto nem o debugger na mão. Quando um usuário disser "deu erro ontem à noite", sua única testemunha é o **log**: o registro do que o sistema fez e quando. Logging é a diferença entre investigar e adivinhar.\n\nO primeiro upgrade em relação ao print solto é usar **níveis**, que todo framework de log oferece: `error` (algo falhou e precisa de atenção), `warn` (suspeito, mas seguiu), `info` (eventos relevantes: servidor subiu, pedido criado) e `debug` (detalhe pra desenvolvimento, desligado em produção). Em vez de apagar prints, você regula o volume por configuração.\n\nO segundo upgrade são **logs estruturados**: em vez de frases soltas, eventos com campos (`{ level: "error", rota: "/pedidos", usuario_id: 7, erro: "timeout no banco" }`), que dão pra filtrar e buscar quando o volume cresce. As bibliotecas maduras de cada ecossistema fazem isso por padrão.\n\nE a regra de ouro do que **não** logar: senha (nem errada), token, dado de cartão e dado pessoal sensível. Log vaza com facilidade (vai pra serviços de terceiros, fica anos guardado), então trate-o como semi-público.\n\nO mínimo pro projeto da trilha: um log por requisição (método, rota, status, duração) e todo erro inesperado logado com contexto no tratador global.',
+          resources: [
+            {
+              label: "The Twelve-Factor App: logs",
+              url: "https://12factor.net/pt_br/logs",
+              kind: "artigo",
+            },
+          ],
         },
         {
           id: "qualidade.testes",
@@ -1614,7 +1672,7 @@ export const backend: RoadmapV2 = {
           title: "Construir uma API REST",
           description: "Juntar tudo num projeto de ponta a ponta.",
           content:
-            "Hora de aplicar. Uma API REST do zero amarra fundamentos, framework, banco e autenticação numa coisa só, e é o que melhor demonstra back-end num portfólio. Escolha um domínio simples (lista de tarefas, catálogo, blog), modele os dados, crie as rotas de CRUD, conecte ao banco e proteja o que precisa de login.\n\nNão precisa ser grande, precisa funcionar de ponta a ponta e estar publicado. O projeto abaixo te guia no passo a passo.",
+            "Olhe pra trás um instante: você entrou nesta trilha aprendendo o que é cliente e servidor, e agora tem nas mãos rotas, validação, banco com migrations, autenticação com JWT e um tratador global de erros. Este passo junta tudo isso numa encomenda só.\n\nA encomenda é a **API de hábitos** do projeto abaixo: usuários se cadastram, fazem login e registram os hábitos que estão construindo, cada um enxergando só o que é seu. Cabe num fim de semana esticado e exercita exatamente o arco da trilha: modelar as tabelas, expor o CRUD com os status certos, proteger rotas com o middleware de autenticação e falhar bonito no formato único de erros.\n\nO critério de chegada é objetivo: a API respondendo numa URL pública, o repositório no GitHub com um README que ensina a rodar, e você explicando cada decisão (por que esse status? por que essa tabela?) sem colar. Os passos seguintes desta seção cuidam da parte de colocar no ar; o projeto guia o resto.\n\nÉ este repositório que vira a peça central do seu portfólio de back-end. Capriche na encomenda: recrutador não lê certificado, lê código.",
           project: "api-habitos",
           resources: [
             {
@@ -1674,6 +1732,13 @@ export const backend: RoadmapV2 = {
             "Enxergar o que sua API está fazendo em produção e descobrir problemas antes dos usuários.",
           content:
             "Com a API no ar, surge a pergunta que define operação: **ela está funcionando agora?** Sem visibilidade, a resposta vem do pior jeito possível: um usuário reclamando. Monitorar é garantir que você descobre antes.\n\nA primeira ferramenta você já construiu: os **logs** da seção de qualidade. As plataformas de deploy capturam tudo que sua aplicação escreve na saída padrão e mostram num painel com busca. Deploy quebrou ou rota deu 500? O painel de logs da plataforma é o primeiro lugar a olhar. É exatamente aqui que o log estruturado com contexto se paga.\n\nA segunda peça é o **health check**: uma rota simples (como `GET /health`) que responde 200 quando o serviço está de pé, de preferência checando também a conexão com o banco. As plataformas usam essa rota pra saber se a aplicação subiu, e serviços de monitoramento externos podem chamá-la de tempos em tempos e te avisar se ela parar de responder.\n\nO terceiro nível é o **rastreamento de erros**: serviços que capturam cada exceção em produção com stack trace e contexto, agrupam ocorrências repetidas e notificam. O Sentry é o nome mais conhecido, com plano gratuito que atende projeto pequeno.\n\nPra trilha, o essencial: rota de health check, logs limpos no painel da plataforma e o hábito de olhá-los depois de cada deploy.",
+          resources: [
+            {
+              label: "Sentry (documentação oficial)",
+              url: "https://docs.sentry.io",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "deploy.ci",

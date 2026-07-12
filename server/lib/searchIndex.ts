@@ -263,7 +263,7 @@ async function buildJobs(): Promise<SearchDocumentRow[]> {
         r.seniority,
         r.description,
       ]),
-      "/estagio",
+      "/vagas",
     ),
   );
 }

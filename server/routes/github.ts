@@ -41,10 +41,14 @@ const ANALYZE_BUDGET_MS = 75_000;
 // nulo: a analise de GitHub nao produz nivel, so nota (score) e faixa (band).
 // Devolve o id da linha inserida (o client precisa dele pro checklist de
 // melhorias aplicadas) ou null quando a persistencia falhou.
-async function persistGithubAnalysis(
+// Exportada pra rota de validacao de projeto (fase 5c) persistir a analise
+// pelo MESMO caminho, com um marcador de origem opcional dentro do input
+// jsonb (chave extra ignorada pelo GET /analyses, que so le mode e input).
+export async function persistGithubAnalysis(
   userId: string,
   rawInput: string,
   response: GithubAnalysisResponse,
+  extraInput?: Record<string, unknown>,
 ): Promise<string | null> {
   try {
     const { data, error } = await supabaseAdmin
@@ -55,7 +59,12 @@ async function persistGithubAnalysis(
         level: null,
         score: response.deterministic.score,
         faixa: response.deterministic.band,
-        input: { mode: response.mode, input: rawInput, area: response.area },
+        input: {
+          mode: response.mode,
+          input: rawInput,
+          area: response.area,
+          ...(extraInput ?? {}),
+        },
         result: response,
       })
       .select("id")
@@ -69,142 +78,184 @@ async function persistGithubAnalysis(
     }
     return (data as { id: string } | null)?.id ?? null;
   } catch (err) {
-    console.warn("[github] Erro inesperado ao persistir analise (fail-soft):", err);
+    console.warn(
+      "[github] Erro inesperado ao persistir analise (fail-soft):",
+      err,
+    );
     return null;
   }
 }
 
-router.post("/analyze", async (req: Request, res: Response, next: NextFunction) => {
-  if (!req.isPro) {
-    return next(
-      createError(403, "forbidden", "Recurso Pro. Assine o Plano Pro para usar o analisador de GitHub."),
-    );
-  }
-
-  const parsedBody = BodySchema.safeParse(req.body);
-  if (!parsedBody.success) {
-    // TODO(Ana): mensagem de request invalido do analisador.
-    return next(createError(400, "invalid_request", "Envie a URL ou o usuario do GitHub no campo input."));
-  }
-
-  const { input } = parsedBody.data;
-  // Area opcional: slug desconhecido ou ausente vira "geral". So afeta a prosa da IA.
-  const area = resolveAreaSelection(parsedBody.data.area);
-
-  // Alvo autodetectado do input; o mode do client e ignorado.
-  const target = detectGithubTarget(input);
-  if (target.kind === "invalid") {
-    return next(createError(400, "invalid_request", target.reason));
-  }
-  const mode = target.kind;
-  const parsed: { owner: string; repo: string } | { login: string } =
-    target.kind === "repo"
-      ? { owner: target.owner, repo: target.repo }
-      : { login: target.login };
-
-  const userId = req.user!.id;
-  const requestId =
-    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
-  const tool = `github-${mode}`;
-
-  const usage = await checkAiDailyLimit(userId, !!req.isPro, "[github]");
-  if (!usage.allowed) {
-    if (usage.verificationFailed) {
-      await logAiUsage({ userId, tool, requestId, status: "error", errorMessage: "rate limit check failed" });
+router.post(
+  "/analyze",
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isPro) {
       return next(
         createError(
-          503,
-          "rate_check_failed",
-          "Não foi possível verificar seu limite de uso agora. Tente novamente em instantes.",
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para usar o analisador de GitHub.",
         ),
       );
     }
-    await logAiUsage({ userId, tool, requestId, status: "rate_limited" });
-    return next(
-      createError(
-        429,
-        "rate_limited",
-        `Limite diário de ${usage.limit} chamadas de IA atingido. Tente novamente amanhã.`,
-      ),
-    );
-  }
 
-  let aiUsed = false;
-  let aiIo = { inputChars: 0, outputChars: 0 };
-  const budget = new AbortController();
-  const budgetTimer = setTimeout(() => budget.abort(), ANALYZE_BUDGET_MS);
-  budgetTimer.unref();
-  try {
-    const data = await analyzeGithub(
-      mode,
-      parsed,
-      area,
-      (io) => {
-        aiUsed = true;
-        aiIo = io;
-      },
-      budget.signal,
-    );
-    const outputChars = JSON.stringify(data).length;
-    // So conta no limite diario quando a IA rodou de fato. O caminho
-    // deterministico (perfil/repo essencialmente vazio) loga como "skipped",
-    // que get_ai_usage_today nao conta, pra nao gastar a cota a toa.
-    await logAiUsage({
-      userId,
-      tool,
-      requestId,
-      status: aiUsed ? "success" : "skipped",
-      inputChars: aiIo.inputChars,
-      outputChars,
-    });
-    const analysisId = await persistGithubAnalysis(userId, input, data);
-    res.json({ data, analysisId });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Erro desconhecido";
-    await logAiUsage({ userId, tool, requestId, status: "error", errorMessage: message });
+    const parsedBody = BodySchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      // TODO(Ana): mensagem de request invalido do analisador.
+      return next(
+        createError(
+          400,
+          "invalid_request",
+          "Envie a URL ou o usuario do GitHub no campo input.",
+        ),
+      );
+    }
 
-    // Budget global estourado: qualquer erro daqui em diante e consequencia do
-    // abort. Nunca devolve resultado parcial como analise: ou terminou inteira
-    // (caminho do try), ou 504 claro.
-    if (budget.signal.aborted) {
-      console.error("[github] Analise estourou o budget global de tempo", {
-        requestId,
+    const { input } = parsedBody.data;
+    // Area opcional: slug desconhecido ou ausente vira "geral". So afeta a prosa da IA.
+    const area = resolveAreaSelection(parsedBody.data.area);
+
+    // Alvo autodetectado do input; o mode do client e ignorado.
+    const target = detectGithubTarget(input);
+    if (target.kind === "invalid") {
+      return next(createError(400, "invalid_request", target.reason));
+    }
+    const mode = target.kind;
+    const parsed: { owner: string; repo: string } | { login: string } =
+      target.kind === "repo"
+        ? { owner: target.owner, repo: target.repo }
+        : { login: target.login };
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+    const tool = `github-${mode}`;
+
+    const usage = await checkAiDailyLimit(userId, !!req.isPro, "[github]");
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Não foi possível verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({ userId, tool, requestId, status: "rate_limited" });
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          `Limite diário de ${usage.limit} chamadas de IA atingido. Tente novamente amanhã.`,
+        ),
+      );
+    }
+
+    let aiUsed = false;
+    let aiIo = { inputChars: 0, outputChars: 0 };
+    const budget = new AbortController();
+    const budgetTimer = setTimeout(() => budget.abort(), ANALYZE_BUDGET_MS);
+    budgetTimer.unref();
+    try {
+      const data = await analyzeGithub(
         mode,
+        parsed,
+        area,
+        (io) => {
+          aiUsed = true;
+          aiIo = io;
+        },
+        budget.signal,
+      );
+      const outputChars = JSON.stringify(data).length;
+      // So conta no limite diario quando a IA rodou de fato. O caminho
+      // deterministico (perfil/repo essencialmente vazio) loga como "skipped",
+      // que get_ai_usage_today nao conta, pra nao gastar a cota a toa.
+      await logAiUsage({
+        userId,
+        tool,
+        requestId,
+        status: aiUsed ? "success" : "skipped",
+        inputChars: aiIo.inputChars,
+        outputChars,
       });
-      return next(
-        createError(
-          504,
-          "analysis_timeout",
-          "A analise demorou mais que o esperado e foi interrompida. Tente novamente em instantes.",
-        ),
-      );
-    }
+      const analysisId = await persistGithubAnalysis(userId, input, data);
+      res.json({ data, analysisId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool,
+        requestId,
+        status: "error",
+        errorMessage: message,
+      });
 
-    if (err instanceof GithubNotFoundError) {
+      // Budget global estourado: qualquer erro daqui em diante e consequencia do
+      // abort. Nunca devolve resultado parcial como analise: ou terminou inteira
+      // (caminho do try), ou 504 claro.
+      if (budget.signal.aborted) {
+        console.error("[github] Analise estourou o budget global de tempo", {
+          requestId,
+          mode,
+        });
+        return next(
+          createError(
+            504,
+            "analysis_timeout",
+            "A analise demorou mais que o esperado e foi interrompida. Tente novamente em instantes.",
+          ),
+        );
+      }
+
+      if (err instanceof GithubNotFoundError) {
+        return next(
+          createError(
+            404,
+            "not_found",
+            "Repositorio ou perfil nao encontrado, ou e privado. Deixe publico e tente de novo.",
+          ),
+        );
+      }
+      if (err instanceof GithubRateLimitError) {
+        return next(
+          createError(
+            503,
+            "github_rate_limited",
+            "Limite do GitHub atingido. Tente de novo em instantes.",
+          ),
+        );
+      }
+      // GithubFetchError, falha de parse/zod da IA, ou qualquer outro caso.
+      if (err instanceof GithubFetchError) {
+        return next(
+          createError(
+            502,
+            "upstream_error",
+            "Falha ao consultar o GitHub. Tente de novo.",
+          ),
+        );
+      }
       return next(
         createError(
-          404,
-          "not_found",
-          "Repositorio ou perfil nao encontrado, ou e privado. Deixe publico e tente de novo.",
+          502,
+          "upstream_error",
+          "Nao foi possivel concluir a analise agora. Tente de novo.",
         ),
       );
+    } finally {
+      clearTimeout(budgetTimer);
     }
-    if (err instanceof GithubRateLimitError) {
-      return next(
-        createError(503, "github_rate_limited", "Limite do GitHub atingido. Tente de novo em instantes."),
-      );
-    }
-    // GithubFetchError, falha de parse/zod da IA, ou qualquer outro caso.
-    if (err instanceof GithubFetchError) {
-      return next(createError(502, "upstream_error", "Falha ao consultar o GitHub. Tente de novo."));
-    }
-    return next(
-      createError(502, "upstream_error", "Nao foi possivel concluir a analise agora. Tente de novo."),
-    );
-  } finally {
-    clearTimeout(budgetTimer);
-  }
-});
+  },
+);
 
 // Historico do dono, no molde de resumeAnalysis/linkedin: sem gate Pro (dado
 // do dono; um ex-Pro continua vendo o que gerou), user_id do JWT, 404 que nao
@@ -225,58 +276,73 @@ interface GithubAnalysisListRow {
   input: { mode?: string; input?: string } | null;
 }
 
-router.get("/analyses", async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.user!.id;
-  const { data, error } = await supabaseAdmin
-    .from("github_analyses")
-    .select("id, score, faixa, area, created_at, input")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(HISTORY_LIMIT);
-  if (error) {
-    // TODO(Ana): mensagem de falha ao listar analises.
-    return next(createError(500, "list_failed", "Nao foi possivel listar suas analises."));
-  }
-  const rows = (data ?? []) as GithubAnalysisListRow[];
-  res.json({
-    analyses: rows.map((row) => ({
-      id: row.id,
-      score: row.score,
-      faixa: row.faixa,
-      area: row.area,
-      created_at: row.created_at,
-      mode: typeof row.input?.mode === "string" ? row.input.mode : null,
-      // Alvo cru salvo no input: permite ao client comparar analises do MESMO
-      // alvo (delta de nota) sem baixar o result inteiro.
-      raw_input: typeof row.input?.input === "string" ? row.input.input : null,
-    })),
-  });
-});
+router.get(
+  "/analyses",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
+    const { data, error } = await supabaseAdmin
+      .from("github_analyses")
+      .select("id, score, faixa, area, created_at, input")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_LIMIT);
+    if (error) {
+      // TODO(Ana): mensagem de falha ao listar analises.
+      return next(
+        createError(
+          500,
+          "list_failed",
+          "Nao foi possivel listar suas analises.",
+        ),
+      );
+    }
+    const rows = (data ?? []) as GithubAnalysisListRow[];
+    res.json({
+      analyses: rows.map((row) => ({
+        id: row.id,
+        score: row.score,
+        faixa: row.faixa,
+        area: row.area,
+        created_at: row.created_at,
+        mode: typeof row.input?.mode === "string" ? row.input.mode : null,
+        // Alvo cru salvo no input: permite ao client comparar analises do MESMO
+        // alvo (delta de nota) sem baixar o result inteiro.
+        raw_input:
+          typeof row.input?.input === "string" ? row.input.input : null,
+      })),
+    });
+  },
+);
 
-router.get("/analyses/:id", async (req: Request, res: Response, next: NextFunction) => {
-  const userId = req.user!.id;
-  const id = req.params.id;
-  if (!UUID_RE.test(id)) {
-    // TODO(Ana): mensagem de analise nao encontrada.
-    return next(createError(404, "not_found", "Analise nao encontrada."));
-  }
-  const { data, error } = await supabaseAdmin
-    .from("github_analyses")
-    .select("id, score, faixa, area, input, result, created_at")
-    .eq("user_id", userId)
-    .eq("id", id)
-    .maybeSingle();
-  if (error) {
-    // TODO(Ana): mensagem de falha ao carregar a analise.
-    return next(createError(500, "load_failed", "Nao foi possivel carregar a analise."));
-  }
-  if (!data) {
-    // 404 tambem para linha de OUTRO usuario: nao vaza existencia.
-    // TODO(Ana): mensagem de analise nao encontrada.
-    return next(createError(404, "not_found", "Analise nao encontrada."));
-  }
-  res.json(data);
-});
+router.get(
+  "/analyses/:id",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!.id;
+    const id = req.params.id;
+    if (!UUID_RE.test(id)) {
+      // TODO(Ana): mensagem de analise nao encontrada.
+      return next(createError(404, "not_found", "Analise nao encontrada."));
+    }
+    const { data, error } = await supabaseAdmin
+      .from("github_analyses")
+      .select("id, score, faixa, area, input, result, created_at")
+      .eq("user_id", userId)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) {
+      // TODO(Ana): mensagem de falha ao carregar a analise.
+      return next(
+        createError(500, "load_failed", "Nao foi possivel carregar a analise."),
+      );
+    }
+    if (!data) {
+      // 404 tambem para linha de OUTRO usuario: nao vaza existencia.
+      // TODO(Ana): mensagem de analise nao encontrada.
+      return next(createError(404, "not_found", "Analise nao encontrada."));
+    }
+    res.json(data);
+  },
+);
 
 // Progresso das melhorias aplicadas (o checklist vivo do resultado). Sem gate
 // Pro alem do requireAuth do router: e progresso do PROPRIO dado (um ex-Pro
@@ -298,7 +364,10 @@ async function ownsGithubAnalysis(
     .eq("id", analysisId)
     .maybeSingle();
   if (error) {
-    console.error("[github] checagem de posse da analise falhou:", error.message);
+    console.error(
+      "[github] checagem de posse da analise falhou:",
+      error.message,
+    );
     return null;
   }
   return Boolean(data);
@@ -317,7 +386,11 @@ router.get(
     if (owns === null) {
       // TODO(Ana): mensagem de falha ao carregar o progresso.
       return next(
-        createError(500, "load_failed", "Nao foi possivel carregar o progresso."),
+        createError(
+          500,
+          "load_failed",
+          "Nao foi possivel carregar o progresso.",
+        ),
       );
     }
     if (!owns) {
@@ -332,7 +405,11 @@ router.get(
       .eq("done", true);
     if (error) {
       return next(
-        createError(500, "load_failed", "Nao foi possivel carregar o progresso."),
+        createError(
+          500,
+          "load_failed",
+          "Nao foi possivel carregar o progresso.",
+        ),
       );
     }
     res.json({

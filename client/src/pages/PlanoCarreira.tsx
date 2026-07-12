@@ -3,8 +3,10 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
   ArrowLeft,
+  Footprints,
   Loader2,
   Map as MapIcon,
+  MapPin,
   RefreshCw,
 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -33,6 +35,7 @@ import {
   CareerPlanApiError,
   generatePlan,
   getContext,
+  getFxRate,
   getPlan,
   listPlans,
   type CareerPlanBudget,
@@ -40,6 +43,7 @@ import {
   type CareerPlanDetail,
   type CareerPlanIntake,
   type CareerPlanSummary,
+  type FxRate,
 } from "@/services/careerPlanService";
 
 const ac = getPageAccentUi("amber");
@@ -101,7 +105,9 @@ function IntakeForm({
     if (generating) return;
     if (goal.trim().length < 10) {
       // TODO(Ana): validacao de objetivo curto
-      setLocalError("Conta seu objetivo com um pouco mais de detalhe (pelo menos uma frase).");
+      setLocalError(
+        "Conta seu objetivo com um pouco mais de detalhe (pelo menos uma frase).",
+      );
       return;
     }
     setLocalError("");
@@ -257,6 +263,50 @@ function IntakeForm({
   );
 }
 
+const PLAN_STORAGE_KEY = "bnt:career-plan:v1";
+// Versao da forma do payload persistido, no padrao do PortfolioAnalisar.
+// Bump sempre que CareerPlanDetail/CareerPlanSummary ou a forma do estado
+// salvo mudarem; no restore, versao diferente e descartada. NUNCA persiste
+// progresso do checklist: ele e re-buscado do backend, fonte de verdade.
+const PLAN_STORAGE_SHAPE_VERSION = 1;
+
+interface StoredPlanState {
+  activePlan: CareerPlanDetail | null;
+  archived: CareerPlanSummary[];
+  viewingId: string | null;
+}
+
+// Cache de sessao valido apenas para a MESMA versao de shape e o MESMO
+// usuario (logout/troca de conta invalida). Qualquer coisa fora disso volta
+// null e o fluxo segue o load normal com spinner.
+function loadStoredPlanState(userId: string): StoredPlanState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(PLAN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      version?: unknown;
+      userId?: unknown;
+      activePlan?: unknown;
+      archived?: unknown;
+      viewingId?: unknown;
+    };
+    if (parsed.version !== PLAN_STORAGE_SHAPE_VERSION) return null;
+    if (parsed.userId !== userId) return null;
+    if (!Array.isArray(parsed.archived)) return null;
+    return {
+      activePlan:
+        parsed.activePlan && typeof parsed.activePlan === "object"
+          ? (parsed.activePlan as CareerPlanDetail)
+          : null,
+      archived: parsed.archived as CareerPlanSummary[],
+      viewingId: typeof parsed.viewingId === "string" ? parsed.viewingId : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Skeleton do checklist em carregamento: enquanto o progresso nao chegou,
 // nunca mostrar "0 de N" nem estacoes todas desmarcadas.
 function TrailSkeleton() {
@@ -272,22 +322,119 @@ function TrailSkeleton() {
   );
 }
 
+// Faixa full-bleed da trilha: breakout MEDIDO (clientWidth do documento +
+// offset esquerdo do wrapper em fluxo), nunca 100vw, para a pagina jamais
+// ganhar scrollbar horizontal. Mesmo espirito do full-bleed do RoadmapTrail.
+// O wash amber e da familia do ResultBackdrop, mais concentrado na faixa;
+// doodles aria-hidden com loop gated por reduce.
+function TrailBand({ children }: { children: React.ReactNode }) {
+  const reduce = useReducedMotion() ?? false;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [metrics, setMetrics] = useState(() => ({
+    viewportW:
+      typeof window !== "undefined"
+        ? document.documentElement.clientWidth
+        : 1280,
+    wrapLeft: 0,
+  }));
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const viewportW = document.documentElement.clientWidth;
+      const wrapLeft = el.getBoundingClientRect().left;
+      setMetrics((prev) =>
+        prev.viewportW === viewportW && prev.wrapLeft === wrapLeft
+          ? prev
+          : { viewportW, wrapLeft },
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  return (
+    <div ref={wrapRef} className="w-full">
+      <div
+        className="relative overflow-hidden border-y-2 border-dashed border-amber-900/10 py-10 md:py-14"
+        style={{ marginLeft: -metrics.wrapLeft, width: metrics.viewportW }}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-amber-200/35 via-amber-100/25 to-amber-200/15"
+        />
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute bottom-6 left-[4%] hidden text-amber-600 opacity-[0.16] md:block"
+          animate={reduce ? undefined : { y: [0, -8, 0], rotate: [0, 8, 0] }}
+          transition={
+            reduce
+              ? undefined
+              : { duration: 7, repeat: Infinity, ease: "easeInOut" }
+          }
+        >
+          <Footprints className="h-9 w-9" strokeWidth={2.5} />
+        </motion.span>
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute right-[4%] top-5 hidden text-orange-500 opacity-[0.15] md:block"
+          animate={reduce ? undefined : { y: [0, -9, 0], rotate: [0, -7, 0] }}
+          transition={
+            reduce
+              ? undefined
+              : { duration: 8, repeat: Infinity, ease: "easeInOut", delay: 0.6 }
+          }
+        >
+          <MapPin className="h-10 w-10" strokeWidth={2.5} />
+        </motion.span>
+        <div className="container relative">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 interface PlanResultProps {
   plan: CareerPlanDetail;
   readonly: boolean;
-  onWantNew: () => void;
+  // Checklist icado para a pagina: o header integrado mostra a regua de
+  // status a partir do MESMO estado que alimenta a trilha.
+  checklist: ReturnType<typeof useCareerPlanChecklist>;
 }
 
-// Estado de resultado: status + logica da rota + trilha horizontal (estacoes
-// fundem degrau, trofeus ancorados e periodo do cronograma) + prateleira
-// geral + investimento + cronograma nao-ancorado + o que ficou de fora.
-function PlanResult({ plan, readonly, onWantNew }: PlanResultProps) {
-  const { doneIds, isLoading, toggle } = useCareerPlanChecklist(plan.id);
+// Estado de resultado: bilhete do Natechinho (logica da rota) + trilha
+// horizontal (estacoes fundem degrau, trofeus ancorados e periodo do
+// cronograma) + prateleira geral + investimento + cronograma nao-ancorado +
+// o que ficou de fora. O status do plano vive no header integrado da pagina.
+// Hierarquia de larguras: cards de texto numa coluna de leitura max-w-3xl;
+// a TRILHA estoura a coluna como faixa full-bleed (TrailBand) e vira o
+// evento visual da pagina.
+function PlanResult({ plan, readonly, checklist }: PlanResultProps) {
+  const { doneIds, isLoading, toggle } = checklist;
   const [expandedStationId, setExpandedStationId] = useState<string | null>(
     null,
   );
   const [toggleError, setToggleError] = useState("");
   const toggleErrorTimer = useRef<number | null>(null);
+  // Cotacao PTAX para os "≈ R$": UMA busca ao montar a secao, sem poll. null
+  // (indisponivel) e silencioso e NAO entra no sessionStorage da pagina.
+  const [fx, setFx] = useState<FxRate | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void getFxRate().then((rate) => {
+      if (alive) setFx(rate);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -305,13 +452,6 @@ function PlanResult({ plan, readonly, onWantNew }: PlanResultProps) {
     () => [...vm.stations.flatMap((s) => s.anchoredCerts), ...vm.generalCerts],
     [vm],
   );
-
-  const total = result.checklist.length;
-  const done = doneIds
-    ? result.checklist.filter((item) => doneIds.has(item.itemId)).length
-    : null;
-  const pct =
-    done !== null && total > 0 ? Math.round((done / total) * 100) : 0;
 
   async function handleToggle(itemId: string) {
     if (readonly) return;
@@ -331,141 +471,123 @@ function PlanResult({ plan, readonly, onWantNew }: PlanResultProps) {
 
   return (
     <div className="space-y-8">
-      <div className="card-brutal rounded-2xl bg-white p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-              {/* TODO(Ana): rotulo do progresso */}
-              Progresso do plano
-            </p>
-            {isLoading ? (
-              <span
-                className="mt-2 block h-6 w-44 animate-pulse rounded bg-slate-200 motion-reduce:animate-none"
-                aria-hidden
-              />
-            ) : done === null ? (
-              <p className="mt-1 font-display text-xl font-black text-slate-500">
-                {/* TODO(Ana): progresso indisponivel */}
-                Progresso indisponível no momento
-              </p>
-            ) : (
-              <p className="mt-1 font-display text-xl font-black text-slate-950">
-                {done} de {total} itens concluídos
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {plan.status === "archived" ? (
-              <span className="rounded-full border-2 border-slate-400 bg-slate-100 px-2.5 py-1 text-[0.6rem] font-black uppercase tracking-wide text-slate-600">
-                Plano arquivado
-              </span>
-            ) : null}
-            <button
-              type="button"
-              onClick={onWantNew}
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
-            >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-              Gerar novo plano
-            </button>
-          </div>
-        </div>
-        {!isLoading && done !== null ? (
-          <div className="mt-3 h-3 overflow-hidden rounded-full border-2 border-slate-950 bg-slate-100">
-            <div
-              className="h-full bg-emerald-500 transition-[width] motion-reduce:transition-none"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+      <div className="mx-auto w-full max-w-3xl space-y-8">
+        {toggleError ? (
+          <p
+            aria-live="polite"
+            className="rounded-xl border-2 border-red-400 bg-red-100 px-3 py-2 text-sm font-bold text-red-900"
+          >
+            {toggleError}
+          </p>
         ) : null}
-      </div>
 
-      {toggleError ? (
-        <p
-          aria-live="polite"
-          className="rounded-xl border-2 border-red-400 bg-red-100 px-3 py-2 text-sm font-bold text-red-900"
-        >
-          {toggleError}
-        </p>
-      ) : null}
-
-      <div className="card-brutal rounded-2xl bg-white p-6">
-        <h2 className="font-display text-2xl font-black text-slate-950">
-          {/* TODO(Ana): titulo da secao de logica */}
-          Objetivo e lógica da rota
-        </h2>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-          {result.objectiveLogic}
-        </p>
+        {/* Bilhete do Natechinho: a logica da rota em tom de recado pessoal.
+            Fundo papel um tom acima do #faf8f4 da pagina e rotacao sutil, na
+            linguagem do palco do intake. Sem asset de imagem do mascote no
+            repo: selo circular com o MapIcon da pagina no lugar. */}
+        <div className="relative mx-auto w-full max-w-2xl -rotate-[0.4deg] rounded-2xl border-2 border-slate-950 bg-[#fffaf0] p-6 shadow-[5px_5px_0_#0f172a]">
+          <span
+            aria-hidden
+            className="absolute -right-3 -top-4 flex h-11 w-11 rotate-6 items-center justify-center rounded-full border-2 border-slate-950 bg-amber-300 shadow-[2px_2px_0_#0f172a]"
+          >
+            <MapIcon className="h-5 w-5 text-slate-950" />
+          </span>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-800">
+            {/* TODO(Ana): assinatura do bilhete */}
+            bilhete do Natechinho
+          </p>
+          <h2 className="mt-1 font-display text-xl font-black text-slate-950">
+            {/* TODO(Ana): titulo curto do bilhete */}
+            Por que a rota é essa
+          </h2>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+            {result.objectiveLogic}
+          </p>
+        </div>
       </div>
 
       {isLoading ? (
         <TrailSkeleton />
       ) : (
         <>
-          <CareerTrail
-            stations={vm.stations}
-            currentStationIndex={vm.currentStationIndex}
-            expandedStationId={expandedStationId}
-            onExpand={setExpandedStationId}
-            onToggleItem={(itemId) => void handleToggle(itemId)}
-            readonly={readonly}
-            catalogVersion={plan.catalog_version}
-            autoScrollToCurrent
-          />
+          <TrailBand>
+            <CareerTrail
+              stations={vm.stations}
+              currentStationIndex={vm.currentStationIndex}
+              expandedStationId={expandedStationId}
+              onExpand={setExpandedStationId}
+              onToggleItem={(itemId) => void handleToggle(itemId)}
+              readonly={readonly}
+              catalogVersion={plan.catalog_version}
+              autoScrollToCurrent
+              decorated
+              fx={fx}
+            />
+          </TrailBand>
 
-          <GeneralShelf
-            certs={vm.generalCerts}
-            unanchored={vm.unanchored}
-            onToggleCert={
-              readonly ? undefined : (itemId) => void handleToggle(itemId)
-            }
-            readonly={readonly}
-            catalogVersion={plan.catalog_version}
-          />
+          <div className="mx-auto w-full max-w-3xl space-y-8">
+            <GeneralShelf
+              certs={vm.generalCerts}
+              unanchored={vm.unanchored}
+              onToggleCert={
+                readonly ? undefined : (itemId) => void handleToggle(itemId)
+              }
+              readonly={readonly}
+              catalogVersion={plan.catalog_version}
+              fx={fx}
+            />
 
-          <InvestmentSummary
-            certs={allCerts}
-            catalogVersion={plan.catalog_version}
-          />
+            <InvestmentSummary
+              certs={allCerts}
+              catalogVersion={plan.catalog_version}
+              fx={fx}
+            />
 
-          {vm.looseScheduleBlocks.length > 0 ? (
-            <div>
-              <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                {/* TODO(Ana): titulo da faixa de cronograma nao-ancorado */}
-                Cronograma da rota
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {vm.looseScheduleBlocks.map((block) => (
-                  <div
-                    key={block.monthsLabel}
-                    className={cn("rounded-xl border-2 p-4", ac.panelSoft)}
-                  >
-                    <p className="font-display text-sm font-black uppercase tracking-wide text-slate-900">
-                      {block.monthsLabel}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-700">{block.focus}</p>
-                  </div>
-                ))}
+            {vm.looseScheduleBlocks.length > 0 ? (
+              <div>
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                  {/* TODO(Ana): titulo da faixa de cronograma nao-ancorado */}
+                  Cronograma da rota
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {vm.looseScheduleBlocks.map((block) => (
+                    <div
+                      key={block.monthsLabel}
+                      className={cn("rounded-xl border-2 p-4", ac.panelSoft)}
+                    >
+                      <p className="font-display text-sm font-black uppercase tracking-wide text-slate-900">
+                        {block.monthsLabel}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        {block.focus}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </>
       )}
 
-      <div className="card-brutal rounded-2xl bg-white p-6">
-        <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
-          <AlertTriangle className="h-6 w-6 text-amber-700" aria-hidden />
-          {/* TODO(Ana): titulo da secao de honestidade */}O que ficou de fora
-          e por quê
-        </h2>
-        <div className="mt-4 space-y-3">
-          {result.outOfScope.map((item) => (
-            <div key={item.label} className="rounded-xl border-2 border-dashed border-slate-300 p-4">
-              <p className="font-bold text-slate-900">{item.label}</p>
-              <p className="mt-1 text-sm text-slate-600">{item.reason}</p>
-            </div>
-          ))}
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="card-brutal rounded-2xl bg-white p-6">
+          <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
+            <AlertTriangle className="h-6 w-6 text-amber-700" aria-hidden />
+            {/* TODO(Ana): titulo da secao de honestidade */}O que ficou de fora
+            e por quê
+          </h2>
+          <div className="mt-4 space-y-3">
+            {result.outOfScope.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border-2 border-dashed border-slate-300 p-4"
+              >
+                <p className="font-bold text-slate-900">{item.label}</p>
+                <p className="mt-1 text-sm text-slate-600">{item.reason}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -498,22 +620,55 @@ export default function PlanoCarreira() {
         setPhase("ready");
         return;
       }
-      setPhase("loading");
+      // Re-hidratacao (padrao do molde PortfolioAnalisar): cache de sessao
+      // valido renderiza imediatamente, sem spinner de pagina, e a busca
+      // abaixo vira revalidacao silenciosa em segundo plano.
+      const cached = loadStoredPlanState(user.id);
+      if (cached) {
+        setArchived(cached.archived);
+        setActivePlan(cached.activePlan);
+        setPhase("ready");
+      } else {
+        setPhase("loading");
+      }
       setLoadError(false);
       try {
         const plans = await listPlans();
         if (!alive) return;
         setArchived(plans.filter((p) => p.status === "archived"));
         const active = plans.find((p) => p.status === "active");
+        let activeDetail: CareerPlanDetail | null = null;
         if (active) {
-          const detail = await getPlan(active.id);
+          activeDetail = await getPlan(active.id);
           if (!alive) return;
-          setActivePlan(detail);
         }
-      } catch {
+        // Divergencia do cache: estado (e cache, via effect de persistencia)
+        // atualizam silenciosamente com o dado fresco.
+        setActivePlan(activeDetail);
+        // So o ID do plano em visualizacao e persistido: o detail volta por
+        // fetch. O prev ?? preserva uma escolha manual feita enquanto a
+        // revalidacao estava em voo.
+        if (cached?.viewingId && cached.viewingId !== activeDetail?.id) {
+          try {
+            const viewingDetail = await getPlan(cached.viewingId);
+            if (alive) setViewing((prev) => prev ?? viewingDetail);
+          } catch {
+            // Silencioso: o plano em visualizacao pode nao existir mais.
+          }
+        }
+      } catch (err) {
         // Falha de rede NUNCA colapsa em "sem plano" (o Pro cairia no intake
-        // achando que perdeu o plano): vira estado de erro com retry.
-        if (alive) setLoadError(true);
+        // achando que perdeu o plano): sem cache vira estado de erro com
+        // retry; com cache valido na tela, a revalidacao apenas loga.
+        if (!alive) return;
+        if (cached) {
+          console.error(
+            "[career-plan] revalidacao em segundo plano falhou",
+            err,
+          );
+        } else {
+          setLoadError(true);
+        }
       }
       try {
         const ctx = await getContext();
@@ -529,6 +684,29 @@ export default function PlanoCarreira() {
       alive = false;
     };
   }, [user, reloadKey]);
+
+  // Persistencia best-effort do estado de UI no sessionStorage (nunca o
+  // progresso do checklist, que e re-buscado do backend). Gate em phase ready
+  // e sem loadError para nunca gravar um estado vazio de load falho por cima
+  // de um cache bom.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!user || phase !== "ready" || loadError) return;
+    try {
+      window.sessionStorage.setItem(
+        PLAN_STORAGE_KEY,
+        JSON.stringify({
+          version: PLAN_STORAGE_SHAPE_VERSION,
+          userId: user.id,
+          activePlan,
+          archived,
+          viewingId: viewing?.id ?? null,
+        }),
+      );
+    } catch {
+      // storage cheio ou indisponivel: ignora, segue so em memoria.
+    }
+  }, [user, phase, loadError, activePlan, archived, viewing]);
 
   async function handleGenerate(intake: CareerPlanIntake) {
     if (generating) return;
@@ -581,12 +759,28 @@ export default function PlanoCarreira() {
   }
 
   const shown = viewing ?? activePlan;
+  // Checklist icado do PlanResult: a regua de status do header e a trilha
+  // leem o MESMO estado (planId null = sem plano, hook fica inerte).
+  const checklist = useCareerPlanChecklist(shown?.id ?? null);
   const loading = phase === "loading" || subLoading;
   // Estado de resultado: um plano visivel (ativo ou arquivado), sem intake
   // aberto. Estado de entrada: nada pra mostrar (vitrine + ProGate/intake).
   // Erro de carregamento nao e entrada: mostra o card de retry, sem vitrine.
   const showingPlan = !loading && !!shown && !wantNew;
   const entryState = !loading && !shown && !loadError;
+
+  // Numeros da regua de status do header (as tres vozes do antigo card:
+  // skeleton, indisponivel, X de Y).
+  const planTotal = shown ? shown.result.checklist.length : 0;
+  const doneSet = checklist.doneIds;
+  const planDone =
+    shown && doneSet
+      ? shown.result.checklist.filter((item) => doneSet.has(item.itemId)).length
+      : null;
+  const planPct =
+    planDone !== null && planTotal > 0
+      ? Math.round((planDone / planTotal) * 100)
+      : 0;
 
   // Slot de acao contextual do cabecalho (padrao do molde RD2: o topo
   // esquerdo e o lugar universal de "voltar").
@@ -659,7 +853,7 @@ export default function PlanoCarreira() {
       <PlanResult
         plan={shown}
         readonly={shown.status === "archived"}
-        onWantNew={() => setWantNew(true)}
+        checklist={checklist}
       />
     );
   } else {
@@ -733,6 +927,64 @@ export default function PlanoCarreira() {
               O Roadmap diz o que estudar. Aqui é a rota da carreira: em que
               ordem, o que certificar e quando, no seu ritmo e orçamento.
             </p>
+
+            {/* Regua de status fundida no header (o antigo card de progresso
+                do PlanResult): elementos soltos no cenario, sem card. So no
+                estado de resultado; a entrada e animada (gated por reduce)
+                porque o header renderiza antes do plano carregar e a regua
+                nao pode empurrar o layout de forma grosseira. */}
+            {showingPlan && shown ? (
+              <motion.div
+                initial={reduce ? false : { opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="overflow-hidden"
+              >
+                <div className="mt-6 flex flex-wrap items-end gap-x-5 gap-y-3">
+                  <div className="min-w-[220px] max-w-sm flex-1">
+                    {checklist.isLoading ? (
+                      <span
+                        aria-hidden
+                        className="block h-5 w-44 animate-pulse rounded bg-slate-200 motion-reduce:animate-none"
+                      />
+                    ) : planDone === null ? (
+                      <p className="text-sm font-bold text-slate-500">
+                        {/* TODO(Ana): progresso indisponivel */}
+                        Progresso indisponível no momento
+                      </p>
+                    ) : (
+                      <p className="text-sm font-bold text-slate-700">
+                        <span className="font-display text-base font-black text-slate-950">
+                          {planDone} de {planTotal}
+                        </span>{" "}
+                        itens concluídos
+                      </p>
+                    )}
+                    {!checklist.isLoading && planDone !== null ? (
+                      <div className="mt-2 h-2 overflow-hidden rounded-full border-2 border-slate-950 bg-white/80">
+                        <div
+                          className="h-full bg-emerald-500 transition-[width] motion-reduce:transition-none"
+                          style={{ width: `${planPct}%` }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                  {shown.status === "archived" ? (
+                    <span className="rounded-full border-2 border-slate-400 bg-slate-100 px-2.5 py-1 text-[0.6rem] font-black uppercase tracking-wide text-slate-600">
+                      Plano arquivado
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setWantNew(true)}
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-full border-2 border-slate-950 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 motion-reduce:transition-none"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+                    Gerar novo plano
+                  </button>
+                </div>
+              </motion.div>
+            ) : null}
           </motion.div>
 
           <div className="space-y-10">

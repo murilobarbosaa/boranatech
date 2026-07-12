@@ -31,8 +31,13 @@ const SMOKE = __ENV.SMOKE === "1";
 // Pesos: descoberta ~70%, detalhe ~20%, health ~10% dos VUs em cada estagio.
 // Estagios (executor ramping-vus): 2min ate 100 VUs totais, 3min ate 300,
 // 3min ate 600, 2min de plato em 600, 1min de rampdown (~11min).
+const SCALE = (() => {
+  const raw = parseFloat(__ENV.SCALE || "1");
+  return Number.isFinite(raw) && raw > 0 ? raw : 1;
+})();
+
 function stages(share) {
-  const of = (total) => Math.max(1, Math.round(total * share));
+  const of = (total) => Math.max(1, Math.round(total * share * SCALE));
   return [
     { duration: "2m", target: of(100) },
     { duration: "3m", target: of(300) },

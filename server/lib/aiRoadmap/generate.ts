@@ -2,13 +2,15 @@ import crypto from "crypto";
 
 import {
   AI_ROADMAP_SLUG_RE,
-  RoadmapSectionContentSchema,
+  buildSectionContentSchema,
   RoadmapSkeletonModelSchema,
   type RoadmapIntake,
   type RoadmapSectionContentChild,
   type RoadmapSectionContentNode,
   type RoadmapSkeletonModel,
 } from "../../../shared/aiRoadmap";
+import { resolveAreaSelection } from "../../../shared/areas";
+import { projetos } from "../../../shared/projects/catalog";
 import { roadmapsV2 } from "../../../shared/roadmapV2/content";
 import type { RoadmapNode, RoadmapV2 } from "../../../shared/roadmapV2/types";
 import { env } from "../env";
@@ -38,7 +40,6 @@ const SECTION_MAX_TOKENS = 3500;
 const AI_TEMPERATURE = 0.4;
 
 const SKELETON_JSON_SCHEMA = toOpenAIStrictSchema(RoadmapSkeletonModelSchema);
-const SECTION_JSON_SCHEMA = toOpenAIStrictSchema(RoadmapSectionContentSchema);
 
 // Slug do servidor: ia-<8 hex>. hex e subconjunto de [a-z0-9], casa com
 // AI_ROADMAP_SLUG_RE e com o padrao /roadmaps/:slug do platformKnowledge.
@@ -79,7 +80,7 @@ REGRAS DO CONTEUDO:
 - De 6 a 10 passos (children) para a secao pedida. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedTime; optional e true apenas para aprofundamento que pode ser pulado.
 - content e OBRIGATORIO em todo passo: markdown de 4 a 8 frases, estruturado em tres partes, nesta ordem: (1) o que dominar, nomeando os subtopicos concretos; (2) como praticar, com uma atividade clara; (3) um mini desafio pratico concreto para fechar o passo.
 - estimatedTime e OBRIGATORIO em todo passo: estimativa realista, ex: "2 semanas", "10 horas", "4h a 6h". Calibre pelas horas semanais e pelo prazo do contexto; a soma da secao precisa ser realista.
-- project: pelo menos UM passo da secao deve ter um mini projeto pratico que consolida a secao; nos demais passos use null quando nao fizer sentido.
+- project: e o vinculo com o catalogo de projetos da plataforma e SO existe na ULTIMA secao do roadmap. Quando o prompt oferecer a lista de projetos do catalogo, escolha o mais coerente com a trilha e coloque o id EXATO dele no campo project de UM UNICO passo (o passo de projeto final da secao); em todos os outros passos, project e null. Em secoes que nao recebem lista de projetos, project e sempre null.
 - Este e um produto pago: cada passo deve ensinar o suficiente para a pessoa saber exatamente o que estudar e como praticar hoje, sem citar cursos ou paginas especificas.
 - Um passo pode ter ate 5 sub-passos (children de segundo nivel, sem novos filhos), para quebrar um tema denso.
 - Campos nullable que nao se aplicam ao passo devem vir como null, nunca texto vazio.
@@ -139,7 +140,10 @@ const MAX_COMPLETED_TITLES = 40;
 const MAX_PROGRESS_ROWS = 500;
 
 // Indexa title por id em toda a arvore de um RoadmapV2 (secoes e nos).
-function collectNodeTitles(roadmap: RoadmapV2, into: Map<string, string>): void {
+function collectNodeTitles(
+  roadmap: RoadmapV2,
+  into: Map<string, string>,
+): void {
   const walk = (nodes: RoadmapNode[]): void => {
     for (const node of nodes) {
       into.set(node.id, node.title);
@@ -201,7 +205,10 @@ async function fetchCompletedTopicTitles(userId: string): Promise<string[]> {
           aiError.message,
         );
       } else {
-        for (const row of (aiRows ?? []) as Array<{ slug: string; roadmap: RoadmapV2 }>) {
+        for (const row of (aiRows ?? []) as Array<{
+          slug: string;
+          roadmap: RoadmapV2;
+        }>) {
           if (row.roadmap && Array.isArray(row.roadmap.sections)) {
             collectNodeTitles(row.roadmap, titlesById);
           }
@@ -446,7 +453,9 @@ async function callStructuredOnce(
 // exemplo) conta como tentativa falhada e tenta de novo.
 async function callStructured<T>(
   params: StructuredCallParams,
-  validate: (parsed: unknown) => { success: true; data: T } | { success: false; issues: string },
+  validate: (
+    parsed: unknown,
+  ) => { success: true; data: T } | { success: false; issues: string },
   logScope: string,
 ): Promise<GenerationResult<T>> {
   if (!env.openaiApiKey) {
@@ -486,7 +495,9 @@ async function callStructured<T>(
 }
 
 function zodValidator<T>(schema: {
-  safeParse: (value: unknown) =>
+  safeParse: (
+    value: unknown,
+  ) =>
     | { success: true; data: T }
     | { success: false; error: { issues: unknown[] } };
 }) {
@@ -604,6 +615,29 @@ export async function generateSectionContent(
     )
     .join("\n");
 
+  // Projeto do catalogo SO na ultima secao (fase 5c.2): oferece os projetos
+  // Pro reais e o schema da chamada restringe project ao enum dos ids
+  // oferecidos. skeleton.area e texto livre da IA, entao o filtro por area so
+  // entra quando resolve num slug conhecido E existe projeto Pro daquela
+  // area; senao a oferta e o catalogo Pro inteiro.
+  const isLastSection = sectionIndex === skeleton.sections.length - 1;
+  let offeredProjects: typeof projetos = [];
+  if (isLastSection) {
+    const proProjects = projetos.filter((p) => p.pro === true);
+    const areaSlug = resolveAreaSelection(skeleton.area);
+    const byArea =
+      areaSlug !== "geral"
+        ? proProjects.filter((p) => p.areaSlug === areaSlug)
+        : [];
+    offeredProjects = byArea.length > 0 ? byArea : proProjects;
+  }
+  const offerLines =
+    offeredProjects.length > 0
+      ? `\n\nProjetos Pro do catalogo pra fechar a trilha (escolha exatamente UM e coloque o id EXATO no campo project de UM UNICO passo desta secao; nos demais passos, project e null):\n${offeredProjects
+          .map((p) => `- [${p.id}] ${p.nome}: ${p.objetivo}`)
+          .join("\n")}`
+      : "";
+
   // TODO(Ana): revisar copy do prompt de conteudo de secao.
   const userPrompt = `${context}
 
@@ -613,19 +647,21 @@ ${skeleton.description}
 Esqueleto completo, na ordem de estudo:
 ${outline}
 
-Escreva o conteudo APENAS da secao ${sectionIndex + 1} ([${section.id}] ${section.title}). Nao repita conteudo das outras secoes; respeite a progressao do esqueleto.`;
+Escreva o conteudo APENAS da secao ${sectionIndex + 1} ([${section.id}] ${section.title}). Nao repita conteudo das outras secoes; respeite a progressao do esqueleto.${offerLines}`;
+
+  const sectionSchema = buildSectionContentSchema(
+    isLastSection ? offeredProjects.map((p) => p.id) : null,
+  );
 
   const result = await callStructured(
     {
       schemaName: "roadmap_section_content",
-      jsonSchema: SECTION_JSON_SCHEMA,
+      jsonSchema: toOpenAIStrictSchema(sectionSchema),
       systemPrompt: SECTION_SYSTEM_PROMPT,
       userPrompt,
       maxTokens: SECTION_MAX_TOKENS,
     },
-    zodValidator<{ children: RoadmapSectionContentNode[] }>(
-      RoadmapSectionContentSchema,
-    ),
+    zodValidator<{ children: RoadmapSectionContentNode[] }>(sectionSchema),
     "[roadmap-ia]",
   );
 

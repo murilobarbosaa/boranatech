@@ -53,8 +53,9 @@ const OTHER_TOOLS = [
     icon: FileText,
   },
   {
-    name: "Otimizar LinkedIn",
-    href: "/curriculo/linkedin",
+    // TODO(Ana): validar nome do card do Analisador de LinkedIn
+    name: "Analisador de LinkedIn",
+    href: "/linkedin/analisar",
     description: "headline e about reescritos pela IA",
     icon: Linkedin,
   },

@@ -63,7 +63,7 @@ export const womenArea = {
     {
       name: "Women Techmakers",
       desc: "Programa global do Google com eventos, histórias e recursos para mulheres em tecnologia.",
-      url: "https://www.womentechmakers.com",
+      url: "https://developers.google.com/womentechmakers",
     },
     {
       name: "Django Girls",
@@ -308,7 +308,7 @@ export const womenArea = {
       handle: "@leticiascaires",
       topic: "Produto, carreira e bastidores de tecnologia",
       url: "https://www.linkedin.com/search/results/content/?keywords=Leticia%20Caires%20produto%20tech",
-      avatarUrl: "https://unavatar.io/linkedin/leticiascaires",
+      avatarUrl: "",
     },
     {
       name: "Attekita Dev",

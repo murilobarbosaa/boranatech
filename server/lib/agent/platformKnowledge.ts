@@ -28,7 +28,8 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/entrevistas", tier: "free", label: "Hub de preparacao para entrevistas; inclui o treino de entrevista com IA (Pro)." },
   { route: "/entrevistas/perguntas", tier: "free", label: "Banco de perguntas de entrevista." },
   { route: "/entrevistas/desafios", tier: "free", label: "Desafios de entrevista." },
-  { route: "/estagio/freelance", tier: "free", label: "Guia de freelance (aba em Vagas e Carreira)." },
+  // TODO(Ana): validar a copy das entradas de /vagas
+  { route: "/vagas", tier: "pro", label: "Guia de freelance (secao na pagina de vagas)." },
   { route: "/portfolio", tier: "free", label: "Guia de portfolio." },
   { route: "/plano-carreira", tier: "pro", label: "Plano de carreira por IA: rota com degraus, certificacoes e cronograma." },
   { route: "/evolucao", tier: "free", label: "Trilhas de evolucao de carreira." },
@@ -47,7 +48,7 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/faculdades", tier: "free", label: "Diretorio de faculdades." },
   { route: "/eventos", tier: "free", label: "Eventos de tecnologia." },
   { route: "/projetos", tier: "free", label: "Projetos para praticar e portfolio." },
-  { route: "/estagio", tier: "free", label: "Vagas de estagio." },
+  { route: "/vagas", tier: "pro", label: "Feed de vagas reais de estagio, trainee e junior, com busca e filtros (Pro); amostra gratis do feed." },
   { route: "/noticias", tier: "free", label: "Noticias de tecnologia." },
   { route: "/comunidades", tier: "free", label: "Comunidades de tecnologia." },
   { route: "/sobre", tier: "free", label: "Sobre o BoraNaTech." },
@@ -91,8 +92,7 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   // Rotas Pro: analise personalizada por IA (server/lib/aiTools.ts requiresPro).
   { route: "/curriculo/analisar", tier: "pro", label: "Analise de curriculo por IA." },
   { route: "/curriculo/gerar", tier: "pro", label: "Geracao de curriculo por IA." },
-  { route: "/curriculo/linkedin", tier: "pro", label: "Otimizacao de LinkedIn por IA." },
-  { route: "/linkedin/analisar", tier: "pro", label: "Analise de perfil de LinkedIn por IA." },
+  { route: "/linkedin/analisar", tier: "pro", label: "Analise de perfil de LinkedIn por IA: nota, checklist de recrutador e textos prontos para colar." },
   { route: "/portfolio/analisar", tier: "pro", label: "Analise de portfolio por IA com base no GitHub (a analise de GitHub)." },
   // TODO(Ana): revisar o label do Roadmap com IA.
   { route: "/roadmaps/ia", tier: "pro", label: "Roadmap com IA: gera uma trilha de estudos sob medida." },

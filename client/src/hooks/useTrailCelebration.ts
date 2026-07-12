@@ -18,6 +18,12 @@ const GREEN_HOLD = 580;
 const CLOSE_TO_BURST = 640;
 const BURST_TO_WALK = 480;
 
+// Duracao total da sequencia acima (pior caso, com a gaveta aberta), do toggle
+// final ate o inicio da caminhada. Consumida pelo useRoadmapCompletion pra
+// abrir o modal de conclusao so depois da coreografia da ultima secao.
+export const SECTION_CELEBRATION_TOTAL_MS =
+  GREEN_HOLD + CLOSE_TO_BURST + BURST_TO_WALK;
+
 type UseTrailCelebrationArgs = {
   sections: RoadmapSection[];
   done: Set<string>;

@@ -29,7 +29,6 @@ const Conquistas = lazy(() => import("@/pages/conquistas/Conquistas"));
 const Creators = lazy(() => import("@/pages/Creators"));
 const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
 const CurriculoGerar = lazy(() => import("@/pages/CurriculoGerar"));
-const CurriculoLinkedin = lazy(() => import("@/pages/CurriculoLinkedin"));
 const Cursos = lazy(() => import("@/pages/Cursos"));
 const Dicas = lazy(() => import("@/pages/Dicas"));
 const Dicionario = lazy(() => import("@/pages/Dicionario"));
@@ -40,7 +39,7 @@ const EntrevistaDesafios = lazy(() => import("@/pages/EntrevistaDesafios"));
 const EntrevistaPerguntas = lazy(() => import("@/pages/EntrevistaPerguntas"));
 const EntrevistaSessao = lazy(() => import("@/pages/EntrevistaSessao"));
 const Entrevistas = lazy(() => import("@/pages/Entrevistas"));
-const Estagio = lazy(() => import("@/pages/Estagio"));
+const Vagas = lazy(() => import("@/pages/Vagas"));
 const EstudosDiario = lazy(() => import("@/pages/EstudosDiario"));
 const Eventos = lazy(() => import("@/pages/Eventos"));
 const Evolucao = lazy(() => import("@/pages/Evolucao"));
@@ -72,9 +71,9 @@ const QuizCarreiraResultado = lazy(
 );
 const RecuperarSenha = lazy(() => import("@/pages/RecuperarSenha"));
 const RedefinirSenha = lazy(() => import("@/pages/RedefinirSenha"));
-const RoadmapCarreira = lazy(() => import("@/pages/RoadmapCarreira"));
 const RoadmapIA = lazy(() => import("@/pages/RoadmapIA"));
 const RoadmapIAView = lazy(() => import("@/pages/RoadmapIAView"));
+const RoadmapQuiz = lazy(() => import("@/pages/RoadmapQuiz"));
 const RoadmapsV2 = lazy(() => import("@/pages/RoadmapsV2"));
 const RoadmapsV2Index = lazy(() => import("@/pages/RoadmapsV2Index"));
 const Salarios = lazy(() => import("@/pages/Salarios"));
@@ -184,7 +183,10 @@ function Router() {
         </Route>
         <Route path="/curriculo/analisar" component={CurriculoAnalisar} />
         <Route path="/curriculo/gerar" component={CurriculoGerar} />
-        <Route path="/curriculo/linkedin" component={CurriculoLinkedin} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/curriculo/linkedin">
+          {() => <Redirect to="/linkedin/analisar" />}
+        </Route>
         <Route path="/linkedin/analisar" component={LinkedinAnalisar} />
         <Route path="/plano-carreira" component={PlanoCarreira} />
         {/* TODO: remover redirect após 90 dias em prod */}
@@ -196,9 +198,8 @@ function Router() {
         </Route>
         {/* TODO: remover redirect após 90 dias em prod */}
         <Route path="/networking">{() => <Redirect to="/comunidades" />}</Route>
-        <Route path="/freelance">
-          {() => <Redirect to="/estagio/freelance" />}
-        </Route>
+        {/* TODO: remover redirect apos 90 dias em prod */}
+        <Route path="/freelance">{() => <Redirect to="/vagas" />}</Route>
         <Route path="/evolucao" component={Evolucao} />
         <Route path="/simulador" component={Simulador} />
         <Route path="/ingles" component={Ingles} />
@@ -211,20 +212,6 @@ function Router() {
         <Route path="/mentorias" component={Mentorias} />
         <Route path="/admin" component={Admin} />
         <Route path="/roadmaps" component={RoadmapsV2Index} />
-        <Route path="/roadmaps/comecar-do-zero">
-          {() => (
-            <RequireAuth>
-              <RoadmapCarreira roadmapId="zero-ti" />
-            </RequireAuth>
-          )}
-        </Route>
-        <Route path="/roadmaps/linkedin">
-          {() => (
-            <RequireAuth>
-              <RoadmapCarreira roadmapId="linkedin" />
-            </RequireAuth>
-          )}
-        </Route>
         {/* /roadmaps/ia ANTES de /roadmaps/:slug: o wouter casa na ordem e o
             segmento "ia" seria engolido pelo :slug (que redireciona slug
             desconhecido para /roadmaps). Nao reordenar. */}
@@ -240,6 +227,16 @@ function Router() {
           {() => (
             <RequireAuth>
               <RoadmapIAView />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Tambem ANTES de /roadmaps/:slug (ordem do wouter). Nao conflita
+            com as rotas de IA acima: /roadmaps/ia e /roadmaps/ia/:slug ja
+            casaram antes desta. */}
+        <Route path="/roadmaps/:slug/prova">
+          {() => (
+            <RequireAuth>
+              <RoadmapQuiz />
             </RequireAuth>
           )}
         </Route>
@@ -266,12 +263,16 @@ function Router() {
         <Route path="/faculdades" component={Faculdades} />
         <Route path="/eventos" component={Eventos} />
         <Route path="/projetos" component={Projetos} />
+        <Route path="/projetos/:id" component={Projetos} />
+        <Route path="/vagas" component={Vagas} />
+        {/* TODO: remover redirect apos 90 dias em prod */}
         <Route path="/estagio/freelance">
-          {() => <Estagio initialTab={2} />}
+          {() => <Redirect to="/vagas" />}
         </Route>
-        <Route path="/estagio">{() => <Estagio />}</Route>
+        {/* TODO: remover redirect apos 90 dias em prod */}
+        <Route path="/estagio">{() => <Redirect to="/vagas" />}</Route>
         <Route path="/carreiras">
-          {() => <Redirect to="/curriculo/linkedin" />}
+          {() => <Redirect to="/linkedin/analisar" />}
         </Route>
         <Route path="/portifolio">{() => <Redirect to="/portfolio" />}</Route>
         <Route path="/noticias" component={Noticias} />

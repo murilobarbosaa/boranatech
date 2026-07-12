@@ -171,7 +171,7 @@ export const blockchain: RoadmapV2 = {
           description:
             "Ligar uma interface web aos contratos para que pessoas possam usá-los.",
           content:
-            "Um contrato inteligente sozinho não tem interface; as pessoas precisam de uma **aplicação web** pra interagir com ele de forma amigável. Conectar o front-end aos contratos é o que transforma um contrato numa aplicação descentralizada (**DApp**) usável, e é uma habilidade central do desenvolvedor Web3, especialmente pra quem vem do front-end.\n\nA ponte entre a aplicação web e a blockchain é feita por bibliotecas como a **ethers.js**, que permitem ao seu código JavaScript ler dados dos contratos e enviar transações pra eles. Com ela, você chama as funções do contrato a partir da interface, exibe informações da blockchain na tela, e dispara ações quando o usuário interage.\n\nA peça que conecta o usuário é a **carteira**, como a MetaMask. Em vez de o seu site guardar senhas, ele se conecta à carteira do usuário: quando uma ação precisa de autorização (enviar uma transação, transferir um token), a carteira aparece pedindo a confirmação da pessoa, que assina com sua chave privada sem nunca expô-la ao site. Esse fluxo de \"conectar carteira\" e \"confirmar transação\" é a experiência típica de uma DApp, e implementá-lo é parte do trabalho.\n\nUm detalhe de experiência importante: como as transações na blockchain levam tempo pra serem confirmadas (e custam gas), a aplicação precisa lidar bem com esses estados, mostrando que algo está em andamento, tratando confirmações e falhas, e sendo clara sobre custos. Uma DApp que não comunica isso confunde o usuário.\n\nA documentação da ethers.js e da MetaMask são as referências práticas pra essa integração. Construir uma aplicação web simples que lê e escreve num contrato seu é o exercício que une o back-end (contratos) com o front-end (interface), fechando o ciclo de uma DApp completa.",
+            'Um contrato inteligente sozinho não tem interface; as pessoas precisam de uma **aplicação web** pra interagir com ele de forma amigável. Conectar o front-end aos contratos é o que transforma um contrato numa aplicação descentralizada (**DApp**) usável, e é uma habilidade central do desenvolvedor Web3, especialmente pra quem vem do front-end.\n\nA ponte entre a aplicação web e a blockchain é feita por bibliotecas como a **ethers.js**, que permitem ao seu código JavaScript ler dados dos contratos e enviar transações pra eles. Com ela, você chama as funções do contrato a partir da interface, exibe informações da blockchain na tela, e dispara ações quando o usuário interage.\n\nA peça que conecta o usuário é a **carteira**, como a MetaMask. Em vez de o seu site guardar senhas, ele se conecta à carteira do usuário: quando uma ação precisa de autorização (enviar uma transação, transferir um token), a carteira aparece pedindo a confirmação da pessoa, que assina com sua chave privada sem nunca expô-la ao site. Esse fluxo de "conectar carteira" e "confirmar transação" é a experiência típica de uma DApp, e implementá-lo é parte do trabalho.\n\nUm detalhe de experiência importante: como as transações na blockchain levam tempo pra serem confirmadas (e custam gas), a aplicação precisa lidar bem com esses estados, mostrando que algo está em andamento, tratando confirmações e falhas, e sendo clara sobre custos. Uma DApp que não comunica isso confunde o usuário.\n\nA documentação da ethers.js e da MetaMask são as referências práticas pra essa integração. Construir uma aplicação web simples que lê e escreve num contrato seu é o exercício que une o back-end (contratos) com o front-end (interface), fechando o ciclo de uma DApp completa.',
           resources: [
             {
               label: "ethers.js: documentação oficial",
@@ -226,6 +226,13 @@ export const blockchain: RoadmapV2 = {
         "Construir um portfólio on-chain e dar os primeiros passos numa área de nicho e técnica.",
       level: "avancado",
       children: [
+        {
+          id: "carreira.projeto",
+          title: "Projeto final: dapp de registro em testnet",
+          description:
+            "Um contrato publicado e verificável em testnet com front simples, a trilha virando produto.",
+          project: "dapp-registro-testnet",
+        },
         {
           id: "carreira.entrar",
           title: "Entrar na carreira",

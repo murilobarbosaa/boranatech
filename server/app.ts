@@ -32,12 +32,16 @@ import meRouter from "./routes/me";
 import newsletterRouter from "./routes/newsletter";
 import profilesRouter from "./routes/profiles";
 import progressRouter from "./routes/progress";
+import projectValidationsRouter from "./routes/projectValidations";
 import quizRouter from "./routes/quiz";
+import roadmapCompletionsRouter from "./routes/roadmapCompletions";
+import roadmapQuizRouter from "./routes/roadmapQuiz";
 import resumeAnalysisRouter from "./routes/resumeAnalysis";
 import resumesRouter from "./routes/resumes";
 import searchRouter from "./routes/search";
 import statsRouter from "./routes/stats";
 import studyRouter from "./routes/study";
+import vagasRouter from "./routes/vagas";
 import waitlistRouter from "./routes/waitlist";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -101,7 +105,10 @@ function sweepRateLimitStore(now: number) {
   });
 }
 
-setInterval(() => sweepRateLimitStore(Date.now()), RATE_LIMIT_WINDOW_MS).unref();
+setInterval(
+  () => sweepRateLimitStore(Date.now()),
+  RATE_LIMIT_WINDOW_MS,
+).unref();
 
 function isRateLimitExempt(pathname: string) {
   return (
@@ -149,6 +156,9 @@ const CSP_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: https:",
+  // blob: para o player de audio das entrevistas (E5): o client monta Blob do
+  // audio e toca via URL blob:, que nao e coberta por 'self'.
+  "media-src 'self' blob:",
   [
     "connect-src 'self'",
     "https://api.boranatech.com.br",
@@ -168,7 +178,9 @@ app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), browsing-topics=()",
+    // microphone=(self): a resposta por voz da entrevista (E2) grava audio
+    // via getUserMedia na propria origem. Video segue bloqueado (camera=()).
+    "camera=(), microphone=(self), geolocation=(), browsing-topics=()",
   );
   res.setHeader(
     "Strict-Transport-Security",
@@ -311,6 +323,13 @@ app.use("/api/billing/webhook", (req, _res, next) => {
 // do json global; requisicoes ja parseadas (req._body) sao ignoradas pelo global.
 app.use("/api/me/avatar", express.json({ limit: "10mb" }));
 
+// Transcricao de audio da entrevista tambem envia base64 (pode passar de 2mb).
+// Mesmo padrao do avatar: parser dedicado ANTES do json global.
+app.use(
+  "/api/interview/sessions/:id/transcribe",
+  express.json({ limit: "10mb" }),
+);
+
 app.use(express.json({ limit: "2mb" }));
 
 app.use("/api/affiliates", affiliatesRouter);
@@ -342,9 +361,13 @@ app.use("/api/billing", billingRouter);
 app.use("/api/bookmarks", bookmarksRouter);
 app.use("/api/career-plan", careerPlanRouter);
 app.use("/api/progress", progressRouter);
+app.use("/api/project-validations", projectValidationsRouter);
+app.use("/api/roadmap-completions", roadmapCompletionsRouter);
+app.use("/api/roadmap-quiz", roadmapQuizRouter);
 app.use("/api/study", studyRouter);
 app.use("/api/quiz", quizRouter);
 app.use("/api/search", searchRouter);
+app.use("/api/vagas", vagasRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/cron", cronRouter);

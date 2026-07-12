@@ -189,7 +189,7 @@ export const mobile: RoadmapV2 = {
             },
             flutter: {
               content:
-                "Em Flutter, tudo é **widget**: textos, botões, espaçamentos, até o layout em si são widgets que você aninha uns dentro dos outros, formando uma árvore. Widgets como `Container`, `Text`, `Row`, `Column` e `ListView` são o seu vocabulário básico. Essa filosofia de \"tudo é widget\" é a marca do Flutter, e dominá-la é dominar a construção de telas na ferramenta.",
+                'Em Flutter, tudo é **widget**: textos, botões, espaçamentos, até o layout em si são widgets que você aninha uns dentro dos outros, formando uma árvore. Widgets como `Container`, `Text`, `Row`, `Column` e `ListView` são o seu vocabulário básico. Essa filosofia de "tudo é widget" é a marca do Flutter, e dominá-la é dominar a construção de telas na ferramenta.',
               resources: [
                 {
                   label: "Flutter: introdução aos widgets (oficial)",
@@ -225,8 +225,7 @@ export const mobile: RoadmapV2 = {
         {
           id: "ui.estado",
           title: "Estado e interatividade",
-          description:
-            "Fazer a tela reagir ao usuário e se atualizar sozinha.",
+          description: "Fazer a tela reagir ao usuário e se atualizar sozinha.",
           content:
             "Uma tela parada tem pouco valor; o que faz um app vivo é reagir ao usuário e se atualizar. O conceito central pra isso é o **estado**: os dados que a tela mostra e que podem mudar com a interação (o texto digitado num campo, o item marcado numa lista, o número de um contador).\n\nO mobile moderno funciona de forma **declarativa**: em vez de você mexer manualmente nos elementos da tela quando algo muda, você atualiza o estado e a interface se redesenha sozinha pra refletir o novo estado. Essa ideia é comum às quatro stacks e muda a forma de pensar: você descreve como a tela deve parecer pra cada estado, não os passos pra alterá-la. Escolha sua stack pra ver como o estado funciona nela.",
           byLanguage: {
@@ -399,7 +398,7 @@ export const mobile: RoadmapV2 = {
           description:
             "Guardar dados no próprio aparelho, pra o app lembrar das coisas.",
           content:
-            "Nem tudo precisa ir pro servidor. Muitas vezes o app precisa **guardar dados no próprio aparelho**: a preferência de tema do usuário, se ele já viu a tela de introdução, um rascunho não enviado, ou dados pra funcionar offline. Isso é o armazenamento local.\n\nExistem níveis, do mais simples ao mais robusto, e o conceito vale pras quatro stacks. Pra **dados pequenos e simples** (uma configuração, um sinalizador de \"já abriu antes\"), cada plataforma tem um mecanismo leve de chave e valor, que guarda pares como \"tema = escuro\". Pra **dados estruturados e maiores** (uma lista de itens que precisa sobreviver ao fechamento do app, buscas e relações), usa-se um **banco de dados local** no dispositivo, em geral baseado em SQLite ou em soluções construídas sobre ele.\n\nA regra prática pra escolher é o volume e a complexidade: configuração simples pede o mecanismo leve; muitos registros com consultas pedem banco local. Um cuidado importante de segurança e privacidade: dados sensíveis (senhas, tokens) não vão no armazenamento comum; cada plataforma tem um cofre seguro próprio pra esse tipo de informação.\n\nComece pelo armazenamento simples de chave e valor, que resolve a maioria das necessidades iniciais (lembrar uma preferência, por exemplo), e avance pro banco local quando o app precisar guardar e consultar muitos dados de forma organizada. Saber quando os dados ficam no aparelho e quando vão pro servidor é uma decisão de arquitetura que você toma o tempo todo no mobile.",
+            'Nem tudo precisa ir pro servidor. Muitas vezes o app precisa **guardar dados no próprio aparelho**: a preferência de tema do usuário, se ele já viu a tela de introdução, um rascunho não enviado, ou dados pra funcionar offline. Isso é o armazenamento local.\n\nExistem níveis, do mais simples ao mais robusto, e o conceito vale pras quatro stacks. Pra **dados pequenos e simples** (uma configuração, um sinalizador de "já abriu antes"), cada plataforma tem um mecanismo leve de chave e valor, que guarda pares como "tema = escuro". Pra **dados estruturados e maiores** (uma lista de itens que precisa sobreviver ao fechamento do app, buscas e relações), usa-se um **banco de dados local** no dispositivo, em geral baseado em SQLite ou em soluções construídas sobre ele.\n\nA regra prática pra escolher é o volume e a complexidade: configuração simples pede o mecanismo leve; muitos registros com consultas pedem banco local. Um cuidado importante de segurança e privacidade: dados sensíveis (senhas, tokens) não vão no armazenamento comum; cada plataforma tem um cofre seguro próprio pra esse tipo de informação.\n\nComece pelo armazenamento simples de chave e valor, que resolve a maioria das necessidades iniciais (lembrar uma preferência, por exemplo), e avance pro banco local quando o app precisar guardar e consultar muitos dados de forma organizada. Saber quando os dados ficam no aparelho e quando vão pro servidor é uma decisão de arquitetura que você toma o tempo todo no mobile.',
         },
       ],
     },
@@ -446,8 +445,7 @@ export const mobile: RoadmapV2 = {
         {
           id: "publicacao.build",
           title: "Build e distribuição",
-          description:
-            "Gerar a versão final do app e enviá-la para a loja.",
+          description: "Gerar a versão final do app e enviá-la para a loja.",
           content:
             "Publicar exige transformar seu projeto numa **versão de produção**: um arquivo otimizado e assinado digitalmente, diferente da versão de desenvolvimento que roda no emulador. Essa assinatura é uma garantia de que o app veio mesmo de você, e as lojas a exigem.\n\nO processo geral é parecido nas plataformas: você gera o pacote final, cria a ficha do app na loja (com ícone, capturas e descrição), envia o pacote, preenche as informações de privacidade e submete pra revisão. Depois de aprovado, o app fica disponível. Escolha sua stack pra ver as especificidades.",
           byLanguage: {
@@ -506,6 +504,13 @@ export const mobile: RoadmapV2 = {
         "Construir um portfólio mobile e dar os primeiros passos rumo a uma vaga.",
       level: "avancado",
       children: [
+        {
+          id: "carreira.projeto",
+          title: "Projeto final: app offline-first",
+          description:
+            "Um app que funciona sem internet e sincroniza depois, o desafio que consolida a trilha.",
+          project: "app-offline-first-sync",
+        },
         {
           id: "carreira.entrar",
           title: "Entrar na carreira mobile",

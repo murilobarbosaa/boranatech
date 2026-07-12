@@ -9,6 +9,8 @@ import type {
   RoadmapResource,
 } from "@/lib/roadmapV2/types";
 import { displayProgress } from "@/lib/roadmapV2/progress";
+import { mirrorProjectFromTrail } from "@/lib/projectProgress";
+import { useAuth } from "@/contexts/AuthContext";
 import { projetos } from "@/lib/data";
 
 type RoadmapNodeItemProps = {
@@ -31,6 +33,16 @@ const MARKDOWN_COMPONENTS: Components = {
     <code className="rounded-[5px] border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-mono text-[0.8em] text-slate-800">
       {children}
     </code>
+  ),
+  // Bloco cercado. No react-markdown 10 nao existe prop `inline`: o code de
+  // bloco vem embrulhado em <pre>, entao o container escuro vive aqui e as
+  // variantes [&_code] neutralizam o estilo inline do <code> interno (vencem
+  // por especificidade, com ou sem linguagem anotada no fence, que por ora e
+  // ignorada; sem syntax highlighting de proposito).
+  pre: ({ children }) => (
+    <pre className="mt-3 overflow-x-auto rounded-[10px] border-[2.5px] border-slate-900 bg-slate-900 p-4 leading-relaxed [&_code]:block [&_code]:rounded-none [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0 [&_code]:font-mono [&_code]:text-[0.82rem] [&_code]:text-slate-100">
+      {children}
+    </pre>
   ),
   ul: ({ children }) => (
     <ul className="mt-3 list-disc space-y-1.5 pl-5 text-[0.92rem] leading-relaxed text-slate-700 marker:text-slate-400">
@@ -68,9 +80,7 @@ function ProjectCard({
   checked: boolean;
   onToggleDone: () => void;
 }) {
-  const href = project.areaSlug
-    ? `/projetos?area=${project.areaSlug}`
-    : "/projetos";
+  const href = `/projetos/${project.id}`;
   return (
     <div className="mb-3 rounded-[14px] border-[2.5px] border-slate-900 bg-amber-50 p-4 shadow-[4px_4px_0_#0f172a]">
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -112,20 +122,33 @@ function ProjectCard({
   );
 }
 
+const RESOURCE_CHIP_CLASS =
+  "rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]";
+
 function ResourceChips({ resources }: { resources: RoadmapResource[] }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {resources.map((resource) => (
-        <a
-          key={`${resource.label}-${resource.url}`}
-          href={resource.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-[7px] border-2 border-slate-900 bg-violet-100 px-3 py-1.5 text-[0.78rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
-        >
-          {resource.label}
-        </a>
-      ))}
+      {resources.map((resource) =>
+        resource.url.startsWith("/") ? (
+          <Link
+            key={`${resource.label}-${resource.url}`}
+            href={resource.url}
+            className={RESOURCE_CHIP_CLASS}
+          >
+            {resource.label}
+          </Link>
+        ) : (
+          <a
+            key={`${resource.label}-${resource.url}`}
+            href={resource.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={RESOURCE_CHIP_CLASS}
+          >
+            {resource.label}
+          </a>
+        ),
+      )}
     </div>
   );
 }
@@ -220,6 +243,8 @@ function GroupItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
 }
 
 function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [bodyOpen, setBodyOpen] = useState(false);
   const checked = done.has(node.id);
   const optional = node.optional === true;
@@ -227,6 +252,14 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
   const project = node.project
     ? projetos.find((p) => p.id === node.project)
     : undefined;
+  // node.project que nao resolve no catalogo (id removido/renomeado, ou texto
+  // livre de roadmap de IA antigo): card minimo em vez de sumir em silencio.
+  const projectUnresolved = Boolean(node.project && !project);
+  if (projectUnresolved && import.meta.env.DEV) {
+    console.warn(
+      `[roadmapV2] node.project "${node.project}" (no ${node.id}) nao resolve no catalogo de projetos`,
+    );
+  }
   const hasResources = Boolean(node.resources && node.resources.length > 0);
   const hasLangResources = Boolean(
     langContent?.resources && langContent.resources.length > 0,
@@ -235,6 +268,7 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
     Boolean(node.content) ||
     Boolean(langContent?.content) ||
     Boolean(project) ||
+    projectUnresolved ||
     hasResources ||
     hasLangResources;
 
@@ -306,8 +340,32 @@ function LeafItem({ node, done, language, onToggle }: RoadmapNodeItemProps) {
                 <ProjectCard
                   project={project}
                   checked={checked}
-                  onToggleDone={() => onToggle(node.id)}
+                  onToggleDone={() => {
+                    onToggle(node.id);
+                    // Espelho trilha -> projeto (Fase 5b): o project_progress
+                    // acompanha o toggle do no. Projeto que nao resolve no
+                    // catalogo (card indisponivel) nao passa por aqui.
+                    mirrorProjectFromTrail(project.id, !checked, userId);
+                  }}
                 />
+              )}
+              {projectUnresolved && (
+                <div className="mb-3 rounded-[14px] border-[2.5px] border-dashed border-slate-400 bg-slate-50 p-4">
+                  <span className="rounded-md border-2 border-slate-400 bg-white px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-wide text-slate-500">
+                    Projeto
+                  </span>
+                  <p className="mt-2 text-[0.86rem] font-medium leading-snug text-slate-600">
+                    {/* TODO(Ana): copy do card de projeto indisponivel */}
+                    Este projeto está indisponível no momento. Explore outros na
+                    página de projetos.
+                  </p>
+                  <Link
+                    href="/projetos"
+                    className="mt-3 inline-flex rounded-[9px] border-[2.5px] border-slate-900 bg-white px-3 py-1.5 text-[0.8rem] font-extrabold text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_#0f172a]"
+                  >
+                    Ver projetos
+                  </Link>
+                </div>
               )}
               {hasResources && (
                 <div className="pb-2.5">
@@ -338,7 +396,12 @@ export default function RoadmapNodeItem({
 }: RoadmapNodeItemProps) {
   const isGroup = Boolean(node.children && node.children.length > 0);
   return isGroup ? (
-    <GroupItem node={node} done={done} language={language} onToggle={onToggle} />
+    <GroupItem
+      node={node}
+      done={done}
+      language={language}
+      onToggle={onToggle}
+    />
   ) : (
     <LeafItem node={node} done={done} language={language} onToggle={onToggle} />
   );

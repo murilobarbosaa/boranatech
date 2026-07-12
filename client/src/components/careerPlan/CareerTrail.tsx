@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { MapPin } from "lucide-react";
+import { Flag, MapPin } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { FxRate } from "@/services/careerPlanService";
 import TrailStationCard from "./TrailStationCard";
+import { useTrailScroll } from "./useTrailScroll";
 import type { TrailStationVM } from "./types";
 
 interface CareerTrailProps {
@@ -18,10 +21,20 @@ interface CareerTrailProps {
   // Ao montar com progresso conhecido, rola a trilha ate a estacao "voce
   // esta aqui" (so o scroll horizontal do container; a pagina nao se move).
   autoScrollToCurrent?: boolean;
+  // Modo destaque do PlanResult: conector serpenteado, marcos entre estacoes,
+  // bandeira de chegada, gaps maiores e cards maiores no desktop. A vitrine
+  // da entrada NAO passa a prop e continua com o visual compacto.
+  decorated?: boolean;
+  // Cotacao PTAX (ou null): repassada aos trofeus ancorados para o "≈ R$"
+  // ao lado do preco em USD.
+  fx?: FxRate | null;
 }
 
 // Trilha horizontal do plano de carreira: scroll nativo com CSS scroll-snap,
 // sem lib de carrossel. Irma conceitual da trilha vertical do RoadmapsV2.
+// O arrasto com maozinha vem do useTrailScroll; snap-proximity (nao
+// mandatory) com snap desligado durante o arrasto, para o card assentar de
+// leve perto do ponto de snap sem o efeito borracha do mandatory ao soltar.
 export default function CareerTrail({
   stations,
   currentStationIndex,
@@ -31,9 +44,12 @@ export default function CareerTrail({
   readonly = false,
   catalogVersion = null,
   autoScrollToCurrent = false,
+  decorated = false,
+  fx = null,
 }: CareerTrailProps) {
   const reduce = useReducedMotion() ?? false;
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const { dragging, handlers } = useTrailScroll(scrollRef);
   const wrapperRefs = useRef<Array<HTMLDivElement | null>>([]);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const didAutoScroll = useRef(false);
@@ -143,15 +159,43 @@ export default function CareerTrail({
       </div>
 
       <div className="relative mt-4">
-        {/* Conector da trilha: reto nesta fase; serpentear e polish futuro. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-0 right-0 top-20 z-0 border-t-2 border-dashed border-slate-950/20"
-        />
+        {/* Conector da trilha: caminho tracejado com leve serpenteio no modo
+            destaque (mesmo espirito do RoadmapsV2, deitado); reto no modo
+            compacto da vitrine. */}
+        {decorated ? (
+          <svg
+            aria-hidden
+            viewBox="0 0 1200 64"
+            preserveAspectRatio="none"
+            fill="none"
+            className="pointer-events-none absolute left-0 right-0 top-12 z-0 h-16 w-full text-slate-950/25"
+          >
+            <path
+              d="M0 32 Q 100 12 200 32 T 400 32 T 600 32 T 800 32 T 1000 32 T 1200 32"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeDasharray="10 12"
+              strokeLinecap="round"
+            />
+          </svg>
+        ) : (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-0 right-0 top-20 z-0 border-t-2 border-dashed border-slate-950/20"
+          />
+        )}
         <div
           ref={scrollRef}
           onKeyDown={handleKeyDown}
-          className="relative z-10 -mx-2 flex snap-x snap-mandatory items-start gap-5 overflow-x-auto px-2 pb-4 pt-2"
+          {...handlers}
+          style={{ scrollSnapType: dragging ? "none" : undefined }}
+          className={cn(
+            "relative z-10 -mx-2 flex snap-x snap-proximity items-start overflow-x-auto px-2 pb-4 pt-2",
+            decorated ? "gap-10 md:gap-20 lg:gap-28" : "gap-5",
+            dragging
+              ? "cursor-grabbing select-none [&_*]:pointer-events-none"
+              : "cursor-grab",
+          )}
         >
           {stations.map((station, index) => (
             <motion.div
@@ -162,7 +206,14 @@ export default function CareerTrail({
               // Largura fluida no mobile (com espiada dos vizinhos via
               // snap-center), fixa no desktop. Sem altura fixa: overflow
               // vertical proibido.
-              className="relative w-[min(82vw,340px)] shrink-0 snap-center pt-4 lg:w-[360px]"
+              // No modo destaque o card mobile encolhe um pouco (72vw) para a
+              // espiada do proximo card sobreviver ao gap-10 em 375px.
+              className={cn(
+                "relative shrink-0 snap-center pt-4",
+                decorated
+                  ? "w-[min(72vw,340px)] lg:w-[400px]"
+                  : "w-[min(82vw,340px)] lg:w-[360px]",
+              )}
               initial={reduce ? false : { opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
@@ -171,6 +222,15 @@ export default function CareerTrail({
                 ease: "easeOut",
               }}
             >
+              {decorated && index < stations.length - 1 ? (
+                // Marco discreto no centro do caminho entre esta estacao e a
+                // proxima: offset = metade do gap + metade do marco (gap-10 no
+                // mobile, gap-20 no md, gap-28 no lg).
+                <span
+                  aria-hidden
+                  className="absolute -right-[25px] top-[67px] z-0 h-2.5 w-2.5 rotate-45 rounded-[2px] border-2 border-slate-950/60 bg-amber-300 md:-right-[45px] lg:-right-[61px]"
+                />
+              ) : null}
               {currentStationIndex === index ? (
                 <span className="absolute left-1/2 top-0 z-20 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-950 bg-[#FFB800] px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
                   <MapPin className="h-3 w-3" aria-hidden />
@@ -196,12 +256,22 @@ export default function CareerTrail({
                 onToggleItem={onToggleItem}
                 readonly={readonly}
                 catalogVersion={catalogVersion}
+                fx={fx}
                 buttonRef={(el) => {
                   buttonRefs.current[index] = el;
                 }}
               />
             </motion.div>
           ))}
+          {decorated ? (
+            // Chegada da trilha: bandeira alinhada ao caminho, depois da
+            // ultima estacao. Puramente decorativa.
+            <div aria-hidden className="flex shrink-0 items-start pr-1 pt-4">
+              <span className="mt-7 grid h-14 w-14 place-items-center rounded-full border-2 border-slate-950 bg-[#FFB800] shadow-[3px_3px_0_#0f172a]">
+                <Flag className="h-6 w-6 text-slate-950" strokeWidth={2.5} />
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

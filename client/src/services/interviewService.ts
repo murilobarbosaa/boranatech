@@ -7,18 +7,34 @@ import { supabase } from "@/lib/supabase";
 // retorno DISCRIMINADO (nao excecao) pro form cair no modo de colar texto.
 
 export type InterviewKind = "job" | "general";
+export type InterviewLanguage = "pt" | "en";
 export type InterviewRating = "boa" | "mediana" | "fraca";
 export type InterviewStatus = "active" | "completed";
 
 export interface InterviewEvaluation {
   rating: InterviewRating;
   feedback: string;
+  // Marcador estrutural do turno avaliado que FECHOU a sessao (content =
+  // feedback, sem proxima pergunta). Ausente em turnos normais e em sessoes
+  // anteriores ao marcador (o client mantem fallback legado).
+  terminal?: boolean;
 }
+
+// Contadores pos-turno vindos DIRETO do server (dado real, nunca calculado
+// no client): alimentam o indicador de preparo ao vivo.
+export interface InterviewProgress {
+  questionCount: number;
+  goodCount: number;
+  goodStreak: number;
+}
+
+export type InterviewTurnKind = "answer" | "hint" | "closing";
 
 export interface InterviewVerdict {
   result: "prepared" | "question_cap" | "stopped_early";
   goodCount: number;
   questionCount: number;
+  hintsUsed?: number;
   closing?: string;
 }
 
@@ -27,9 +43,15 @@ export interface InterviewSessionSummary {
   kind: InterviewKind;
   area: string | null;
   level: string | null;
+  // not null no banco (default 'pt' desde a migration da E1).
+  language: InterviewLanguage;
   status: InterviewStatus;
   question_count: number;
   good_count: number;
+  // null enquanto a sessao esta ativa. A UI e fail-closed: badge de Preparado
+  // SO quando verdict.result === "prepared"; null/ausente = sem badge, nunca
+  // inferido dos contadores.
+  verdict: InterviewVerdict | null;
   created_at: string;
 }
 
@@ -38,11 +60,15 @@ export interface InterviewTurn {
   role: "assistant" | "user";
   content: string;
   evaluation: InterviewEvaluation | null;
+  kind: InterviewTurnKind;
   created_at: string;
 }
 
 export interface InterviewSessionDetail extends InterviewSessionSummary {
   verdict: InterviewVerdict | null;
+  // Sequencia atual de respostas boas (o select do getSession ja a traz);
+  // inicializa o indicador de preparo na retomada.
+  good_streak: number;
   updated_at: string;
   turns: InterviewTurn[];
 }
@@ -51,6 +77,7 @@ export interface CreateSessionInput {
   kind: InterviewKind;
   area: string;
   level: string;
+  language: InterviewLanguage;
   jobUrl?: string;
   jobText?: string;
 }
@@ -64,6 +91,7 @@ export interface AnswerResult {
   nextQuestion: string | null;
   done: boolean;
   verdict?: InterviewVerdict;
+  progress?: InterviewProgress;
 }
 
 export type InterviewErrorCode =
@@ -225,6 +253,26 @@ export async function sendAnswer(
   return body.data;
 }
 
+export async function requestHint(sessionId: string): Promise<string> {
+  const response = await request(
+    `/sessions/${encodeURIComponent(sessionId)}/hint`,
+    { method: "POST" },
+  );
+
+  if (!response.ok) {
+    throw toApiError(response.status, await readBody(response));
+  }
+
+  const body = (await response.json()) as { data?: { hint?: string } };
+  if (!body.data?.hint) {
+    throw new InterviewApiError(
+      "unavailable",
+      "Resposta inesperada ao pedir a dica.",
+    );
+  }
+  return body.data.hint;
+}
+
 export async function finishSession(
   sessionId: string,
 ): Promise<InterviewVerdict> {
@@ -245,6 +293,17 @@ export async function finishSession(
     );
   }
   return body.data.verdict;
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  const response = await request(
+    `/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "DELETE" },
+  );
+  // 404 vira not_found: a sessao ja nao existia; o caller remove da lista.
+  if (!response.ok) {
+    throw toApiError(response.status, await readBody(response));
+  }
 }
 
 export async function listSessions(): Promise<InterviewSessionSummary[]> {

@@ -83,6 +83,19 @@ export const env = {
     process.env.INTERVIEW_DAILY_TURN_LIMIT_PRO || "150",
     10,
   ),
+  // Voz do Natechinho nas entrevistas (E5). Chave e voice id OPCIONAIS no
+  // padrao currentsApiKey: vazios desligam a feature (a rota de fala responde
+  // 503 tts_unavailable e nada mais quebra).
+  elevenLabsApiKey: process.env.ELEVENLABS_API_KEY || "",
+  elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || "",
+  elevenLabsModelId:
+    process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2",
+  // Teto diario de geracoes de fala da entrevista.
+  // TODO: calibrar INTERVIEW_TTS_DAILY_LIMIT_PRO.
+  interviewTtsDailyLimitPro: parseInt(
+    process.env.INTERVIEW_TTS_DAILY_LIMIT_PRO || "200",
+    10,
+  ),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;
@@ -93,6 +106,16 @@ export const env = {
   })(),
   currentsApiKey: process.env.CURRENTS_API_KEY || "",
   joobleApiKey: process.env.JOOBLE_API_KEY || "",
+  // Vagas multi-fonte (fase 2). Opcionais no padrao currentsApiKey: vazias
+  // desligam a fonte com warn no sync, nada mais quebra.
+  adzunaAppId: process.env.ADZUNA_APP_ID || "",
+  adzunaAppKey: process.env.ADZUNA_APP_KEY || "",
+  // Token de leitura dos repos de vagas do GitHub. Precedencia: a env
+  // dedicada GITHUB_VAGAS_TOKEN ganha; sem ela, reusa o GITHUB_TOKEN do
+  // avaliador de GitHub (leitura publica, qualquer token serve); sem nenhum,
+  // o adapter roda sem auth em modo reduzido (1 pagina) com warn.
+  githubVagasToken:
+    process.env.GITHUB_VAGAS_TOKEN || process.env.GITHUB_TOKEN || "",
   posthogApiKey: process.env.POSTHOG_API_KEY || "",
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
   resendApiKey: process.env.RESEND_API_KEY || "",
