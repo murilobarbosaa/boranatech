@@ -69,6 +69,14 @@ const levelTrack: { level: EnglishLevel; actions: string[]; exit: string }[] = [
   },
 ];
 
+// Slug ASCII por nivel, pra ancorar o roadmap por nivel (o CTA da trilha leva
+// pra ca, na etapa do nivel da pessoa).
+const LEVEL_SLUG: Record<EnglishLevel, string> = {
+  Básico: "basico",
+  Intermediário: "intermediario",
+  Avançado: "avancado",
+};
+
 const navCards = [
   {
     href: "/ingles/onde-estudar",
@@ -286,7 +294,8 @@ export default function Ingles() {
                 return (
                   <div
                     key={level}
-                    className="card-brutal flex flex-col rounded-2xl bg-white p-5"
+                    id={`roadmap-nivel-${LEVEL_SLUG[level]}`}
+                    className="card-brutal flex flex-col scroll-mt-24 rounded-2xl bg-white p-5"
                   >
                     <p className="social-badge inline-flex self-start px-3 py-1 text-xs font-black uppercase">
                       {level}
