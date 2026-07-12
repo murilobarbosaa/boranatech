@@ -1,21 +1,20 @@
 /*
   BORA NA TECH? (Vagas Page)
   Style: Neo-Brutalism Suavizado, padrao visual Pro (molde: LinkedinAnalisar)
+  Fase 3: pagina 100% Pro. Free/deslogado ve showcase ilustrativo + ProGate;
+  assinante ve destaques, feed com busca/filtros e detalhe. Nenhuma chamada a
+  /api/vagas acontece sem isPro: os componentes Pro so montam para assinante.
 */
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Briefcase,
   FileText,
-  Layers,
   Linkedin,
   Map,
   MessagesSquare,
-  RefreshCw,
-  Search,
-  SlidersHorizontal,
   Sparkles,
   Wand2,
 } from "lucide-react";
@@ -23,73 +22,17 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
 import SectionLabel from "@/components/shared/SectionLabel";
-import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import VagasBackdrop from "@/components/vagas/VagasBackdrop";
-import VagasJobCard, { type VagasJob } from "@/components/vagas/VagasJobCard";
+import VagasDestaques from "@/components/vagas/VagasDestaques";
+import VagasDetailDialog from "@/components/vagas/VagasDetailDialog";
+import VagasFeed from "@/components/vagas/VagasFeed";
 import VagasLegacySections from "@/components/vagas/VagasLegacySections";
+import VagasShowcase from "@/components/vagas/VagasShowcase";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
-import { apiFetch } from "@/services/contentApi";
 import { cn } from "@/lib/utils";
 
 const ac = getPageAccentUi("cyan");
-
-const SAMPLE_LIMIT = 6;
-
-// A amostra fala direto com apiFetch (e nao com o getJobs de contentApi)
-// porque o getJobs engole erro de rede devolvendo lista vazia, e aqui erro e
-// vazio sao estados distintos por contrato da pagina.
-function mapJob(row: Record<string, unknown>): VagasJob {
-  return {
-    id: String(row.id ?? ""),
-    title: typeof row.title === "string" ? row.title : "",
-    company:
-      typeof row.company === "string" && row.company
-        ? row.company
-        : "Empresa não informada",
-    location:
-      row.remote === true
-        ? "Remoto"
-        : typeof row.location === "string" && row.location
-          ? row.location
-          : "Brasil",
-    remote: row.remote === true,
-    seniority:
-      typeof row.seniority === "string" && row.seniority
-        ? row.seniority
-        : "junior",
-    url: typeof row.url === "string" ? row.url : "",
-    areaSlug: typeof row.area_slug === "string" ? row.area_slug : "",
-    publishedAt:
-      typeof row.published_at === "string" ? row.published_at : null,
-  };
-}
-
-type SampleStatus = "loading" | "error" | "ready";
-
-// TODO(Ana): copy dos cards do que vem no Pro.
-const PRO_PREVIEW_CARDS = [
-  {
-    Icon: Search,
-    title: "Busca por cargo e tecnologia",
-    desc: "Encontre vagas pelo nome do cargo, tecnologia ou empresa, sem depender da sorte do feed.",
-  },
-  {
-    Icon: SlidersHorizontal,
-    title: "Filtros avançados",
-    desc: "Filtre por nível, tipo de contrato, modalidade, cidade e faixa salarial quando informada.",
-  },
-  {
-    Icon: Layers,
-    title: "Vagas de várias fontes",
-    desc: "Um feed único agregando vagas reais de múltiplas plataformas, sem abrir dez abas.",
-  },
-  {
-    Icon: Wand2,
-    title: "Preparação por vaga",
-    desc: "De cada vaga, siga direto para treinar a entrevista, ajustar o currículo e o LinkedIn.",
-  },
-];
 
 // TODO(Ana): copy dos cards de ponte para as outras ferramentas.
 const BRIDGE_LINKS = [
@@ -119,47 +62,10 @@ const BRIDGE_LINKS = [
   },
 ];
 
-function SampleSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: SAMPLE_LIMIT }, (_, i) => (
-        <div
-          key={i}
-          className="h-44 animate-pulse rounded-2xl border-2 border-slate-200 bg-white p-5"
-        >
-          <div className="h-4 w-16 rounded-full bg-slate-200" />
-          <div className="mt-4 h-5 w-3/4 rounded bg-slate-200" />
-          <div className="mt-3 h-4 w-1/2 rounded bg-slate-100" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function Vagas() {
   const { isPro } = useSubscription();
   const reduce = useReducedMotion() ?? false;
-
-  const [sampleStatus, setSampleStatus] = useState<SampleStatus>("loading");
-  const [jobs, setJobs] = useState<VagasJob[]>([]);
-
-  const loadSample = useCallback(async () => {
-    setSampleStatus("loading");
-    try {
-      const json = (await apiFetch(`/jobs?limit=${SAMPLE_LIMIT}`)) as {
-        data?: unknown;
-      };
-      const rows = Array.isArray(json.data) ? json.data : [];
-      setJobs(rows.map((row) => mapJob(row as Record<string, unknown>)));
-      setSampleStatus("ready");
-    } catch {
-      setSampleStatus("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadSample();
-  }, [loadSample]);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   return (
     <Layout>
@@ -218,111 +124,28 @@ export default function Vagas() {
             </p>
           </motion.div>
 
-          {/* AMOSTRA gratis: feed basico visivel para todo mundo. Estados
-              loading, error e empty sao distintos por contrato; erro nunca
-              vira lista vazia. */}
-          <div className="mb-12">
-            {/* TODO(Ana): validar titulo e copy da secao de amostra. */}
-            <SectionLabel icon={Sparkles} ac={ac}>
-              Amostra grátis
-            </SectionLabel>
-            <h2 className="mt-2 font-display text-2xl font-black text-slate-950">
-              Últimas vagas sincronizadas
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              Uma amostra do feed. A busca completa, com filtros e todas as
-              fontes, é Pro.
-            </p>
-            <div className="mt-6">
-              {sampleStatus === "loading" ? (
-                <SampleSkeleton />
-              ) : sampleStatus === "error" ? (
-                <div className="card-brutal rounded-2xl border-2 border-slate-950 bg-white p-6">
-                  {/* TODO(Ana): validar a copy do estado de erro. */}
-                  <p className="font-display text-lg font-black text-slate-950">
-                    Não conseguimos carregar as vagas agora
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Pode ser uma instabilidade momentânea. Tente de novo em
-                    alguns segundos.
-                  </p>
-                  <BrutalActionButton
-                    className="mt-4"
-                    icon={<RefreshCw className="h-4 w-4" aria-hidden />}
-                    onClick={() => void loadSample()}
-                  >
-                    Tentar de novo
-                  </BrutalActionButton>
-                </div>
-              ) : jobs.length === 0 ? (
-                <div className="card-brutal rounded-2xl border-2 border-slate-950 bg-white p-6">
-                  {/* TODO(Ana): validar a copy do estado vazio. */}
-                  <p className="font-display text-lg font-black text-slate-950">
-                    Nenhuma vaga sincronizada no momento
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    O feed é atualizado ao longo do dia. Volte mais tarde para
-                    ver novas oportunidades.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {jobs.slice(0, SAMPLE_LIMIT).map((job) => (
-                    <VagasJobCard key={job.id} job={job} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Area PRO: gate para free (corpo Pro fora do DOM); para Pro, um
-              placeholder estruturado do que chega nas proximas fases, sem
-              chamadas de API novas. */}
-          <div className="mb-14">
-            {/* TODO(Ana): validar titulo da secao Pro. */}
-            <SectionLabel icon={Search} ac={ac}>
-              Busca completa
-            </SectionLabel>
-            <h2 className="mb-6 mt-2 font-display text-2xl font-black text-slate-950">
-              O feed completo, do jeito que você precisa
-            </h2>
-            {!isPro ? (
-              <ProGate description="O feed completo agrega vagas reais de estágio, trainee e júnior de várias fontes, com busca, filtros por nível, contrato, modalidade e cidade, e pontes de preparação para cada vaga." />
-            ) : (
-              <div className="grid gap-5 md:grid-cols-2">
-                {PRO_PREVIEW_CARDS.map(({ Icon, title, desc }) => (
-                  <div
-                    key={title}
-                    className="card-brutal rounded-2xl border-2 border-slate-950 bg-white p-6"
-                  >
-                    <span
-                      className={cn(
-                        "inline-flex h-11 w-11 items-center justify-center rounded-xl border-2",
-                        ac.panelBorder,
-                        ac.panelSoft,
-                        ac.iconMuted,
-                      )}
-                      aria-hidden
-                    >
-                      <Icon className="h-6 w-6" />
-                    </span>
-                    <h3 className="mt-3 font-display text-lg font-black text-slate-950">
-                      {title}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-600">{desc}</p>
-                    <p
-                      className={cn(
-                        "mt-3 text-xs font-black uppercase tracking-wide",
-                        ac.tbodyAccent,
-                      )}
-                    >
-                      Em construção
-                    </p>
-                  </div>
-                ))}
+          {!isPro ? (
+            <div className="mb-14 space-y-10">
+              {/* Vitrine ilustrativa para free/deslogado: nenhum dado real,
+                  nenhuma chamada de API. */}
+              <div>
+                {/* TODO(Ana): validar titulo e copy da vitrine. */}
+                <SectionLabel icon={Sparkles} ac={ac}>
+                  Como funciona
+                </SectionLabel>
+                <h2 className="mb-6 mt-2 font-display text-2xl font-black text-slate-950">
+                  Um feed só com o que importa pra quem está começando
+                </h2>
+                <VagasShowcase />
               </div>
-            )}
-          </div>
+              <ProGate description="O feed reúne vagas reais de estágio, trainee e júnior de várias fontes (Brasil e internacional), com busca, filtros por nível, modalidade e contrato, e vagas em destaque." />
+            </div>
+          ) : (
+            <div className="mb-2">
+              <VagasDestaques onOpen={setOpenId} />
+              <VagasFeed onOpen={setOpenId} />
+            </div>
+          )}
 
           <div className="mb-14">
             <VagasLegacySections />
@@ -355,6 +178,7 @@ export default function Vagas() {
           </div>
         </div>
       </section>
+      {isPro ? <VagasDetailDialog id={openId} onClose={() => setOpenId(null)} /> : null}
     </Layout>
   );
 }
