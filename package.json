@@ -18,7 +18,7 @@
     "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" --external:@supabase/supabase-js --external:@supabase/* --external:@sentry/node --external:bullmq --external:ioredis --external:sharp --external:@img/sharp-linux-x64 --external:@img/sharp-darwin-x64 --external:@img/sharp-win32-x64",
     "start": "NODE_ENV=production node dist/index.js",
     "preview": "vite preview --host",
-    "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check",
+    "check": "tsc --noEmit && tsx scripts/generateRoadmapMeta.mts --check && tsx scripts/checkCspHashes.mts",
     "posters": "tsx scripts/fetch-tmdb-posters.mjs",
     "seed:content": "tsx server/scripts/seed-content.ts",
     "test": "vitest run",
