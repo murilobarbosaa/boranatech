@@ -224,11 +224,6 @@ const menuData: DropdownMenu[] = [
             path: "/curriculo/gerar",
             isPro: true,
           },
-          {
-            label: "Portfólio",
-            description: "Monte um portfólio que gera entrevistas",
-            path: "/portfolio",
-          },
         ],
       },
       {
@@ -274,11 +269,6 @@ const menuData: DropdownMenu[] = [
             label: "Salários",
             description: "Tabela salarial e calculadoras",
             path: "/salarios",
-          },
-          {
-            label: "Ranking",
-            description: "Empresas com mais vagas para júnior",
-            path: "/empresas/ranking-junior",
           },
         ],
       },
