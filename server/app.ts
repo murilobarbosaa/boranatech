@@ -154,6 +154,9 @@ const CSP_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: https:",
+  // blob: para o player de audio das entrevistas (E5): o client monta Blob do
+  // audio e toca via URL blob:, que nao e coberta por 'self'.
+  "media-src 'self' blob:",
   [
     "connect-src 'self'",
     "https://api.boranatech.com.br",
