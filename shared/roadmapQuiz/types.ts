@@ -27,8 +27,15 @@ export interface QuizPool {
   questions: QuizQuestion[];
 }
 
-// Shape publico: o unico que a API pode expor ao client (sem gabarito).
-export type PublicQuizQuestion = Omit<QuizQuestion, "correta" | "explicacao">;
+// Shape publico: o unico que a API pode expor ao client (sem gabarito). As
+// alternativas viram array na ordem de exibicao embaralhada do snapshot da
+// tentativa; o Record a-d do pool e convertido na borda pelo server.
+export type PublicQuizQuestion = Omit<
+  QuizQuestion,
+  "correta" | "explicacao" | "alternativas"
+> & {
+  alternativas: Array<{ id: QuizAlternativaId; texto: string }>;
+};
 
 // Uma tentativa sorteia 10 perguntas (3 iniciante, 4 intermediario,
 // 3 avancado) e aprova com 6 acertos ou mais.
