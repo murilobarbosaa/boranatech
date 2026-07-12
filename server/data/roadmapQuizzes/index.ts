@@ -6,9 +6,13 @@
 // SERVER-ONLY: ver README.md desta pasta.
 import type { QuizPool } from "../../../shared/roadmapQuiz/types";
 import backend from "./backend";
+import dados from "./dados";
 import frontend from "./frontend";
+import fullstack from "./fullstack";
 
 export const roadmapQuizPools: Record<string, QuizPool> = {
   backend,
+  dados,
   frontend,
+  fullstack,
 };

@@ -55,7 +55,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 25,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "dados",
@@ -66,7 +66,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 8,
     "stepCount": 27,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "uxui",
