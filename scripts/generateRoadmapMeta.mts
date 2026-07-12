@@ -4,15 +4,19 @@
 // espelhamento de conclusao da Fase 5b). Ambos derivados do agregado real em
 // build time. Rodar com: pnpm gen:roadmap-meta (tsx resolve os paths).
 // Modo --check: regenera os dois em memoria e compara com o disco; valida
-// tambem que todo project de trilha resolve no catalogo de shared e que o
-// mapa de loaders esta em sincronia; divergencia sai com codigo 1.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// tambem que todo project de trilha resolve no catalogo de shared, que o
+// mapa de loaders esta em sincronia, que os pools de quiz de
+// server/data/roadmapQuizzes sao validos e que nada em client/src referencia
+// esses pools (gabarito e server-only); divergencia sai com codigo 1.
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { projetos } from "../shared/projects/catalog";
+import type { QuizPool } from "../shared/roadmapQuiz/types";
 import { roadmapsV2 } from "../shared/roadmapV2/content";
 import type { RoadmapMeta } from "../shared/roadmapV2/meta";
 import type { RoadmapNode } from "../shared/roadmapV2/types";
+import { validateQuizPool } from "./quizPoolValidation.mts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(ROOT, "shared", "roadmapV2", "meta.generated.ts");
@@ -80,8 +84,10 @@ function collectLeaves(nodes: RoadmapNode[]): RoadmapNode[] {
 
 const projectIds = new Set(projetos.map((p) => p.id));
 const unknownProjects: string[] = [];
-const projectLinks: Record<string, Array<{ slug: string; nodeId: string }>> =
-  {};
+const projectLinks: Record<
+  string,
+  Array<{ slug: string; nodeId: string }>
+> = {};
 for (const roadmap of roadmapsV2) {
   for (const section of roadmap.sections) {
     for (const leaf of collectLeaves(section.children)) {
@@ -145,6 +151,58 @@ function checkLoaders(): string[] {
   return problems;
 }
 
+// Pools de quiz (fase 4.1): valida cada server/data/roadmapQuizzes/<slug>.ts
+// contra a trilha correspondente e garante que nenhum arquivo de client/src
+// referencia a pasta (o pool contem gabarito e e server-only). A checagem de
+// leak e textual, igual a de loaders: qualquer ocorrencia da string
+// "roadmapQuizzes" em client/src e erro, sem excecao.
+const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
+const CLIENT_SRC = path.join(ROOT, "client", "src");
+
+async function checkQuizPools(): Promise<string[]> {
+  if (!existsSync(QUIZ_DIR)) return [];
+  const problems: string[] = [];
+  const files = readdirSync(QUIZ_DIR)
+    .filter((file) => file.endsWith(".ts"))
+    .sort();
+  for (const file of files) {
+    const fileSlug = file.replace(/\.ts$/, "");
+    const mod = (await import(
+      pathToFileURL(path.join(QUIZ_DIR, file)).href
+    )) as { default?: QuizPool };
+    if (!mod.default) {
+      problems.push(`pool ${fileSlug}: arquivo sem export default`);
+      continue;
+    }
+    const roadmap = roadmapsV2.find((entry) => entry.slug === fileSlug) ?? null;
+    problems.push(...validateQuizPool(mod.default, fileSlug, roadmap));
+  }
+  return problems;
+}
+
+function checkQuizLeak(): string[] {
+  const problems: string[] = [];
+  const stack = [CLIENT_SRC];
+  while (stack.length > 0) {
+    const dir = stack.pop()!;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (/\.(ts|tsx)$/.test(entry.name)) {
+        if (readFileSync(full, "utf8").includes("roadmapQuizzes")) {
+          problems.push(
+            `${path.relative(ROOT, full)} referencia roadmapQuizzes (pool com gabarito e server-only)`,
+          );
+        }
+      }
+    }
+  }
+  return problems;
+}
+
+const quizProblems = [...(await checkQuizPools()), ...checkQuizLeak()];
+
 const checkMode = process.argv.includes("--check");
 
 if (checkMode) {
@@ -181,13 +239,18 @@ if (checkMode) {
     failed = true;
   }
 
+  for (const problem of quizProblems) {
+    console.error(`[generateRoadmapMeta] ${problem}`);
+    failed = true;
+  }
+
   if (failed) process.exit(1);
   console.log(
     "[generateRoadmapMeta] meta.generated.ts e projectLinks.generated.ts em sincronia.",
   );
 } else {
-  if (unknownProjects.length > 0) {
-    for (const problem of unknownProjects) {
+  if (unknownProjects.length > 0 || quizProblems.length > 0) {
+    for (const problem of [...unknownProjects, ...quizProblems]) {
       console.error(`[generateRoadmapMeta] ${problem}`);
     }
     process.exit(1);

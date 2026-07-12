@@ -13,6 +13,7 @@
     "generate:counts": "tsx scripts/generateCounts.mts",
     "generate:home-data": "tsx scripts/generateHomeData.mts",
     "gen:roadmap-meta": "tsx scripts/generateRoadmapMeta.mts",
+    "gen:quiz-pool": "tsx scripts/generateQuizPool.mts",
     "prebuild": "pnpm generate:counts && pnpm generate:home-data",
     "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" --external:@supabase/supabase-js --external:@supabase/* --external:@sentry/node --external:bullmq --external:ioredis --external:sharp --external:@img/sharp-linux-x64 --external:@img/sharp-darwin-x64 --external:@img/sharp-win32-x64",
     "start": "NODE_ENV=production node dist/index.js",
