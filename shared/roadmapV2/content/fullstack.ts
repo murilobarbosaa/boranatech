@@ -1,3 +1,6 @@
+// TODO(Ana): revisao editorial do upgrade da fase 3c, lote 2 (folha nova de
+// testes, fecho do projeto elevado, fechos de criterio de dominio, conexoes
+// nominais front/back, blocos de codigo e resources novos).
 import type { RoadmapV2 } from "../types";
 
 export const fullstack: RoadmapV2 = {
@@ -56,7 +59,7 @@ export const fullstack: RoadmapV2 = {
           description:
             "A forma de dar ordens ao computador por texto, presente nas duas pontas do trabalho.",
           content:
-            "O terminal é um programa onde você comanda o computador digitando em vez de clicar. Parece antiquado, mas é o contrário: é uma das ferramentas mais usadas no desenvolvimento, porque é rápida, precisa e funciona em qualquer servidor, inclusive nos que não têm tela.\n\nComo full-stack, você vai abrir o terminal o tempo todo: instalar o Node, rodar o servidor do back-end, subir o front-end em modo de desenvolvimento, usar o Git, ver logs de erro e publicar o projeto. Os dois lados passam por aqui.\n\nO básico cabe em poucos comandos: `cd` entra numa pasta, `ls` lista o conteúdo (no Windows, `dir`), `mkdir` cria uma pasta e `pwd` mostra onde você está. Com esses quatro você já navega por qualquer projeto.\n\nNão precisa decorar dezenas de comandos. A fluência vem do uso: abra o terminal, navegue até uma pasta sua, crie outra, entre nela. Em uma semana de prática isso vira automático, e cada etapa seguinte da trilha vai reforçar o hábito.",
+            "O terminal é um programa onde você comanda o computador digitando em vez de clicar. Parece antiquado, mas é o contrário: é uma das ferramentas mais usadas no desenvolvimento, porque é rápida, precisa e funciona em qualquer servidor, inclusive nos que não têm tela.\n\nComo full-stack, você vai abrir o terminal o tempo todo: instalar o Node, rodar o servidor do back-end, subir o front-end em modo de desenvolvimento, usar o Git, ver logs de erro e publicar o projeto. Os dois lados passam por aqui.\n\nO básico cabe em poucos comandos: `cd` entra numa pasta, `ls` lista o conteúdo (no Windows, `dir`), `mkdir` cria uma pasta e `pwd` mostra onde você está. Com esses quatro você já navega por qualquer projeto.\n\nNão precisa decorar dezenas de comandos. A fluência vem do uso: abra o terminal, navegue até uma pasta sua, crie outra, entre nela. Você domina este passo quando chega em qualquer pasta do computador e monta a estrutura de um projeto sem tocar no mouse; cada etapa seguinte da trilha vai reforçar o hábito.",
           resources: [
             {
               label: "Ubuntu: linha de comando pra iniciantes",
@@ -147,8 +150,7 @@ export const fullstack: RoadmapV2 = {
         {
           id: "frontend.estado",
           title: "Estado e eventos",
-          description:
-            "Como a tela reage ao usuário e se mantém atualizada.",
+          description: "Como a tela reage ao usuário e se mantém atualizada.",
           optional: true,
           content:
             "Uma interface viva responde a ações: digitar, clicar, marcar uma caixa. No React, isso se organiza em torno de duas ideias que vale aprofundar antes de partir pro back-end.\n\nA primeira são os **eventos**. Você liga uma função a uma ação do usuário, como `onClick` num botão ou `onChange` num campo de texto. Quando o usuário age, sua função roda. É assim que um formulário captura o que foi digitado e um botão dispara uma busca.\n\nA segunda é o **estado**, que você gerencia com o `useState`. Pense num campo de busca: cada letra digitada atualiza o estado, e o React redesenha a tela mostrando o valor novo. A regra de ouro é não alterar variáveis na mão pra mexer na tela; você muda o estado e deixa o React cuidar de redesenhar.\n\nEsses dois conceitos preparam o terreno pra parte mais importante pro full-stack: buscar dados de uma API e exibi-los. Quando o usuário abre uma tela, você dispara a requisição, guarda a resposta no estado e a tela se monta com os dados reais. Tudo isso reaparece na seção de integração, agora com o back-end do outro lado.",
@@ -190,7 +192,7 @@ export const fullstack: RoadmapV2 = {
           description:
             "Subir um processo que escuta requisições e responde por endereço.",
           content:
-            "Um **servidor web** é um programa que fica ligado escutando requisições numa porta e respondendo a cada uma. No Node, em vez de fazer isso na mão, você usa um framework que cuida do trabalho repetitivo. O mais tradicional e fácil de começar é o **Express**.\n\nA peça central é a **rota**: a combinação de um método HTTP com um caminho. `GET /produtos` lista produtos, `POST /usuarios` cria um usuário. Você registra cada rota com uma função que recebe a requisição (`req`) e monta a resposta (`res`). É aqui que a teoria de HTTP da seção de fundamentos vira código de verdade.\n\nDois conceitos aparecem cedo. Os **parâmetros**, como o `42` em `GET /produtos/42`, dizem qual recurso específico foi pedido. E o **middleware**, funções que rodam antes das rotas e tratam coisas transversais: ler o corpo JSON da requisição, registrar logs, verificar se o usuário está logado.\n\nO objetivo desta etapa é conseguir subir um servidor local, criar algumas rotas e testá-las (pelo navegador pra GET, ou por uma ferramenta de requisições pros outros métodos). Quando você vê sua própria rota respondendo, o back-end deixa de ser abstrato.",
+            'Um **servidor web** é um programa que fica ligado escutando requisições numa porta e respondendo a cada uma. No Node, em vez de fazer isso na mão, você usa um framework que cuida do trabalho repetitivo. O mais tradicional e fácil de começar é o **Express**.\n\nA peça central é a **rota**: a combinação de um método HTTP com um caminho. `GET /produtos` lista produtos, `POST /usuarios` cria um usuário. Você registra cada rota com uma função que recebe a requisição (`req`) e monta a resposta (`res`):\n\n```js\napp.get("/produtos/:id", (req, res) => {\n  res.json({ id: req.params.id });\n});\n```\n\nÉ aqui que a teoria de HTTP do passo Como a web funciona vira código de verdade: o método e o caminho que você estudou lá viram a assinatura da rota aqui.\n\nDois conceitos aparecem cedo. Os **parâmetros**, como o `42` em `GET /produtos/42`, dizem qual recurso específico foi pedido. E o **middleware**, funções que rodam antes das rotas e tratam coisas transversais: ler o corpo JSON da requisição, registrar logs, verificar se o usuário está logado.\n\nO objetivo desta etapa é conseguir subir um servidor local, criar algumas rotas e testá-las (pelo navegador pra GET, ou por uma ferramenta de requisições pros outros métodos). Quando você vê sua própria rota respondendo, o back-end deixa de ser abstrato.',
           resources: [
             {
               label: "Express (documentação em português)",
@@ -250,7 +252,7 @@ export const fullstack: RoadmapV2 = {
           description:
             "Guardar dados em tabelas e consultá-los com a linguagem padrão do setor.",
           content:
-            "Até aqui os dados sumiam quando o servidor reiniciava. O **banco de dados** resolve isso: ele guarda a informação de forma permanente. O tipo mais comum é o **relacional**, que organiza tudo em **tabelas** com linhas e colunas, parecido com uma planilha bem estruturada. Uma tabela de usuários tem colunas como id, nome e email; cada usuário é uma linha.\n\nA linguagem pra conversar com esses bancos é o **SQL**, e ela é surpreendentemente legível. `SELECT nome FROM usuarios WHERE id = 1` busca o nome do usuário 1. `INSERT` adiciona uma linha, `UPDATE` altera, `DELETE` remove. Repare que isso espelha o CRUD da sua API: cada operação da API geralmente vira uma operação no banco.\n\nUm banco gratuito, robusto e muito usado no mercado é o **PostgreSQL**, ótima escolha pra aprender e pra produção. Comece instalando ele, criando uma tabela simples e rodando consultas na mão pra sentir como funciona.\n\nNão precisa dominar SQL avançado agora. O essencial é entender tabelas, os quatro comandos básicos e como filtrar resultados com `WHERE`. Esse é o conhecimento que liga sua API a dados que sobrevivem a reinícios.",
+            "Até aqui os dados sumiam quando o servidor reiniciava. O **banco de dados** resolve isso: ele guarda a informação de forma permanente. O tipo mais comum é o **relacional**, que organiza tudo em **tabelas** com linhas e colunas, parecido com uma planilha bem estruturada. Uma tabela de usuários tem colunas como id, nome e email; cada usuário é uma linha.\n\nA linguagem pra conversar com esses bancos é o **SQL**, e ela é surpreendentemente legível. `SELECT nome FROM usuarios WHERE id = 1` busca o nome do usuário 1. `INSERT` adiciona uma linha, `UPDATE` altera, `DELETE` remove. Repare que isso espelha o CRUD da sua API: cada operação da API geralmente vira uma operação no banco.\n\nUm banco gratuito, robusto e muito usado no mercado é o **PostgreSQL**, ótima escolha pra aprender e pra produção. Comece instalando ele, criando uma tabela simples e rodando consultas na mão pra sentir como funciona.\n\nNão precisa dominar SQL avançado agora. O essencial é entender tabelas, os quatro comandos básicos e como filtrar resultados com `WHERE`. Você domina este passo quando cria uma tabela, insere algumas linhas e consulta exatamente o recorte que quer sem consultar a sintaxe. Esse é o conhecimento que liga sua API a dados que sobrevivem a reinícios.",
           resources: [
             {
               label: "PostgreSQL: tutorial de SQL (oficial)",
@@ -277,8 +279,7 @@ export const fullstack: RoadmapV2 = {
         {
           id: "bancodedados.conectar",
           title: "Conectar a API ao banco",
-          description:
-            "Fazer as rotas lerem e gravarem dados de verdade.",
+          description: "Fazer as rotas lerem e gravarem dados de verdade.",
           content:
             "Agora as duas pontas do back-end se juntam: cada rota da sua API passa a ler ou gravar no banco em vez de usar dados de mentira na memória. `GET /tarefas` faz um `SELECT`, `POST /tarefas` faz um `INSERT`, e assim por diante.\n\nDá pra escrever SQL direto no código, mas a maioria dos projetos modernos usa uma camada de tradução entre a linguagem e o banco. No mundo Node, uma opção popular e amigável pra iniciantes é o **Prisma**: você descreve suas tabelas num arquivo de modelo e ele te dá funções prontas e seguras pra consultar, sem montar strings de SQL na mão. Isso reduz erros e deixa o código mais legível.\n\nDois cuidados desde o começo. As **credenciais** de acesso ao banco (usuário, senha, endereço) nunca ficam escritas no código; elas vão pra variáveis de ambiente, assunto que volta no deploy. E toda entrada de usuário que chega numa consulta precisa ser tratada com parâmetros, nunca grudada na string da query, pra evitar um ataque clássico chamado injeção de SQL. As bibliotecas como o Prisma já cuidam disso por você quando usadas do jeito certo.\n\nQuando a primeira rota grava algo que continua lá depois de reiniciar o servidor, seu back-end está completo de ponta a ponta.",
           resources: [
@@ -301,10 +302,9 @@ export const fullstack: RoadmapV2 = {
         {
           id: "integracao.consumir",
           title: "Front-end consumindo a API",
-          description:
-            "Buscar dados do servidor e exibi-los na tela.",
+          description: "Buscar dados do servidor e exibi-los na tela.",
           content:
-            "Esta é a costura que torna você full-stack de verdade: o front-end deixa de inventar dados e passa a buscá-los na sua API. O navegador tem a função `fetch` pra disparar requisições HTTP, e como elas demoram (vão até o servidor e voltam), você usa `async`/`await` pra esperar a resposta sem travar a tela.\n\nO fluxo típico no React: quando a tela abre, você dispara o `fetch` pra `GET /tarefas`, recebe a lista em JSON, guarda no **estado** e a tela se monta com os dados reais. Pra criar algo, você manda um `POST` com o novo item no corpo e, ao receber o sucesso, atualiza a tela.\n\nUm detalhe que todo iniciante esquece: a vida real tem três estados, não um. **Carregando** (a resposta ainda não chegou, mostre um indicador), **erro** (deu 404, 500 ou a rede caiu, mostre uma mensagem) e **sucesso** (mostre os dados). Tratar os três é o que separa uma tela que parece travada de uma que comunica o que está acontecendo.\n\nConforme o app cresce, bibliotecas como o **TanStack Query** cuidam de cache, recarga e desses estados pra você. Comece no `fetch` na mão pra entender o mecanismo, e adote uma biblioteca quando a repetição incomodar.",
+            "Esta é a costura que torna você full-stack de verdade: o front-end deixa de inventar dados e passa a buscá-los na API que você montou em Construir uma API REST. O navegador tem a função `fetch` pra disparar requisições HTTP, e como elas demoram (vão até o servidor e voltam), você usa `async`/`await` pra esperar a resposta sem travar a tela.\n\nO fluxo típico no React: quando a tela abre, você dispara o `fetch` pra `GET /tarefas`, recebe a lista em JSON e guarda no **estado**, o mesmo `useState` do passo Estado e eventos, e a tela se remonta com os dados reais.\n\nUm detalhe que todo iniciante esquece: a vida real tem três estados, não um.\n\n```js\nconst [dados, setDados] = useState(null);\nconst [erro, setErro] = useState(null);\n// carregando = dados null e sem erro\n```\n\n**Carregando** (a resposta ainda não chegou, mostre um indicador), **erro** (deu 404, 500 ou a rede caiu, mostre uma mensagem) e **sucesso** (mostre os dados). Tratar os três separa uma tela que parece travada de uma que comunica o que está acontecendo.\n\nConforme o app cresce, bibliotecas como o **TanStack Query** cuidam de cache, recarga e desses estados pra você. Comece no `fetch` na mão pra entender o mecanismo, e adote uma biblioteca quando a repetição incomodar. Você domina este passo quando sua tela mostra o carregando, trata o erro e exibe os dados, sem nunca ficar em branco esperando.",
           resources: [
             {
               label: "TanStack Query (documentação oficial)",
@@ -319,7 +319,7 @@ export const fullstack: RoadmapV2 = {
           description:
             "Por que o navegador bloqueia chamadas entre origens diferentes e como liberar.",
           content:
-            "Cedo ou tarde você verá um erro de **CORS** no console, e ele confunde todo iniciante. Acontece porque, em desenvolvimento, seu front-end roda num endereço (por exemplo, localhost na porta 3000) e sua API em outro (a porta 3100). Pro navegador, são **origens diferentes**, e por segurança ele bloqueia que um site chame livremente um servidor de outra origem.\n\nCORS é o mecanismo que resolve isso. O servidor declara, em cabeçalhos da resposta HTTP, quais origens têm permissão pra chamá-lo. Quando o navegador vê que sua origem está autorizada, libera a requisição. Repare que a configuração fica no **back-end**, não no front: é o servidor que diz quem pode acessá-lo.\n\nNa prática, no Express você adiciona um middleware de CORS e informa as origens permitidas. Em desenvolvimento, costuma ser o endereço local do seu front; em produção, o domínio real do site publicado.\n\nO erro de CORS não é um bug do seu código de busca; é o navegador fazendo o trabalho dele. Entender isso economiza horas de procurar no lugar errado. Como full-stack, esse é exatamente o tipo de problema que mora na fronteira entre as duas pontas e que só quem enxerga os dois lados resolve rápido.",
+            "Cedo ou tarde você verá um erro de **CORS** no console, e ele confunde todo iniciante. Acontece porque, em desenvolvimento, seu front-end roda num endereço (por exemplo, localhost na porta 3000) e sua API em outro (a porta 3100). Pro navegador, são **origens diferentes**, e por segurança ele bloqueia que um site chame livremente um servidor de outra origem.\n\nCORS é o mecanismo que resolve isso. O servidor declara, em cabeçalhos da resposta HTTP, quais origens têm permissão pra chamá-lo. Quando o navegador vê que sua origem está autorizada, libera a requisição. Repare que a configuração fica no **back-end**, não no front: é o servidor que diz quem pode acessá-lo.\n\nNa prática, no Express você adiciona um middleware de CORS e informa as origens permitidas. Em desenvolvimento, costuma ser o endereço local do seu front; em produção, o domínio real do site publicado, que você vai cadastrar aqui no passo Deploy do front-end.\n\nO erro de CORS não é um bug do seu código de busca; é o navegador fazendo o trabalho dele. Entender isso economiza horas de procurar no lugar errado. Como full-stack, esse é exatamente o tipo de problema que mora na fronteira entre as duas pontas e que só quem enxerga os dois lados resolve rápido.",
           resources: [
             {
               label: "MDN CORS",
@@ -371,12 +371,37 @@ export const fullstack: RoadmapV2 = {
           description:
             "Aplicar front, back, banco e autenticação numa coisa só.",
           content:
-            "Hora de aplicar tudo. Um app full-stack de ponta a ponta amarra front-end, API, banco e autenticação num projeto único, e é o que melhor demonstra a sua capacidade num portfólio. Escolha um domínio simples e que você entenda bem: lista de tarefas com login, agenda de estudos, controle de leituras, catálogo pessoal.\n\nUm caminho que funciona: modele os dados e crie o banco; construa a API com as rotas de CRUD e a autenticação; depois monte o front-end consumindo essa API, com as telas de login, listagem e cadastro. Cuide dos detalhes que separam protótipo de produto: estados de carregando e erro, validação nas duas pontas, e mensagens claras pro usuário.\n\nNão precisa ser grande. Precisa funcionar de ponta a ponta, com dados que persistem, login que protege o que deve ser protegido, e estar publicado. Um app pequeno e completo vale muito mais no portfólio do que um grande pela metade.\n\nO projeto abaixo te guia num app full-stack com login, banco, dashboard e deploy, exatamente o conjunto que esta trilha preparou. Use-o como roteiro e adapte ao domínio que mais te interessa.",
+            "Olhe pra trás um instante: você começou esta trilha sem saber o que era cliente e servidor, e agora tem HTML e React na tela, uma API REST com banco e login no servidor, e a costura de CORS e JWT ligando as duas pontas. Este passo junta tudo numa entrega só, a que melhor prova que você é full-stack.\n\nA encomenda é o app do projeto abaixo: uma aplicação com login onde cada usuário cria, vê e gerencia os próprios dados, do banco até a tela. Escolha um domínio que te interesse (agenda de estudos, controle de leituras, lista de tarefas com contas), porque você vai passar horas nele. Um caminho que funciona: modele os dados e crie o banco, construa a API com CRUD e autenticação, e monte o front consumindo essa API, com as telas de login, listagem e cadastro.\n\nCuide dos detalhes que separam protótipo de produto: os três estados de carregando, erro e sucesso, validação nas duas pontas e mensagens claras. Não precisa ser grande; um app pequeno e completo vale muito mais no portfólio que um grande pela metade.\n\nO critério de chegada é objetivo: o app respondendo numa URL pública, os dados persistindo entre reinícios, o login protegendo o que é de cada usuário, e o repositório no GitHub com um README que ensina a rodar. É este projeto que vira a peça central do seu portfólio full-stack, e o passo seguinte cerca ele de testes antes de ir ao ar.",
           project: "app-fullstack-estudos",
           resources: [
             {
               label: "MDN REST (glossário)",
               url: "https://developer.mozilla.org/pt-BR/docs/Glossary/REST",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "projeto.testes",
+          title: "Testar a aplicação",
+          description:
+            "A rede de segurança que deixa você mudar o app sem medo de quebrar o que já funciona.",
+          content:
+            "Seu app funciona hoje. A pergunta que separa protótipo de produto é outra: você consegue mudá-lo amanhã sem quebrar o que já funciona? **Teste automatizado** é código que executa o seu código e confere o resultado, e é ele que dá essa confiança. Rodou verde, pode publicar; vermelho, você descobre o problema antes do usuário.\n\nNum app full-stack, três camadas cobrem o essencial, e a **pirâmide de testes** organiza o esforço: muitos testes baratos e rápidos na base, poucos e caros no topo.\n\n- **Regra de negócio no servidor**: teste unitário das funções que decidem, como calcular um total ou barrar um acesso, sem subir banco nem servidor. É a base larga da pirâmide.\n- **Componente crítico no client**: um teste que renderiza o componente, simula a interação (digitou, clicou) e confere que a tela reagiu. Cobre as partes que doem se quebrarem.\n- **Um caminho de ponta a ponta**: um teste que abre o app de verdade no navegador, faz login e completa o fluxo principal, provando que as duas pontas conversam.\n\nComo sua stack é JavaScript nos dois lados, a mesma ferramenta serve pras duas primeiras camadas: o **Vitest** roda os testes de servidor e, com a **React Testing Library**, os de componente. Pro fluxo de ponta a ponta, o **Playwright** dirige o navegador. Comece pequeno: um teste da regra de negócio mais importante e um do login já mudam sua relação com o deploy. Você domina este passo quando um único comando roda a suíte inteira e o verde te dá coragem de publicar.",
+          resources: [
+            {
+              label: "Vitest (documentação oficial)",
+              url: "https://vitest.dev",
+              kind: "doc",
+            },
+            {
+              label: "Testing Library (documentação oficial)",
+              url: "https://testing-library.com/docs/",
+              kind: "doc",
+            },
+            {
+              label: "Playwright (documentação oficial)",
+              url: "https://playwright.dev/docs/intro",
               kind: "doc",
             },
           ],
@@ -408,8 +433,7 @@ export const fullstack: RoadmapV2 = {
         {
           id: "deploy.backend",
           title: "Deploy do back-end e do banco",
-          description:
-            "Subir a API e o banco gerenciado, com URL pública.",
+          description: "Subir a API e o banco gerenciado, com URL pública.",
           content:
             "Comece pelo back-end, porque o front vai precisar do endereço dele. O banco vem junto: em produção ele não pode rodar na sua máquina, então você usa um **banco gerenciado**, contratado como serviço, onde a plataforma cuida de instalação, atualizações e **backups**, e te entrega só uma URL de conexão.\n\nPra publicar a API, plataformas como **Railway** e **Render** tornaram o processo acessível: você conecta seu repositório do GitHub, a plataforma detecta a linguagem, instala as dependências, roda o comando de start e entrega uma URL pública. Várias delas oferecem Postgres gerenciado a um clique, o que simplifica tudo: API e banco no mesmo lugar. A partir daí, cada push na branch principal redeploya sozinho.\n\nDois ajustes que pegam todo mundo no primeiro deploy. A **porta**: a plataforma define em qual porta o app deve escutar via variável de ambiente (`PORT`); código com porta fixa não sobe. E as **variáveis de ambiente**: cadastre no painel a URL do banco gerenciado, o segredo dos tokens e as origens de CORS (que agora incluem o domínio do seu front publicado).\n\nNão esqueça de rodar as migrations apontando pro banco de produção. Quando a URL da API responder de outro dispositivo, metade do deploy está feita.",
           resources: [
@@ -448,6 +472,13 @@ export const fullstack: RoadmapV2 = {
           optional: true,
           content:
             "Com tudo no ar, surge a pergunta que define operação: **está funcionando agora?** Sem visibilidade, a resposta vem do pior jeito, um usuário reclamando. Acompanhar é descobrir antes.\n\nA primeira ferramenta são os **logs**. As plataformas de deploy capturam tudo que sua aplicação escreve na saída padrão e mostram num painel com busca. Deploy quebrou ou uma rota deu 500? O painel de logs do back-end é o primeiro lugar a olhar. Vale registrar cada requisição (método, rota, status) e todo erro inesperado com contexto. E a regra do que **não** logar: senha, token e dado pessoal sensível, porque log vaza com facilidade.\n\nUma peça simples e útil no back é o **health check**: uma rota como `GET /health` que responde 200 quando o serviço está de pé. Plataformas e serviços de monitoramento usam essa rota pra saber se a aplicação continua respondendo.\n\nDo lado do front, o console do navegador é seu aliado: erros de CORS, falhas de requisição e problemas de configuração aparecem lá primeiro. Depois de cada deploy, faça o ritual de abrir o site, navegar pelos fluxos principais e conferir os logs das duas pontas. É opcional pra um projeto de portfólio, mas é o hábito que diferencia quem só publica de quem mantém.",
+          resources: [
+            {
+              label: "The Twelve-Factor App: logs",
+              url: "https://12factor.net/pt_br/logs",
+              kind: "artigo",
+            },
+          ],
         },
       ],
     },

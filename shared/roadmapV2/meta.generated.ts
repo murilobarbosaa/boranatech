@@ -53,7 +53,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da primeira tela até uma aplicação completa no ar: front-end, back-end, banco e deploy. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 24,
+    "stepCount": 25,
     "hasProject": true,
     "hasQuiz": false
   },
