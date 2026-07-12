@@ -19,7 +19,6 @@ import { usageEvidence } from "@/lib/surveyData2025";
 // a API publica dos consumidores lazy.
 export {
   getContentSourceStatus,
-  getJobs,
   getNews,
   inferKeyword,
 } from "./contentApi";
