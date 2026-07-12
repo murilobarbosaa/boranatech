@@ -7,6 +7,7 @@ import {
   BarChart3,
   Brain,
   ClipboardList,
+  Code2,
   Compass,
   LayoutGrid,
   Lock,
@@ -65,6 +66,7 @@ const TIPO_SELO: Record<AreaTipo, string> = {
 
 const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
   { id: "todos", label: "Todas as áreas", icon: LayoutGrid },
+  { id: "desenvolvimento", label: "Desenvolvimento de Software", icon: Code2 },
   { id: "criatividade", label: "Criatividade", icon: Paintbrush },
   { id: "logica", label: "Lógica", icon: Brain },
   { id: "pessoas", label: "Pessoas", icon: Users },
@@ -74,6 +76,7 @@ const perfilFiltros: { id: string; label: string; icon: LucideIcon }[] = [
 ];
 
 const perfilMap: Record<string, string[]> = {
+  desenvolvimento: ["frontend", "backend", "fullstack", "mobile", "gamedev"],
   criatividade: ["uxui", "frontend", "mobile", "gamedev"],
   logica: [
     "backend",
