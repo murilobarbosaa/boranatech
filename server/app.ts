@@ -41,6 +41,7 @@ import resumesRouter from "./routes/resumes";
 import searchRouter from "./routes/search";
 import statsRouter from "./routes/stats";
 import studyRouter from "./routes/study";
+import vagasRouter from "./routes/vagas";
 import waitlistRouter from "./routes/waitlist";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -366,6 +367,7 @@ app.use("/api/roadmap-quiz", roadmapQuizRouter);
 app.use("/api/study", studyRouter);
 app.use("/api/quiz", quizRouter);
 app.use("/api/search", searchRouter);
+app.use("/api/vagas", vagasRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/content", contentRouter);
 app.use("/api/cron", cronRouter);
