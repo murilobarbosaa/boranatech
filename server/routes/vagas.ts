@@ -204,6 +204,37 @@ router.get("/destaques", async (req, res, next) => {
   }
 });
 
+// GET /api/vagas/admin: listagem das vagas manuais para o painel admin.
+// ANTES do GET /:id para o segmento "admin" nao cair no param. Todos os
+// estados de published, SEM cache (admin le fresco); limit fixo 100 cobre o
+// volume manual esperado por muito tempo.
+router.get("/admin", requireAdmin, async (_req, res, next) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("external_jobs")
+      .select(`${LIST_COLUMNS}, description, featured_until, is_published`)
+      .eq("source", "manual")
+      .order("published_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      return next(createError(500, "db_error", "Erro ao listar vagas."));
+    }
+    type AdminRow = JobRow & {
+      featured_until: string | null;
+      is_published: boolean | null;
+    };
+    const items = ((data ?? []) as AdminRow[]).map((row) => ({
+      ...toItem(row),
+      description: row.description ?? null,
+      featuredUntil: row.featured_until,
+      published: row.is_published === true,
+    }));
+    res.json({ data: { items } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/vagas/:id: detalhe completo (com description e labels).
 router.get("/:id", async (req, res, next) => {
   if (!req.isPro) {
