@@ -83,30 +83,32 @@ export default function EmpresaDetalhe() {
                 </h2>
                 <p className="mt-3 text-slate-700">{company.description}</p>
               </section>
-              <section
-                className={cn(
-                  "card-brutal rounded-xl border-2 bg-white p-6",
-                  ac.panelBorder,
-                )}
-              >
-                <h2 className="font-display text-xl font-black text-slate-950">
-                  Stack tecnológico
-                </h2>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {company.technologies.map((tech) => (
-                    <Link
-                      key={tech}
-                      href={`/tecnologias/${tech}`}
-                      className={cn(
-                        "rounded-full px-3 py-1.5 text-xs font-black",
-                        ac.tag,
-                      )}
-                    >
-                      {tech}
-                    </Link>
-                  ))}
-                </div>
-              </section>
+              {company.technologies.length > 0 ? (
+                <section
+                  className={cn(
+                    "card-brutal rounded-xl border-2 bg-white p-6",
+                    ac.panelBorder,
+                  )}
+                >
+                  <h2 className="font-display text-xl font-black text-slate-950">
+                    Stack tecnológico
+                  </h2>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {company.technologies.map((tech) => (
+                      <Link
+                        key={tech}
+                        href={`/tecnologias/${tech}`}
+                        className={cn(
+                          "rounded-full px-3 py-1.5 text-xs font-black",
+                          ac.tag,
+                        )}
+                      >
+                        {tech}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
               <section className="grid gap-5 md:grid-cols-2">
                 <div
                   className={cn(

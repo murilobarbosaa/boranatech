@@ -234,7 +234,12 @@ export const companies: Company[] = baseCompanies.map(
     hiringLevels: hiresJunior
       ? [...entryLevels, ...(index % 3 === 0 ? ["Pleno"] : [])]
       : [...seniorLevels, ...(index % 2 === 0 ? ["Trainee"] : [])],
-    technologies: [...technologies],
+    // TODO(Ana): tecnologias por empresa via curadoria VERIFICADA. O 5o item de
+    // cada tupla em baseCompanies e um primeiro rascunho NAO verificado (fica
+    // como referencia); publicamos vazio ate a curadoria confirmar, pra nao
+    // exibir tecnologia possivelmente falsa de uma empresa real. Ao preencher,
+    // troque [] pelo array real (ex.: [...technologies] apos verificar).
+    technologies: [],
     juniorSalary,
     description: `${name} atua em ${segment.toLowerCase()} e mantém times de produto, engenharia, dados, design e infraestrutura para construir soluções digitais em escala.`,
     culture: [
