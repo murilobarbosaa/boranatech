@@ -223,6 +223,43 @@ const companyLogoDomains: Record<string, string> = {
 const entryLevels = ["Estágio", "Trainee", "Júnior"];
 const seniorLevels = ["Pleno", "Sênior"];
 
+// Tecnologias VERIFICADAS por empresa (fonte: blog de engenharia oficial e/ou
+// vagas oficiais). So entram aqui apos verificacao com fonte real; usam os
+// slugs que o site indexa (technologyData) pra o logo aparecer.
+// TODO(Ana): adicionar mais empresas aqui conforme a curadoria verificar
+// (fonte: blog de engenharia ou vagas oficiais). Empresa fora deste mapa fica
+// com technologies: [] e nao mostra tags (o TechTag e guardado).
+const VERIFIED_TECHNOLOGIES: Record<string, string[]> = {
+  // Fonte: building.nubank.com. Clojure e a linguagem principal (~1000
+  // microsservicos), Datomic e o banco, Scala no analitico, Flutter no mobile,
+  // Python em ML. (datomic nao tem logo no site: aparece como texto.)
+  Nubank: [
+    "clojure",
+    "kafka",
+    "datomic",
+    "scala",
+    "flutter",
+    "kubernetes",
+    "python",
+    "aws",
+  ],
+  // Fonte: tech.ifood.com.br e vagas oficiais. Kotlin principal nos novos
+  // desenvolvimentos, Rust em aplicacoes criticas, PostgreSQL/DynamoDB, AWS.
+  iFood: [
+    "kotlin",
+    "java",
+    "rust",
+    "go",
+    "kafka",
+    "postgresql",
+    "redis",
+    "aws",
+    "kubernetes",
+  ],
+  // Fonte: vagas e relatos de engenheiros. Java 17/21, Kotlin e Go no backend.
+  "Mercado Livre": ["java", "kotlin", "go", "nodejs", "react", "docker"],
+};
+
 export const companies: Company[] = baseCompanies.map(
   ([name, segment, city, hiresJunior, technologies, juniorSalary], index) => ({
     slug: slugify(name),
@@ -234,12 +271,12 @@ export const companies: Company[] = baseCompanies.map(
     hiringLevels: hiresJunior
       ? [...entryLevels, ...(index % 3 === 0 ? ["Pleno"] : [])]
       : [...seniorLevels, ...(index % 2 === 0 ? ["Trainee"] : [])],
-    // TODO(Ana): tecnologias por empresa via curadoria VERIFICADA. O 5o item de
-    // cada tupla em baseCompanies e um primeiro rascunho NAO verificado (fica
-    // como referencia); publicamos vazio ate a curadoria confirmar, pra nao
-    // exibir tecnologia possivelmente falsa de uma empresa real. Ao preencher,
-    // troque [] pelo array real (ex.: [...technologies] apos verificar).
-    technologies: [],
+    // So as empresas VERIFICADAS (em VERIFIED_TECHNOLOGIES, com fonte) mostram
+    // tecnologias; as demais ficam [] ate a curadoria. O 5o item da tupla e um
+    // rascunho NAO verificado, mantido so como referencia (nao e publicado).
+    // TODO(Ana): preencher mais empresas em VERIFIED_TECHNOLOGIES com curadoria
+    // verificada (fonte: blog de engenharia ou vagas oficiais da empresa).
+    technologies: VERIFIED_TECHNOLOGIES[name] ?? [],
     juniorSalary,
     description: `${name} atua em ${segment.toLowerCase()} e mantém times de produto, engenharia, dados, design e infraestrutura para construir soluções digitais em escala.`,
     culture: [
@@ -313,6 +350,30 @@ export const companies: Company[] = baseCompanies.map(
     ],
   }),
 );
+
+// TODO(Ana): EMPRESAS NOVAS pra entrar no catalogo. So o esqueleto verificavel
+// (nome, segmento sugerido e a sede conhecida). ANTES de publicar (mover pra
+// baseCompanies), a curadoria precisa confirmar COM FONTE: se contrata junior,
+// a faixa salarial junior real e as tecnologias. Nao chutamos esses dados sobre
+// empresa real: o modelo (baseCompanies) obriga hiresJunior e juniorSalary, e a
+// gente nao inventa isso. Segmento sugerido pela Ana, confirmar. Sede = sede
+// conhecida da empresa (confirmar tambem).
+export const pendingCompanies: Array<{
+  name: string;
+  segment: string;
+  city: string;
+}> = [
+  { name: "Magazine Luiza (Magalu)", segment: "E-commerce", city: "São Paulo" },
+  { name: "VTEX", segment: "SaaS", city: "Rio de Janeiro" },
+  { name: "Globo", segment: "Big Tech", city: "Rio de Janeiro" },
+  { name: "XP Inc", segment: "Fintech", city: "São Paulo" },
+  { name: "Take Blip", segment: "SaaS", city: "Belo Horizonte" },
+  { name: "Movile", segment: "Big Tech", city: "Campinas" },
+  { name: "Wildlife Studios", segment: "Big Tech", city: "São Paulo" },
+  { name: "Olist", segment: "E-commerce", city: "Curitiba" },
+  { name: "Neon", segment: "Fintech", city: "São Paulo" },
+  { name: "Cielo", segment: "Fintech", city: "Barueri" },
+];
 
 export const companySegments = [
   "Todas",
