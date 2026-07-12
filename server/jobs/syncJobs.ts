@@ -11,6 +11,7 @@ import { listAtsUnits } from "../lib/vagas/adapters/atsBoards";
 import { listGithubUnits } from "../lib/vagas/adapters/githubRepos";
 import { listJoobleUnits } from "../lib/vagas/adapters/jooble";
 import { SYNC_INTERVALS_MIN } from "../lib/vagas/config";
+import { isTechJob } from "../lib/vagas/relevance";
 import type {
   JobSource,
   NormalizedJob,
@@ -29,7 +30,13 @@ export type VagasSyncOptions = {
 export type VagasSyncResult = {
   results: SourceRunResult[];
   skippedSources: JobSource[];
-  totals: { found: number; created: number; updated: number; failed: number };
+  totals: {
+    found: number;
+    created: number;
+    updated: number;
+    failed: number;
+    dropped: number;
+  };
 };
 
 // Gate de cadencia por fonte via Redis. Fail-open: Redis fora = roda (o lock
@@ -204,20 +211,31 @@ export async function runVagasSync(
           fetched: 0,
           upserted: 0,
           failed: 0,
+          dropped: 0,
           error: message,
         });
         continue;
       }
 
-      const jobs = outcome.value;
+      // Filtro de relevancia TI (fase 6): adzuna, jooble e ats_boards passam
+      // pelo isTechJob; github fica ISENTO (repos de comunidade sao 100% TI
+      // por curadoria). Vaga reprovada nao e upsertada.
+      const fetchedJobs = outcome.value;
+      const jobs =
+        source === "github"
+          ? fetchedJobs
+          : fetchedJobs.filter((job) => isTechJob(job.title));
+      const dropped = fetchedJobs.length - jobs.length;
+
       if (dryRun) {
         logDrySamples(unit, jobs);
         results.push({
           source,
           unit: unit.unit,
-          fetched: jobs.length,
+          fetched: fetchedJobs.length,
           upserted: 0,
           failed: 0,
+          dropped,
         });
         continue;
       }
@@ -227,9 +245,10 @@ export async function runVagasSync(
       results.push({
         source,
         unit: unit.unit,
-        fetched: jobs.length,
+        fetched: fetchedJobs.length,
         upserted,
         failed,
+        dropped,
       });
     }
 
@@ -258,12 +277,13 @@ export async function runVagasSync(
       created: acc.created + r.upserted,
       updated: acc.updated,
       failed: acc.failed + r.failed + (r.error ? 1 : 0),
+      dropped: acc.dropped + r.dropped,
     }),
-    { found: 0, created: 0, updated: 0, failed: 0 },
+    { found: 0, created: 0, updated: 0, failed: 0, dropped: 0 },
   );
 
   console.log(
-    `[vagas-sync] rodada${dryRun ? " (dry)" : ""}: ${totals.found} encontradas, ${totals.created} upserted, ${totals.failed} falhas, fontes puladas: ${skippedSources.join(", ") || "nenhuma"}`,
+    `[vagas-sync] rodada${dryRun ? " (dry)" : ""}: ${totals.found} encontradas, ${totals.created} upserted, ${totals.dropped} reprovadas no filtro TI, ${totals.failed} falhas, fontes puladas: ${skippedSources.join(", ") || "nenhuma"}`,
   );
   return { results, skippedSources, totals };
 }
