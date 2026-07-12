@@ -19,6 +19,7 @@ export const LINKEDIN_LEVELS = [
   "estagio",
   "trainee",
   "junior",
+  "pleno",
   "transicao",
   "freelancer",
 ] as const;
@@ -29,6 +30,8 @@ export const LINKEDIN_LEVEL_LABELS: Record<LinkedinLevel, string> = {
   estagio: "Estágio",
   trainee: "Trainee",
   junior: "Júnior",
+  // TODO(Ana): revisar o rotulo do nivel pleno.
+  pleno: "Pleno",
   transicao: "Transição de carreira",
   freelancer: "Freelancer",
 };
