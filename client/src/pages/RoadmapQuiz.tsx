@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, CheckCircle2, Send } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import {
   getHistory,
@@ -21,6 +22,16 @@ import type {
 // Layout global. Uma pergunta por vez, autosave silencioso das respostas
 // parciais e correcao 100% no server (o client nunca ve gabarito fora da
 // revisao pos-aprovacao).
+//
+// MEDIDAS ANTI-COPIA, EXPECTATIVA HONESTA: aqui bloqueamos so a copia casual
+// (selecao de texto, clipboard, menu de contexto, impressao, atalhos de
+// copia/impressao no container e conteudo oculto quando a janela perde o
+// foco) e marcamos a tela com o e-mail do usuario. Screenshot de sistema NAO
+// tem bloqueio real na web; a protecao de verdade e o pool grande com
+// sorteio por tentativa e a revelacao restrita do gabarito, ambos no server
+// (fases 4.1/4.2). NAO "melhorar" isto com hostilidade inutil (bloquear
+// teclas de acessibilidade, detectar devtools, punir perda de foco etc.):
+// dissuasao proporcional, acessibilidade preservada.
 
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 
@@ -40,6 +51,32 @@ const primaryBtn =
   "inline-flex items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:pointer-events-none disabled:opacity-50";
 const secondaryBtn =
   "inline-flex items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:pointer-events-none disabled:opacity-50";
+
+// Marca d'agua com o e-mail do usuario em repeticao diagonal sobre a area da
+// pergunta: legivel numa foto, discreta no uso. Decorativa pra leitores de
+// tela e transparente pra interacao.
+function Watermark({ text }: { text: string }) {
+  if (!text) return null;
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 select-none overflow-hidden"
+    >
+      <div className="absolute -inset-[40%] flex -rotate-[22deg] flex-col justify-between opacity-[0.07]">
+        {Array.from({ length: 14 }, (_, row) => (
+          <div
+            key={row}
+            className="flex justify-between gap-8 whitespace-nowrap text-sm font-bold text-slate-900"
+          >
+            {Array.from({ length: 5 }, (_, col) => (
+              <span key={col}>{text}</span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function RoadmapQuiz() {
   const params = useParams();
@@ -63,6 +100,45 @@ export default function RoadmapQuiz() {
   // JSON das ultimas respostas persistidas com sucesso; falha de autosave
   // deixa o ref pra tras e a proxima mudanca re-tenta.
   const savedRef = useRef("{}");
+  const { user } = useAuth();
+  const watermarkText = user?.email ?? "";
+  // Conteudo oculto enquanto a janela esta sem foco ou a aba invisivel:
+  // dissuasao de screenshot-por-troca-de-janela. Sem timer, sem punicao.
+  const [obscured, setObscured] = useState(false);
+
+  useEffect(() => {
+    if (phase.kind !== "exam") {
+      setObscured(false);
+      return;
+    }
+    const hide = () => setObscured(true);
+    const show = () => setObscured(false);
+    const onVisibility = () =>
+      setObscured(document.visibilityState === "hidden");
+    window.addEventListener("blur", hide);
+    window.addEventListener("focus", show);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("blur", hide);
+      window.removeEventListener("focus", show);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [phase.kind]);
+
+  const preventCopyEvent = (event: React.SyntheticEvent) => {
+    event.preventDefault();
+  };
+  // Bloqueio de teclado restrito a atalhos de copia/impressao DENTRO do
+  // container da prova; nenhuma tecla de navegacao ou acessibilidade e
+  // interceptada.
+  const blockCopyShortcuts = (event: React.KeyboardEvent) => {
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      ["c", "x", "p"].includes(event.key.toLowerCase())
+    ) {
+      event.preventDefault();
+    }
+  };
 
   const loadApproved = useCallback(async () => {
     try {
@@ -198,6 +274,13 @@ export default function RoadmapQuiz() {
           )}
         </header>
 
+        <div className="hidden rounded-[14px] border-[2.5px] border-slate-900 bg-white p-6 print:block">
+          <p className="text-sm font-black text-slate-950">
+            {/* TODO(Ana): mensagem no lugar do conteudo em impressao */}O
+            conteúdo da prova não é imprimível. Volte à tela para continuar.
+          </p>
+        </div>
+
         {phase.kind === "loading" && (
           <div className="flex justify-center py-16">
             <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-slate-300 border-t-slate-900" />
@@ -207,8 +290,8 @@ export default function RoadmapQuiz() {
         {phase.kind === "gate" && phase.code === "completion_required" && (
           <div className={frameClass()}>
             <h2 className="font-display text-lg font-black text-slate-950">
-              {/* TODO(Ana): titulo do gate de conclusao pendente */}
-              A prova destrava ao concluir a trilha
+              {/* TODO(Ana): titulo do gate de conclusao pendente */}A prova
+              destrava ao concluir a trilha
             </h2>
             <p className="mt-2 text-sm font-semibold text-slate-600">
               {/* TODO(Ana): corpo do gate de conclusao pendente */}
@@ -251,7 +334,11 @@ export default function RoadmapQuiz() {
               Não conseguimos carregar a prova agora. Tente de novo.
             </p>
             <div className="mt-4 flex gap-3">
-              <button type="button" onClick={() => void start()} className={primaryBtn}>
+              <button
+                type="button"
+                onClick={() => void start()}
+                className={primaryBtn}
+              >
                 {/* TODO(Ana): CTA de tentar de novo */}
                 Tentar de novo
               </button>
@@ -263,135 +350,156 @@ export default function RoadmapQuiz() {
           </div>
         )}
 
-        {phase.kind === "exam" && !reviewing && questions[index] && (
-          <ExamQuestion
-            question={questions[index]}
-            position={index + 1}
-            total={questions.length}
-            selected={answers[questions[index].id] ?? null}
-            onAnswer={onAnswer}
-            onPrev={() => setIndex((i) => Math.max(0, i - 1))}
-            onNext={() => {
-              if (index < questions.length - 1) {
-                setIndex((i) => i + 1);
-              } else {
-                setReviewing(true);
-              }
-            }}
-            isFirst={index === 0}
-            isLast={index === questions.length - 1}
-            answers={answers}
-            questions={questions}
-            onJump={(i) => setIndex(i)}
-          />
-        )}
+        {phase.kind === "exam" && (
+          <div
+            className="relative select-none print:hidden"
+            draggable={false}
+            onCopy={preventCopyEvent}
+            onCut={preventCopyEvent}
+            onContextMenu={preventCopyEvent}
+            onKeyDown={blockCopyShortcuts}
+          >
+            <Watermark text={watermarkText} />
+            {!reviewing && questions[index] && (
+              <ExamQuestion
+                question={questions[index]}
+                position={index + 1}
+                total={questions.length}
+                selected={answers[questions[index].id] ?? null}
+                onAnswer={onAnswer}
+                onPrev={() => setIndex((i) => Math.max(0, i - 1))}
+                onNext={() => {
+                  if (index < questions.length - 1) {
+                    setIndex((i) => i + 1);
+                  } else {
+                    setReviewing(true);
+                  }
+                }}
+                isFirst={index === 0}
+                isLast={index === questions.length - 1}
+                answers={answers}
+                questions={questions}
+                onJump={(i) => setIndex(i)}
+              />
+            )}
 
-        {phase.kind === "exam" && reviewing && (
-          <div className={frameClass()}>
-            <h2 className="font-display text-lg font-black text-slate-950">
-              {/* TODO(Ana): titulo da revisao final antes de enviar */}
-              Revise antes de enviar
-            </h2>
-            <ul className="mt-4 space-y-2">
-              {questions.map((question, i) => {
-                const answered = Boolean(answers[question.id]);
-                return (
-                  <li
-                    key={question.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white px-3 py-2"
-                  >
-                    <span className="text-sm font-bold text-slate-900">
-                      {/* TODO(Ana): rotulo do item da revisao final */}
-                      Pergunta {i + 1}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-xs font-black ${
-                          answered
-                            ? "bg-emerald-200 text-slate-950"
-                            : "bg-amber-200 text-slate-950"
-                        }`}
+            {reviewing && (
+              <div className={frameClass()}>
+                <h2 className="font-display text-lg font-black text-slate-950">
+                  {/* TODO(Ana): titulo da revisao final antes de enviar */}
+                  Revise antes de enviar
+                </h2>
+                <ul className="mt-4 space-y-2">
+                  {questions.map((question, i) => {
+                    const answered = Boolean(answers[question.id]);
+                    return (
+                      <li
+                        key={question.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white px-3 py-2"
                       >
-                        {/* TODO(Ana): pills respondida/pulada */}
-                        {answered ? "Respondida" : "Pulada"}
-                      </span>
+                        <span className="text-sm font-bold text-slate-900">
+                          {/* TODO(Ana): rotulo do item da revisao final */}
+                          Pergunta {i + 1}
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full border-2 border-slate-900 px-2.5 py-0.5 text-xs font-black ${
+                              answered
+                                ? "bg-emerald-200 text-slate-950"
+                                : "bg-amber-200 text-slate-950"
+                            }`}
+                          >
+                            {/* TODO(Ana): pills respondida/pulada */}
+                            {answered ? "Respondida" : "Pulada"}
+                          </span>
+                          <button
+                            type="button"
+                            className="text-xs font-black uppercase tracking-wider text-slate-500 underline hover:text-slate-900"
+                            onClick={() => {
+                              setReviewing(false);
+                              setIndex(i);
+                            }}
+                          >
+                            {/* TODO(Ana): CTA de ir para a pergunta */}
+                            Ir para
+                          </button>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {submitError && (
+                  <div className="mt-4 rounded-xl border-2 border-slate-900 bg-rose-100 p-3 text-sm font-bold text-slate-900">
+                    {/* TODO(Ana): erro de envio da prova */}
+                    Não conseguimos enviar sua prova. Verifique a conexão e
+                    tente de novo.
+                  </div>
+                )}
+
+                {confirmBlank && unansweredCount > 0 ? (
+                  <div className="mt-4 rounded-xl border-2 border-slate-900 bg-amber-100 p-4">
+                    <p className="text-sm font-bold text-slate-900">
+                      {/* TODO(Ana): confirmacao de envio com perguntas em branco */}
+                      Você tem {unansweredCount}{" "}
+                      {unansweredCount === 1
+                        ? "pergunta em branco. Ela conta"
+                        : "perguntas em branco. Elas contam"}{" "}
+                      como erradas. Enviar mesmo assim?
+                    </p>
+                    <div className="mt-3 flex gap-3">
                       <button
                         type="button"
-                        className="text-xs font-black uppercase tracking-wider text-slate-500 underline hover:text-slate-900"
-                        onClick={() => {
-                          setReviewing(false);
-                          setIndex(i);
-                        }}
+                        onClick={() => void doSubmit()}
+                        disabled={submitting}
+                        className={primaryBtn}
                       >
-                        {/* TODO(Ana): CTA de ir para a pergunta */}
-                        Ir para
+                        {/* TODO(Ana): CTA de confirmar envio com brancos */}
+                        {submitting ? "Enviando..." : "Enviar mesmo assim"}
                       </button>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-
-            {submitError && (
-              <div className="mt-4 rounded-xl border-2 border-slate-900 bg-rose-100 p-3 text-sm font-bold text-slate-900">
-                {/* TODO(Ana): erro de envio da prova */}
-                Não conseguimos enviar sua prova. Verifique a conexão e tente
-                de novo.
+                      <button
+                        type="button"
+                        onClick={() => setConfirmBlank(false)}
+                        disabled={submitting}
+                        className={secondaryBtn}
+                      >
+                        {/* TODO(Ana): CTA de continuar respondendo */}
+                        Continuar respondendo
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={handleSubmitClick}
+                      disabled={submitting}
+                      className={primaryBtn}
+                    >
+                      <Send className="h-4 w-4" />
+                      {/* TODO(Ana): CTA de enviar a prova */}
+                      {submitting ? "Enviando..." : "Enviar prova"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setReviewing(false)}
+                      disabled={submitting}
+                      className={secondaryBtn}
+                    >
+                      {/* TODO(Ana): CTA de voltar as perguntas */}
+                      Voltar às perguntas
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
-            {confirmBlank && unansweredCount > 0 ? (
-              <div className="mt-4 rounded-xl border-2 border-slate-900 bg-amber-100 p-4">
-                <p className="text-sm font-bold text-slate-900">
-                  {/* TODO(Ana): confirmacao de envio com perguntas em branco */}
-                  Você tem {unansweredCount}{" "}
-                  {unansweredCount === 1
-                    ? "pergunta em branco. Ela conta"
-                    : "perguntas em branco. Elas contam"}{" "}
-                  como erradas. Enviar mesmo assim?
+            {obscured && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[14px] border-[2.5px] border-slate-900 bg-slate-950 p-6">
+                <p className="text-center text-sm font-black text-white">
+                  {/* TODO(Ana): mensagem da prova pausada sem foco */}
+                  Prova pausada. Volte para esta janela para continuar.
                 </p>
-                <div className="mt-3 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void doSubmit()}
-                    disabled={submitting}
-                    className={primaryBtn}
-                  >
-                    {/* TODO(Ana): CTA de confirmar envio com brancos */}
-                    {submitting ? "Enviando..." : "Enviar mesmo assim"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmBlank(false)}
-                    disabled={submitting}
-                    className={secondaryBtn}
-                  >
-                    {/* TODO(Ana): CTA de continuar respondendo */}
-                    Continuar respondendo
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleSubmitClick}
-                  disabled={submitting}
-                  className={primaryBtn}
-                >
-                  <Send className="h-4 w-4" />
-                  {/* TODO(Ana): CTA de enviar a prova */}
-                  {submitting ? "Enviando..." : "Enviar prova"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReviewing(false)}
-                  disabled={submitting}
-                  className={secondaryBtn}
-                >
-                  {/* TODO(Ana): CTA de voltar as perguntas */}
-                  Voltar às perguntas
-                </button>
               </div>
             )}
           </div>
@@ -408,8 +516,8 @@ export default function RoadmapQuiz() {
             <p className="mt-2 text-sm font-semibold text-slate-600">
               {/* TODO(Ana): corpo provisorio do resultado */}
               Você acertou {phase.result.score} de{" "}
-              {phase.result.porPergunta.length} (mínimo{" "}
-              {phase.result.passScore}).
+              {phase.result.porPergunta.length} (mínimo {phase.result.passScore}
+              ).
             </p>
             <div className="mt-4">
               <Link href={trailHref} className={primaryBtn}>
@@ -421,7 +529,11 @@ export default function RoadmapQuiz() {
         )}
 
         {phase.kind === "approved" && (
-          <div className={frameClass("border-emerald-600 shadow-[4px_4px_0_#10b981]")}>
+          <div
+            className={frameClass(
+              "border-emerald-600 shadow-[4px_4px_0_#10b981]",
+            )}
+          >
             <h2 className="flex items-center gap-2 font-display text-lg font-black text-slate-950">
               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               {/* TODO(Ana): titulo provisorio do estado aprovado persistente */}
@@ -507,7 +619,11 @@ function ExamQuestion({
         <p className="text-base font-bold text-slate-950">
           {question.pergunta}
         </p>
-        <div className="mt-4 space-y-2" role="radiogroup" aria-label="Alternativas">
+        <div
+          className="mt-4 space-y-2"
+          role="radiogroup"
+          aria-label="Alternativas"
+        >
           {question.alternativas.map((alternativa, i) => {
             const isSelected = selected === alternativa.id;
             return (
