@@ -1110,8 +1110,12 @@ router.post(
           storedEvaluation,
         )
       : null;
-    const wroteCounters =
-      assistantTurnId &&
+    // Id do turno e sucesso de escrita sao estados SEPARADOS de proposito
+    // (classe de bug conhecida da casa: nunca colapsar estado): o id segue
+    // para a resposta HTTP; o boolean guarda o encadeamento de escrita.
+    const wroteAssistant: boolean = assistantTurnId !== null;
+    const wroteCounters: boolean =
+      wroteAssistant &&
       (await updateSession(userId, session.id, {
         question_count: questionCount,
         good_count: goodCount,
