@@ -64,7 +64,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De Python e SQL à primeira análise de um dataset real, com estatística, Pandas e visualização. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 8,
-    "stepCount": 26,
+    "stepCount": 27,
     "hasProject": true,
     "hasQuiz": false
   },
