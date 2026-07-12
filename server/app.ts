@@ -152,7 +152,7 @@ const CSP_POLICY = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
-  "script-src 'self' https://us-assets.i.posthog.com",
+  "script-src 'self' https://us-assets.i.posthog.com 'sha256-Cj9rghuNRxB7DTml/JpMb1I5EZd6LgZr7Sx3pJr3szo='",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: https:",

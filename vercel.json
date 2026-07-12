@@ -1,5 +1,5 @@
 {
-  "buildCommand": "vite build && node scripts/prerender.mjs",
+  "buildCommand": "tsx scripts/checkCspHashes.mts && vite build && node scripts/prerender.mjs",
   "rewrites": [{ "source": "/(.*)", "destination": "/app.html" }],
   "redirects": [
     { "source": "/pro", "destination": "/planos", "permanent": true },
