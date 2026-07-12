@@ -148,6 +148,16 @@ export const creators: Creator[] = [
     area: "",
     redes: [],
   },
+  {
+    // TODO(Ana): confirmar nome de exibicao da Gio.
+    name: "Gio",
+    handle: "gio.yaml",
+    photo: "/creators/gio-yaml.jpg",
+    instagram: "https://instagram.com/gio.yaml",
+    bio: "",
+    area: "",
+    redes: [],
+  },
 ];
 
 // TODO(Ana): fundadores. Voce notou que voce e o Murilo ainda nao aparecem
