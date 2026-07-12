@@ -14,7 +14,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Do básico da web até publicar uma aplicação React. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 11,
     "stepCount": 63,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": true
   },
   {
     "slug": "backend",
@@ -42,7 +43,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     ],
     "sectionCount": 8,
     "stepCount": 46,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "fullstack",
@@ -52,7 +54,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Da primeira tela até uma aplicação completa no ar: front-end, back-end, banco e deploy. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 24,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "dados",
@@ -62,7 +65,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "De Python e SQL à primeira análise de um dataset real, com estatística, Pandas e visualização. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 8,
     "stepCount": 26,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "uxui",
@@ -72,7 +76,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Da pesquisa com usuários ao protótipo de alta fidelidade no Figma, passando por interface, design system e testes. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 22,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "ia",
@@ -82,7 +87,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Dos fundamentos e da matemática essencial ao machine learning, deep learning e IA generativa. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 22,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "produto",
@@ -92,7 +98,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Da mentalidade de produto e discovery aos métodos ágeis, priorização, métricas e a entrada na carreira de PM. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 21,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "ciberseguranca",
@@ -102,7 +109,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Das bases de redes e Linux aos conceitos de segurança, times ofensivo e defensivo, prática ética e certificações. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 19,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "cloud",
@@ -126,7 +134,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     ],
     "sectionCount": 7,
     "stepCount": 20,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "gestao",
@@ -136,7 +145,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Da mentalidade ágil e do Scrum à facilitação, planejamento, gestão de riscos e certificações. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 22,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "qa",
@@ -146,7 +156,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Dos fundamentos de qualidade e teste manual ao design de casos, teste de APIs e automação. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 21,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "mobile",
@@ -174,7 +185,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     ],
     "sectionCount": 7,
     "stepCount": 15,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "devops",
@@ -184,7 +196,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Da cultura e das bases de Linux e Git aos containers, CI/CD, infraestrutura como código e observabilidade. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 16,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "gamedev",
@@ -208,7 +221,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     ],
     "sectionCount": 7,
     "stepCount": 17,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "analise-dados",
@@ -218,7 +232,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "De SQL e planilhas à preparação de dados, dashboards de BI e a arte de contar histórias com números. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 18,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "engenharia-dados",
@@ -228,7 +243,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Das bases de SQL e Python à modelagem de data warehouses, pipelines de ETL/ELT, orquestração e processamento em escala. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 17,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "banco-de-dados",
@@ -238,7 +254,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "De SQL e modelagem a índices, transações, backup e segurança: como manter bancos de dados rápidos, seguros e confiáveis. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 17,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "sre",
@@ -248,7 +265,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Da base técnica à engenharia de confiabilidade: SLOs, observabilidade, resposta a incidentes e automação pra manter sistemas grandes no ar. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 17,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "infraestrutura",
@@ -258,7 +276,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "De hardware e sistemas operacionais a redes, servidores e atendimento: a porta de entrada mais acessível da TI. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 17,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "analise-sistemas",
@@ -268,7 +287,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "De levantar requisitos a modelar processos e validar entregas: a ponte entre o negócio e o time de desenvolvimento. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 6,
     "stepCount": 14,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "blockchain",
@@ -278,7 +298,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Dos fundamentos de blockchain ao Solidity, contratos inteligentes, integração Web3 e a segurança que essa área exige acima de tudo. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 13,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "iot",
@@ -288,7 +309,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "De C e eletrônica básica a microcontroladores, sensores, conectividade e projetos de IoT conectados à nuvem. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 14,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "mainframe",
@@ -298,7 +320,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Da lógica e do COBOL ao JCL, DB2 e ao ambiente z/OS: como manter os sistemas críticos que rodam bancos e governo. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
     "stepCount": 14,
-    "hasProject": true
+    "hasProject": true,
+    "hasQuiz": false
   },
   {
     "slug": "comecar-do-zero",
@@ -309,7 +332,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Para quem nunca teve contato com tecnologia e quer entender por onde começar. Sem pré-requisitos: apenas vontade de aprender.",
     "sectionCount": 6,
     "stepCount": 14,
-    "hasProject": false
+    "hasProject": false,
+    "hasQuiz": false
   },
   {
     "slug": "linkedin",
@@ -320,6 +344,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "description": "Como montar um LinkedIn atrativo mesmo sem experiência formal. Feita para estudantes e iniciantes buscando estágio, trainee ou primeiro emprego em TI.",
     "sectionCount": 5,
     "stepCount": 11,
-    "hasProject": false
+    "hasProject": false,
+    "hasQuiz": false
   }
 ];

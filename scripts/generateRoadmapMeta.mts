@@ -34,6 +34,18 @@ const LOADERS = path.join(
   "roadmapV2",
   "loaders.ts",
 );
+const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
+
+// Slugs com pool de quiz no disco: viram hasQuiz no meta. So o boolean vai ao
+// client; o pool em si e server-only. Pool novo sem regenerar o meta falha no
+// --check pela comparacao byte a byte abaixo.
+const quizSlugs = new Set(
+  existsSync(QUIZ_DIR)
+    ? readdirSync(QUIZ_DIR)
+        .filter((file) => file.endsWith(".ts"))
+        .map((file) => file.replace(/\.ts$/, ""))
+    : [],
+);
 
 function hasProjectNode(nodes: RoadmapNode[]): boolean {
   return nodes.some(
@@ -63,6 +75,7 @@ const meta: RoadmapMeta[] = roadmapsV2.map((roadmap) => ({
   hasProject: roadmap.sections.some((section) =>
     hasProjectNode(section.children),
   ),
+  hasQuiz: quizSlugs.has(roadmap.slug),
 }));
 
 const content = `// GENERATED FILE. Do not edit. Run pnpm gen:roadmap-meta
@@ -156,7 +169,6 @@ function checkLoaders(): string[] {
 // referencia a pasta (o pool contem gabarito e e server-only). A checagem de
 // leak e textual, igual a de loaders: qualquer ocorrencia da string
 // "roadmapQuizzes" em client/src e erro, sem excecao.
-const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
 const CLIENT_SRC = path.join(ROOT, "client", "src");
 
 async function checkQuizPools(): Promise<string[]> {

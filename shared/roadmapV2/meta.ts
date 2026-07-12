@@ -19,4 +19,7 @@ export type RoadmapMeta = {
   stepCount: number;
   // Existe algum no com project em qualquer profundidade.
   hasProject: boolean;
+  // Existe pool de quiz em server/data/roadmapQuizzes pra esta trilha. So o
+  // boolean chega ao client; o pool em si (com gabarito) e server-only.
+  hasQuiz: boolean;
 };
