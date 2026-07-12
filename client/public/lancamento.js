@@ -280,7 +280,7 @@
   // os relogios do hero e da band (.js-d/.js-h/.js-m/.js-s) e o chip compacto
   // do header ([data-hdr-timer]).
   (function(){
-    var LAUNCH_AT = new Date("2026-07-14T12:00:00-03:00");
+    var LAUNCH_AT = new Date("2026-07-13T18:00:00-03:00");
     var dEls = document.querySelectorAll(".js-d");
     var hEls = document.querySelectorAll(".js-h");
     var mEls = document.querySelectorAll(".js-m");
