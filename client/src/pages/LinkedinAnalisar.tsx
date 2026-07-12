@@ -45,6 +45,7 @@ import { LinkedinError } from "@/components/linkedin/LinkedinStates";
 import ScoreDeltaBanner from "@/components/shared/ScoreDeltaBanner";
 import RecruiterFinder from "@/components/linkedin/RecruiterFinder";
 import SectionReport from "@/components/linkedin/SectionReport";
+import { stripPdfPageNoise } from "@/components/linkedin/stripPdfPageNoise";
 import { openAgentWidget } from "@/components/agent/AgentWidget";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -1585,7 +1586,7 @@ export default function LinkedinAnalisar() {
                         atual={
                           sobreAtual ? (
                             <p className="whitespace-pre-wrap leading-relaxed">
-                              {sobreAtual}
+                              {stripPdfPageNoise(sobreAtual)}
                             </p>
                           ) : null
                         }
@@ -1634,20 +1635,30 @@ export default function LinkedinAnalisar() {
                         atual={
                           experienciasAtual ? (
                             <ul className="space-y-2">
-                              {experienciasAtual.map((exp, index) => (
-                                <li key={index}>
-                                  <span className="font-bold text-slate-900">
-                                    {exp.titulo || "(sem título)"}
-                                  </span>
-                                  {exp.descricao ? (
-                                    <span>
-                                      {" "}
-                                      · {exp.descricao.slice(0, 160)}
-                                      {exp.descricao.length > 160 ? "..." : ""}
+                              {experienciasAtual.map((exp, index) => {
+                                // Ruido de paginacao do PDF sai SO daqui (a
+                                // exibicao); o parse que pontuou fica intacto.
+                                const titulo =
+                                  stripPdfPageNoise(exp.titulo) ||
+                                  "(sem título)";
+                                const descricao = stripPdfPageNoise(
+                                  exp.descricao,
+                                );
+                                return (
+                                  <li key={index}>
+                                    <span className="font-bold text-slate-900">
+                                      {titulo}
                                     </span>
-                                  ) : null}
-                                </li>
-                              ))}
+                                    {descricao ? (
+                                      <span>
+                                        {" "}
+                                        · {descricao.slice(0, 160)}
+                                        {descricao.length > 160 ? "..." : ""}
+                                      </span>
+                                    ) : null}
+                                  </li>
+                                );
+                              })}
                             </ul>
                           ) : null
                         }
