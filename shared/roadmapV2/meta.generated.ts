@@ -44,7 +44,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 8,
     "stepCount": 46,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "fullstack",
