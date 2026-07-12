@@ -5,8 +5,10 @@ import { z } from "zod";
 import { AI_TOOLS } from "../lib/aiTools";
 import {
   checkAiDailyLimit,
+  checkInterviewTtsDailyLimit,
   checkInterviewTurnDailyLimit,
   INTERVIEW_SESSION_TOOL,
+  INTERVIEW_TTS_TOOL,
   INTERVIEW_TURN_TOOL,
   logAiUsage,
 } from "../lib/aiUsage";
@@ -21,9 +23,14 @@ import {
   detectAudioMime,
   transcribeAudio,
 } from "../lib/audioTranscribe";
+import {
+  ElevenLabsTtsError,
+  synthesizeSpeech,
+} from "../lib/elevenLabsTts";
 import { fetchWithTimeout } from "../lib/http";
 import {
   buildOpenAIHeaders,
+  DEFAULT_MODEL,
   OPENAI_BASE_URL,
   TRANSCRIPTION_MODEL,
 } from "../lib/openai";
@@ -95,6 +102,20 @@ const AnswerSchema = z.object({
 const TranscribeSchema = z.object({
   audioBase64: z.string().min(1),
 });
+
+const SpeechSchema = z.object({
+  turnId: z.string().uuid(),
+  target: z.enum(["session", "pt"]).default("session"),
+});
+
+// Cap DEFENSIVO de caracteres falados: o prompt pede perguntas de ate 400
+// chars mas NAO garante, e a ElevenLabs cobra por caractere. Acima disso a
+// rota recusa (422) SEM truncar: fala cortada seria teatro desonesto.
+const TTS_MAX_CHARS = 600;
+
+// Traducao da pergunta para pt-BR (botao "ouvir em portugues" em sessao EN).
+const TRANSLATE_SYSTEM_PROMPT =
+  "Voce e um tradutor. Traduza a pergunta de entrevista a seguir para portugues do Brasil, de forma natural e fiel. Responda SOMENTE com a traducao, sem aspas nem comentarios.";
 
 const EvaluationSchema = z.object({
   rating: z.enum(["boa", "mediana", "fraca"]),
@@ -1493,6 +1514,306 @@ router.post(
     });
 
     res.json({ data: { text } });
+  },
+);
+
+// Chamada unica de traducao (temperature 0, sem retry: a retentativa e o
+// clique do usuario). Lanca Error com detalhe pro log; a rota responde generico.
+async function translateQuestionToPt(
+  text: string,
+  onIo: (io: AiIo) => void,
+): Promise<string> {
+  if (!env.openaiApiKey) {
+    throw new Error("Servico de IA nao configurado.");
+  }
+  const messages: ModelMessage[] = [
+    { role: "system", content: TRANSLATE_SYSTEM_PROMPT },
+    { role: "user", content: text },
+  ];
+  const response = await fetchWithTimeout(
+    OPENAI_BASE_URL,
+    {
+      method: "POST",
+      headers: buildOpenAIHeaders(env.openaiApiKey),
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: 0,
+        max_tokens: 400,
+        messages,
+      }),
+    },
+    { service: "openai", timeoutMs: AI_TIMEOUT_MS },
+  );
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `OpenAI respondeu ${response.status}: ${body.slice(0, 300)}`,
+    );
+  }
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const content = payload.choices?.[0]?.message?.content?.trim();
+  if (!content) {
+    throw new Error("A traducao nao retornou texto.");
+  }
+  const inputChars = messages.reduce((acc, m) => acc + m.content.length, 0);
+  onIo({ inputChars, outputChars: content.length });
+  return content;
+}
+
+// POST /api/interview/sessions/:id/speech: gera a fala de UMA pergunta da
+// sessao (voz do Natechinho), lazy no primeiro play do client. DESVIO
+// DELIBERADO do padrao das rotas irmas: NAO ha checagem de status da sessao,
+// porque re-ouvir uma pergunta de sessao ENCERRADA (replay/estudo) e uso
+// legitimo; todas as demais barreiras seguem identicas. Nenhum audio e
+// persistido; o cache e do client.
+router.post(
+  "/sessions/:id/speech",
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.isPro) {
+      return next(
+        createError(
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para continuar a entrevista.",
+        ),
+      );
+    }
+
+    const { id } = req.params;
+    if (!UUID_RE.test(id)) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    const loaded = await loadOwnSession(userId, id);
+    if (!loaded.ok) {
+      return next(createError(500, "db_error", "Erro ao buscar a sessao."));
+    }
+    if (!loaded.session) {
+      return next(createError(404, "not_found", "Sessao nao encontrada."));
+    }
+    const session = loaded.session;
+
+    const usage = await checkInterviewTtsDailyLimit(userId);
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TTS_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TTS_TOOL,
+        requestId,
+        status: "rate_limited",
+      });
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          // TODO(Ana): mensagem do limite diario de fala.
+          `Limite diario de ${usage.limit} audios de entrevista atingido. Tente novamente amanha.`,
+        ),
+      );
+    }
+
+    const parsedBody = SpeechSchema.safeParse(req.body);
+    if (!parsedBody.success) {
+      // TODO(Ana): mensagem de pedido de fala invalido.
+      return next(
+        createError(400, "invalid_request", "Pedido de fala invalido."),
+      );
+    }
+
+    if (!session.voice_mode) {
+      // TODO(Ana): mensagem de modo voz desligado na sessao.
+      return next(
+        createError(
+          400,
+          "voice_mode_disabled",
+          "Esta sessao nao esta com o modo voz ligado.",
+        ),
+      );
+    }
+
+    // Turno carregado por id SEMPRE filtrado pela sessao ja validada acima
+    // (dono garantido): turnId de outra sessao/usuario cai no 404 padrao.
+    interface SpeechTurnRow {
+      id: string;
+      role: "assistant" | "user";
+      content: string;
+      evaluation: PersistedEvaluation | null;
+      kind: TurnKind;
+    }
+    let turn: SpeechTurnRow | null = null;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from("interview_turns")
+        .select("id, role, content, evaluation, kind")
+        .eq("session_id", session.id)
+        .eq("id", parsedBody.data.turnId)
+        .maybeSingle();
+      if (error) {
+        console.warn("[interview] busca de turno para fala falhou:", error.message);
+        return next(createError(500, "db_error", "Erro ao buscar o turno."));
+      }
+      turn = (data as SpeechTurnRow | null) ?? null;
+    } catch (err) {
+      return next(err);
+    }
+    if (!turn) {
+      // TODO(Ana): mensagem de turno nao encontrado.
+      return next(createError(404, "not_found", "Turno nao encontrado."));
+    }
+
+    // Predicado de PERGUNTA, o mesmo da skin (E4): fala so o que o usuario ve
+    // como QuestionBubble. Exclui hint, closing e o turno terminal (cujo
+    // content e o feedback). Anti-abuso: a rota nunca vira TTS generico.
+    const evaluation = turn.evaluation;
+    const isTerminal =
+      evaluation !== null &&
+      (evaluation.terminal === true || turn.content === evaluation.feedback);
+    const isQuestion =
+      turn.role === "assistant" && turn.kind === "answer" && !isTerminal;
+    if (!isQuestion) {
+      // TODO(Ana): mensagem de turno que nao e pergunta.
+      return next(
+        createError(400, "not_a_question", "Este turno nao e uma pergunta."),
+      );
+    }
+
+    const text = turn.content.trim();
+    if (text.length > TTS_MAX_CHARS) {
+      // TODO(Ana): mensagem de pergunta longa demais para audio.
+      return next(
+        createError(
+          422,
+          "tts_text_too_long",
+          "Esta pergunta e longa demais para virar audio.",
+        ),
+      );
+    }
+
+    let spokenText = text;
+    let translatedText: string | undefined;
+    if (parsedBody.data.target === "pt" && session.language === "en") {
+      let trIo: AiIo = { inputChars: 0, outputChars: 0 };
+      try {
+        translatedText = await translateQuestionToPt(text, (io) => {
+          trIo = io;
+        });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Erro desconhecido";
+        await logAiUsage({
+          userId,
+          tool: INTERVIEW_TTS_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: message,
+        });
+        // TODO(Ana): mensagem de falha na traducao da pergunta.
+        return next(
+          createError(
+            502,
+            "tts_failed",
+            "Nao foi possivel gerar o audio em portugues agora. Tente de novo.",
+          ),
+        );
+      }
+      // Consumo REAL da traducao registrado antes de qualquer outra barreira
+      // (a chamada aconteceu; honestidade acima de contabilidade bonita).
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TTS_TOOL,
+        requestId,
+        status: "success",
+        model: DEFAULT_MODEL,
+        inputChars: trIo.inputChars,
+        outputChars: trIo.outputChars,
+      });
+      if (translatedText.length > TTS_MAX_CHARS) {
+        // TODO(Ana): mensagem de pergunta longa demais para audio.
+        return next(
+          createError(
+            422,
+            "tts_text_too_long",
+            "Esta pergunta e longa demais para virar audio.",
+          ),
+        );
+      }
+      spokenText = translatedText;
+    }
+    // target "pt" em sessao ja pt fala o proprio content (sem traducao).
+
+    let audio: { buffer: Buffer; mime: "audio/mpeg" };
+    try {
+      audio = await synthesizeSpeech({ text: spokenText });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool: INTERVIEW_TTS_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: message,
+      });
+      if (err instanceof ElevenLabsTtsError && err.code === "tts_unavailable") {
+        // TODO(Ana): mensagem de voz nao configurada/indisponivel.
+        return next(
+          createError(
+            503,
+            "tts_unavailable",
+            "A voz do Natechinho nao esta disponivel agora.",
+          ),
+        );
+      }
+      // TODO(Ana): mensagem de falha na geracao do audio.
+      return next(
+        createError(
+          502,
+          "tts_failed",
+          "Nao foi possivel gerar o audio agora. Tente de novo.",
+        ),
+      );
+    }
+
+    // Custo 0 com consumo AUDITAVEL: parceria de embaixador (sem fatura), mas
+    // os caracteres falados ficam em input_chars.
+    // TODO: calibrar costEstimate quando houver fonte de preco por caractere.
+    await logAiUsage({
+      userId,
+      tool: INTERVIEW_TTS_TOOL,
+      requestId,
+      status: "success",
+      model: env.elevenLabsModelId,
+      inputChars: spokenText.length,
+    });
+
+    res.json({
+      data: {
+        audioBase64: audio.buffer.toString("base64"),
+        mimeType: audio.mime,
+        text,
+        ...(translatedText ? { translatedText } : {}),
+      },
+    });
   },
 );
 
