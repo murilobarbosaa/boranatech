@@ -29,7 +29,7 @@ const steps = [
     icon: <Briefcase className="h-5 w-5" />,
     title: "Prepare sua carreira",
     desc: "Use dicas de LinkedIn, eventos, comunidades e vagas para criar presença.",
-    href: "/estagio",
+    href: "/vagas",
   },
 ];
 

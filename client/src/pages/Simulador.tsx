@@ -239,7 +239,8 @@ export default function Simulador() {
     applicationDiscounts[applications] < 2
       ? {
           text: "Criar uma rotina semanal de aplicações com currículo adaptado para cada vaga.",
-          href: "/estagio",
+          // TODO(Ana): validar a cta do link de vagas
+          href: "/vagas",
           cta: "Ver vagas e estágios",
         }
       : null,

@@ -188,9 +188,11 @@ const menuData: DropdownMenu[] = [
         groupLabel: "ENCONTRAR EMPREGO",
         items: [
           {
-            label: "Vagas, estágio e trainee",
-            description: "Vagas, currículo e institutos",
-            path: "/estagio",
+            // TODO(Ana): validar label e description do item de vagas
+            label: "Vagas",
+            description: "Vagas reais de estágio, trainee e júnior",
+            path: "/vagas",
+            isPro: true,
           },
           {
             label: "Empresas",

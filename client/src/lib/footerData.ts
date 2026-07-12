@@ -28,7 +28,8 @@ export const FOOTER_COLUMNS: Record<string, FooterColumn> = {
     links: [
       { label: "Eventos Tech", href: "/eventos" },
       { label: "Projetos", href: "/projetos" },
-      { label: "Estágio, Trainee e Carreira", href: "/estagio" },
+      // TODO(Ana): validar o label do link de vagas
+      { label: "Vagas e Carreira", href: "/vagas" },
       { label: "Notícias", href: "/noticias" },
       { label: "Dicas", href: "/dicas" },
     ],

@@ -28,7 +28,8 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/entrevistas", tier: "free", label: "Hub de preparacao para entrevistas; inclui o treino de entrevista com IA (Pro)." },
   { route: "/entrevistas/perguntas", tier: "free", label: "Banco de perguntas de entrevista." },
   { route: "/entrevistas/desafios", tier: "free", label: "Desafios de entrevista." },
-  { route: "/estagio/freelance", tier: "free", label: "Guia de freelance (aba em Vagas e Carreira)." },
+  // TODO(Ana): validar a copy das entradas de /vagas
+  { route: "/vagas", tier: "pro", label: "Guia de freelance (secao na pagina de vagas)." },
   { route: "/portfolio", tier: "free", label: "Guia de portfolio." },
   { route: "/plano-carreira", tier: "pro", label: "Plano de carreira por IA: rota com degraus, certificacoes e cronograma." },
   { route: "/evolucao", tier: "free", label: "Trilhas de evolucao de carreira." },
@@ -47,7 +48,7 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/faculdades", tier: "free", label: "Diretorio de faculdades." },
   { route: "/eventos", tier: "free", label: "Eventos de tecnologia." },
   { route: "/projetos", tier: "free", label: "Projetos para praticar e portfolio." },
-  { route: "/estagio", tier: "free", label: "Vagas de estagio." },
+  { route: "/vagas", tier: "pro", label: "Feed de vagas reais de estagio, trainee e junior, com busca e filtros (Pro); amostra gratis do feed." },
   { route: "/noticias", tier: "free", label: "Noticias de tecnologia." },
   { route: "/comunidades", tier: "free", label: "Comunidades de tecnologia." },
   { route: "/sobre", tier: "free", label: "Sobre o BoraNaTech." },

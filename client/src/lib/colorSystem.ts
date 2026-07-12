@@ -103,7 +103,7 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
 
   // market
   cursos: "market",
-  estagio: "market",
+  vagas: "market",
   salarios: "market",
   "tecnologias/ranking": "market",
   mentorias: "market",

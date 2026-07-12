@@ -57,7 +57,7 @@ lib/ # utils.ts, supabase.ts, aiClient.ts, data files estáticos
 pages/ # 60+ páginas, uma por rota, nomeadas em português
 services/ # contracts.ts (tipos), profileService.ts
 server/
-routes/ # admin, ai, billing, bookmarks, content, cron, me, quiz, search, sitemap, study
+routes/ # admin, ai, billing, bookmarks, content, cron, me, quiz, search, study
 middleware/ # auth.ts (requireAuth, checkProStatus), error.ts (createError)
 lib/ # env, supabaseAdmin, openai, aiTools, queue
 shared/const.ts # COOKIE_NAME, ONE_YEAR_MS
@@ -152,4 +152,5 @@ Tipografia de seção: `font-display font-black` para headings; labels de seçã
 - `client/src/lib/data.ts`, dados estáticos das áreas, eventos, notícias
 - `server/lib/env.ts`, validação de variáveis de ambiente
 - `server/middleware/auth.ts`, injeta `req.user` e `req.isPro`
+- `client/public/sitemap.xml`, sitemap estático (não há rota de sitemap no server); é ele que define quais rotas o prerender (`scripts/prerender.mjs`) gera na Vercel
 - Conteúdo vive em dois lugares: estático em `client/src/lib/data.ts` e tabelas no Supabase. Confirmar qual é o canônico da feature antes de editar (roadmaps renderizam do estático).

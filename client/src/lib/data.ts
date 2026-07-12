@@ -14678,7 +14678,8 @@ export const menuItems = [
   { path: "/faculdades", label: "Faculdades" },
   { path: "/eventos", label: "Eventos" },
   { path: "/projetos", label: "Projetos" },
-  { path: "/estagio", label: "Estágio, Trainee e Carreira" },
+  // TODO(Ana): validar o label do link de vagas
+  { path: "/vagas", label: "Vagas e Carreira" },
   { path: "/dicas", label: "Dicas" },
   { path: "/mulheres", label: "Área de Mulheres" },
   { path: "/dicionario", label: "Dicionário" },
