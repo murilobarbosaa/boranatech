@@ -1,11 +1,15 @@
 // Gera o pool de perguntas de quiz de UMA trilha v2 em
 // server/data/roadmapQuizzes/<slug>.ts, com uma chamada de gpt-4o-mini por
-// nivel (iniciante, intermediario, avancado). Rodar:
+// SECAO da trilha: o orcamento de POOL_TARGET_PER_LEVEL perguntas por nivel
+// e repartido entre as secoes do nivel proporcionalmente ao numero de folhas
+// (piso de 1 por secao, teto de MAX_PER_FONTE por folha), garantindo que
+// nenhuma secao fique sem cobertura. Rodar:
 //   pnpm gen:quiz-pool <slug> [--force]
 // Sem --force o script aborta se o pool ja existe. O pool contem o GABARITO
 // e e server-only (ver server/data/roadmapQuizzes/README.md). Os ids das
-// perguntas sao atribuidos pelo SCRIPT (formato <slug>-<ini|int|av>-NN),
-// nunca pela IA; regenerar com --force troca ids e invalida tentativas.
+// perguntas sao atribuidos pelo SCRIPT (formato <slug>-<ini|int|av>-NN,
+// sequencial por nivel na ordem das secoes da trilha), nunca pela IA;
+// regenerar com --force troca ids e invalida tentativas.
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,18 +71,97 @@ function collectLeaves(nodes: RoadmapNode[], out: LeafMaterial[]) {
   }
 }
 
-// Material de um nivel: folhas das secoes daquele level (byLanguage e
-// ignorado de proposito, o quiz cobre o tronco comum da trilha).
-function levelMaterial(roadmap: RoadmapV2, nivel: QuizNivel): LeafMaterial[] {
-  const leaves: LeafMaterial[] = [];
-  for (const section of roadmap.sections) {
-    if (section.level !== nivel) continue;
-    collectLeaves(section.children, leaves);
-  }
-  return leaves;
+// Secoes de um nivel com suas folhas (byLanguage e ignorado de proposito,
+// o quiz cobre o tronco comum da trilha).
+interface SectionMaterial {
+  title: string;
+  leaves: LeafMaterial[];
 }
 
-function buildQuestionSchema(leafIds: string[]) {
+function levelSections(
+  roadmap: RoadmapV2,
+  nivel: QuizNivel,
+): SectionMaterial[] {
+  const out: SectionMaterial[] = [];
+  for (const section of roadmap.sections) {
+    if (section.level !== nivel) continue;
+    const leaves: LeafMaterial[] = [];
+    collectLeaves(section.children, leaves);
+    out.push({ title: section.title, leaves });
+  }
+  return out;
+}
+
+// Orcamento do nivel: target repartido entre as secoes proporcionalmente ao
+// numero de folhas, arredondamento determinista por maiores restos (empate
+// resolve pela ordem das secoes na trilha), com piso de 1 pergunta por secao
+// e teto de MAX_PER_FONTE por folha. Falha antes de chamar a IA se a soma
+// nao fechar o target ou alguma cota estourar o teto.
+function sectionQuotas(sections: SectionMaterial[], target: number): number[] {
+  const totalLeaves = sections.reduce(
+    (sum, section) => sum + section.leaves.length,
+    0,
+  );
+  const raw = sections.map(
+    (section) => (section.leaves.length / totalLeaves) * target,
+  );
+  const quotas = raw.map(Math.floor);
+  let leftover = target - quotas.reduce((sum, quota) => sum + quota, 0);
+  const byRemainder = raw
+    .map((value, index) => ({ index, rest: value - Math.floor(value) }))
+    .sort((a, b) => b.rest - a.rest || a.index - b.index);
+  for (let i = 0; leftover > 0; i = (i + 1) % byRemainder.length) {
+    quotas[byRemainder[i].index] += 1;
+    leftover -= 1;
+  }
+
+  // Piso de 1: secao zerada rouba 1 da secao com maior cota (empate resolve
+  // pela primeira na ordem da trilha).
+  for (let i = 0; i < quotas.length; i += 1) {
+    if (quotas[i] > 0) continue;
+    const donor = quotas.indexOf(Math.max(...quotas));
+    if (quotas[donor] <= 1) {
+      throw new Error(
+        `Orcamento insuficiente: ${sections.length} secoes para ${target} perguntas.`,
+      );
+    }
+    quotas[donor] -= 1;
+    quotas[i] += 1;
+  }
+
+  // Teto por folha: excedente migra pra primeira secao com folga.
+  for (let i = 0; i < quotas.length; i += 1) {
+    const cap = sections[i].leaves.length * MAX_PER_FONTE;
+    while (quotas[i] > cap) {
+      const receiver = sections.findIndex(
+        (section, j) => quotas[j] < section.leaves.length * MAX_PER_FONTE,
+      );
+      if (receiver === -1) {
+        throw new Error(
+          `Orcamento impossivel: nivel nao comporta ${target} perguntas com teto de ${MAX_PER_FONTE} por folha.`,
+        );
+      }
+      quotas[i] -= 1;
+      quotas[receiver] += 1;
+    }
+  }
+
+  const sum = quotas.reduce((a, b) => a + b, 0);
+  if (sum !== target) {
+    throw new Error(`Orcamento nao fecha ${target} (somou ${sum}).`);
+  }
+  quotas.forEach((quota, i) => {
+    const cap = sections[i].leaves.length * MAX_PER_FONTE;
+    if (quota < 1 || quota > cap) {
+      throw new Error(
+        `Cota invalida na secao "${sections[i].title}": ${quota} (limites 1 a ${cap}).`,
+      );
+    }
+  });
+  return quotas;
+}
+
+function buildQuestionSchema(leafIds: string[], count: number) {
   return z.object({
     questions: z
       .array(
@@ -95,8 +178,8 @@ function buildQuestionSchema(leafIds: string[]) {
           fonte: z.enum(leafIds as [string, ...string[]]),
         }),
       )
-      .min(POOL_TARGET_PER_LEVEL)
-      .max(POOL_TARGET_PER_LEVEL),
+      .min(count)
+      .max(count),
   });
 }
 
@@ -111,6 +194,9 @@ const SYSTEM_PROMPT = [
   "- As 4 alternativas devem ser plausiveis; as erradas refletem erros reais de quem esta aprendendo, nunca absurdos obvios.",
   "- A correta NAO pode ser dedutivel por tamanho ou estilo: escreva as 4 alternativas com comprimento e tom parecidos.",
   "- Cada pergunta e autocontida: da pra entender e responder sem ver o material de origem.",
+  '- PROIBIDO o formato "qual e a forma correta" ou "qual e a melhor forma" quando mais de uma alternativa funciona na pratica. Se a pergunta e sobre boa pratica, o enunciado DEVE declarar explicitamente que quer a pratica recomendada e por qual criterio (ex: "seguindo a recomendacao da documentacao do React para listas dinamicas, qual key evita bugs de estado?"); nesse caso os distratores sao opcoes que FUNCIONAM mas violam o criterio declarado, e a explicacao diz por que a recomendada vence.',
+  "- Toda alternativa incorreta precisa ser INEQUIVOCAMENTE incorreta sob o enunciado dado (falha, da erro ou produz comportamento diferente do pedido), OU o enunciado precisa declarar o criterio que a desqualifica.",
+  "- Autoteste antes de emitir cada pergunta: um especialista poderia defender outra alternativa alem da correta? Se sim, reescreva o enunciado ate sobrar UMA unica resposta defensavel.",
   "- explicacao: 1 a 2 frases dizendo por que a alternativa correta esta certa.",
   "- fonte: o id EXATO do passo (da lista de ids validos fornecida) que originou a pergunta.",
   `- Distribua as perguntas entre os passos do material: no maximo ${MAX_PER_FONTE} perguntas por passo.`,
@@ -121,20 +207,22 @@ const SYSTEM_PROMPT = [
 function buildUserPrompt(
   roadmap: RoadmapV2,
   nivel: QuizNivel,
-  leaves: LeafMaterial[],
+  section: SectionMaterial,
+  quota: number,
   rebalanceNote: string | null,
 ) {
   const lines = [
     `Trilha: ${roadmap.title} (area ${roadmap.area})`,
     `Nivel desta rodada: ${nivel}`,
-    `Gere exatamente ${POOL_TARGET_PER_LEVEL} perguntas do nivel ${nivel}.`,
+    `Secao desta rodada: ${section.title}`,
+    `Gere exatamente ${quota} perguntas do nivel ${nivel} sobre o material desta secao.`,
     "",
     "Ids validos para o campo fonte:",
-    ...leaves.map((leaf) => `- ${leaf.id}`),
+    ...section.leaves.map((leaf) => `- ${leaf.id}`),
     "",
     "Material (cada passo com id, titulo e conteudo):",
   ];
-  for (const leaf of leaves) {
+  for (const leaf of section.leaves) {
     lines.push("", `### ${leaf.id} | ${leaf.title}`);
     if (leaf.description) lines.push(leaf.description);
     if (leaf.content) lines.push(leaf.content);
@@ -212,34 +300,40 @@ function overusedFontes(questions: GeneratedQuestion[]): string[] {
     .map(([fonte, count]) => `${fonte} (${count})`);
 }
 
-async function generateLevel(
+async function generateSection(
   roadmap: RoadmapV2,
   nivel: QuizNivel,
-  usageTotal: Usage,
+  section: SectionMaterial,
+  quota: number,
+  usageLevel: Usage,
 ): Promise<GeneratedQuestion[]> {
-  const leaves = levelMaterial(roadmap, nivel);
-  if (leaves.length === 0) {
-    throw new Error(
-      `Trilha ${roadmap.slug} nao tem secoes do nivel ${nivel}; pool exige os tres niveis.`,
-    );
-  }
-  const schema = buildQuestionSchema(leaves.map((leaf) => leaf.id));
+  const schema = buildQuestionSchema(
+    section.leaves.map((leaf) => leaf.id),
+    quota,
+  );
   const jsonSchema = toOpenAIStrictSchema(schema);
+  const label = `${nivel} / ${section.title}`;
 
   let rebalanceNote: string | null = null;
   let lastError: unknown;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      const userPrompt = buildUserPrompt(roadmap, nivel, leaves, rebalanceNote);
+      const userPrompt = buildUserPrompt(
+        roadmap,
+        nivel,
+        section,
+        quota,
+        rebalanceNote,
+      );
       const { parsed, usage } = await callOpenAIOnce(
         SYSTEM_PROMPT,
         userPrompt,
         jsonSchema,
       );
-      usageTotal.prompt_tokens += usage.prompt_tokens;
-      usageTotal.completion_tokens += usage.completion_tokens;
+      usageLevel.prompt_tokens += usage.prompt_tokens;
+      usageLevel.completion_tokens += usage.completion_tokens;
       console.log(
-        `[generateQuizPool] ${nivel} tentativa ${attempt}: ${usage.prompt_tokens} in / ${usage.completion_tokens} out tokens`,
+        `[generateQuizPool] ${label} tentativa ${attempt}: ${usage.prompt_tokens} in / ${usage.completion_tokens} out tokens`,
       );
 
       const validation = schema.safeParse(parsed);
@@ -253,7 +347,7 @@ async function generateLevel(
       }
       const excedidos = overusedFontes(validation.data.questions);
       if (excedidos.length > 0) {
-        rebalanceNote = `Na tentativa anterior os passos a seguir originaram mais de ${MAX_PER_FONTE} perguntas cada: ${excedidos.join(", ")}. Gere as ${POOL_TARGET_PER_LEVEL} perguntas de novo redistribuindo entre outros passos do material, respeitando o maximo de ${MAX_PER_FONTE} por passo.`;
+        rebalanceNote = `Na tentativa anterior os passos a seguir originaram mais de ${MAX_PER_FONTE} perguntas cada: ${excedidos.join(", ")}. Gere as ${quota} perguntas de novo redistribuindo entre outros passos do material, respeitando o maximo de ${MAX_PER_FONTE} por passo.`;
         throw new Error(
           `Concentracao acima de ${MAX_PER_FONTE} por passo: ${excedidos.join(", ")}`,
         );
@@ -263,7 +357,7 @@ async function generateLevel(
       lastError = err;
       const detail = err instanceof Error ? err.message : String(err);
       console.error(
-        `[generateQuizPool] ${nivel} tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
+        `[generateQuizPool] ${label} tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
       );
       if (attempt < AI_MAX_ATTEMPTS) {
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
@@ -272,7 +366,7 @@ async function generateLevel(
   }
   throw lastError instanceof Error
     ? lastError
-    : new Error(`Falha ao gerar o nivel ${nivel}.`);
+    : new Error(`Falha ao gerar a secao ${label}.`);
 }
 
 const args = process.argv.slice(2);
@@ -303,18 +397,48 @@ if (!env.openaiApiKey) {
 const usageTotal: Usage = { prompt_tokens: 0, completion_tokens: 0 };
 const questions: QuizQuestion[] = [];
 for (const nivel of NIVEIS) {
-  const generated = await generateLevel(roadmap, nivel, usageTotal);
-  generated.forEach((question, index) => {
-    questions.push({
-      id: `${slug}-${NIVEL_ABBR[nivel]}-${String(index + 1).padStart(2, "0")}`,
+  const sections = levelSections(roadmap, nivel);
+  if (sections.length === 0) {
+    console.error(
+      `[generateQuizPool] trilha ${slug} nao tem secoes do nivel ${nivel}; pool exige os tres niveis.`,
+    );
+    process.exit(1);
+  }
+  const quotas = sectionQuotas(sections, POOL_TARGET_PER_LEVEL);
+  for (let i = 0; i < sections.length; i += 1) {
+    console.log(
+      `[generateQuizPool] orcamento ${nivel} / ${sections[i].title}: ${sections[i].leaves.length} folhas, cota ${quotas[i]}`,
+    );
+  }
+
+  const usageLevel: Usage = { prompt_tokens: 0, completion_tokens: 0 };
+  let seq = 0;
+  for (let i = 0; i < sections.length; i += 1) {
+    const generated = await generateSection(
+      roadmap,
       nivel,
-      pergunta: question.pergunta,
-      alternativas: question.alternativas,
-      correta: question.correta as QuizAlternativaId,
-      explicacao: question.explicacao,
-      fonte: question.fonte,
-    });
-  });
+      sections[i],
+      quotas[i],
+      usageLevel,
+    );
+    for (const question of generated) {
+      seq += 1;
+      questions.push({
+        id: `${slug}-${NIVEL_ABBR[nivel]}-${String(seq).padStart(2, "0")}`,
+        nivel,
+        pergunta: question.pergunta,
+        alternativas: question.alternativas,
+        correta: question.correta as QuizAlternativaId,
+        explicacao: question.explicacao,
+        fonte: question.fonte,
+      });
+    }
+  }
+  console.log(
+    `[generateQuizPool] ${nivel}: ${usageLevel.prompt_tokens} in / ${usageLevel.completion_tokens} out tokens`,
+  );
+  usageTotal.prompt_tokens += usageLevel.prompt_tokens;
+  usageTotal.completion_tokens += usageLevel.completion_tokens;
 }
 
 const pool: QuizPool = { slug, questions };

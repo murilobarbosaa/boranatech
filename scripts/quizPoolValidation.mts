@@ -129,5 +129,21 @@ export function validateQuizPool(
     }
   }
 
+  // Cobertura por secao: toda secao da trilha origina pelo menos 1 pergunta
+  // (a fonte de alguma pergunta pertence as folhas da secao). Impede a prova
+  // de ignorar assuntos inteiros da trilha.
+  for (const section of roadmap.sections) {
+    const sectionLeafIds = new Set<string>();
+    collectLeafIds(section.children, sectionLeafIds);
+    const covered = pool.questions.some((question) =>
+      sectionLeafIds.has(question.fonte),
+    );
+    if (!covered) {
+      problems.push(
+        `${scope}: secao "${section.title}" (${section.level}) nao origina nenhuma pergunta`,
+      );
+    }
+  }
+
   return problems;
 }
