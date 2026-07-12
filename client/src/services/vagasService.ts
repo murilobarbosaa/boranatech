@@ -123,3 +123,94 @@ export async function fetchVaga(id: string): Promise<VagaDetail> {
   const data = await vagasFetch(`/api/vagas/${id}`);
   return data as VagaDetail;
 }
+
+// --- Admin: vagas destaque manuais (source='manual') ---
+// Espelham os schemas Zod de server/routes/vagas.ts (AdminCreateSchema e
+// AdminPatchSchema). 403 nas rotas admin vira ADMIN_REQUIRED (o gate e
+// requireAdmin, nao o tier Pro) e 409 vira CONFLICT (url duplicada). O 400
+// carrega a mensagem do campo vinda do Zod do server para o form exibir.
+
+export interface AdminVagaItem extends VagaItem {
+  description: string | null;
+  featuredUntil: string | null;
+  published: boolean;
+}
+
+export interface VagaAdminCreatePayload {
+  title: string;
+  company: string;
+  location: string;
+  country?: string;
+  url: string;
+  seniority?: VagaSeniority;
+  contract?: VagaContract;
+  modality?: VagaModality;
+  description?: string;
+  salary_min?: number;
+  salary_max?: number;
+  salary_currency?: string;
+  featured?: boolean;
+  featured_until?: string;
+  published?: boolean;
+}
+
+export type VagaAdminUpdatePayload = Partial<VagaAdminCreatePayload>;
+
+async function vagasAdminFetch(
+  path: string,
+  init?: RequestInit,
+): Promise<unknown> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(apiUrl(path), {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader,
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (response.status === 401) throw new Error("LOGIN_REQUIRED");
+  if (response.status === 403) throw new Error("ADMIN_REQUIRED");
+  if (response.status === 404) throw new Error("NOT_FOUND");
+  if (response.status === 409) throw new Error("CONFLICT");
+  if (response.status === 400) {
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    throw new Error(
+      `INVALID_REQUEST: ${body.error?.message ?? "Payload inválido."}`,
+    );
+  }
+  if (!response.ok) throw new Error("SERVER_ERROR");
+
+  const body = (await response.json()) as { data?: unknown };
+  if (body.data === undefined) throw new Error("SERVER_ERROR");
+  return body.data;
+}
+
+export async function fetchVagasAdmin(): Promise<AdminVagaItem[]> {
+  const data = (await vagasAdminFetch("/api/vagas/admin")) as {
+    items?: AdminVagaItem[];
+  };
+  return Array.isArray(data.items) ? data.items : [];
+}
+
+export async function createVagaAdmin(
+  payload: VagaAdminCreatePayload,
+): Promise<void> {
+  await vagasAdminFetch("/api/vagas/admin", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateVagaAdmin(
+  id: string,
+  payload: VagaAdminUpdatePayload,
+): Promise<void> {
+  await vagasAdminFetch(`/api/vagas/admin/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
