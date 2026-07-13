@@ -5,7 +5,11 @@ import {
   CheckCircle,
   Languages,
   Mic,
+  Rocket,
+  Sprout,
   Target,
+  TrendingUp,
+  type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -77,6 +81,32 @@ const LEVEL_SLUG: Record<EnglishLevel, string> = {
   Avançado: "avancado",
 };
 
+// Icone e cor por nivel, usando a paleta existente do projeto (emerald, amber,
+// violet). Sem cores inventadas.
+const LEVEL_META: Record<
+  EnglishLevel,
+  { Icon: LucideIcon; badge: string; card: string; icon: string }
+> = {
+  Básico: {
+    Icon: Sprout,
+    badge: "bg-emerald-200 text-emerald-900",
+    card: "bg-emerald-50",
+    icon: "text-emerald-700",
+  },
+  Intermediário: {
+    Icon: TrendingUp,
+    badge: "bg-amber-200 text-amber-900",
+    card: "bg-amber-50",
+    icon: "text-amber-700",
+  },
+  Avançado: {
+    Icon: Rocket,
+    badge: "bg-violet-200 text-violet-900",
+    card: "bg-violet-50",
+    icon: "text-violet-700",
+  },
+};
+
 const navCards = [
   {
     href: "/ingles/onde-estudar",
@@ -104,22 +134,11 @@ const navCards = [
   },
 ];
 
-const checklist = [
-  "Deixe GitHub, Cursor e documentação em inglês.",
-  "Pesquise erros em inglês antes de traduzir.",
-  "Mantenha um glossário pessoal com exemplos do seu projeto.",
-  "Escreva commits simples em inglês: fix, add, update, remove.",
-  "Leia README de projetos open source parecidos com os seus.",
-  "Grave áudio de 1 minuto explicando o que você construiu.",
-  "Use legenda em inglês, não português, quando assistir tech talks.",
-  "Revise toda semana os termos que mais se repetiram.",
-];
-
+// TODO(Ana): revisar a copy de apoio dos blocos (titulos, subtitulos e labels).
 export default function Ingles() {
   const [mostrarQuiz, setMostrarQuiz] = useState(false);
   return (
     <Layout>
-      {/* TODO(Ana): validar title e description */}
       <SEO
         title="Inglês para tech · Comece sem ser fluente"
         description="Você não precisa ser fluente para começar em TI: crie contato diário com documentação, vídeos, README e conversa técnica com um guia por nível."
@@ -132,18 +151,19 @@ export default function Ingles() {
         subtitle="Você não precisa ser fluente para começar. Precisa criar contato diário com documentação, erro, vídeo, README e conversa técnica."
       />
       <InglesSubNav />
-      <section className="border-b-2 border-slate-900 bg-gradient-to-b from-sky-100 to-[#faf8f4] py-12">
+
+      <section className="border-b-2 border-slate-900 bg-gradient-to-b from-sky-100 to-[#faf8f4] py-14">
         <div className="container">
           <div className="mx-auto max-w-2xl text-center">
             <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
-              teste de nível
+              comece por aqui
             </p>
             <h2 className="font-display text-3xl font-black text-slate-950 sm:text-4xl">
-              Descubra seu nível de inglês
+              Descubra seu nível
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-600">
-              15 perguntas rápidas de inglês técnico. No final você recebe seu
-              nível e o próximo passo para evoluir.
+              Responda o teste rápido de inglês técnico e receba seu nível e o
+              próximo passo para evoluir.
             </p>
           </div>
           <div className="mx-auto mt-8 max-w-2xl">
@@ -151,80 +171,102 @@ export default function Ingles() {
           </div>
         </div>
       </section>
-      <section className={cn(ac.contentBg, "py-12")}>
-        <div className="container space-y-10">
-          <div className="grid gap-5 lg:grid-cols-3">
-            <div className="card-brutal rounded-2xl bg-white p-6 lg:col-span-2">
-              <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
-                comece pelo uso real
-              </p>
-              <h2 className="font-display text-3xl font-black text-slate-950">
-                O inglês que mais aparece na tecnologia
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                O objetivo não é falar perfeito. É conseguir ler documentação,
-                entender mensagens de erro, pesquisar dúvidas, explicar seu
-                projeto e participar de processos seletivos com mais confiança.
-              </p>
-              <div className="mt-5 grid gap-3 md:grid-cols-3">
-                {[
-                  "Documentação",
-                  "Erros e terminal",
-                  "Portfólio e entrevista",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className={cn(
-                      "rounded-xl border-2 p-4",
-                      ac.panelBorder,
-                      ac.panelSoft,
-                    )}
-                  >
-                    <CheckCircle className={cn("mb-2 h-5 w-5", ac.iconMuted)} />
-                    <p className="font-display text-lg font-black text-slate-950">
-                      {item}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="card-brutal rounded-2xl bg-sky-100 p-6">
-              <h3 className="font-display text-2xl font-black text-slate-950">
-                Meta simples
-              </h3>
-              <p className="mt-3 text-sm font-bold text-slate-800">
-                20 minutos por dia: 10 lendo, 5 ouvindo, 5 escrevendo uma frase
-                sobre o que você estudou.
-              </p>
-              <p
-                className={cn(
-                  "mt-4 rounded-xl border-2 border-slate-900 bg-white p-3 text-xs font-black",
-                  ac.tbodyAccentBold,
-                )}
-              >
-                Inglês técnico cresce por repetição, não por maratona.
-              </p>
-            </div>
+
+      <section className="border-b-2 border-slate-900 bg-white py-14">
+        <div className="container space-y-8">
+          <div>
+            <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+              seu plano por nível
+            </p>
+            <h2 className="font-display text-3xl font-black text-slate-950">
+              O que fazer em cada nível
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Veja o que significa cada nível, o que fazer no dia a dia e quando
+              subir para o próximo.
+            </p>
           </div>
 
-          <div id="montar-trilha" className="scroll-mt-24">
-            <div className="mb-5">
-              <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
-                próximo passo
-              </p>
-              <h2 className="font-display text-3xl font-black text-slate-950">
-                Agora monte sua trilha
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Depois de saber seu nível, monte uma trilha sob medida por nível
-                e objetivo.
-              </p>
-            </div>
+          <div className="grid gap-5 lg:grid-cols-3">
+            {ENGLISH_LEVELS.map((level) => {
+              const profile = levelProfiles.find(
+                (item) => item.level === level,
+              );
+              const track = levelTrack.find((item) => item.level === level);
+              const meta = LEVEL_META[level];
+              if (!profile || !track) return null;
+              const Icon = meta.Icon;
+              return (
+                <div
+                  key={level}
+                  id={`roadmap-nivel-${LEVEL_SLUG[level]}`}
+                  className={cn(
+                    "card-brutal flex flex-col scroll-mt-24 rounded-2xl p-6",
+                    meta.card,
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl border-2 border-slate-900 bg-white p-2.5 shadow-[3px_3px_0_#0f172a]">
+                      <Icon className={cn("h-6 w-6", meta.icon)} aria-hidden />
+                    </div>
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase",
+                        meta.badge,
+                      )}
+                    >
+                      {level}
+                    </span>
+                  </div>
+                  <p className="mt-4 text-sm text-slate-700">{profile.desc}</p>
+                  <p className="mt-5 text-xs font-black uppercase tracking-wide text-slate-500">
+                    O que fazer
+                  </p>
+                  <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    {track.actions.map((action) => (
+                      <li key={action} className="flex gap-2">
+                        <CheckCircle
+                          className={cn("mt-0.5 h-4 w-4 shrink-0", meta.icon)}
+                          aria-hidden
+                        />
+                        <span>{action}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-5 text-xs font-black uppercase tracking-wide text-slate-500">
+                    Quando subir
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-2 rounded-xl border-2 border-slate-900 bg-white p-3 text-xs font-black",
+                      ac.tbodyAccentBold,
+                    )}
+                  >
+                    {track.exit}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            id="montar-trilha"
+            className="card-brutal scroll-mt-24 rounded-2xl bg-sky-50 p-6"
+          >
+            <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+              próximo passo
+            </p>
+            <h3 className="font-display text-2xl font-black text-slate-950">
+              Quer um plano sob medida?
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              Monte uma trilha por nível e objetivo em poucos cliques.
+            </p>
             <button
               type="button"
               onClick={() => setMostrarQuiz((v) => !v)}
               aria-expanded={mostrarQuiz}
-              className="bnt-pressable inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
+              className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a]"
             >
               <Target className="h-4 w-4" aria-hidden />
               {mostrarQuiz ? "Ocultar montador de trilha" : "Montar minha trilha"}
@@ -235,146 +277,52 @@ export default function Ingles() {
               </div>
             ) : null}
           </div>
+        </div>
+      </section>
 
+      <section className={cn(ac.contentBg, "py-14")}>
+        <div className="container space-y-8">
           <div>
-            <div className="mb-5 flex items-start gap-3">
-              <div
+            <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
+              explore os temas
+            </p>
+            <h2 className="font-display text-3xl font-black text-slate-950">
+              Explore os temas
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              O conteúdo de verdade está aqui: onde estudar, inglês no trabalho,
+              entrevista técnica e vocabulário.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            {navCards.map((card) => (
+              <Link
+                key={card.href}
+                href={card.href}
                 className={cn(
-                  "rounded-xl border-2 border-sky-700 bg-sky-100 p-3 text-slate-950",
-                  ac.brutalShadow,
+                  "card-brutal flex items-start gap-4 rounded-2xl bg-white p-6 transition-all hover:-translate-y-0.5",
+                  ac.liftShadow,
                 )}
               >
-                <Target className="h-6 w-6" />
-              </div>
-              <div>
-                <p className={cn("text-xs font-black uppercase", ac.iconMuted)}>
-                  auto-diagnóstico
-                </p>
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  Qual é o seu nível?
-                </h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Leia os três perfis e veja onde você está hoje antes de seguir
-                  a trilha.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-5 md:grid-cols-3">
-              {levelProfiles.map((item) => (
-                <div
-                  key={item.level}
-                  className="card-brutal rounded-2xl bg-white p-5"
-                >
-                  <p className="social-badge inline-flex px-3 py-1 text-xs font-black uppercase">
-                    {item.level}
-                  </p>
-                  <p className="mt-3 text-sm text-slate-600">{item.desc}</p>
+                <div className="shrink-0 rounded-xl border-2 border-slate-900 bg-sky-100 p-3 shadow-[3px_3px_0_#0f172a]">
+                  <card.icon className="h-8 w-8 text-sky-700" aria-hidden />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-5">
-              <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
-                trilha por nível
-              </p>
-              <h2 className="font-display text-3xl font-black text-slate-950">
-                O que fazer em cada nível
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Ações concretas e um critério claro para subir de nível sem
-                pressa.
-              </p>
-            </div>
-            <div className="grid gap-5 lg:grid-cols-3">
-              {ENGLISH_LEVELS.map((level) => {
-                const track = levelTrack.find((item) => item.level === level);
-                if (!track) return null;
-                return (
-                  <div
-                    key={level}
-                    id={`roadmap-nivel-${LEVEL_SLUG[level]}`}
-                    className="card-brutal flex flex-col scroll-mt-24 rounded-2xl bg-white p-5"
-                  >
-                    <p className="social-badge inline-flex self-start px-3 py-1 text-xs font-black uppercase">
-                      {level}
-                    </p>
-                    <ul className="mt-4 space-y-2 text-sm text-slate-700">
-                      {track.actions.map((action) => (
-                        <li key={action} className="flex gap-2">
-                          <CheckCircle
-                            className={cn(
-                              "mt-0.5 h-4 w-4 shrink-0",
-                              ac.iconMuted,
-                            )}
-                          />
-                          <span>{action}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <p
-                      className={cn(
-                        "mt-4 rounded-xl border-2 border-slate-900 bg-white p-3 text-xs font-black",
-                        ac.tbodyAccentBold,
-                      )}
-                    >
-                      {track.exit}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className="mb-5">
-              <p className="social-badge mb-3 inline-flex px-3 py-1 text-xs font-black uppercase">
-                explore por tema
-              </p>
-              <h2 className="font-display text-3xl font-black text-slate-950">
-                Continue por onde faz sentido
-              </h2>
-            </div>
-            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {navCards.map((card) => (
-                <Link
-                  key={card.href}
-                  href={card.href}
-                  className={cn(
-                    "card-brutal flex flex-col rounded-2xl bg-white p-5 transition-all hover:-translate-y-0.5",
-                    ac.liftShadow,
-                  )}
-                >
-                  <card.icon className={cn("mb-3 h-7 w-7", ac.iconMuted)} />
+                <div className="flex-1">
                   <h3 className="font-display text-xl font-black text-slate-950">
                     {card.title}
                   </h3>
-                  <p className="mt-2 flex-1 text-sm text-slate-600">
-                    {card.desc}
-                  </p>
+                  <p className="mt-1 text-sm text-slate-600">{card.desc}</p>
                   <span
                     className={cn(
-                      "mt-4 inline-flex items-center gap-1 text-xs font-black uppercase",
+                      "mt-3 inline-flex items-center gap-1 text-xs font-black uppercase",
                       ac.link,
                     )}
                   >
-                    Abrir <ArrowRight className="h-3 w-3" />
+                    Ver conteúdo <ArrowRight className="h-3 w-3" />
                   </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className={cn("card-brutal rounded-2xl p-6", ac.panelSoft)}>
-            <h2 className="font-display text-2xl font-black">
-              Checklist para evoluir sem travar
-            </h2>
-            <ul className="mt-4 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
-              {checklist.map((item) => (
-                <li key={item}>• {item}</li>
-              ))}
-            </ul>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
