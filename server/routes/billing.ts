@@ -14,6 +14,11 @@ import {
 } from "../lib/billing-asaas";
 import { PLAN_CYCLE_MONTHS, addMonths } from "../lib/billing-cycle";
 import { env } from "../lib/env";
+import {
+  getPlanChargeValue,
+  isPlanId,
+  type PlanId,
+} from "../../shared/planPricing";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -22,12 +27,8 @@ import { createError } from "../middleware/error";
 import type { Gender } from "../../shared/gender";
 
 const router = Router();
-const PLAN_VALUES: Record<string, number> = {
-  pro_monthly: 24.9,
-  pro_semiannual: 119.4,
-  pro_annual: 179.9,
-};
-
+// O `value` cobrado deriva de shared/planPricing.ts (mesma fonte que o client
+// exibe). Nenhum valor monetario vem do body: so o planId, validado por whitelist.
 const PLAN_CYCLES: Record<string, "MONTHLY" | "SEMIANNUALLY" | "YEARLY"> = {
   pro_monthly: "MONTHLY",
   pro_semiannual: "SEMIANNUALLY",
@@ -577,8 +578,8 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       typeof req.body?.affiliateCode === "string"
         ? req.body.affiliateCode.trim().toUpperCase()
         : "";
-    const planId =
-      typeof req.body?.planId === "string" && PLAN_VALUES[req.body.planId]
+    const planId: PlanId =
+      typeof req.body?.planId === "string" && isPlanId(req.body.planId)
         ? req.body.planId
         : "pro_monthly";
 
@@ -620,7 +621,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       email: profile.email || req.user!.email,
     });
 
-    const fullValue = PLAN_VALUES[planId];
+    const fullValue = getPlanChargeValue(planId);
     let validAffiliateCode = "";
     let firstPaymentValue: number | null = null;
 

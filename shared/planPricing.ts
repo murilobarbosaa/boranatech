@@ -1,19 +1,14 @@
-// Fonte unica dos precos de EXIBIÇÃO dos planos Pro (o que o site MOSTRA).
-// Antes estavam hardcoded em varios lugares (Checkout, schema SEO, home/Pro);
-// agora todos derivam daqui pra nunca divergir entre si.
-//
-// ATENCAO CRITICA: o valor efetivamente COBRADO NAO vem daqui. Ele vive no
-// backend, em server/routes/billing.ts (PLAN_VALUES), que envia `value` ao
-// Asaas. Ao mudar estes numeros, o Murilo PRECISA alinhar PLAN_VALUES (e as
-// assinaturas ja criadas no Asaas), senao o site mostra um preco e o Asaas
-// cobra outro. TODO(Ana): confirmar estes precos e o alinhamento com o Murilo.
+// Fonte UNICA de verdade dos precos dos planos Pro: exibicao E cobranca.
+// O que o site MOSTRA (Checkout, schema SEO, home/Pro) e o `value` que o server
+// ENVIA ao Asaas derivam ambos deste arquivo (via getPlanChargeValue), entao o
+// preco exibido e o preco cobrado sao, por definicao, o mesmo numero.
 
 export type PlanId = "pro_monthly" | "pro_semiannual" | "pro_annual";
 
 export interface PlanPricing {
   id: PlanId;
   label: string;
-  // Valor total do ciclo, para exibicao e schema (nao e o valor cobrado).
+  // Valor total do ciclo: exibido no site/schema E cobrado no Asaas (mesmo numero).
   total: number;
   totalLabel: string;
   period: string;
@@ -64,3 +59,13 @@ export const PLAN_ORDER: PlanId[] = [
   "pro_semiannual",
   "pro_annual",
 ];
+
+export function isPlanId(value: string): value is PlanId {
+  return value in PLAN_PRICING;
+}
+
+// Valor cobrado (enviado ao Asaas) de um plano. Deriva do mesmo `total` exibido
+// no site, garantindo que preco exibido e preco cobrado nunca divirjam.
+export function getPlanChargeValue(planId: PlanId): number {
+  return PLAN_PRICING[planId].total;
+}

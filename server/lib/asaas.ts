@@ -66,7 +66,7 @@ export async function createAsaasCheckout(params: {
   customerId: string;
   userId: string;
   planCode: string;
-  value?: number;
+  value: number;
   cycle?: "MONTHLY" | "SEMIANNUALLY" | "YEARLY";
   affiliateCode?: string;
   successUrl?: string;
@@ -77,7 +77,7 @@ export async function createAsaasCheckout(params: {
   const data = await asaasRequest("POST", "/subscriptions", {
     customer: params.customerId,
     billingType: "CREDIT_CARD",
-    value: params.value ?? 24.9,
+    value: params.value,
     nextDueDate: nextDueDate.toISOString().split("T")[0],
     cycle: params.cycle || "MONTHLY",
     description: "Bora na Tech? - Plano Pro",
