@@ -303,10 +303,42 @@ export const womenArea = {
   // nao ha lista duplicada aqui. As organizacoes/coletivos (PyLadies, PrograMaria
   // etc.) nao entram nesta secao: vivem em `communities`.
   creators: womenCreators,
+  // Dados de mercado FORNECIDOS pela Ana. Cada um exibe FONTE e ANO na
+  // interface (regra: sem fonte visivel, nao publica). TODO(Ana): confirmar os
+  // numeros e o ano exato, e adicionar o link oficial de cada fonte se possivel.
+  stats: [
+    {
+      value: "~22%",
+      label:
+        "dos postos de trabalho em tecnologia no Brasil são ocupados por mulheres.",
+      source: "Brasscom",
+      year: "2023/2024",
+    },
+    {
+      value: "~15%",
+      label: "das matrículas em graduações de computação são de mulheres.",
+      source: "INEP / Censo da Educação Superior",
+      year: "2023/2024",
+    },
+    {
+      value: "-31%",
+      label:
+        "é quanto mulheres em TI ganham, em média, a menos que homens na mesma função.",
+      source: "IBGE / PNAD Contínua",
+      year: "2023/2024",
+    },
+  ],
   videos: [
     {
       title: "Canal Attekita Dev: dev, games e carreira",
       url: "https://www.youtube.com/@attekitadev",
+    },
+    {
+      // TODO(Ana): trocar pelo link oficial do TEDx quando confirmado (por ora,
+      // link de busca, pois nao foi possivel verificar a URL exata).
+      title:
+        "Lugar de mulher é na tecnologia - Camila Achutti (TEDx): a barreira cultural de gênero nas exatas",
+      url: "https://www.youtube.com/results?search_query=Camila+Achutti+lugar+de+mulher+na+tecnologia+TEDx",
     },
     {
       title: "Canal Rafaella Ballerini: programação e carreira",
@@ -345,6 +377,21 @@ export const womenArea = {
     {
       name: "Programas de estágio afirmativos",
       url: "https://www.google.com/search?q=programa+est%C3%A1gio+mulheres+tecnologia",
+    },
+    {
+      // TODO(Ana): trocar por link oficial quando confirmado (busca por ora).
+      name: "LuizaCode (Magazine Luiza) - inscrições periódicas",
+      url: "https://www.google.com/search?q=LuizaCode+Magazine+Luiza+programa",
+    },
+    {
+      // TODO(Ana): trocar por link oficial quando confirmado (busca por ora).
+      name: "Nubank - vagas afirmativas em tecnologia (periódico)",
+      url: "https://www.google.com/search?q=Nubank+vagas+afirmativas+tecnologia",
+    },
+    {
+      // TODO(Ana): trocar por link oficial quando confirmado (busca por ora).
+      name: "Trainee Itaú Tech - trilhas afirmativas (inscrições anuais)",
+      url: "https://www.google.com/search?q=trainee+Itau+tech+afirmativo",
     },
   ],
   supportTracks: [

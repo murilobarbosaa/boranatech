@@ -348,6 +348,9 @@ export default function Mulheres() {
             </div>
           </motion.div>
 
+          <motion.div {...reveal}>
+            <StatsSection stats={womenArea.stats} />
+          </motion.div>
           <motion.div {...reveal} id="comunidades">
             <Section
               title="Comunidades indicadas"
@@ -391,11 +394,15 @@ export default function Mulheres() {
               title="Vagas afirmativas"
               icon={<ExternalLink className="h-5 w-5 text-pink-700" />}
               items={womenArea.affirmativeJobs}
+              // TODO(Ana): revisar o aviso
+              note="Programas afirmativos abrem em janelas específicas do ano. Acompanhe os canais oficiais; nem sempre há vaga aberta agora."
             />
             <ListCard
               title="Bolsas, editais e bootcamps"
               icon={<Sparkles className="h-5 w-5 text-pink-700" />}
               items={womenArea.scholarshipPrograms}
+              // TODO(Ana): revisar o aviso
+              note="Bootcamps e bolsas têm inscrições periódicas. Confirme as datas nos canais oficiais."
             />
             <div className="card-brutal rounded-2xl border-pink-200 bg-pink-50 p-6">
               <h2 className="font-display mb-4 flex items-center gap-2 text-xl font-black text-slate-950">
@@ -692,14 +699,57 @@ function Section({
   );
 }
 
+function StatsSection({
+  stats,
+}: {
+  stats: { value: string; label: string; source: string; year: string }[];
+}) {
+  const shadows = [
+    "shadow-[5px_5px_0_#8b5cf6]",
+    "shadow-[5px_5px_0_#FFB800]",
+    "shadow-[5px_5px_0_#e879f9]",
+  ];
+  return (
+    <div>
+      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        O cenário
+      </p>
+      {/* TODO(Ana): confirmar os dados; cada card exibe a fonte e o ano. */}
+      <h2 className="font-display mb-5 text-2xl font-black text-slate-950 sm:text-3xl">
+        Por que essa área importa, em números
+      </h2>
+      <div className="grid gap-5 sm:grid-cols-3">
+        {stats.map((stat, index) => (
+          <div
+            key={stat.source}
+            className={`flex flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 ${shadows[index % shadows.length]}`}
+          >
+            <p className="font-display text-4xl font-black leading-none text-violet-700 sm:text-5xl">
+              {stat.value}
+            </p>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-slate-700">
+              {stat.label}
+            </p>
+            <p className="mt-4 text-[0.7rem] font-black uppercase tracking-wide text-slate-500">
+              Fonte: {stat.source}, {stat.year}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ListCard({
   title,
   icon,
   items,
+  note,
 }: {
   title: string;
   icon: ReactNode;
   items: { title?: string; name?: string; url: string }[];
+  note?: string;
 }) {
   return (
     <div className="card-brutal rounded-2xl border-pink-200 bg-white p-6">
@@ -707,6 +757,11 @@ function ListCard({
         {icon}
         {title}
       </h2>
+      {note ? (
+        <p className="mb-4 rounded-lg border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+          {note}
+        </p>
+      ) : null}
       <div className="space-y-3">
         {items.map((item) => {
           const favicon = getFaviconUrl(item.url);
