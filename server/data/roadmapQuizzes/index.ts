@@ -6,6 +6,7 @@
 // SERVER-ONLY: ver README.md desta pasta.
 import type { QuizPool } from "../../../shared/roadmapQuiz/types";
 import analiseDados from "./analise-dados";
+import analiseSistemas from "./analise-sistemas";
 import backend from "./backend";
 import bancoDeDados from "./banco-de-dados";
 import cloud from "./cloud";
@@ -14,14 +15,17 @@ import devops from "./devops";
 import engenhariaDados from "./engenharia-dados";
 import frontend from "./frontend";
 import fullstack from "./fullstack";
+import gestao from "./gestao";
 import infraestrutura from "./infraestrutura";
 import mobile from "./mobile";
 import produto from "./produto";
+import qa from "./qa";
 import sre from "./sre";
 import uxui from "./uxui";
 
 export const roadmapQuizPools: Record<string, QuizPool> = {
   "analise-dados": analiseDados,
+  "analise-sistemas": analiseSistemas,
   backend,
   "banco-de-dados": bancoDeDados,
   cloud,
@@ -30,9 +34,11 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   "engenharia-dados": engenhariaDados,
   frontend,
   fullstack,
+  gestao,
   infraestrutura,
   mobile,
   produto,
+  qa,
   sre,
   uxui,
 };
