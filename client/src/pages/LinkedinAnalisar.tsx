@@ -556,6 +556,10 @@ export default function LinkedinAnalisar() {
   const [pdfError, setPdfError] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [analyses, setAnalyses] = useState<LinkedinAnalysisSummary[]>([]);
+  // Historico assentou (sucesso OU falha do fetch). analyses comeca [], entao
+  // a faixa "Como funciona" so pode decidir por Pro depois disso: evita o
+  // flash pra quem ja tem analise.
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   // Delta de nota vs a analise IMEDIATAMENTE anterior (toda analise de
   // LinkedIn e do mesmo perfil da pessoa, entao nao ha alvo a normalizar).
@@ -650,9 +654,16 @@ export default function LinkedinAnalisar() {
   useEffect(() => {
     if (!isPro) return;
     let active = true;
-    void listLinkedinAnalyses().then((data) => {
-      if (active) setAnalyses(data);
-    });
+    void listLinkedinAnalyses()
+      .then((data) => {
+        if (active) setAnalyses(data);
+      })
+      .catch(() => {
+        // Falha no fetch: analyses segue [], a faixa fica no fail-open.
+      })
+      .finally(() => {
+        if (active) setHistoryLoaded(true);
+      });
     return () => {
       active = false;
     };
@@ -990,12 +1001,13 @@ export default function LinkedinAnalisar() {
             </p>
           </motion.div>
 
-          {/* Faixa "Como funciona" de largura total: so na entrada e so pra
-              quem ainda nao tem analise. analyses fica vazio tambem quando o
-              historico falha ao carregar, entao a faixa segue visivel nesse
-              caso (mostrar a ajuda e o fallback seguro). Fica acima do grid e,
-              pra quem nao e Pro, acima do ProGate. */}
-          {showEntry && analyses.length === 0 ? (
+          {/* Faixa "Como funciona" de largura total: so na entrada. Nao-Pro
+              nunca carrega historico, entao ve a faixa sempre (nunca analisou).
+              Pro so decide depois que o historico assenta (historyLoaded), pra
+              nao piscar a faixa antes do fetch retornar. Falha no fetch =
+              historyLoaded true com analyses vazio = faixa visivel (fail-open).
+              Fica acima do grid e, pra quem nao e Pro, acima do ProGate. */}
+          {showEntry && (!isPro || (historyLoaded && analyses.length === 0)) ? (
             <div className="mb-10">
               <HowItWorksTimeline />
             </div>
