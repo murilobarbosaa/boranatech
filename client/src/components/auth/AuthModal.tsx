@@ -23,6 +23,7 @@ import {
 import { savePendingIntent, type PendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
 import { getMyProfile } from "@/services/profileService";
+import { hasActiveSession, recordConsent } from "@/services/consentService";
 import type { Gender } from "@shared/gender";
 import { greet } from "@shared/greeting";
 
@@ -57,17 +58,23 @@ export default function AuthModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [acceptedConsent, setAcceptedConsent] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTab(defaultTab);
       setError(null);
+      setAcceptedConsent(false);
     }
   }, [open, defaultTab]);
 
   useEffect(() => {
     setError(null);
   }, [name, email, password, gender, tab]);
+
+  useEffect(() => {
+    setAcceptedConsent(false);
+  }, [tab]);
 
   const isSignup = tab === "signup";
 
@@ -96,6 +103,16 @@ export default function AuthModal({
         }
 
         await signUp(parsed.data);
+        // Registro duravel de consentimento so quando ha identidade via JWT.
+        // Sem sessao (confirmacao de email ligada) o ConsentGate registra no
+        // primeiro login. Nunca enviamos os flags em metadata do signUp.
+        if (await hasActiveSession()) {
+          try {
+            await recordConsent();
+          } catch (consentErr) {
+            console.warn("[AuthModal] failed to record consent:", consentErr);
+          }
+        }
         getMyProfile().catch((triggerErr) => {
           console.warn(
             "[AuthModal] failed to trigger welcome email:",
@@ -276,9 +293,41 @@ export default function AuthModal({
               isFocused={passwordFocused}
             />
           )}
+          {isSignup && (
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 flex-shrink-0"
+                checked={acceptedConsent}
+                onChange={(event) => setAcceptedConsent(event.target.checked)}
+              />
+              {/* TODO(Ana): texto do aceite de Termos e Politica no cadastro. */}
+              <span>
+                Li e aceito os{" "}
+                <a
+                  href="/termos-de-uso"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-violet-700 underline"
+                >
+                  Termos de Uso
+                </a>{" "}
+                e a{" "}
+                <a
+                  href="/privacidade"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-violet-700 underline"
+                >
+                  Política de Privacidade
+                </a>
+                .
+              </span>
+            </label>
+          )}
           <button
             className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (isSignup && !acceptedConsent)}
             type="submit"
           >
             {isSubmitting

@@ -5,6 +5,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Redirect, Route, Switch } from "wouter";
+import ConsentGate from "./components/consent/ConsentGate";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LaunchGate from "./components/gate/LaunchGate";
 import ScrollToTop from "./components/ScrollToTop";
@@ -335,7 +336,9 @@ function App() {
                 <AffiliateTracker />
                 <ScrollToTop />
                 <LaunchGate>
-                  <Router />
+                  <ConsentGate>
+                    <Router />
+                  </ConsentGate>
                 </LaunchGate>
               </TooltipProvider>
             </SubscriptionProvider>

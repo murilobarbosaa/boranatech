@@ -16,6 +16,7 @@ import {
   signupSchema,
 } from "@/lib/authSchemas";
 import { getMyProfile } from "@/services/profileService";
+import { hasActiveSession, recordConsent } from "@/services/consentService";
 import { greet } from "@shared/greeting";
 
 export default function Auth({
@@ -34,6 +35,7 @@ export default function Auth({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [acceptedConsent, setAcceptedConsent] = useState(false);
 
   useEffect(() => {
     setError(null);
@@ -57,6 +59,17 @@ export default function Auth({
         }
 
         await signUp(parsed.data);
+        // Registro duravel de consentimento so quando ha identidade via JWT.
+        // Com confirmacao de email desligada o signUp ja retorna sessao; se um
+        // dia for ligada, nao havera token aqui e o ConsentGate registra no
+        // primeiro login. Nunca enviamos os flags em metadata do signUp.
+        if (await hasActiveSession()) {
+          try {
+            await recordConsent();
+          } catch (consentErr) {
+            console.warn("[Auth] failed to record consent:", consentErr);
+          }
+        }
         getMyProfile().catch((triggerErr) => {
           console.warn("[Auth] failed to trigger welcome email:", triggerErr);
         });
@@ -195,9 +208,43 @@ export default function Auth({
                   isFocused={passwordFocused}
                 />
               )}
+              {isSignup && (
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 flex-shrink-0"
+                    checked={acceptedConsent}
+                    onChange={(event) =>
+                      setAcceptedConsent(event.target.checked)
+                    }
+                  />
+                  {/* TODO(Ana): texto do aceite de Termos e Politica no cadastro. */}
+                  <span>
+                    Li e aceito os{" "}
+                    <a
+                      href="/termos-de-uso"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-violet-700 underline"
+                    >
+                      Termos de Uso
+                    </a>{" "}
+                    e a{" "}
+                    <a
+                      href="/privacidade"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-violet-700 underline"
+                    >
+                      Política de Privacidade
+                    </a>
+                    .
+                  </span>
+                </label>
+              )}
               <button
                 className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isSignup && !acceptedConsent)}
                 type="submit"
               >
                 {/* TODO(Ana): rotulo do botao de cadastro (agora leva a /bem-vindo). */}
