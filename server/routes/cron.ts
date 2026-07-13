@@ -338,6 +338,7 @@ router.post("/process-cancellations", withCronLock("process-cancellations", 600,
     const { data: due, error: dueError } = await supabaseAdmin
       .from("subscriptions")
       .select("id, user_id, provider_subscription_id, current_period_end")
+      .eq("provider", "asaas")
       .eq("cancel_at_period_end", true)
       .eq("status", "active")
       .lte("current_period_end", nowIso);
@@ -463,6 +464,7 @@ async function reconcileIncompleteSubscriptions() {
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
     .select("id, user_id, provider_subscription_id, plans(code)")
+    .eq("provider", "asaas")
     .eq("status", "incomplete")
     .or(
       `last_event_at.lte.${cutoff},and(last_event_at.is.null,created_at.lte.${cutoff})`,
@@ -533,6 +535,7 @@ async function reconcileExpiredSubscriptions() {
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
     .select("id, user_id, provider_subscription_id, current_period_end, plans(code)")
+    .eq("provider", "asaas")
     .eq("status", "active")
     .or("cancel_at_period_end.is.null,cancel_at_period_end.eq.false")
     .lte("current_period_end", cutoff)

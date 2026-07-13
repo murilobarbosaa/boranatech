@@ -58,6 +58,70 @@ pnpm format         # prettier --write .
 
 Convenções de código e de commits estão em `CLAUDE.md`.
 
+## Pagamentos
+
+O billing suporta dois providers atras da mesma interface (`server/providers/`).
+`PAYMENT_PROVIDER` (default `asaas`) seleciona quem atende checkout/cancel/
+reactivate. Os webhooks tem rota fixa e independem do seletor:
+`POST /api/billing/webhook` (Asaas) e `POST /api/billing/webhook/stripe` (Stripe).
+
+### Envs
+
+| Env | Onde | Para que |
+| --- | --- | --- |
+| `PAYMENT_PROVIDER` | backend | `asaas` (default) ou `stripe`. |
+| `STRIPE_SECRET_KEY` | backend (Railway) | Chave secreta da Stripe (`sk_test_`/`sk_live_`). Nunca no frontend. |
+| `STRIPE_WEBHOOK_SECRET` | backend (Railway) | Signing secret do webhook (`whsec_`). Fail-closed se ausente. |
+| `STRIPE_PRICE_PRO_MONTHLY` | backend | price_id do plano mensal. |
+| `STRIPE_PRICE_PRO_SEMIANNUAL` | backend | price_id do plano semestral. |
+| `STRIPE_PRICE_PRO_ANNUAL` | backend | price_id do plano anual. |
+
+Nenhum segredo Stripe vai para o frontend (o Checkout hospedado dispensa a
+publishable key). price_ids de sandbox e producao sao diferentes.
+
+### Setup dos produtos/precos na Stripe
+
+Cria 1 product e 3 prices em BRL com os valores de `shared/planPricing.ts`
+(fonte unica). Idempotente. Rode uma vez por ambiente, com a `STRIPE_SECRET_KEY`
+daquele ambiente, e cole as linhas `STRIPE_PRICE_*` impressas nas envs:
+
+```bash
+STRIPE_SECRET_KEY=sk_test_... pnpm exec tsx scripts/stripe-setup.mjs
+```
+
+### Cupons de afiliado
+
+O desconto de afiliado e sempre percentual (`affiliates.discount_percent`) e vale
+so na primeira cobranca. No Stripe isso vira um coupon `duration: "once"` com id
+DETERMINISTICO `bnt_aff_<percent>_once` (dois afiliados com o mesmo percentual
+compartilham o coupon; a atribuicao fica no `affiliate_code`). O checkout ja cria
+o coupon sob demanda para percentuais ineditos, entao o script abaixo e opcional
+(pre-cria os coupons dos percentuais ativos):
+
+```bash
+STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-coupons.mjs   # sandbox
+STRIPE_SECRET_KEY=sk_live_... node scripts/stripe-coupons.mjs   # producao
+```
+
+Rode nos DOIS modos: o id e o mesmo, mas o coupon de sandbox e o de producao sao
+objetos DIFERENTES (a `STRIPE_SECRET_KEY` decide qual voce acerta).
+
+### Testar o webhook localmente
+
+```bash
+# encaminha os eventos da Stripe para o webhook local (imprime o whsec_ a usar
+# em STRIPE_WEBHOOK_SECRET):
+stripe listen --forward-to localhost:3100/api/billing/webhook/stripe
+
+# com PAYMENT_PROVIDER=stripe e as envs preenchidas, assine com o cartao de teste
+# 4242 4242 4242 4242 (qualquer validade futura / CVC). O acesso Pro so e liberado
+# pelo webhook, nunca pela success page.
+```
+
+Obs.: em dev o `SubscriptionContext` forca Pro (`import.meta.env.DEV`). Para
+validar o webhook de ponta a ponta, desligue esse bypass, senao o teste passa
+mesmo com o webhook quebrado.
+
 ## Deploy
 
 - **Vercel**: apenas o frontend (rewrite catch-all para `index.html`).
