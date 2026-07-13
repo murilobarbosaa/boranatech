@@ -2759,6 +2759,7 @@ export const AREA_ACCENT: Record<string, string> = {
   "Front-end": "#7c3aed",
   "Back-end": "#15803d",
   "Full-stack": "#4f46e5",
+  "Desenvolvimento de Software": "#2563eb",
   "Desenvolvimento Mobile": "#9a3412",
   "Game Dev": "#be123c",
   "Arquitetura de Software e Tech Lead": "#1e40af",
