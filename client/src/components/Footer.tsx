@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { Heart } from "lucide-react";
 import Logo from "@/components/Logo";
 import { apiUrl } from "@/lib/api";
-import { FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/footerData";
+import { CONTACT_EMAIL, FOOTER_COLUMNS, SOCIAL_LINKS } from "@/lib/footerData";
 
 type SocialIconProps = {
   icon: string;
@@ -315,6 +315,14 @@ export default function Footer() {
                 />
               ))}
             </div>
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              aria-label={`Enviar email para ${CONTACT_EMAIL}`}
+              className="inline-flex items-center gap-2 font-bold text-slate-300 underline decoration-amber-400 decoration-2 underline-offset-4 transition-colors duration-200 hover:text-white"
+            >
+              <Icon icon="ph:envelope-simple-bold" aria-hidden="true" />
+              {CONTACT_EMAIL}
+            </a>
           </div>
         </div>
 

@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { ArrowRight, Compass } from "lucide-react";
 
 import { creators } from "@/lib/creatorsData";
+import { CONTACT_EMAIL } from "@/lib/footerData";
 
 // Secao "Sobre Nos": conteudo da pagina propria /sobre (pages/Sobre.tsx),
 // acessada pelo item "Sobre nos" do menu Comunidade (grupo CONEXOES).
@@ -133,8 +134,7 @@ const stats = [
   { value: "IA", label: "ferramentas de análise" },
 ];
 
-// 7. Contato. TODO(Ana): confirmar um e-mail ativo. Sem e-mail confirmado,
-// deixamos so o Instagram do projeto (real) como canal.
+// 7. Fale conosco. CONTACT_EMAIL vem da fonte unica do rodape (footerData).
 const CONTACT_INSTAGRAM = "https://www.instagram.com/boranatech/";
 
 function SocialButton({
@@ -448,32 +448,46 @@ export default function SobreNos() {
         </div>
       </div>
 
-      {/* 7. FECHO + CONTATO */}
+      {/* 7. FALE CONOSCO (fecho) */}
       <div className="border-t-2 border-slate-900 bg-white py-16">
         <div className="container">
           <div className="mx-auto max-w-3xl rounded-2xl border-2 border-slate-900 bg-[image:linear-gradient(160deg,#6b1fc9,#3f1185)] p-8 text-center text-white shadow-[8px_8px_0_#FFB800] sm:p-10">
-            {/* TODO(Ana): revisar a frase de fecho */}
-            <h3 className="font-display text-2xl font-black leading-tight sm:text-3xl">
-              A bússola que a gente queria ter tido, agora é sua.
-            </h3>
-            <p className="mt-4 text-base font-bold leading-relaxed text-slate-200">
-              Tem ideia, dúvida ou parceria? A gente responde no Instagram do
-              projeto.
-              {/* TODO(Ana): adicionar e-mail de contato quando confirmado. */}
+            <p className="mb-3 inline-flex rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950">
+              {/* TODO(Ana): titulo da secao */}
+              Fale conosco
             </p>
-            <a
-              href={CONTACT_INSTAGRAM}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
-            >
-              <Icon
-                icon="ph:instagram-logo-bold"
-                style={{ fontSize: "20px" }}
-                aria-hidden="true"
-              />
-              @boranatech
-            </a>
+            {/* TODO(Ana): revisar a frase de convite */}
+            <h3 className="font-display text-2xl font-black leading-tight sm:text-3xl">
+              Dúvida, parceria, sugestão ou só quer trocar ideia? A gente
+              responde.
+            </h3>
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                aria-label={`Enviar email para ${CONTACT_EMAIL}`}
+                className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
+              >
+                <Icon
+                  icon="ph:envelope-simple-bold"
+                  style={{ fontSize: "20px" }}
+                  aria-hidden="true"
+                />
+                <span className="truncate">{CONTACT_EMAIL}</span>
+              </a>
+              <a
+                href={CONTACT_INSTAGRAM}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
+              >
+                <Icon
+                  icon="ph:instagram-logo-bold"
+                  style={{ fontSize: "20px" }}
+                  aria-hidden="true"
+                />
+                @boranatech
+              </a>
+            </div>
           </div>
         </div>
       </div>

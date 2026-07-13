@@ -8,6 +8,11 @@ export const SOCIAL_LINKS = {
   twitter: "https://x.com/boranatech",
 } as const;
 
+// Email de contato do rodape e do "Fale conosco". TODO(Ana): confirmar que a
+// caixa contato@boranatech.com.br existe e e monitorada (o FAQ e o Admin usam
+// oi@boranatech.com.br).
+export const CONTACT_EMAIL = "contato@boranatech.com.br";
+
 type FooterLink = { label: string; href: string };
 type FooterColumn = { title: string; links: readonly FooterLink[] };
 
