@@ -494,57 +494,82 @@ function CreatorsSection({
       .join("")
       .toUpperCase();
 
+  const cardStyles = [
+    { accent: "bg-violet-500", shadow: "shadow-[5px_5px_0_#8b5cf6]" },
+    { accent: "bg-[#FFB800]", shadow: "shadow-[5px_5px_0_#FFB800]" },
+    { accent: "bg-fuchsia-500", shadow: "shadow-[5px_5px_0_#e879f9]" },
+  ];
+
   return (
     <div>
-      <h2 className="font-display mb-4 text-2xl font-black text-slate-950">
-        Criadoras para acompanhar
+      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        Quem acompanhar
+      </p>
+      <h2 className="font-display mb-5 text-2xl font-black text-slate-950 sm:text-3xl">
+        Criadoras e comunidades para acompanhar
       </h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        {creators.map((creator) => {
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {creators.map((creator, index) => {
           const favicon = getFaviconUrl(creator.url);
+          const style = cardStyles[index % cardStyles.length];
           return (
             <a
               key={creator.name}
               href={creator.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="card-invite flex gap-4 rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+              className={`group flex flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-5 ${style.shadow} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1`}
             >
-              <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#f472b6]">
-                <AvatarImage
-                  src={creator.avatarUrl}
-                  alt={`Foto de perfil de ${creator.name}`}
-                />
-                <AvatarFallback className="border-2 border-pink-200 bg-pink-100 text-xs font-black text-pink-900">
-                  {initials(creator.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-display font-black text-slate-950">
-                  {creator.name}
-                </h3>
-                {creator.parceira ? (
-                  <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-pink-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
-                    <Sparkles className="h-3 w-3" aria-hidden />
-                    Parceira BoraNaTech
-                  </span>
-                ) : null}
-                <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-pink-700">
-                  {favicon && (
-                    <img
-                      src={favicon}
-                      alt=""
-                      onError={hideBrokenImage}
-                      className="h-4 w-4 shrink-0 rounded border border-slate-300"
-                    />
-                  )}
-                  {creator.handle}
-                </p>
-                <p className="mt-2 text-sm text-slate-600">{creator.topic}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
-                  Conhecer <ExternalLink className="h-3 w-3" />
-                </span>
+              <span
+                aria-hidden
+                className={`-mx-5 -mt-5 mb-4 h-2 ${style.accent}`}
+              />
+              <div className="flex gap-4">
+                <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]">
+                  <AvatarImage
+                    src={creator.avatarUrl}
+                    alt={`Foto de perfil de ${creator.name}`}
+                  />
+                  <AvatarFallback className="border-2 border-slate-900 bg-violet-200 text-sm font-black text-violet-900">
+                    {initials(creator.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display font-black leading-tight text-slate-950">
+                    {creator.name}
+                  </h3>
+                  {creator.parceira ? (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
+                      <Sparkles className="h-3 w-3" aria-hidden />
+                      Parceira BoraNaTech
+                    </span>
+                  ) : null}
+                  {creator.handle ? (
+                    <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-violet-700">
+                      {favicon && (
+                        <img
+                          src={favicon}
+                          alt=""
+                          onError={hideBrokenImage}
+                          className="h-4 w-4 shrink-0 rounded border border-slate-300"
+                        />
+                      )}
+                      {creator.handle}
+                    </p>
+                  ) : null}
+                </div>
               </div>
+              {/* TODO(Ana): revisar a linha de descricao de cada creator; nao inventar bio. */}
+              <p className="mt-3 text-sm font-semibold text-slate-600">
+                {creator.topic}
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-xs font-black text-violet-700">
+                Conhecer
+                <ExternalLink
+                  className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
+              </span>
             </a>
           );
         })}
