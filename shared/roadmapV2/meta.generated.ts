@@ -75,7 +75,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da pesquisa com usuários ao protótipo de alta fidelidade no Figma, passando por interface, design system e testes. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 22,
+    "stepCount": 23,
     "hasProject": true,
     "hasQuiz": false
   },
