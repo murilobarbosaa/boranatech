@@ -219,11 +219,11 @@ export default function Checkout() {
             <p className="font-display text-sm font-black uppercase tracking-wider text-slate-950">
               {/* TODO(Ana): confirmar copy final */}
               Cupom {affiliateCode} aplicado, {discountPercent}% de desconto na
-              primeira cobrança.
+              primeira cobrança, em qualquer plano.
             </p>
             <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-950/70">
               {/* TODO(Ana): confirmar copy final */}
-              Renovações no valor cheio.
+              Válido apenas na primeira compra. Renovações no valor cheio.
             </p>
           </div>
         </div>
@@ -463,12 +463,13 @@ export default function Checkout() {
               <span className="flex flex-col items-center text-center sm:flex-row sm:gap-1.5">
                 <span>
                   {/* TODO(Ana): confirmar copy final */}
-                  Desconto de {discountPercent}% na primeira cobrança, já
-                  aplicado nos preços abaixo · Cupom {affiliateCode}
+                  Desconto de {discountPercent}% na primeira cobrança, em
+                  qualquer plano, já aplicado nos preços abaixo · Cupom{" "}
+                  {affiliateCode}
                 </span>
                 <span className="text-xs font-semibold text-emerald-700">
                   {/* TODO(Ana): confirmar copy final */}
-                  Renovações no valor cheio.
+                  Válido apenas na primeira compra. Renovações no valor cheio.
                 </span>
               </span>
             </div>
