@@ -78,7 +78,6 @@ const RoadmapsV2 = lazy(() => import("@/pages/RoadmapsV2"));
 const RoadmapsV2Index = lazy(() => import("@/pages/RoadmapsV2Index"));
 const Salarios = lazy(() => import("@/pages/Salarios"));
 const Simulador = lazy(() => import("@/pages/Simulador"));
-const Sobre = lazy(() => import("@/pages/Sobre"));
 const SubAreaDetalhe = lazy(() => import("@/pages/SubAreaDetalhe"));
 const TecnologiaComparador = lazy(() => import("@/pages/TecnologiaComparador"));
 const TecnologiaDetalhe = lazy(() => import("@/pages/TecnologiaDetalhe"));
@@ -277,7 +276,11 @@ function Router() {
         <Route path="/portifolio">{() => <Redirect to="/portfolio" />}</Route>
         <Route path="/noticias" component={Noticias} />
         <Route path="/comunidades" component={Comunidades} />
-        <Route path="/sobre" component={Sobre} />
+        {/* Sobre Nos vive dentro da Comunidade (/comunidades#sobre); a rota
+            antiga redireciona pra nao quebrar link salvo. */}
+        <Route path="/sobre">
+          {() => <Redirect to="/comunidades#sobre" />}
+        </Route>
         <Route path="/dicas" component={Dicas} />
         <Route path="/mulheres" component={Mulheres} />
         <Route path="/dicionario" component={Dicionario} />

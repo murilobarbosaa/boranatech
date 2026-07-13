@@ -3,7 +3,7 @@
   Style: Neo-Brutalism Suavizado
 */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowUpRight,
@@ -22,6 +22,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
+import SobreNos from "@/components/shared/SobreNos";
 import { comunidades } from "@/lib/data";
 import { ESTADO_UF_OPTS } from "@/lib/eventFilters";
 import { softSkills } from "@/lib/softSkillsData";
@@ -65,6 +66,23 @@ export default function Comunidades() {
   const [area, setArea] = useState("Todas");
   const [idioma, setIdioma] = useState("Todos");
   const [query, setQuery] = useState("");
+
+  // Ancora #sobre: /sobre redireciona pra ca; rola ate a secao Sobre Nos apos
+  // a renderizacao (respeitando prefers-reduced-motion).
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location.hash !== "#sobre")
+      return;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const id = window.setTimeout(() => {
+      document.getElementById("sobre")?.scrollIntoView({
+        behavior: reduce ? "auto" : "smooth",
+        block: "start",
+      });
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const modalidadeCounts = useMemo(
     () => ({
@@ -476,6 +494,8 @@ export default function Comunidades() {
           </div>
         </div>
       </section>
+
+      <SobreNos />
     </Layout>
   );
 }

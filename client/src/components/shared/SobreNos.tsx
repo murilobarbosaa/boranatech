@@ -1,0 +1,391 @@
+import { useState } from "react";
+import { Link } from "wouter";
+import { Icon } from "@iconify/react";
+import { ArrowRight, Compass, Target, Users } from "lucide-react";
+
+// Secao "Sobre Nos" que vive DENTRO da pagina de Comunidade (/comunidades#sobre),
+// nao como aba separada no menu. As bios do time vem dos LinkedIns REAIS da Ana
+// e do Murilo (fornecidas por eles): nada acrescentado. Dado de mercado com
+// fonte visivel (Brasscom, 2023). Fotos em client/public/sobre/ (fallback nas
+// iniciais ate os arquivos existirem).
+// TODO(Ana): revisar TODA a copy nova desta secao antes de publicar.
+
+const HERO_LEAD =
+  "Existe muita gente querendo entrar na tecnologia e se perdendo no caminho. A gente existe pra ser a bússola.";
+
+// Dado FORNECIDO pela Ana, com fonte visivel. TODO(Ana): confirmar antes de publicar.
+const PROBLEM_STAT =
+  "No Brasil, das 1,8 milhão de vagas em cursos superiores de tecnologia em 2023, menos de 5% concluíram. O problema quase nunca é capacidade. É falta de direção.";
+const PROBLEM_SOURCE = "Fonte: Brasscom, 2023.";
+
+// As 3 portas (posicionamento). TODO(Ana): revisar a copy.
+const portas = [
+  {
+    title: "Quem não sabe por onde começar",
+    description:
+      "Nunca teve contato com tech e não sabe quais áreas existem nem por onde ir.",
+  },
+  {
+    title: "Quem sabe algo, mas está perdido",
+    description:
+      "Já estuda ou tentou, mas trava no meio de tanto conteúdo e opinião diferente.",
+  },
+  {
+    title: "Quem já está na área e quer evoluir",
+    description:
+      "Já trabalha com tech e quer subir de nível com direção, não no escuro.",
+  },
+];
+
+type SocialKind = "linkedin" | "instagram" | "github";
+type SocialLink = { kind: SocialKind; url: string };
+
+const SOCIAL_META: Record<
+  SocialKind,
+  { icon: string; label: string; hover: string }
+> = {
+  linkedin: {
+    icon: "ph:linkedin-logo-bold",
+    label: "LinkedIn",
+    hover: "hover:bg-[#0A66C2] hover:text-white",
+  },
+  instagram: {
+    icon: "ph:instagram-logo-bold",
+    label: "Instagram",
+    hover: "hover:bg-[#E1306C] hover:text-white",
+  },
+  github: {
+    icon: "ph:github-logo-bold",
+    label: "GitHub",
+    hover: "hover:bg-[#1a1a1a] hover:text-white",
+  },
+};
+
+type TeamMember = {
+  name: string;
+  role: string;
+  photo: string;
+  initials: string;
+  bio: string;
+  links: SocialLink[];
+};
+
+// Nomes, papeis, redes e BIOS sao REAIS (bios dos LinkedIns da Ana e do Murilo).
+const team: TeamMember[] = [
+  {
+    name: "Ana Julia Moura",
+    role: "CEO e cofundadora",
+    photo: "/sobre/ana.jpg",
+    initials: "AJ",
+    // TODO(Ana): revisar a voz. Texto do LinkedIn real, nao acrescentar nada.
+    bio: "Estudante de tecnologia no UniCEUB e creator (@ana.natech). Embaixadora da IBM Z, AWS, Alura e ElevenLabs. Representante discente no Colegiado de TI do UniCEUB e diretora de tecnologia e inovação do DCE. Já liderou projetos de software de ponta a ponta como gestora de projetos e designer de UX/UI. Criou o Bora na Tech porque viu de perto quanta gente talentosa desiste da tecnologia por falta de direção, não de capacidade.",
+    links: [
+      { kind: "linkedin", url: "https://www.linkedin.com/in/anajuliamoura/" },
+      { kind: "instagram", url: "https://www.instagram.com/ana.natech/" },
+    ],
+  },
+  {
+    name: "Murilo Cardoso",
+    role: "CTO e cofundador",
+    photo: "/sobre/murilo.jpg",
+    initials: "MC",
+    // TODO(Murilo): revisar. Texto do LinkedIn real, nao acrescentar nada.
+    bio: "Engenheiro de software e especialista em agentes de IA. Cursa Ciência da Computação no UniCEUB. Já construiu mais de 20 agentes de IA para empresas. No Bora na Tech, constrói o cérebro do produto: as ferramentas de IA que analisam seu currículo e seu LinkedIn, montam seu plano de carreira e simulam entrevistas. Também ensina sobre currículo, LinkedIn e IA.",
+    links: [
+      {
+        kind: "linkedin",
+        url: "https://www.linkedin.com/in/murilocardoso-dev/",
+      },
+      { kind: "github", url: "https://github.com/murilobarbosaa" },
+    ],
+  },
+];
+
+// Foto de destaque do time (hackathon). TODO(Ana): adicionar o arquivo
+// client/public/sobre/fundadores-juntos.jpg; ate la, cai no fallback.
+const TEAM_PHOTO = "/sobre/fundadores-juntos.jpg";
+
+// TODO(Ana): confirmar um e-mail de contato ativo. Sem e-mail confirmado,
+// deixamos so o Instagram do projeto (real) como canal.
+const CONTACT_INSTAGRAM = "https://www.instagram.com/boranatech/";
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-3 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+      {children}
+    </p>
+  );
+}
+
+function SocialButton({
+  link,
+  personName,
+}: {
+  link: SocialLink;
+  personName: string;
+}) {
+  const meta = SOCIAL_META[link.kind];
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${meta.label} de ${personName}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border-2 border-slate-900 bg-white text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-0.5 ${meta.hover}`}
+    >
+      <Icon icon={meta.icon} style={{ fontSize: "20px" }} aria-hidden="true" />
+    </a>
+  );
+}
+
+function PersonPhoto({ member }: { member: TeamMember }) {
+  const [failed, setFailed] = useState(false);
+  const showImage = Boolean(member.photo) && !failed;
+  return (
+    <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-slate-900 bg-violet-300 font-display text-2xl font-black text-slate-950">
+      {showImage ? (
+        <img
+          src={member.photo}
+          alt={`Foto de ${member.name}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span aria-hidden="true">{member.initials}</span>
+      )}
+    </div>
+  );
+}
+
+function TeamPhoto() {
+  const [failed, setFailed] = useState(false);
+  if (!failed) {
+    return (
+      <img
+        src={TEAM_PHOTO}
+        alt="Ana Julia Moura e Murilo Cardoso, fundadores do Bora na Tech, num hackathon"
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  // Fallback enquanto a foto nao foi adicionada: iniciais do time, sem inventar.
+  return (
+    <div className="flex h-full w-full items-center justify-center gap-3 bg-[image:linear-gradient(160deg,#6b1fc9,#3f1185)]">
+      {team.map((member) => (
+        <span
+          key={member.name}
+          className="grid h-16 w-16 place-items-center rounded-full border-2 border-slate-900 bg-violet-300 font-display text-xl font-black text-slate-950"
+          aria-hidden="true"
+        >
+          {member.initials}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+export default function SobreNos() {
+  return (
+    <section
+      id="sobre"
+      aria-labelledby="sobre-titulo"
+      className="scroll-mt-24 border-t-2 border-slate-900 bg-white py-14"
+    >
+      <div className="container space-y-14">
+        {/* 1. Abertura */}
+        <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
+          <div>
+            <Eyebrow>SOBRE NÓS</Eyebrow>
+            {/* TODO(Ana): revisar a headline */}
+            <h2
+              id="sobre-titulo"
+              className="font-display text-3xl font-black leading-tight text-slate-950 sm:text-4xl"
+            >
+              {HERO_LEAD}
+            </h2>
+          </div>
+          <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-6 shadow-[5px_5px_0_#c4b5fd]">
+            <Compass
+              className="mb-4 h-10 w-10 text-violet-700"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            />
+            {/* TODO(Ana): revisar a frase de apoio */}
+            <p className="text-base font-black leading-snug text-slate-950">
+              Direção clara pra escolher uma área, estudar com foco e dar os
+              primeiros passos na carreira.
+            </p>
+          </div>
+        </div>
+
+        {/* 2. O problema que nos move (dado com fonte visivel) */}
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div className="rounded-2xl border-2 border-slate-900 bg-[#6b1fc9] p-7 text-white shadow-[6px_6px_0_#0f172a]">
+            <Target
+              className="mb-4 h-9 w-9 text-amber-300"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            />
+            {/* TODO(Ana): confirmar o dado e a fonte antes de publicar */}
+            <p className="font-display text-xl font-black leading-tight sm:text-2xl">
+              {PROBLEM_STAT}
+            </p>
+            <p className="mt-4 text-xs font-black uppercase tracking-wide text-violet-200">
+              {PROBLEM_SOURCE}
+            </p>
+          </div>
+          <div>
+            <Eyebrow>O PROBLEMA QUE NOS MOVE</Eyebrow>
+            {/* TODO(Ana): revisar a copy */}
+            <h3 className="font-display text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+              O gargalo raramente é capacidade.
+            </h3>
+            <p className="mt-4 text-base font-bold leading-relaxed text-slate-700">
+              São dezenas de áreas, centenas de cursos e mil opiniões diferentes,
+              e nenhuma bússola. A gente organiza essa jornada pra a pessoa não
+              desistir antes de começar.
+            </p>
+          </div>
+        </div>
+
+        {/* 3. As 3 portas */}
+        <div>
+          <Eyebrow>AS 3 PORTAS</Eyebrow>
+          {/* TODO(Ana): revisar a copy dos 3 perfis */}
+          <h3 className="max-w-3xl font-display text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+            Existem três tipos de pessoa na tech. A gente atende os três.
+          </h3>
+          <div className="mt-8 grid gap-5 md:grid-cols-3">
+            {portas.map((item, index) => (
+              <div
+                key={item.title}
+                className="flex flex-col rounded-2xl border-2 border-slate-900 bg-violet-50 p-6 shadow-[5px_5px_0_#c4b5fd]"
+              >
+                <span className="mb-4 flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-900 bg-violet-300 font-display font-black text-slate-950">
+                  {index + 1}
+                </span>
+                <h4 className="font-display text-lg font-black leading-tight text-slate-950">
+                  {item.title}
+                </h4>
+                <p className="mt-3 font-bold leading-relaxed text-slate-700">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. Quem somos */}
+        <div>
+          <Eyebrow>QUEM SOMOS</Eyebrow>
+          <h3 className="font-display text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+            O time por trás da bússola.
+          </h3>
+
+          {/* Foto de destaque do time. TODO(Ana): adicionar fundadores-juntos.jpg */}
+          <div className="mt-7 aspect-[16/9] w-full overflow-hidden rounded-2xl border-2 border-slate-900 shadow-[6px_6px_0_#c4b5fd] sm:aspect-[21/9]">
+            <TeamPhoto />
+          </div>
+
+          <div className="mt-8 grid gap-5 md:grid-cols-2">
+            {team.map((person) => (
+              <div
+                key={person.name}
+                className="flex flex-col rounded-2xl border-2 border-slate-900 bg-violet-50 p-6 shadow-[5px_5px_0_#c4b5fd]"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-5">
+                    <PersonPhoto member={person} />
+                    <div>
+                      <h4 className="font-display text-xl font-black text-slate-950">
+                        {person.name}
+                      </h4>
+                      <p className="mt-1 font-bold text-slate-600">
+                        {person.role}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {person.links.map((link) => (
+                      <SocialButton
+                        key={link.kind}
+                        link={link}
+                        personName={person.name}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {/* Bio real (LinkedIn). TODO(Ana/Murilo): revisar a voz. */}
+                <p className="mt-4 font-bold leading-relaxed text-slate-700">
+                  {person.bio}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 5. Conexao com os creators (sem duplicar a lista) */}
+        <div className="flex flex-col gap-4 rounded-2xl border-2 border-slate-900 bg-amber-50 p-6 shadow-[5px_5px_0_#0f172a] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-2 border-slate-900 bg-amber-300">
+              <Users className="h-5 w-5 text-slate-950" strokeWidth={2.5} aria-hidden="true" />
+            </span>
+            <div>
+              <h3 className="font-display text-lg font-black text-slate-950">
+                A gente faz parte dessa comunidade.
+              </h3>
+              {/* TODO(Ana): revisar a copy */}
+              <p className="mt-1 max-w-xl font-bold leading-relaxed text-slate-700">
+                A Ana e o Murilo estão aqui junto dos creators que apoiam quem
+                está começando. A comunidade é feita por muita gente, não só por
+                nós dois.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/creators"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-5 py-2.5 font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5"
+          >
+            Conhecer os creators
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+
+        {/* 6. Contato */}
+        <div className="mx-auto max-w-3xl rounded-2xl border-2 border-slate-900 bg-[image:linear-gradient(160deg,#6b1fc9,#3f1185)] p-8 text-center text-white shadow-[6px_6px_0_#FFB800]">
+          <Icon
+            icon="ph:chats-circle-bold"
+            className="mx-auto mb-4 text-amber-300"
+            style={{ fontSize: "44px" }}
+            aria-hidden="true"
+          />
+          <Eyebrow>FALE COM A GENTE</Eyebrow>
+          {/* TODO(Ana): confirmar canal e o e-mail ativo (nao inventado) */}
+          <h3 className="font-display text-2xl font-black leading-tight sm:text-3xl">
+            Tem ideia, dúvida ou parceria?
+          </h3>
+          <p className="mt-3 text-base font-bold leading-relaxed text-slate-200">
+            A gente responde no Instagram do projeto.
+            {/* TODO(Ana): adicionar e-mail de contato quando confirmado. */}
+          </p>
+          <a
+            href={CONTACT_INSTAGRAM}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-6 py-3 font-black text-slate-950 shadow-[4px_4px_0_#1a1a1a] transition-transform motion-safe:hover:-translate-y-0.5"
+          >
+            <Icon
+              icon="ph:instagram-logo-bold"
+              style={{ fontSize: "20px" }}
+              aria-hidden="true"
+            />
+            @boranatech
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
