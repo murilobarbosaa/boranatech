@@ -15,11 +15,13 @@ export const creatorPhotoUrl = "https://unavatar.io/linkedin/anajulia-moura";
 // TODO(Ana): manter em dia; confirmar se "gama18k" (Gama) e "raibyhei" (Ray)
 // sao mulheres para incluir.
 const WOMEN_CREATOR_HANDLES = new Set<string>([
+  "gio.yaml",
+  "ynara_dev",
+  "erikabusiness",
   "grazi.tech",
   "jess.data",
   "carolpaier.tech",
   "code.evelyn",
-  "ketlyncode",
   "devnicolelobo",
   "vua_nessa",
   "monihillman",
