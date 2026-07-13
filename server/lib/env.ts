@@ -73,7 +73,18 @@ export const env = {
   // vazia ou qualquer outro valor deixa o checkout desligado (default off). Usado
   // enquanto a conta de producao do Asaas esta em analise: a vitrine do Pro segue
   // visivel, so o pagamento fica fechado.
-  billingEnabled: process.env.BILLING_ENABLED === "true",
+  billingEnabled: (() => {
+    const raw = process.env.BILLING_ENABLED;
+    if (!raw) return false; // ausente: billing off, esperado em dev, sem alarde.
+    if (raw === "true") {
+      console.log("[env] billing LIGADO (BILLING_ENABLED=true).");
+      return true;
+    }
+    console.warn(
+      `[env] AVISO: BILLING_ENABLED="${raw}" nao liga o billing. Apenas o literal exato "true" liga (sem aspas, sem espaco, case-sensitive); billing DESLIGADO.`,
+    );
+    return false;
+  })(),
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
   // Teto diario do agente conversacional, separado das ferramentas de IA para o
