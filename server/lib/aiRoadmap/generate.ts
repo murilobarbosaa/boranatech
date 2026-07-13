@@ -77,7 +77,7 @@ const SECTION_SYSTEM_PROMPT = `Voce e um mentor senior de carreira em tecnologia
 
 REGRAS DO CONTEUDO:
 - Escreva em portugues do Brasil, tom acolhedor, direto e claro.
-- De 6 a 10 passos (children) para a secao pedida. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedTime; optional e true apenas para aprofundamento que pode ser pulado.
+- Mire de 6 a 8 passos (children) para a secao pedida, nunca menos de 4 nem mais de 10. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedTime; optional e true apenas para aprofundamento que pode ser pulado.
 - content e OBRIGATORIO em todo passo: markdown de 4 a 8 frases, estruturado em tres partes, nesta ordem: (1) o que dominar, nomeando os subtopicos concretos; (2) como praticar, com uma atividade clara; (3) um mini desafio pratico concreto para fechar o passo.
 - estimatedTime e OBRIGATORIO em todo passo: estimativa realista, ex: "2 semanas", "10 horas", "4h a 6h". Calibre pelas horas semanais e pelo prazo do contexto; a soma da secao precisa ser realista.
 - project: e o vinculo com o catalogo de projetos da plataforma e SO existe na ULTIMA secao do roadmap. Quando o prompt oferecer a lista de projetos do catalogo, escolha o mais coerente com a trilha e coloque o id EXATO dele no campo project de UM UNICO passo (o passo de projeto final da secao); em todos os outros passos, project e null. Em secoes que nao recebem lista de projetos, project e sempre null.
