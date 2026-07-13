@@ -12,6 +12,10 @@
 // conhecidos, nunca centavos inventados. Item com nome/provedor/nivel incerto
 // fica FORA do catalogo.
 //
+// price = custo TOTAL para obter a credencial: quando a certificacao exige mais
+// de uma prova (ex: CompTIA A+, Core 1 + Core 2), o valor e a SOMA das provas,
+// nunca o de uma prova isolada. O detalhe fica nas notes do item.
+//
 // Este arquivo e material editorial: adicionar/ajustar item aqui NAO exige
 // mudanca de codigo (o gerador injeta o subconjunto da area no prompt).
 // ============================================================================
@@ -169,11 +173,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "CompTIA A+",
     provider: "CompTIA",
     level: "fundamental",
-    price: { amount: 274, currency: "USD", period: "once" },
+    price: { amount: 548, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.comptia.org/certifications/a",
     areas: ["infraestrutura"],
-    notes: "Valor de referencia POR PROVA; sao duas provas (Core 1 e Core 2).",
+    notes:
+      "Certificacao de duas provas (Core 1 e Core 2), cerca de US$ 274 cada; o valor exibido e a soma das duas.",
   },
   {
     id: "comptia-network-plus",
