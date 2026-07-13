@@ -2196,6 +2196,286 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "To-do list com JavaScript para iniciantes",
       url: "https://www.youtube.com/results?search_query=todo+list+javascript+iniciante",
     },
+    "mapeamento-fluxo-valor": {
+      title: "Como fazer mapeamento de fluxo de valor (VSM)",
+      url: "https://www.youtube.com/results?search_query=mapeamento+fluxo+valor+vsm+agile",
+    },
+    "dashboard-vendas-executivo": {
+      title: "Como criar dashboard de vendas no Power BI do zero",
+      url: "https://www.youtube.com/results?search_query=dashboard+vendas+power+bi+iniciante",
+    },
+    "analise-exploratoria-ecommerce": {
+      title: "Análise exploratória de dados com Python e Pandas",
+      url: "https://www.youtube.com/results?search_query=analise+exploratoria+dados+python+pandas",
+    },
+    "modelagem-dbt-vendas": {
+      title: "Tutorial de dbt e analytics engineering",
+      url: "https://www.youtube.com/results?search_query=tutorial+dbt+core+modelagem+dados",
+    },
+    "app-financas-kotlin": {
+      title: "App Android com Kotlin e Jetpack Compose do zero",
+      url: "https://www.youtube.com/results?search_query=android+app+jetpack+compose+kotlin",
+    },
+    "esteira-sast-seguranca": {
+      title: "Como configurar análise estática SAST com Semgrep",
+      url: "https://www.youtube.com/results?search_query=configurar+sast+semgrep+github+actions",
+    },
+    "arquitetura-multi-region-aws": {
+      title: "Arquitetura multi-região na AWS com Terraform",
+      url: "https://www.youtube.com/results?search_query=arquitetura+multi+region+aws+terraform",
+    },
+    "centralizacao-logs-siem": {
+      title: "Instalação e monitoramento com SIEM Wazuh",
+      url: "https://www.youtube.com/results?search_query=siem+wazuh+instalacao+tutorial",
+    },
+    "modelo-previsao-churn": {
+      title: "Como criar modelo preditivo de churn em Python",
+      url: "https://www.youtube.com/results?search_query=previsao+churn+machine+learning+python",
+    },
+    "auditoria-iam-least-privilege": {
+      title: "Segurança de identidades AWS IAM e menor privilégio",
+      url: "https://www.youtube.com/results?search_query=aws+iam+seguranca+least+privilege",
+    },
+    "biblioteca-componentes-acessiveis": {
+      title: "Como estruturar design tokens no Figma",
+      url: "https://www.youtube.com/results?search_query=design+tokens+figma+tutorial",
+    },
+    "pipeline-ci-cd-vulnerabilidades": {
+      title: "Construindo uma pipeline DevSecOps passo a passo",
+      url: "https://www.youtube.com/results?search_query=pipeline+devsecops+trivy+github+actions",
+    },
+    "dashboard-alocacao-custos-cloud": {
+      title: "Introdução prática a FinOps e custos de nuvem",
+      url: "https://www.youtube.com/results?search_query=finops+gestao+custos+cloud+tutorial",
+    },
+    "app-clima-tempo": {
+      title: "Como criar aplicativo Flutter consumindo API REST",
+      url: "https://www.youtube.com/results?search_query=app+flutter+clima+tempo+api",
+    },
+    "analise-artefatos-memoria-ram": {
+      title: "Forense digital: análise de memória RAM com Volatility",
+      url: "https://www.youtube.com/results?search_query=forense+digital+volatility+memoria+ram",
+    },
+    "inventario-conformidade-lgpd": {
+      title: "Mapeamento de dados para conformidade com a LGPD",
+      url: "https://www.youtube.com/results?search_query=mapeamento+dados+lgpd+ripd",
+    },
+    "experimento-teste-ab-conversao": {
+      title: "Como estruturar e analisar testes A/B",
+      url: "https://www.youtube.com/results?search_query=teste+ab+estatistica+python",
+    },
+    "lista-tarefas-swiftui": {
+      title: "App nativo iOS com SwiftUI e SwiftData",
+      url: "https://www.youtube.com/results?search_query=ios+swiftui+swiftdata+app",
+    },
+    "classificador-fraude-cartao": {
+      title: "Detecção de fraude com machine learning em Python",
+      url: "https://www.youtube.com/results?search_query=deteccao+fraude+machine+learning+python",
+    },
+    "pipeline-treinamento-continuo-mlflow": {
+      title: "Ciclo de vida de modelos com MLflow",
+      url: "https://www.youtube.com/results?search_query=mlflow+mlops+tutorial+introducao",
+    },
+    "analise-sentimento-avaliacoes": {
+      title: "Análise de sentimento com NLP em Python",
+      url: "https://www.youtube.com/results?search_query=analise+sentimento+python+nlp",
+    },
+    "portal-desenvolvedor-internal": {
+      title: "Como configurar o Backstage (platform engineering)",
+      url: "https://www.youtube.com/results?search_query=backstage+platform+engineering+tutorial",
+    },
+    "relatorio-status-portfolio-projetos": {
+      title: "Como fazer relatório de status de portfólio (PMO)",
+      url: "https://www.youtube.com/results?search_query=relatorio+status+portfolio+projetos+pmo",
+    },
+    "redesenho-fluxo-checkout": {
+      title: "Design de fluxo de checkout mobile no Figma",
+      url: "https://www.youtube.com/results?search_query=checkout+design+mobile+figma",
+    },
+    "roadmap-estrategico-produto": {
+      title: "Como criar um roadmap de produto orientado a resultado",
+      url: "https://www.youtube.com/results?search_query=roadmap+produto+product+manager",
+    },
+    "plano-go-to-market-funcionalidade": {
+      title: "Como estruturar uma estratégia de Go-to-Market",
+      url: "https://www.youtube.com/results?search_query=go+to+market+estrategia+produto",
+    },
+    "central-documentacao-playbooks": {
+      title: "O que é Product Operations e como organizar processos",
+      url: "https://www.youtube.com/results?search_query=product+operations+processos+notion",
+    },
+    "backlog-priorizado-e-historias": {
+      title: "Como escrever histórias de usuário e critérios de aceite",
+      url: "https://www.youtube.com/results?search_query=escrever+historias+usuario+product+owner",
+    },
+    "otimizacao-prompts-suporte": {
+      title: "Guia de prompt engineering e few-shot prompting",
+      url: "https://www.youtube.com/results?search_query=prompt+engineering+few+shot+tutorial",
+    },
+    "testes-e2e-cypress": {
+      title: "Automação de testes do zero com Cypress",
+      url: "https://www.youtube.com/results?search_query=automacao+testes+cypress+iniciante",
+    },
+    "plano-testes-e-cenarios": {
+      title: "Como elaborar um plano de testes manual",
+      url: "https://www.youtube.com/results?search_query=plano+testes+software+manual",
+    },
+    "teste-carga-k6-api": {
+      title: "Testes de carga e performance de API com k6",
+      url: "https://www.youtube.com/results?search_query=testes+carga+k6+api+performance",
+    },
+    "app-delivery-comida": {
+      title: "App mobile com React Native e Expo",
+      url: "https://www.youtube.com/results?search_query=react+native+expo+app+delivery",
+    },
+    "auditoria-seguranca-ambiente-isolado": {
+      title: "Laboratório de pentest ético com Kali Linux",
+      url: "https://www.youtube.com/results?search_query=laboratorio+pentest+kali+linux+virtualbox",
+    },
+    "facilitacao-metricas-sprint": {
+      title: "Métricas de sprint e gráfico de burndown",
+      url: "https://www.youtube.com/results?search_query=metricas+sprint+burndown+scrum+master",
+    },
+    "guia-estilo-e-interface-landing-page": {
+      title: "Design de landing page responsiva com Auto Layout",
+      url: "https://www.youtube.com/results?search_query=landing+page+auto+layout+figma",
+    },
+    "mapeamento-jornada-usuario": {
+      title: "Como desenhar um mapa de jornada do usuário",
+      url: "https://www.youtube.com/results?search_query=jornada+do+usuario+ux+design",
+    },
+    "plano-pesquisa-e-entrevistas": {
+      title: "Métodos de UX Research: guias e entrevistas",
+      url: "https://www.youtube.com/results?search_query=ux+research+pesquisa+entrevistas",
+    },
+    "reconhecimento-objetos-yolo": {
+      title: "Detecção de objetos em tempo real com YOLO",
+      url: "https://www.youtube.com/results?search_query=deteccao+objetos+yolo+python",
+    },
+    "diagrama-casos-uso-e-requisitos": {
+      title: "Análise de sistemas: requisitos e diagramas UML",
+      url: "https://www.youtube.com/results?search_query=analise+sistemas+requisitos+uml",
+    },
+    "especificacao-tecnica-microsservicos": {
+      title: "Como documentar contratos de API com OpenAPI",
+      url: "https://www.youtube.com/results?search_query=documentar+api+swagger+openapi",
+    },
+    "smart-contract-token-erc20": {
+      title: "Como criar um contrato inteligente em Solidity",
+      url: "https://www.youtube.com/results?search_query=contrato+inteligente+solidity+remix",
+    },
+    "dapp-votacao-descentralizada": {
+      title: "Como criar um dApp integrado a smart contracts",
+      url: "https://www.youtube.com/results?search_query=criar+dapp+react+solidity+ethers",
+    },
+    "servidor-web-linux-seguro": {
+      title: "Configuração segura de servidor Linux com Nginx e SSH",
+      url: "https://www.youtube.com/results?search_query=configuracao+servidor+linux+nginx+ssh",
+    },
+    "infraestrutura-como-codigo-terraform": {
+      title: "Tutorial prático de Terraform na nuvem",
+      url: "https://www.youtube.com/results?search_query=terraform+tutorial+iniciante+cloud",
+    },
+    "sensor-temperatura-esp32": {
+      title: "Programando ESP32 com sensor de temperatura",
+      url: "https://www.youtube.com/results?search_query=esp32+sensor+dht+arduino",
+    },
+    "estacao-meteorologica-mqtt": {
+      title: "Comunicação IoT com protocolo MQTT e ESP32",
+      url: "https://www.youtube.com/results?search_query=esp32+mqtt+broker+node+red",
+    },
+    "programa-cobol-processamento-arquivos": {
+      title: "Introdução à programação COBOL",
+      url: "https://www.youtube.com/results?search_query=programacao+cobol+tutorial+iniciante",
+    },
+    "rotina-jcl-atualizacao-cadastros": {
+      title: "Entendendo comandos JCL em mainframe",
+      url: "https://www.youtube.com/results?search_query=jcl+mainframe+ibm+tutorial",
+    },
+    "configuracao-alertas-prometheus-grafana": {
+      title: "Como monitorar servidores com Prometheus e Grafana",
+      url: "https://www.youtube.com/results?search_query=prometheus+grafana+docker+monitoramento",
+    },
+    "arquitetura-alta-disponibilidade-kubernetes": {
+      title: "Deploy e alta disponibilidade no Kubernetes",
+      url: "https://www.youtube.com/results?search_query=kubernetes+deployment+replicas+probes",
+    },
+    "plano-desenvolvimento-individual": {
+      title: "Como montar um plano de desenvolvimento individual (PDI)",
+      url: "https://www.youtube.com/results?search_query=plano+desenvolvimento+individual+pdi+ti",
+    },
+    "mapeamento-competencias-lideranca-tecnica": {
+      title: "Transição de carreira para tech lead",
+      url: "https://www.youtube.com/results?search_query=carreira+tech+lead+lideranca+tecnica",
+    },
+    "micro-frontends-federation": {
+      title: "Micro-frontends com Module Federation",
+      url: "https://www.youtube.com/results?search_query=micro+frontends+module+federation",
+    },
+    "dashboard-financeiro-tempo-real": {
+      title: "Gráficos em tempo real com Next.js e WebSockets",
+      url: "https://www.youtube.com/results?search_query=nextjs+websockets+realtime+charts",
+    },
+    "otimizacao-core-web-vitals-legado": {
+      title: "Como otimizar performance e Core Web Vitals",
+      url: "https://www.youtube.com/results?search_query=otimizar+performance+frontend+web+vitals",
+    },
+    "gerenciador-estado-complexo-offline": {
+      title: "Sincronização offline com IndexedDB",
+      url: "https://www.youtube.com/results?search_query=indexeddb+offline+sync+react",
+    },
+    "estrategia-testes-arquitetura-microsservicos": {
+      title: "Estratégias de teste para microsserviços",
+      url: "https://www.youtube.com/results?search_query=testes+arquitetura+microsservicos+qa",
+    },
+    "automacao-testes-visuais-regressao": {
+      title: "Testes visuais de regressão com Playwright",
+      url: "https://www.youtube.com/results?search_query=playwright+visual+regression+testing",
+    },
+    "esteira-testes-contrato-pact": {
+      title: "Testes de contrato com Pact explicados",
+      url: "https://www.youtube.com/results?search_query=testes+contrato+pact+tutorial",
+    },
+    "planejamento-capacidade-alocacao-recursos": {
+      title: "Planejamento de capacidade de times de engenharia",
+      url: "https://www.youtube.com/results?search_query=capacity+planning+engenharia+software",
+    },
+    "framework-governanca-ti-cobit": {
+      title: "Governança de TI aplicada com COBIT",
+      url: "https://www.youtube.com/results?search_query=governanca+ti+cobit+framework",
+    },
+    "gestao-crise-incidentes-criticos": {
+      title: "Gestão de incidentes críticos e playbooks",
+      url: "https://www.youtube.com/results?search_query=gestao+incidentes+playbook+ti",
+    },
+    "auditoria-acessibilidade-wcag-redesenho": {
+      title: "Como fazer auditoria de acessibilidade WCAG",
+      url: "https://www.youtube.com/results?search_query=auditoria+acessibilidade+wcag+tutorial",
+    },
+    "design-system-tokens-multiplos-temas": {
+      title: "Variables do Figma e design system multi-tema",
+      url: "https://www.youtube.com/results?search_query=figma+variables+multi+theme",
+    },
+    "arquitetura-informacao-portal-complexo": {
+      title: "Arquitetura de informação e card sorting",
+      url: "https://www.youtube.com/results?search_query=arquitetura+informacao+card+sorting",
+    },
+    "design-speculative-futuro-interacao": {
+      title: "O que é design especulativo e futuros da interação",
+      url: "https://www.youtube.com/results?search_query=design+especulativo+futuros+design",
+    },
+    "descoberta-produto-product-discovery": {
+      title: "Guia completo de Product Discovery",
+      url: "https://www.youtube.com/results?search_query=product+discovery+framework+produto",
+    },
+    "estrategia-precificacao-monetizacao": {
+      title: "Precificação e monetização de produtos SaaS",
+      url: "https://www.youtube.com/results?search_query=precificacao+monetizacao+produto+saas",
+    },
+    "framework-priorizacao-escala-global": {
+      title: "Como priorizar backlogs complexos",
+      url: "https://www.youtube.com/results?search_query=priorizacao+backlog+matriz+rice",
+    },
     default: {
       title: "Como planejar projeto iniciante para portfólio",
       url: "https://www.youtube.com/results?search_query=projeto+iniciante+portfolio+programacao",
