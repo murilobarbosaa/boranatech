@@ -22,6 +22,15 @@ import { z } from "zod";
 
 export const AI_ROADMAP_SLUG_RE = /^ia-[a-z0-9]{8}$/;
 
+// Os 6 primeiros campos sao os do formulario original (enums + stackFocus +
+// extraContext) e NAO mudam: o resume de roadmaps partial legados reparseia o
+// que ficou gravado em ai_roadmaps.inputs, entao qualquer mudanca de shape neles
+// quebraria linhas antigas. Os 3 campos novos (startingPoint, motivation,
+// constraints) sao de TEXTO LIVRE e OPCIONAIS de proposito: sao eles que o chat
+// guiado coleta (o form coleta parametros; o chat coleta historia), e por serem
+// opcionais um inputs legado sem eles continua valido no safeParse. O campo
+// format continua no schema por retrocompatibilidade mesmo que o chat nao o
+// pergunte (o gerador nao ramifica sobre ele; o chat usa o default "misto").
 export const RoadmapIntakeSchema = z.object({
   hoursPerWeek: z.enum(["ate-5", "5-10", "10-20", "20-mais"]),
   goal: z.enum(["primeira-vaga", "transicao", "freela", "aprofundar"]),
@@ -32,6 +41,11 @@ export const RoadmapIntakeSchema = z.object({
     .regex(/^[a-z0-9-]{0,32}$/)
     .optional(),
   extraContext: z.string().max(500).optional(),
+  // Campos narrativos novos (chat guiado). Opcionais: nao quebram o resume de
+  // inputs legado. Texto livre, teto de 500 chars como o extraContext.
+  startingPoint: z.string().max(500).optional(),
+  motivation: z.string().max(500).optional(),
+  constraints: z.string().max(500).optional(),
 });
 
 export type RoadmapIntake = z.infer<typeof RoadmapIntakeSchema>;
