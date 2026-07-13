@@ -29,6 +29,7 @@ import {
   HardDrive,
   Headphones,
   Bot,
+  Code2,
 } from "lucide-react";
 
 export interface SubArea {
@@ -333,6 +334,78 @@ const baseAreasTI: AreaTI[] = [
       "Sistemas de Informação",
     ],
     subareas: [],
+  },
+  {
+    id: "desenvolvimento-software",
+    nome: "Desenvolvimento de Software",
+    slug: "desenvolvimento-software",
+    icon: Code2,
+    tagClass: "tag-fullstack",
+    descricaoCurta:
+      "Escreve o código que faz sites, aplicativos e sistemas funcionarem.",
+    descricaoCompleta:
+      "Quem trabalha com desenvolvimento de software constrói os programas que as pessoas usam todo dia: sites, aplicativos, sistemas internos e APIs. É a área mais ampla da programação e a porta de entrada mais comum em tecnologia. Com o tempo, a maioria escolhe uma especialização, como front-end, back-end ou full-stack.",
+    oQueFaz:
+      "Transforma um problema ou uma ideia em código que funciona: escreve, testa, corrige e melhora programas junto com o time.",
+    tarefasDiarias: [
+      "Escrever código de novas funcionalidades",
+      "Corrigir bugs reportados por usuários ou pelo time",
+      "Revisar o código dos colegas em pull requests",
+      "Participar da reunião diária de alinhamento do time",
+      "Testar o que foi feito antes de subir para produção",
+    ],
+    perfilIndicado:
+      "Gosta de resolver problemas, tem paciência para investigar erros e sente prazer em ver algo que construiu funcionando.",
+    habilidades: [
+      "Lógica de programação",
+      "Uma linguagem de programação",
+      "Git e versionamento",
+      "Trabalho em equipe",
+    ],
+    ferramentas: ["VS Code", "Git e GitHub", "Terminal", "Docker"],
+    dificuldade: 3,
+    cargos: [
+      "Desenvolvedor Júnior",
+      "Desenvolvedor Pleno",
+      "Desenvolvedor Sênior",
+      "Tech Lead",
+    ],
+    faixaSalarial: "R$ 3.000 a R$ 15.000+",
+    cursosGratuitos: [
+      "CS50 de Harvard: fundamentos de computação (em inglês, com legendas)",
+      "Curso em Vídeo: Lógica de Programação e Python (Gustavo Guanabara)",
+      "The Odin Project: currículo completo e gratuito (em inglês)",
+      "freeCodeCamp: certificações gratuitas de programação",
+    ],
+    roadmapInicial: [
+      "Aprender lógica de programação e algoritmos",
+      "Escolher a primeira linguagem (Python ou JavaScript são as mais acessíveis)",
+      "Aprender Git e GitHub na prática",
+      "Construir projetos pequenos do zero, sem seguir tutorial",
+      "Entender banco de dados e como uma API funciona",
+      "Escolher uma especialização: front-end, back-end ou full-stack",
+    ],
+    projetos: [
+      "Página pessoal com seus projetos publicada no GitHub Pages",
+      "Lista de tarefas com salvamento local",
+      "API simples de cadastro com banco de dados",
+      "Aplicação que consome uma API pública e mostra os dados na tela",
+    ],
+    termosEssenciais: [
+      "Algoritmo",
+      "API",
+      "Git",
+      "Pull request",
+      "Bug",
+      "Deploy",
+      "Code review",
+    ],
+    dicasIniciais:
+      "Não tente aprender tudo ao mesmo tempo: escolha uma linguagem e vá fundo nela. Construir projetos do zero ensina mais do que assistir a dez cursos seguidos. E não se assuste com o erro: ler mensagem de erro e procurar solução é metade do trabalho.",
+    roadmapStatus: "coming-soon",
+    requiresGraduation: "opcional",
+    tempoMedioFormacao: "6 a 12 meses até a primeira vaga",
+    crescimentoMercado: "alto",
   },
   {
     id: "dados",
@@ -18556,9 +18629,25 @@ export interface Comunidade {
   idioma: string;
   modalidade: "Online" | "Presencial" | "Híbrido";
   estado?: string;
+  destaque?: boolean;
 }
 
 export const comunidades: Comunidade[] = [
+  {
+    id: "tech-sisters",
+    nome: "Tech Sisters",
+    tipo: "Comunidade",
+    plataforma: "Instagram",
+    area: "Mulheres / Carreira",
+    publicoIndicado:
+      "Mulheres que estão começando ou já atuam em tecnologia",
+    porqueAcompanhar:
+      "Espaço para mulheres que amam tecnologia, com foco em conexões, troca de conhecimento e apoio real. Promove encontros da comunidade, como o Tech Girls Night.",
+    link: "https://www.instagram.com/tech.sisterss/",
+    idioma: "Português",
+    modalidade: "Online",
+    destaque: true,
+  },
   {
     id: "reprograma",
     nome: "{reprograma}",

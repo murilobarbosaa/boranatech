@@ -1,9 +1,14 @@
 import { Link, Redirect, useSearch } from "wouter";
 import {
   ArrowRight,
+  Building2,
+  Code2,
   Compass,
+  Cpu,
+  FileText,
   Flag,
   Footprints,
+  Headphones,
   Linkedin,
   Map,
   MapPin,
@@ -31,6 +36,11 @@ const CAREER_CARD_STYLE: Record<
 > = {
   "comecar-do-zero": { icon: Compass, tagClass: "bg-emerald-500" },
   linkedin: { icon: Linkedin, tagClass: "bg-sky-500" },
+  "engenharia-software": { icon: Code2, tagClass: "bg-blue-600" },
+  mlops: { icon: Cpu, tagClass: "bg-fuchsia-600" },
+  suporte: { icon: Headphones, tagClass: "bg-teal-600" },
+  "tech-writer": { icon: FileText, tagClass: "bg-orange-500" },
+  erp: { icon: Building2, tagClass: "bg-indigo-600" },
 };
 const CAREER_CARD_FALLBACK: { icon: LucideIcon; tagClass: string } = {
   icon: Map,

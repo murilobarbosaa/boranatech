@@ -22,6 +22,8 @@ import SEO from "@/components/SEO";
 import {
   ESTADO_UF_OPTS,
   LABEL_FILTROS,
+  eventoSortKey,
+  formatEventoData,
   isEventoPassado,
   rotuloEstadoEvento,
 } from "@/lib/eventFilters";
@@ -129,7 +131,7 @@ export default function Eventos() {
         const matchGratuito =
           !apenasGratuitos || e.valor.toLowerCase().includes("gratuito");
         return matchTipo && matchCat && matchFmt && matchEst && matchGratuito;
-      }),
+      }).sort((a, b) => eventoSortKey(a).localeCompare(eventoSortKey(b))),
     [tab, categoria, formato, estadoUF, apenasGratuitos],
   );
 
@@ -333,7 +335,8 @@ export default function Eventos() {
                 </p>
                 <div className="space-y-1.5 mb-4">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <Calendar className="w-3.5 h-3.5 shrink-0" /> {ev.data}{" "}
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />{" "}
+                    {formatEventoData(ev)}{" "}
                     {ev.horario !== "Vários horários" && `· ${ev.horario}`}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-500">

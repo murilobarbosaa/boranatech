@@ -17,7 +17,11 @@ export default function DicaDoDia() {
     let ativo = true;
     import("@/lib/dicasData")
       .then((mod) => {
-        if (ativo) setDicas(mod.dicas);
+        if (!ativo) return;
+        setDicas(mod.dicas);
+        if (mod.dicas.length > 0) {
+          setIndice(Math.floor(Math.random() * mod.dicas.length));
+        }
       })
       .catch(() => {
         if (ativo) setDicas([]);

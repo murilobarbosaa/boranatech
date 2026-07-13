@@ -95,7 +95,9 @@ export default function Comunidades() {
           matchIdioma &&
           matchQuery
         );
-      }),
+      }).sort(
+        (a, b) => Number(Boolean(b.destaque)) - Number(Boolean(a.destaque)),
+      ),
     [modalidade, estadoUF, area, idioma, query],
   );
 
@@ -262,6 +264,11 @@ export default function Comunidades() {
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
+                      {com.destaque ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-2 py-0.5 text-[11px] font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                          Destaque
+                        </span>
+                      ) : null}
                       <span
                         className={`inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-[11px] font-black ${MODALIDADE_BADGE[com.modalidade] ?? "border-slate-300 bg-slate-100 text-slate-600"}`}
                       >

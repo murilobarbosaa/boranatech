@@ -1,10 +1,8 @@
 import CreatorsBand from "@/components/shared/CreatorsBand";
-import DicaDoDia from "./sections/DicaDoDia";
-import ProximosEventos from "./sections/ProximosEventos";
-import UltimaNoticia from "./sections/UltimaNoticia";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import Hero from "./sections/Hero";
+import Novidades from "./sections/Novidades";
 import DorSolucao from "./sections/DorSolucao";
 import OQueEncontra from "./sections/OQueEncontra";
 import LogoLoop from "./sections/LogoLoop";
@@ -27,6 +25,7 @@ export default function HomeLanding() {
       />
       <CreatorsBand />
       <Hero />
+      <Novidades />
       <DorSolucao />
       <OQueEncontra />
       <LogoLoop />
@@ -36,9 +35,6 @@ export default function HomeLanding() {
       <TurbineComIA />
       <Numeros />
       <PraVoce />
-      <UltimaNoticia />
-      <ProximosEventos />
-      <DicaDoDia />
       <Pro />
       <CtaFinal />
     </Layout>

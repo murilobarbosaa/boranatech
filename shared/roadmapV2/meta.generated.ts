@@ -346,5 +346,65 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "stepCount": 11,
     "hasProject": false,
     "hasQuiz": false
+  },
+  {
+    "slug": "engenharia-software",
+    "area": "carreira",
+    "kind": "carreira",
+    "title": "Engenharia de Software do Zero",
+    "level": "Iniciante",
+    "description": "A disciplina por trás de escrever bom código: lógica, estruturas de dados, paradigmas, padrões, arquitetura e trabalho em time. Vale para qualquer linguagem ou área de desenvolvimento.",
+    "sectionCount": 8,
+    "stepCount": 21,
+    "hasProject": false,
+    "hasQuiz": false
+  },
+  {
+    "slug": "mlops",
+    "area": "carreira",
+    "kind": "carreira",
+    "title": "MLOps e Machine Learning Engineer do Zero",
+    "level": "Iniciante",
+    "description": "Enquanto a Ciência de Dados analisa e cria modelos, este caminho os coloca em produção de forma confiável: versionar, treinar, servir, monitorar e escalar modelos de machine learning.",
+    "sectionCount": 8,
+    "stepCount": 19,
+    "hasProject": false,
+    "hasQuiz": false
+  },
+  {
+    "slug": "suporte",
+    "area": "carreira",
+    "kind": "carreira",
+    "title": "Suporte Técnico e Help Desk do Zero",
+    "level": "Iniciante",
+    "description": "A porta de entrada mais acessível da TI: resolver problemas de hardware, software e rede, atender bem o usuário e crescer daí para outras áreas. Não exige diploma nem programação para começar.",
+    "sectionCount": 8,
+    "stepCount": 16,
+    "hasProject": false,
+    "hasQuiz": false
+  },
+  {
+    "slug": "tech-writer",
+    "area": "carreira",
+    "kind": "carreira",
+    "title": "Tech Writer e Documentação do Zero",
+    "level": "Iniciante",
+    "description": "Escrever para tecnologia: transformar produtos complexos em textos claros que as pessoas entendem. Uma das áreas de tech que mais acolhe quem vem de humanas e comunicação.",
+    "sectionCount": 8,
+    "stepCount": 16,
+    "hasProject": false,
+    "hasQuiz": false
+  },
+  {
+    "slug": "erp",
+    "area": "carreira",
+    "kind": "carreira",
+    "title": "Sistemas Corporativos e ERP do Zero",
+    "level": "Iniciante",
+    "description": "Um mercado enorme e pouco falado: os sistemas que rodam por dentro das grandes empresas (SAP, Totvs, Oracle). Um caminho que valoriza entender de negócio tanto quanto de tecnologia.",
+    "sectionCount": 8,
+    "stepCount": 13,
+    "hasProject": false,
+    "hasQuiz": false
   }
 ];

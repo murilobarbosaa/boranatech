@@ -12,6 +12,7 @@ import {
   Mic,
 } from "lucide-react";
 
+import { FROM_MONTHLY_LABEL } from "@shared/planPricing";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -204,7 +205,7 @@ function ProPitchVariant() {
             </button>
           </Link>
           <p className="text-sm text-violet-200">
-            A partir de R$ 14,99/mês no plano anual.
+            A partir de {FROM_MONTHLY_LABEL}/mês no plano anual.
           </p>
         </motion.div>
       </div>

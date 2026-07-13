@@ -24,6 +24,11 @@ import { iot } from "./iot";
 import { mainframe } from "./mainframe";
 import { comecarDoZero } from "./comecar-do-zero";
 import { linkedinTrail } from "./linkedin";
+import { engenhariaSoftware } from "./engenharia-software";
+import { mlops } from "./mlops";
+import { suporte } from "./suporte";
+import { techWriter } from "./tech-writer";
+import { erp } from "./erp";
 
 export {
   frontend,
@@ -51,6 +56,11 @@ export {
   mainframe,
   comecarDoZero,
   linkedinTrail,
+  engenhariaSoftware,
+  mlops,
+  suporte,
+  techWriter,
+  erp,
 };
 export const roadmapsV2: RoadmapV2[] = [
   frontend,
@@ -78,4 +88,9 @@ export const roadmapsV2: RoadmapV2[] = [
   mainframe,
   comecarDoZero,
   linkedinTrail,
+  engenhariaSoftware,
+  mlops,
+  suporte,
+  techWriter,
+  erp,
 ];

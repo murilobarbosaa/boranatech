@@ -41,3 +41,65 @@ export function isEventoPassado(
   const hoje = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
   return datePart < hoje;
 }
+
+const MESES_PT = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+function hojeYYYYMMDD(now: Date): string {
+  return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Chave de ordenação: eventos com `calendarStart` válido e futuro (ou hoje) usam
+ * a própria data (YYYYMMDD); sem data, inválida ou vencida vão pro fim ("99999999").
+ */
+export function eventoSortKey(
+  evento: { calendarStart: string },
+  now: Date = new Date(),
+): string {
+  const start = (evento.calendarStart ?? "").slice(0, 8);
+  if (!/^\d{8}$/.test(start)) return "99999999";
+  return start >= hojeYYYYMMDD(now) ? start : "99999999";
+}
+
+/**
+ * Texto de data a exibir: com `calendarStart` válido e futuro, formata a data
+ * real em português a partir de calendarStart/calendarEnd; caso contrário mantém
+ * o texto de `evento.data` (correto para recorrente sem data confirmada).
+ */
+export function formatEventoData(
+  evento: { data: string; calendarStart: string; calendarEnd: string },
+  now: Date = new Date(),
+): string {
+  const start = (evento.calendarStart ?? "").slice(0, 8);
+  if (!/^\d{8}$/.test(start) || start < hojeYYYYMMDD(now)) return evento.data;
+  const endRaw = (evento.calendarEnd ?? "").slice(0, 8);
+  const end = /^\d{8}$/.test(endRaw) ? endRaw : start;
+
+  const diaInicio = Number(start.slice(6, 8));
+  const mesInicio = MESES_PT[Number(start.slice(4, 6)) - 1] ?? "";
+  const anoInicio = start.slice(0, 4);
+  const diaFim = Number(end.slice(6, 8));
+  const mesFim = MESES_PT[Number(end.slice(4, 6)) - 1] ?? "";
+  const anoFim = end.slice(0, 4);
+
+  if (start === end) {
+    return `${diaInicio} de ${mesInicio} de ${anoInicio}`;
+  }
+  if (start.slice(0, 6) === end.slice(0, 6)) {
+    return `${diaInicio} a ${diaFim} de ${mesInicio} de ${anoInicio}`;
+  }
+  return `${diaInicio} de ${mesInicio} a ${diaFim} de ${mesFim} de ${anoFim}`;
+}

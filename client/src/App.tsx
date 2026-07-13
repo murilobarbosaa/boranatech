@@ -25,6 +25,7 @@ const Checkout = lazy(() => import("@/pages/Checkout"));
 const CheckoutSucesso = lazy(() => import("@/pages/CheckoutSucesso"));
 const Comparador = lazy(() => import("@/pages/Comparador"));
 const Comunidades = lazy(() => import("@/pages/Comunidades"));
+const Sobre = lazy(() => import("@/pages/Sobre"));
 const Conquistas = lazy(() => import("@/pages/conquistas/Conquistas"));
 const Creators = lazy(() => import("@/pages/Creators"));
 const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
@@ -77,7 +78,6 @@ const RoadmapQuiz = lazy(() => import("@/pages/RoadmapQuiz"));
 const RoadmapsV2 = lazy(() => import("@/pages/RoadmapsV2"));
 const RoadmapsV2Index = lazy(() => import("@/pages/RoadmapsV2Index"));
 const Salarios = lazy(() => import("@/pages/Salarios"));
-const Sobre = lazy(() => import("@/pages/Sobre"));
 const SubAreaDetalhe = lazy(() => import("@/pages/SubAreaDetalhe"));
 const TecnologiaComparador = lazy(() => import("@/pages/TecnologiaComparador"));
 const TecnologiaDetalhe = lazy(() => import("@/pages/TecnologiaDetalhe"));
@@ -277,6 +277,8 @@ function Router() {
         <Route path="/portifolio">{() => <Redirect to="/portfolio" />}</Route>
         <Route path="/noticias" component={Noticias} />
         <Route path="/comunidades" component={Comunidades} />
+        {/* Sobre Nos e uma pagina propria; o acesso e pelo item "Sobre nos" do
+            menu Comunidade (grupo CONEXOES) e por um link no rodape. */}
         <Route path="/sobre" component={Sobre} />
         <Route path="/dicas" component={Dicas} />
         <Route path="/mulheres" component={Mulheres} />

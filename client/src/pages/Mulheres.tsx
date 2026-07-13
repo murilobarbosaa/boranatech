@@ -348,6 +348,9 @@ export default function Mulheres() {
             </div>
           </motion.div>
 
+          <motion.div {...reveal}>
+            <StatsSection stats={womenArea.stats} />
+          </motion.div>
           <motion.div {...reveal} id="comunidades">
             <Section
               title="Comunidades indicadas"
@@ -372,6 +375,9 @@ export default function Mulheres() {
           <motion.div {...reveal}>
             <Section title="Leituras e listas" items={womenArea.articles} />
           </motion.div>
+          <motion.div {...reveal}>
+            <EbooksSection ebooks={womenArea.ebooks} />
+          </motion.div>
 
           <motion.div {...reveal} className="grid gap-5 md:grid-cols-2">
             <ListCard
@@ -388,11 +394,15 @@ export default function Mulheres() {
               title="Vagas afirmativas"
               icon={<ExternalLink className="h-5 w-5 text-pink-700" />}
               items={womenArea.affirmativeJobs}
+              // TODO(Ana): revisar o aviso
+              note="Programas afirmativos abrem em janelas específicas do ano. Acompanhe os canais oficiais; nem sempre há vaga aberta agora."
             />
             <ListCard
               title="Bolsas, editais e bootcamps"
               icon={<Sparkles className="h-5 w-5 text-pink-700" />}
               items={womenArea.scholarshipPrograms}
+              // TODO(Ana): revisar o aviso
+              note="Bootcamps e bolsas têm inscrições periódicas. Confirme as datas nos canais oficiais."
             />
             <div className="card-brutal rounded-2xl border-pink-200 bg-pink-50 p-6">
               <h2 className="font-display mb-4 flex items-center gap-2 text-xl font-black text-slate-950">
@@ -480,6 +490,7 @@ function CreatorsSection({
     topic: string;
     url: string;
     avatarUrl: string;
+    parceira?: boolean;
   }[];
 }) {
   const initials = (fullName: string) =>
@@ -490,51 +501,148 @@ function CreatorsSection({
       .join("")
       .toUpperCase();
 
+  const cardStyles = [
+    { accent: "bg-violet-500", shadow: "shadow-[5px_5px_0_#8b5cf6]" },
+    { accent: "bg-[#FFB800]", shadow: "shadow-[5px_5px_0_#FFB800]" },
+    { accent: "bg-fuchsia-500", shadow: "shadow-[5px_5px_0_#e879f9]" },
+  ];
+
   return (
     <div>
-      <h2 className="font-display mb-4 text-2xl font-black text-slate-950">
-        Criadoras para acompanhar
+      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        Quem acompanhar
+      </p>
+      <h2 className="font-display mb-5 text-2xl font-black text-slate-950 sm:text-3xl">
+        Criadoras e comunidades para acompanhar
       </h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        {creators.map((creator) => {
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {creators.map((creator, index) => {
           const favicon = getFaviconUrl(creator.url);
+          const style = cardStyles[index % cardStyles.length];
           return (
             <a
               key={creator.name}
               href={creator.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="card-invite flex gap-4 rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+              className={`group flex flex-col overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-5 ${style.shadow} transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 motion-safe:hover:-translate-y-1`}
             >
-              <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#f472b6]">
-                <AvatarImage
-                  src={creator.avatarUrl}
-                  alt={`Foto de perfil de ${creator.name}`}
-                />
-                <AvatarFallback className="border-2 border-pink-200 bg-pink-100 text-xs font-black text-pink-900">
-                  {initials(creator.name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-display font-black text-slate-950">
-                  {creator.name}
-                </h3>
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-pink-700">
-                  {favicon && (
-                    <img
-                      src={favicon}
-                      alt=""
-                      onError={hideBrokenImage}
-                      className="h-4 w-4 shrink-0 rounded border border-slate-300"
-                    />
-                  )}
-                  {creator.handle}
+              <span
+                aria-hidden
+                className={`-mx-5 -mt-5 mb-4 h-2 ${style.accent}`}
+              />
+              <div className="flex gap-4">
+                <Avatar className="size-14 shrink-0 border-2 border-slate-900 shadow-[3px_3px_0_#0f172a]">
+                  <AvatarImage
+                    src={creator.avatarUrl}
+                    alt={`Foto de perfil de ${creator.name}`}
+                  />
+                  <AvatarFallback className="border-2 border-slate-900 bg-violet-200 text-sm font-black text-violet-900">
+                    {initials(creator.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-display font-black leading-tight text-slate-950">
+                    {creator.name}
+                  </h3>
+                  {creator.parceira ? (
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
+                      <Sparkles className="h-3 w-3" aria-hidden />
+                      Parceira BoraNaTech
+                    </span>
+                  ) : null}
+                  {creator.handle ? (
+                    <p className="mt-1 flex items-center gap-1.5 text-xs font-bold text-violet-700">
+                      {favicon && (
+                        <img
+                          src={favicon}
+                          alt=""
+                          onError={hideBrokenImage}
+                          className="h-4 w-4 shrink-0 rounded border border-slate-300"
+                        />
+                      )}
+                      {creator.handle}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              {/* Descricao e autodeclaracao real; vazia por ora. TODO(Ana): nao inventar bio. */}
+              {creator.topic ? (
+                <p className="mt-3 text-sm font-semibold text-slate-600">
+                  {creator.topic}
                 </p>
-                <p className="mt-2 text-sm text-slate-600">{creator.topic}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
-                  Conhecer <ExternalLink className="h-3 w-3" />
+              ) : null}
+              <span className="mt-4 inline-flex items-center gap-1 text-xs font-black text-violet-700">
+                Conhecer
+                <ExternalLink
+                  className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EbooksSection({
+  ebooks,
+}: {
+  ebooks: {
+    title: string;
+    author: string;
+    desc: string;
+    url: string;
+    free: boolean;
+  }[];
+}) {
+  return (
+    <div>
+      <h2 className="font-display mb-4 text-2xl font-black text-slate-950">
+        Leituras e ebooks
+      </h2>
+      <div className="grid gap-4 md:grid-cols-3">
+        {ebooks.map((ebook) => {
+          const favicon = getFaviconUrl(ebook.url);
+          return (
+            <a
+              key={ebook.url}
+              href={ebook.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="card-invite flex flex-col rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+            >
+              <div className="flex items-center gap-2">
+                {favicon && (
+                  <img
+                    src={favicon}
+                    alt=""
+                    onError={hideBrokenImage}
+                    className="h-5 w-5 shrink-0 rounded border border-slate-300"
+                  />
+                )}
+                <span
+                  className={`inline-flex rounded-full border-2 border-slate-900 px-2 py-0.5 text-[10px] font-black uppercase ${
+                    ebook.free
+                      ? "bg-emerald-200 text-emerald-900"
+                      : "bg-amber-200 text-amber-900"
+                  }`}
+                >
+                  {ebook.free ? "Gratuito" : "Pago"}
                 </span>
               </div>
+              <h3 className="mt-3 font-display font-black text-slate-950">
+                {ebook.title}
+              </h3>
+              <p className="mt-1 text-xs font-bold text-pink-700">
+                {ebook.author}
+              </p>
+              <p className="mt-2 flex-1 text-sm text-slate-600">{ebook.desc}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
+                Ver <ExternalLink className="h-3 w-3" />
+              </span>
             </a>
           );
         })}
@@ -591,14 +699,57 @@ function Section({
   );
 }
 
+function StatsSection({
+  stats,
+}: {
+  stats: { value: string; label: string; source: string; year: string }[];
+}) {
+  const shadows = [
+    "shadow-[5px_5px_0_#8b5cf6]",
+    "shadow-[5px_5px_0_#FFB800]",
+    "shadow-[5px_5px_0_#e879f9]",
+  ];
+  return (
+    <div>
+      <p className="mb-2 inline-flex rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+        O cenário
+      </p>
+      {/* TODO(Ana): confirmar os dados; cada card exibe a fonte e o ano. */}
+      <h2 className="font-display mb-5 text-2xl font-black text-slate-950 sm:text-3xl">
+        Por que essa área importa, em números
+      </h2>
+      <div className="grid gap-5 sm:grid-cols-3">
+        {stats.map((stat, index) => (
+          <div
+            key={stat.source}
+            className={`flex flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 ${shadows[index % shadows.length]}`}
+          >
+            <p className="font-display text-4xl font-black leading-none text-violet-700 sm:text-5xl">
+              {stat.value}
+            </p>
+            <p className="mt-3 text-sm font-bold leading-relaxed text-slate-700">
+              {stat.label}
+            </p>
+            <p className="mt-4 text-[0.7rem] font-black uppercase tracking-wide text-slate-500">
+              Fonte: {stat.source}, {stat.year}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ListCard({
   title,
   icon,
   items,
+  note,
 }: {
   title: string;
   icon: ReactNode;
   items: { title?: string; name?: string; url: string }[];
+  note?: string;
 }) {
   return (
     <div className="card-brutal rounded-2xl border-pink-200 bg-white p-6">
@@ -606,6 +757,11 @@ function ListCard({
         {icon}
         {title}
       </h2>
+      {note ? (
+        <p className="mb-4 rounded-lg border-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+          {note}
+        </p>
+      ) : null}
       <div className="space-y-3">
         {items.map((item) => {
           const favicon = getFaviconUrl(item.url);

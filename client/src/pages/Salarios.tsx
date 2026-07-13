@@ -2,11 +2,18 @@ import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Banknote,
+  BookOpen,
   Check,
   Coins,
   DollarSign,
   ExternalLink,
+  Handshake,
+  Info,
+  MapPin,
+  Scale,
+  Search,
   Sparkles,
+  TrendingUp,
   X,
 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -17,9 +24,15 @@ import CountUp from "@/components/reactbits/CountUp";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
+  calculadoraExplicacoes,
   cities,
   levels,
+  marketBeneficios,
+  marketContext,
   marketMonitor,
+  marketProgressao,
+  marketTecnologias,
+  marketTendencias,
   salaryRows,
   workTypes,
 } from "@/lib/marketData";
@@ -254,6 +267,33 @@ function formatBRL(value: number) {
   });
 }
 
+// Os valores podem vir como numero unico (entradas antigas) ou como faixa em
+// texto "min-max" (entradas novas com fonte). Estes helpers lidam com os dois.
+function parseLow(value: number | string | undefined): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value.split("-")[0]);
+  return NaN;
+}
+
+function parseHigh(value: number | string | undefined): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parts = value.split("-");
+    return Number(parts[parts.length - 1]);
+  }
+  return NaN;
+}
+
+function formatRange(value: number | string | undefined): string {
+  if (typeof value === "number") return formatBRL(value);
+  const low = parseLow(value);
+  const high = parseHigh(value);
+  if (!Number.isNaN(low) && !Number.isNaN(high)) {
+    return `${formatBRL(low)} - ${formatBRL(high)}`;
+  }
+  return "-";
+}
+
 type SalaryRow = (typeof salaryRows)[number];
 
 function SalaryRangeCard({
@@ -265,10 +305,15 @@ function SalaryRangeCard({
   maxSalary: number;
   type: string;
 }) {
-  const clt = Number(row.clt);
-  const pj = Number(row.pj);
-  const leftPct = maxSalary > 0 ? (clt / maxSalary) * 100 : 0;
-  const rightPct = maxSalary > 0 ? 100 - (pj / maxSalary) * 100 : 0;
+  const isEstagio = row.bolsa != null && row.clt == null && row.pj == null;
+  const cltLow = parseLow(row.clt);
+  const pjHigh = parseHigh(row.pj);
+  const leftPct =
+    maxSalary > 0 && !Number.isNaN(cltLow) ? (cltLow / maxSalary) * 100 : 0;
+  const rightPct =
+    maxSalary > 0 && !Number.isNaN(pjHigh)
+      ? 100 - (pjHigh / maxSalary) * 100
+      : 0;
   return (
     <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-shadow duration-200 hover:shadow-[5px_5px_0_#6ee7b7]">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -282,42 +327,60 @@ function SalaryRangeCard({
           {String(row.city)}
         </span>
       </div>
-      <div
-        className="relative mt-3 h-3 w-full rounded-full bg-slate-100"
-        role="img"
-        aria-label={`Faixa de ${String(row.area)} ${String(row.level)} em ${String(row.city)}: CLT ${formatBRL(clt)} a PJ ${formatBRL(pj)}`}
-      >
-        <div
-          className="absolute inset-y-0 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 motion-reduce:transition-none"
-          style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
-        />
-      </div>
-      <div className="mt-2 flex items-center justify-between text-sm">
-        <span
-          className={cn(
-            "font-black",
-            type === "PJ"
-              ? "text-slate-400"
-              : type === "CLT"
-                ? "text-emerald-700"
-                : "text-slate-700",
-          )}
-        >
-          CLT {formatBRL(clt)}
-        </span>
-        <span
-          className={cn(
-            "font-black",
-            type === "CLT"
-              ? "text-slate-400"
-              : type === "PJ"
-                ? "text-emerald-700"
-                : "text-slate-700",
-          )}
-        >
-          PJ {formatBRL(pj)}
-        </span>
-      </div>
+      {isEstagio ? (
+        <div className="mt-3">
+          <span className="inline-flex rounded-full border-2 border-slate-900 bg-emerald-200 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-900">
+            Bolsa de estágio
+          </span>
+          <p className="mt-2 font-display text-lg font-black text-emerald-700">
+            {formatRange(row.bolsa)}/mês
+          </p>
+        </div>
+      ) : (
+        <>
+          <div
+            className="relative mt-3 h-3 w-full rounded-full bg-slate-100"
+            role="img"
+            aria-label={`Faixa de ${String(row.area)} ${String(row.level)} em ${String(row.city)}: CLT ${formatRange(row.clt)} a PJ ${formatRange(row.pj)}`}
+          >
+            <div
+              className="absolute inset-y-0 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 motion-reduce:transition-none"
+              style={{ left: `${leftPct}%`, right: `${rightPct}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span
+              className={cn(
+                "font-black",
+                type === "PJ"
+                  ? "text-slate-400"
+                  : type === "CLT"
+                    ? "text-emerald-700"
+                    : "text-slate-700",
+              )}
+            >
+              CLT {formatRange(row.clt)}
+            </span>
+            <span
+              className={cn(
+                "font-black",
+                type === "CLT"
+                  ? "text-slate-400"
+                  : type === "PJ"
+                    ? "text-emerald-700"
+                    : "text-slate-700",
+              )}
+            >
+              PJ {formatRange(row.pj)}
+            </span>
+          </div>
+        </>
+      )}
+      {row.fonte ? (
+        <p className="mt-3 text-[10px] font-bold text-slate-400">
+          {String(row.fonte)}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -332,6 +395,8 @@ export default function Salarios() {
   const [pj, setPj] = useState(9000);
   const [negArea, setNegArea] = useState(String(salaryRows[0].area));
   const [negLevel, setNegLevel] = useState(String(salaryRows[0].level));
+  const [showFatorPJ, setShowFatorPJ] = useState(false);
+  const [showMargem, setShowMargem] = useState(false);
 
   const areas = [
     "Todas",
@@ -357,21 +422,36 @@ export default function Salarios() {
       ),
     [filtered],
   );
-  const maxSalary = filtered.length
-    ? Math.max(...filtered.map((row) => Number(row.pj)))
-    : 0;
+  const maxSalary = (() => {
+    const highs = filtered
+      .map((row) => parseHigh(row.pj))
+      .filter((n) => !Number.isNaN(n));
+    return highs.length ? Math.max(...highs) : 0;
+  })();
+  const filteredFontes = Array.from(
+    new Set(
+      filtered
+        .map((row) => row.fonte)
+        .filter((fonte): fonte is string => Boolean(fonte)),
+    ),
+  );
+  const hasEstagio = filtered.some((row) => row.bolsa != null);
   const cltEquivalent = Math.round(pj * 0.68);
   const negAreaOptions = areas.filter((option) => option !== "Todas");
   const negLevelOptions = levels.filter((option) => option !== "Todos");
   const negRows = salaryRows.filter(
     (row) => row.area === negArea && row.level === negLevel,
   );
-  const negBase = negRows.length
-    ? Math.min(...negRows.map((row) => Number(row.clt)))
-    : null;
+  const negCltLows = negRows
+    .map((row) => parseLow(row.clt))
+    .filter((n) => !Number.isNaN(n));
+  const negCltHighs = negRows
+    .map((row) => parseHigh(row.clt))
+    .filter((n) => !Number.isNaN(n));
+  const negBase = negCltLows.length ? Math.min(...negCltLows) : null;
   const negTeto =
-    negBase !== null
-      ? Math.round(Math.max(...negRows.map((row) => Number(row.clt))) * 1.15)
+    negBase !== null && negCltHighs.length
+      ? Math.round(Math.max(...negCltHighs) * 1.15)
       : null;
 
   return (
@@ -437,11 +517,13 @@ export default function Salarios() {
                     ["Cidade", city, setCity, cities],
                     ["Tipo", type, setType, workTypes],
                   ].map(([label, value, setter, options]) => (
-                    <label key={String(label)} className="text-sm font-black">
-                      {String(label)}
+                    <label key={String(label)} className="block">
+                      <span className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                        {String(label)}
+                      </span>
                       <select
                         className={cn(
-                          "mt-1 w-full rounded-xl border-2 bg-white p-3",
+                          "w-full rounded-xl border-2 bg-white p-3",
                           ac.input,
                         )}
                         value={String(value)}
@@ -463,9 +545,14 @@ export default function Salarios() {
                   )}
                 >
                   {ordered.length === 0 ? (
-                    <div className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center text-sm font-bold text-slate-500 sm:col-span-2">
-                      Nenhuma faixa pra esse recorte. Tente ampliar a área, o
-                      nível ou a cidade.
+                    <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center sm:col-span-2">
+                      <p className="font-display text-lg font-black text-slate-700">
+                        Nenhuma faixa pra esse recorte
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-slate-500">
+                        Tente ampliar a área, o nível ou a cidade nos filtros
+                        acima.
+                      </p>
                     </div>
                   ) : (
                     ordered.map((row) => (
@@ -483,6 +570,17 @@ export default function Salarios() {
                   valores de referência, variam por empresa, região e momento do
                   mercado.
                 </p>
+                {filteredFontes.length > 0 ? (
+                  <p className="mt-1 text-xs font-bold text-slate-500">
+                    Fontes: {filteredFontes.join(" · ")}.
+                  </p>
+                ) : null}
+                {hasEstagio ? (
+                  <p className="mt-1 text-xs font-bold text-slate-500">
+                    Valores de estágio = bolsa-auxílio mensal (referência, não
+                    CLT/PJ formal).
+                  </p>
+                ) : null}
               </div>
               <div className="card-brutal rounded-2xl bg-white p-6">
                 <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
@@ -524,8 +622,11 @@ export default function Salarios() {
                   className="card-brutal rounded-2xl bg-emerald-100 p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#6ee7b7]"
                 >
                   <h2 className="font-display text-2xl font-black">
-                    Calculadora CLT vs PJ
+                    Proposta PJ
                   </h2>
+                  <p className="mt-1 text-sm font-bold text-slate-600">
+                    Quanto equivale em CLT?
+                  </p>
                   <label className="mt-4 block text-sm font-black">
                     Proposta PJ (R$)
                     <input
@@ -544,6 +645,32 @@ export default function Salarios() {
                       }}
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowFatorPJ((v) => !v)}
+                    aria-expanded={showFatorPJ}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 underline"
+                  >
+                    <Info className="h-4 w-4" aria-hidden />
+                    Entender o cálculo
+                  </button>
+                  {showFatorPJ ? (
+                    <div className="card-brutal mt-3 rounded-2xl bg-emerald-50 p-4">
+                      <p className="font-display text-sm font-black text-slate-950">
+                        {calculadoraExplicacoes.fatorPJ.titulo}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-700">
+                        {calculadoraExplicacoes.fatorPJ.explicacao}
+                      </p>
+                      <p className="mt-2 text-xs font-bold text-slate-600">
+                        {calculadoraExplicacoes.fatorPJ.exemplo}
+                      </p>
+                      <p className="mt-2 text-[10px] font-bold text-slate-400">
+                        {calculadoraExplicacoes.fatorPJ.fonte} ·{" "}
+                        {calculadoraExplicacoes.fatorPJ.ano}
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="mt-5 rounded-2xl border-2 border-slate-900 bg-white p-5">
                     <p className="text-xs font-bold text-slate-500">
                       Estimativa simplificada. Valide com um contador antes de
@@ -603,8 +730,11 @@ export default function Salarios() {
                   className="card-brutal rounded-2xl bg-white p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#6ee7b7]"
                 >
                   <h2 className="font-display text-2xl font-black">
-                    Calculadora de negociação salarial
+                    Negociação salarial
                   </h2>
+                  <p className="mt-1 text-sm font-bold text-slate-600">
+                    Qual faixa pedir?
+                  </p>
                   <label className="mt-4 block text-sm font-black">
                     Área
                     <select
@@ -629,7 +759,11 @@ export default function Salarios() {
                       ))}
                     </select>
                   </label>
-                  <div
+                  <motion.div
+                    key={`${negArea}-${negLevel}`}
+                    initial={reduce ? false : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
                     className={cn(
                       "mt-5 rounded-2xl border-2 p-5",
                       ac.panelBorder,
@@ -639,34 +773,104 @@ export default function Salarios() {
                     {negBase !== null && negTeto !== null ? (
                       <>
                         <p className="font-black">
-                          Referência da tabela: R${" "}
-                          <CountUp to={negBase} separator="." />. Você pode pedir
-                          entre R$ <CountUp to={negBase} separator="." /> e R${" "}
+                          Você pode pedir entre R${" "}
+                          <CountUp to={negBase} separator="." /> e R${" "}
                           <CountUp to={negTeto} separator="." />.
                         </p>
+                        <div className="relative mt-3 h-3 w-full rounded-full bg-white">
+                          <div className="absolute inset-y-0 left-[6%] right-[6%] rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" />
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-xs font-black text-slate-700">
+                          <span>
+                            base R$ <CountUp to={negBase} separator="." />
+                          </span>
+                          <span>
+                            teto R$ <CountUp to={negTeto} separator="." />
+                          </span>
+                        </div>
                         <p className="mt-2 text-xs font-bold text-slate-500">
                           Faixa baseada na tabela acima, com até 15% de margem de
                           negociação.
                         </p>
                       </>
                     ) : (
-                      <p className="font-bold text-slate-700">
-                        Ainda não temos {negArea} {negLevel} na tabela. Use os
-                        recortes disponíveis como referência.
-                      </p>
+                      <div className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
+                        <p className="font-black text-amber-900">
+                          Ainda não temos {negArea} {negLevel} na tabela.
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-amber-800">
+                          Escolha outra área ou nível, ou use os recortes
+                          disponíveis como referência.
+                        </p>
+                      </div>
                     )}
                     <ul className="mt-3 space-y-2 text-sm text-slate-700">
                       <li>Tenho projetos práticos alinhados com {negArea}.</li>
                       <li>Trago repertório das tecnologias pedidas na vaga.</li>
                       <li>Posso mostrar evolução e entregas documentadas.</li>
                     </ul>
+                  </motion.div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMargem((v) => !v)}
+                    aria-expanded={showMargem}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 underline"
+                  >
+                    <Info className="h-4 w-4" aria-hidden />
+                    Entender a margem
+                  </button>
+                  {showMargem ? (
+                    <div className="card-brutal mt-3 rounded-2xl bg-emerald-50 p-4">
+                      <p className="font-display text-sm font-black text-slate-950">
+                        {calculadoraExplicacoes.margemNegociacao.titulo}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-700">
+                        {calculadoraExplicacoes.margemNegociacao.explicacao}
+                      </p>
+                      <p className="mt-2 text-xs font-bold text-slate-600">
+                        {calculadoraExplicacoes.margemNegociacao.exemplo}
+                      </p>
+                      <p className="mt-2 text-[10px] font-bold text-slate-400">
+                        {calculadoraExplicacoes.margemNegociacao.fonte} ·{" "}
+                        {calculadoraExplicacoes.margemNegociacao.ano}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="card-brutal mt-4 rounded-2xl bg-white p-4">
+                    <p className="font-display text-sm font-black text-slate-950">
+                      {calculadoraExplicacoes.pjVsClt.titulo}
+                    </p>
+                    <ul className="mt-2 space-y-1.5">
+                      {calculadoraExplicacoes.pjVsClt.criterios.map(
+                        (criterio) => (
+                          <li
+                            key={criterio}
+                            className="flex items-start gap-2 text-sm text-slate-700"
+                          >
+                            <Check
+                              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                              aria-hidden
+                            />
+                            {criterio}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                    <p className="mt-2 text-xs font-bold text-slate-600">
+                      {calculadoraExplicacoes.pjVsClt.exemplo}
+                    </p>
+                    <p className="mt-2 text-[10px] font-bold text-slate-400">
+                      {calculadoraExplicacoes.pjVsClt.fonte} ·{" "}
+                      {calculadoraExplicacoes.pjVsClt.ano}
+                    </p>
                   </div>
                 </motion.div>
               </div>
             ) : null}
 
             {aba === "Mercado" ? (
-              <div className="grid gap-5 md:grid-cols-3">
+              <div className="space-y-6">
+                <div className="grid gap-5 md:grid-cols-3">
                 <div className="card-brutal rounded-2xl bg-white p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]">
                   <h3 className="font-display text-xl font-black">
                     Áreas com mais vagas
@@ -710,6 +914,244 @@ export default function Salarios() {
                     </p>
                   ))}
                 </div>
+                </div>
+                <div>
+                  <h3 className="font-display text-xl font-black">
+                    Contexto de mercado
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Referências gerais de mercado, sem faixa CLT/PJ por cargo.
+                  </p>
+                  <div className="mt-4 space-y-6">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                        Salário médio por região
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        {marketContext
+                          .filter((item) => item.tipo === "salario_medio_regiao")
+                          .map((item) => (
+                            <div
+                              key={String(item.regiao)}
+                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <MapPin
+                                  className="h-4 w-4 text-emerald-700"
+                                  aria-hidden
+                                />
+                                <p className="text-sm font-black text-slate-900">
+                                  {String(item.regiao)}
+                                </p>
+                              </div>
+                              <p className="mt-2 font-display text-xl font-black text-emerald-700">
+                                {formatBRL(Number(item.valorMedio))}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-600">
+                                {item.descricao}
+                              </p>
+                              <p className="mt-2 text-[10px] font-bold text-slate-400">
+                                {item.fonte}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                        Diferença CLT vs PJ
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                        {marketContext
+                          .filter((item) => item.tipo === "diferenca_clt_pj")
+                          .map((item) => (
+                            <div
+                              key={String(item.nivel)}
+                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                            >
+                              <p className="text-sm font-black text-slate-900">
+                                {String(item.nivel)}
+                              </p>
+                              <p className="mt-1 font-display text-2xl font-black text-emerald-700">
+                                PJ {item.percentualMedio}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-600">
+                                {item.descricao}
+                              </p>
+                              <p className="mt-2 text-[10px] font-bold text-slate-400">
+                                {item.fonte}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                    {marketContext
+                      .filter((item) => item.tipo === "crescimento_salarial")
+                      .map((item) => (
+                        <div
+                          key={String(item.periodo)}
+                          className="rounded-2xl border-2 border-slate-900 bg-emerald-100 p-5 shadow-[4px_4px_0_#0f172a]"
+                        >
+                          <div className="flex items-center gap-2">
+                            <TrendingUp
+                              className="h-5 w-5 text-emerald-700"
+                              aria-hidden
+                            />
+                            <p className="font-display text-lg font-black">
+                              Crescimento salarial {item.periodo}:{" "}
+                              {item.percentualMedio}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-sm font-bold text-slate-700">
+                            {item.descricao}
+                          </p>
+                          <p className="mt-2 text-[10px] font-bold text-slate-500">
+                            {item.fonte}
+                          </p>
+                        </div>
+                      ))}
+                    <p className="text-xs font-bold text-slate-500">
+                      Fontes: State of Data Brazil 2024, Pesquisa Coodesh 2024,
+                      Guia Salarial Robert Half 2025.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border-2 border-slate-900 bg-emerald-50 p-4 text-xs font-bold text-slate-600">
+                  Dados de referência de mercado (fontes: Robert Half, Coodesh,
+                  State of Data, Glassdoor). Consulte as fontes para valores
+                  atualizados.
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Tendências do mercado
+                  </h3>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {marketTendencias.map((item) => (
+                      <div
+                        key={item.titulo}
+                        className="card-brutal flex flex-col rounded-2xl bg-white p-5"
+                      >
+                        <p className="font-display text-base font-black text-slate-950">
+                          {item.titulo}
+                        </p>
+                        <p className="mt-2 flex-1 text-sm text-slate-600">
+                          {item.descricao}
+                        </p>
+                        <p className="mt-3 text-[10px] font-bold text-slate-400">
+                          {item.fonte} · {item.ano}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Tecnologias mais valorizadas
+                  </h3>
+                  <div className="mt-4 grid gap-3">
+                    {marketTecnologias.map((item) => (
+                      <div
+                        key={item.nome}
+                        className="card-brutal flex flex-col gap-2 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-sm font-black text-slate-950">
+                            {item.nome}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {item.motivo}
+                          </p>
+                          <p className="mt-1 text-[10px] font-bold text-slate-400">
+                            {item.fonte} · {item.ano}
+                          </p>
+                        </div>
+                        <span className="inline-flex shrink-0 self-start rounded-full border-2 border-slate-900 bg-emerald-200 px-3 py-1 text-xs font-black text-emerald-900 sm:self-center">
+                          R$ {item.faixaSeniorSP}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Faixas de referência para nível sênior em São Paulo.
+                    Verifique nas fontes antes de negociar.
+                  </p>
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Benefícios por porte de empresa
+                  </h3>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    {[
+                      { key: "Startup", label: "Startup" },
+                      { key: "Media", label: "Média" },
+                      { key: "Grande", label: "Grande" },
+                    ].map((porte) => (
+                      <div
+                        key={porte.key}
+                        className="card-brutal rounded-2xl bg-white p-5"
+                      >
+                        <p className="font-display text-lg font-black text-slate-950">
+                          {porte.label}
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {marketBeneficios
+                            .filter((b) => b.porte === porte.key)
+                            .map((b) => (
+                              <div
+                                key={b.beneficio}
+                                className="rounded-xl border-2 border-slate-200 bg-emerald-50/60 p-3"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-bold text-slate-700">
+                                    {b.beneficio}
+                                  </span>
+                                  <span className="shrink-0 rounded-full border-2 border-slate-900 bg-emerald-200 px-2 py-0.5 text-[10px] font-black text-emerald-900">
+                                    {b.percentual}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-[10px] font-bold text-slate-400">
+                                  {b.fonte} · {b.ano}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Tempo de progressão
+                  </h3>
+                  <div className="mt-4 grid gap-3">
+                    {marketProgressao.map((item) => (
+                      <div
+                        key={item.area}
+                        className="card-brutal grid gap-2 rounded-2xl bg-white p-4 sm:grid-cols-[1.5fr_1fr_1fr] sm:items-center"
+                      >
+                        <p className="font-display text-sm font-black text-slate-950">
+                          {item.area}
+                        </p>
+                        <p className="text-sm text-slate-700">
+                          <span className="font-black">Júnior a Pleno:</span>{" "}
+                          {item.juniorParaPleno}
+                        </p>
+                        <p className="text-sm text-slate-700">
+                          <span className="font-black">Pleno a Sênior:</span>{" "}
+                          {item.plenoParaSenior}
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-400 sm:col-span-3">
+                          {item.fonte} · {item.ano}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : null}
 
@@ -729,10 +1171,14 @@ export default function Salarios() {
                 </div>
 
                 <div>
-                  <h2 className="mb-4 font-display text-2xl font-black">
+                  <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black">
+                    <BookOpen
+                      className="h-6 w-6 text-emerald-700"
+                      aria-hidden
+                    />
                     Glossário do salário
                   </h2>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     {salarioGlossario.map((item) => (
                       <div
                         key={item.termo}
@@ -753,15 +1199,43 @@ export default function Salarios() {
                   </div>
                 </div>
 
+                <div className="card-brutal rounded-2xl bg-emerald-100 p-6">
+                  <h2 className="flex items-center gap-2 font-display text-2xl font-black">
+                    <Handshake
+                      className="h-6 w-6 text-emerald-700"
+                      aria-hidden
+                    />
+                    Dicas de negociação
+                  </h2>
+                  <ul className="mt-3 space-y-2">
+                    {salarioDicasNegociacao.map((dica) => (
+                      <li
+                        key={dica}
+                        className="flex items-start gap-2 text-sm font-bold text-slate-800"
+                      >
+                        <Check
+                          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"
+                          aria-hidden
+                        />
+                        {dica}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 <div>
-                  <h2 className="mb-4 font-display text-2xl font-black">
+                  <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black">
+                    <Scale className="h-6 w-6 text-emerald-700" aria-hidden />
                     CLT vs PJ
                   </h2>
                   <div className="grid gap-5 md:grid-cols-2">
-                    {[salarioCltPj.clt, salarioCltPj.pj].map((bloco) => (
+                    {[salarioCltPj.clt, salarioCltPj.pj].map((bloco, index) => (
                       <div
                         key={bloco.titulo}
-                        className="card-brutal rounded-2xl bg-white p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]"
+                        className={cn(
+                          "card-brutal rounded-2xl p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]",
+                          index === 0 ? "bg-emerald-50" : "bg-amber-50",
+                        )}
                       >
                         <h3 className="font-display text-xl font-black text-slate-950">
                           {bloco.titulo}
@@ -805,28 +1279,9 @@ export default function Salarios() {
                   </div>
                 </div>
 
-                <div className="card-brutal rounded-2xl bg-emerald-100 p-6">
-                  <h2 className="font-display text-2xl font-black">
-                    Dicas de negociação
-                  </h2>
-                  <ul className="mt-3 space-y-2">
-                    {salarioDicasNegociacao.map((dica) => (
-                      <li
-                        key={dica}
-                        className="flex items-start gap-2 text-sm font-bold text-slate-800"
-                      >
-                        <Check
-                          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"
-                          aria-hidden
-                        />
-                        {dica}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
                 <div>
-                  <h2 className="mb-4 font-display text-2xl font-black">
+                  <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black">
+                    <Search className="h-6 w-6 text-emerald-700" aria-hidden />
                     Onde pesquisar salário
                   </h2>
                   <div className="grid gap-4 md:grid-cols-3">

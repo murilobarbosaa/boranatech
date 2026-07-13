@@ -1,10 +1,45 @@
 import type { LucideIcon } from "lucide-react";
 import { Boxes, Compass, RefreshCw, Sprout } from "lucide-react";
+import { creators as homeCreators } from "./creatorsData";
 
 export const creatorHandle = "@ana.natech";
 
 /** Foto de perfil da curadora Ana Moura (@ana.natech · via Unavatar/LinkedIn, mesmo provider estável usado pelas demais criadoras). */
 export const creatorPhotoUrl = "https://unavatar.io/linkedin/anajulia-moura";
+
+// Consentimento (aba Mulheres): as unicas creators autorizadas a aparecer sao
+// as que ja estao na faixa de creators da home (fonte unica: creatorsData). Como
+// creatorsData nao tem campo de genero, este set marca quais dessas creators sao
+// mulheres; estar na faixa da home e a curadoria de parceria. Uma nova creator
+// mulher que entrar na home aparece aqui ao ter o handle adicionado neste set.
+// TODO(Ana): manter em dia; confirmar se "gama18k" (Gama) e "raibyhei" (Ray)
+// sao mulheres para incluir.
+const WOMEN_CREATOR_HANDLES = new Set<string>([
+  "gio.yaml",
+  "ynara_dev",
+  "erikabusiness",
+  "grazi.tech",
+  "jess.data",
+  "carolpaier.tech",
+  "code.evelyn",
+  "devnicolelobo",
+  "vua_nessa",
+  "monihillman",
+]);
+
+// Deriva as creators mulheres da faixa da home. A descricao (topic) fica vazia
+// de proposito: a bio e autodeclaracao real do proprio creator, nunca inventada.
+// TODO(Ana): preencher com a autodeclaracao de cada uma quando fornecerem.
+const womenCreators = homeCreators
+  .filter((creator) => WOMEN_CREATOR_HANDLES.has(creator.handle))
+  .map((creator) => ({
+    name: creator.name,
+    handle: `@${creator.handle}`,
+    topic: "",
+    url: creator.instagram,
+    avatarUrl: creator.photo,
+    parceira: true,
+  }));
 
 export const womenArea = {
   founder: {
@@ -13,7 +48,7 @@ export const womenArea = {
     handle: "@ana.natech",
     instagramUrl: "https://www.instagram.com/ana.natech/",
     message: "",
-    photoUrl: "",
+    photoUrl: creatorPhotoUrl,
   },
   tips: [
     "Procure comunidades com moderação ativa e canais para iniciantes.",
@@ -35,6 +70,11 @@ export const womenArea = {
     "Estabeleça uma rotina de estudo sustentável e constante, já que consistência supera maratonas isoladas de fim de semana.",
   ],
   communities: [
+    {
+      name: "Tech Sisters",
+      desc: "Comunidade para mulheres que amam tecnologia: conexões, conhecimento e apoio real.",
+      url: "https://www.instagram.com/tech.sisterss/",
+    },
     {
       name: "{reprograma}",
       desc: "Cursos e comunidade para mulheres em tecnologia.",
@@ -129,6 +169,11 @@ export const womenArea = {
       name: "AnitaB.org",
       desc: "Organização internacional que conecta e apoia mulheres em computação e as empresas que as empregam.",
       url: "https://anitab.org/",
+    },
+    {
+      name: "Elas Programam",
+      desc: "Comunidade voltada à inserção e evolução de mulheres na tecnologia.",
+      url: "https://elasprogramam.com.br/",
     },
   ],
   courses: [
@@ -260,164 +305,63 @@ export const womenArea = {
       url: "https://womcy.org/pt/",
     },
   ],
-  creators: [
+  // Creators da aba: DERIVADAS da faixa de creators da home (womenCreators
+  // acima, filtrado por WOMEN_CREATOR_HANDLES). Fonte unica: creatorsData, entao
+  // nao ha lista duplicada aqui. As organizacoes/coletivos (PyLadies, PrograMaria
+  // etc.) nao entram nesta secao: vivem em `communities`.
+  creators: womenCreators,
+  // Dados de mercado FORNECIDOS pela Ana. Cada um exibe FONTE e ANO na
+  // interface (regra: sem fonte visivel, nao publica). TODO(Ana): confirmar os
+  // numeros e o ano exato, e adicionar o link oficial de cada fonte se possivel.
+  stats: [
     {
-      name: "Ana Moura",
-      handle: creatorHandle,
-      topic: "Curadoria tech, primeiro passos e referências sem enrolação.",
-      url: "https://www.instagram.com/ana.natech/",
-      avatarUrl: creatorPhotoUrl,
+      value: "~22%",
+      label:
+        "dos postos de trabalho em tecnologia no Brasil são ocupados por mulheres.",
+      source: "Brasscom",
+      year: "2023/2024",
     },
     {
-      name: "Rafaella Ballerini",
-      handle: "@rafaballerini",
-      topic: "Programação, carreira e comunidade",
-      url: "https://www.youtube.com/@rafaellaballerini",
-      avatarUrl: "https://unavatar.io/youtube/rafaellaballerini",
+      value: "~15%",
+      label: "das matrículas em graduações de computação são de mulheres.",
+      source: "INEP / Censo da Educação Superior",
+      year: "2023/2024",
     },
     {
-      name: "Loiane Groner",
-      handle: "@loianegroner",
-      topic: "Java, Angular e carreira",
-      url: "https://www.youtube.com/@loianegroner",
-      avatarUrl: "https://unavatar.io/youtube/loianegroner",
-    },
-    {
-      name: "Glaucia Lemos",
-      handle: "@glaucia_lemos86",
-      topic: "Cloud, Microsoft e educação",
-      url: "https://www.youtube.com/results?search_query=Glaucia+Lemos+cloud",
-      avatarUrl: "https://unavatar.io/youtube/GlauciaLemos",
-    },
-    {
-      name: "Gabriela Pinheiro",
-      handle: "@gabrielapinheiro",
-      topic: "Front-end, educação e transição de carreira",
-      url: "https://www.youtube.com/results?search_query=Gabriela+Pinheiro+programa%C3%A7%C3%A3o",
-      avatarUrl: "https://unavatar.io/youtube/gabrielapinheiro",
-    },
-    {
-      name: "Camila Cavalcante",
-      handle: "@cami-la",
-      topic: "Comunidade, GitHub, carreira e diversidade",
-      url: "https://www.linkedin.com/in/camila-cavalcante/",
-      avatarUrl: "https://unavatar.io/linkedin/camila-cavalcante",
-    },
-    {
-      name: "Letícia Caires",
-      handle: "@leticiascaires",
-      topic: "Produto, carreira e bastidores de tecnologia",
-      url: "https://www.linkedin.com/search/results/content/?keywords=Leticia%20Caires%20produto%20tech",
-      avatarUrl: "",
-    },
-    {
-      name: "Attekita Dev",
-      handle: "@attekitadev",
-      topic: "Desenvolvimento de apps, games e carreira em tecnologia",
-      url: "https://www.youtube.com/@attekitadev",
-      avatarUrl: "https://unavatar.io/youtube/attekitadev",
-    },
-    {
-      name: "Professora Nattane",
-      handle: "",
-      topic: "Doutora em Computação que explica redes, programação e fundamentos de forma acessível.",
-      url: "https://www.youtube.com/c/ProfessoraNattane",
-      avatarUrl: "",
-    },
-    {
-      name: "Camila Achutti",
-      handle: "",
-      topic: "Cientista da computação pela USP que escreve e palestra sobre mulheres e o mercado de tecnologia.",
-      url: "https://www.instagram.com/camila.achutti/",
-      avatarUrl: "",
-    },
-    {
-      name: "Ana Carolina da Hora",
-      handle: "",
-      topic: "Cientista da computação que simplifica algoritmos e tecnologia no projeto Computação da Hora.",
-      url: "https://www.instagram.com/anadahora/",
-      avatarUrl: "",
-    },
-    {
-      name: "Aline Bastos",
-      handle: "",
-      topic: "Desenvolvedora e criadora que compartilha aprendizado de programação e mentoria nas redes sociais.",
-      url: "https://www.instagram.com/alinebastoscosta/",
-      avatarUrl: "",
-    },
-    {
-      name: "Nina Silva",
-      handle: "",
-      topic: "Referência em tecnologia e empreendedorismo negro, reconhecida internacionalmente por seu impacto.",
-      url: "https://www.instagram.com/ninantonia/",
-      avatarUrl: "",
-    },
-    {
-      name: "Mariana Aguiar",
-      handle: "",
-      topic: "Criadora de conteúdo que documenta sua jornada e ensina programação no YouTube.",
-      url: "https://www.youtube.com/c/MarianaAguiarOficial",
-      avatarUrl: "",
-    },
-    {
-      name: "PyLadies São Paulo",
-      handle: "",
-      topic: "Perfil da comunidade que divulga conteúdo, eventos e cursos de Python para mulheres.",
-      url: "https://www.instagram.com/pyladiessp/",
-      avatarUrl: "",
-    },
-    {
-      name: "Meninas Programadoras USP",
-      handle: "",
-      topic: "Coletivo universitário que produz conteúdo para aproximar mais mulheres da programação.",
-      url: "https://www.instagram.com/meninasprogramadorasusp/",
-      avatarUrl: "",
-    },
-    {
-      name: "PrograMaria",
-      handle: "",
-      topic: "Perfil que publica conteúdos, vagas e histórias sobre mulheres no universo da tecnologia.",
-      url: "https://www.instagram.com/programaria/",
-      avatarUrl: "",
-    },
-    {
-      name: "WoMakersCode",
-      handle: "",
-      topic: "Perfil que compartilha conteúdo, eventos e oportunidades da comunidade de mulheres em tech.",
-      url: "https://www.instagram.com/womakerscode/",
-      avatarUrl: "",
-    },
-    {
-      name: "PretaLab",
-      handle: "",
-      topic: "Perfil que divulga dados, conteúdos e histórias de mulheres negras e indígenas em tecnologia.",
-      url: "https://www.instagram.com/pretalab/",
-      avatarUrl: "",
-    },
-    {
-      name: "Programe como uma garota",
-      handle: "",
-      topic: "Perfil que publica dicas, oportunidades e conteúdo de incentivo a mulheres na programação.",
-      url: "https://www.instagram.com/programecomoumagarota/",
-      avatarUrl: "",
+      value: "-31%",
+      label:
+        "é quanto mulheres em TI ganham, em média, a menos que homens na mesma função.",
+      source: "IBGE / PNAD Contínua",
+      year: "2023/2024",
     },
   ],
   videos: [
     {
-      title: "Mulheres em tecnologia: primeiros passos",
-      url: "https://www.youtube.com/results?search_query=mulheres+em+tecnologia+primeiros+passos",
+      title: "Canal Attekita Dev: dev, games e carreira",
+      url: "https://www.youtube.com/@attekitadev",
     },
     {
-      title: "Como construir portfólio iniciante",
-      url: "https://www.youtube.com/results?search_query=portfolio+iniciante+programacao+mulheres",
+      // TODO(Ana): trocar pelo link oficial do TEDx quando confirmado (por ora,
+      // link de busca, pois nao foi possivel verificar a URL exata).
+      title:
+        "Lugar de mulher é na tecnologia - Camila Achutti (TEDx): a barreira cultural de gênero nas exatas",
+      url: "https://www.youtube.com/results?search_query=Camila+Achutti+lugar+de+mulher+na+tecnologia+TEDx",
     },
     {
-      title: "Síndrome da impostora na tecnologia",
-      url: "https://www.youtube.com/results?search_query=sindrome+da+impostora+mulheres+tecnologia",
+      title: "Canal Rafaella Ballerini: programação e carreira",
+      url: "https://www.youtube.com/@rafaellaballerini",
     },
     {
-      title: "Como se posicionar em tecnologia",
-      url: "https://www.youtube.com/results?search_query=mulheres+tecnologia+marca+pessoal+linkedin",
+      title: "Canal Simara Conceição: transição para dev",
+      url: "https://www.youtube.com/@SimaraConceicao",
+    },
+    {
+      title: "Canal Michelli Brito: back-end e Java",
+      url: "https://www.youtube.com/@MichelliBrito",
+    },
+    {
+      title: "Canal Loiane Groner: Java e Angular",
+      url: "https://www.youtube.com/@loianegroner",
     },
   ],
   affirmativeJobs: [
@@ -440,6 +384,21 @@ export const womenArea = {
     {
       name: "Programas de estágio afirmativos",
       url: "https://www.google.com/search?q=programa+est%C3%A1gio+mulheres+tecnologia",
+    },
+    {
+      // TODO(Ana): trocar por link oficial quando confirmado (busca por ora).
+      name: "LuizaCode (Magazine Luiza) - inscrições periódicas",
+      url: "https://www.google.com/search?q=LuizaCode+Magazine+Luiza+programa",
+    },
+    {
+      // TODO(Ana): trocar por link oficial quando confirmado (busca por ora).
+      name: "Nubank - vagas afirmativas em tecnologia (periódico)",
+      url: "https://www.google.com/search?q=Nubank+vagas+afirmativas+tecnologia",
+    },
+    {
+      // TODO(Ana): trocar por link oficial quando confirmado (busca por ora).
+      name: "Trainee Itaú Tech - trilhas afirmativas (inscrições anuais)",
+      url: "https://www.google.com/search?q=trainee+Itau+tech+afirmativo",
     },
   ],
   supportTracks: [
@@ -496,6 +455,18 @@ export const womenArea = {
       title: "Start Coding",
       url: "https://open.spotify.com/show/0dTUNs8tpqAC5d71m8SGU0",
     },
+    {
+      title: "PodProgramar",
+      url: "https://open.spotify.com/show/16ZtU9p6Pja5H87W35owjY",
+    },
+    {
+      title: "Mulheres de Produto",
+      url: "https://open.spotify.com/show/1rfUWxL2Ia7kA343ClLya1",
+    },
+    {
+      title: "Feministech Podcast",
+      url: "https://open.spotify.com/show/2iVISfGEaGBjgGNiAnP0xB",
+    },
   ],
   articles: [
     {
@@ -514,19 +485,39 @@ export const womenArea = {
       url: "https://olhardigital.com.br/2025/03/22/colunistas/mulheres-na-tecnologia-em-2025-sera-que-avancamos/",
     },
     {
-      name: "Lista: comunidades e recursos para mulheres devs (GitHub)",
-      desc: "Coletânea colaborativa de comunidades, eventos e materiais.",
-      url: "https://github.com/FreeCodeCampSp/mulheresprogramam",
-    },
-    {
-      name: "Lista: canais e cursos de tech feitos por mulheres (GitHub)",
-      desc: "Coletânea de criadoras e cursos de tecnologia feitos por mulheres.",
-      url: "https://github.com/ComunidadeCafeina/women-teaching-tech",
-    },
-    {
       name: "Mulheres na tecnologia: representatividade e desafios (Tech4Humans)",
       desc: "Análise sobre a presença feminina na tecnologia no Brasil e no mundo.",
       url: "https://blog.techforhumans.com.br/post/mulheres-na-tecnologia-uma-analise-global-e-brasileira-da-representatividade-e-desafios",
+    },
+  ],
+  ebooks: [
+    {
+      title: "Mulheres em Tecnologia",
+      author: "Mariana Carvalho e Beatriz Oliveira",
+      desc: "Dados, experiências e chamado à ação para diversidade na tech brasileira.",
+      url: "https://www.casadocodigo.com.br/products/livro-mulheres-em-tecnologia",
+      free: false,
+    },
+    {
+      title: "Lista: canais e cursos de tech feitos por mulheres",
+      author: "Comunidade Cafeína (GitHub)",
+      desc: "Repositório colaborativo com canais, cursos e recursos produzidos por mulheres.",
+      url: "https://github.com/ComunidadeCafeina/women-teaching-tech",
+      free: true,
+    },
+    {
+      title: "Lista: comunidades e recursos para mulheres devs",
+      author: "FreeCodeCamp SP (GitHub)",
+      desc: "Curadoria de comunidades, bolsas e recursos para mulheres que programam.",
+      url: "https://github.com/FreeCodeCampSp/mulheresprogramam",
+      free: true,
+    },
+    {
+      title: "Mulheres e Inteligência Artificial (UNESCO)",
+      author: "UNESCO",
+      desc: "Relatório oficial sobre mulheres e inteligência artificial, com dados e recomendações.",
+      url: "https://unesdoc.unesco.org/ark:/48223/pf0000375429_por.pdf",
+      free: true,
     },
   ],
   reassurance: {
@@ -2196,6 +2187,286 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "To-do list com JavaScript para iniciantes",
       url: "https://www.youtube.com/results?search_query=todo+list+javascript+iniciante",
     },
+    "mapeamento-fluxo-valor": {
+      title: "Como fazer mapeamento de fluxo de valor (VSM)",
+      url: "https://www.youtube.com/results?search_query=mapeamento+fluxo+valor+vsm+agile",
+    },
+    "dashboard-vendas-executivo": {
+      title: "Como criar dashboard de vendas no Power BI do zero",
+      url: "https://www.youtube.com/results?search_query=dashboard+vendas+power+bi+iniciante",
+    },
+    "analise-exploratoria-ecommerce": {
+      title: "Análise exploratória de dados com Python e Pandas",
+      url: "https://www.youtube.com/results?search_query=analise+exploratoria+dados+python+pandas",
+    },
+    "modelagem-dbt-vendas": {
+      title: "Tutorial de dbt e analytics engineering",
+      url: "https://www.youtube.com/results?search_query=tutorial+dbt+core+modelagem+dados",
+    },
+    "app-financas-kotlin": {
+      title: "App Android com Kotlin e Jetpack Compose do zero",
+      url: "https://www.youtube.com/results?search_query=android+app+jetpack+compose+kotlin",
+    },
+    "esteira-sast-seguranca": {
+      title: "Como configurar análise estática SAST com Semgrep",
+      url: "https://www.youtube.com/results?search_query=configurar+sast+semgrep+github+actions",
+    },
+    "arquitetura-multi-region-aws": {
+      title: "Arquitetura multi-região na AWS com Terraform",
+      url: "https://www.youtube.com/results?search_query=arquitetura+multi+region+aws+terraform",
+    },
+    "centralizacao-logs-siem": {
+      title: "Instalação e monitoramento com SIEM Wazuh",
+      url: "https://www.youtube.com/results?search_query=siem+wazuh+instalacao+tutorial",
+    },
+    "modelo-previsao-churn": {
+      title: "Como criar modelo preditivo de churn em Python",
+      url: "https://www.youtube.com/results?search_query=previsao+churn+machine+learning+python",
+    },
+    "auditoria-iam-least-privilege": {
+      title: "Segurança de identidades AWS IAM e menor privilégio",
+      url: "https://www.youtube.com/results?search_query=aws+iam+seguranca+least+privilege",
+    },
+    "biblioteca-componentes-acessiveis": {
+      title: "Como estruturar design tokens no Figma",
+      url: "https://www.youtube.com/results?search_query=design+tokens+figma+tutorial",
+    },
+    "pipeline-ci-cd-vulnerabilidades": {
+      title: "Construindo uma pipeline DevSecOps passo a passo",
+      url: "https://www.youtube.com/results?search_query=pipeline+devsecops+trivy+github+actions",
+    },
+    "dashboard-alocacao-custos-cloud": {
+      title: "Introdução prática a FinOps e custos de nuvem",
+      url: "https://www.youtube.com/results?search_query=finops+gestao+custos+cloud+tutorial",
+    },
+    "app-clima-tempo": {
+      title: "Como criar aplicativo Flutter consumindo API REST",
+      url: "https://www.youtube.com/results?search_query=app+flutter+clima+tempo+api",
+    },
+    "analise-artefatos-memoria-ram": {
+      title: "Forense digital: análise de memória RAM com Volatility",
+      url: "https://www.youtube.com/results?search_query=forense+digital+volatility+memoria+ram",
+    },
+    "inventario-conformidade-lgpd": {
+      title: "Mapeamento de dados para conformidade com a LGPD",
+      url: "https://www.youtube.com/results?search_query=mapeamento+dados+lgpd+ripd",
+    },
+    "experimento-teste-ab-conversao": {
+      title: "Como estruturar e analisar testes A/B",
+      url: "https://www.youtube.com/results?search_query=teste+ab+estatistica+python",
+    },
+    "lista-tarefas-swiftui": {
+      title: "App nativo iOS com SwiftUI e SwiftData",
+      url: "https://www.youtube.com/results?search_query=ios+swiftui+swiftdata+app",
+    },
+    "classificador-fraude-cartao": {
+      title: "Detecção de fraude com machine learning em Python",
+      url: "https://www.youtube.com/results?search_query=deteccao+fraude+machine+learning+python",
+    },
+    "pipeline-treinamento-continuo-mlflow": {
+      title: "Ciclo de vida de modelos com MLflow",
+      url: "https://www.youtube.com/results?search_query=mlflow+mlops+tutorial+introducao",
+    },
+    "analise-sentimento-avaliacoes": {
+      title: "Análise de sentimento com NLP em Python",
+      url: "https://www.youtube.com/results?search_query=analise+sentimento+python+nlp",
+    },
+    "portal-desenvolvedor-internal": {
+      title: "Como configurar o Backstage (platform engineering)",
+      url: "https://www.youtube.com/results?search_query=backstage+platform+engineering+tutorial",
+    },
+    "relatorio-status-portfolio-projetos": {
+      title: "Como fazer relatório de status de portfólio (PMO)",
+      url: "https://www.youtube.com/results?search_query=relatorio+status+portfolio+projetos+pmo",
+    },
+    "redesenho-fluxo-checkout": {
+      title: "Design de fluxo de checkout mobile no Figma",
+      url: "https://www.youtube.com/results?search_query=checkout+design+mobile+figma",
+    },
+    "roadmap-estrategico-produto": {
+      title: "Como criar um roadmap de produto orientado a resultado",
+      url: "https://www.youtube.com/results?search_query=roadmap+produto+product+manager",
+    },
+    "plano-go-to-market-funcionalidade": {
+      title: "Como estruturar uma estratégia de Go-to-Market",
+      url: "https://www.youtube.com/results?search_query=go+to+market+estrategia+produto",
+    },
+    "central-documentacao-playbooks": {
+      title: "O que é Product Operations e como organizar processos",
+      url: "https://www.youtube.com/results?search_query=product+operations+processos+notion",
+    },
+    "backlog-priorizado-e-historias": {
+      title: "Como escrever histórias de usuário e critérios de aceite",
+      url: "https://www.youtube.com/results?search_query=escrever+historias+usuario+product+owner",
+    },
+    "otimizacao-prompts-suporte": {
+      title: "Guia de prompt engineering e few-shot prompting",
+      url: "https://www.youtube.com/results?search_query=prompt+engineering+few+shot+tutorial",
+    },
+    "testes-e2e-cypress": {
+      title: "Automação de testes do zero com Cypress",
+      url: "https://www.youtube.com/results?search_query=automacao+testes+cypress+iniciante",
+    },
+    "plano-testes-e-cenarios": {
+      title: "Como elaborar um plano de testes manual",
+      url: "https://www.youtube.com/results?search_query=plano+testes+software+manual",
+    },
+    "teste-carga-k6-api": {
+      title: "Testes de carga e performance de API com k6",
+      url: "https://www.youtube.com/results?search_query=testes+carga+k6+api+performance",
+    },
+    "app-delivery-comida": {
+      title: "App mobile com React Native e Expo",
+      url: "https://www.youtube.com/results?search_query=react+native+expo+app+delivery",
+    },
+    "auditoria-seguranca-ambiente-isolado": {
+      title: "Laboratório de pentest ético com Kali Linux",
+      url: "https://www.youtube.com/results?search_query=laboratorio+pentest+kali+linux+virtualbox",
+    },
+    "facilitacao-metricas-sprint": {
+      title: "Métricas de sprint e gráfico de burndown",
+      url: "https://www.youtube.com/results?search_query=metricas+sprint+burndown+scrum+master",
+    },
+    "guia-estilo-e-interface-landing-page": {
+      title: "Design de landing page responsiva com Auto Layout",
+      url: "https://www.youtube.com/results?search_query=landing+page+auto+layout+figma",
+    },
+    "mapeamento-jornada-usuario": {
+      title: "Como desenhar um mapa de jornada do usuário",
+      url: "https://www.youtube.com/results?search_query=jornada+do+usuario+ux+design",
+    },
+    "plano-pesquisa-e-entrevistas": {
+      title: "Métodos de UX Research: guias e entrevistas",
+      url: "https://www.youtube.com/results?search_query=ux+research+pesquisa+entrevistas",
+    },
+    "reconhecimento-objetos-yolo": {
+      title: "Detecção de objetos em tempo real com YOLO",
+      url: "https://www.youtube.com/results?search_query=deteccao+objetos+yolo+python",
+    },
+    "diagrama-casos-uso-e-requisitos": {
+      title: "Análise de sistemas: requisitos e diagramas UML",
+      url: "https://www.youtube.com/results?search_query=analise+sistemas+requisitos+uml",
+    },
+    "especificacao-tecnica-microsservicos": {
+      title: "Como documentar contratos de API com OpenAPI",
+      url: "https://www.youtube.com/results?search_query=documentar+api+swagger+openapi",
+    },
+    "smart-contract-token-erc20": {
+      title: "Como criar um contrato inteligente em Solidity",
+      url: "https://www.youtube.com/results?search_query=contrato+inteligente+solidity+remix",
+    },
+    "dapp-votacao-descentralizada": {
+      title: "Como criar um dApp integrado a smart contracts",
+      url: "https://www.youtube.com/results?search_query=criar+dapp+react+solidity+ethers",
+    },
+    "servidor-web-linux-seguro": {
+      title: "Configuração segura de servidor Linux com Nginx e SSH",
+      url: "https://www.youtube.com/results?search_query=configuracao+servidor+linux+nginx+ssh",
+    },
+    "infraestrutura-como-codigo-terraform": {
+      title: "Tutorial prático de Terraform na nuvem",
+      url: "https://www.youtube.com/results?search_query=terraform+tutorial+iniciante+cloud",
+    },
+    "sensor-temperatura-esp32": {
+      title: "Programando ESP32 com sensor de temperatura",
+      url: "https://www.youtube.com/results?search_query=esp32+sensor+dht+arduino",
+    },
+    "estacao-meteorologica-mqtt": {
+      title: "Comunicação IoT com protocolo MQTT e ESP32",
+      url: "https://www.youtube.com/results?search_query=esp32+mqtt+broker+node+red",
+    },
+    "programa-cobol-processamento-arquivos": {
+      title: "Introdução à programação COBOL",
+      url: "https://www.youtube.com/results?search_query=programacao+cobol+tutorial+iniciante",
+    },
+    "rotina-jcl-atualizacao-cadastros": {
+      title: "Entendendo comandos JCL em mainframe",
+      url: "https://www.youtube.com/results?search_query=jcl+mainframe+ibm+tutorial",
+    },
+    "configuracao-alertas-prometheus-grafana": {
+      title: "Como monitorar servidores com Prometheus e Grafana",
+      url: "https://www.youtube.com/results?search_query=prometheus+grafana+docker+monitoramento",
+    },
+    "arquitetura-alta-disponibilidade-kubernetes": {
+      title: "Deploy e alta disponibilidade no Kubernetes",
+      url: "https://www.youtube.com/results?search_query=kubernetes+deployment+replicas+probes",
+    },
+    "plano-desenvolvimento-individual": {
+      title: "Como montar um plano de desenvolvimento individual (PDI)",
+      url: "https://www.youtube.com/results?search_query=plano+desenvolvimento+individual+pdi+ti",
+    },
+    "mapeamento-competencias-lideranca-tecnica": {
+      title: "Transição de carreira para tech lead",
+      url: "https://www.youtube.com/results?search_query=carreira+tech+lead+lideranca+tecnica",
+    },
+    "micro-frontends-federation": {
+      title: "Micro-frontends com Module Federation",
+      url: "https://www.youtube.com/results?search_query=micro+frontends+module+federation",
+    },
+    "dashboard-financeiro-tempo-real": {
+      title: "Gráficos em tempo real com Next.js e WebSockets",
+      url: "https://www.youtube.com/results?search_query=nextjs+websockets+realtime+charts",
+    },
+    "otimizacao-core-web-vitals-legado": {
+      title: "Como otimizar performance e Core Web Vitals",
+      url: "https://www.youtube.com/results?search_query=otimizar+performance+frontend+web+vitals",
+    },
+    "gerenciador-estado-complexo-offline": {
+      title: "Sincronização offline com IndexedDB",
+      url: "https://www.youtube.com/results?search_query=indexeddb+offline+sync+react",
+    },
+    "estrategia-testes-arquitetura-microsservicos": {
+      title: "Estratégias de teste para microsserviços",
+      url: "https://www.youtube.com/results?search_query=testes+arquitetura+microsservicos+qa",
+    },
+    "automacao-testes-visuais-regressao": {
+      title: "Testes visuais de regressão com Playwright",
+      url: "https://www.youtube.com/results?search_query=playwright+visual+regression+testing",
+    },
+    "esteira-testes-contrato-pact": {
+      title: "Testes de contrato com Pact explicados",
+      url: "https://www.youtube.com/results?search_query=testes+contrato+pact+tutorial",
+    },
+    "planejamento-capacidade-alocacao-recursos": {
+      title: "Planejamento de capacidade de times de engenharia",
+      url: "https://www.youtube.com/results?search_query=capacity+planning+engenharia+software",
+    },
+    "framework-governanca-ti-cobit": {
+      title: "Governança de TI aplicada com COBIT",
+      url: "https://www.youtube.com/results?search_query=governanca+ti+cobit+framework",
+    },
+    "gestao-crise-incidentes-criticos": {
+      title: "Gestão de incidentes críticos e playbooks",
+      url: "https://www.youtube.com/results?search_query=gestao+incidentes+playbook+ti",
+    },
+    "auditoria-acessibilidade-wcag-redesenho": {
+      title: "Como fazer auditoria de acessibilidade WCAG",
+      url: "https://www.youtube.com/results?search_query=auditoria+acessibilidade+wcag+tutorial",
+    },
+    "design-system-tokens-multiplos-temas": {
+      title: "Variables do Figma e design system multi-tema",
+      url: "https://www.youtube.com/results?search_query=figma+variables+multi+theme",
+    },
+    "arquitetura-informacao-portal-complexo": {
+      title: "Arquitetura de informação e card sorting",
+      url: "https://www.youtube.com/results?search_query=arquitetura+informacao+card+sorting",
+    },
+    "design-speculative-futuro-interacao": {
+      title: "O que é design especulativo e futuros da interação",
+      url: "https://www.youtube.com/results?search_query=design+especulativo+futuros+design",
+    },
+    "descoberta-produto-product-discovery": {
+      title: "Guia completo de Product Discovery",
+      url: "https://www.youtube.com/results?search_query=product+discovery+framework+produto",
+    },
+    "estrategia-precificacao-monetizacao": {
+      title: "Precificação e monetização de produtos SaaS",
+      url: "https://www.youtube.com/results?search_query=precificacao+monetizacao+produto+saas",
+    },
+    "framework-priorizacao-escala-global": {
+      title: "Como priorizar backlogs complexos",
+      url: "https://www.youtube.com/results?search_query=priorizacao+backlog+matriz+rice",
+    },
     default: {
       title: "Como planejar projeto iniciante para portfólio",
       url: "https://www.youtube.com/results?search_query=projeto+iniciante+portfolio+programacao",
@@ -2542,6 +2813,7 @@ export const AREA_ACCENT: Record<string, string> = {
   "Front-end": "#7c3aed",
   "Back-end": "#15803d",
   "Full-stack": "#4f46e5",
+  "Desenvolvimento de Software": "#2563eb",
   "Desenvolvimento Mobile": "#9a3412",
   "Game Dev": "#be123c",
   "Arquitetura de Software e Tech Lead": "#1e40af",

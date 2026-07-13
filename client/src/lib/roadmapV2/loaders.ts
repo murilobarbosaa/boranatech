@@ -68,6 +68,16 @@ export const roadmapLoaders: Record<string, () => Promise<RoadmapV2>> = {
     ),
   linkedin: () =>
     import("@shared/roadmapV2/content/linkedin").then((m) => m.linkedinTrail),
+  "engenharia-software": () =>
+    import("@shared/roadmapV2/content/engenharia-software").then(
+      (m) => m.engenhariaSoftware,
+    ),
+  mlops: () => import("@shared/roadmapV2/content/mlops").then((m) => m.mlops),
+  suporte: () =>
+    import("@shared/roadmapV2/content/suporte").then((m) => m.suporte),
+  "tech-writer": () =>
+    import("@shared/roadmapV2/content/tech-writer").then((m) => m.techWriter),
+  erp: () => import("@shared/roadmapV2/content/erp").then((m) => m.erp),
 };
 
 // Dispara o download do chunk da trilha sem esperar o resultado (hover/focus

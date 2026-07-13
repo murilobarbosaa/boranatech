@@ -532,7 +532,7 @@
       <span class="logo-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></span>
       <span class="logo-text">BORA NA TECH<span class="q">?</span></span>
     </a>
-    <!-- Data definida: 14/07/2026 12:00 BRT (LAUNCH_AT no lancamento.js). -->
+    <!-- Data definida: 13/07/2026 18:00 BRT (LAUNCH_AT no lancamento.js). -->
     <!-- TODO(Ana): revisar o formato do contador compacto e a copy "No ar!". -->
     <span class="hdr-timer"><span class="dot"></span><span data-hdr-timer>Em breve</span></span>
     <a class="btn btn-sm header-cta" data-scroll data-cta-label href="#topo">Entrar na lista</a>
@@ -1103,23 +1103,21 @@
     // photo: caminho da imagem em /creators (ou null pra cair nas iniciais como fallback).
     // Alterar este array muda o hash do CSP. Rode pnpm check e atualize o hash em vercel.json.
     var CREATORS = [
+      { name: "Gio", handle: "gio.yaml", photo: "/creators/gio-yaml.jpg", url: "https://instagram.com/gio.yaml" },
+      { name: "Ynara", handle: "ynara_dev", photo: "/creators/ynara-dev.jpg", url: "https://instagram.com/ynara_dev" },
+      { name: "Erika", handle: "erikabusiness", photo: "/creators/erikabusiness.jpg", url: "https://instagram.com/erikabusiness" },
       { name: "Grazi", handle: "grazi.tech", photo: "/creators/grazi-tech.jpg", url: "https://instagram.com/grazi.tech" },
       { name: "Jessica", handle: "jess.data", photo: "/creators/jess-data.jpg", url: "https://instagram.com/jess.data" },
-      { name: "Gama", handle: "gama18k", photo: "/creators/gama18k.jpg", url: "https://instagram.com/gama18k" },
-      { name: "Gabriel", handle: "gabrielsm.dev", photo: "/creators/gabrielsm-dev.jpg", url: "https://instagram.com/gabrielsm.dev" },
-      { name: "Carol", handle: "carolpaier.tech", photo: "/creators/carolpaier.jpg", url: "https://instagram.com/carolpaier.tech" },
       { name: "Evelyn", handle: "code.evelyn", photo: "/creators/code-evelyn.jpg", url: "https://instagram.com/code.evelyn" },
-      { name: "Ketlyn", handle: "ketlyncode", photo: "/creators/ketlyncode.jpg", url: "https://instagram.com/ketlyncode" },
-      { name: "Ray", handle: "raibyhei", photo: "/creators/raibyhei.jpg", url: "https://instagram.com/raibyhei" },
-      { name: "Dio Augusto", handle: "dioaugusto.dev", photo: "/creators/dioaugusto-dev.jpg", url: "https://instagram.com/dioaugusto.dev" },
       { name: "Nicole", handle: "devnicolelobo", photo: "/creators/devnicolelobo.jpg", url: "https://instagram.com/devnicolelobo" },
-      { name: "Andre", handle: "andrebrito.dev", photo: "/creators/andrebrito-dev.jpg", url: "https://instagram.com/andrebrito.dev" },
       { name: "Vanessa", handle: "vua_nessa", photo: "/creators/vua_nessa.jpg", url: "https://instagram.com/vua_nessa" },
       { name: "Moni", handle: "monihillman", photo: "/creators/monihillman.jpg", url: "https://instagram.com/monihillman" },
-      // TODO(Ana): confirmar nome de exibicao da Gio.
-      { name: "Gio", handle: "gio.yaml", photo: "/creators/gio-yaml.jpg", url: "https://instagram.com/gio.yaml" },
-      // TODO(Ana): confirmar nome de exibicao da Erika.
-      { name: "Erika", handle: "erikabusiness", photo: "/creators/erikabusiness.jpg", url: "https://instagram.com/erikabusiness" }
+      { name: "Carol", handle: "carolpaier.tech", photo: "/creators/carolpaier.jpg", url: "https://instagram.com/carolpaier.tech" },
+      { name: "Gama", handle: "gama18k", photo: "/creators/gama18k.jpg", url: "https://instagram.com/gama18k" },
+      { name: "Gabriel", handle: "gabrielsm.dev", photo: "/creators/gabrielsm-dev.jpg", url: "https://instagram.com/gabrielsm.dev" },
+      { name: "Ray", handle: "raibyhei", photo: "/creators/raibyhei.jpg", url: "https://instagram.com/raibyhei" },
+      { name: "Dio Augusto", handle: "dioaugusto.dev", photo: "/creators/dioaugusto-dev.jpg", url: "https://instagram.com/dioaugusto.dev" },
+      { name: "Andre", handle: "andrebrito.dev", photo: "/creators/andrebrito-dev.jpg", url: "https://instagram.com/andrebrito.dev" }
     ];
     var AV_COLORS = ["av-y", "av-v", "av-l"];
     var CARD_COLORS = ["cc-yellow", "cc-violet-deep", "cc-lavender", "cc-violet-bright"];

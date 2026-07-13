@@ -34,5 +34,7 @@ export const areaCreators: Record<string, AreaCreator[]> = {
   // Andre cobre SRE e DevOps de proposito, mesma pessoa nas duas areas.
   devops: fromHandles("andrebrito.dev"),
   fullstack: fromHandles("dioaugusto.dev", "code.evelyn"),
+  "desenvolvimento-software": fromHandles("code.evelyn"),
+  dados: fromHandles("grazi.tech", "raibyhei"),
   // Gio (gio.yaml): area a definir, ela escolhe depois.
 };
