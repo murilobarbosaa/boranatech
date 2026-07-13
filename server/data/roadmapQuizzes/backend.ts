@@ -639,6 +639,48 @@ const pool: QuizPool = {
       "correta": "c",
       "explicacao": "Usar uma imagem base inadequada pode causar falhas na execução da aplicação, portanto, escolher a imagem correta é crucial.",
       "fonte": "deploy.docker"
+    },
+    {
+      "id": "backend-int-16",
+      "nivel": "intermediario",
+      "pergunta": "Seu back-end cresceu e a lógica de negócio, as consultas ao banco e o tratamento das requisições estão todos misturados no mesmo arquivo. Qual abordagem organiza melhor esse código?",
+      "alternativas": {
+        "a": "Separar o código em camadas por responsabilidade: entrada, regra de negócio e acesso a dados.",
+        "b": "Juntar tudo num único arquivo grande para facilitar encontrar o código.",
+        "c": "Duplicar a mesma lógica em cada rota que precisa dela para evitar dependências.",
+        "d": "Consultar o banco diretamente dentro de cada rota, sem uma camada de dados."
+      },
+      "correta": "a",
+      "explicacao": "Separar em camadas por responsabilidade mantém o código compreensível e permite mudar uma parte sem quebrar as outras.",
+      "fonte": "arquitetura.camadas"
+    },
+    {
+      "id": "backend-int-17",
+      "nivel": "intermediario",
+      "pergunta": "Uma consulta ao banco é lenta e o resultado muda muito pouco ao longo do tempo. Qual técnica ajuda a responder mais rápido sem refazer a consulta toda vez?",
+      "alternativas": {
+        "a": "Usar cache: guardar o resultado pronto e servi-lo direto por um tempo, com uma estratégia de expiração.",
+        "b": "Remover o índice da tabela para o banco processar menos informação.",
+        "c": "Repetir a mesma consulta várias vezes em paralelo para acelerar.",
+        "d": "Aumentar o tamanho da resposta enviada ao cliente."
+      },
+      "correta": "a",
+      "explicacao": "O cache guarda o resultado caro para reaproveitá-lo, e o cuidado principal é definir quando o dado guardado expira.",
+      "fonte": "performance.cache"
+    },
+    {
+      "id": "backend-av-16",
+      "nivel": "avancado",
+      "pergunta": "Ao registrar um pedido, seu sistema precisa enviar um email que às vezes demora. Como evitar que o usuário fique esperando esse envio para receber a resposta?",
+      "alternativas": {
+        "a": "Colocar o envio numa fila e deixar um worker processá-lo em segundo plano, respondendo ao usuário na hora.",
+        "b": "Enviar o email de forma síncrona antes de responder, para garantir a ordem.",
+        "c": "Bloquear a resposta até o servidor de email confirmar a entrega.",
+        "d": "Remover o envio de email para o sistema ficar mais rápido."
+      },
+      "correta": "a",
+      "explicacao": "Processar a tarefa demorada em segundo plano com fila e worker mantém a resposta rápida, sem o usuário esperar o trabalho pesado.",
+      "fonte": "filas.workers"
     }
   ]
 };

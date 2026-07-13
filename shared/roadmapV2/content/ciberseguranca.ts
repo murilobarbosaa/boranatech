@@ -169,6 +169,32 @@ export const ciberseguranca: RoadmapV2 = {
         },
       ],
     },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "criptografia",
+      title: "Criptografia na prática",
+      description:
+        "Além dos conceitos: como a criptografia protege dados de verdade no dia a dia, dos certificados do HTTPS ao dado guardado no disco.",
+      level: "intermediario",
+      children: [
+        {
+          id: "criptografia.pki",
+          title: "Certificados, PKI e TLS",
+          description:
+            "O que faz o cadeado do navegador funcionar e como a confiança na internet é estabelecida.",
+          content:
+            "Você já viu que a criptografia assimétrica usa um par de chaves, pública e privada. Na prática, o que faz isso funcionar em escala na internet é a **infraestrutura de chave pública (PKI)** e os **certificados digitais**. Um certificado é um documento eletrônico que liga uma chave pública a uma identidade (um site, por exemplo) e é assinado por uma **autoridade certificadora** em quem os navegadores confiam.\n\nÉ isso que sustenta o **TLS**, o protocolo por trás do HTTPS. Quando você acessa um site seguro, ele apresenta seu certificado; o navegador verifica se foi assinado por uma autoridade confiável e se é válido, e só então estabelece um canal criptografado. Esse aperto de mãos inicial usa a criptografia assimétrica pra combinar, com segurança, uma chave simétrica rápida que protege o resto da conversa, combinando o melhor das duas famílias.\n\nEntender isso tem valor prático direto: muitos problemas reais de segurança e de operação são certificados vencidos, mal configurados ou não confiáveis, e saber ler o que o cadeado (ou a sua ausência) significa é diagnóstico do dia a dia. Também esclarece por que nunca ignorar avisos de certificado do navegador: eles sinalizam que a garantia de identidade e sigilo pode estar quebrada.",
+        },
+        {
+          id: "criptografia.repouso-transito",
+          title: "Criptografia em repouso e em trânsito",
+          description:
+            "Proteger os dados tanto quando eles viajam pela rede quanto quando estão parados no disco.",
+          content:
+            "Na prática da defesa, a criptografia protege os dados em dois momentos distintos, e os dois importam. **Em trânsito** é quando o dado viaja pela rede, entre o usuário e o servidor ou entre serviços; protegê-lo é garantir que ninguém no meio do caminho consiga ler ou alterar o que passa, e é aí que entram o HTTPS e o TLS que você acabou de ver.\n\n**Em repouso** é quando o dado está parado, guardado num disco, num banco de dados ou num backup. Criptografar dados em repouso garante que, se alguém rouba fisicamente o disco ou obtém acesso indevido ao armazenamento, encontra apenas conteúdo embaralhado, inútil sem a chave. Bancos de dados, discos e serviços de nuvem oferecem essa criptografia, e ativá-la é uma camada importante de proteção.\n\nUm ponto que fecha o assunto de senhas: guardar senhas não é criptografia reversível, e sim **hashing** (com um tempero único por senha, o sal, pra dificultar ataques). A diferença é que criptografia pode ser desfeita com a chave, e senha guardada não deve poder voltar ao original de jeito nenhum. Confundir os dois leva a erros graves, então vale ter clara a regra: dados sensíveis que precisam ser lidos depois, criptografe; senhas, faça hash.",
+        },
+      ],
+    },
     {
       id: "ofensiva",
       title: "Segurança ofensiva",
@@ -205,6 +231,32 @@ export const ciberseguranca: RoadmapV2 = {
               kind: "doc",
             },
           ],
+        },
+      ],
+    },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "vulnerabilidades",
+      title: "Análise de vulnerabilidades",
+      description:
+        "O processo de encontrar, avaliar e priorizar falhas nos sistemas, uma disciplina que liga o lado ofensivo ao defensivo.",
+      level: "intermediario",
+      children: [
+        {
+          id: "vulnerabilidades.scanning",
+          title: "Scanners e gestão de vulnerabilidades",
+          description:
+            "Ferramentas que varrem sistemas em busca de falhas conhecidas e o ciclo de tratá-las.",
+          content:
+            "Você já conhece os tipos de falha mais comuns; aqui o foco é o **processo** de encontrá-las e tratá-las de forma sistemática. O ponto de partida costuma ser o **scanner de vulnerabilidades**: uma ferramenta que varre sistemas, redes ou aplicações comparando o que encontra com bases de falhas conhecidas, e aponta o que está desatualizado, mal configurado ou exposto.\n\nMas rodar o scanner é só o começo. A **gestão de vulnerabilidades** é o ciclo contínuo que vem depois: analisar os resultados (separando o que é risco real do que é alarme falso), priorizar o que corrigir primeiro, aplicar as correções (muitas vezes atualizar software ou ajustar configuração) e verificar que a falha foi de fato fechada. Como sempre surgem vulnerabilidades novas, esse ciclo nunca termina, ele se repete.\n\nEsse trabalho liga o lado ofensivo ao defensivo: usa técnicas de quem procura falhas, mas com o propósito de fechá-las antes que sejam exploradas. É uma das atividades mais concretas e demandadas da área, porque toda organização com sistemas precisa saber onde está vulnerável, e alguém precisa transformar essa lista em ações de correção priorizadas.",
+        },
+        {
+          id: "vulnerabilidades.cve-cvss",
+          title: "CVE, CVSS e priorização",
+          description:
+            "Como as falhas são catalogadas e pontuadas, para decidir o que corrigir primeiro.",
+          content:
+            "Quando uma vulnerabilidade é descoberta num software conhecido, ela recebe um identificador público padronizado, chamado **CVE** (uma espécie de número de registro único da falha). Isso permite que o mundo inteiro se refira exatamente à mesma vulnerabilidade, e que bases públicas concentrem informações sobre ela, o que possibilita corrigir e defender de forma coordenada.\n\nCada falha também ganha uma **pontuação de severidade**, comumente pelo padrão **CVSS**, que gera uma nota (de 0 a 10) refletindo o quão grave e explorável ela é. Essa nota ajuda a **priorizar**: com centenas de vulnerabilidades numa lista, você não corrige tudo de uma vez, então começa pelas mais críticas e mais expostas, guiado pela severidade e pelo contexto do seu ambiente.\n\nPriorizar bem é onde o julgamento entra. A nota de severidade é um insumo, mas não decide sozinha: uma falha de nota alta num sistema isolado e sem dado sensível pode ser menos urgente que uma média num sistema crítico exposto à internet. Combinar a pontuação padronizada com o entendimento do próprio ambiente é o que transforma uma lista assustadora de vulnerabilidades num plano de ação sensato.",
         },
       ],
     },

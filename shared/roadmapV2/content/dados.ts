@@ -314,6 +314,58 @@ export const dados: RoadmapV2 = {
         },
       ],
     },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "preparacao",
+      title: "Limpeza e preparação de dados",
+      description:
+        "A etapa que ocupa a maior parte de um projeto real: deixar os dados prontos e confiáveis antes de modelar.",
+      level: "intermediario",
+      children: [
+        {
+          id: "preparacao.ausentes",
+          title: "Tratar valores ausentes e outliers",
+          description:
+            "Decidir com critério o que fazer com dados que faltam e com valores extremos que distorcem tudo.",
+          content:
+            "Depois da limpeza básica no Pandas, existe um trabalho mais fino de **preparação** que separa uma análise amadora de uma profissional. Ele começa pelos **valores ausentes** tratados com critério. Remover as linhas com falta é simples, mas joga fora informação; preencher (com a média, a mediana ou um valor derivado) mantém os dados, mas introduz uma suposição. Não há resposta única: você escolhe conforme o contexto e, principalmente, **registra e justifica** a decisão.\n\nOs **outliers** são o segundo cuidado. São valores extremos, muito acima ou abaixo do resto, que podem ser erro de digitação ou um caso real e importante. Um único outlier arrasta a média e distorce um modelo inteiro. A questão não é apagar todo valor estranho, e sim investigar: é erro (então corrige ou remove) ou é um caso legítimo que o modelo precisa aprender a lidar?\n\nO princípio que atravessa tudo: decisões de preparação mudam o resultado, então devem ser conscientes e documentadas, nunca automáticas. Dados preparados com displicência produzem análises que parecem certas e mentem.",
+        },
+        {
+          id: "preparacao.split",
+          title: "Separar treino e teste",
+          description:
+            "Guardar uma parte dos dados que o modelo nunca vê no treino, para medir sua honestidade depois.",
+          content:
+            "Antes de treinar qualquer modelo, existe um passo que muita gente iniciante pula e paga caro: **separar os dados em treino e teste**. Você reserva uma parte dos dados (digamos, 20%) que o modelo **nunca vê durante o treino**, para usá-la depois só na avaliação. É o equivalente a estudar por um material e ser testado por questões novas.\n\nO motivo é evitar uma ilusão perigosa. Se você avalia o modelo nos mesmos dados em que ele treinou, ele parece ótimo, porque está apenas repetindo o que decorou. O teste com dados separados revela se ele realmente **aprendeu um padrão que generaliza** ou se só memorizou os exemplos vistos, um problema chamado overfitting.\n\nEssa separação é a base de toda avaliação honesta de modelos, que a etapa mais adiante aprofunda. Fazer o split logo no começo, antes de qualquer preparação que use estatísticas dos dados, também evita que informação do conjunto de teste vaze para o treino, um erro sutil que infla os resultados sem você perceber.",
+        },
+      ],
+    },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "features",
+      title: "Feature engineering",
+      description:
+        "Criar boas variáveis a partir dos dados brutos, muitas vezes o que mais melhora um modelo.",
+      level: "intermediario",
+      children: [
+        {
+          id: "features.o-que",
+          title: "O que é feature engineering",
+          description:
+            "Transformar dados crus nas variáveis que realmente ajudam o modelo a enxergar o padrão.",
+          content:
+            "**Feature** é o nome que se dá a cada variável de entrada que o modelo usa para aprender. **Feature engineering** é a arte de criar boas features a partir dos dados brutos, e é frequentemente o que mais melhora um modelo, mais até do que trocar o algoritmo. Um modelo simples com boas features costuma vencer um modelo sofisticado com features ruins.\n\nA ideia é dar ao modelo a informação no formato mais útil. De uma data de nascimento, você extrai a idade; de uma data e hora, o dia da semana ou se é fim de semana; de um endereço, a região. De duas colunas você pode criar uma razão que faz mais sentido que as duas separadas. Cada uma dessas transformações revela um padrão que estava escondido no dado cru.\n\nBoa parte da feature engineering vem de **entender o problema e o negócio**, não só de técnica. Saber o que importa naquele contexto guia quais variáveis criar. Por isso a conversa com quem conhece o domínio, somada à exploração dos dados, é tão valiosa: é dela que saem as ideias das features que fazem diferença.",
+        },
+        {
+          id: "features.categorias-escala",
+          title: "Categorias e escalas",
+          description:
+            "Preparar variáveis de texto e ajustar magnitudes para que o modelo consiga usá-las.",
+          content:
+            "Modelos trabalham com números, então **variáveis categóricas** (texto como cidade, categoria de produto, sim ou não) precisam virar números antes de entrar no modelo. A forma mais comum transforma cada categoria em colunas de zero e um, para que o modelo não invente uma ordem falsa entre valores que não têm ordem (cidade A não é maior que cidade B).\n\nO outro cuidado é a **escala**. Quando uma variável vai de 0 a 1 e outra vai de 0 a 1.000.000, alguns algoritmos passam a dar peso demais à de números grandes só pela magnitude, não pela importância real. Colocar as variáveis numa escala comparável (um processo chamado normalização ou padronização) evita esse viés e ajuda muitos modelos a aprender melhor.\n\nEsses ajustes são menos glamourosos que treinar o modelo, mas são exatamente o tipo de preparação que decide se ele vai funcionar. Um dado bem preparado e bem representado é metade do caminho para um bom resultado, e é por isso que profissionais de dados gastam tanto tempo aqui.",
+        },
+      ],
+    },
     {
       id: "ml",
       title: "Machine learning",
@@ -366,6 +418,50 @@ export const dados: RoadmapV2 = {
               kind: "doc",
             },
           ],
+        },
+      ],
+    },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "avaliacao",
+      title: "Avaliação de modelos",
+      description:
+        "Saber se um modelo é bom de verdade: as métricas certas para cada problema e as armadilhas comuns.",
+      level: "intermediario",
+      children: [
+        {
+          id: "avaliacao.metricas",
+          title: "Métricas por tipo de problema",
+          description:
+            "Acurácia não serve para tudo; cada tipo de problema pede a métrica que reflete o que importa.",
+          content:
+            "Treinar um modelo é só metade; a outra metade é saber se ele presta. E o erro mais comum de quem começa é confiar apenas na **acurácia** (a porcentagem de acertos), que engana em muitos casos. Num problema onde 99% dos exemplos são de uma classe (como detectar fraude, rara por natureza), um modelo que responde sempre a classe comum acerta 99% e não serve para nada.\n\nPor isso cada tipo de problema tem métricas próprias. Em **classificação**, além da acurácia, olha-se a precisão (dos que o modelo apontou como positivos, quantos eram mesmo) e o recall (dos positivos reais, quantos o modelo pegou). O equilíbrio entre os dois depende do que custa mais: deixar passar um caso ou dar um alarme falso. Em **regressão** (prever um número), mede-se o tamanho médio do erro entre o previsto e o real.\n\nEscolher a métrica certa é escolher o que você quer que o modelo otimize, e isso é uma decisão ligada ao problema de negócio, não um detalhe técnico. Um modelo com ótima acurácia e péssimo recall pode ser um desastre num contexto onde deixar passar um caso é grave.",
+        },
+        {
+          id: "avaliacao.overfitting",
+          title: "Overfitting e generalização",
+          description:
+            "O modelo que decora em vez de aprender parece perfeito no treino e falha no mundo real.",
+          content:
+            "O maior inimigo silencioso de um modelo é o **overfitting**: quando ele decora os dados de treino em vez de aprender o padrão geral. Um modelo assim acerta quase tudo nos dados que viu e erra feio nos dados novos, que é justamente onde ele precisa funcionar. É como um aluno que decora o gabarito e trava na prova de verdade.\n\nÉ para revelar isso que serve a separação treino e teste feita na preparação. Avaliar o modelo nos dados de teste, que ele nunca viu, mostra a diferença entre o desempenho decorado (no treino) e o real (no teste). Uma folga grande entre os dois é o sinal clássico de overfitting: ótimo no treino, fraco no teste.\n\nO objetivo final de um modelo nunca é acertar os dados que já temos, e sim **generalizar** para os que virão. Guardar essa mentalidade muda a forma como você avalia: não celebre um resultado brilhante no treino sem checar o teste, porque o número que importa é o que ele entrega diante do desconhecido.",
+        },
+      ],
+    },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "comunicacao",
+      title: "Comunicação de resultados",
+      description:
+        "Uma análise só gera valor quando alguém entende e decide com ela: contar a história por trás dos números.",
+      level: "intermediario",
+      children: [
+        {
+          id: "comunicacao.storytelling",
+          title: "Contar a história dos dados",
+          description:
+            "Traduzir números e gráficos numa mensagem clara que leva a uma decisão.",
+          content:
+            "A melhor análise do mundo não vale nada se ninguém entende ou age sobre ela. **Comunicar resultados** é a habilidade que transforma trabalho técnico em impacto, e é frequentemente o que separa o analista que cresce do que fica estagnado, por melhor que ele seja tecnicamente.\n\nComunicar bem começa por lembrar para quem você fala. Quem toma a decisão em geral não quer o passo a passo do código nem a lista de métricas; quer saber o que os dados dizem, o que isso significa para o problema dele e o que fazer a respeito. A regra é liderar com a conclusão, sustentá-la com os dados essenciais, e deixar o detalhe técnico como apoio para quem quiser aprofundar.\n\nUm gráfico bem escolhido comunica em segundos o que uma tabela esconde em minutos, mas ele precisa ter um propósito claro: cada visualização deve responder a uma pergunta e destacar a mensagem, não enfeitar. Contar a história (aqui está o problema, isto é o que os dados mostram, esta é a recomendação) é o que faz uma análise virar decisão.",
         },
       ],
     },

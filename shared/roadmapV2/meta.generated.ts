@@ -41,8 +41,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
         "label": "Go"
       }
     ],
-    "sectionCount": 8,
-    "stepCount": 46,
+    "sectionCount": 11,
+    "stepCount": 52,
     "hasProject": true,
     "hasQuiz": true
   },
@@ -63,8 +63,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Ciência de Dados do Zero",
     "level": "Iniciante",
     "description": "De Python e SQL à primeira análise de um dataset real, com estatística, Pandas e visualização. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 8,
-    "stepCount": 26,
+    "sectionCount": 12,
+    "stepCount": 33,
     "hasProject": true,
     "hasQuiz": false
   },
@@ -107,8 +107,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Cibersegurança do Zero",
     "level": "Iniciante",
     "description": "Das bases de redes e Linux aos conceitos de segurança, times ofensivo e defensivo, prática ética e certificações. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 7,
-    "stepCount": 19,
+    "sectionCount": 9,
+    "stepCount": 23,
     "hasProject": true,
     "hasQuiz": false
   },
@@ -183,8 +183,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
         "label": "iOS (Swift)"
       }
     ],
-    "sectionCount": 7,
-    "stepCount": 15,
+    "sectionCount": 9,
+    "stepCount": 19,
     "hasProject": true,
     "hasQuiz": false
   },
@@ -194,8 +194,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "DevOps do Zero",
     "level": "Iniciante",
     "description": "Da cultura e das bases de Linux e Git aos containers, CI/CD, infraestrutura como código e observabilidade. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 7,
-    "stepCount": 16,
+    "sectionCount": 10,
+    "stepCount": 22,
     "hasProject": true,
     "hasQuiz": false
   },

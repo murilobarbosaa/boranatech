@@ -80,6 +80,32 @@ export const devops: RoadmapV2 = {
         },
       ],
     },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "redes",
+      title: "Redes na prática",
+      description:
+        "O Linux você já viu nas bases; aqui entra a rede que liga os serviços, o outro pilar que DevOps precisa dominar.",
+      level: "intermediario",
+      children: [
+        {
+          id: "redes.conecta",
+          title: "Como a rede conecta os serviços",
+          description:
+            "IP, DNS, portas e HTTPS: os conceitos que explicam como um serviço acha e fala com o outro.",
+          content:
+            "Toda infraestrutura é feita de serviços que precisam se encontrar e conversar pela rede, então uma base sólida de **redes** é o segundo pilar técnico de DevOps, ao lado do Linux. Alguns conceitos abrem quase tudo. O **endereço IP** identifica cada máquina; o **DNS** traduz nomes (como api.seusite.com) nesses endereços; e as **portas** distinguem os vários serviços numa mesma máquina (o site numa porta, o banco em outra).\n\nSobre isso roda o **HTTP**, o protocolo da web, e sua versão segura, o **HTTPS**, que criptografa o tráfego com **TLS** (os certificados que fazem o cadeado aparecer). Entender o caminho de uma requisição (o cliente resolve o nome no DNS, abre conexão no IP e porta certos, e troca dados por HTTP) é o que permite diagnosticar quando dois serviços não conseguem se falar, um problema diário em infraestrutura.\n\nEsses conceitos deixam de ser abstratos quando algo quebra: um serviço que não responde pode ser DNS errado, porta fechada, certificado vencido ou firewall bloqueando. Saber por onde a comunicação passa transforma o pânico do não funciona num diagnóstico metódico, etapa por etapa.",
+        },
+        {
+          id: "redes.trafego",
+          title: "Balanceamento, proxy e firewall",
+          description:
+            "As peças que distribuem, encaminham e protegem o tráfego entre a internet e seus serviços.",
+          content:
+            "Quando um serviço cresce, um servidor só não aguenta o tráfego, e entra o **balanceador de carga** (load balancer): uma peça que recebe as requisições e as distribui entre várias cópias da aplicação, evitando sobrecarregar uma só e permitindo escalar horizontalmente. Se uma cópia cai, o balanceador para de mandar tráfego pra ela, aumentando a resiliência.\n\nO **proxy reverso** é um parente próximo: fica na frente dos serviços e encaminha as requisições para o destino certo, além de cuidar de tarefas comuns como terminar o HTTPS e servir conteúdo em cache. E o **firewall** (com seus primos na nuvem, os grupos de segurança) controla o que pode entrar e sair, deixando passar só o tráfego autorizado nas portas certas e bloqueando o resto.\n\nEssas três peças formam a borda por onde o tráfego entra na sua infraestrutura, e configurá-las bem é ao mesmo tempo questão de performance e de segurança. Você não precisa dominar todas de uma vez, mas entender o papel de cada uma esclarece como um sistema real recebe e protege o tráfego que vem da internet.",
+        },
+      ],
+    },
     {
       id: "containers",
       title: "Containers",
@@ -183,6 +209,32 @@ export const devops: RoadmapV2 = {
         },
       ],
     },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "seguranca",
+      title: "Segurança no pipeline",
+      description:
+        "Levar segurança para dentro da esteira de entrega (DevSecOps): proteger segredos e achar falhas cedo, não no fim.",
+      level: "avancado",
+      children: [
+        {
+          id: "seguranca.segredos",
+          title: "Segredos e credenciais",
+          description:
+            "Senhas, chaves e tokens nunca no código; como guardá-los e entregá-los com segurança.",
+          content:
+            "O erro de segurança mais comum e mais perigoso em DevOps é deixar **segredos** (senhas de banco, chaves de API, tokens de acesso) escritos direto no código ou no repositório Git. Uma vez no histórico do Git, um segredo é dificílimo de apagar de verdade, e se o repositório vazar, tudo vaza junto. A regra é inegociável: segredo não entra no código.\n\nA solução é guardar segredos em lugares próprios para isso: cofres de segredos e os gerenciadores de configuração das nuvens e das ferramentas de CI/CD, que armazenam esses valores de forma cifrada e os entregam à aplicação apenas em tempo de execução, sem nunca aparecerem no código. A aplicação lê o segredo do ambiente, não de um arquivo versionado.\n\nJunto vem o princípio do **menor privilégio**: cada serviço e cada credencial deve ter só o acesso que realmente precisa, e nada além. Assim, se uma credencial vaza, o estrago é limitado. Tratar segredos com esse cuidado é uma das contribuições mais importantes (e mais esquecidas) de quem cuida da infraestrutura.",
+        },
+        {
+          id: "seguranca.devsecops",
+          title: "Segurança integrada ao pipeline",
+          description:
+            "Colocar verificações de segurança automáticas na esteira, para achar problemas antes de chegar em produção.",
+          content:
+            "A ideia por trás do **DevSecOps** é simples: em vez de tratar segurança como uma revisão manual no fim do processo, integrá-la ao **pipeline** de entrega, de forma automática e contínua. Quanto mais cedo um problema é encontrado, mais barato e fácil de corrigir; achar uma falha em produção custa muito mais do que pegá-la antes de publicar.\n\nNa prática, o pipeline de CI/CD ganha etapas de verificação de segurança que rodam a cada mudança: checar se as **dependências** do projeto têm vulnerabilidades conhecidas (bibliotecas desatualizadas são uma porta de entrada comum), analisar o próprio código em busca de padrões inseguros, e garantir que nenhum segredo escapou para o repositório. Se uma verificação falha, a entrega para, e o problema é resolvido antes de avançar.\n\nPara quem está começando, o valor está em incorporar a mentalidade de que segurança é responsabilidade contínua e automatizável, não um obstáculo pontual. Adicionar até verificações simples ao pipeline já eleva bastante o nível, e é um diferencial cada vez mais esperado de profissionais de DevOps.",
+        },
+      ],
+    },
     {
       id: "iac",
       title: "Infraestrutura como código",
@@ -254,6 +306,32 @@ export const devops: RoadmapV2 = {
               kind: "doc",
             },
           ],
+        },
+      ],
+    },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "custos",
+      title: "Custos e FinOps",
+      description:
+        "Na nuvem, cada recurso tem preço e a conta cresce sozinha; entender e controlar custos virou parte do trabalho.",
+      level: "avancado",
+      children: [
+        {
+          id: "custos.nuvem",
+          title: "Por que a conta da nuvem surpreende",
+          description:
+            "O modelo de pagar pelo uso é poderoso, mas fácil de estourar sem atenção.",
+          content:
+            "A nuvem cobra pelo que você usa: processamento, armazenamento, tráfego de dados, cada serviço tem seu preço. Esse modelo é ótimo porque você não paga por servidores parados, mas tem um lado traiçoeiro: a conta cresce sozinha conforme os recursos se acumulam, e é comum a fatura surpreender no fim do mês.\n\nOs vilões clássicos são recursos esquecidos ligados sem uso (uma máquina de teste que ninguém desligou), ambientes superdimensionados (capacidade muito maior que a necessária, paga integralmente), e o tráfego de dados, que muita gente ignora até ver o valor. Como subir recursos na nuvem é fácil e rápido, o desperdício se acumula sem ninguém perceber, até a conta chegar.\n\nPor isso, entender como cada serviço cobra e acompanhar os gastos deixou de ser assunto só do financeiro e virou parte do trabalho de quem cuida da infraestrutura. Saber ler a fatura da nuvem e ligar cada custo a um recurso concreto é o primeiro passo para não pagar caro pelo que não precisa.",
+        },
+        {
+          id: "custos.finops",
+          title: "FinOps: cultura de custo",
+          description:
+            "Tratar o custo da nuvem como responsabilidade contínua da equipe técnica, com visibilidade e otimização.",
+          content:
+            "**FinOps** é o nome que se dá à prática de gerenciar os custos da nuvem de forma colaborativa e contínua, aproximando as equipes técnicas das decisões financeiras. A ideia central é que quem cria os recursos (os times de engenharia) passe a enxergar e a se responsabilizar pelo custo do que sobe, em vez de o custo ser um problema distante de outra área.\n\nNa prática, isso envolve dar **visibilidade** (relatórios que mostram quanto cada time, projeto ou serviço gasta, para que ninguém decida no escuro), e agir sobre isso: desligar o que não é usado, ajustar recursos superdimensionados ao tamanho real, e aproveitar as opções de preço que as nuvens oferecem para uso previsível. Pequenas otimizações repetidas somam economias grandes.\n\nO ponto de cultura é o que sustenta tudo: custo eficiente não é cortar até doer, e sim gastar de forma consciente, entregando o mesmo valor por menos. Para o profissional de DevOps, desenvolver essa sensibilidade a custo é um diferencial concreto, porque liga a decisão técnica ao impacto no negócio, uma ponte que empresas valorizam cada vez mais.",
         },
       ],
     },

@@ -331,6 +331,32 @@ export const mobile: RoadmapV2 = {
         },
       ],
     },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "estado",
+      title: "Estado e arquitetura do app",
+      description:
+        "Conforme o app cresce, organizar de onde vêm os dados da tela e como as partes se separam vira o que evita o caos.",
+      level: "intermediario",
+      children: [
+        {
+          id: "estado.o-que",
+          title: "O que é estado e por que ele complica",
+          description:
+            "Os dados que mudam com o uso e aparecem na tela, e o desafio de mantê-los sempre coerentes.",
+          content:
+            "**Estado** é toda informação do app que muda com o uso e se reflete na tela: se o usuário está logado, o que ele digitou num campo, os itens no carrinho, se uma lista está carregando. Enquanto a tela é simples, controlar isso é fácil. O problema aparece quando o app cresce e várias telas precisam da mesma informação atualizada ao mesmo tempo.\n\nO exemplo clássico: o carrinho de compras. Ele aparece no ícone do topo, na tela de produtos e na de finalização, e um item adicionado numa tela precisa refletir instantaneamente nas outras. Se cada tela guarda sua própria cópia, elas saem de sincronia e o app mostra informações contraditórias, um dos bugs mais comuns e frustrantes.\n\nGerenciar estado é resolver esse problema: ter uma **fonte única da verdade** para cada informação compartilhada, de onde todas as telas leem e para onde todas escrevem. As quatro stacks têm suas ferramentas próprias de gerenciamento de estado, mas o conceito é o mesmo em todas, e entendê-lo é o que permite construir apps de verdade, com muitas telas conectadas.",
+        },
+        {
+          id: "estado.arquitetura",
+          title: "Separar interface, lógica e dados",
+          description:
+            "Organizar o app em camadas para que ele cresça sem virar um emaranhado impossível de mudar.",
+          content:
+            "Um app pequeno cabe em poucos arquivos, mas um que cresce sem organização vira um nó onde a lógica de negócio, as chamadas de rede e o código da tela se misturam, e qualquer mudança arrisca quebrar tudo. A defesa é a mesma de qualquer software sério: **separar responsabilidades** em camadas.\n\nA ideia geral é manter a **interface** (o que aparece e como o usuário interage) separada da **lógica** (as regras do que o app faz) e do **acesso a dados** (buscar da API, ler do armazenamento local). Assim a tela não precisa saber montar uma requisição, e a lógica pode ser testada sem depender da interface. Trocar de onde vêm os dados não obriga a reescrever as telas.\n\nCada plataforma tem padrões de arquitetura recomendados para isso, e você não precisa dominar o mais sofisticado desde o começo. O importante no início é o hábito de não jogar tudo no mesmo arquivo: separar o que é tela do que é regra e do que é dado já organiza bastante, e prepara o terreno para os padrões mais formais quando o app justificar.",
+        },
+      ],
+    },
     {
       id: "dados",
       title: "Dados e APIs",
@@ -424,6 +450,32 @@ export const mobile: RoadmapV2 = {
             "Fazer o app rodar liso e respeitar os limites do celular.",
           content:
             "No celular, performance não é luxo; é requisito. Os aparelhos têm limites de processamento, memória e, principalmente, **bateria** e **dados móveis**, e o usuário percebe na hora quando um app trava, esquenta o telefone ou consome demais. Alguns cuidados, comuns às quatro stacks, fazem grande diferença.\n\nO mais visível é manter a interface **fluida**. Telas que travam ao rolar, animações engasgadas e toques que demoram a responder passam uma impressão de app malfeito. A causa mais comum é fazer trabalho pesado na thread principal (a que cuida da tela); a solução é jogar tarefas demoradas (como processar dados ou esperar a rede) pra segundo plano, justamente o trabalho assíncrono que você já viu.\n\nDuas situações merecem atenção especial. As **listas longas**: apps cheios de itens (um feed, um catálogo) precisam renderizar só o que está visível na tela, e não milhares de itens de uma vez; todas as stacks têm componentes próprios pra listas eficientes, e usá-los é essencial. E o **uso de rede e bateria**: evitar baixar dados em excesso, reaproveitar o que já foi carregado e não ficar consultando o servidor à toa economiza dados do usuário e bateria.\n\nUm princípio sensato pra iniciantes: não caia na **otimização prematura**, gastando energia com microajustes antes de o app sequer funcionar. Primeiro faça funcionar de forma correta e organizada; depois, se notar lentidão real, investigue e otimize o ponto específico. Mas tenha desde cedo a consciência de que, no mobile, você é convidado de um aparelho com recursos limitados, e bons apps respeitam isso.",
+        },
+      ],
+    },
+    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
+    {
+      id: "testes",
+      title: "Testes no mobile",
+      description:
+        "Automatizar a verificação do app para mudar sem medo e chegar às lojas com confiança.",
+      level: "intermediario",
+      children: [
+        {
+          id: "testes.por-que",
+          title: "Por que testar um app",
+          description:
+            "Testar na mão a cada mudança não escala; testes automatizados avisam na hora quando algo quebra.",
+          content:
+            "Conforme o app ganha telas e recursos, testar tudo na mão a cada mudança vira inviável: você mexe numa parte e não tem como conferir manualmente se as outras vinte continuam funcionando. **Testes automatizados** são código que verifica seu código, rodando sozinho e apontando na hora se algo quebrou.\n\nO valor aparece mais forte no mobile por um motivo prático: publicar uma correção na loja não é instantâneo. Um bug que passa para produção pode levar dias para ser corrigido e chegar aos usuários, ao contrário da web, onde se corrige e publica na hora. Pegar o problema antes de publicar, no seu computador, economiza esse ciclo doloroso.\n\nTestes também são a rede de segurança que permite evoluir o app sem medo. Com eles, você adiciona um recurso ou refatora uma tela e confia que, se quebrou algo antigo, o teste avisa. Sem eles, cada mudança num app grande é uma aposta, e o medo de mexer no que funciona acaba travando a evolução do projeto.",
+        },
+        {
+          id: "testes.tipos",
+          title: "Tipos de teste",
+          description:
+            "De verificar uma função isolada a simular o usuário percorrendo o app inteiro.",
+          content:
+            "Os testes se organizam em níveis, do mais focado ao mais abrangente, e o conceito vale para as quatro stacks. Os **testes de unidade** verificam uma peça isolada, como uma função que calcula o total do carrinho: são rápidos, baratos e devem ser a maioria. Os **testes de interface** (ou de componente) checam se uma tela mostra o que deveria e reage ao toque como esperado.\n\nNo topo estão os **testes de ponta a ponta**, que simulam o usuário de verdade abrindo o app e percorrendo um fluxo completo (fazer login, adicionar um item, finalizar). São os mais poderosos para garantir que tudo funciona junto, mas também os mais lentos e trabalhosos, então se usa poucos, focados nos fluxos mais críticos.\n\nCada plataforma tem suas ferramentas de teste próprias, e você não precisa cobrir tudo desde o primeiro projeto. Comece testando a lógica mais importante com testes de unidade (a parte que, se quebrar, causa mais estrago), e vá subindo os níveis conforme o app e a sua experiência crescem. Um app com a lógica central testada já está muito à frente de um sem teste nenhum.",
         },
       ],
     },
