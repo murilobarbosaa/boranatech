@@ -69,6 +69,13 @@ export const env = {
   asaasApiKey: requireEnv("ASAAS_API_KEY"),
   asaasWebhookToken: requireEnv("ASAAS_WEBHOOK_TOKEN"),
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
+  // Seletor do provider de pagamento dos fluxos de saida (checkout/cancel/
+  // reactivate). Default "asaas" preserva o comportamento atual; "stripe" entra
+  // quando o provider Stripe estiver validado. Webhooks tem rota fixa por
+  // provider e nao dependem deste seletor.
+  paymentProvider: (process.env.PAYMENT_PROVIDER || "asaas") as
+    | "asaas"
+    | "stripe",
   // Kill-switch do pagamento. FAIL-CLOSED: so a string exata "true" liga; ausente,
   // vazia ou qualquer outro valor deixa o checkout desligado (default off). Usado
   // enquanto a conta de producao do Asaas esta em analise: a vitrine do Pro segue
