@@ -23,6 +23,7 @@ import bookmarksRouter from "./routes/bookmarks";
 import careerPlanRouter from "./routes/careerPlan";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
+import faculdadesRouter from "./routes/faculdades";
 import githubRouter from "./routes/github";
 import interviewRouter from "./routes/interview";
 import launchStateRouter, { betaRouter } from "./routes/launchState";
@@ -338,6 +339,7 @@ app.use("/api/waitlist", waitlistRouter);
 app.use("/api/newsletter", newsletterRouter);
 app.use("/api/launch-state", launchStateRouter);
 app.use("/api/beta", betaRouter);
+app.use("/api/faculdades", faculdadesRouter);
 
 app.use("/api", validateSupabaseJwt);
 
