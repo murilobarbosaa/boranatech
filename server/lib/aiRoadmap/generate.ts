@@ -14,7 +14,7 @@ import { projetos } from "../../../shared/projects/catalog";
 import { roadmapsV2 } from "../../../shared/roadmapV2/content";
 import type { RoadmapNode, RoadmapV2 } from "../../../shared/roadmapV2/types";
 import { env } from "../env";
-import { fetchWithTimeout } from "../http";
+import { fetchWithTimeout, isUpstreamTimeoutError } from "../http";
 import { buildOpenAIHeaders, DEFAULT_MODEL, OPENAI_BASE_URL } from "../openai";
 import { toOpenAIStrictSchema } from "../openaiStrictSchema";
 import { supabaseAdmin } from "../supabaseAdmin";
@@ -33,7 +33,15 @@ import { fetchUserContextPool } from "../userContext/pool";
 // pagina ou curso especifico (conteudo autocontido).
 
 const AI_MAX_ATTEMPTS = 3;
-const AI_BACKOFF_MS = [400, 800];
+// Backoff entre tentativas. Falha de validacao/JSON/truncamento: retry rapido,
+// porque o proximo prompt ja leva a correcao (nao adianta esperar). Falha de
+// 429/5xx: exponencial com jitter, teto de 8s, ou o Retry-After do provedor
+// quando vier (limitado para nao pendurar o SSE). O antigo [400, 800] era curto
+// demais para o 429 da OpenAI.
+const VALIDATION_RETRY_DELAY_MS = 300;
+const BACKOFF_BASE_MS = 500;
+const BACKOFF_CAP_MS = 8000;
+const RETRY_AFTER_CAP_MS = 15_000;
 // Tetos de saida por chamada. Ajustaveis. // TODO: calibrar.
 const SKELETON_MAX_TOKENS = 2000;
 const SECTION_MAX_TOKENS = 3500;
@@ -77,7 +85,7 @@ const SECTION_SYSTEM_PROMPT = `Voce e um mentor senior de carreira em tecnologia
 
 REGRAS DO CONTEUDO:
 - Escreva em portugues do Brasil, tom acolhedor, direto e claro.
-- De 6 a 10 passos (children) para a secao pedida. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedTime; optional e true apenas para aprofundamento que pode ser pulado.
+- Mire de 6 a 8 passos (children) para a secao pedida, nunca menos de 4 nem mais de 10. Cada passo tem id (kebab-case, unico dentro do roadmap, prefixado pelo id da secao), title, description (uma frase), content, project e estimatedTime; optional e true apenas para aprofundamento que pode ser pulado.
 - content e OBRIGATORIO em todo passo: markdown de 4 a 8 frases, estruturado em tres partes, nesta ordem: (1) o que dominar, nomeando os subtopicos concretos; (2) como praticar, com uma atividade clara; (3) um mini desafio pratico concreto para fechar o passo.
 - estimatedTime e OBRIGATORIO em todo passo: estimativa realista, ex: "2 semanas", "10 horas", "4h a 6h". Calibre pelas horas semanais e pelo prazo do contexto; a soma da secao precisa ser realista.
 - project: e o vinculo com o catalogo de projetos da plataforma e SO existe na ULTIMA secao do roadmap. Quando o prompt oferecer a lista de projetos do catalogo, escolha o mais coerente com a trilha e coloque o id EXATO dele no campo project de UM UNICO passo (o passo de projeto final da secao); em todos os outros passos, project e null. Em secoes que nao recebem lista de projetos, project e sempre null.
@@ -392,10 +400,167 @@ interface StructuredCallParams {
   maxTokens: number;
 }
 
-// Uma chamada estruturada, sem retry (o retry fica em callStructured).
+// Falha de UMA chamada, classificada, para o retry decidir espera e correcao.
+// "validation": zod rejeitou; "truncated": finish_reason=length (o erro de
+// validacao seguinte e consequencia, nao causa); "invalid_json": parse falhou;
+// "upstream": HTTP nao-ok (carrega status e Retry-After); "no_content": vazio.
+type StructuredErrorKind =
+  | "validation"
+  | "truncated"
+  | "invalid_json"
+  | "upstream"
+  | "no_content";
+
+class StructuredCallError extends Error {
+  readonly kind: StructuredErrorKind;
+  readonly status?: number;
+  readonly retryAfterMs?: number | null;
+  readonly feedback?: string;
+  constructor(
+    kind: StructuredErrorKind,
+    message: string,
+    extra?: { status?: number; retryAfterMs?: number | null; feedback?: string },
+  ) {
+    super(message);
+    this.name = "StructuredCallError";
+    this.kind = kind;
+    this.status = extra?.status;
+    this.retryAfterMs = extra?.retryAfterMs;
+    this.feedback = extra?.feedback;
+  }
+}
+
+type ValidationResult<T> =
+  | { success: true; data: T }
+  | { success: false; issues: string; feedback: string };
+
+// Retry-After em segundos (numero) ou HTTP-date. Limitado para nao segurar o
+// SSE por muito tempo; null quando ausente ou ilegivel.
+function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+  const asSeconds = Number(header);
+  if (Number.isFinite(asSeconds)) {
+    return Math.min(RETRY_AFTER_CAP_MS, Math.max(0, asSeconds * 1000));
+  }
+  const asDate = Date.parse(header);
+  if (!Number.isNaN(asDate)) {
+    return Math.min(RETRY_AFTER_CAP_MS, Math.max(0, asDate - Date.now()));
+  }
+  return null;
+}
+
+function backoffDelay(attempt: number): number {
+  const base = Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** (attempt - 1));
+  return base + Math.floor(Math.random() * 250);
+}
+
+// TODO(Ana): revisar copy das mensagens de correcao enviadas ao modelo no retry.
+const CORRECTION_TRUNCATED =
+  "A sua resposta anterior foi cortada por exceder o tamanho maximo. Produza uma secao mais enxuta (mire de 4 a 6 passos, com content de 4 a 5 frases por passo) e responda com o JSON completo e valido do schema, sem texto fora do JSON.";
+const CORRECTION_INVALID_JSON =
+  "A sua resposta anterior nao era JSON valido (provavelmente incompleta). Responda apenas com o JSON completo e valido do schema, sem nenhum texto fora dele.";
+
+function correctionForValidation(feedback: string): string {
+  // TODO(Ana): revisar copy da mensagem de correcao de validacao.
+  return `A sua resposta anterior nao passou na validacao do schema: ${feedback}. Corrija exatamente esses pontos e responda apenas com o JSON completo e valido do schema, sem texto fora do JSON.`;
+}
+
+// Traduz os issues do zod em linguagem direta pro modelo corrigir, sem vazar
+// stack. Cobre os casos comuns (too_small, too_big, invalid_type) e cai no
+// message do proprio issue no resto.
+function summarizeIssuesForModel(rawIssues: unknown[]): string {
+  const parts: string[] = [];
+  for (const raw of rawIssues.slice(0, 6)) {
+    const issue = (raw ?? {}) as Record<string, unknown>;
+    const path =
+      Array.isArray(issue.path) && issue.path.length > 0
+        ? issue.path.join(".")
+        : "raiz";
+    const code = issue.code;
+    if (code === "too_small") {
+      parts.push(
+        `'${path}' precisa de pelo menos ${String(issue.minimum)} itens ou caracteres`,
+      );
+    } else if (code === "too_big") {
+      parts.push(
+        `'${path}' pode ter no maximo ${String(issue.maximum)} itens ou caracteres`,
+      );
+    } else if (code === "invalid_type") {
+      parts.push(`'${path}' esta com tipo invalido ou ausente`);
+    } else {
+      parts.push(
+        `'${path}': ${typeof issue.message === "string" ? issue.message : String(code)}`,
+      );
+    }
+  }
+  return parts.join("; ");
+}
+
+// Decide, por tentativa, o motivo (para log), a espera e a mensagem de correcao
+// a injetar na proxima tentativa (null quando nao ha o que corrigir no prompt).
+function planRetry(
+  err: unknown,
+  attempt: number,
+): { reason: string; detail: string; correction: string | null; delayMs: number } {
+  const detail = err instanceof Error ? err.message : String(err);
+  if (isUpstreamTimeoutError(err)) {
+    return { reason: "timeout", detail, correction: null, delayMs: backoffDelay(attempt) };
+  }
+  if (err instanceof StructuredCallError) {
+    if (err.kind === "validation") {
+      return {
+        reason: "validation",
+        detail,
+        correction: err.feedback
+          ? correctionForValidation(err.feedback)
+          : CORRECTION_INVALID_JSON,
+        delayMs: VALIDATION_RETRY_DELAY_MS,
+      };
+    }
+    if (err.kind === "truncated") {
+      return {
+        reason: "truncated",
+        detail,
+        correction: CORRECTION_TRUNCATED,
+        delayMs: VALIDATION_RETRY_DELAY_MS,
+      };
+    }
+    if (err.kind === "invalid_json") {
+      return {
+        reason: "invalid_json",
+        detail,
+        correction: CORRECTION_INVALID_JSON,
+        delayMs: VALIDATION_RETRY_DELAY_MS,
+      };
+    }
+    if (err.kind === "upstream") {
+      return {
+        reason: `upstream ${err.status ?? "?"}`,
+        detail,
+        correction: null,
+        delayMs: err.retryAfterMs ?? backoffDelay(attempt),
+      };
+    }
+    return { reason: err.kind, detail, correction: null, delayMs: backoffDelay(attempt) };
+  }
+  return { reason: "unknown", detail, correction: null, delayMs: backoffDelay(attempt) };
+}
+
+// Uma chamada estruturada, sem retry (o retry fica em callStructured). Recebe a
+// correcao acumulada (null na primeira tentativa) e a injeta como mensagem
+// adicional pro modelo saber o que corrigir.
 async function callStructuredOnce(
   params: StructuredCallParams,
+  correction: string | null,
 ): Promise<{ content: string; parsed: unknown }> {
+  const messages: Array<{ role: string; content: string }> = [
+    { role: "system", content: params.systemPrompt },
+    { role: "user", content: params.userPrompt },
+  ];
+  if (correction) {
+    messages.push({ role: "user", content: correction });
+  }
+
   const response = await fetchWithTimeout(
     OPENAI_BASE_URL,
     {
@@ -405,10 +570,7 @@ async function callStructuredOnce(
         model: DEFAULT_MODEL,
         temperature: AI_TEMPERATURE,
         max_tokens: params.maxTokens,
-        messages: [
-          { role: "system", content: params.systemPrompt },
-          { role: "user", content: params.userPrompt },
-        ],
+        messages,
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -424,17 +586,34 @@ async function callStructuredOnce(
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(
+    throw new StructuredCallError(
+      "upstream",
       `OpenAI respondeu ${response.status}: ${text.slice(0, 300)}`,
+      {
+        status: response.status,
+        retryAfterMs: parseRetryAfterMs(response.headers.get("retry-after")),
+      },
     );
   }
 
   const payload = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{
+      message?: { content?: string };
+      finish_reason?: string | null;
+    }>;
   };
-  const content = payload.choices?.[0]?.message?.content;
+  const choice = payload.choices?.[0];
+  const content = choice?.message?.content;
   if (!content) {
-    throw new Error("A IA nao retornou conteudo.");
+    throw new StructuredCallError("no_content", "A IA nao retornou conteudo.");
+  }
+  if (choice?.finish_reason === "length") {
+    // Truncamento por teto de tokens: o erro de validacao/parse seguinte seria
+    // consequencia disto. Sinaliza explicito para o retry corrigir com concisao.
+    throw new StructuredCallError(
+      "truncated",
+      "resposta cortada por max_tokens (finish_reason=length)",
+    );
   }
 
   let parsed: unknown;
@@ -442,20 +621,23 @@ async function callStructuredOnce(
     parsed = JSON.parse(content);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
-    throw new Error(`Resposta da IA nao veio em JSON valido: ${detail}.`);
+    throw new StructuredCallError(
+      "invalid_json",
+      `Resposta da IA nao veio em JSON valido: ${detail}.`,
+    );
   }
 
   return { content, parsed };
 }
 
-// Chamada estruturada com retry e validacao zod, molde dos analisadores. O
-// safeParse roda DENTRO do retry: JSON fora do shape (min/max de itens, por
-// exemplo) conta como tentativa falhada e tenta de novo.
+// Chamada estruturada com retry CORRETIVO: a tentativa seguinte recebe uma
+// mensagem descrevendo o que deu errado (validacao, JSON invalido, truncamento)
+// e o que corrigir, em vez de reenviar o mesmo prompt e colher o mesmo erro.
+// 429/5xx respeitam Retry-After (ou backoff com jitter); cada falha loga o
+// motivo classificado, pra o proximo diagnostico nao depender de investigacao.
 async function callStructured<T>(
   params: StructuredCallParams,
-  validate: (
-    parsed: unknown,
-  ) => { success: true; data: T } | { success: false; issues: string },
+  validate: (parsed: unknown) => ValidationResult<T>,
   logScope: string,
 ): Promise<GenerationResult<T>> {
   if (!env.openaiApiKey) {
@@ -463,13 +645,16 @@ async function callStructured<T>(
   }
 
   let lastError: unknown;
+  let correction: string | null = null;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
-      const { content, parsed } = await callStructuredOnce(params);
+      const { content, parsed } = await callStructuredOnce(params, correction);
       const validation = validate(parsed);
       if (!validation.success) {
-        throw new Error(
+        throw new StructuredCallError(
+          "validation",
           `Resposta da IA nao bateu com o schema esperado: ${validation.issues}`,
+          { feedback: validation.feedback },
         );
       }
       return {
@@ -479,12 +664,15 @@ async function callStructured<T>(
       };
     } catch (err) {
       lastError = err;
-      const detail = err instanceof Error ? err.message : String(err);
+      const plan = planRetry(err, attempt);
       console.error(
-        `${logScope} IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou: ${detail}`,
+        `${logScope} IA tentativa ${attempt}/${AI_MAX_ATTEMPTS} falhou [${plan.reason}]: ${plan.detail}`,
       );
+      // Acumula a correcao (nunca limpa): se validou mal e depois deu 429, a
+      // proxima tentativa ainda leva a correcao de conteudo.
+      if (plan.correction) correction = plan.correction;
       if (attempt < AI_MAX_ATTEMPTS) {
-        await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
+        await sleep(plan.delayMs);
       }
     }
   }
@@ -501,9 +689,7 @@ function zodValidator<T>(schema: {
     | { success: true; data: T }
     | { success: false; error: { issues: unknown[] } };
 }) {
-  return (
-    parsed: unknown,
-  ): { success: true; data: T } | { success: false; issues: string } => {
+  return (parsed: unknown): ValidationResult<T> => {
     const validation = schema.safeParse(parsed);
     if (validation.success) {
       return { success: true, data: validation.data };
@@ -511,6 +697,7 @@ function zodValidator<T>(schema: {
     return {
       success: false,
       issues: JSON.stringify(validation.error.issues).slice(0, 300),
+      feedback: summarizeIssuesForModel(validation.error.issues),
     };
   };
 }

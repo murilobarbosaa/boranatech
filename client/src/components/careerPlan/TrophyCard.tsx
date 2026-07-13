@@ -184,6 +184,7 @@ export default function TrophyCard({
                             {formatAmount(
                               Math.round(item.price.amount * fx.usdBrl),
                               "BRL",
+                              item.price.period,
                             )}
                           </span>
                         ) : null}
@@ -218,6 +219,14 @@ export default function TrophyCard({
                       <ExternalLink className="h-3 w-3" aria-hidden />
                     </a>
                   </p>
+                  {item.notes ? (
+                    // Nota material do catalogo (ex: duas provas, taxa de
+                    // manutencao, retake incluso, preco regional). Antes so ia
+                    // ao prompt; agora tambem ao usuario.
+                    <p className="text-[0.65rem] font-medium text-slate-500">
+                      {item.notes}
+                    </p>
+                  ) : null}
                   {!("free" in item.price) ? (
                     <p className="text-[0.65rem] font-medium text-slate-400">
                       {/* TODO(Ana): disclaimer curto de preco no trofeu */}

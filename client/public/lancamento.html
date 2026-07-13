@@ -1101,6 +1101,7 @@
   (function () {
     // TODO(Ana): conferir os @ e adicionar/remover creators aqui.
     // photo: caminho da imagem em /creators (ou null pra cair nas iniciais como fallback).
+    // Alterar este array muda o hash do CSP. Rode pnpm check e atualize o hash em vercel.json.
     var CREATORS = [
       { name: "Gio", handle: "gio.yaml", photo: "/creators/gio-yaml.jpg", url: "https://instagram.com/gio.yaml" },
       { name: "Ynara", handle: "ynara_dev", photo: "/creators/ynara-dev.jpg", url: "https://instagram.com/ynara_dev" },

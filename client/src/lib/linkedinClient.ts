@@ -31,15 +31,39 @@ export interface AnalyzeLinkedinResult {
   analysisId: string | null;
 }
 
+// Teto do client com folga sobre o pior caso do server (~90s: 2 tentativas de
+// 45s + backoff). Estourou = aborta em vez de pendurar esperando um proxy cair.
+const ANALYZE_TIMEOUT_MS = 120_000;
+
 export async function analyzeLinkedin(
   payload: LinkedinAnalyzeRequest,
 ): Promise<AnalyzeLinkedinResult> {
   const authHeader = await getAuthHeader();
-  const response = await fetch(apiUrl("/api/linkedin/analyze"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeader },
-    body: JSON.stringify(payload),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(apiUrl("/api/linkedin/analyze"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    // Abort (timeout) e falha de rede crua (o TypeError "Failed to fetch") viram
+    // codigos proprios; a string do browser nunca chega na UI.
+    if (
+      err &&
+      typeof err === "object" &&
+      (err as { name?: string }).name === "AbortError"
+    ) {
+      throw new Error("TIMEOUT");
+    }
+    throw new Error("NETWORK");
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (response.status === 401) throw new Error("LOGIN_REQUIRED");
   if (response.status === 403) throw new Error("PRO_REQUIRED");

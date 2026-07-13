@@ -131,6 +131,13 @@ describe("regra de orcamento no prompt do sistema", () => {
       "NUNCA deve estourar o orçamento declarado",
     );
   });
+
+  it("orienta avaliar assinatura mensal pelo custo do periodo, nao pela mensalidade isolada", () => {
+    expect(SYSTEM_PROMPT).toContain(
+      "Itens de assinatura mensal devem ser avaliados pelo custo do período previsto no cronograma",
+    );
+    expect(SYSTEM_PROMPT).toContain("nunca pela mensalidade isolada");
+  });
 });
 
 describe("tipo de leitura retrocompativel", () => {

@@ -30,7 +30,16 @@ const AI_BACKOFF_MS = [400, 800];
 const AI_TIMEOUT_MS = 90_000;
 const MAX_TOKENS = 3_000;
 
-export type CareerPlanBudget = "zero" | "ate_500" | "ate_2000" | "acima_2000";
+// Fonte unica dos niveis de orcamento do plano de carreira. Reusada pelo
+// GenerateSchema da rota e pelo schema do chat de intake, sem duplicar a lista.
+export const CAREER_PLAN_BUDGETS = [
+  "zero",
+  "ate_500",
+  "ate_2000",
+  "acima_2000",
+] as const;
+
+export type CareerPlanBudget = (typeof CAREER_PLAN_BUDGETS)[number];
 
 export interface CareerPlanIntake {
   goal: string;
@@ -145,7 +154,13 @@ function resolveAreaSlug(area: string): AreaSlug | null {
 
 function priceLabel(item: CareerCatalogItem): string {
   if ("free" in item.price) return "gratuito";
-  return `${item.price.currency} ${item.price.amount} (referencia ${item.priceAsOf})`;
+  // Periodicidade explicita para o modelo NAO tratar assinatura como custo
+  // unico: "por mes de assinatura" (Coursera) vs "pagamento unico" (prova).
+  const periodicidade =
+    item.price.period === "monthly"
+      ? "por mes de assinatura"
+      : "pagamento unico";
+  return `${item.price.currency} ${item.price.amount} ${periodicidade} (referencia ${item.priceAsOf})`;
 }
 
 function catalogBlock(items: CareerCatalogItem[]): string {
@@ -171,7 +186,7 @@ export const SYSTEM_PROMPT =
   "- outOfScope: 1 a 4 itens que ficaram DE FORA de propósito, com reason honesta (60 a 250 caracteres) explicando por que não entram agora.\n\n" +
   "REGRA DOS ITENS CITÁVEIS (crítica): você vai receber a lista ITENS CITÁVEIS com ids do catálogo. Qualquer certificação ou curso pago citado DEVE entrar apenas por catalogId dessa lista (em items.catalogId ou certifications.catalogId). Itens de degrau sem catálogo (prática, projeto pessoal, conteúdo gratuito genérico) usam catalogId null e o label descreve a ação. NUNCA invente id, nome, sigla ou provedor de certificação fora da lista.\n\n" +
   "REGRA DE ANCORAGEM (crítica): cada certificação deve declarar em stepId o id do degrau em que ela deve ser conquistada, escolhido entre os ids de steps que você mesmo gerou. Use null apenas se a certificação for transversal à rota inteira. Cada bloco do cronograma deve listar em stepIds os ids dos degraus que aquele período cobre (array vazio para bloco sem degrau específico, como revisão geral). A sequência dos blocos deve respeitar a ordem dos degraus. NUNCA invente id de degrau.\n\n" +
-  "REGRA DE ORÇAMENTO (crítica): com orçamento zero, cite apenas itens gratuitos do catálogo (free_resource ou preço gratuito) e prática com catalogId null; certificação paga só pode aparecer em outOfScope, com reason explicando o motivo. Com orçamento até R$ 500, priorize os itens gratuitos e cite no máximo os itens pagos que caibam no orçamento; o total dos itens pagos citados NUNCA deve estourar o orçamento declarado.\n\n" +
+  "REGRA DE ORÇAMENTO (crítica): com orçamento zero, cite apenas itens gratuitos do catálogo (free_resource ou preço gratuito) e prática com catalogId null; certificação paga só pode aparecer em outOfScope, com reason explicando o motivo. Com orçamento até R$ 500, priorize os itens gratuitos e cite no máximo os itens pagos que caibam no orçamento; o total dos itens pagos citados NUNCA deve estourar o orçamento declarado. Itens de assinatura mensal devem ser avaliados pelo custo do período previsto no cronograma (a mensalidade vezes os meses de uso), nunca pela mensalidade isolada, que subestima o custo real.\n\n" +
   "PROIBIDO mencionar preço, valor ou moeda em QUALQUER campo de texto: quem exibe preço é a plataforma, direto do catálogo.\n\n" +
   "Não invente fatos sobre a pessoa além do contexto fornecido. Em conflito entre o contexto histórico e o que a pessoa pediu agora, vale o pedido atual. Tom direto, encorajador e concreto, sem condescendência.";
 

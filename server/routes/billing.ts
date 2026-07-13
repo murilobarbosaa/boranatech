@@ -559,6 +559,19 @@ router.post("/reactivate", requireAuth, async (req, res, next) => {
 
 router.post("/checkout", requireAuth, async (req, res, next) => {
   try {
+    // Kill-switch fail-closed: com billing desligado, corta ANTES de qualquer
+    // chamada ao Asaas. Defesa de servidor obrigatoria, independente do client.
+    if (!env.billingEnabled) {
+      return next(
+        createError(
+          503,
+          "billing_disabled",
+          // TODO(Ana): copy da indisponibilidade temporaria do checkout.
+          "Pagamentos temporariamente indisponíveis. Tente novamente em breve.",
+        ),
+      );
+    }
+
     const userId = req.user!.id;
     const affiliateCode =
       typeof req.body?.affiliateCode === "string"

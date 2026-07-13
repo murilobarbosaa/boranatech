@@ -148,32 +148,51 @@ router.post("/signup", async (req, res) => {
         : "footer";
 
     // Throttle por IP, mesmo padrao do POST /api/waitlist (INCR + EXPIRE). Janela
-    // generosa (CGNAT) e o dado dedupa por e-mail. Fail-open: sem Redis, segue.
-    // cacheConnection (fail-fast): com Redis fora o comando rejeita rapido e o
-    // catch libera; a conexao de fila penduraria a rota na offline queue.
+    // generosa (CGNAT) e o dado dedupa por e-mail. FAIL-CLOSED: sem rate limiter
+    // (Redis ausente ou fora) nao da pra conter email-bombing pelo form publico,
+    // entao a rota nega com 503 em vez de seguir sem throttle. Mesmo padrao de
+    // careerPlan/linkedin (503 quando o limite nao pode ser verificado).
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    if (cacheConnection) {
-      try {
-        const key = `newsletter:signup:${ip}`;
-        const attempts = await cacheConnection.incr(key);
-        if (attempts === 1) {
-          await cacheConnection.expire(key, SIGNUP_WINDOW_SECONDS);
-        }
-        if (attempts > SIGNUP_MAX_ATTEMPTS) {
-          res.status(429).json({
-            error: {
-              code: "too_many_attempts",
-              message: "Muitas tentativas. Tente novamente em instantes.",
-            },
-          });
-          return;
-        }
-      } catch (err) {
-        console.warn(
-          "[newsletter] Throttle Redis indisponivel, seguindo sem throttle",
-          err,
-        );
+    if (!cacheConnection) {
+      res.status(503).json({
+        error: {
+          code: "rate_check_failed",
+          // TODO(Ana): copy de indisponibilidade temporaria do cadastro (503).
+          message:
+            "Nao foi possivel concluir agora. Tente novamente em instantes.",
+        },
+      });
+      return;
+    }
+    try {
+      const key = `newsletter:signup:${ip}`;
+      const attempts = await cacheConnection.incr(key);
+      if (attempts === 1) {
+        await cacheConnection.expire(key, SIGNUP_WINDOW_SECONDS);
       }
+      if (attempts > SIGNUP_MAX_ATTEMPTS) {
+        res.status(429).json({
+          error: {
+            code: "too_many_attempts",
+            message: "Muitas tentativas. Tente novamente em instantes.",
+          },
+        });
+        return;
+      }
+    } catch (err) {
+      console.error(
+        "[newsletter] Throttle Redis indisponivel, negando signup (fail-closed)",
+        err,
+      );
+      res.status(503).json({
+        error: {
+          code: "rate_check_failed",
+          // TODO(Ana): copy de indisponibilidade temporaria do cadastro (503).
+          message:
+            "Nao foi possivel concluir agora. Tente novamente em instantes.",
+        },
+      });
+      return;
     }
 
     const { data: existing, error: selErr } = await supabaseAdmin

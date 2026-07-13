@@ -12,20 +12,13 @@ import { cn } from "@/lib/utils";
 // A vitrine e 100% ILUSTRATIVA: numeros e frases sao constantes EXAMPLE_*,
 // nunca dado real do usuario, e o selo "exemplo ilustrativo" declara isso.
 
-// TODO(Ana): revisar titulos e frases da linha do tempo do LinkedIn.
-const TIMELINE_STEPS: { title: string; text: string }[] = [
-  {
-    title: "Exporte o PDF",
-    text: "No seu perfil do LinkedIn, toque em Mais (More) e escolha Salvar como PDF.",
-  },
-  {
-    title: "Revise o que detectamos",
-    text: "A gente lê o PDF aqui no navegador e preenche tudo. Você só revisa e completa o contexto.",
-  },
-  {
-    title: "Receba o raio-X",
-    text: "Você recebe uma nota, um checklist do que falta e os textos prontos para colar no perfil.",
-  },
+const TIMELINE_STEPS: string[] = [
+  // TODO(Ana): revisar o texto da etapa 1.
+  "Cole o PDF do seu perfil aqui",
+  // TODO(Ana): revisar o texto da etapa 2.
+  "Confira o que detectamos e edite o que quiser",
+  // TODO(Ana): revisar o texto da etapa 3.
+  "Confirme as coisas que o PDF não traz",
 ];
 
 // Constantes ILUSTRATIVAS da vitrine (nunca dado real do usuario).
@@ -67,35 +60,33 @@ export function HowItWorksTimeline() {
       <h2 className="mb-5 font-display text-2xl font-black text-slate-950">
         Como funciona
       </h2>
-      <ol className="space-y-0">
+      {/* Faixa horizontal: 3 passos lado a lado em md+, empilhados no mobile.
+          A trilha pontilhada liga o centro de cada badge ao proximo, so em md+
+          (no mobile os passos empilham sem trilha). */}
+      <ol className="grid gap-6 md:grid-cols-3">
         {TIMELINE_STEPS.map((step, i) => {
           const last = i === TIMELINE_STEPS.length - 1;
           return (
             <motion.li
-              key={step.title}
+              key={step}
               initial={reduce ? false : { opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.35, delay: Math.min(i * 0.08, 0.3) }}
-              className="relative flex gap-4 pb-6 last:pb-0"
+              className="relative flex items-start gap-4 md:flex-col md:items-center md:gap-3 md:text-center"
             >
               {!last ? (
                 <span
-                  className="absolute bottom-0 left-5 top-10 w-0 border-l-2 border-dashed border-slate-400"
+                  className="absolute left-1/2 top-5 hidden h-0 w-[calc(100%+1.5rem)] border-t-2 border-dashed border-slate-400 md:block"
                   aria-hidden
                 />
               ) : null}
-              <span className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-slate-950 bg-amber-300 font-display text-lg font-black text-slate-950 shadow-[3px_3px_0_#0f172a]">
                 {i + 1}
               </span>
-              <div className="min-w-0 pt-0.5">
-                <p className="font-display text-base font-black text-slate-950">
-                  {step.title}
-                </p>
-                <p className="mt-0.5 text-sm font-medium text-slate-700">
-                  {step.text}
-                </p>
-              </div>
+              <p className="min-w-0 pt-1.5 text-sm font-medium text-slate-700 md:pt-1">
+                {step}
+              </p>
             </motion.li>
           );
         })}

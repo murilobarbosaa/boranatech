@@ -162,6 +162,42 @@ export async function checkInterviewTtsDailyLimit(
   }
 }
 
+// Chave de tool com que os turnos do chat de intake do plano de carreira logam
+// em ai_usage_logs. Teto proprio via get_ai_usage_today_by_tool, espelhando
+// agent-chat/interview-turn, e excluido da quota global pela migration
+// 20260713150000_split_career_plan_chat_quota.
+export const CAREER_PLAN_CHAT_TOOL = "career-plan-chat";
+
+/**
+ * Rate limit do chat de intake do plano de carreira, espelhando
+ * checkInterviewTurnDailyLimit: mesma RPC generica por tool, mesma janela (dia
+ * America/Sao_Paulo via RPC), mesmo fail-closed (erro/null/excecao =
+ * allowed:false + verificationFailed). Sem variante free: a feature e Pro-only e
+ * o gate barra antes.
+ */
+export async function checkCareerPlanChatDailyLimit(
+  userId: string,
+  logScope = "[career-plan-chat]",
+): Promise<AiDailyLimitResult> {
+  const limit = env.careerPlanChatDailyLimitPro;
+  try {
+    const { data: usageCount, error: usageError } = await supabaseAdmin.rpc(
+      "get_ai_usage_today_by_tool",
+      { p_user_id: userId, p_tool: CAREER_PLAN_CHAT_TOOL },
+    );
+
+    if (!usageError && usageCount !== null) {
+      return { allowed: usageCount < limit, count: usageCount, limit };
+    }
+
+    console.warn(`${logScope} RPC de rate limit do chat de intake retornou erro/null para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  } catch {
+    console.warn(`${logScope} Falha ao verificar rate limit do chat de intake para`, userId);
+    return { allowed: false, count: 0, limit, verificationFailed: true };
+  }
+}
+
 export interface LogAiUsageParams {
   userId: string;
   tool: string;

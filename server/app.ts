@@ -23,6 +23,7 @@ import bookmarksRouter from "./routes/bookmarks";
 import careerPlanRouter from "./routes/careerPlan";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
+import faculdadesRouter from "./routes/faculdades";
 import githubRouter from "./routes/github";
 import interviewRouter from "./routes/interview";
 import launchStateRouter, { betaRouter } from "./routes/launchState";
@@ -152,7 +153,7 @@ const CSP_POLICY = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
-  "script-src 'self' https://us-assets.i.posthog.com",
+  "script-src 'self' https://us-assets.i.posthog.com 'sha256-iOO7XE5wh/beZwhnFVoPRIUGMX82tyr3j9g5EokGcdE='",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: https:",
@@ -338,6 +339,7 @@ app.use("/api/waitlist", waitlistRouter);
 app.use("/api/newsletter", newsletterRouter);
 app.use("/api/launch-state", launchStateRouter);
 app.use("/api/beta", betaRouter);
+app.use("/api/faculdades", faculdadesRouter);
 
 app.use("/api", validateSupabaseJwt);
 

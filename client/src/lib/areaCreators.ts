@@ -29,12 +29,12 @@ function fromHandles(...handles: string[]): AreaCreator[] {
 export const areaCreators: Record<string, AreaCreator[]> = {
   uxui: fromHandles("vua_nessa"),
   frontend: fromHandles("monihillman"),
-  // backend: Erika pendente, aguardando handle e foto (Murilo).
+  backend: fromHandles("erikabusiness"),
   sre: fromHandles("andrebrito.dev"),
   // Andre cobre SRE e DevOps de proposito, mesma pessoa nas duas areas.
   devops: fromHandles("andrebrito.dev"),
-  // TODO(Ana): confirmar area da Evelyn, mapeada provisoriamente como fullstack.
   fullstack: fromHandles("dioaugusto.dev", "code.evelyn"),
   "desenvolvimento-software": fromHandles("code.evelyn"),
   dados: fromHandles("grazi.tech", "raibyhei"),
+  // Gio (gio.yaml): area a definir, ela escolhe depois.
 };

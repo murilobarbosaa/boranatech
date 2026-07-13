@@ -100,6 +100,176 @@ export const ATS_BR_LOCATION_PATTERNS = [
   "remot",
 ];
 
+// --- Relevancia TI (fase 6) ---
+// Listas do isTechJob (relevance.ts). Calibradas com amostra real de titulos
+// publicados (adzuna/jooble/ats_boards, 2026-07-12). NOTA: os params
+// upstream da Adzuna (what_or + title_only) foram testados e REJEITADOS:
+// derrubam o volume para quase zero (br 4803 -> 1) sem melhorar a qualidade.
+
+// Termos FORTES por palavra/frase (match com fronteira de palavra, sobre o
+// titulo minusculo e sem acentos, hifens viram espaco). Nunca sao vetados
+// pela lista de exclusao.
+export const RELEVANCE_STRONG_WORDS = [
+  // pt
+  "desenvolvedor",
+  "desenvolvedora",
+  "programador",
+  "programadora",
+  "engenheiro de software",
+  "engenharia de software",
+  "analista de sistemas",
+  "sistemas de informacao",
+  "cientista de dados",
+  "banco de dados",
+  "dados",
+  "tecnologia",
+  "seguranca da informacao",
+  // en
+  "software",
+  "developer",
+  "data",
+  "frontend",
+  "front end",
+  "backend",
+  "back end",
+  "full stack",
+  "fullstack",
+  "devops",
+  "sre",
+  "site reliability",
+  "cloud",
+  "cyber",
+  "cybersecurity",
+  "information security",
+  "machine learning",
+  "artificial intelligence",
+  "quality assurance",
+  "qa",
+  "web",
+  "website",
+  "database",
+  "sysadmin",
+  "system administrator",
+  "system engineer",
+  "systems engineer",
+  "systems analyst",
+  "solution architect",
+  "solutions architect",
+  "data architect",
+  "cloud architect",
+  "scrum",
+  "sap",
+  "erp",
+  "salesforce",
+  "linux",
+  "business intelligence",
+  // calibracao fase 6 (falsos negativos da amostra real)
+  "tester",
+  "embedded",
+  "enterprise architect",
+  "network engineer",
+  "db2",
+  "sharepoint",
+  "ict",
+  // stacks (cobrem titulos tipo "Rust Engineer" sem a palavra software)
+  "java",
+  "python",
+  "react",
+  "angular",
+  "node",
+  "typescript",
+  "javascript",
+  "rust",
+  "golang",
+  "kotlin",
+  "swift",
+  "flutter",
+  "php",
+  "ruby",
+  // fr
+  "developpeur",
+  "developpeuse",
+  "informatique",
+  "logiciel",
+  "systemes d'information",
+  // es
+  "desarrollador",
+  "desarrolladora",
+  "informatica",
+  // it
+  "sistemista",
+  // nl/pl (palavras simples; compostos ficam nos substrings)
+  "programista",
+  "programistka",
+  "informatyk",
+] as const;
+
+// Termos FORTES por substring (linguas de palavra composta: alemao,
+// holandes, italiano, polones). Sem fronteira de proposito: cobrem
+// "Softwareentwickler", "Webontwikkelaar", "Sviluppatrice" etc.
+export const RELEVANCE_STRONG_SUBSTRINGS = [
+  "entwickler",
+  "entwicklung",
+  "informatik",
+  "ontwikkelaar",
+  "sviluppat",
+  "informatyc",
+  // calibracao fase 6: cobre Systemadministrator/in e variantes compostas
+  "systemadmin",
+  ".net",
+  "c++",
+  "c#",
+] as const;
+
+// Siglas fortes matchadas em MAIUSCULA no titulo ORIGINAL (com fronteira):
+// evita colidir com o pronome ingles "it" e palavras comuns minusculas.
+export const RELEVANCE_STRONG_ACRONYMS = [
+  "IT",
+  "TI",
+  "AI",
+  "IA",
+  "QA",
+  "SRE",
+  "SAP",
+  "ERP",
+  "BI",
+  "ML",
+  "UX",
+  "UI",
+  "API",
+  "AWS",
+  // calibracao fase 6: EDV (TI em aleman), SOC (security operations center)
+  "EDV",
+  "SOC",
+] as const;
+
+// Exclusoes para falsos positivos do tier AMBIGUO (detectArea por substring:
+// "recruiter" contem "ui", "back office" contem "back"...). Exclusao vence
+// SOMENTE o tier ambiguo; termo forte acima nunca e vetado. Match por
+// substring do titulo normalizado.
+export const RELEVANCE_EXCLUSIONS = [
+  "recruiter",
+  "recruiting",
+  "recrutamento",
+  "talent acquisition",
+  "back office",
+  "front office",
+  "front desk",
+  "security guard",
+  "vigilante",
+  "marketing",
+  "inside sales",
+  "business development",
+  // Todo titulo do board da QuintoAndar contem "ui" dentro do nome da
+  // empresa (detectArea -> uxui); as vagas TI deles entram pelos termos
+  // fortes, que a exclusao nao veta.
+  "quintoandar",
+  // Vagas militares/defesa dos EUA carregam "with Security Clearance" no
+  // titulo e caiam no tier ambiguo via "security"; as de TI com clearance
+  // entram pelos termos fortes (cloud, software, developer...).
+  "security clearance",
+] as const;
+
 // Cadencia minima entre rodadas por fonte (gate via Redis no orquestrador).
 export const SYNC_INTERVALS_MIN: Record<JobSource, number> = {
   github: 60,

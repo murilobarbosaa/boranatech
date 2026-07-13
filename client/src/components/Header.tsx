@@ -199,12 +199,6 @@ const menuData: DropdownMenu[] = [
             description: "Conheça quem contrata",
             path: "/empresas",
           },
-          {
-            // TODO(Ana): rotulo provisorio, decidir nome final (a ferramenta estima o prazo ate a sua meta)
-            label: "Simule sua evolução",
-            description: "Quanto tempo até sua primeira vaga",
-            path: "/simulador",
-          },
         ],
       },
       {
@@ -223,11 +217,6 @@ const menuData: DropdownMenu[] = [
             description: "Monte seu currículo conversando com IA",
             path: "/curriculo/gerar",
             isPro: true,
-          },
-          {
-            label: "Portfólio",
-            description: "Monte um portfólio que gera entrevistas",
-            path: "/portfolio",
           },
         ],
       },
@@ -274,11 +263,6 @@ const menuData: DropdownMenu[] = [
             label: "Salários",
             description: "Tabela salarial e calculadoras",
             path: "/salarios",
-          },
-          {
-            label: "Ranking",
-            description: "Empresas com mais vagas para júnior",
-            path: "/empresas/ranking-junior",
           },
         ],
       },

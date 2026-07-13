@@ -44,7 +44,7 @@ export const ciberseguranca: RoadmapV2 = {
           description:
             "A regra inegociável: só teste o que você tem autorização explícita pra testar.",
           content:
-            'Antes de qualquer técnica, vem a regra que define toda a carreira, e ela é inegociável: **só teste sistemas que você tem autorização explícita pra testar**. Conhecer técnicas de invasão não dá direito de usá-las. A diferença entre um profissional de segurança e um criminoso não está na habilidade; está na autorização e na intenção.\n\nIsso não é só ética, é lei. Acessar sistemas sem permissão é crime, com penalidades sérias, mesmo que você não cause dano e mesmo que sua intenção fosse só "aprender" ou "ajudar". Invadir o sistema de uma empresa pra mostrar que ela é vulnerável, sem autorização, pode te levar à prisão, não a um emprego. Curiosidade não é defesa legal.\n\nO trabalho ofensivo legítimo sempre acontece dentro de limites combinados. Um pentest profissional começa por um contrato que define exatamente o que pode ser testado, como e quando, o chamado escopo. Programas de **bug bounty** dão autorização pública pra testar sistemas específicos sob regras claras. E existem ambientes feitos pra praticar legalmente, que você usa nesta trilha.\n\nPor isso, todo o aprendizado prático desta jornada acontece em **ambientes controlados e autorizados**: máquinas virtuais suas, laboratórios feitos pra treino, plataformas de desafios. Nunca em sistemas reais de terceiros.\n\nLeve isso a sério desde o primeiro dia. A área de segurança é construída sobre confiança: empresas dão a profissionais acesso ao que têm de mais sensível. Sua reputação ética é seu ativo mais valioso, e a única coisa que, perdida, não se recupera.',
+            'Antes de qualquer técnica, vem a regra que define toda a carreira, e ela é inegociável: **só teste sistemas que você tem autorização explícita pra testar**. Conhecer técnicas de invasão não dá direito de usá-las. A diferença entre um profissional de segurança e um criminoso não está na habilidade; está na autorização e na intenção.\n\nIsso não é só ética, é lei. Acessar sistemas sem permissão é crime, com penalidades sérias, mesmo que você não cause dano e mesmo que sua intenção fosse só "aprender" ou "ajudar". Invadir o sistema de uma empresa pra mostrar que ela é vulnerável, sem autorização, pode te levar à prisão, não a um emprego. Curiosidade não é defesa legal.\n\nO trabalho ofensivo legítimo sempre acontece dentro de limites combinados. Um pentest profissional começa por um contrato que define exatamente o que pode ser testado, como e quando, o chamado escopo. Programas de **bug bounty** dão autorização pública pra testar sistemas específicos sob regras claras. E existem ambientes feitos pra praticar legalmente, que você usa nesta trilha.\n\nPor isso, todo o aprendizado prático desta jornada acontece em **ambientes controlados e autorizados**: máquinas virtuais suas, laboratórios feitos pra treino, plataformas de desafios. Nunca em sistemas reais de terceiros.\n\nLeve isso a sério desde o primeiro dia. A área de segurança é construída sobre confiança: empresas dão a profissionais acesso ao que têm de mais sensível. Sua reputação ética é seu ativo mais valioso, e a única coisa que, perdida, não se recupera.\n\nVocê internalizou esta etapa quando, diante de um sistema que dá vontade de testar, a primeira pergunta que te ocorre é se existe autorização explícita e por escrito pra isso.',
         },
       ],
     },
@@ -138,6 +138,21 @@ export const ciberseguranca: RoadmapV2 = {
             "A **criptografia** é a ciência de proteger informação embaralhando-a de forma que só quem tem a chave certa consiga lê-la. É o que sustenta a confidencialidade da tríade CIA, e está por trás de quase tudo: o cadeado do navegador, as mensagens de apps, as senhas guardadas. Você não precisa da matemática pesada pra começar, mas precisa da intuição.\n\nHá duas grandes famílias. Na **criptografia simétrica**, a mesma chave fecha e abre o cofre: rápida, mas exige que as duas partes já compartilhem a chave em segredo. Na **assimétrica**, existe um par de chaves, uma pública e uma privada: o que uma fecha, só a outra abre. Isso resolve o problema de trocar segredos com quem você nunca conversou antes, e é a base do HTTPS que protege sua navegação.\n\nUm conceito relacionado e muito usado é o **hash**: uma função que transforma qualquer dado numa espécie de impressão digital de tamanho fixo, da qual não dá pra voltar ao original. Ele serve pra verificar integridade (se o dado mudou, o hash muda) e pra guardar senhas sem armazená-las em texto puro, assunto da próxima parte.\n\nDuas regras práticas que valem ouro. Nunca invente sua própria criptografia: use algoritmos consagrados e bibliotecas testadas, porque criptografia caseira quase sempre tem furos invisíveis pra quem a criou. E lembre que criptografia protege os dados, mas não substitui o resto: um sistema com criptografia forte e senhas fracas continua vulnerável.",
         },
         {
+          id: "conceitos.tls",
+          title: "TLS e HTTPS na prática",
+          description:
+            "O que o cadeado do navegador realmente garante, e o que ele não garante.",
+          content:
+            "Você já viu o **cadeado** na barra do navegador e o https no endereço. Por trás deles está o **TLS**, o protocolo que protege a comunicação entre o seu navegador e o servidor. Entender o que ele garante, e o que não garante, é essencial, porque muita gente confia no cadeado pelos motivos errados.\n\nO TLS entrega três coisas. **Confidencialidade**: os dados trafegam embaralhados, então quem interceptar a conexão (numa rede wifi pública, por exemplo) vê só ruído. **Integridade**: se alguém alterar os dados no caminho, isso é detectado. E **identidade do servidor**: o **certificado** que o site apresenta, assinado por uma **autoridade certificadora** (uma entidade em que os navegadores confiam), atesta que você está mesmo falando com aquele domínio, e não com um impostor no meio. Tudo isso se estabelece num **handshake** inicial, em que cliente e servidor combinam as chaves antes de trocar qualquer dado. A criptografia assimétrica que você viu em criptografia básica é a base desse processo.\n\nAqui mora o mal-entendido perigoso: **HTTPS não é selo de idoneidade**. O cadeado diz que a conexão com aquele site é segura e que o domínio é aquele mesmo, nada além. Um site de golpe pode ter cadeado, porque obter um certificado hoje é fácil e gratuito. Confidencialidade não é honestidade. Um phishing bem feito usa HTTPS justamente pra passar confiança. O cadeado protege o **caminho**, não garante o **destino**.\n\nDo lado de quem constrói, servir tudo por HTTPS é o mínimo, e **cabeçalhos de segurança** reforçam a proteção instruindo o navegador a se comportar de forma mais restrita:\n\n```\nStrict-Transport-Security: exige HTTPS\nContent-Security-Policy: limita origens\nX-Content-Type-Options: nosniff\n```\n\nVocê domina esta etapa quando consegue explicar a alguém por que um site com cadeado ainda pode ser um golpe, e dizer com precisão o que o HTTPS protege e o que ele não protege.",
+          resources: [
+            {
+              label: "OWASP Secure Headers Project (oficial)",
+              url: "https://owasp.org/www-project-secure-headers/",
+              kind: "doc",
+            },
+          ],
+        },
+        {
           id: "conceitos.autenticacao",
           title: "Autenticação e senhas",
           description:
@@ -151,7 +166,7 @@ export const ciberseguranca: RoadmapV2 = {
           description:
             "As falhas que mais aparecem em sistemas reais, catalogadas pela comunidade.",
           content:
-            "Uma **vulnerabilidade** é uma falha num sistema que pode ser explorada pra comprometer sua segurança. Elas surgem de erros de programação, de configuração ou de projeto, e a boa notícia pra quem estuda é que as mais comuns se repetem tanto que foram catalogadas e bem documentadas.\n\nA referência mais conhecida é o **OWASP Top 10**, uma lista, mantida pela comunidade de segurança, das categorias de falhas mais críticas em aplicações web. Estudá-la é um dos melhores investimentos de quem começa, porque ela concentra os problemas que você mais vai encontrar no mundo real. Entre os clássicos estão as falhas de **injeção** (quando dados maliciosos enviados pelo usuário são tratados como comando pelo sistema), o **controle de acesso quebrado** (quando alguém consegue acessar o que não deveria) e os **erros de configuração** (sistemas deixados com senhas padrão ou serviços expostos sem necessidade).\n\nUm conceito importante pra organizar a cabeça: existe diferença entre **vulnerabilidade**, **exploração** e **ameaça**. A vulnerabilidade é a falha em si; a exploração é a técnica que se aproveita dela; a ameaça é quem ou o que pode causar o dano. Defender significa fechar vulnerabilidades antes que sejam exploradas.\n\nEstudar vulnerabilidades tem um propósito duplo e legítimo: quem **defende** precisa conhecer as falhas pra corrigi-las e priorizá-las, e quem faz testes **autorizados** precisa saber procurá-las. Em ambos os casos, o conhecimento serve pra proteger. Comece pela lista do OWASP, entendendo o que cada categoria significa e como se previne.",
+            "Uma **vulnerabilidade** é uma falha num sistema que pode ser explorada pra comprometer sua segurança. Elas surgem de erros de programação, de configuração ou de projeto, e a boa notícia pra quem estuda é que as mais comuns se repetem tanto que foram catalogadas e bem documentadas.\n\nA referência mais conhecida é o **OWASP Top 10**, uma lista, mantida pela comunidade de segurança, das categorias de falhas mais críticas em aplicações web. Estudá-la é um dos melhores investimentos de quem começa, porque ela concentra os problemas que você mais vai encontrar no mundo real. Entre os clássicos estão as falhas de **injeção** (quando dados maliciosos enviados pelo usuário são tratados como comando pelo sistema), o **controle de acesso quebrado** (quando alguém consegue acessar o que não deveria) e os **erros de configuração** (sistemas deixados com senhas padrão ou serviços expostos sem necessidade).\n\nA defesa contra injeção ilustra o padrão que se repete: o problema é misturar dado com comando, e a correção é mantê-los separados.\n\n```\nJuntar texto do usuário à consulta (perigo):\n  ... WHERE id = [entrada do usuário]\n\nUsar consulta parametrizada (seguro):\n  ... WHERE id = ?  (a entrada vai à parte)\n```\n\nUm conceito importante pra organizar a cabeça: existe diferença entre **vulnerabilidade**, **exploração** e **ameaça**. A vulnerabilidade é a falha em si; a exploração é a técnica que se aproveita dela; a ameaça é quem ou o que pode causar o dano. Defender significa fechar vulnerabilidades antes que sejam exploradas.\n\nEstudar vulnerabilidades tem um propósito duplo e legítimo: quem **defende** precisa conhecer as falhas pra corrigi-las e priorizá-las, e quem faz testes **autorizados** precisa saber procurá-las. Em ambos os casos, o conhecimento serve pra proteger. Comece pela lista do OWASP, entendendo o que cada categoria significa e como se previne. Você domina esta etapa quando, diante de uma falha do OWASP Top 10, consegue explicar por que ela acontece e qual é a defesa, sem precisar saber montar a exploração.",
           resources: [
             {
               label: "OWASP Top 10 (oficial)",
@@ -166,32 +181,6 @@ export const ciberseguranca: RoadmapV2 = {
           description: "Os ataques que miram a pessoa, não só a máquina.",
           content:
             "Nem todo ataque é técnico. Muitas das invasões mais bem-sucedidas exploram o elo mais difícil de proteger: as **pessoas**. A **engenharia social** é a arte de manipular alguém pra que entregue informação ou faça algo que comprometa a segurança, sem precisar quebrar nenhum sistema por força técnica.\n\nO exemplo mais comum é o **phishing**: mensagens (email, SMS, apps) que se passam por uma fonte confiável, como um banco ou a própria empresa, pra induzir a vítima a clicar num link falso, entregar a senha ou baixar um arquivo malicioso. Existem variações mais elaboradas, dirigidas a uma pessoa específica com informações personalizadas, que enganam até gente experiente. A defesa aqui é mais humana que técnica: desconfiança treinada, verificação por outro canal e cultura de segurança na organização.\n\nO **malware** (software malicioso) é o outro grande vetor, e é um termo guarda-chuva. Inclui vírus, que se espalham; **ransomware**, que sequestra dados criptografando-os e exige resgate, hoje uma das maiores ameaças a empresas; spyware, que espiona; e outros. O malware costuma entrar justamente por engenharia social (a pessoa abre o anexo errado) ou por uma vulnerabilidade não corrigida, conectando os dois temas.\n\nA lição estratégica: segurança não é só firewall e criptografia; é também conscientização das pessoas e bons hábitos. De nada adianta a defesa técnica mais cara se um funcionário entrega a senha por telefone a um golpista. Por isso treinamento e cultura de segurança são parte central do trabalho, não um detalhe.",
-        },
-      ],
-    },
-    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
-    {
-      id: "criptografia",
-      title: "Criptografia na prática",
-      description:
-        "Além dos conceitos: como a criptografia protege dados de verdade no dia a dia, dos certificados do HTTPS ao dado guardado no disco.",
-      level: "intermediario",
-      children: [
-        {
-          id: "criptografia.pki",
-          title: "Certificados, PKI e TLS",
-          description:
-            "O que faz o cadeado do navegador funcionar e como a confiança na internet é estabelecida.",
-          content:
-            "Você já viu que a criptografia assimétrica usa um par de chaves, pública e privada. Na prática, o que faz isso funcionar em escala na internet é a **infraestrutura de chave pública (PKI)** e os **certificados digitais**. Um certificado é um documento eletrônico que liga uma chave pública a uma identidade (um site, por exemplo) e é assinado por uma **autoridade certificadora** em quem os navegadores confiam.\n\nÉ isso que sustenta o **TLS**, o protocolo por trás do HTTPS. Quando você acessa um site seguro, ele apresenta seu certificado; o navegador verifica se foi assinado por uma autoridade confiável e se é válido, e só então estabelece um canal criptografado. Esse aperto de mãos inicial usa a criptografia assimétrica pra combinar, com segurança, uma chave simétrica rápida que protege o resto da conversa, combinando o melhor das duas famílias.\n\nEntender isso tem valor prático direto: muitos problemas reais de segurança e de operação são certificados vencidos, mal configurados ou não confiáveis, e saber ler o que o cadeado (ou a sua ausência) significa é diagnóstico do dia a dia. Também esclarece por que nunca ignorar avisos de certificado do navegador: eles sinalizam que a garantia de identidade e sigilo pode estar quebrada.",
-        },
-        {
-          id: "criptografia.repouso-transito",
-          title: "Criptografia em repouso e em trânsito",
-          description:
-            "Proteger os dados tanto quando eles viajam pela rede quanto quando estão parados no disco.",
-          content:
-            "Na prática da defesa, a criptografia protege os dados em dois momentos distintos, e os dois importam. **Em trânsito** é quando o dado viaja pela rede, entre o usuário e o servidor ou entre serviços; protegê-lo é garantir que ninguém no meio do caminho consiga ler ou alterar o que passa, e é aí que entram o HTTPS e o TLS que você acabou de ver.\n\n**Em repouso** é quando o dado está parado, guardado num disco, num banco de dados ou num backup. Criptografar dados em repouso garante que, se alguém rouba fisicamente o disco ou obtém acesso indevido ao armazenamento, encontra apenas conteúdo embaralhado, inútil sem a chave. Bancos de dados, discos e serviços de nuvem oferecem essa criptografia, e ativá-la é uma camada importante de proteção.\n\nUm ponto que fecha o assunto de senhas: guardar senhas não é criptografia reversível, e sim **hashing** (com um tempero único por senha, o sal, pra dificultar ataques). A diferença é que criptografia pode ser desfeita com a chave, e senha guardada não deve poder voltar ao original de jeito nenhum. Confundir os dois leva a erros graves, então vale ter clara a regra: dados sensíveis que precisam ser lidos depois, criptografe; senhas, faça hash.",
         },
       ],
     },
@@ -232,31 +221,20 @@ export const ciberseguranca: RoadmapV2 = {
             },
           ],
         },
-      ],
-    },
-    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
-    {
-      id: "vulnerabilidades",
-      title: "Análise de vulnerabilidades",
-      description:
-        "O processo de encontrar, avaliar e priorizar falhas nos sistemas, uma disciplina que liga o lado ofensivo ao defensivo.",
-      level: "intermediario",
-      children: [
         {
-          id: "vulnerabilidades.scanning",
-          title: "Scanners e gestão de vulnerabilidades",
+          id: "ofensiva.ferramentas",
+          title: "Ferramentas de diagnóstico e auditoria",
           description:
-            "Ferramentas que varrem sistemas em busca de falhas conhecidas e o ciclo de tratá-las.",
+            "Nmap e Wireshark como instrumentos de auditoria autorizada, dentro da lei.",
           content:
-            "Você já conhece os tipos de falha mais comuns; aqui o foco é o **processo** de encontrá-las e tratá-las de forma sistemática. O ponto de partida costuma ser o **scanner de vulnerabilidades**: uma ferramenta que varre sistemas, redes ou aplicações comparando o que encontra com bases de falhas conhecidas, e aponta o que está desatualizado, mal configurado ou exposto.\n\nMas rodar o scanner é só o começo. A **gestão de vulnerabilidades** é o ciclo contínuo que vem depois: analisar os resultados (separando o que é risco real do que é alarme falso), priorizar o que corrigir primeiro, aplicar as correções (muitas vezes atualizar software ou ajustar configuração) e verificar que a falha foi de fato fechada. Como sempre surgem vulnerabilidades novas, esse ciclo nunca termina, ele se repete.\n\nEsse trabalho liga o lado ofensivo ao defensivo: usa técnicas de quem procura falhas, mas com o propósito de fechá-las antes que sejam exploradas. É uma das atividades mais concretas e demandadas da área, porque toda organização com sistemas precisa saber onde está vulnerável, e alguém precisa transformar essa lista em ações de correção priorizadas.",
-        },
-        {
-          id: "vulnerabilidades.cve-cvss",
-          title: "CVE, CVSS e priorização",
-          description:
-            "Como as falhas são catalogadas e pontuadas, para decidir o que corrigir primeiro.",
-          content:
-            "Quando uma vulnerabilidade é descoberta num software conhecido, ela recebe um identificador público padronizado, chamado **CVE** (uma espécie de número de registro único da falha). Isso permite que o mundo inteiro se refira exatamente à mesma vulnerabilidade, e que bases públicas concentrem informações sobre ela, o que possibilita corrigir e defender de forma coordenada.\n\nCada falha também ganha uma **pontuação de severidade**, comumente pelo padrão **CVSS**, que gera uma nota (de 0 a 10) refletindo o quão grave e explorável ela é. Essa nota ajuda a **priorizar**: com centenas de vulnerabilidades numa lista, você não corrige tudo de uma vez, então começa pelas mais críticas e mais expostas, guiado pela severidade e pelo contexto do seu ambiente.\n\nPriorizar bem é onde o julgamento entra. A nota de severidade é um insumo, mas não decide sozinha: uma falha de nota alta num sistema isolado e sem dado sensível pode ser menos urgente que uma média num sistema crítico exposto à internet. Combinar a pontuação padronizada com o entendimento do próprio ambiente é o que transforma uma lista assustadora de vulnerabilidades num plano de ação sensato.",
+            'Duas ferramentas aparecem o tempo todo em segurança de redes, e vale conhecer o que fazem e, sobretudo, os limites legais de usá-las. O **Nmap** é um mapa de portas: ele varre uma máquina ou uma rede e mostra quais portas estão abertas e quais serviços respondem nelas, aquelas portas e serviços que você viu em protocolos, portas e serviços. Pro defensor, é como olhar a própria casa de fora e ver quais janelas ficaram destrancadas, pra então fechar o que não precisa estar aberto. O **Wireshark** é uma lupa de tráfego: captura e mostra os pacotes que circulam na rede, permitindo investigar um problema, entender um protocolo ou notar tráfego anormal.\n\nAgora o que não é negociável. Rodar essas ferramentas contra sistemas de terceiros sem autorização é **crime** no Brasil. A Lei 12.737 tipifica a invasão de dispositivo informático, e mesmo uma varredura não autorizada já pode configurar ato ilícito. Não existe a defesa de "só estava olhando" ou "queria ajudar". O profissional sério trabalha sempre com **autorização por escrito, escopo definido e contrato**: o documento diz exatamente quais alvos, quando e como podem ser testados, e sair disso é ilegal ainda que a intenção seja boa. É a mesma regra inegociável que abriu esta trilha em ética e legalidade.\n\nO lugar de praticar é o seu **laboratório próprio**: máquinas virtuais isoladas na sua máquina, redes que são suas, e ambientes intencionalmente vulneráveis feitos pra treino. Ali você escaneia, captura tráfego e experimenta à vontade, porque tudo é seu e ninguém é afetado. É assim que se aprende a usar essas ferramentas sem cruzar a linha.\n\nUma forma de ver a diferença que define a carreira: a mesma ferramenta é diagnóstico nas mãos de quem tem permissão e é invasão nas mãos de quem não tem. A técnica é idêntica; o que muda é a autorização. Você entende esta etapa quando, antes de apontar qualquer ferramenta pra um alvo, a sua primeira pergunta é se existe autorização por escrito pra isso.',
+          resources: [
+            {
+              label: "Lei 12.737/2012: invasão de dispositivo (texto oficial)",
+              url: "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2012/lei/l12737.htm",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
@@ -333,6 +311,8 @@ export const ciberseguranca: RoadmapV2 = {
           title: "Projeto final: SIEM doméstico",
           description:
             "Coleta e análise de logs num SIEM caseiro, aplicando a visão defensiva da trilha.",
+          content:
+            "Esta é a hora de vestir o papel do defensor e montar, em pequena escala, o que um SOC faz todos os dias. Você aprendeu a tríade CIA, a enxergar redes e o que o HTTPS protege, a reconhecer vulnerabilidades e engenharia social, e o ciclo de resposta a incidentes. O projeto final junta tudo isso do lado de quem protege, não de quem ataca.\n\nO projeto vinculado te encomenda um **SIEM doméstico**. No seu próprio laboratório (máquinas virtuais isoladas, nada de sistema de terceiros), você coleta os logs de um sistema, centraliza esses registros numa ferramenta de análise, e cria alertas que disparam quando algo foge do padrão: muitas tentativas de senha seguidas, um acesso em horário estranho, um serviço rodando onde não deveria. O entregável não prova que você sabe atacar; prova que você sabe **detectar**, que é o coração da segurança defensiva e o que a maioria das vagas de entrada procura.\n\nVocê chega ao fim quando consegue gerar um evento suspeito de propósito no seu laboratório (uma sequência de logins falhos, por exemplo) e mostrar o alerta correspondente sendo levantado pelo seu SIEM, junto do log que o originou. Saber explicar o que aquele alerta significa e como você responderia a ele fecha o exercício e vira uma das peças mais fortes de um portfólio de defensor.",
           project: "siem-domestico-logs",
         },
         {

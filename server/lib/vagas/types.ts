@@ -43,5 +43,7 @@ export type SourceRunResult = {
   fetched: number;
   upserted: number;
   failed: number;
+  // Reprovadas no filtro de relevancia TI (fase 6); github nao filtra.
+  dropped: number;
   error?: string;
 };

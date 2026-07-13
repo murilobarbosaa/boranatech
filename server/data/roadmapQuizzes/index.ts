@@ -5,10 +5,52 @@
 // (generateRoadmapMeta --check) falha se o registry e o diretorio divergirem.
 // SERVER-ONLY: ver README.md desta pasta.
 import type { QuizPool } from "../../../shared/roadmapQuiz/types";
+import analiseDados from "./analise-dados";
+import analiseSistemas from "./analise-sistemas";
 import backend from "./backend";
+import bancoDeDados from "./banco-de-dados";
+import blockchain from "./blockchain";
+import ciberseguranca from "./ciberseguranca";
+import cloud from "./cloud";
+import dados from "./dados";
+import devops from "./devops";
+import engenhariaDados from "./engenharia-dados";
 import frontend from "./frontend";
+import fullstack from "./fullstack";
+import gamedev from "./gamedev";
+import gestao from "./gestao";
+import ia from "./ia";
+import infraestrutura from "./infraestrutura";
+import iot from "./iot";
+import mainframe from "./mainframe";
+import mobile from "./mobile";
+import produto from "./produto";
+import qa from "./qa";
+import sre from "./sre";
+import uxui from "./uxui";
 
 export const roadmapQuizPools: Record<string, QuizPool> = {
+  "analise-dados": analiseDados,
+  "analise-sistemas": analiseSistemas,
   backend,
+  "banco-de-dados": bancoDeDados,
+  blockchain,
+  ciberseguranca,
+  cloud,
+  dados,
+  devops,
+  "engenharia-dados": engenhariaDados,
   frontend,
+  fullstack,
+  gamedev,
+  gestao,
+  ia,
+  infraestrutura,
+  iot,
+  mainframe,
+  mobile,
+  produto,
+  qa,
+  sre,
+  uxui,
 };

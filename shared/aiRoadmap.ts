@@ -98,8 +98,14 @@ export type RoadmapSectionContentNode = z.infer<
   typeof SectionContentNodeSchema
 >;
 
+// Minimo de passos por secao: 4 (nao 6). Secao estreita e legitima (as trilhas
+// estaticas de shared/roadmapV2 tem secoes de 3 a 4 passos), e o minimo rigido
+// de 6 era a causa determinante de falha em producao: o modelo devolvia uma
+// secao curta valida, o safeParse rejeitava com too_small (minimum 6), e as 3
+// tentativas repetiam o mesmo prompt e a mesma secao. O alvo (6 a 8) segue no
+// prompt; aqui fica so o piso absoluto.
 export const RoadmapSectionContentSchema = z.object({
-  children: z.array(SectionContentNodeSchema).min(6).max(10),
+  children: z.array(SectionContentNodeSchema).min(4).max(10),
 });
 
 export type RoadmapSectionContent = z.infer<typeof RoadmapSectionContentSchema>;
@@ -124,10 +130,12 @@ export function buildSectionContentSchema(offeredProjectIds: string[] | null) {
             "Sempre null nesta secao (o projeto vive na ultima secao).",
           );
   const child = SectionContentChildSchema.extend({ project: projectField });
+  // Piso de 4 passos, igual a RoadmapSectionContentSchema (ver comentario la):
+  // este e o schema REALMENTE validado por chamada de secao no generate.ts.
   return z.object({
     children: z
       .array(child.extend({ children: z.array(child).max(5).nullable() }))
-      .min(6)
+      .min(4)
       .max(10),
   });
 }

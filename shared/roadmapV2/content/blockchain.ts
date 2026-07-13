@@ -76,7 +76,7 @@ export const blockchain: RoadmapV2 = {
           description:
             "Carteiras, chaves e gas: o vocabulário prático do desenvolvedor Web3.",
           content:
-            "Sobre a base de programação, você precisa do vocabulário prático que aparece todos os dias no desenvolvimento blockchain. São conceitos que conectam a teoria da seção anterior com o dia a dia.\n\nA **carteira** (wallet) é como você interage com a blockchain. Ela guarda um par de chaves criptográficas: uma **chave pública**, que funciona como seu endereço (onde os outros te enviam valores), e uma **chave privada**, o segredo que prova que você é o dono e autoriza transações. A regra de ouro, que vale tanto pro usuário quanto pro dev, é absoluta: **quem tem a chave privada tem o controle total**. Perdeu a chave, perdeu o acesso, sem recuperação; vazou a chave, perdeu os fundos. Essa responsabilidade irreversível é uma marca da área. A **MetaMask** é a carteira mais usada no desenvolvimento, e você a usará pra testar suas aplicações.\n\nOs **tokens** são ativos digitais que vivem na blockchain. Podem ser moedas, pontos, ou representar a posse de algo. Existem padrões que definem como criá-los, como você verá nos contratos.\n\nO **gas**, mencionado antes, é a taxa paga por cada operação na rede. Pro desenvolvedor, isso tem implicações práticas: código ineficiente custa mais caro pra rodar, então otimização tem peso financeiro real, diferente de um sistema comum.\n\nE há as **redes de teste** (testnets): cópias da blockchain feitas pra desenvolvimento, onde você publica e testa contratos usando moeda sem valor real. É nelas que você praticará tudo nesta trilha, sem arriscar dinheiro de verdade, antes de qualquer coisa ir pra a rede principal. Entender esses conceitos te dá o terreno pra começar a escrever contratos com segurança.",
+            "Sobre a base de programação, você precisa do vocabulário prático que aparece todos os dias no desenvolvimento blockchain. São conceitos que conectam a teoria da seção anterior com o dia a dia.\n\nA **carteira** (wallet) é como você interage com a blockchain. Ela guarda um par de chaves criptográficas: uma **chave pública**, que funciona como seu endereço (onde os outros te enviam valores), e uma **chave privada**, o segredo que prova que você é o dono e autoriza transações. A mecânica geral da criptografia de chave pública e privada é assunto da trilha de cibersegurança, que a detalha; aqui o que importa é o papel específico dela na blockchain, onde a chave é a base da posse e da assinatura, não apenas da confidencialidade. A regra de ouro, que vale tanto pro usuário quanto pro dev, é absoluta: **quem tem a chave privada tem o controle total**. Perdeu a chave, perdeu o acesso, sem recuperação; vazou a chave, perdeu os fundos. Essa responsabilidade irreversível é uma marca da área. A **MetaMask** é a carteira mais usada no desenvolvimento, e você a usará pra testar suas aplicações.\n\nOs **tokens** são ativos digitais que vivem na blockchain. Podem ser moedas, pontos, ou representar a posse de algo. Existem padrões que definem como criá-los, como você verá nos contratos.\n\nO **gas**, mencionado antes, é a taxa paga por cada operação na rede. Pro desenvolvedor, isso tem implicações práticas: código ineficiente custa mais caro pra rodar, então otimização tem peso financeiro real, diferente de um sistema comum.\n\nE há as **redes de teste** (testnets): cópias da blockchain feitas pra desenvolvimento, onde você publica e testa contratos usando moeda sem valor real. É nelas que você praticará tudo nesta trilha, sem arriscar dinheiro de verdade, antes de qualquer coisa ir pra a rede principal. Entender esses conceitos te dá o terreno pra começar a escrever contratos com segurança.",
         },
       ],
     },
@@ -98,6 +98,11 @@ export const blockchain: RoadmapV2 = {
             {
               label: "Solidity: documentação oficial",
               url: "https://docs.soliditylang.org/",
+              kind: "doc",
+            },
+            {
+              label: "Ethereum.org: contratos inteligentes (pt-BR)",
+              url: "https://ethereum.org/pt-br/developers/docs/smart-contracts/",
               kind: "doc",
             },
             {
@@ -127,17 +132,23 @@ export const blockchain: RoadmapV2 = {
             },
           ],
         },
-      ],
-    },
-    {
-      id: "padroes",
-      title: "Tokens e padrões",
-      description:
-        "Os padrões que definem tokens e NFTs, e como reutilizar contratos consagrados.",
-      level: "intermediario",
-      children: [
         {
-          id: "padroes.erc",
+          id: "solidity.testes",
+          title: "Testar antes do deploy",
+          description:
+            "Por que testar um contrato é diferente, e o que testar antes que seja tarde.",
+          content:
+            "Em quase todo software, testar é uma boa prática; em contratos inteligentes, é a diferença entre um projeto sério e um prejuízo. O motivo é o que esta trilha repete: o **deploy é irreversível** e o contrato lida com **dinheiro real**. Não existe corrigir em produção com um update; se um bug foi publicado, a única saída costuma ser migrar tudo para um novo contrato, um processo caro e traumático. Então o teste não vem depois, vem **antes**, e é a sua principal linha de defesa.\n\nO que testar vai além do caminho feliz. **O caminho feliz**: o contrato faz o que promete quando tudo dá certo. **As permissões**: só quem tem direito consegue chamar as funções sensíveis, e um estranho é barrado (controle de acesso mal feito é das falhas mais comuns). **Os valores limite**: o zero, o máximo, o saldo insuficiente, os números que estouram. E, em noção, a **reentrância**: garantir que uma chamada externa não consiga reentrar no seu contrato e drená-lo antes de ele atualizar o estado. Essas categorias você aprofunda em segurança de smart contracts; aqui o ponto é que o teste precisa cobri-las.\n\nA ferramenta natural desse trabalho é um ambiente do ecossistema, como o **Hardhat** ou o **Foundry**, que rodam seus testes automaticamente e simulam a blockchain na sua máquina, de graça e em segundos. Você escreve cenários que exercitam o contrato de todos os ângulos e roda a suíte inteira a cada mudança.\n\nE, mesmo com a suíte passando, o passo final antes da rede principal é sempre a **testnet**: publicar numa rede de teste, onde tudo funciona como no real mas com moeda sem valor, e exercitar o contrato ali. A testnet é o ensaio geral obrigatório; pular direto pra mainnet com dinheiro de verdade é o erro que a área inteira aprendeu a não cometer. Você domina esta etapa quando, antes de imaginar um deploy na rede principal, tem uma suíte que cobre caminho feliz, permissões e valores limite, e o contrato já rodou numa testnet.",
+          resources: [
+            {
+              label: "Ethereum.org: testar contratos inteligentes (pt-BR)",
+              url: "https://ethereum.org/pt-br/developers/docs/smart-contracts/testing/",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "solidity.erc",
           title: "Padrões ERC: tokens e NFTs",
           description:
             "Os modelos consagrados que padronizam tokens e ativos digitais.",
@@ -185,6 +196,14 @@ export const blockchain: RoadmapV2 = {
             },
           ],
         },
+        {
+          id: "web3.eventos",
+          title: "Ler dados e eventos on-chain",
+          description:
+            "O lado da leitura: mostrar o estado da blockchain e reagir a eventos.",
+          content:
+            "A folha anterior tratou de **escrever** na blockchain, enviar transações. Uma DApp completa também precisa **ler**: mostrar saldos, status e histórico na tela, e reagir quando algo acontece on-chain. Esse lado da leitura tem uma diferença importante: ler o estado de um contrato **não custa gas** nem exige assinatura, porque não altera nada, é só uma consulta. Escrever custa e precisa de confirmação; ler é barato e imediato.\n\nHá duas formas principais de obter dados. A primeira é **consultar o estado** diretamente: chamar as funções de leitura do contrato pela ethers.js pra buscar um valor atual (o saldo de um token, o dono de um NFT). A segunda são os **eventos**: contratos emitem eventos quando algo relevante acontece (uma transferência, um registro criado), e a sua aplicação pode escutá-los pra atualizar a interface na hora ou reconstruir um histórico. Eventos são a forma padrão de a blockchain avisar o mundo de fora que algo mudou.\n\nUm detalhe que confunde iniciantes: a blockchain guarda o estado atual de forma barata de consultar, mas montar um histórico rico (todas as transferências de um usuário, por exemplo) relendo eventos pode ser pesado. Por isso existem serviços de indexação que organizam esses dados pra consulta rápida, algo que você conhece de nome agora e aprofunda quando precisar.\n\nJuntando as duas folhas, você tem o ciclo completo de uma DApp: ler o estado pra informar o usuário, e escrever transações quando ele decide agir. Você domina esta etapa quando sua aplicação exibe um dado que vive num contrato e atualiza a tela em resposta a um evento emitido on-chain, sem o usuário precisar recarregar a página.",
+        },
       ],
     },
     {
@@ -231,6 +250,8 @@ export const blockchain: RoadmapV2 = {
           title: "Projeto final: dapp de registro em testnet",
           description:
             "Um contrato publicado e verificável em testnet com front simples, a trilha virando produto.",
+          content:
+            "Esta é a hora de fechar o ciclo completo de uma DApp e transformar a trilha num artefato público e verificável, a maior vantagem de portfólio da área. Você aprendeu a escrever contratos em Solidity, a testá-los antes do deploy, os padrões de token, a integração Web3 e a disciplina de segurança que define o ofício. O projeto final junta tudo numa aplicação de ponta a ponta.\n\nO projeto vinculado te encomenda um **DApp de registro publicado numa testnet**: um contrato que guarda algum registro on-chain (uma mensagem, um item, um comprovante), escrito e testado por você, mais uma interface web simples que conecta a carteira do usuário, lê o estado do contrato e envia transações pra ele. Tudo roda numa rede de teste, com moeda sem valor real, exatamente como a trilha insistiu: a testnet é onde a prática acontece, nunca a mainnet com dinheiro de verdade.\n\nComo o trabalho fica público, capriche na segurança visível: um contrato simples, testado, partindo de implementações consagradas onde fizer sentido. Você chega ao fim quando qualquer pessoa consegue abrir o endereço do seu contrato na testnet, ver que ele está publicado, e usar a sua interface pra ler e gravar um registro conectando a própria carteira. Um DApp que passa nesse teste é a peça de portfólio mais convincente que você pode ter na área.",
           project: "dapp-registro-testnet",
         },
         {

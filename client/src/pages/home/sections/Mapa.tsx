@@ -116,7 +116,6 @@ const NODES: MapNode[] = [
       { name: "Salários", href: "/salarios" },
       { name: "Currículo", href: "/curriculo/analisar" },
       { name: "Entrevistas", href: "/entrevistas" },
-      { name: "Simulador de Carreira", href: "/simulador" },
     ],
     otherCount: 1,
     colors: {

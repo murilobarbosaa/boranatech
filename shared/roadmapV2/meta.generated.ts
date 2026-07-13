@@ -41,8 +41,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
         "label": "Go"
       }
     ],
-    "sectionCount": 11,
-    "stepCount": 52,
+    "sectionCount": 8,
+    "stepCount": 46,
     "hasProject": true,
     "hasQuiz": true
   },
@@ -53,9 +53,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da primeira tela até uma aplicação completa no ar: front-end, back-end, banco e deploy. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 24,
+    "stepCount": 25,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "dados",
@@ -63,10 +63,10 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Ciência de Dados do Zero",
     "level": "Iniciante",
     "description": "De Python e SQL à primeira análise de um dataset real, com estatística, Pandas e visualização. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 12,
-    "stepCount": 33,
+    "sectionCount": 8,
+    "stepCount": 27,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "uxui",
@@ -75,9 +75,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da pesquisa com usuários ao protótipo de alta fidelidade no Figma, passando por interface, design system e testes. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 22,
+    "stepCount": 23,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "ia",
@@ -86,9 +86,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Dos fundamentos e da matemática essencial ao machine learning, deep learning e IA generativa. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 22,
+    "stepCount": 23,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "produto",
@@ -99,7 +99,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 21,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "ciberseguranca",
@@ -107,10 +107,10 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Cibersegurança do Zero",
     "level": "Iniciante",
     "description": "Das bases de redes e Linux aos conceitos de segurança, times ofensivo e defensivo, prática ética e certificações. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 9,
-    "stepCount": 23,
+    "sectionCount": 7,
+    "stepCount": 21,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "cloud",
@@ -133,9 +133,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
       }
     ],
     "sectionCount": 7,
-    "stepCount": 20,
+    "stepCount": 21,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "gestao",
@@ -146,7 +146,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 22,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "qa",
@@ -155,16 +155,16 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Dos fundamentos de qualidade e teste manual ao design de casos, teste de APIs e automação. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 21,
+    "stepCount": 23,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "mobile",
     "area": "mobile",
     "title": "Desenvolvimento Mobile do Zero",
     "level": "Iniciante",
-    "description": "Da escolha da stack à publicação de um app na loja, passando por linguagem, telas, dados e recursos do dispositivo. Escolha seu caminho e conclua uma etapa pra liberar a próxima.",
+    "description": "Da escolha da stack à publicação de um app na loja, passando por linguagem, telas, dados, recursos do dispositivo e qualidade. Escolha seu caminho e conclua uma etapa pra liberar a próxima.",
     "languages": [
       {
         "id": "react-native",
@@ -183,10 +183,10 @@ export const roadmapsMeta: RoadmapMeta[] = [
         "label": "iOS (Swift)"
       }
     ],
-    "sectionCount": 9,
-    "stepCount": 19,
+    "sectionCount": 7,
+    "stepCount": 22,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "devops",
@@ -194,10 +194,10 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "DevOps do Zero",
     "level": "Iniciante",
     "description": "Da cultura e das bases de Linux e Git aos containers, CI/CD, infraestrutura como código e observabilidade. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 10,
-    "stepCount": 22,
+    "sectionCount": 7,
+    "stepCount": 18,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "gamedev",
@@ -220,9 +220,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
       }
     ],
     "sectionCount": 7,
-    "stepCount": 17,
+    "stepCount": 18,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "analise-dados",
@@ -233,7 +233,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 18,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "engenharia-dados",
@@ -244,7 +244,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 17,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "banco-de-dados",
@@ -253,9 +253,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De SQL e modelagem a índices, transações, backup e segurança: como manter bancos de dados rápidos, seguros e confiáveis. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 17,
+    "stepCount": 18,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "sre",
@@ -266,7 +266,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 17,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "infraestrutura",
@@ -275,9 +275,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De hardware e sistemas operacionais a redes, servidores e atendimento: a porta de entrada mais acessível da TI. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 17,
+    "stepCount": 19,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "analise-sistemas",
@@ -286,9 +286,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De levantar requisitos a modelar processos e validar entregas: a ponte entre o negócio e o time de desenvolvimento. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 6,
-    "stepCount": 14,
+    "stepCount": 15,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "blockchain",
@@ -296,10 +296,10 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Blockchain e Web3 do Zero",
     "level": "Iniciante",
     "description": "Dos fundamentos de blockchain ao Solidity, contratos inteligentes, integração Web3 e a segurança que essa área exige acima de tudo. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 7,
-    "stepCount": 13,
+    "sectionCount": 6,
+    "stepCount": 15,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "iot",
@@ -308,9 +308,9 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De C e eletrônica básica a microcontroladores, sensores, conectividade e projetos de IoT conectados à nuvem. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 14,
+    "stepCount": 15,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "mainframe",
@@ -321,7 +321,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 14,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "comecar-do-zero",

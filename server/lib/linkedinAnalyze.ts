@@ -32,7 +32,10 @@ import { toOpenAIStrictSchema } from "./openaiStrictSchema";
 const SOBRE_LIMIT = 3000;
 const EXPERIENCIAS_LIMIT = 4000;
 
-const AI_MAX_ATTEMPTS = 3;
+// Duas tentativas de 45s (pior caso ~90s + backoff), nao tres de 60s: fazer a
+// pessoa esperar quase tres minutos para receber o mesmo erro so castiga. Melhor
+// falhar rapido e deixar ela tentar de novo. Modelo e max_tokens ficam intactos.
+const AI_MAX_ATTEMPTS = 2;
 const AI_BACKOFF_MS = [400, 800];
 const MAX_TOKENS = 4000;
 
@@ -194,7 +197,7 @@ async function runQualitativeOnce(
         },
       }),
     },
-    { service: "openai", timeoutMs: 60_000 },
+    { service: "openai", timeoutMs: 45_000 },
   );
 
   if (!response.ok) {

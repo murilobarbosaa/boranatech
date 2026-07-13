@@ -48,6 +48,9 @@ export const DRAW_BY_LEVEL: Record<QuizNivel, number> = {
 export const PASS_SCORE = 6;
 
 // Tamanho do pool por nivel: o gerador mira 15 e a validacao exige pelo
-// menos 10 (o sorteio precisa de folga pra variar entre tentativas).
+// menos 9 (o sorteio precisa de folga pra variar entre tentativas). O piso e
+// 9, e nao 10, porque um nivel com um unico secao de 3 folhas comporta no
+// maximo 9 perguntas (3 x teto de 3 por folha), e 9 ja da folga confortavel
+// sobre o maior sorteio por nivel (4 no intermediario): C(9,4) = 126 combinacoes.
 export const POOL_TARGET_PER_LEVEL = 15;
-export const POOL_MIN_PER_LEVEL = 10;
+export const POOL_MIN_PER_LEVEL = 9;

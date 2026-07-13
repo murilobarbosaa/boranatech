@@ -556,6 +556,10 @@ export default function LinkedinAnalisar() {
   const [pdfError, setPdfError] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [analyses, setAnalyses] = useState<LinkedinAnalysisSummary[]>([]);
+  // Historico assentou (sucesso OU falha do fetch). analyses comeca [], entao
+  // a faixa "Como funciona" so pode decidir por Pro depois disso: evita o
+  // flash pra quem ja tem analise.
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   // Delta de nota vs a analise IMEDIATAMENTE anterior (toda analise de
   // LinkedIn e do mesmo perfil da pessoa, entao nao ha alvo a normalizar).
@@ -650,9 +654,16 @@ export default function LinkedinAnalisar() {
   useEffect(() => {
     if (!isPro) return;
     let active = true;
-    void listLinkedinAnalyses().then((data) => {
-      if (active) setAnalyses(data);
-    });
+    void listLinkedinAnalyses()
+      .then((data) => {
+        if (active) setAnalyses(data);
+      })
+      .catch(() => {
+        // Falha no fetch: analyses segue [], a faixa fica no fail-open.
+      })
+      .finally(() => {
+        if (active) setHistoryLoaded(true);
+      });
     return () => {
       active = false;
     };
@@ -990,24 +1001,15 @@ export default function LinkedinAnalisar() {
             </p>
           </motion.div>
 
-          {/* TODO(Ana): escrever a copy da amostra de dica gratis do LinkedIn. */}
-          {showEntry ? (
-            <div className="mx-auto mb-10 max-w-3xl">
-              <div className="card-brutal rounded-2xl border-slate-950 bg-white p-6">
-                <p className="text-xs font-black uppercase tracking-wide text-sky-700">
-                  dica grátis
-                </p>
-                <h2 className="mt-1 font-display text-xl font-black text-slate-950">
-                  Uma amostra antes do Pro
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                  Placeholder de dica grátis de LinkedIn (Ana escreve aqui).
-                </p>
-                <p className="mt-3 text-sm font-bold text-slate-700">
-                  A análise completa com IA e os textos prontos pra colar são
-                  Pro.
-                </p>
-              </div>
+          {/* Faixa "Como funciona" de largura total: so na entrada. Nao-Pro
+              nunca carrega historico, entao ve a faixa sempre (nunca analisou).
+              Pro so decide depois que o historico assenta (historyLoaded), pra
+              nao piscar a faixa antes do fetch retornar. Falha no fetch =
+              historyLoaded true com analyses vazio = faixa visivel (fail-open).
+              Fica acima do grid e, pra quem nao e Pro, acima do ProGate. */}
+          {showEntry && (!isPro || (historyLoaded && analyses.length === 0)) ? (
+            <div className="mb-10">
+              <HowItWorksTimeline />
             </div>
           ) : null}
           {!isPro ? (
@@ -1030,12 +1032,7 @@ export default function LinkedinAnalisar() {
                       : undefined
                   }
                 >
-                  {showEntry ? (
-                    <div className="space-y-12">
-                      <HowItWorksTimeline />
-                      <ResultShowcase />
-                    </div>
-                  ) : null}
+                  {showEntry ? <ResultShowcase /> : null}
                   {/* Palco de intake: peca da familia da vitrine (rotacao leve
                     + selo de proposito), contendo TODO o fluxo de entrada
                     existente (PDF -> revisao -> analise, fallback manual). */}

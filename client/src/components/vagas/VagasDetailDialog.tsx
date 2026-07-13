@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, RefreshCw } from "lucide-react";
+import { Link } from "wouter";
+import {
+  ExternalLink,
+  FileText,
+  Linkedin,
+  MessagesSquare,
+  RefreshCw,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { openAgentWidget } from "@/components/agent/AgentWidget";
+import { AiCtaButton } from "@/components/shared/AiCta";
 import BrutalActionButton from "@/components/shared/BrutalActionButton";
 import {
   contractLabel,
@@ -23,6 +32,32 @@ import { cn } from "@/lib/utils";
 const ac = getPageAccentUi("cyan");
 
 type DetailStatus = "loading" | "error" | "not_found" | "ready";
+
+// Pontes simples (nenhuma das tres paginas consome query param de contexto;
+// verificado na fase 5: so CurriculoGerar le ?rewrite, que e id de ANALISE de
+// curriculo, nao de vaga). O contexto da vaga viaja apenas no prefill do
+// Natechinho.
+// TODO(Ana): validar os rotulos das pontes.
+const BRIDGE_PAGES = [
+  { Icon: MessagesSquare, label: "Simular entrevista", href: "/entrevistas" },
+  { Icon: FileText, label: "Gerar currículo", href: "/curriculo/gerar" },
+  { Icon: Linkedin, label: "Avaliar LinkedIn", href: "/linkedin/analisar" },
+];
+
+// Frase contextual do Natechinho montada so com os campos presentes (campo
+// null fica fora; nunca "na null").
+// TODO(Ana): validar a frase pre-preenchida da ponte do Natechinho.
+function buildAgentPrefill(vaga: VagaDetail): string {
+  const alvo = [`a vaga ${vaga.title}`, vaga.company ? `na ${vaga.company}` : null]
+    .filter(Boolean)
+    .join(" ");
+  const extras = [
+    seniorityLabel(vaga.seniority),
+    modalityLabel(vaga.modality),
+  ].filter((value): value is string => value !== null);
+  const contexto = extras.length > 0 ? ` (${extras.join(", ")})` : "";
+  return `Quero me preparar para ${alvo}${contexto}. Por onde começo?`;
+}
 
 // Modal de detalhe da vaga (Pro). Aberto somente a partir dos cards Pro; a
 // description e SEMPRE renderizada como texto (whitespace-pre-line), nunca
@@ -164,6 +199,46 @@ export default function VagasDetailDialog({
                 Sem descrição detalhada; veja a vaga completa no site original.
               </p>
             )}
+            {/* Pontes de preparacao por vaga (fase 5), no padrao AiCta das
+                outras paginas Pro. A do Natechinho fecha o dialog antes de
+                abrir o widget (sem dois overlays disputando). */}
+            <div className="mt-6 border-t-2 border-slate-100 pt-5">
+              {/* TODO(Ana): validar titulo e copy da secao de preparacao. */}
+              <p
+                className={cn(
+                  "text-xs font-black uppercase tracking-[0.18em]",
+                  ac.iconMuted,
+                )}
+              >
+                Prepare-se para esta vaga
+              </p>
+              <div className="mt-3">
+                <AiCtaButton
+                  accent="cyan"
+                  className="w-full"
+                  description="Abra o Natechinho com o contexto desta vaga e monte seu plano de preparação."
+                  onClick={() => {
+                    onClose();
+                    openAgentWidget(buildAgentPrefill(vaga));
+                  }}
+                >
+                  Preparar com o Natechinho
+                </AiCtaButton>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {BRIDGE_PAGES.map(({ Icon, label, href }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={onClose}
+                    className="bnt-pressable inline-flex items-center gap-1.5 rounded-xl border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-y-px"
+                  >
+                    <Icon className={cn("h-3.5 w-3.5", ac.iconMuted)} aria-hidden />
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </div>
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs font-bold text-slate-500">
                 {sourceLabel(vaga)}

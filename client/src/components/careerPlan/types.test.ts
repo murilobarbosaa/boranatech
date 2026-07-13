@@ -1,6 +1,26 @@
 import { describe, expect, it } from "vitest";
 
-import { buildTrailVM, type TrailSourceResult } from "./types";
+import {
+  buildTrailVM,
+  formatAmount,
+  formatPrice,
+  summarizeInvestment,
+  type StationCertVM,
+  type TrailSourceResult,
+} from "./types";
+
+// Cert minima para os testes de investimento (o que summarizeInvestment le:
+// catalogId e optional).
+function cert(catalogId: string, optional = false): StationCertVM {
+  return {
+    itemId: `cert:${catalogId}`,
+    catalogId,
+    whenLabel: "quando fizer sentido",
+    optional,
+    rationale: "motivo",
+    done: null,
+  };
+}
 
 function anchoredPlan(): TrailSourceResult {
   return {
@@ -162,5 +182,68 @@ describe("buildTrailVM", () => {
     // A estacao passa a ancorar no primeiro bloco valido seguinte.
     expect(vm.stations[0].scheduleLabel).toBe("Meses 4 a 6");
     expect(vm.unanchored).toBe(false);
+  });
+});
+
+describe("formatAmount", () => {
+  it("formata valor unico sem sufixo (default e nas moedas)", () => {
+    expect(formatAmount(150, "USD")).toBe("USD 150");
+    expect(formatAmount(200, "BRL", "once")).toBe("R$ 200");
+  });
+
+  it("sufixa /mes quando a periodicidade e mensal", () => {
+    expect(formatAmount(49, "USD", "monthly")).toBe("USD 49/mês");
+    expect(formatAmount(200, "BRL", "monthly")).toBe("R$ 200/mês");
+  });
+});
+
+describe("formatPrice", () => {
+  it("usa a periodicidade do catalogo (unico vs mensal)", () => {
+    // aws-cloud-practitioner e pagamento unico; google-it-support e mensal.
+    expect(formatPrice("aws-cloud-practitioner")).toBe("USD 100");
+    expect(formatPrice("google-it-support")).toBe("USD 49/mês");
+  });
+
+  it("mostra Gratuito para item gratuito e vazio para item fora do catalogo", () => {
+    expect(formatPrice("freecodecamp")).toBe("Gratuito");
+    expect(formatPrice("curso-fantasma-xyz")).toBe("");
+  });
+});
+
+describe("summarizeInvestment", () => {
+  it("separa unicos e mensais; o mensal NUNCA entra no total unico", () => {
+    const breakdown = summarizeInvestment([
+      cert("aws-cloud-practitioner"), // once, obrigatoria, USD 100
+      cert("cisco-ccna", true), // once, opcional, USD 300
+      cert("google-it-support"), // monthly, obrigatoria, USD 49
+      cert("meta-front-end", true), // monthly, opcional, USD 49
+      cert("freecodecamp"), // gratuito, fora da soma
+      cert("curso-fantasma-xyz"), // fora do catalogo, fora da soma
+    ]);
+
+    expect(breakdown.onceTotals).toEqual([
+      { currency: "USD", required: 100, withOptionals: 400 },
+    ]);
+    expect(breakdown.monthlyTotals).toEqual([
+      { currency: "USD", required: 49, withOptionals: 98 },
+    ]);
+    // Prova de que o mensal (49) nao inflou o total unico: obrigatoria 100 e
+    // com opcional 400 (100 + 300), sem os 49 mensais.
+    expect(breakdown.onceTotals[0].required).toBe(100);
+    expect(breakdown.onceTotals[0].withOptionals).toBe(400);
+
+    expect(breakdown.freeCount).toBe(1);
+    expect(breakdown.outdatedCount).toBe(1);
+  });
+
+  it("plano so com itens de pagamento unico nao gera linha mensal", () => {
+    const breakdown = summarizeInvestment([
+      cert("aws-cloud-practitioner"),
+      cert("cisco-ccna"),
+    ]);
+    expect(breakdown.monthlyTotals).toEqual([]);
+    expect(breakdown.onceTotals).toEqual([
+      { currency: "USD", required: 400, withOptionals: 400 },
+    ]);
   });
 });

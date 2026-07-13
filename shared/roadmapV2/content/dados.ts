@@ -1,3 +1,6 @@
+// TODO(Ana): revisao editorial do upgrade da fase 3c, lote 2 (folha nova de
+// comunicacao de resultados, fecho do projeto elevado, fechos de criterio de
+// dominio, conexoes nominais, blocos de codigo e resources novos).
 import type { RoadmapV2 } from "../types";
 
 export const dados: RoadmapV2 = {
@@ -102,7 +105,7 @@ export const dados: RoadmapV2 = {
           description:
             "As estruturas que guardam coleções de dados, base de tudo o que vem depois.",
           content:
-            "Dados quase nunca são um valor só; são coleções. Por isso duas estruturas do Python merecem atenção especial, porque sustentam tudo o que vem na trilha.\n\nA **lista** é uma sequência ordenada de itens, escrita entre colchetes: `[10, 20, 30]`. Você acessa por posição (a primeira é a de índice 0), adiciona, remove e percorre item a item com um laço. Pense numa coluna de uma planilha: uma sequência de valores em ordem.\n\nO **dicionário** guarda pares de chave e valor, escrito entre chaves: `{\"nome\": \"Ana\", \"idade\": 30}`. Em vez de acessar por posição, você acessa pelo nome da chave. É a forma natural de representar um registro com vários campos, como uma linha de uma tabela onde cada coluna tem um nome.\n\nRepare na combinação poderosa: uma **lista de dicionários** representa uma tabela inteira, cada dicionário sendo uma linha. Essa é exatamente a forma como dados costumam chegar de uma API ou de um arquivo, então você vai esbarrar nela o tempo todo.\n\nDomine bem essas duas estruturas, junto com o laço `for` pra percorrê-las. Quando você chegar no Pandas, vai entender que ele é, no fundo, uma forma muito mais conveniente de trabalhar com esse mesmo tipo de coleção.",
+            'Dados quase nunca são um valor só; são coleções. Por isso duas estruturas do Python merecem atenção especial, porque sustentam tudo o que vem na trilha.\n\nA **lista** é uma sequência ordenada de itens, escrita entre colchetes: `[10, 20, 30]`. Você acessa por posição (a primeira é a de índice 0), adiciona, remove e percorre item a item com um laço. Pense numa coluna de uma planilha: uma sequência de valores em ordem.\n\nO **dicionário** guarda pares de chave e valor, escrito entre chaves: `{"nome": "Ana", "idade": 30}`. Em vez de acessar por posição, você acessa pelo nome da chave. É a forma natural de representar um registro com vários campos, como uma linha de uma tabela onde cada coluna tem um nome.\n\nRepare na combinação poderosa: uma **lista de dicionários** representa uma tabela inteira, cada dicionário sendo uma linha. Essa é exatamente a forma como dados costumam chegar de uma API ou de um arquivo, então você vai esbarrar nela o tempo todo.\n\nDomine bem essas duas estruturas, junto com o laço `for` pra percorrê-las. Quando você chegar no Pandas, vai entender que ele é, no fundo, uma forma muito mais conveniente de trabalhar com esse mesmo tipo de coleção.',
           resources: [
             {
               label: "Python: estruturas de dados (tutorial oficial)",
@@ -162,7 +165,14 @@ export const dados: RoadmapV2 = {
           description:
             "Resumir muitas linhas em totais, médias e contagens por categoria.",
           content:
-            "Até aqui você buscou linhas individuais. Mas análise de dados vive de **resumos**: qual o total de vendas, a média por categoria, quantos clientes por estado. Pra isso existem as funções de agregação e o agrupamento.\n\nAs funções de agregação condensam muitas linhas num número só: `COUNT` conta, `SUM` soma, `AVG` calcula a média, `MIN` e `MAX` pegam o menor e o maior. `SELECT AVG(valor) FROM vendas` devolve a média de todas as vendas, uma única linha de resposta.\n\nO salto de poder vem com o `GROUP BY`, que aplica a agregação **por categoria** em vez de no todo. `SELECT regiao, SUM(valor) FROM vendas GROUP BY regiao` devolve o total de vendas de cada região, uma linha por região. É o equivalente em SQL da tabela dinâmica de uma planilha, e responde a maioria das perguntas de negócio.\n\nQuando você precisa filtrar **depois** de agrupar (mostrar só as regiões cujo total passou de um milhão), usa-se o `HAVING`, que é como o `WHERE` mas para grupos.\n\nCom `SELECT`, `WHERE`, `ORDER BY` e `GROUP BY` você já cobre o grosso do SQL do dia a dia de um analista. O resto, como juntar tabelas com `JOIN`, vem naturalmente quando os projetos exigirem.",
+            "Até aqui você buscou linhas individuais. Mas análise de dados vive de **resumos**: qual o total de vendas, a média por categoria, quantos clientes por estado. Pra isso existem as funções de agregação e o agrupamento.\n\nAs funções de agregação condensam muitas linhas num número só: `COUNT` conta, `SUM` soma, `AVG` calcula a média, `MIN` e `MAX` pegam o menor e o maior. `SELECT AVG(valor) FROM vendas` devolve a média de todas as vendas, uma única linha de resposta.\n\nO salto de poder vem com o `GROUP BY`, que aplica a agregação **por categoria** em vez de no todo. `SELECT regiao, SUM(valor) FROM vendas GROUP BY regiao` devolve o total de vendas de cada região, uma linha por região. É o equivalente em SQL da tabela dinâmica de uma planilha, e responde a maioria das perguntas de negócio.\n\nQuando você precisa filtrar **depois** de agrupar (mostrar só as regiões cujo total passou de um milhão), usa-se o `HAVING`, que é como o `WHERE` mas para grupos.\n\nCom `SELECT`, `WHERE`, `ORDER BY` e `GROUP BY` você já cobre o grosso do SQL do dia a dia de um analista. Você domina este passo quando responde uma pergunta de negócio, como o total por categoria ou a média por região, com um único `GROUP BY`. O resto, como juntar tabelas com `JOIN`, vem naturalmente quando os projetos exigirem.",
+          resources: [
+            {
+              label: "PostgreSQL: funções de agregação (oficial)",
+              url: "https://www.postgresql.org/docs/current/functions-aggregate.html",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
@@ -179,7 +189,7 @@ export const dados: RoadmapV2 = {
           description:
             "Resumir um conjunto de números em poucas medidas que contam a história.",
           content:
-            "Diante de uma coluna com milhares de números, você precisa de medidas que a resumam. É isso que a **estatística descritiva** faz: descrever um conjunto de dados em poucos valores.\n\nAs primeiras são as medidas de **tendência central**, que apontam o centro dos dados. A **média** é a soma dividida pela quantidade. A **mediana** é o valor do meio quando você ordena tudo. A diferença entre elas é uma das lições mais úteis de toda a área: a média é sensível a valores extremos, a mediana não. Numa lista de salários onde um diretor ganha muito, a média sobe e engana; a mediana mostra melhor o salário típico. Saber qual usar evita conclusões erradas.\n\nO segundo grupo são as medidas de **dispersão**, que dizem o quanto os dados variam em torno do centro. O **desvio padrão** é a principal: pequeno significa dados próximos da média, grande significa dados espalhados. Duas turmas podem ter a mesma média de notas e realidades completamente diferentes, e só a dispersão revela isso.\n\nNa prática, você não calcula nada disso na mão; o Pandas devolve todas essas medidas de uma vez. Mas entender o que cada número significa é o que te permite interpretar, em vez de só apertar um botão e repetir um valor sem saber se ele faz sentido.",
+            "Diante de uma coluna com milhares de números, você precisa de medidas que a resumam. É isso que a **estatística descritiva** faz: descrever um conjunto de dados em poucos valores.\n\nAs primeiras são as medidas de **tendência central**, que apontam o centro dos dados. A **média** é a soma dividida pela quantidade. A **mediana** é o valor do meio quando você ordena tudo. A diferença entre elas é uma das lições mais úteis de toda a área: a média é sensível a valores extremos, a mediana não. Numa lista de salários onde um diretor ganha muito, a média sobe e engana; a mediana mostra melhor o salário típico. Saber qual usar evita conclusões erradas.\n\nO segundo grupo são as medidas de **dispersão**, que dizem o quanto os dados variam em torno do centro. O **desvio padrão** é a principal: pequeno significa dados próximos da média, grande significa dados espalhados. Duas turmas podem ter a mesma média de notas e realidades completamente diferentes, e só a dispersão revela isso.\n\nNa prática, você não calcula nada disso na mão; o Pandas devolve todas essas medidas de uma vez com o `.describe()`, que você encontra no passo DataFrame, a tabela do Python. Mas entender o que cada número significa é o que te permite interpretar, em vez de só apertar um botão e repetir um valor sem saber se ele faz sentido.",
         },
         {
           id: "estatistica.distribuicao",
@@ -213,7 +223,7 @@ export const dados: RoadmapV2 = {
           description:
             "A estrutura central pra carregar e inspecionar dados tabulares.",
           content:
-            "O **Pandas** é a biblioteca mais importante da trilha, a que você vai usar todo dia. Ela traz pro Python uma estrutura chamada **DataFrame**: uma tabela com linhas e colunas, exatamente como uma planilha ou o resultado de uma consulta SQL, mas que você manipula com código.\n\nO ponto de partida é carregar dados. Com uma linha como `pd.read_csv(\"dados.csv\")`, o Pandas lê um arquivo e devolve um DataFrame pronto. Ele lê vários formatos, mas o CSV (texto com valores separados por vírgula) é o mais comum no começo.\n\nAntes de qualquer análise, você inspeciona o que chegou. Alguns comandos viram reflexo: `.head()` mostra as primeiras linhas, `.info()` revela as colunas e seus tipos, `.describe()` calcula de uma vez aquelas estatísticas descritivas da seção anterior, e `.shape` informa quantas linhas e colunas existem. Esse ritual de inspeção é a primeira coisa a fazer com qualquer dataset novo.\n\nVocê acessa uma coluna pelo nome, como `df[\"idade\"]`, e a partir daí calcula, filtra e transforma. A grande vantagem sobre uma planilha é a repetibilidade: o mesmo código roda de novo num arquivo atualizado sem refazer nada na mão. Dominar o DataFrame é dominar o trabalho prático de dados.",
+            'O **Pandas** é a biblioteca mais importante da trilha, a que você vai usar todo dia. Ela traz pro Python uma estrutura chamada **DataFrame**: uma tabela com linhas e colunas, exatamente como uma planilha ou o resultado de uma consulta SQL, mas que você manipula com código.\n\nO ponto de partida é carregar e inspecionar:\n\n```python\ndf = pd.read_csv("dados.csv")\ndf.head()      # primeiras linhas\ndf.info()      # colunas e tipos\ndf.describe()  # resumo estatistico\n```\n\nCom uma linha, `pd.read_csv` lê o arquivo (o CSV é o formato mais comum no começo) e devolve um DataFrame. Os comandos seguintes viram reflexo: `.head()` espia as primeiras linhas, `.info()` revela colunas e tipos, `.describe()` calcula de uma vez aquelas medidas da seção de estatística, e `.shape` informa o tamanho. Esse ritual é a primeira coisa a fazer com qualquer dataset novo.\n\nVocê acessa uma coluna pelo nome, como `df["idade"]`, e a partir daí calcula, filtra e transforma. A grande vantagem sobre uma planilha é a repetibilidade: o mesmo código roda de novo num arquivo atualizado sem refazer nada na mão. Você domina este passo quando pega um CSV que nunca viu, roda o ritual de inspeção e descreve o que tem em mãos antes de qualquer análise.',
           resources: [
             {
               label: "Pandas: começando (documentação oficial)",
@@ -233,7 +243,14 @@ export const dados: RoadmapV2 = {
           description:
             "A etapa que mais consome tempo e mais decide a qualidade da análise.",
           content:
-            "Dados do mundo real chegam sujos: campos vazios, datas em formatos diferentes, nomes escritos de cinco jeitos, linhas repetidas. A **limpeza** é a etapa que mais consome tempo num projeto, e não é desperdício; é o que garante que a análise não vai mentir. A regra é dura e verdadeira: lixo entra, lixo sai.\n\nO problema mais frequente são os **valores ausentes**, que o Pandas marca como `NaN`. Você primeiro os localiza (com `.isnull().sum()`, que conta os faltantes por coluna) e depois decide o que fazer: remover as linhas, ou preencher com algum valor razoável, como a mediana da coluna. Não há resposta única; a escolha depende do contexto e você precisa justificá-la.\n\nOutros clássicos: **duplicatas**, que você remove com `.drop_duplicates()`; **tipos errados**, como números que vieram como texto e precisam ser convertidos antes de qualquer cálculo; e **categorias inconsistentes**, como \"SP\", \"sp\" e \"São Paulo\" significando a mesma coisa e bagunçando qualquer agrupamento.\n\nUm hábito profissional desde já: nunca altere o arquivo original. Faça a limpeza em código, num notebook, de forma que qualquer pessoa (inclusive você no futuro) veja exatamente o que foi mudado e por quê. Limpeza documentada é análise confiável; limpeza feita na mão e esquecida é uma bomba-relógio.",
+            'Dados do mundo real chegam sujos: campos vazios, datas em formatos diferentes, nomes escritos de cinco jeitos, linhas repetidas. A **limpeza** é a etapa que mais consome tempo num projeto, e não é desperdício; é o que garante que a análise não vai mentir. A regra é dura e verdadeira: lixo entra, lixo sai.\n\nO problema mais frequente são os **valores ausentes**, que o Pandas marca como `NaN`. Você primeiro os localiza (com `.isnull().sum()`, que conta os faltantes por coluna) e depois decide o que fazer: remover as linhas, ou preencher com algum valor razoável, como a mediana da coluna. Não há resposta única; a escolha depende do contexto e você precisa justificá-la.\n\nOutros clássicos: **duplicatas**, que você remove com `.drop_duplicates()`; **tipos errados**, como números que vieram como texto e precisam ser convertidos antes de qualquer cálculo; e **categorias inconsistentes**, como "SP", "sp" e "São Paulo" significando a mesma coisa e bagunçando qualquer agrupamento.\n\nUm hábito profissional desde já: nunca altere o arquivo original. Faça a limpeza em código, num notebook, de forma que qualquer pessoa (inclusive você no futuro) veja exatamente o que foi mudado e por quê. Limpeza documentada é análise confiável; limpeza feita na mão e esquecida é uma bomba-relógio.',
+          resources: [
+            {
+              label: "Pandas: dados ausentes (documentação oficial)",
+              url: "https://pandas.pydata.org/docs/user_guide/missing_data.html",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "pandas.transformar",
@@ -241,7 +258,14 @@ export const dados: RoadmapV2 = {
           description:
             "As operações do dia a dia que extraem respostas de um DataFrame limpo.",
           content:
-            "Com os dados limpos, começa a parte que responde perguntas. As operações do Pandas espelham o que você já viu em SQL, agora dentro do Python e encadeáveis com fluidez.\n\n**Filtrar** seleciona as linhas que interessam por uma condição, como `df[df[\"idade\"] > 30]`, que traz só quem tem mais de 30 anos. É o equivalente ao `WHERE` do SQL. **Criar colunas** deriva informação nova a partir das existentes, como calcular uma coluna de margem a partir de receita e custo; é uma das operações mais comuns e poderosas.\n\nO **agrupamento** com `.groupby()` é o coração da análise: `df.groupby(\"regiao\")[\"valor\"].sum()` devolve o total por região, exatamente como o `GROUP BY` do SQL. Você agrupa por uma categoria e aplica uma agregação (soma, média, contagem) a cada grupo, condensando milhares de linhas em uma tabela-resumo que conta uma história.\n\nUm conforto pra quem vem do SQL: os conceitos são os mesmos, só a forma de escrever muda. Quem aprendeu a pensar em filtros e agrupamentos numa ferramenta transfere o raciocínio pra outra com facilidade.\n\nDominando filtrar, criar colunas e agrupar, você já consegue extrair de um DataFrame a maioria das respostas que uma análise exploratória exige, e tem em mãos os números que a próxima seção vai transformar em gráficos.",
+            'Com os dados limpos, começa a parte que responde perguntas. As operações do Pandas espelham o que você já viu em SQL, agora dentro do Python e encadeáveis com fluidez.\n\n**Filtrar** seleciona as linhas que interessam por uma condição, como `df[df["idade"] > 30]`, que traz só quem tem mais de 30 anos. É o equivalente ao `WHERE` do SQL. **Criar colunas** deriva informação nova a partir das existentes, como calcular uma coluna de margem a partir de receita e custo; é uma das operações mais comuns e poderosas.\n\nO **agrupamento** com `.groupby()` é o coração da análise: `df.groupby("regiao")["valor"].sum()` devolve o total por região, exatamente como o `GROUP BY` do SQL. Você agrupa por uma categoria e aplica uma agregação (soma, média, contagem) a cada grupo, condensando milhares de linhas em uma tabela-resumo que conta uma história.\n\nUm conforto pra quem vem do SQL: os conceitos são os mesmos, só a forma de escrever muda. Quem aprendeu a pensar em filtros e agrupamentos numa ferramenta transfere o raciocínio pra outra com facilidade.\n\nDominando filtrar, criar colunas e agrupar, você já consegue extrair de um DataFrame a maioria das respostas que uma análise exploratória exige, e tem em mãos os números que o passo Por que e como visualizar vai transformar em gráficos.',
+          resources: [
+            {
+              label: "Pandas: agrupar com groupby (documentação oficial)",
+              url: "https://pandas.pydata.org/docs/user_guide/groupby.html",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "pandas.numpy",
@@ -314,58 +338,6 @@ export const dados: RoadmapV2 = {
         },
       ],
     },
-    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
-    {
-      id: "preparacao",
-      title: "Limpeza e preparação de dados",
-      description:
-        "A etapa que ocupa a maior parte de um projeto real: deixar os dados prontos e confiáveis antes de modelar.",
-      level: "intermediario",
-      children: [
-        {
-          id: "preparacao.ausentes",
-          title: "Tratar valores ausentes e outliers",
-          description:
-            "Decidir com critério o que fazer com dados que faltam e com valores extremos que distorcem tudo.",
-          content:
-            "Depois da limpeza básica no Pandas, existe um trabalho mais fino de **preparação** que separa uma análise amadora de uma profissional. Ele começa pelos **valores ausentes** tratados com critério. Remover as linhas com falta é simples, mas joga fora informação; preencher (com a média, a mediana ou um valor derivado) mantém os dados, mas introduz uma suposição. Não há resposta única: você escolhe conforme o contexto e, principalmente, **registra e justifica** a decisão.\n\nOs **outliers** são o segundo cuidado. São valores extremos, muito acima ou abaixo do resto, que podem ser erro de digitação ou um caso real e importante. Um único outlier arrasta a média e distorce um modelo inteiro. A questão não é apagar todo valor estranho, e sim investigar: é erro (então corrige ou remove) ou é um caso legítimo que o modelo precisa aprender a lidar?\n\nO princípio que atravessa tudo: decisões de preparação mudam o resultado, então devem ser conscientes e documentadas, nunca automáticas. Dados preparados com displicência produzem análises que parecem certas e mentem.",
-        },
-        {
-          id: "preparacao.split",
-          title: "Separar treino e teste",
-          description:
-            "Guardar uma parte dos dados que o modelo nunca vê no treino, para medir sua honestidade depois.",
-          content:
-            "Antes de treinar qualquer modelo, existe um passo que muita gente iniciante pula e paga caro: **separar os dados em treino e teste**. Você reserva uma parte dos dados (digamos, 20%) que o modelo **nunca vê durante o treino**, para usá-la depois só na avaliação. É o equivalente a estudar por um material e ser testado por questões novas.\n\nO motivo é evitar uma ilusão perigosa. Se você avalia o modelo nos mesmos dados em que ele treinou, ele parece ótimo, porque está apenas repetindo o que decorou. O teste com dados separados revela se ele realmente **aprendeu um padrão que generaliza** ou se só memorizou os exemplos vistos, um problema chamado overfitting.\n\nEssa separação é a base de toda avaliação honesta de modelos, que a etapa mais adiante aprofunda. Fazer o split logo no começo, antes de qualquer preparação que use estatísticas dos dados, também evita que informação do conjunto de teste vaze para o treino, um erro sutil que infla os resultados sem você perceber.",
-        },
-      ],
-    },
-    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
-    {
-      id: "features",
-      title: "Feature engineering",
-      description:
-        "Criar boas variáveis a partir dos dados brutos, muitas vezes o que mais melhora um modelo.",
-      level: "intermediario",
-      children: [
-        {
-          id: "features.o-que",
-          title: "O que é feature engineering",
-          description:
-            "Transformar dados crus nas variáveis que realmente ajudam o modelo a enxergar o padrão.",
-          content:
-            "**Feature** é o nome que se dá a cada variável de entrada que o modelo usa para aprender. **Feature engineering** é a arte de criar boas features a partir dos dados brutos, e é frequentemente o que mais melhora um modelo, mais até do que trocar o algoritmo. Um modelo simples com boas features costuma vencer um modelo sofisticado com features ruins.\n\nA ideia é dar ao modelo a informação no formato mais útil. De uma data de nascimento, você extrai a idade; de uma data e hora, o dia da semana ou se é fim de semana; de um endereço, a região. De duas colunas você pode criar uma razão que faz mais sentido que as duas separadas. Cada uma dessas transformações revela um padrão que estava escondido no dado cru.\n\nBoa parte da feature engineering vem de **entender o problema e o negócio**, não só de técnica. Saber o que importa naquele contexto guia quais variáveis criar. Por isso a conversa com quem conhece o domínio, somada à exploração dos dados, é tão valiosa: é dela que saem as ideias das features que fazem diferença.",
-        },
-        {
-          id: "features.categorias-escala",
-          title: "Categorias e escalas",
-          description:
-            "Preparar variáveis de texto e ajustar magnitudes para que o modelo consiga usá-las.",
-          content:
-            "Modelos trabalham com números, então **variáveis categóricas** (texto como cidade, categoria de produto, sim ou não) precisam virar números antes de entrar no modelo. A forma mais comum transforma cada categoria em colunas de zero e um, para que o modelo não invente uma ordem falsa entre valores que não têm ordem (cidade A não é maior que cidade B).\n\nO outro cuidado é a **escala**. Quando uma variável vai de 0 a 1 e outra vai de 0 a 1.000.000, alguns algoritmos passam a dar peso demais à de números grandes só pela magnitude, não pela importância real. Colocar as variáveis numa escala comparável (um processo chamado normalização ou padronização) evita esse viés e ajuda muitos modelos a aprender melhor.\n\nEsses ajustes são menos glamourosos que treinar o modelo, mas são exatamente o tipo de preparação que decide se ele vai funcionar. Um dado bem preparado e bem representado é metade do caminho para um bom resultado, e é por isso que profissionais de dados gastam tanto tempo aqui.",
-        },
-      ],
-    },
     {
       id: "ml",
       title: "Machine learning",
@@ -395,6 +367,13 @@ export const dados: RoadmapV2 = {
             "O tipo mais comum de modelo: aprender com exemplos já rotulados.",
           content:
             "O tipo de machine learning mais usado e o melhor pra começar é o **aprendizado supervisionado**. O nome vem da ideia de aprender com exemplos onde a resposta certa já é conhecida, como um aluno que estuda com o gabarito ao lado.\n\nEle se divide em duas grandes tarefas, e reconhecer qual é qual orienta toda a escolha de ferramenta. A **regressão** prevê um número contínuo: o preço de um imóvel, a temperatura de amanhã, as vendas do próximo mês. A **classificação** prevê uma categoria: este email é spam ou não, este cliente vai cancelar ou ficar, esta transação é fraude ou legítima.\n\nO vocabulário básico é simples. As **features** são as características que você usa pra prever (tamanho e bairro do imóvel). O **alvo** (ou target) é o que você quer prever (o preço). E os dados de treino são as linhas onde você conhece tanto as features quanto o alvo, e é a partir delas que o modelo aprende.\n\nUm bom hábito mental desde o início: comece sempre pelo modelo mais simples que resolve o problema. Modelos como a regressão linear e a árvore de decisão são fáceis de entender, rápidos de treinar e, muitas vezes, suficientes. Saltar direto pro modelo mais complexo da moda costuma trazer mais dor de cabeça que ganho, especialmente quando você ainda está aprendendo a avaliar se o resultado faz sentido.",
+          resources: [
+            {
+              label: "scikit-learn: aprendizado supervisionado (oficial)",
+              url: "https://scikit-learn.org/stable/supervised_learning.html",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "ml.treino",
@@ -403,6 +382,13 @@ export const dados: RoadmapV2 = {
             "Por que separar os dados e como saber se o modelo é mesmo bom.",
           content:
             "Aqui mora o conceito que separa quem entende machine learning de quem só roda código: você **nunca** avalia um modelo nos mesmos dados em que ele aprendeu. O motivo é intuitivo. Um aluno que decora o gabarito acerta a prova que já viu, mas isso não prova que aprendeu; só prova que tem boa memória. Com modelos é igual.\n\nA solução é separar os dados em dois grupos antes de treinar. O conjunto de **treino** ensina o modelo. O conjunto de **teste** fica guardado e só é usado no fim, pra medir o desempenho em dados que o modelo nunca viu. Esse número é o que importa, porque estima como ele vai se sair na vida real.\n\nIsso revela o vilão mais comum, o **overfitting**: o modelo decora os dados de treino, vai perfeito neles e mal nos de teste. Acertar demais no treino é sinal de alerta, não de sucesso. O contrário também existe, o modelo simples demais que não aprende nem o treino.\n\nA avaliação muda conforme a tarefa. Em classificação, você olha a proporção de acertos, mas com cuidado: num problema onde 99 por cento dos casos são de uma classe, acertar 99 por cento pode significar que o modelo só chuta sempre a maioria. Por isso existem métricas que olham além da taxa bruta. Em regressão, mede-se o tamanho típico do erro entre o previsto e o real. Entender essas medidas é o que evita comemorar um modelo que, na prática, não serve.",
+          resources: [
+            {
+              label: "scikit-learn: validação cruzada (oficial)",
+              url: "https://scikit-learn.org/stable/modules/cross_validation.html",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "ml.sklearn",
@@ -410,7 +396,7 @@ export const dados: RoadmapV2 = {
           description:
             "A biblioteca que coloca todo o ciclo de modelagem em poucas linhas.",
           content:
-            "A biblioteca que reúne tudo isso em Python é o **scikit-learn**, a porta de entrada do machine learning prático. Sua maior virtude é a consistência: praticamente todo modelo segue o mesmo punhado de passos, então quando você aprende um, aprende o uso de quase todos.\n\nO ciclo é direto. Você separa os dados em treino e teste com uma função pronta. Escolhe um modelo (uma regressão linear, uma árvore de decisão) e o cria. Chama `.fit()` passando as features e o alvo de treino, e é aí que o modelo aprende. Depois chama `.predict()` pra gerar previsões sobre o conjunto de teste. Por fim, compara essas previsões com as respostas reais usando uma função de métrica. Esse roteiro de quatro passos se repete em quase todo projeto.\n\nO scikit-learn também traz as ferramentas em volta do modelo: preparação de dados, comparação entre modelos, ajuste de configurações. Por agora, foque no ciclo básico; o resto entra conforme a necessidade aparece.\n\nUm fechamento honesto pra esta trilha introdutória: rodar o scikit-learn é a parte fácil. O difícil, e o que de fato cria valor, é tudo que veio antes (entender o problema, limpar os dados, escolher boas features) e a interpretação crítica do resultado no fim. O modelo é uma peça pequena no meio de um trabalho muito maior, e quem domina o ciclo completo é quem se destaca.",
+            "A biblioteca que reúne tudo isso em Python é o **scikit-learn**, a porta de entrada do machine learning prático. Sua maior virtude é a consistência: praticamente todo modelo segue o mesmo punhado de passos, então quando você aprende um, aprende o uso de quase todos.\n\nO ciclo é direto, e a mesma forma se repete em quase todo modelo:\n\n```python\nX_tr, X_te, y_tr, y_te = train_test_split(X, y)\nmodelo = LinearRegression()\nmodelo.fit(X_tr, y_tr)\npred = modelo.predict(X_te)\n```\n\nVocê separa treino e teste, cria o modelo, chama `.fit()` com as features e o alvo de treino (é aí que ele aprende) e `.predict()` pra prever sobre o teste. Por fim, compara as previsões com as respostas reais usando uma função de métrica. Aprendeu esse roteiro, aprendeu o uso de quase todos os modelos.\n\nO scikit-learn também traz as ferramentas em volta do modelo: preparação de dados, comparação entre modelos, ajuste de configurações. Por agora, foque no ciclo básico; o resto entra conforme a necessidade aparece.\n\nUm fechamento honesto pra esta trilha introdutória: rodar o scikit-learn é a parte fácil. O difícil, e o que de fato cria valor, é tudo que veio antes (entender o problema, limpar os dados, escolher boas features) e a interpretação crítica do resultado no fim. O modelo é uma peça pequena no meio de um trabalho muito maior, e quem domina o ciclo completo é quem se destaca.",
           resources: [
             {
               label: "scikit-learn: começando (documentação oficial)",
@@ -418,50 +404,6 @@ export const dados: RoadmapV2 = {
               kind: "doc",
             },
           ],
-        },
-      ],
-    },
-    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
-    {
-      id: "avaliacao",
-      title: "Avaliação de modelos",
-      description:
-        "Saber se um modelo é bom de verdade: as métricas certas para cada problema e as armadilhas comuns.",
-      level: "intermediario",
-      children: [
-        {
-          id: "avaliacao.metricas",
-          title: "Métricas por tipo de problema",
-          description:
-            "Acurácia não serve para tudo; cada tipo de problema pede a métrica que reflete o que importa.",
-          content:
-            "Treinar um modelo é só metade; a outra metade é saber se ele presta. E o erro mais comum de quem começa é confiar apenas na **acurácia** (a porcentagem de acertos), que engana em muitos casos. Num problema onde 99% dos exemplos são de uma classe (como detectar fraude, rara por natureza), um modelo que responde sempre a classe comum acerta 99% e não serve para nada.\n\nPor isso cada tipo de problema tem métricas próprias. Em **classificação**, além da acurácia, olha-se a precisão (dos que o modelo apontou como positivos, quantos eram mesmo) e o recall (dos positivos reais, quantos o modelo pegou). O equilíbrio entre os dois depende do que custa mais: deixar passar um caso ou dar um alarme falso. Em **regressão** (prever um número), mede-se o tamanho médio do erro entre o previsto e o real.\n\nEscolher a métrica certa é escolher o que você quer que o modelo otimize, e isso é uma decisão ligada ao problema de negócio, não um detalhe técnico. Um modelo com ótima acurácia e péssimo recall pode ser um desastre num contexto onde deixar passar um caso é grave.",
-        },
-        {
-          id: "avaliacao.overfitting",
-          title: "Overfitting e generalização",
-          description:
-            "O modelo que decora em vez de aprender parece perfeito no treino e falha no mundo real.",
-          content:
-            "O maior inimigo silencioso de um modelo é o **overfitting**: quando ele decora os dados de treino em vez de aprender o padrão geral. Um modelo assim acerta quase tudo nos dados que viu e erra feio nos dados novos, que é justamente onde ele precisa funcionar. É como um aluno que decora o gabarito e trava na prova de verdade.\n\nÉ para revelar isso que serve a separação treino e teste feita na preparação. Avaliar o modelo nos dados de teste, que ele nunca viu, mostra a diferença entre o desempenho decorado (no treino) e o real (no teste). Uma folga grande entre os dois é o sinal clássico de overfitting: ótimo no treino, fraco no teste.\n\nO objetivo final de um modelo nunca é acertar os dados que já temos, e sim **generalizar** para os que virão. Guardar essa mentalidade muda a forma como você avalia: não celebre um resultado brilhante no treino sem checar o teste, porque o número que importa é o que ele entrega diante do desconhecido.",
-        },
-      ],
-    },
-    // TODO(Ana): etapa nova (aprofundamento), revisar copy.
-    {
-      id: "comunicacao",
-      title: "Comunicação de resultados",
-      description:
-        "Uma análise só gera valor quando alguém entende e decide com ela: contar a história por trás dos números.",
-      level: "intermediario",
-      children: [
-        {
-          id: "comunicacao.storytelling",
-          title: "Contar a história dos dados",
-          description:
-            "Traduzir números e gráficos numa mensagem clara que leva a uma decisão.",
-          content:
-            "A melhor análise do mundo não vale nada se ninguém entende ou age sobre ela. **Comunicar resultados** é a habilidade que transforma trabalho técnico em impacto, e é frequentemente o que separa o analista que cresce do que fica estagnado, por melhor que ele seja tecnicamente.\n\nComunicar bem começa por lembrar para quem você fala. Quem toma a decisão em geral não quer o passo a passo do código nem a lista de métricas; quer saber o que os dados dizem, o que isso significa para o problema dele e o que fazer a respeito. A regra é liderar com a conclusão, sustentá-la com os dados essenciais, e deixar o detalhe técnico como apoio para quem quiser aprofundar.\n\nUm gráfico bem escolhido comunica em segundos o que uma tabela esconde em minutos, mas ele precisa ter um propósito claro: cada visualização deve responder a uma pergunta e destacar a mensagem, não enfeitar. Contar a história (aqui está o problema, isto é o que os dados mostram, esta é a recomendação) é o que faz uma análise virar decisão.",
         },
       ],
     },
@@ -481,12 +423,20 @@ export const dados: RoadmapV2 = {
             "A melhor forma de consolidar tudo é fazer uma análise de ponta a ponta com dados reais. E o primeiro passo, escolher bons dados, importa mais do que parece.\n\nDuas fontes são ideais pra começar. Os **dados públicos** de órgãos oficiais, como institutos de estatística e portais de governo, trazem temas que afetam a vida real e dão peso ao projeto. E o **Kaggle**, plataforma com milhares de conjuntos de dados gratuitos sobre quase qualquer assunto, do clima ao cinema. Em ambos, prefira um tema que genuinamente te interesse: você vai passar horas com esses dados, e curiosidade real sustenta a análise até o fim.\n\nEvite dois extremos. Um dataset grande e bagunçado demais trava o iniciante na limpeza e desanima. Um pequeno e perfeito demais não ensina nada, porque a vida real nunca é assim. Procure o meio: dados com alguma sujeira pra você tratar, mas tamanho administrável.\n\nCom os dados em mãos, faça o ritual de inspeção do Pandas (`.head()`, `.info()`, `.describe()`) e formule as perguntas que vai responder. Boas perguntas são concretas: qual região cresceu mais, o que se relaciona com o resultado X, como tal número evoluiu no tempo. Sem pergunta, a exploração vira passeio sem destino. Definir o que você quer descobrir é o que dá direção a todo o resto.",
         },
         {
+          id: "projeto.comunicacao",
+          title: "Comunicar os resultados",
+          description:
+            "Transformar a análise numa mensagem que quem decide entende e usa.",
+          content:
+            "Uma análise que ninguém entende não muda nada. O último passo do fluxo, comunicar, costuma valer tanto quanto a análise em si, e é o que mais separa um profissional de dados de quem só roda código. **Storytelling com dados** é transformar números numa mensagem que alguém de fora entende e usa pra decidir. Três hábitos concentram quase todo o ganho.\n\nComece pela **conclusão**, não pelo suspense. Quem decide não quer acompanhar sua investigação passo a passo; quer saber o que fazer. Abra com a resposta (as vendas do Sul caíram e a causa provável é esta), depois mostre a evidência que a sustenta. É o inverso de como você conduziu a análise, e é o que respeita o tempo de quem lê.\n\nEscolha o gráfico pela **pergunta**, não pela beleza. Tendência no tempo pede linha, comparar categorias pede barras, uma parte do todo pede uma proporção simples. Gráfico bonito e errado engana; simples e certo esclarece. Às vezes um número grande e claro comunica melhor que qualquer gráfico.\n\nAdapte o **nível de detalhe ao público**. Pra um time técnico, mostre o método e as limitações. Pra um gestor de negócio, foque no impacto e na decisão, e deixe o detalhe estatístico de lado. A mesma análise vira duas histórias conforme quem escuta.\n\nVocê domina este passo quando resume qualquer análise sua em uma frase de conclusão e um único gráfico que a sustenta.",
+        },
+        {
           id: "projeto.analise",
           title: "Análise completa de dataset público",
           description:
             "Percorrer o fluxo inteiro, do dado bruto à conclusão comunicada.",
           content:
-            "Hora de juntar tudo. Uma análise completa percorre o fluxo que abriu a trilha, e é o projeto que melhor demonstra sua capacidade num portfólio, porque mostra raciocínio, não só código.\n\nO caminho: parta da pergunta definida, carregue os dados (de um arquivo ou de uma consulta SQL), faça a **limpeza** com cuidado e documentada, explore com estatísticas e gráficos pra entender o terreno, e responda à pergunta com evidências. Se fizer sentido pro seu tema, encaixe um modelo simples pra prever algo; se não fizer, uma análise exploratória bem feita já é um projeto completo e valioso, sem forçar machine learning onde ele não cabe.\n\nO entregável vive num notebook que mistura código, gráficos e texto, contando uma história clara: qual era a pergunta, o que você fez com os dados, o que encontrou e o que isso significa. Termine com uma conclusão honesta, incluindo as limitações (o que os dados não permitem afirmar). Reconhecer limites demonstra maturidade analítica e vale mais que uma certeza exagerada.\n\nPublique no GitHub com um bom README, porque é assim que recrutadores veem seu trabalho. O projeto abaixo te guia numa análise de dados públicos de ponta a ponta, exatamente o conjunto de habilidades que esta trilha construiu. Use-o como roteiro e troque pelo tema que mais te move.",
+            "Olhe pra trás um instante: você entrou nesta trilha sem escrever uma linha de Python, e agora consulta bancos com SQL, limpa e agrupa dados com Pandas, lê distribuições com estatística e desenha os gráficos que contam a história. Este passo junta tudo numa entrega só, a que melhor demonstra sua capacidade num portfólio, porque mostra raciocínio, não só código.\n\nA encomenda é a análise do projeto abaixo: partir de um dataset público real e ir da pergunta à conclusão comunicada. O caminho percorre o fluxo que abriu a trilha: parta da pergunta definida, carregue os dados, faça a **limpeza** documentada, explore com estatísticas e gráficos, e responda com evidências. Se fizer sentido pro tema, encaixe um modelo simples; se não, uma análise exploratória bem feita já é um projeto completo, sem forçar machine learning onde ele não cabe.\n\nO entregável vive num notebook que mistura código, gráficos e texto, aplicando o passo Comunicar os resultados: abra pela conclusão, escolha cada gráfico pela pergunta e feche com uma nota honesta de limitações (o que os dados não permitem afirmar). Reconhecer limites demonstra maturidade analítica e vale mais que uma certeza exagerada.\n\nO critério de chegada é objetivo: o notebook no GitHub com um README que conta a pergunta, os dados e a conclusão, rodável por quem clonar, e você explicando cada decisão de limpeza e cada gráfico sem hesitar. É este projeto que vira a peça central do seu portfólio de dados.",
           project: "analise-dados-publicos",
           resources: [
             {

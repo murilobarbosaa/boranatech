@@ -1,7 +1,12 @@
 import { getCatalogItem, type CareerCatalogItem } from "@shared/careerCatalog";
 import { cn } from "@/lib/utils";
 import type { FxRate } from "@/services/careerPlanService";
-import { formatAmount, formatPrice, type StationCertVM } from "./types";
+import {
+  formatAmount,
+  formatPrice,
+  summarizeInvestment,
+  type StationCertVM,
+} from "./types";
 
 interface InvestmentSummaryProps {
   // TODAS as certs do plano (ancoradas + gerais), na ordem de exibicao.
@@ -13,14 +18,6 @@ interface InvestmentSummaryProps {
   fx?: FxRate | null;
 }
 
-type Currency = "USD" | "BRL";
-
-interface CurrencyTotal {
-  currency: Currency;
-  required: number;
-  withOptionals: number;
-}
-
 // Data da cotacao (AAAA-MM-DD do server) exibida como DD/MM/AAAA, sem passar
 // por Date (evita deslize de fuso).
 function formatQuoteDate(iso: string): string {
@@ -29,11 +26,13 @@ function formatQuoteDate(iso: string): string {
 }
 
 // Secao "Investimento da rota": soma honesta dos precos do catalogo.
-// Regras: so itens presentes no catalogo atual e pagos entram na soma
+// Regras: so itens presentes no catalogo atual e pagos entram nas somas
 // (gratuitos e desatualizados ficam fora, anotados); moedas NUNCA convertidas
-// (subtotal por moeda); com certs opcionais o total vira duas linhas por
-// moeda: obrigatorias + "ate X com as opcionais" (escolha declarada no lugar
-// do total unico com nota).
+// entre si sem a PTAX e o "≈". Pagamento unico e assinatura MENSAL sao naturezas
+// separadas: o mensal NUNCA entra no total unico, vai numa linha propria
+// ("enquanto os cursos durarem"), porque somar mensalidade como custo unico
+// subestima o investimento real. Com certs opcionais, cada total vira duas
+// linhas por moeda (obrigatorias + "ate X com as opcionais").
 export default function InvestmentSummary({
   certs,
   catalogVersion,
@@ -47,43 +46,22 @@ export default function InvestmentSummary({
       item: getCatalogItem(cert.catalogId) ?? null,
     }));
 
-  const outdatedCount = rows.filter((row) => !row.item).length;
-  const freeCount = rows.filter(
-    (row) => row.item && "free" in row.item.price,
-  ).length;
+  const { onceTotals, monthlyTotals, freeCount, outdatedCount } =
+    summarizeInvestment(certs);
 
-  const totalsByCurrency = new Map<Currency, CurrencyTotal>();
-  for (const row of rows) {
-    if (!row.item || "free" in row.item.price) continue;
-    const { amount, currency } = row.item.price;
-    const entry = totalsByCurrency.get(currency) ?? {
-      currency,
-      required: 0,
-      withOptionals: 0,
-    };
-    entry.withOptionals += amount;
-    if (!row.cert.optional) entry.required += amount;
-    totalsByCurrency.set(currency, entry);
-  }
-  // Ordem deterministica: BRL antes de USD.
-  const totals = Array.from(totalsByCurrency.values()).sort((a, b) =>
-    a.currency.localeCompare(b.currency),
-  );
-
-  // Total geral em reais: subtotal BRL + USD convertido pela PTAX, com
-  // arredondamento para inteiro de real. So existe com fx presente E total
-  // em USD; fora disso os subtotais por moeda seguem sozinhos.
-  const usdTotal = totalsByCurrency.get("USD") ?? null;
-  const brlTotal = totalsByCurrency.get("BRL") ?? null;
+  // Total geral em reais: SO os itens de pagamento unico (o mensal nunca entra
+  // aqui). Subtotal BRL + USD convertido pela PTAX, arredondado para inteiro de
+  // real. So existe com fx presente E total unico em USD.
+  const usdOnce = onceTotals.find((t) => t.currency === "USD") ?? null;
+  const brlOnce = onceTotals.find((t) => t.currency === "BRL") ?? null;
   const grand =
-    fx && usdTotal
+    fx && usdOnce
       ? {
           required:
-            (brlTotal?.required ?? 0) +
-            Math.round(usdTotal.required * fx.usdBrl),
+            (brlOnce?.required ?? 0) + Math.round(usdOnce.required * fx.usdBrl),
           withOptionals:
-            (brlTotal?.withOptionals ?? 0) +
-            Math.round(usdTotal.withOptionals * fx.usdBrl),
+            (brlOnce?.withOptionals ?? 0) +
+            Math.round(usdOnce.withOptionals * fx.usdBrl),
         }
       : null;
 
@@ -104,6 +82,8 @@ export default function InvestmentSummary({
         : `${outdatedCount} itens desatualizados fora da soma`,
     );
   }
+
+  const hasTotals = onceTotals.length > 0 || monthlyTotals.length > 0;
 
   return (
     <section>
@@ -147,9 +127,9 @@ export default function InvestmentSummary({
           ))}
         </ul>
 
-        {totals.length > 0 ? (
+        {hasTotals ? (
           <div className="mt-4 border-t-2 border-slate-950 pt-3">
-            {totals.map((total) => (
+            {onceTotals.map((total) => (
               <p
                 key={total.currency}
                 className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
@@ -175,6 +155,7 @@ export default function InvestmentSummary({
                 </span>
               </p>
             ))}
+
             {grand && fx ? (
               <>
                 <p className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-dashed border-slate-300 pt-2">
@@ -201,6 +182,56 @@ export default function InvestmentSummary({
                   Central), valores aproximados.
                 </p>
               </>
+            ) : null}
+
+            {monthlyTotals.length > 0 ? (
+              <div className="mt-3 border-t border-dashed border-slate-300 pt-2">
+                {monthlyTotals.map((total) => {
+                  const brl =
+                    fx && total.currency === "USD"
+                      ? Math.round(total.required * fx.usdBrl)
+                      : null;
+                  return (
+                    <p
+                      key={total.currency}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
+                    >
+                      <span className="text-xs font-black uppercase tracking-wide text-slate-600">
+                        {/* TODO(Ana): rotulo do custo mensal recorrente */}
+                        Enquanto os cursos durarem
+                      </span>
+                      <span className="text-right">
+                        <span className="font-display text-lg font-black text-slate-950">
+                          mais{" "}
+                          {formatAmount(total.required, total.currency, "monthly")}
+                        </span>
+                        {brl !== null ? (
+                          <span className="ml-1.5 text-xs font-bold text-slate-600">
+                            ≈ {formatAmount(brl, "BRL", "monthly")}
+                          </span>
+                        ) : null}
+                        {total.withOptionals > total.required ? (
+                          <span className="ml-1.5 text-xs font-bold text-slate-500">
+                            {/* TODO(Ana): sufixo do mensal com opcionais */}
+                            até{" "}
+                            {formatAmount(
+                              total.withOptionals,
+                              total.currency,
+                              "monthly",
+                            )}{" "}
+                            com as opcionais
+                          </span>
+                        ) : null}
+                      </span>
+                    </p>
+                  );
+                })}
+                <p className="mt-1 text-xs font-medium text-slate-500">
+                  {/* TODO(Ana): nota do custo mensal (depende do tempo de conclusao) */}
+                  Os cursos são assinatura mensal; o total depende de quantos
+                  meses você levar para concluir cada um.
+                </p>
+              </div>
             ) : null}
           </div>
         ) : null}

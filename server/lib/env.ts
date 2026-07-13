@@ -69,6 +69,22 @@ export const env = {
   asaasApiKey: requireEnv("ASAAS_API_KEY"),
   asaasWebhookToken: requireEnv("ASAAS_WEBHOOK_TOKEN"),
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
+  // Kill-switch do pagamento. FAIL-CLOSED: so a string exata "true" liga; ausente,
+  // vazia ou qualquer outro valor deixa o checkout desligado (default off). Usado
+  // enquanto a conta de producao do Asaas esta em analise: a vitrine do Pro segue
+  // visivel, so o pagamento fica fechado.
+  billingEnabled: (() => {
+    const raw = process.env.BILLING_ENABLED;
+    if (!raw) return false; // ausente: billing off, esperado em dev, sem alarde.
+    if (raw === "true") {
+      console.log("[env] billing LIGADO (BILLING_ENABLED=true).");
+      return true;
+    }
+    console.warn(
+      `[env] AVISO: BILLING_ENABLED="${raw}" nao liga o billing. Apenas o literal exato "true" liga (sem aspas, sem espaco, case-sensitive); billing DESLIGADO.`,
+    );
+    return false;
+  })(),
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
   // Teto diario do agente conversacional, separado das ferramentas de IA para o
@@ -94,6 +110,14 @@ export const env = {
   // TODO: calibrar INTERVIEW_TTS_DAILY_LIMIT_PRO.
   interviewTtsDailyLimitPro: parseInt(
     process.env.INTERVIEW_TTS_DAILY_LIMIT_PRO || "200",
+    10,
+  ),
+  // Teto diario proprio do chat de intake do plano de carreira, separado da
+  // quota global das ferramentas (padrao agent-chat/interview-turn). Pro-only:
+  // o gate barra antes de qualquer chamada.
+  // TODO: calibrar CAREER_PLAN_CHAT_DAILY_LIMIT_PRO.
+  careerPlanChatDailyLimitPro: parseInt(
+    process.env.CAREER_PLAN_CHAT_DAILY_LIMIT_PRO || "60",
     10,
   ),
   avatarReportHideThreshold: (() => {
@@ -167,6 +191,20 @@ export const env = {
     if (Number.isInteger(parsed) && parsed >= 100) return parsed;
     console.warn(
       `[env] AVISO: EMAIL_CAMPAIGN_RATE_MS invalido ("${raw}"), usando 1000`,
+    );
+    return 1000;
+  })(),
+  // Intervalo minimo (ms) entre jobs da fila emails (transacionais) no limiter do
+  // BullMQ. O Resend limita a 2 req/s e a fila email-campaign ja reserva ~1 req/s
+  // (EMAIL_CAMPAIGN_RATE_MS), entao o default de 1 envio por 1000ms mantem o total
+  // dentro do teto. Invalido (nao inteiro ou < 100) cai no default com warn no boot.
+  transactionalEmailRateMs: (() => {
+    const raw = process.env.TRANSACTIONAL_EMAIL_RATE_MS;
+    if (!raw) return 1000;
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 100) return parsed;
+    console.warn(
+      `[env] AVISO: TRANSACTIONAL_EMAIL_RATE_MS invalido ("${raw}"), usando 1000`,
     );
     return 1000;
   })(),

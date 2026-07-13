@@ -1,14 +1,20 @@
 // ============================================================================
 // CATALOGO CURADO DE CERTIFICACOES, CURSOS E RECURSOS GRATUITOS.
 //
-// TODO(Ana): revisar itens, precos e URLs antes do lancamento da feature;
-// este catalogo e a UNICA fonte citavel pelo gerador de plano de carreira.
+// Precos auditados em julho de 2026 com fonte (reajuste da linha CompTIA em
+// 01/06/2026, fim do programa gratuito ISC2 CC em 20/05/2026). Este catalogo e
+// a UNICA fonte citavel pelo gerador de plano de carreira.
+// TODO(Ana): conferencia editorial final dos itens e das URLs.
 //
 // Trava de honestidade da feature: o modelo NUNCA escreve nome, preco ou URL
 // de certificacao/curso; ele so referencia IDs deste catalogo. Os precos sao
 // VALORES DE REFERENCIA (priceAsOf) a confirmar, em valores redondos
 // conhecidos, nunca centavos inventados. Item com nome/provedor/nivel incerto
 // fica FORA do catalogo.
+//
+// price = custo TOTAL para obter a credencial: quando a certificacao exige mais
+// de uma prova (ex: CompTIA A+, Core 1 + Core 2), o valor e a SOMA das provas,
+// nunca o de uma prova isolada. O detalhe fica nas notes do item.
 //
 // Este arquivo e material editorial: adicionar/ajustar item aqui NAO exige
 // mudanca de codigo (o gerador injeta o subconjunto da area no prompt).
@@ -19,8 +25,11 @@ export const CAREER_CATALOG_VERSION = "2026-07";
 export type CareerCatalogItemType = "certification" | "course" | "free_resource";
 export type CareerCatalogLevel = "intro" | "fundamental" | "associate" | "professional";
 
+// period OBRIGATORIO nos itens pagos: assinatura mensal (Coursera) x pagamento
+// unico (prova/certificacao). Obrigatorio de proposito, para o TypeScript forcar
+// cada item a declarar, em vez de um default silencioso que subestima o custo.
 export type CareerCatalogPrice =
-  | { amount: number; currency: "USD" | "BRL" }
+  | { amount: number; currency: "USD" | "BRL"; period: "once" | "monthly" }
   | { free: true };
 
 export interface CareerCatalogItem {
@@ -48,7 +57,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "AWS Certified Cloud Practitioner",
     provider: "AWS",
     level: "fundamental",
-    price: { amount: 100, currency: "USD" },
+    price: { amount: 100, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://aws.amazon.com/certification/certified-cloud-practitioner/",
     areas: ["cloud", "devops", "infraestrutura", "sre"],
@@ -60,7 +69,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "AWS Certified AI Practitioner",
     provider: "AWS",
     level: "fundamental",
-    price: { amount: 100, currency: "USD" },
+    price: { amount: 100, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://aws.amazon.com/certification/certified-ai-practitioner/",
     areas: ["ia", "cloud", "dados"],
@@ -72,7 +81,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "AWS Certified Solutions Architect Associate",
     provider: "AWS",
     level: "associate",
-    price: { amount: 150, currency: "USD" },
+    price: { amount: 150, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://aws.amazon.com/certification/certified-solutions-architect-associate/",
     areas: ["cloud", "devops", "sre", "infraestrutura"],
@@ -87,7 +96,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Microsoft Certified: Azure Fundamentals (AZ-900)",
     provider: "Microsoft",
     level: "fundamental",
-    price: { amount: 99, currency: "USD" },
+    price: { amount: 99, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://learn.microsoft.com/credentials/certifications/azure-fundamentals/",
     areas: ["cloud", "infraestrutura"],
@@ -99,7 +108,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Microsoft Certified: Azure Administrator Associate (AZ-104)",
     provider: "Microsoft",
     level: "associate",
-    price: { amount: 165, currency: "USD" },
+    price: { amount: 165, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://learn.microsoft.com/credentials/certifications/azure-administrator/",
     areas: ["cloud", "infraestrutura", "devops"],
@@ -112,7 +121,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Microsoft Certified: Power BI Data Analyst Associate (PL-300)",
     provider: "Microsoft",
     level: "associate",
-    price: { amount: 165, currency: "USD" },
+    price: { amount: 165, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://learn.microsoft.com/credentials/certifications/data-analyst-associate/",
     areas: ["analise-dados", "dados"],
@@ -125,7 +134,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Google Cloud Certified: Cloud Digital Leader",
     provider: "Google Cloud",
     level: "fundamental",
-    price: { amount: 99, currency: "USD" },
+    price: { amount: 99, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://cloud.google.com/learn/certification/cloud-digital-leader",
     areas: ["cloud"],
@@ -137,7 +146,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Google Cloud Certified: Associate Cloud Engineer",
     provider: "Google Cloud",
     level: "associate",
-    price: { amount: 125, currency: "USD" },
+    price: { amount: 125, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://cloud.google.com/learn/certification/cloud-engineer",
     areas: ["cloud", "devops", "sre"],
@@ -151,7 +160,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Cisco Certified Network Associate (CCNA)",
     provider: "Cisco",
     level: "associate",
-    price: { amount: 300, currency: "USD" },
+    price: { amount: 300, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.cisco.com/site/us/en/learn/training-certifications/certifications/enterprise/ccna/index.html",
     areas: ["infraestrutura", "ciberseguranca", "sre"],
@@ -164,11 +173,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "CompTIA A+",
     provider: "CompTIA",
     level: "fundamental",
-    price: { amount: 250, currency: "USD" },
+    price: { amount: 548, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.comptia.org/certifications/a",
     areas: ["infraestrutura"],
-    notes: "Valor de referencia POR PROVA; sao duas provas (Core 1 e Core 2).",
+    notes:
+      "Certificacao de duas provas (Core 1 e Core 2), cerca de US$ 274 cada; o valor exibido e a soma das duas.",
   },
   {
     id: "comptia-network-plus",
@@ -176,7 +186,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "CompTIA Network+",
     provider: "CompTIA",
     level: "associate",
-    price: { amount: 350, currency: "USD" },
+    price: { amount: 399, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.comptia.org/certifications/network",
     areas: ["infraestrutura", "sre", "ciberseguranca"],
@@ -189,7 +199,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "CompTIA Security+",
     provider: "CompTIA",
     level: "associate",
-    price: { amount: 400, currency: "USD" },
+    price: { amount: 439, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.comptia.org/certifications/security",
     areas: ["ciberseguranca", "infraestrutura", "devops"],
@@ -204,12 +214,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "ISC2 Certified in Cybersecurity (CC)",
     provider: "ISC2",
     level: "fundamental",
-    price: { free: true },
+    price: { amount: 199, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.isc2.org/certifications/cc",
     areas: ["ciberseguranca"],
     notes:
-      "Exame gratuito pelo programa de gratuidade da ISC2; confirmar vigencia e a taxa anual de manutencao (AMF).",
+      "O programa gratuito One Million Certified in Cybersecurity encerrou novas inscricoes em 20 de maio de 2026 e o exame voltou ao preco padrao. Ha uma taxa anual de manutencao separada de US$ 50, nao inclusa no preco do exame.",
   },
   // ------------------------------ Scrum.org -------------------------------
   {
@@ -218,7 +228,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Professional Scrum Master I (PSM I)",
     provider: "Scrum.org",
     level: "fundamental",
-    price: { amount: 200, currency: "USD" },
+    price: { amount: 200, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.scrum.org/assessments/professional-scrum-master-i-certification",
     areas: ["gestao", "produto"],
@@ -231,11 +241,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "GitHub Foundations",
     provider: "GitHub",
     level: "fundamental",
-    price: { amount: 99, currency: "USD" },
+    price: { amount: 99, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://resources.github.com/learn/certifications/",
     areas: ["geral"],
-    notes: "Fundamentos de Git e GitHub; util em qualquer area tecnica.",
+    notes:
+      "Fundamentos de Git e GitHub; util em qualquer area tecnica. A prova esta disponivel em portugues do Brasil e e gratuita para estudantes verificados no GitHub Education.",
   },
   {
     id: "github-actions",
@@ -243,7 +254,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "GitHub Actions",
     provider: "GitHub",
     level: "associate",
-    price: { amount: 99, currency: "USD" },
+    price: { amount: 99, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://resources.github.com/learn/certifications/",
     areas: ["devops", "sre"],
@@ -257,11 +268,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "LPI Linux Essentials",
     provider: "Linux Professional Institute",
     level: "fundamental",
-    price: { amount: 120, currency: "USD" },
+    price: { amount: 120, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://www.lpi.org/our-certifications/linux-essentials-overview/",
     areas: ["infraestrutura", "devops", "sre", "backend"],
-    notes: "Porta de entrada de Linux; sem pre-requisito.",
+    notes:
+      "Porta de entrada de Linux; sem pre-requisito. O valor e da faixa Tier 1; o Brasil esta na Tier 2, com preco menor (cerca de US$ 100); confirmar no site da LPI.",
   },
   {
     id: "cncf-cka",
@@ -269,13 +281,13 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Certified Kubernetes Administrator (CKA)",
     provider: "Linux Foundation / CNCF",
     level: "professional",
-    price: { amount: 395, currency: "USD" },
+    price: { amount: 445, currency: "USD", period: "once" },
     priceAsOf: "2026-07",
     url: "https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/",
     areas: ["devops", "sre", "cloud"],
     prereqIds: ["lpi-linux-essentials"],
     notes:
-      "Prova pratica (hands-on); exige experiencia real com Kubernetes antes.",
+      "Prova pratica (hands-on); exige experiencia real com Kubernetes antes. O preco inclui um retake.",
   },
   // -------------------- Coursera Professional Certificates ----------------
   {
@@ -284,11 +296,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Google IT Support Professional Certificate",
     provider: "Google / Coursera",
     level: "intro",
-    price: { amount: 49, currency: "USD" },
+    price: { amount: 49, currency: "USD", period: "monthly" },
     priceAsOf: "2026-07",
     url: "https://www.coursera.org/professional-certificates/google-it-support",
     areas: ["infraestrutura", "geral"],
-    notes: "Valor de referencia da assinatura MENSAL do Coursera.",
+    notes:
+      "Assinatura MENSAL do Coursera (valor de referencia por mes). O total depende de quantos meses voce levar para concluir.",
   },
   {
     id: "google-data-analytics",
@@ -296,11 +309,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Google Data Analytics Professional Certificate",
     provider: "Google / Coursera",
     level: "intro",
-    price: { amount: 49, currency: "USD" },
+    price: { amount: 49, currency: "USD", period: "monthly" },
     priceAsOf: "2026-07",
     url: "https://www.coursera.org/professional-certificates/google-data-analytics",
     areas: ["analise-dados", "dados"],
-    notes: "Valor de referencia da assinatura MENSAL do Coursera.",
+    notes:
+      "Assinatura MENSAL do Coursera (valor de referencia por mes). O total depende de quantos meses voce levar para concluir.",
   },
   {
     id: "google-ux-design",
@@ -308,11 +322,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Google UX Design Professional Certificate",
     provider: "Google / Coursera",
     level: "intro",
-    price: { amount: 49, currency: "USD" },
+    price: { amount: 49, currency: "USD", period: "monthly" },
     priceAsOf: "2026-07",
     url: "https://www.coursera.org/professional-certificates/google-ux-design",
     areas: ["uxui"],
-    notes: "Valor de referencia da assinatura MENSAL do Coursera.",
+    notes:
+      "Assinatura MENSAL do Coursera (valor de referencia por mes). O total depende de quantos meses voce levar para concluir.",
   },
   {
     id: "ibm-ai-engineering",
@@ -320,12 +335,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "IBM AI Engineering Professional Certificate",
     provider: "IBM / Coursera",
     level: "associate",
-    price: { amount: 49, currency: "USD" },
+    price: { amount: 49, currency: "USD", period: "monthly" },
     priceAsOf: "2026-07",
     url: "https://www.coursera.org/professional-certificates/ai-engineer",
     areas: ["ia", "dados"],
     notes:
-      "Valor de referencia da assinatura MENSAL do Coursera; exige base de Python.",
+      "Assinatura MENSAL do Coursera (valor de referencia por mes); exige base de Python. O total depende de quantos meses voce levar para concluir.",
   },
   {
     id: "ibm-rag-agentic-ai",
@@ -333,12 +348,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "IBM RAG and Agentic AI Professional Certificate",
     provider: "IBM / Coursera",
     level: "associate",
-    price: { amount: 49, currency: "USD" },
+    price: { amount: 49, currency: "USD", period: "monthly" },
     priceAsOf: "2026-07",
     url: "https://www.coursera.org/professional-certificates/ibm-rag-and-agentic-ai",
     areas: ["ia"],
     notes:
-      "Valor de referencia da assinatura MENSAL do Coursera; exige base de Python e de LLMs.",
+      "Assinatura MENSAL do Coursera (valor de referencia por mes); exige base de Python e de LLMs. O total depende de quantos meses voce levar para concluir.",
   },
   {
     id: "meta-front-end",
@@ -346,11 +361,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Meta Front-End Developer Professional Certificate",
     provider: "Meta / Coursera",
     level: "intro",
-    price: { amount: 49, currency: "USD" },
+    price: { amount: 49, currency: "USD", period: "monthly" },
     priceAsOf: "2026-07",
     url: "https://www.coursera.org/professional-certificates/meta-front-end-developer",
     areas: ["frontend", "fullstack"],
-    notes: "Valor de referencia da assinatura MENSAL do Coursera.",
+    notes:
+      "Assinatura MENSAL do Coursera (valor de referencia por mes). O total depende de quantos meses voce levar para concluir.",
   },
   {
     id: "meta-back-end",
@@ -358,11 +374,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Meta Back-End Developer Professional Certificate",
     provider: "Meta / Coursera",
     level: "intro",
-    price: { amount: 49, currency: "USD" },
+    price: { amount: 49, currency: "USD", period: "monthly" },
     priceAsOf: "2026-07",
     url: "https://www.coursera.org/professional-certificates/meta-back-end-developer",
     areas: ["backend", "fullstack"],
-    notes: "Valor de referencia da assinatura MENSAL do Coursera.",
+    notes:
+      "Assinatura MENSAL do Coursera (valor de referencia por mes). O total depende de quantos meses voce levar para concluir.",
   },
   // --------------------------- Gratuitos ----------------------------------
   {

@@ -65,11 +65,11 @@ export const gamedev: RoadmapV2 = {
           title: "A linguagem da sua engine",
           description: "Programar é a base, e cada engine usa uma linguagem.",
           content:
-            "Antes de fazer mágica numa engine, você precisa saber **programar**. A lógica de programação (variáveis, condicionais, laços, funções, estruturas de dados) é a base inegociável, e a linguagem específica vem da engine que você escolheu. Se você está totalmente do zero, vale começar pelos fundamentos de lógica antes de mergulhar na sintaxe.\n\nUm conselho que vale pra todas as engines: comece pequeno. Aprenda o suficiente da linguagem pra fazer um objeto se mover na tela, e vá aumentando a complexidade conforme constrói jogos cada vez maiores. Escolha sua engine acima pra ver qual linguagem aprender e por onde começar.",
+            "Antes de fazer mágica numa engine, você precisa **saber programar**. A lógica de programação (variáveis, condicionais, laços, funções e estruturas de dados) é a base inegociável, e ela é a mesma em qualquer linguagem. O que muda de engine pra engine é a **sintaxe** e as ferramentas, não o raciocínio. Se você está totalmente do zero, vale firmar essa lógica antes de mergulhar numa linguagem específica.\n\nCada engine tem sua linguagem, e é ela que você usa pra dar comportamento aos objetos do jogo: no Unity é o C#, na Godot é o GDScript, na Unreal é o C++ (com o apoio do Blueprints, um sistema visual). Nenhuma é melhor em abstrato; a sua já foi decidida quando você escolheu a engine. E aprendida uma, as outras vêm com muito menos esforço, porque os conceitos se transferem.\n\nUm conselho que vale pra todas: **comece pequeno**. Aprenda o suficiente da linguagem pra fazer um objeto se mover na tela, e aumente a complexidade conforme constrói jogos maiores. Ninguém aprende uma linguagem inteira antes de usá-la; você aprende usando, com um objetivo concreto na frente. Escolha sua engine acima pra ver qual linguagem aprender, por onde começar e a documentação certa.\n\nVocê domina esta etapa quando consegue ler e escrever a lógica básica da sua linguagem (uma condição, um laço, uma função) sem travar, o suficiente pra fazer um objeto responder a um comando.",
           byLanguage: {
             unity: {
               content:
-                "A Unity usa **C#**, uma linguagem da Microsoft, robusta e relativamente amigável pra iniciantes. Foque no básico: variáveis e tipos, condicionais, laços, funções, classes e listas. Em Unity, você escreve scripts em C# que se anexam aos objetos do jogo pra dar comportamento a eles. A documentação oficial da linguagem é completa, e o Unity Learn traz cursos gratuitos que ensinam C# já no contexto de jogos.",
+                "A Unity usa **C#**, uma linguagem da Microsoft robusta e relativamente amigável pra quem começa. Comece pelo essencial: variáveis e tipos, condicionais, laços, funções, classes e listas. O jeito da Unity é o de **scripts que se anexam a objetos**: você escreve uma classe C# que herda de MonoBehaviour, prende ela num objeto da cena, e ela ganha vida através de métodos que a engine chama sozinha (como o que roda a cada frame). É assim que o seu código conversa com o jogo. A documentação da linguagem é completa, e o Unity Learn ensina C# já no contexto de jogos, que é a forma mais rápida de fixar.",
               resources: [
                 {
                   label: "Unity Learn (cursos oficiais gratuitos)",
@@ -85,7 +85,7 @@ export const gamedev: RoadmapV2 = {
             },
             godot: {
               content:
-                "A Godot usa principalmente o **GDScript**, uma linguagem própria criada pra ela, com sintaxe parecida com Python, simples e fácil de aprender, ideal pra quem começa. Foque no básico: variáveis, condicionais, laços, funções e o trabalho com os nós da cena. Em Godot, você anexa scripts GDScript aos nós pra dar comportamento. A documentação oficial da Godot ensina o GDScript do zero, de forma clara e gratuita.",
+                "A Godot usa principalmente o **GDScript**, uma linguagem criada pra ela, com sintaxe parecida com Python, indentada e enxuta, das mais fáceis de aprender pra quem começa. Comece pelo essencial: variáveis, condicionais, laços, funções e como um script conversa com o nó a que está preso. O jeito da Godot é **anexar um script a um nó**: o script estende o nó e responde a métodos que a engine chama (como o que roda a cada frame). A Godot também aceita C# pra quem prefere, mas o GDScript é o caminho recomendado pra iniciantes. A documentação oficial ensina o GDScript do zero, de graça e com clareza.",
               resources: [
                 {
                   label: "Godot: GDScript (documentação oficial)",
@@ -96,7 +96,7 @@ export const gamedev: RoadmapV2 = {
             },
             unreal: {
               content:
-                "A Unreal usa **C++**, uma linguagem poderosa porém mais difícil, com conceitos como gerenciamento de memória que exigem mais cuidado. Foque no básico de C++ (tipos, funções, classes, ponteiros) com paciência, porque a curva é mais íngreme. A Unreal também oferece o **Blueprints**, um sistema visual de programação por blocos que permite criar lógica sem escrever código, ótimo pra prototipar e aprender antes de mergulhar fundo no C++.",
+                "A Unreal usa **C++**, uma linguagem poderosa e mais difícil, com temas como gerenciamento de memória e ponteiros que exigem cuidado. Comece pelo básico (tipos, funções, classes, ponteiros) com paciência, porque a curva é mais íngreme que a das outras. Mas a Unreal tem um trunfo pra iniciantes: o **Blueprints**, um sistema de programação visual por blocos que permite montar a lógica do jogo sem escrever C++, ligando nós numa tela. Muita coisa dá pra prototipar só com Blueprints, e o comum é combinar os dois: Blueprints pro fluxo do jogo, C++ pro que precisa de desempenho ou controle fino. A documentação oficial cobre os dois caminhos.",
               resources: [
                 {
                   label: "Unreal Engine: documentação oficial",
@@ -127,11 +127,11 @@ export const gamedev: RoadmapV2 = {
           description:
             "O modelo de objetos e cenas que estrutura tudo na engine.",
           content:
-            "Todo jogo é feito de **cenas** (telas ou níveis, como o menu principal ou uma fase) compostas por **objetos** (o jogador, os inimigos, as plataformas, a câmera, as luzes). Entender como a sua engine organiza esses objetos é o passo que destrava a construção de qualquer jogo, porque é a estrutura sobre a qual tudo o mais se apoia.\n\nCada engine tem seu modelo e seu vocabulário próprio pra isso, mas a ideia central é a mesma: você monta a cena posicionando objetos, e dá comportamento a eles através de scripts na linguagem que você aprendeu. Há também o conceito de **reaproveitar** objetos prontos (um inimigo que você configura uma vez e usa dezenas de vezes), que economiza muito trabalho. Escolha sua engine acima pra ver o modelo dela.",
+            "Todo jogo é feito de **cenas** (uma tela ou um nível: o menu, uma fase) montadas com **objetos** (o jogador, os inimigos, as plataformas, a câmera, as luzes). Entender como a sua engine organiza esses objetos é o passo que destrava a construção de qualquer jogo, porque é a estrutura sobre a qual todo o resto se apoia.\n\nQuatro ideias formam o modelo mental, e reaparecem em todas as engines com nomes diferentes. A **cena** é o contêiner de uma tela do jogo. O **objeto** é cada coisa dentro dela. O **comportamento** vem de scripts (ou blocos visuais) que você prende aos objetos, na linguagem que aprendeu. E o **reaproveitamento**: você configura um objeto uma vez (um inimigo, uma bala) e o reutiliza dezenas de vezes, com um ajuste na origem refletindo em todas as cópias.\n\nO que a engine faz por você é o trabalho pesado: ela roda o **ciclo do jogo** (o game loop, que o próximo passo detalha), desenha os objetos, aplica a física, trata a entrada e chama o seu código nos momentos certos. Você não escreve esse motor; você preenche os espaços que ele abre pra sua lógica. Essa inversão, o programa não corre do início ao fim mas responde ao ciclo da engine, é a virada de chave da programação de jogos.\n\nCada engine tem seu vocabulário pra tudo isso, mas a ideia é a mesma. Escolha sua engine acima pra ver o modelo dela. Você domina esta etapa quando consegue montar uma cena com alguns objetos e explicar, na sua engine, o que é a cena, o que é cada objeto e de onde vem o comportamento deles.",
           byLanguage: {
             unity: {
               content:
-                "Na Unity, tudo na cena é um **GameObject**, e o comportamento vem dos **Components** que você anexa a ele (um componente de física, um de renderização, ou um script C# seu). Essa composição (um objeto = vários componentes) é o coração da Unity. Objetos reutilizáveis são salvos como **Prefabs**: você configura um inimigo uma vez, vira prefab, e o usa quantas vezes quiser, com mudanças no prefab refletindo em todas as cópias.",
+                "Na Unity, tudo na cena é um **GameObject**, e ele começa vazio: o comportamento vem dos **Components** que você anexa (um de física, um de renderização, um de câmera, ou um script C# seu). Um objeto é, na prática, a soma dos seus componentes, e essa **composição** é o coração da Unity, você monta o que quer juntando peças. Objetos que se repetem viram **Prefabs**: você configura o inimigo uma vez, salva como prefab, e o instancia quantas vezes quiser; mudar o prefab muda todas as cópias de uma vez.",
               resources: [
                 {
                   label: "Unity: manual (documentação oficial)",
@@ -142,7 +142,7 @@ export const gamedev: RoadmapV2 = {
             },
             godot: {
               content:
-                "Na Godot, tudo é **nó** (Node), e os nós se organizam em árvore dentro de uma **cena**. Um nó faz uma coisa (mostrar um sprite, detectar colisão, tocar um som), e você os combina aninhando-os. A grande sacada da Godot é que **qualquer cena pode virar um nó de outra cena**, o que torna o reaproveitamento muito natural: você cria a cena do inimigo e a instancia quantas vezes quiser dentro da fase.",
+                "Na Godot, tudo é **nó** (Node), e os nós se organizam numa **árvore** dentro de uma cena. Cada nó faz uma coisa (mostrar um sprite, detectar colisão, tocar um som), e você compõe comportamentos aninhando nós. A sacada da Godot é que **qualquer cena pode virar um nó de outra cena**: você cria a cena do inimigo, com seus nós, e a instancia dentro da fase quantas vezes quiser. Esse encaixe de cenas dentro de cenas é o que torna o reaproveitamento tão natural na Godot.",
               resources: [
                 {
                   label: "Godot: introdução (documentação oficial)",
@@ -153,7 +153,7 @@ export const gamedev: RoadmapV2 = {
             },
             unreal: {
               content:
-                "Na Unreal, os objetos que vivem no mundo do jogo são chamados de **Actors**, e a cena (o nível) é montada com eles. O comportamento pode vir de código C++ ou de **Blueprints**, o sistema visual de scripting. Objetos reutilizáveis e configuráveis são organizados como Blueprints próprios, que você posiciona no nível. A documentação oficial da Unreal cobre esse modelo e o fluxo de trabalho no editor.",
+                "Na Unreal, os objetos que vivem no mundo do jogo são **Actors**, e o nível é montado com eles. Um Actor pode conter **Components** (malha, colisão, som), de forma parecida com a composição da Unity. O comportamento vem de **C++** ou de **Blueprints**, o scripting visual, e os dois convivem. Objetos reutilizáveis e configuráveis são feitos como **Blueprints próprios**, que você posiciona e reaproveita pelo nível. A documentação oficial cobre esse modelo e o fluxo no editor.",
               resources: [
                 {
                   label: "Unreal Engine: documentação oficial",
@@ -171,6 +171,13 @@ export const gamedev: RoadmapV2 = {
             "O ciclo que roda dezenas de vezes por segundo e faz o jogo acontecer.",
           content:
             'Por trás de todo jogo existe o **game loop**: um ciclo que se repete muitas vezes por segundo (em geral entre 30 e 60, ou mais) e que, a cada volta, atualiza o estado do jogo e redesenha a tela. Cada volta desse ciclo é um **frame**. Quando você joga a 60 frames por segundo, o game loop está rodando 60 vezes por segundo. Entender isso muda como você pensa a programação de jogos.\n\nA cada frame, o jogo basicamente faz três coisas: lê a **entrada** do jogador (qual tecla foi apertada, pra onde o controle aponta), **atualiza** o estado do mundo (move objetos, aplica física, roda a lógica dos inimigos) e **desenha** o resultado na tela. As engines cuidam desse ciclo pra você e oferecem pontos onde seu código entra: tipicamente uma função que roda **a cada frame**, onde você coloca a lógica que precisa rodar continuamente, como o movimento do jogador.\n\nUm conceito crucial nasce daí: o **delta time**, o tempo que passou desde o frame anterior. Como nem todo computador roda na mesma velocidade, você multiplica os movimentos pelo delta time pra que o jogo se comporte igual num PC rápido e num lento. Sem isso, seu personagem andaria mais rápido numa máquina potente, o que é um bug clássico de iniciante.\n\nA lição prática: pense em "o que precisa acontecer a cada frame?". Mover, checar colisões, atualizar a pontuação. Essa mentalidade de ciclo contínuo, diferente de um programa comum que roda do início ao fim e termina, é a base de raciocínio da programação de jogos, e vale pra todas as engines.',
+          resources: [
+            {
+              label: "Game Programming Patterns: Game Loop (livro oficial)",
+              url: "https://gameprogrammingpatterns.com/game-loop.html",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
@@ -231,6 +238,13 @@ export const gamedev: RoadmapV2 = {
             "Gravidade, empurrões e a detecção de quando objetos se tocam.",
           content:
             'Boa parte dos jogos depende de **física** e **colisões**, e as engines trazem isso pronto, poupando você de programar gravidade e cálculos de impacto do zero. Você não precisa entender a matemática por baixo pra usar; precisa entender os conceitos.\n\nDois elementos trabalham juntos. O **corpo físico** é o que faz um objeto obedecer à física da engine: cair com a gravidade, ser empurrado, deslizar. Você marca quais objetos são afetados pela física e quais ficam parados (uma plataforma sólida, por exemplo). O **colisor** é a forma (uma caixa, um círculo) que define os limites do objeto pra detecção de toque. Curiosamente, o colisor nem sempre tem o formato exato do desenho; muitas vezes uma forma simples aproximada já basta e roda mais rápido.\n\nA **detecção de colisão** é o que avisa seu código quando dois objetos se tocam, e é a base de incontáveis mecânicas: o jogador pegou uma moeda, a bala acertou o inimigo, o personagem pisou no chão, caiu no espinho. As engines disparam eventos nesses momentos, e você programa o que acontece (somar ponto, tirar vida, tocar um som).\n\nUm conceito útil é o **trigger** (gatilho): um colisor que detecta a passagem sem bloquear fisicamente, perfeito pra zonas invisíveis como "o jogador entrou na área do chefe" ou "chegou ao fim da fase".\n\nUma dica de iniciante: comece com a física que a engine oferece pronta, em vez de tentar simular tudo na mão. Só parta pra cálculos próprios quando precisar de um comportamento muito específico que o motor padrão não dá. Na maioria dos jogos, a física pronta da engine cobre o necessário.',
+          resources: [
+            {
+              label: "MDN: detecção de colisão 2D (documentação)",
+              url: "https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "mecanicas.ia",
@@ -239,6 +253,13 @@ export const gamedev: RoadmapV2 = {
             "Dar comportamento a inimigos e personagens não jogáveis.",
           content:
             'Inimigos e personagens não jogáveis (NPCs) precisam de comportamento, e isso é a **inteligência artificial** dos jogos. Atenção a uma expectativa: aqui IA não significa redes neurais nem aprendizado de máquina. É lógica programada que faz os personagens parecerem inteligentes, geralmente mais simples do que se imagina, e o objetivo não é ser "esperto", é ser **divertido** de enfrentar.\n\nA técnica mais comum e didática é a **máquina de estados**: o inimigo está sempre num estado (patrulhando, perseguindo, atacando, fugindo) e troca de estado conforme condições. Por exemplo: patrulha um trecho; se o jogador chega perto, muda pra perseguir; se fica ao alcance, muda pra atacar; se perde o jogador de vista, volta a patrulhar. Esse modelo simples já produz inimigos que parecem ter intenção, e cobre a maioria dos jogos de iniciante.\n\nOutros recursos comuns: a **detecção** (como o inimigo percebe o jogador, por distância ou por linha de visão) e o **pathfinding** (encontrar caminho até um alvo desviando de obstáculos), que as engines costumam oferecer pronto através de ferramentas de navegação.\n\nUm princípio de design importante: a melhor IA de jogo não é a mais difícil de vencer, é a que cria a experiência certa. Um inimigo perfeito que nunca erra é frustrante, não divertido. Bons jogos dão ao inimigo falhas propositais (um tempo de reação, uma brecha pra explorar) pra que enfrentá-lo seja um desafio justo e prazeroso. Pra começar, uma máquina de estados simples com comportamentos claros vai te levar longe, e refinar a sensação vem com os testes.',
+          resources: [
+            {
+              label: "Game Programming Patterns: State (livro oficial)",
+              url: "https://gameprogrammingpatterns.com/state.html",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
@@ -268,6 +289,14 @@ export const gamedev: RoadmapV2 = {
               kind: "doc",
             },
           ],
+        },
+        {
+          id: "conteudo.animacao",
+          title: "Animação 2D",
+          description:
+            "Sprites, frames e a máquina de animação: o jogo comunica pelo movimento.",
+          content:
+            "Um personagem parado é um desenho; um personagem que anda, ataca e pula é um jogo. A **animação 2D** é o que dá vida ao movimento, e a base dela são os **sprites**, as imagens 2D que representam os objetos. A animação nasce de trocar esses sprites em sequência, rápido o bastante pra o olho ver movimento, do mesmo jeito que um desenho animado.\n\nNa prática, os quadros (**frames**) de uma animação costumam vir juntos numa única imagem, o **sprite sheet**: uma folha com todas as poses (os passos de uma caminhada, os quadros de um ataque) lado a lado. A engine recorta essa folha e mostra um frame por vez, no ritmo certo, pra montar o ciclo. Guardar tudo numa folha só é mais eficiente que dezenas de arquivos soltos.\n\nO conceito que organiza animações mais ricas é a **máquina de estados de animação**: o personagem está sempre num estado visual (parado, andando, pulando, atacando) e troca conforme o que acontece no jogo. Quando o jogador aperta pra correr, a animação passa de parado pra andando; quando ele sai do chão, vai pra pulando. É a mesma ideia da máquina de estados que você viu na IA de inimigos, agora aplicada ao visual, e as engines têm ferramentas próprias pra montar essas transições.\n\nUma regra prática que separa o iniciante do resto: **animação boa é feedback, não enfeite**. O movimento não está ali só pra ser bonito, ele comunica o que está acontecendo. O leve recuo ao levar dano, o esticar antes do pulo, o tremor ao aterrissar, tudo isso conta ao jogador o que o jogo está fazendo, sem uma palavra. Você domina esta etapa quando as animações do seu personagem contam o que ele está fazendo a cada momento, não quando elas só parecem bonitas.",
         },
         {
           id: "conteudo.uisave",
@@ -338,6 +367,8 @@ export const gamedev: RoadmapV2 = {
           title: "Projeto final: roguelike procedural",
           description:
             "Um roguelike com geração procedural de fases, consolidando tudo que a trilha construiu.",
+          content:
+            "Esta é a hora de juntar tudo o que a trilha construiu num jogo de verdade, do tipo que rende um ótimo portfólio. Você aprendeu a linguagem da sua engine, o modelo de cenas e objetos, o game loop, movimento, física e colisões, IA de inimigos, assets e animação, interface e save, e os fundamentos de game design. O projeto final exercita esse conjunto inteiro.\n\nO projeto vinculado te encomenda um **roguelike com geração procedural de fases**: um jogo em que o jogador avança por níveis, enfrenta inimigos com comportamento, e cada partida monta as fases de forma diferente por código, em vez de níveis fixos desenhados à mão. A geração procedural é o coração do desafio, porque força você a pensar as regras que fazem uma fase nascer jogável e justa, não só bonita. Some a isso o movimento com game feel, colisões, uma máquina de estados pros inimigos, uma interface com vida e pontos, e o save do progresso.\n\nNão precisa ser grande; precisa estar **completo e jogável do início ao fim**. Você chega ao fim quando outra pessoa consegue abrir o seu jogo, jogar uma partida inteira com fases geradas na hora, morrer ou vencer, e entender o que fazer sem você explicar. Publicado na Itch.io, com uma página caprichada, esse roguelike vira a peça de portfólio que mais convence na área.",
           project: "roguelike-procedural",
         },
         {

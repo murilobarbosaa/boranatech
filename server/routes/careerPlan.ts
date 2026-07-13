@@ -2,14 +2,26 @@ import crypto from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 
-import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
+import { estimateCost } from "../lib/aiTools";
 import {
+  CAREER_PLAN_CHAT_TOOL,
+  checkAiDailyLimit,
+  checkCareerPlanChatDailyLimit,
+  logAiUsage,
+} from "../lib/aiUsage";
+import {
+  CAREER_PLAN_BUDGETS,
   generateCareerPlan,
   type CareerPlanAiIo,
   type CareerPlanChecklistItem,
   type CareerPlanIntake,
   type CareerPlanStoredResult,
 } from "../lib/careerPlan/generate";
+import {
+  runIntakeChatTurn,
+  validateIntakeChatBody,
+  type IntakeChatAiIo,
+} from "../lib/careerPlan/intakeChat";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { fetchUserContextPool } from "../lib/userContext/pool";
@@ -38,7 +50,7 @@ const GenerateSchema = z.object({
   level: z.string().trim().min(1).max(60),
   hoursPerWeek: z.number().int().min(1).max(40),
   horizonMonths: z.number().int().min(3).max(24),
-  budget: z.enum(["zero", "ate_500", "ate_2000", "acima_2000"]),
+  budget: z.enum(CAREER_PLAN_BUDGETS),
 });
 
 interface PlanRow {
@@ -338,6 +350,134 @@ router.get(
       res.json({ data });
     } catch (err) {
       next(err);
+    }
+  },
+);
+
+// POST /api/career-plan/intake/chat: um turno do chat de intake. NAO gera plano
+// e NAO persiste conversa (efemera; o client mantem o historico e reenvia a cada
+// turno, como o agente). A geracao segue na rota /generate, que revalida tudo.
+router.post(
+  "/intake/chat",
+  async (req: Request, res: Response, next: NextFunction) => {
+    // Recheck fail-closed: qualquer coisa diferente de true e tratada como nao Pro.
+    if (req.isPro !== true) {
+      return next(
+        createError(
+          403,
+          "forbidden",
+          "Recurso Pro. Assine o Plano Pro para montar seu plano de carreira.",
+        ),
+      );
+    }
+
+    const userId = req.user!.id;
+    const requestId =
+      (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+    const body = validateIntakeChatBody(req.body);
+    if (!body.ok) {
+      if (body.error === "turn_limit") {
+        // TODO(Ana): mensagem de limite de turnos do chat (a UI oferece o formulario).
+        return next(
+          createError(
+            400,
+            "turn_limit",
+            "Chegamos ao limite desta conversa. Prefira preencher o formulario para gerar seu plano.",
+          ),
+        );
+      }
+      if (body.error === "payload_too_large") {
+        // TODO(Ana): mensagem de conversa longa demais.
+        return next(
+          createError(
+            400,
+            "payload_too_large",
+            "Conversa longa demais. Comece uma nova ou use o formulario.",
+          ),
+        );
+      }
+      // TODO(Ana): mensagem de requisicao invalida.
+      return next(
+        createError(400, "invalid_request", "Envie pelo menos uma mensagem valida."),
+      );
+    }
+
+    // Quota DEDICADA por tool (nao a global): fail-closed 503 na falha de
+    // verificacao, 429 no limite atingido. logAiUsage por turno.
+    const usage = await checkCareerPlanChatDailyLimit(userId);
+    if (!usage.allowed) {
+      if (usage.verificationFailed) {
+        await logAiUsage({
+          userId,
+          tool: CAREER_PLAN_CHAT_TOOL,
+          requestId,
+          status: "error",
+          errorMessage: "rate limit check failed",
+        });
+        // TODO(Ana): mensagem de falha ao verificar o limite de uso (503).
+        return next(
+          createError(
+            503,
+            "rate_check_failed",
+            "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+          ),
+        );
+      }
+      await logAiUsage({
+        userId,
+        tool: CAREER_PLAN_CHAT_TOOL,
+        requestId,
+        status: "rate_limited",
+      });
+      // TODO(Ana): mensagem de limite diario de mensagens do chat atingido (429).
+      return next(
+        createError(
+          429,
+          "rate_limited",
+          "Limite diario de mensagens do chat atingido. Tente novamente amanha.",
+        ),
+      );
+    }
+
+    let aiIo: IntakeChatAiIo = { inputChars: 0, outputChars: 0 };
+    try {
+      const turn = await runIntakeChatTurn(userId, body.messages, (io) => {
+        aiIo = io;
+      });
+      await logAiUsage({
+        userId,
+        tool: CAREER_PLAN_CHAT_TOOL,
+        requestId,
+        status: "success",
+        inputChars: aiIo.inputChars,
+        outputChars: aiIo.outputChars,
+        costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars),
+      });
+      res.json({
+        reply: turn.reply,
+        intake: turn.intake,
+        missing: turn.missing,
+        ready: turn.ready,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      await logAiUsage({
+        userId,
+        tool: CAREER_PLAN_CHAT_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: message,
+        inputChars: aiIo.inputChars,
+      });
+      // TODO(Ana): mensagem de erro ao processar o turno do chat (502).
+      return next(
+        createError(
+          502,
+          "upstream_error",
+          "Nao foi possivel responder agora. Tente de novo.",
+        ),
+      );
     }
   },
 );

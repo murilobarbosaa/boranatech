@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -32,6 +32,7 @@ import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import { createCheckout } from "@/services/subscriptionService";
+import { apiUrl } from "@/lib/api";
 import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
 import {
   FROM_MONTHLY_LABEL,
@@ -118,13 +119,158 @@ function scrollToPlans() {
   }
 }
 
+// Mesma validacao leve das outras capturas de e-mail (waitlist/newsletter): a
+// confirmacao real fica no double opt-in do e-mail de confirmacao.
+const WAITLIST_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// CTA de lista de espera exibido quando o pagamento esta desligado (kill-switch).
+// Espelha a ESTRUTURA da NewsletterCapture (idle/submitting/success/error,
+// fail-closed, tratamento de erro por status), mas posta em POST /api/waitlist
+// com source "planos_pro" (consentimento e segmentacao proprios do pagamento,
+// distintos da newsletter). Reaproveita o endpoint, dedupe e e-mail de
+// confirmacao ja existentes; nao cria fluxo novo.
+function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
+  const [email, setEmail] = useState(defaultEmail);
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  if (submitStatus === "success") {
+    return (
+      <p
+        className="max-w-md text-center text-sm font-bold text-emerald-700"
+        role="status"
+        aria-live="polite"
+      >
+        {/* TODO(Ana): copy de sucesso da lista de espera (pedir confirmacao no inbox, double opt-in). */}
+        Pronto! Vamos te avisar por e-mail assim que a assinatura abrir. Confira
+        sua caixa de entrada para confirmar.
+      </p>
+    );
+  }
+
+  const submitting = submitStatus === "submitting";
+
+  async function handleWaitlist(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed || !WAITLIST_EMAIL_RE.test(trimmed)) {
+      // TODO(Ana): copy de e-mail invalido (validacao client).
+      setErrorMessage("Informe um e-mail válido.");
+      setSubmitStatus("error");
+      return;
+    }
+
+    setSubmitStatus("submitting");
+    setErrorMessage("");
+
+    try {
+      const res = await fetch(apiUrl("/api/waitlist"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed, source: "planos_pro" }),
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: { code?: string } }
+        | null;
+
+      if (res.ok && data?.ok) {
+        setSubmitStatus("success");
+        return;
+      }
+
+      const code = data?.error?.code;
+      // TODO(Ana): copy de cada caso de erro abaixo.
+      if (res.status === 400 && code === "invalid_email") {
+        setErrorMessage("E-mail inválido.");
+      } else if (res.status === 429 && code === "too_many_attempts") {
+        setErrorMessage("Muitas tentativas. Tente novamente em instantes.");
+      } else {
+        setErrorMessage("Não foi possível concluir. Tente novamente.");
+      }
+      setSubmitStatus("error");
+    } catch {
+      // TODO(Ana): copy de erro de rede.
+      setErrorMessage("Não foi possível concluir. Tente novamente.");
+      setSubmitStatus("error");
+    }
+  }
+
+  return (
+    <form onSubmit={handleWaitlist} noValidate className="w-full max-w-md">
+      <p className="mb-3 text-center text-sm font-bold text-slate-700">
+        {/* TODO(Ana): copy do aviso de indisponibilidade temporaria do checkout. */}
+        A assinatura abre em breve. Deixe seu e-mail que a gente te avisa.
+      </p>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          id="waitlist-email"
+          type="email"
+          required
+          placeholder="seu@email.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          disabled={submitting}
+          aria-label="Email para a lista de espera"
+          aria-describedby="waitlist-status"
+          aria-invalid={submitStatus === "error"}
+          className="min-w-0 flex-1 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-sm font-bold text-slate-950 placeholder:text-slate-400 transition-colors focus:border-amber-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+        />
+        <button
+          type="submit"
+          disabled={submitting}
+          className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#0f172a]"
+        >
+          <Sparkles className="h-5 w-5" />
+          {/* TODO(Ana): rotulos do CTA da lista de espera (normal e carregando). */}
+          {submitting ? "Enviando..." : "Avise-me quando abrir"}
+        </button>
+      </div>
+      <p
+        id="waitlist-status"
+        className="mt-2 min-h-[1rem] text-center text-xs font-bold text-rose-600"
+        aria-live="polite"
+      >
+        {submitStatus === "error" ? errorMessage : ""}
+      </p>
+    </form>
+  );
+}
+
 export default function Checkout() {
   const [, setLocation] = useLocation();
-  const { session } = useAuth();
+  const { session, user, profile } = useAuth();
   const { affiliateCode, discountPercent } = useAffiliate();
   const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
   const [loading, setLoading] = useState(false);
   const reduce = useReducedMotion();
+
+  // Kill-switch do pagamento, lido do endpoint publico de flags. Fail-closed
+  // igual ao LaunchGate: erro no fetch ou billingEnabled ausente => "off"
+  // (mostra a lista de espera, nunca um checkout que falha).
+  const [billingStatus, setBillingStatus] = useState<"loading" | "on" | "off">(
+    "loading",
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    async function resolveBilling() {
+      try {
+        const res = await fetch(apiUrl("/api/launch-state"));
+        if (!res.ok) throw new Error("launch-state indisponivel");
+        const data = (await res.json()) as { billingEnabled?: boolean };
+        if (cancelled) return;
+        setBillingStatus(data.billingEnabled === true ? "on" : "off");
+      } catch {
+        if (!cancelled) setBillingStatus("off");
+      }
+    }
+    void resolveBilling();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function discountedPrice(price: number) {
     if (!discountPercent) return price;
@@ -543,19 +689,25 @@ export default function Checkout() {
           </div>
 
           <div className="mt-10 flex flex-col items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSubscribe}
-              disabled={loading}
-              className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-8 py-4 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#0f172a]"
-            >
-              <Sparkles className="h-5 w-5" />
-              {loading ? "Abrindo checkout..." : "Assinar agora"}
-            </button>
-            <p className="text-center text-sm font-bold text-slate-700">
-              Cancele quando quiser · Sem taxa de cancelamento · Suporte por
-              e-mail
-            </p>
+            {billingStatus === "on" ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSubscribe}
+                  disabled={loading}
+                  className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-8 py-4 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#0f172a]"
+                >
+                  <Sparkles className="h-5 w-5" />
+                  {loading ? "Abrindo checkout..." : "Assinar agora"}
+                </button>
+                <p className="text-center text-sm font-bold text-slate-700">
+                  Cancele quando quiser · Sem taxa de cancelamento · Suporte por
+                  e-mail
+                </p>
+              </>
+            ) : (
+              <WaitlistCta defaultEmail={profile?.email ?? user?.email ?? ""} />
+            )}
             <Link
               href={FREE_HREF}
               className="text-sm font-bold text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-800 hover:decoration-slate-800"

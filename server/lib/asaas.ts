@@ -1,11 +1,11 @@
 import { env } from "./env";
 import { fetchWithTimeout } from "./http";
 
-const ASAAS_BASE =
+// URLs documentadas (docs.asaas.com): producao usa /v3; sandbox tem host proprio.
+const ASAAS_BASE_URL =
   env.asaasEnv === "production"
-    ? "https://api.asaas.com"
-    : "https://sandbox.asaas.com";
-const ASAAS_BASE_URL = `${ASAAS_BASE}/api/v3`;
+    ? "https://api.asaas.com/v3"
+    : "https://api-sandbox.asaas.com/v3";
 
 // Teto por chamada. SEM retry de proposito: nem toda chamada de cobranca e
 // idempotente; retry seguro exige idempotency key (fase futura). O checkout
