@@ -5,6 +5,14 @@ export interface DicaArtigo {
   carreira?: boolean;
 }
 
+export interface CarreiraTema {
+  id: string;
+  titulo: string;
+  texto: string;
+  pontos: string[];
+  artigos: DicaArtigo[];
+}
+
 export interface Dica {
   categoria: string;
   texto: string;
@@ -85,6 +93,165 @@ export const carreiraArtigos: DicaArtigo[] = [
     title: "Alura: Carreira de desenvolvedor júnior, o mercado em 2026",
     url: "https://www.alura.com.br/artigos/desenvolvedor-junior",
     desc: "Panorama do mercado júnior.",
+  },
+];
+
+export const carreiraTemas: CarreiraTema[] = [
+  {
+    id: "estagio",
+    titulo: "Estágio",
+    texto:
+      "Empresas de estágio não esperam que você saiba tudo, esperam evidência de que você aprende sozinha e já colocou a mão na massa. Por isso 2 a 3 projetos no GitHub que você saiba explicar de ponta a ponta valem mais que cursos não terminados. Trate cada processo como treino: a maioria recebe vários nãos antes do sim, e candidatar-se mesmo sem cumprir todos os requisitos faz parte (eles são lista de desejos, não eliminatórios).",
+    pontos: [
+      "2 a 3 projetos que você explica de ponta a ponta valem mais que cursos não terminados.",
+      "Candidate-se mesmo sem cumprir todos os requisitos: são lista de desejos, não eliminatórios.",
+      "Trate cada processo como treino; os nãos vêm antes do sim.",
+    ],
+    artigos: [
+      {
+        title: "DIO: Como consegui meu estágio em TI",
+        url: "https://www.dio.me/articles/como-consegui-meu-estagio-em-ti-e-como-voce-pode-conquistar-o-seu-tambem-ba2d1efe0e77",
+        desc: "Relato real de quem conquistou o primeiro estágio.",
+      },
+      {
+        title: "dev.to: 8 dicas para o seu primeiro estágio como dev",
+        url: "https://dev.to/dellamora/8-dicas-para-conseguir-o-seu-primeiro-estagio-como-desenvolvedor-a-4345",
+        desc: "Passos práticos para o primeiro estágio.",
+      },
+    ],
+  },
+  {
+    id: "curriculo",
+    titulo: "Currículo e LinkedIn",
+    texto:
+      "Currículo de dev é curto e mostra o que você fez, não tarefas genéricas. Muitos passam por um filtro automático (ATS) antes de um humano ler, então adapte a cada vaga usando os termos da própria descrição. Resultados concretos e links de projetos valem mais que adjetivos.",
+    pontos: [
+      "Curto e focado no que você fez, com resultados concretos.",
+      "Adapte a cada vaga com os termos da descrição (passa por filtro ATS).",
+      "Links de projetos valem mais que adjetivos.",
+    ],
+    artigos: [
+      {
+        title: "DevMedia: Currículo de programador mesmo sem experiência",
+        url: "https://www.devmedia.com.br/como-criar-um-curriculo-de-programador-mesmo-sem-experiencia/44190",
+        desc: "Como montar o currículo sem experiência prévia.",
+      },
+    ],
+  },
+  {
+    id: "entrevistas",
+    titulo: "Entrevistas",
+    texto:
+      "O processo costuma ter etapas: triagem, técnico e comportamental. No técnico, importa explicar o raciocínio em voz alta, não só chegar na resposta certa. No comportamental, tenha exemplos reais no formato situação, ação e resultado. Não saber algo é normal; o que conta é mostrar como você buscaria a resposta.",
+    pontos: [
+      "No técnico, explique o raciocínio em voz alta, não só acerte.",
+      "No comportamental, use exemplos reais: situação, ação, resultado.",
+      "Não saber algo é normal; mostre como você buscaria a resposta.",
+    ],
+    artigos: [
+      {
+        title: "DIO: 8 dicas para se preparar para uma entrevista de emprego",
+        url: "https://www.dio.me/articles/8-dicas-para-se-preparar-para-uma-entrevista-de-emprego",
+        desc: "Preparação da entrevista, do técnico ao comportamental.",
+      },
+      {
+        title: "freeCodeCamp: Como passar na entrevista de programação",
+        url: "https://www.freecodecamp.org/portuguese/news/como-passar-na-entrevista-de-programacao-dicas-que-me-ajudaram-a-obter-ofertas-de-emprego-no-google-airbnb-e-na-dropbox/",
+        desc: "Estratégias para a entrevista técnica de código.",
+      },
+    ],
+  },
+  {
+    id: "portfolio",
+    titulo: "Portfólio e GitHub",
+    texto:
+      "O GitHub é a prova prática do que você sabe. Projetos que resolvem algo real superam clones de tutorial, e um README claro (o que é, como rodar, print ou deploy) muda como o recrutador te vê. Dois ou três projetos bem-feitos superam dez pela metade, e vale fazer deploy de pelo menos um.",
+    pontos: [
+      "Projetos que resolvem algo real superam clones de tutorial.",
+      "README claro: o que é, como rodar, print ou deploy.",
+      "2 a 3 bem-feitos superam 10 pela metade; faça deploy de pelo menos um.",
+    ],
+    artigos: [
+      {
+        title: "DIO: Portfólio profissional no GitHub sendo iniciante",
+        url: "https://www.dio.me/articles/como-construir-um-portfolio-profissional-no-github-mesmo-sendo-iniciante-fb2b377ae094",
+        desc: "Monte um portfólio no GitHub do zero.",
+      },
+      {
+        title: "dev.to: Dicas para usar o GitHub como portfólio",
+        url: "https://dev.to/github/dicas-para-usar-o-github-como-portfolio-2ab8",
+        desc: "Organize seu GitHub como vitrine.",
+      },
+    ],
+  },
+  {
+    id: "estudar",
+    titulo: "Como estudar",
+    texto:
+      "Constância e prática batem maratona e teoria solta. Aprenda fazendo: a cada conceito novo, transforme em um mini-projeto, siga uma trilha por vez, reconstrua do zero pra fixar e documente o que aprende. Progresso pequeno e diário rende mais que um fim de semana inteiro de vez em quando.",
+    pontos: [
+      "Constância e prática batem maratona e teoria solta.",
+      "Cada conceito vira um mini-projeto; siga uma trilha por vez.",
+      "Reconstrua do zero pra fixar e documente o que aprende.",
+    ],
+    artigos: [
+      {
+        title: "Alura: Como começar a programar, guia completo",
+        url: "https://www.alura.com.br/artigos/como-comecar-programar",
+        desc: "Guia para quem começa do zero.",
+      },
+      {
+        title: "roadmap.sh: trilhas visuais por área",
+        url: "https://roadmap.sh",
+        desc: "Mapas de estudo por área, uma trilha por vez.",
+      },
+    ],
+  },
+  {
+    id: "softskills",
+    titulo: "Soft skills",
+    texto:
+      "As soft skills destravam a carreira tanto quanto o código. Saber comunicar, fazer boas perguntas (com contexto e o que você já tentou), receber feedback sem levar pro pessoal e ler inglês técnico abrem mais portas que aprender mais um framework.",
+    pontos: [
+      "Comunicar bem pesa tanto quanto o código.",
+      "Boas perguntas trazem contexto e o que você já tentou.",
+      "Receba feedback sem levar pro pessoal; leia inglês técnico.",
+    ],
+    artigos: [
+      {
+        title: "Alura: Soft skills para devs, o guia completo",
+        url: "https://www.alura.com.br/artigos/soft-skills-para-devs",
+        desc: "As soft skills que mais importam na área.",
+      },
+      {
+        title: "DIO: A importância das soft skills na programação",
+        url: "https://www.dio.me/articles/a-importancia-das-soft-skills-no-mundo-da-programacao",
+        desc: "Por que soft skills destravam a carreira.",
+      },
+    ],
+  },
+  {
+    id: "mercado",
+    titulo: "Carreira e mercado",
+    texto:
+      "Pra sair do júnior, foque nos fundamentos e não só na ferramenta da moda, construa networking real em comunidades e eventos, e peça feedback pra mostrar evolução. Ajudar outras pessoas a resolver problemas acelera o seu próprio aprendizado.",
+    pontos: [
+      "Fundamentos primeiro, não só a ferramenta da moda.",
+      "Networking real em comunidades e eventos abre portas.",
+      "Peça feedback e ajude os outros; isso acelera você.",
+    ],
+    artigos: [
+      {
+        title: "DIO: Como evoluir de júnior para sênior",
+        url: "https://www.dio.me/articles/proximo-passo-na-carreira-de-desenvolvedor-de-software-como-evoluir-de-junior-para-senior-e-conquistar-melhores-oportunidades",
+        desc: "O caminho de júnior a sênior.",
+      },
+      {
+        title: "Alura: Carreira de desenvolvedor júnior",
+        url: "https://www.alura.com.br/artigos/desenvolvedor-junior",
+        desc: "Panorama do mercado júnior.",
+      },
+    ],
   },
 ];
 

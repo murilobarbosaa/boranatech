@@ -50,6 +50,7 @@ import {
   bibliotecaSeries,
   bibliotecaVideos,
   carreiraArtigos,
+  carreiraTemas,
   curiosidades,
   curiosidadesCategorias,
   dicas,
@@ -87,8 +88,8 @@ const areaFiltros = [
 
 export default function Dicas() {
   const [tab, setTab] = useState<
-    "aprender" | "curiosidades" | "livros" | "notebooks"
-  >("aprender");
+    "carreira" | "aprender" | "curiosidades" | "livros" | "notebooks"
+  >("carreira");
   const [areaFiltro, setAreaFiltro] = useState("todas");
 
   const mostrarFundamentos =
@@ -156,6 +157,7 @@ export default function Dicas() {
         <div className="container flex flex-wrap gap-2">
           {(
             [
+              { key: "carreira", label: "Carreira" },
               { key: "aprender", label: "Aprender e se inspirar" },
               { key: "curiosidades", label: "Curiosidades" },
               { key: "livros", label: "Livros por área" },
@@ -176,6 +178,8 @@ export default function Dicas() {
           ))}
         </div>
       </section>
+
+      {tab === "carreira" && <CarreiraSection />}
 
       {tab === "aprender" && <AprenderSection />}
 
@@ -459,6 +463,66 @@ function LinkExterno({
       </span>
       <ExternalLink className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
     </a>
+  );
+}
+
+function CarreiraSection() {
+  return (
+    <section className="border-t-2 border-amber-200 bg-amber-50/40 py-10">
+      <div className="container">
+        <h2 className="font-display text-3xl font-black text-slate-950">
+          Carreira, do primeiro passo ao mercado
+        </h2>
+        <p className="mt-2 max-w-2xl text-slate-700">
+          Cada tema com o porquê por trás e leituras reais pra ir fundo, sem
+          repetir o que já está na aba de cursos.
+        </p>
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          {carreiraTemas.map((tema) => (
+            <article
+              key={tema.id}
+              className="flex flex-col rounded-3xl border-2 border-slate-900 bg-white p-6 shadow-[6px_6px_0_#f59e0b] transition-transform motion-safe:hover:-translate-y-0.5"
+            >
+              <h3 className="font-display text-2xl font-black text-slate-950">
+                {tema.titulo}
+              </h3>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">
+                {tema.texto}
+              </p>
+              <ul className="mt-4 space-y-2">
+                {tema.pontos.map((ponto) => (
+                  <li
+                    key={ponto}
+                    className="flex gap-2 text-sm font-bold text-slate-800"
+                  >
+                    <span
+                      className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500"
+                      aria-hidden
+                    />
+                    <span>{ponto}</span>
+                  </li>
+                ))}
+              </ul>
+              {tema.artigos.length > 0 ? (
+                <div className="mt-5 space-y-2">
+                  <p className="text-xs font-black uppercase tracking-wide text-amber-700">
+                    Pra ir fundo
+                  </p>
+                  {tema.artigos.map((artigo) => (
+                    <LinkExterno
+                      key={artigo.url}
+                      title={artigo.title}
+                      url={artigo.url}
+                      desc={artigo.desc}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
