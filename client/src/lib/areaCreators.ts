@@ -35,4 +35,5 @@ export const areaCreators: Record<string, AreaCreator[]> = {
   devops: fromHandles("andrebrito.dev"),
   // TODO(Ana): confirmar area da Evelyn, mapeada provisoriamente como fullstack.
   fullstack: fromHandles("dioaugusto.dev", "code.evelyn"),
+  "desenvolvimento-software": fromHandles("code.evelyn"),
 };
