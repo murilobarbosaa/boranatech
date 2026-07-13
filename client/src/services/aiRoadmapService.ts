@@ -39,13 +39,25 @@ export interface GenerationHandlers {
   onSection: (info: { index: number; total: number }) => void;
   onError: (info: { message: string; sectionIndex?: number }) => void;
   onDone: (info: { slug: string }) => void;
+  // Degradacao graciosa: uma secao falhou mas a geracao seguiu (opcionais para
+  // nao quebrar chamadores que so tratam o caminho antigo).
+  onSectionFailed?: (info: { index: number; total: number }) => void;
+  onPartial?: (info: {
+    slug: string;
+    total: number;
+    filled: number;
+    failed: number[];
+  }) => void;
 }
 
 // Erro HTTP pre-SSE traduzido para a UI diferenciar quota (rate_limited),
 // geracao em andamento (generation_in_progress/resume_in_progress), Pro
-// (pro_required) e indisponibilidade (503). ok:true = o stream rodou (os
-// frames ja foram despachados aos handlers, inclusive erro de geracao).
-export type StreamResult = { ok: true } | { ok: false; blocked: string; message: string };
+// (pro_required) e indisponibilidade (503). ok:true = o stream rodou; terminal
+// indica se chegou um frame de fechamento (done/error/partial): terminal:false
+// significa conexao caiu no meio (evita o spinner infinito na UI).
+export type StreamResult =
+  | { ok: true; terminal: boolean }
+  | { ok: false; blocked: string; message: string };
 
 // Espelha o agentClient: o JWT vem da sessao do Supabase.
 async function getAuthHeader(): Promise<Record<string, string>> {
@@ -121,17 +133,22 @@ interface GenerationFrame {
   index?: unknown;
   message?: unknown;
   sectionIndex?: unknown;
+  filled?: unknown;
+  failed?: unknown;
 }
 
 // Consome o corpo SSE despachando os frames de geracao (skeleton, section,
-// error, done) ate o data: [DONE], no mesmo laco de parsing do agentClient.
+// section_failed, error, partial, done) ate o data: [DONE], no mesmo laco de
+// parsing do agentClient. Retorna true se chegou um frame de fechamento
+// (error/partial/done); false = o stream terminou sem fechamento (conexao caiu).
 async function consumeGenerationStream(
   body: ReadableStream<Uint8Array>,
   handlers: GenerationHandlers,
-): Promise<void> {
+): Promise<boolean> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let pending = "";
+  let terminal = false;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -143,7 +160,7 @@ async function consumeGenerationStream(
       for (const line of event.split("\n")) {
         if (!line.startsWith("data: ")) continue;
         const payload = line.slice(6);
-        if (payload === "[DONE]") return;
+        if (payload === "[DONE]") return terminal;
 
         let frame: GenerationFrame | null = null;
         try {
@@ -165,7 +182,13 @@ async function consumeGenerationStream(
             index: typeof frame.index === "number" ? frame.index : 0,
             total: typeof frame.total === "number" ? frame.total : 0,
           });
+        } else if (frame.type === "section_failed") {
+          handlers.onSectionFailed?.({
+            index: typeof frame.index === "number" ? frame.index : 0,
+            total: typeof frame.total === "number" ? frame.total : 0,
+          });
         } else if (frame.type === "error") {
+          terminal = true;
           handlers.onError({
             // TODO(Ana): mensagem generica de erro de geracao.
             message:
@@ -175,7 +198,18 @@ async function consumeGenerationStream(
             sectionIndex:
               typeof frame.sectionIndex === "number" ? frame.sectionIndex : undefined,
           });
+        } else if (frame.type === "partial") {
+          terminal = true;
+          handlers.onPartial?.({
+            slug: typeof frame.slug === "string" ? frame.slug : "",
+            total: typeof frame.total === "number" ? frame.total : 0,
+            filled: typeof frame.filled === "number" ? frame.filled : 0,
+            failed: Array.isArray(frame.failed)
+              ? frame.failed.filter((n): n is number => typeof n === "number")
+              : [],
+          });
         } else if (frame.type === "done") {
+          terminal = true;
           handlers.onDone({
             slug: typeof frame.slug === "string" ? frame.slug : "",
           });
@@ -183,6 +217,7 @@ async function consumeGenerationStream(
       }
     }
   }
+  return terminal;
 }
 
 async function streamSse(
@@ -207,8 +242,8 @@ async function streamSse(
     return { ok: false, blocked: parsed.code, message: parsed.message };
   }
 
-  await consumeGenerationStream(response.body, handlers);
-  return { ok: true };
+  const terminal = await consumeGenerationStream(response.body, handlers);
+  return { ok: true, terminal };
 }
 
 export function streamGeneration(

@@ -24,6 +24,9 @@ const MESSAGES = {
   eta: (minutes: number) => `tempo estimado: ~${minutes} min`,
   background:
     "Pode sair desta tela; a geracao continua e o roadmap aparece na sua lista.",
+  // TODO(Ana): revisar copy do aviso de secoes que falharam na geracao.
+  sectionsFailed: (n: number) =>
+    `${n} ${n === 1 ? "etapa falhou" : "etapas falharam"} e ficaram pendentes; voce pode retomar depois para completa-las.`,
   resume: "Retomar de onde parou",
   retry: "Tentar de novo",
 } as const;
@@ -62,6 +65,9 @@ export interface AiGenerationState {
   // Presente quando o erro veio de uma secao especifica (parcial salvo).
   sectionIndex: number | null;
   blockedCode: string | null;
+  // Indices das secoes que falharam mas nao abortaram a geracao (degradacao
+  // graciosa): a barra as conta como processadas e a UI avisa que ficaram pendentes.
+  failed: number[];
 }
 
 const INITIAL_STATE: AiGenerationState = {
@@ -73,6 +79,7 @@ const INITIAL_STATE: AiGenerationState = {
   message: null,
   sectionIndex: null,
   blockedCode: null,
+  failed: [],
 };
 
 export function useAiGeneration(onDone: (slug: string) => void) {
@@ -106,6 +113,25 @@ export function useAiGeneration(onDone: (slug: string) => void) {
               message,
               sectionIndex: sectionIndex ?? null,
             })),
+          onSectionFailed: ({ index }) =>
+            setState((s) => ({
+              ...s,
+              failed: s.failed.includes(index)
+                ? s.failed
+                : [...s.failed, index],
+            })),
+          onPartial: ({ slug, failed }) => {
+            // Gerou parcial mas navegavel: o server marcou partial e mandou o
+            // slug. Leva o usuario ao roadmap (a view mostra as secoes prontas e
+            // oferece a retomada), como no done.
+            setState((s) => ({
+              ...s,
+              phase: "done",
+              slug: slug || s.slug,
+              failed: failed.length > 0 ? failed : s.failed,
+            }));
+            onDone(slug);
+          },
           onDone: ({ slug }) => {
             setState((s) => ({ ...s, phase: "done", slug: slug || s.slug }));
             onDone(slug);
@@ -127,6 +153,17 @@ export function useAiGeneration(onDone: (slug: string) => void) {
           phase: "blocked",
           blockedCode: result.blocked,
           message: blockedMessage(result.blocked, result.message),
+        }));
+        return;
+      }
+      if (!result.terminal) {
+        // Stream terminou sem frame de fechamento (done/partial/error): a
+        // conexao caiu no meio. Sem isto a UI ficaria presa em "running" (o bug
+        // do spinner infinito). O parcial ja esta salvo, entao oferece retomada.
+        setState((s) => ({
+          ...s,
+          phase: "error",
+          message: MESSAGES.connectionLost,
         }));
       }
     },
@@ -153,9 +190,10 @@ export function AiGenerationProgressCard({
 }: AiGenerationProgressCardProps) {
   if (state.phase === "idle") return null;
 
+  const processed = state.completed + state.failed.length;
   const pct =
     state.total > 0
-      ? Math.min(100, Math.round((state.completed / state.total) * 100))
+      ? Math.min(100, Math.round((processed / state.total) * 100))
       : 0;
 
   if (state.phase === "running" || state.phase === "done") {
@@ -191,7 +229,11 @@ export function AiGenerationProgressCard({
             style={{ width: `${Math.max(pct, 6)}%` }}
           />
         </div>
-        {state.total > 0 ? (
+        {state.failed.length > 0 ? (
+          <p className="mt-3 text-xs font-bold text-amber-700">
+            {MESSAGES.sectionsFailed(state.failed.length)}
+          </p>
+        ) : state.total > 0 ? (
           <p className="mt-3 text-xs font-semibold text-slate-500">
             {MESSAGES.background}
           </p>

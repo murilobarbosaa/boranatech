@@ -148,9 +148,10 @@ interface SectionLoopIo {
   outputChars: number;
 }
 
-// Gera e persiste as secoes pedidas, emitindo um evento SSE por secao. Em
-// falha (IA ou persistencia) marca partial e emite o erro com a secao; o
-// caller decide o que logar. Retorna true quando todas concluiram.
+// Gera e persiste as secoes pedidas, emitindo um evento SSE por secao. Uma
+// secao que falha (IA ou persistencia) NAO aborta o loop (degradacao graciosa):
+// vira um frame section_failed, o loop segue, e a secao fica com children vazio
+// (retomavel depois). Retorna a lista das que falharam (vazia = todas ok).
 async function runSections(
   res: Response,
   userId: string,
@@ -159,8 +160,9 @@ async function runSections(
   context: string,
   indexes: number[],
   io: SectionLoopIo,
-): Promise<{ ok: true } | { ok: false; sectionIndex: number; detail: string }> {
+): Promise<Array<{ index: number; detail: string }>> {
   const total = roadmap.sections.length;
+  const failed: Array<{ index: number; detail: string }> = [];
   for (const index of indexes) {
     try {
       const section = await generateSectionContent(context, roadmap, index);
@@ -178,11 +180,66 @@ async function runSections(
       sseSend(res, { type: "section", index, total });
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      await setStatus(rowId, userId, "partial");
-      return { ok: false, sectionIndex: index, detail };
+      console.error(`[roadmap-ia] secao ${index} falhou: ${detail}`);
+      failed.push({ index, detail });
+      sseSend(res, { type: "section_failed", index, total });
     }
   }
-  return { ok: true };
+  return failed;
+}
+
+// Fecha a geracao a partir do resultado do loop. Nenhuma falha: ready + cota
+// (finishGeneration). Alguma falha: status partial, SEM cobrar (a retomada que
+// concluir cobra). Se sobrou pelo menos uma secao preenchida, o roadmap ja e
+// navegavel e o frame "partial" leva o usuario a ele; se NADA foi gerado, cai
+// no parcial classico com o frame de erro retomavel.
+async function concludeGeneration(
+  res: Response,
+  userId: string,
+  rowId: string,
+  roadmap: RoadmapV2,
+  slug: string,
+  requestId: string,
+  io: SectionLoopIo,
+  failed: Array<{ index: number; detail: string }>,
+): Promise<void> {
+  if (failed.length === 0) {
+    await finishGeneration(res, userId, rowId, slug, requestId, io);
+    return;
+  }
+
+  await setStatus(rowId, userId, "partial");
+  await logAiUsage({
+    userId,
+    tool: ROADMAP_GENERATOR_TOOL,
+    requestId,
+    status: "error",
+    errorMessage: `secoes falharam: ${failed.map((f) => f.index).join(",")}`.slice(0, 300),
+    inputChars: io.inputChars,
+    outputChars: io.outputChars,
+  });
+
+  const filled = roadmap.sections.filter(
+    (section) => Array.isArray(section.children) && section.children.length > 0,
+  ).length;
+
+  if (filled === 0) {
+    // TODO(Ana): mensagem de falha parcial sem nada aproveitavel (retomada).
+    sseSend(res, {
+      type: "error",
+      message:
+        "A geracao parou no meio. Seu progresso foi salvo e voce pode retomar.",
+    });
+  } else {
+    sseSend(res, {
+      type: "partial",
+      slug,
+      total: roadmap.sections.length,
+      filled,
+      failed: failed.map((f) => f.index),
+    });
+  }
+  sseDone(res);
 }
 
 // Conclui a geracao: status ready + a UNICA unidade de quota (logAiUsage
@@ -377,32 +434,17 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
     });
 
     const indexes = roadmap.sections.map((_, i) => i);
-    const outcome = await runSections(res, userId, rowId, roadmap, context, indexes, io);
-    if (!outcome.ok) {
-      console.error(
-        `[roadmap-ia] secao ${outcome.sectionIndex} falhou: ${outcome.detail}`,
-      );
-      await logAiUsage({
-        userId,
-        tool: ROADMAP_GENERATOR_TOOL,
-        requestId,
-        status: "error",
-        errorMessage: outcome.detail.slice(0, 300),
-        inputChars: io.inputChars,
-        outputChars: io.outputChars,
-      });
-      // TODO(Ana): mensagem de falha parcial com retomada.
-      sseSend(res, {
-        type: "error",
-        message:
-          "A geracao parou no meio. Seu progresso foi salvo e voce pode retomar.",
-        sectionIndex: outcome.sectionIndex,
-      });
-      sseDone(res);
-      return;
-    }
-
-    await finishGeneration(res, userId, rowId, roadmap.slug, requestId, io);
+    const failed = await runSections(res, userId, rowId, roadmap, context, indexes, io);
+    await concludeGeneration(
+      res,
+      userId,
+      rowId,
+      roadmap,
+      roadmap.slug,
+      requestId,
+      io,
+      failed,
+    );
   } catch (err) {
     // Barreira final: erro inesperado antes do SSE vira 500; depois, frame.
     if (res.headersSent) {
@@ -513,33 +555,19 @@ router.post("/:slug/resume", async (req: Request, res: Response, next: NextFunct
       .map(({ i }) => i);
 
     const io: SectionLoopIo = { inputChars: 0, outputChars: 0 };
-    const outcome = await runSections(res, userId, row.id, roadmap, context, pending, io);
-    if (!outcome.ok) {
-      console.error(
-        `[roadmap-ia] retomada: secao ${outcome.sectionIndex} falhou: ${outcome.detail}`,
-      );
-      await logAiUsage({
-        userId,
-        tool: ROADMAP_GENERATOR_TOOL,
-        requestId,
-        status: "error",
-        errorMessage: outcome.detail.slice(0, 300),
-        inputChars: io.inputChars,
-        outputChars: io.outputChars,
-      });
-      // TODO(Ana): mensagem de falha parcial com retomada.
-      sseSend(res, {
-        type: "error",
-        message:
-          "A retomada parou no meio. Seu progresso foi salvo e voce pode tentar de novo.",
-        sectionIndex: outcome.sectionIndex,
-      });
-      sseDone(res);
-      return;
-    }
-
-    // Conclusao da retomada cobra a unidade da geracao (nao cobrada antes).
-    await finishGeneration(res, userId, row.id, row.slug, requestId, io);
+    const failed = await runSections(res, userId, row.id, roadmap, context, pending, io);
+    // Conclusao (sem falhas) cobra a unidade da geracao, nao cobrada antes;
+    // parcial marca partial de novo e nao cobra, retomavel outra vez.
+    await concludeGeneration(
+      res,
+      userId,
+      row.id,
+      roadmap,
+      row.slug,
+      requestId,
+      io,
+      failed,
+    );
   } catch (err) {
     // Erro inesperado depois do lock: restaura partial para a retomada nao
     // ficar presa em generating (o que bloquearia novas retomadas por 409).
