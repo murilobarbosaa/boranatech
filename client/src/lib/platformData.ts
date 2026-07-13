@@ -69,6 +69,11 @@ export const womenArea = {
   ],
   communities: [
     {
+      name: "Tech Sisters",
+      desc: "Comunidade para mulheres que amam tecnologia: conexões, conhecimento e apoio real.",
+      url: "https://www.instagram.com/tech.sisterss/",
+    },
+    {
       name: "{reprograma}",
       desc: "Cursos e comunidade para mulheres em tecnologia.",
       url: "https://reprograma.com.br",

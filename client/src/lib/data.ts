@@ -18629,9 +18629,25 @@ export interface Comunidade {
   idioma: string;
   modalidade: "Online" | "Presencial" | "Híbrido";
   estado?: string;
+  destaque?: boolean;
 }
 
 export const comunidades: Comunidade[] = [
+  {
+    id: "tech-sisters",
+    nome: "Tech Sisters",
+    tipo: "Comunidade",
+    plataforma: "Instagram",
+    area: "Mulheres / Carreira",
+    publicoIndicado:
+      "Mulheres que estão começando ou já atuam em tecnologia",
+    porqueAcompanhar:
+      "Espaço para mulheres que amam tecnologia, com foco em conexões, troca de conhecimento e apoio real. Promove encontros da comunidade, como o Tech Girls Night.",
+    link: "https://www.instagram.com/tech.sisterss/",
+    idioma: "Português",
+    modalidade: "Online",
+    destaque: true,
+  },
   {
     id: "reprograma",
     nome: "{reprograma}",
