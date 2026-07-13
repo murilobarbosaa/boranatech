@@ -50,6 +50,14 @@ function resolveError(error: string): string {
   if (error === "ANALYSIS_FAILED") {
     return "Não consegui completar a análise agora. Tente de novo.";
   }
+  // TODO(Ana): copy do estado de timeout da análise.
+  if (error === "TIMEOUT") {
+    return "A análise demorou mais que o esperado. Isso costuma ser instabilidade momentânea: tente de novo em alguns minutos.";
+  }
+  // TODO(Ana): copy do estado de falha de rede.
+  if (error === "NETWORK") {
+    return "Não conseguimos falar com o servidor. Verifique sua conexão e tente de novo; se persistir, a plataforma pode estar em manutenção.";
+  }
   return error || "Não consegui completar a análise agora. Tente de novo.";
 }
 
