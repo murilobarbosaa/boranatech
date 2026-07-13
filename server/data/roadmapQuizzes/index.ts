@@ -16,7 +16,9 @@ import frontend from "./frontend";
 import fullstack from "./fullstack";
 import infraestrutura from "./infraestrutura";
 import mobile from "./mobile";
+import produto from "./produto";
 import sre from "./sre";
+import uxui from "./uxui";
 
 export const roadmapQuizPools: Record<string, QuizPool> = {
   "analise-dados": analiseDados,
@@ -30,5 +32,7 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   fullstack,
   infraestrutura,
   mobile,
+  produto,
   sre,
+  uxui,
 };
