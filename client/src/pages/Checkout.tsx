@@ -33,42 +33,36 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
 import { createCheckout } from "@/services/subscriptionService";
 import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
+import {
+  FROM_MONTHLY_LABEL,
+  MONTHLY_BASE_LABEL,
+  PLAN_ORDER,
+  PLAN_PRICING,
+  type PlanId,
+} from "@shared/planPricing";
 import { areasCount, dictionaryTermsCount } from "@/lib/countsGenerated";
 
-const plans = [
-  {
-    id: "pro_monthly",
-    label: "Mensal",
-    price: 24.9,
-    priceLabel: "R$ 24,90",
-    period: "por mês",
-    highlight: false,
-    badge: null,
-    savings: null,
-  },
-  {
-    id: "pro_semiannual",
-    label: "Semestral",
-    price: 119.4,
-    priceLabel: "R$ 119,40",
-    period: "a cada 6 meses",
-    monthlyEquivalent: "R$ 19,90/mês",
-    highlight: true,
-    badge: "MAIS POPULAR",
-    savings: "20% off",
-  },
-  {
-    id: "pro_annual",
-    label: "Anual",
-    price: 179.9,
-    priceLabel: "R$ 179,90",
-    period: "por ano",
-    monthlyEquivalent: "R$ 14,99/mês",
-    highlight: false,
-    badge: "MELHOR CUSTO",
-    savings: "40% off",
-  },
-];
+// UI-only (destaque/selo) por plano; os precos vem da fonte unica planPricing.
+const PLAN_UI: Record<PlanId, { highlight: boolean; badge: string | null }> = {
+  pro_monthly: { highlight: false, badge: null },
+  pro_semiannual: { highlight: true, badge: "MAIS POPULAR" },
+  pro_annual: { highlight: false, badge: "MELHOR CUSTO" },
+};
+
+const plans = PLAN_ORDER.map((id) => {
+  const p = PLAN_PRICING[id];
+  return {
+    id: p.id,
+    label: p.label,
+    price: p.total,
+    priceLabel: p.totalLabel,
+    period: p.period,
+    monthlyEquivalent: p.monthlyEquivalent,
+    savingsPercent: p.savingsPercent,
+    savings: p.savingsPercent > 0 ? `${p.savingsPercent}% off` : null,
+    ...PLAN_UI[id],
+  };
+});
 
 const PRO_FEATURE_ICONS: Record<string, LucideIcon> = {
   FileText,
@@ -172,7 +166,7 @@ export default function Checkout() {
       {/* TODO(Ana): revisar meta description do plano Pro apos remocao de ferramentas */}
       <SEO
         title="Plano Pro · Bora na Tech?"
-        description="Desbloqueie as ferramentas com IA pra entrar em TI: roadmaps, plano de carreira, análise de currículo, LinkedIn, portfólio e entrevista. A partir de R$ 14,99/mês no plano anual."
+        description={`Desbloqueie as ferramentas com IA pra entrar em TI: roadmaps, plano de carreira, análise de currículo, LinkedIn, portfólio e entrevista. A partir de ${FROM_MONTHLY_LABEL}/mês no plano anual.`}
         keywords={[
           "plano pro bora na tech",
           "ia carreira ti",
@@ -189,28 +183,28 @@ export default function Checkout() {
           offers: {
             "@type": "AggregateOffer",
             priceCurrency: "BRL",
-            lowPrice: "14.99",
-            highPrice: "24.90",
+            lowPrice: PLAN_PRICING.pro_monthly.total.toFixed(2),
+            highPrice: PLAN_PRICING.pro_annual.total.toFixed(2),
             offerCount: 3,
             offers: [
               {
                 "@type": "Offer",
                 name: "Mensal",
-                price: "24.90",
+                price: PLAN_PRICING.pro_monthly.total.toFixed(2),
                 priceCurrency: "BRL",
                 availability: "https://schema.org/InStock",
               },
               {
                 "@type": "Offer",
                 name: "Semestral",
-                price: "119.40",
+                price: PLAN_PRICING.pro_semiannual.total.toFixed(2),
                 priceCurrency: "BRL",
                 availability: "https://schema.org/InStock",
               },
               {
                 "@type": "Offer",
                 name: "Anual",
-                price: "179.90",
+                price: PLAN_PRICING.pro_annual.total.toFixed(2),
                 priceCurrency: "BRL",
                 availability: "https://schema.org/InStock",
               },
@@ -319,7 +313,7 @@ export default function Checkout() {
                 />
               </button>
               <p className="text-xs font-medium text-slate-400">
-                A partir de R$ 14,99/mês no plano anual.
+                A partir de {FROM_MONTHLY_LABEL}/mês no plano anual.
               </p>
             </motion.div>
           </div>
@@ -527,9 +521,15 @@ export default function Checkout() {
                     <p className="mt-1 text-sm font-bold text-slate-700">
                       {plan.period}
                     </p>
-                    {"monthlyEquivalent" in plan && plan.monthlyEquivalent ? (
+                    {plan.monthlyEquivalent ? (
                       <p className="mt-2 inline-block rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-sm font-black text-slate-950">
-                        equivalente a {plan.monthlyEquivalent}
+                        equivalente a{" "}
+                        {plan.savingsPercent > 0 ? (
+                          <span className="mr-1 font-bold text-slate-400 line-through">
+                            {MONTHLY_BASE_LABEL}
+                          </span>
+                        ) : null}
+                        {plan.monthlyEquivalent}
                       </p>
                     ) : null}
                   </div>
