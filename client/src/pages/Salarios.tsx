@@ -34,7 +34,6 @@ import {
   marketTecnologias,
   marketTendencias,
   salaryRows,
-  workTypes,
 } from "@/lib/marketData";
 
 const ac = getPageAccentUi("emerald");
@@ -391,7 +390,6 @@ export default function Salarios() {
   const [area, setArea] = useState("Todas");
   const [level, setLevel] = useState("Todos");
   const [city, setCity] = useState("Todas");
-  const [type, setType] = useState("Todos");
   const [pj, setPj] = useState(9000);
   const [negArea, setNegArea] = useState(String(salaryRows[0].area));
   const [negLevel, setNegLevel] = useState(String(salaryRows[0].level));
@@ -402,7 +400,7 @@ export default function Salarios() {
     "Todas",
     ...Array.from(new Set(salaryRows.map((row) => String(row.area)))),
   ];
-  const filtered = useMemo(
+  const strictFiltered = useMemo(
     () =>
       salaryRows.filter(
         (row) =>
@@ -411,6 +409,21 @@ export default function Salarios() {
           (city === "Todas" || row.city === city),
       ),
     [area, city, level],
+  );
+  // A cobertura por cidade e esparsa: nem toda area e nivel tem faixa em toda
+  // cidade. Quando a cidade escolhida zera o recorte mas ha faixa pra area e
+  // nivel em outras cidades, relaxamos a cidade em vez de mostrar vazio.
+  const cityFallback = city !== "Todas" && strictFiltered.length === 0;
+  const filtered = useMemo(
+    () =>
+      cityFallback
+        ? salaryRows.filter(
+            (row) =>
+              (area === "Todas" || row.area === area) &&
+              (level === "Todos" || row.level === level),
+          )
+        : strictFiltered,
+    [cityFallback, strictFiltered, area, level],
   );
   const ordered = useMemo(
     () =>
@@ -510,12 +523,11 @@ export default function Salarios() {
                   {TABELA_TITULO}
                 </h2>
                 <p className="mt-1 text-sm text-slate-600">{TABELA_SUBTITULO}</p>
-                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
                   {[
                     ["Área", area, setArea, areas],
                     ["Nível", level, setLevel, levels],
                     ["Cidade", city, setCity, cities],
-                    ["Tipo", type, setType, workTypes],
                   ].map(([label, value, setter, options]) => (
                     <label key={String(label)} className="block">
                       <span className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
@@ -538,6 +550,12 @@ export default function Salarios() {
                     </label>
                   ))}
                 </div>
+                {cityFallback ? (
+                  <p className="mt-4 text-xs font-bold text-amber-700">
+                    Sem faixa específica para {city} nesse recorte. Mostrando
+                    referências de outras cidades.
+                  </p>
+                ) : null}
                 <div
                   className={cn(
                     "mt-6 grid gap-3",
@@ -560,7 +578,7 @@ export default function Salarios() {
                         key={`${String(row.area)}-${String(row.level)}-${String(row.city)}`}
                         row={row}
                         maxSalary={maxSalary}
-                        type={type}
+                        type="Todos"
                       />
                     ))
                   )}
