@@ -155,7 +155,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Dos fundamentos de qualidade e teste manual ao design de casos, teste de APIs e automação. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 21,
+    "stepCount": 23,
     "hasProject": true,
     "hasQuiz": false
   },
