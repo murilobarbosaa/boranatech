@@ -266,6 +266,18 @@ export async function buildGenerationContext(
   if (intake.extraContext) {
     lines.push(`- Contexto extra informado: ${intake.extraContext}`);
   }
+  // TODO(Ana): revisar os rotulos dos campos narrativos do chat guiado abaixo.
+  // Campos narrativos do chat guiado (texto livre, opcionais): entram como o
+  // extraContext, junto do contexto da pessoa e antes dos dados do pool.
+  if (intake.startingPoint) {
+    lines.push(`- Ponto de partida (o que ja sabe e onde travou): ${intake.startingPoint}`);
+  }
+  if (intake.motivation) {
+    lines.push(`- Motivacao (por que agora e o que muda pra pessoa): ${intake.motivation}`);
+  }
+  if (intake.constraints) {
+    lines.push(`- Restricoes (o que pode atrapalhar): ${intake.constraints}`);
+  }
 
   if (pool.quiz.ok && pool.quiz.data) {
     const quiz = pool.quiz.data;

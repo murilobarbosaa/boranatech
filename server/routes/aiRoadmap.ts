@@ -16,7 +16,17 @@ import {
   generateSkeleton,
 } from "../lib/aiRoadmap/generate";
 import { estimateCost } from "../lib/aiTools";
-import { checkAiDailyLimit, logAiUsage } from "../lib/aiUsage";
+import {
+  checkAiDailyLimit,
+  checkRoadmapIntakeChatDailyLimit,
+  logAiUsage,
+  ROADMAP_INTAKE_CHAT_TOOL,
+} from "../lib/aiUsage";
+import {
+  runIntakeChatTurn,
+  validateIntakeChatBody,
+  type IntakeChatAiIo,
+} from "../lib/aiRoadmap/intakeChat";
 import { env } from "../lib/env";
 import { fetchUserContextPool } from "../lib/userContext/pool";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -455,6 +465,131 @@ router.post("/generate", async (req: Request, res: Response, next: NextFunction)
       return;
     }
     return next(err);
+  }
+});
+
+// POST /api/roadmaps-ia/intake/chat: um turno do chat de intake guiado. NAO gera
+// roadmap e NAO grava nada (efemero; o client mantem o historico e reenvia a
+// cada turno, como o agente e o chat de intake do plano de carreira). A geracao
+// segue no POST /generate, que revalida o intake final com RoadmapIntakeSchema
+// (defesa em profundidade: o server nunca confia no intake montado pelo chat).
+router.post("/intake/chat", async (req: Request, res: Response, next: NextFunction) => {
+  // Recheck fail-closed: conversar tambem e exclusivo do Pro (senao um usuario
+  // free consumiria IA de graca), mesmo padrao do career-plan/intake/chat.
+  if (req.isPro !== true) {
+    // TODO(Ana): mensagem de recurso exclusivo Pro.
+    return next(
+      createError(403, "pro_required", "O Roadmap com IA e exclusivo do Plano Pro."),
+    );
+  }
+
+  const userId = req.user!.id;
+  const requestId =
+    (res.locals.requestId as string | undefined) ?? crypto.randomUUID();
+
+  const body = validateIntakeChatBody(req.body);
+  if (!body.ok) {
+    if (body.error === "turn_limit") {
+      // TODO(Ana): mensagem de limite de turnos do chat (a UI oferece o formulario).
+      return next(
+        createError(
+          400,
+          "turn_limit",
+          "Chegamos ao limite desta conversa. Prefira preencher o formulario para gerar seu roadmap.",
+        ),
+      );
+    }
+    if (body.error === "payload_too_large") {
+      // TODO(Ana): mensagem de conversa longa demais.
+      return next(
+        createError(
+          400,
+          "payload_too_large",
+          "Conversa longa demais. Comece uma nova ou use o formulario.",
+        ),
+      );
+    }
+    // TODO(Ana): mensagem de requisicao invalida.
+    return next(
+      createError(400, "invalid_request", "Envie pelo menos uma mensagem valida."),
+    );
+  }
+
+  // Quota DEDICADA por tool (nao a global): fail-closed 503 na falha de
+  // verificacao, 429 no limite atingido. logAiUsage por turno.
+  const usage = await checkRoadmapIntakeChatDailyLimit(userId);
+  if (!usage.allowed) {
+    if (usage.verificationFailed) {
+      await logAiUsage({
+        userId,
+        tool: ROADMAP_INTAKE_CHAT_TOOL,
+        requestId,
+        status: "error",
+        errorMessage: "rate limit check failed",
+      });
+      // TODO(Ana): mensagem de falha ao verificar o limite de uso (503).
+      return next(
+        createError(
+          503,
+          "rate_check_failed",
+          "Nao foi possivel verificar seu limite de uso agora. Tente novamente em instantes.",
+        ),
+      );
+    }
+    await logAiUsage({
+      userId,
+      tool: ROADMAP_INTAKE_CHAT_TOOL,
+      requestId,
+      status: "rate_limited",
+    });
+    // TODO(Ana): mensagem de limite diario de mensagens do chat atingido (429).
+    return next(
+      createError(
+        429,
+        "rate_limited",
+        "Limite diario de mensagens do chat atingido. Tente novamente amanha.",
+      ),
+    );
+  }
+
+  let aiIo: IntakeChatAiIo = { inputChars: 0, outputChars: 0 };
+  try {
+    const turn = await runIntakeChatTurn(userId, body.messages, (io) => {
+      aiIo = io;
+    });
+    await logAiUsage({
+      userId,
+      tool: ROADMAP_INTAKE_CHAT_TOOL,
+      requestId,
+      status: "success",
+      inputChars: aiIo.inputChars,
+      outputChars: aiIo.outputChars,
+      costEstimate: estimateCost(aiIo.inputChars, aiIo.outputChars),
+    });
+    res.json({
+      reply: turn.reply,
+      intake: turn.intake,
+      missing: turn.missing,
+      ready: turn.ready,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Erro desconhecido";
+    await logAiUsage({
+      userId,
+      tool: ROADMAP_INTAKE_CHAT_TOOL,
+      requestId,
+      status: "error",
+      errorMessage: message,
+      inputChars: aiIo.inputChars,
+    });
+    // TODO(Ana): mensagem de erro ao processar o turno do chat (502).
+    return next(
+      createError(
+        502,
+        "upstream_error",
+        "Nao foi possivel responder agora. Tente de novo.",
+      ),
+    );
   }
 });
 
