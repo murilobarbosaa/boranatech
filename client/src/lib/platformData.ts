@@ -1,10 +1,43 @@
 import type { LucideIcon } from "lucide-react";
 import { Boxes, Compass, RefreshCw, Sprout } from "lucide-react";
+import { creators as homeCreators } from "./creatorsData";
 
 export const creatorHandle = "@ana.natech";
 
 /** Foto de perfil da curadora Ana Moura (@ana.natech · via Unavatar/LinkedIn, mesmo provider estável usado pelas demais criadoras). */
 export const creatorPhotoUrl = "https://unavatar.io/linkedin/anajulia-moura";
+
+// Consentimento (aba Mulheres): as unicas creators autorizadas a aparecer sao
+// as que ja estao na faixa de creators da home (fonte unica: creatorsData). Como
+// creatorsData nao tem campo de genero, este set marca quais dessas creators sao
+// mulheres; estar na faixa da home e a curadoria de parceria. Uma nova creator
+// mulher que entrar na home aparece aqui ao ter o handle adicionado neste set.
+// TODO(Ana): manter em dia; confirmar se "gama18k" (Gama) e "raibyhei" (Ray)
+// sao mulheres para incluir.
+const WOMEN_CREATOR_HANDLES = new Set<string>([
+  "grazi.tech",
+  "jess.data",
+  "carolpaier.tech",
+  "code.evelyn",
+  "ketlyncode",
+  "devnicolelobo",
+  "vua_nessa",
+  "monihillman",
+]);
+
+// Deriva as creators mulheres da faixa da home. A descricao (topic) fica vazia
+// de proposito: a bio e autodeclaracao real do proprio creator, nunca inventada.
+// TODO(Ana): preencher com a autodeclaracao de cada uma quando fornecerem.
+const womenCreators = homeCreators
+  .filter((creator) => WOMEN_CREATOR_HANDLES.has(creator.handle))
+  .map((creator) => ({
+    name: creator.name,
+    handle: `@${creator.handle}`,
+    topic: "",
+    url: creator.instagram,
+    avatarUrl: creator.photo,
+    parceira: true,
+  }));
 
 export const womenArea = {
   founder: {
@@ -265,86 +298,11 @@ export const womenArea = {
       url: "https://womcy.org/pt/",
     },
   ],
-  // Consentimento: so aparecem aqui as creators que confirmaram parceria com a
-  // plataforma (parceira: true) e a fundadora, alem de perfis de organizacoes/
-  // coletivos publicos. As criadoras individuais sem parceria confirmada foram
-  // removidas por falta de autorizacao para aparecerem na plataforma.
-  // TODO(Ana): adicionar novas conforme fecharem parceria.
-  creators: [
-    {
-      name: "Ana Moura",
-      handle: creatorHandle,
-      topic: "Curadoria tech, primeiro passos e referências sem enrolação.",
-      url: "https://www.instagram.com/ana.natech/",
-      avatarUrl: creatorPhotoUrl,
-    },
-    {
-      name: "Rafaella Ballerini",
-      handle: "@rafaballerini",
-      topic: "Programação, carreira e comunidade",
-      url: "https://www.youtube.com/@rafaellaballerini",
-      avatarUrl: "https://unavatar.io/youtube/rafaellaballerini",
-      parceira: true,
-    },
-    {
-      name: "Grazi",
-      handle: "grazi.tech",
-      topic: "Programação e carreira em tecnologia",
-      url: "https://www.instagram.com/grazi.tech/",
-      avatarUrl: "https://unavatar.io/instagram/grazi.tech",
-      parceira: true,
-    },
-    {
-      name: "Attekita Dev",
-      handle: "@attekitadev",
-      topic: "Desenvolvimento de apps, games e carreira em tecnologia",
-      url: "https://www.youtube.com/@attekitadev",
-      avatarUrl: "https://unavatar.io/youtube/attekitadev",
-      parceira: true,
-    },
-    {
-      name: "PyLadies São Paulo",
-      handle: "",
-      topic: "Perfil da comunidade que divulga conteúdo, eventos e cursos de Python para mulheres.",
-      url: "https://www.instagram.com/pyladiessp/",
-      avatarUrl: "",
-    },
-    {
-      name: "Meninas Programadoras USP",
-      handle: "",
-      topic: "Coletivo universitário que produz conteúdo para aproximar mais mulheres da programação.",
-      url: "https://www.instagram.com/meninasprogramadorasusp/",
-      avatarUrl: "",
-    },
-    {
-      name: "PrograMaria",
-      handle: "",
-      topic: "Perfil que publica conteúdos, vagas e histórias sobre mulheres no universo da tecnologia.",
-      url: "https://www.instagram.com/programaria/",
-      avatarUrl: "",
-    },
-    {
-      name: "WoMakersCode",
-      handle: "",
-      topic: "Perfil que compartilha conteúdo, eventos e oportunidades da comunidade de mulheres em tech.",
-      url: "https://www.instagram.com/womakerscode/",
-      avatarUrl: "",
-    },
-    {
-      name: "PretaLab",
-      handle: "",
-      topic: "Perfil que divulga dados, conteúdos e histórias de mulheres negras e indígenas em tecnologia.",
-      url: "https://www.instagram.com/pretalab/",
-      avatarUrl: "",
-    },
-    {
-      name: "Programe como uma garota",
-      handle: "",
-      topic: "Perfil que publica dicas, oportunidades e conteúdo de incentivo a mulheres na programação.",
-      url: "https://www.instagram.com/programecomoumagarota/",
-      avatarUrl: "",
-    },
-  ],
+  // Creators da aba: DERIVADAS da faixa de creators da home (womenCreators
+  // acima, filtrado por WOMEN_CREATOR_HANDLES). Fonte unica: creatorsData, entao
+  // nao ha lista duplicada aqui. As organizacoes/coletivos (PyLadies, PrograMaria
+  // etc.) nao entram nesta secao: vivem em `communities`.
+  creators: womenCreators,
   videos: [
     {
       title: "Canal Attekita Dev: dev, games e carreira",

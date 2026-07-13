@@ -559,10 +559,12 @@ function CreatorsSection({
                   ) : null}
                 </div>
               </div>
-              {/* TODO(Ana): revisar a linha de descricao de cada creator; nao inventar bio. */}
-              <p className="mt-3 text-sm font-semibold text-slate-600">
-                {creator.topic}
-              </p>
+              {/* Descricao e autodeclaracao real; vazia por ora. TODO(Ana): nao inventar bio. */}
+              {creator.topic ? (
+                <p className="mt-3 text-sm font-semibold text-slate-600">
+                  {creator.topic}
+                </p>
+              ) : null}
               <span className="mt-4 inline-flex items-center gap-1 text-xs font-black text-violet-700">
                 Conhecer
                 <ExternalLink
