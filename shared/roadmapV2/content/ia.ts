@@ -280,6 +280,21 @@ export const ia: RoadmapV2 = {
           ],
         },
         {
+          id: "generativa.api",
+          title: "Usar um LLM via API",
+          description:
+            "O modelo como serviço: você chama, ele responde, e você valida o que volta.",
+          content:
+            "A forma mais comum de trabalhar com IA generativa hoje não é treinar modelo nenhum, é **consumir um LLM como serviço**, por uma API. Você manda um pedido pela internet, o modelo roda nos servidores do provedor, e devolve a resposta. Nada é treinado na sua chamada: o modelo já veio pronto, e cada requisição é independente, ele não aprende com o que você envia nem lembra da conversa anterior a menos que você reenvie o histórico.\n\nUma chamada típica separa dois papéis. O **prompt de sistema** define quem o modelo é e as regras que ele deve seguir (o tom, o formato, o que não fazer). O **prompt de usuário** traz a pergunta ou a tarefa daquela vez. Essa separação é o que te dá controle: o sistema fixa o comportamento, o usuário varia a cada chamada.\n\n```\nChamada a um LLM (estrutura):\n\nsystem: define o papel e os limites\nuser:   a pergunta ou tarefa da vez\ntemperature: baixa = previsível, alta = variado\n```\n\nA **temperatura** vale conhecer: baixa deixa as respostas mais previsíveis e consistentes (bom pra tarefas objetivas), alta deixa mais criativas e variadas (bom pra gerar ideias, ruim pra precisão).\n\nDois hábitos separam quem usa API com profissionalismo. O primeiro é olhar o **custo por token**: você paga por pedaço de texto que entra e sai, então prompts enormes e respostas longas custam dinheiro real, e num produto de verdade isso vira uma restrição de projeto, não um detalhe. O segundo, e mais importante: **nunca confie na saída sem validar**. Como você viu em LLMs e modelos de fundação, o modelo erra com confiança, inventa fatos e formatos, e o seu código precisa checar o que voltou antes de usar. Este é o coração da IA aplicada: você não pesquisa modelos novos, você integra um modelo pronto com bom senso e verificação. Você domina esta etapa quando monta uma chamada com prompt de sistema e de usuário, ajusta a temperatura pro tipo de tarefa, e trata a resposta como algo a validar, não como verdade.",
+          resources: [
+            {
+              label: "OpenAI: documentação da API (referência)",
+              url: "https://platform.openai.com/docs/",
+              kind: "doc",
+            },
+          ],
+        },
+        {
           id: "generativa.adaptar",
           title: "Adaptar modelos ao seu caso",
           description:
@@ -332,6 +347,8 @@ export const ia: RoadmapV2 = {
           title: "Projeto final: chatbot com IA",
           description:
             "Um chatbot completo com IA, juntando modelo, contexto e interface num produto real.",
+          content:
+            "Esta é a hora de transformar a trilha num produto que qualquer pessoa consegue usar, e nada representa melhor a IA aplicada de hoje que um chatbot. Você percorreu os fundamentos, o machine learning, o deep learning, os domínios de linguagem e a IA generativa, incluindo como chamar um LLM via API. O projeto final junta o modelo, o contexto e uma interface num só lugar.\n\nO projeto vinculado te encomenda um **chatbot com IA** de ponta a ponta: uma interface simples de conversa, ligada a um LLM por API, com um prompt de sistema que define o papel do assistente, e, de preferência, uma base de conhecimento própria (os seus documentos) que o modelo consulta pra responder sobre um assunto específico, em vez de depender só da memória genérica dele. É o encontro de tudo o que a trilha construiu: modelo pronto, contexto bem dado e produto utilizável.\n\nComo manda a área, trate a saída com desconfiança saudável: mostre de onde veio a resposta quando usar uma base própria, e não apresente o que o modelo diz como verdade absoluta. Você chega ao fim quando alguém abre o seu chatbot, faz uma pergunta sobre o conteúdo que você deu, e recebe uma resposta coerente e ancorada nesse conteúdo, com a interface deixando claro que é um assistente de IA. Um chatbot que passa nesse teste é a peça de portfólio que melhor prova que você sabe aplicar IA, que é o que esta trilha se propôs a formar.",
           project: "chatbot-com-ia",
         },
         {
