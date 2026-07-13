@@ -101,6 +101,14 @@ export const env = {
     process.env.INTERVIEW_TTS_DAILY_LIMIT_PRO || "200",
     10,
   ),
+  // Teto diario proprio do chat de intake do plano de carreira, separado da
+  // quota global das ferramentas (padrao agent-chat/interview-turn). Pro-only:
+  // o gate barra antes de qualquer chamada.
+  // TODO: calibrar CAREER_PLAN_CHAT_DAILY_LIMIT_PRO.
+  careerPlanChatDailyLimitPro: parseInt(
+    process.env.CAREER_PLAN_CHAT_DAILY_LIMIT_PRO || "60",
+    10,
+  ),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;

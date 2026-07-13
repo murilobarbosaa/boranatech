@@ -30,7 +30,16 @@ const AI_BACKOFF_MS = [400, 800];
 const AI_TIMEOUT_MS = 90_000;
 const MAX_TOKENS = 3_000;
 
-export type CareerPlanBudget = "zero" | "ate_500" | "ate_2000" | "acima_2000";
+// Fonte unica dos niveis de orcamento do plano de carreira. Reusada pelo
+// GenerateSchema da rota e pelo schema do chat de intake, sem duplicar a lista.
+export const CAREER_PLAN_BUDGETS = [
+  "zero",
+  "ate_500",
+  "ate_2000",
+  "acima_2000",
+] as const;
+
+export type CareerPlanBudget = (typeof CAREER_PLAN_BUDGETS)[number];
 
 export interface CareerPlanIntake {
   goal: string;
