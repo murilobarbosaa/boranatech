@@ -25,6 +25,7 @@ const Checkout = lazy(() => import("@/pages/Checkout"));
 const CheckoutSucesso = lazy(() => import("@/pages/CheckoutSucesso"));
 const Comparador = lazy(() => import("@/pages/Comparador"));
 const Comunidades = lazy(() => import("@/pages/Comunidades"));
+const Sobre = lazy(() => import("@/pages/Sobre"));
 const Conquistas = lazy(() => import("@/pages/conquistas/Conquistas"));
 const Creators = lazy(() => import("@/pages/Creators"));
 const CurriculoAnalisar = lazy(() => import("@/pages/CurriculoAnalisar"));
@@ -276,11 +277,9 @@ function Router() {
         <Route path="/portifolio">{() => <Redirect to="/portfolio" />}</Route>
         <Route path="/noticias" component={Noticias} />
         <Route path="/comunidades" component={Comunidades} />
-        {/* Sobre Nos vive dentro da Comunidade (/comunidades#sobre); a rota
-            antiga redireciona pra nao quebrar link salvo. */}
-        <Route path="/sobre">
-          {() => <Redirect to="/comunidades#sobre" />}
-        </Route>
+        {/* Sobre Nos e uma pagina propria; o acesso e pelo item "Sobre nos" do
+            menu Comunidade (grupo CONEXOES) e por um link no rodape. */}
+        <Route path="/sobre" component={Sobre} />
         <Route path="/dicas" component={Dicas} />
         <Route path="/mulheres" component={Mulheres} />
         <Route path="/dicionario" component={Dicionario} />

@@ -5,7 +5,8 @@ import { ArrowRight, Compass } from "lucide-react";
 
 import { creators } from "@/lib/creatorsData";
 
-// Secao "Sobre Nos" que vive DENTRO da pagina de Comunidade (/comunidades#sobre).
+// Secao "Sobre Nos": conteudo da pagina propria /sobre (pages/Sobre.tsx),
+// acessada pelo item "Sobre nos" do menu Comunidade (grupo CONEXOES).
 // Estrutura de NARRATIVA (gancho -> virada -> pra quem -> quem somos -> o que
 // construimos -> quem apoia -> fecho), nao lista de blocos soltos. As bios e
 // credenciais vem dos LinkedIns REAIS da Ana e do Murilo (fornecidos por eles):
