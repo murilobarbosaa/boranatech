@@ -199,3 +199,72 @@ export const marketContext: MarketContextEntry[] = [
   { tipo: "diferenca_clt_pj", nivel: "Senior", percentualMedio: "40-55%", descricao: "Profissionais seniors tem maior propensao a PJ, onde as faixas ultrapassam a CLT em mais de 40%.", fonte: "Pesquisa Coodesh 2024" },
   { tipo: "crescimento_salarial", periodo: "2024-2025", percentualMedio: "5-8%", descricao: "Salarios de tecnologia cresceram em ritmo moderado, acima da inflacao, apos estabilizacao pos-pandemia.", fonte: "Guia Salarial Robert Half 2025" },
 ];
+
+export const marketTendencias = [
+  { titulo: "Estabilizacao pos-layoffs e foco em eficiencia", descricao: "Apos as grandes ondas de demissoes, o mercado entrou em fase de consolidacao, priorizando contratacoes estrategicas de profissionais seniores com foco em ROI e eficiencia operacional.", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { titulo: "Adocao consolidada do modelo hibrido", descricao: "O modelo totalmente remoto perdeu espaco para o formato hibrido (2 a 3 vezes por semana no escritorio), que passou a ser a exigencia majoritaria de empresas de medio e grande porte.", fonte: "Pesquisa State of Data Brazil", ano: 2024 },
+  { titulo: "Explosao de demandas por IA generativa integrada", descricao: "Crescimento acelerado na busca por engenheiros capazes de integrar APIs de LLMs e arquiteturas RAG aos sistemas corporativos, elevando as faixas salariais da categoria.", fonte: "Tech Report Coodesh", ano: 2025 },
+  { titulo: "Valorizacao de lideranca tecnica (Tech Lead)", descricao: "Aumento real nos salarios de engenheiros seniors que acumulam gestao de projetos ageis e mentoria, servindo de ponte entre metas de produto e execucao de engenharia.", fonte: "Glassdoor Market Insights", ano: 2025 },
+];
+
+export const marketTecnologias = [
+  { nome: "Python (IA, LLMs e Dados)", faixaSeniorSP: "16000-24000", motivo: "Modelos preditivos, automacoes inteligentes e arquiteturas de dados complexas.", fonte: "State of Data Brazil", ano: 2024 },
+  { nome: "Cloud Architecture (AWS, Azure, GCP)", faixaSeniorSP: "16000-25000", motivo: "Migracoes complexas, governanca de custos (FinOps) e ambientes resilientes.", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { nome: "Rust", faixaSeniorSP: "16000-23000", motivo: "Alta valorizacao por escassez de profissionais e uso em infraestrutura critica.", fonte: "Tech Report Coodesh", ano: 2025 },
+  { nome: "CyberSecurity / SIEM", faixaSeniorSP: "15000-24000", motivo: "Pressao regulatoria (LGPD) e aumento de ataques forcam empresas a reter especialistas.", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { nome: "Data Engineering (Spark / Airflow)", faixaSeniorSP: "15000-23000", motivo: "Alta disputa por engenheiros que estruturam bases de dados para IA.", fonte: "State of Data Brazil", ano: 2024 },
+  { nome: "Golang", faixaSeniorSP: "15000-22000", motivo: "Usado por fintechs e e-commerce para microsservicos de alta performance.", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { nome: "Scala", faixaSeniorSP: "15000-22000", motivo: "Requisitado em financas e big data por integracao com ecossistema Spark.", fonte: "Glassdoor Market Insights", ano: 2025 },
+  { nome: "Kubernetes / DevOps Avancado", faixaSeniorSP: "14000-22000", motivo: "Orquestracao de containers e automacao de CI-CD sao gargalos em empresas tradicionais.", fonte: "Tech Report Coodesh", ano: 2025 },
+  { nome: "SAP / ABAP", faixaSeniorSP: "14000-21000", motivo: "Nicho de ERP corporativo com salarios consolidados elevados.", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { nome: "Swift (iOS)", faixaSeniorSP: "14000-21000", motivo: "Escassez estrutural de desenvolvedores iOS nativos inflaciona os salarios.", fonte: "Glassdoor Market Insights", ano: 2025 },
+  { nome: "Kotlin (Android)", faixaSeniorSP: "14000-20000", motivo: "Apps transacionais bancarios exigem maxima estabilidade nativa.", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { nome: "Java / Spring Boot", faixaSeniorSP: "13000-19000", motivo: "Base dos maiores bancos e sistemas corporativos do Brasil.", fonte: "Tech Report Coodesh", ano: 2025 },
+  { nome: "TypeScript / Node.js Avancado", faixaSeniorSP: "12000-18000", motivo: "Especialistas em arquitetura limpa e microsservicos mantem boa valorizacao.", fonte: "Tech Report Coodesh", ano: 2025 },
+];
+
+export const marketBeneficios = [
+  { porte: "Startup", beneficio: "Flexibilidade total de horarios e home office", percentual: "85%", fonte: "Tech Report Coodesh", ano: 2025 },
+  { porte: "Startup", beneficio: "Stock Options (opcoes de acoes)", percentual: "25%", fonte: "Tech Report Coodesh", ano: 2025 },
+  { porte: "Media", beneficio: "VR e VA flexivel (Caju, Flash, etc.)", percentual: "92%", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { porte: "Media", beneficio: "Assistencia medica e odontologica integral", percentual: "88%", fonte: "Guia Salarial Robert Half", ano: 2025 },
+  { porte: "Grande", beneficio: "PLR (Participacao nos Lucros e Resultados)", percentual: "78%", fonte: "Glassdoor Market Insights", ano: 2025 },
+  { porte: "Grande", beneficio: "Auxilio educacao e reembolso de certificacoes", percentual: "65%", fonte: "Guia Salarial Robert Half", ano: 2025 },
+];
+
+export const marketProgressao = [
+  { area: "Engenharia de Software", juniorParaPleno: "2 a 3 anos", plenoParaSenior: "4 a 6 anos", fonte: "Tech Report Coodesh", ano: 2025 },
+  { area: "Dados (Engenheiro, Cientista, Analista)", juniorParaPleno: "2 a 3 anos", plenoParaSenior: "3 a 5 anos", fonte: "State of Data Brazil", ano: 2024 },
+  { area: "Product Management (PM e PO)", juniorParaPleno: "2 anos", plenoParaSenior: "4 a 5 anos", fonte: "Glassdoor Market Insights", ano: 2025 },
+  { area: "QA / Engenharia de Testes", juniorParaPleno: "2 a 4 anos", plenoParaSenior: "5 a 7 anos", fonte: "Tech Report Coodesh", ano: 2025 },
+  { area: "Design UI/UX", juniorParaPleno: "2 a 3 anos", plenoParaSenior: "4 a 6 anos", fonte: "Glassdoor Market Insights", ano: 2025 },
+];
+
+export const calculadoraExplicacoes = {
+  fatorPJ: {
+    titulo: "O que e o fator 0,68?",
+    explicacao: "E o multiplicador padrao de mercado para estimar o equivalente CLT de uma proposta PJ. Ele provisiona o que o contrato PJ nao inclui automaticamente: ferias (8,33%), 13o salario (8,33%), FGTS (8%), INSS (ate 16%) e beneficios tipicos (plano de saude, VR/VA). Sem essas provisoes, o bruto PJ maior vira liquido menor.",
+    exemplo: "Proposta PJ de R$ 10.000 x 0,68 = R$ 6.800 de equivalente CLT. Para valer mais que um CLT de R$ 10.000, o PJ precisa ser de pelo menos R$ 14.700.",
+    fonte: "Metodologia Robert Half / Calculos CLT FGTS INSS",
+    ano: 2025,
+  },
+  margemNegociacao: {
+    titulo: "Por que 15% de margem?",
+    explicacao: "E a variacao tipica aceitavel dentro das tabelas salariais corporativas para candidatos com diferenciais comprovados: certificacoes especificas, ingles fluente, dominio de ferramenta escassa na equipe. Nao e garantido; e o teto razoavel sem soar fora de mercado.",
+    exemplo: "Se a tabela marca R$ 10.000 para Pleno, um candidato com diferencial pode pleitear ate R$ 11.500 na proposta final.",
+    fonte: "Guia Salarial Robert Half",
+    ano: 2025,
+  },
+  pjVsClt: {
+    titulo: "Quando vale a pena PJ?",
+    criterios: [
+      "O PJ paga entre 40% e 50% a mais que o bruto CLT equivalente",
+      "Voce tem disciplina para gerir ferias, 13o e impostos por conta",
+      "Voce nao depende de estabilidade imediata (FGTS como reserva de emergencia)",
+      "A empresa nao oferece beneficios que compensem (saude, PLR, educacao)",
+    ],
+    exemplo: "CLT de R$ 6.000 com beneficios so deve ser trocado por PJ se a proposta for pelo menos R$ 8.500 a R$ 9.000.",
+    fonte: "Analise de Contratacoes Coodesh",
+    ano: 2025,
+  },
+};

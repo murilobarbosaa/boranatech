@@ -8,6 +8,7 @@ import {
   DollarSign,
   ExternalLink,
   Handshake,
+  Info,
   MapPin,
   Scale,
   Search,
@@ -23,10 +24,15 @@ import CountUp from "@/components/reactbits/CountUp";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { cn } from "@/lib/utils";
 import {
+  calculadoraExplicacoes,
   cities,
   levels,
+  marketBeneficios,
   marketContext,
   marketMonitor,
+  marketProgressao,
+  marketTecnologias,
+  marketTendencias,
   salaryRows,
   workTypes,
 } from "@/lib/marketData";
@@ -389,6 +395,8 @@ export default function Salarios() {
   const [pj, setPj] = useState(9000);
   const [negArea, setNegArea] = useState(String(salaryRows[0].area));
   const [negLevel, setNegLevel] = useState(String(salaryRows[0].level));
+  const [showFatorPJ, setShowFatorPJ] = useState(false);
+  const [showMargem, setShowMargem] = useState(false);
 
   const areas = [
     "Todas",
@@ -637,6 +645,32 @@ export default function Salarios() {
                       }}
                     />
                   </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowFatorPJ((v) => !v)}
+                    aria-expanded={showFatorPJ}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 underline"
+                  >
+                    <Info className="h-4 w-4" aria-hidden />
+                    Entender o cálculo
+                  </button>
+                  {showFatorPJ ? (
+                    <div className="card-brutal mt-3 rounded-2xl bg-emerald-50 p-4">
+                      <p className="font-display text-sm font-black text-slate-950">
+                        {calculadoraExplicacoes.fatorPJ.titulo}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-700">
+                        {calculadoraExplicacoes.fatorPJ.explicacao}
+                      </p>
+                      <p className="mt-2 text-xs font-bold text-slate-600">
+                        {calculadoraExplicacoes.fatorPJ.exemplo}
+                      </p>
+                      <p className="mt-2 text-[10px] font-bold text-slate-400">
+                        {calculadoraExplicacoes.fatorPJ.fonte} ·{" "}
+                        {calculadoraExplicacoes.fatorPJ.ano}
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="mt-5 rounded-2xl border-2 border-slate-900 bg-white p-5">
                     <p className="text-xs font-bold text-slate-500">
                       Estimativa simplificada. Valide com um contador antes de
@@ -776,6 +810,60 @@ export default function Salarios() {
                       <li>Posso mostrar evolução e entregas documentadas.</li>
                     </ul>
                   </motion.div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMargem((v) => !v)}
+                    aria-expanded={showMargem}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-emerald-800 underline"
+                  >
+                    <Info className="h-4 w-4" aria-hidden />
+                    Entender a margem
+                  </button>
+                  {showMargem ? (
+                    <div className="card-brutal mt-3 rounded-2xl bg-emerald-50 p-4">
+                      <p className="font-display text-sm font-black text-slate-950">
+                        {calculadoraExplicacoes.margemNegociacao.titulo}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-700">
+                        {calculadoraExplicacoes.margemNegociacao.explicacao}
+                      </p>
+                      <p className="mt-2 text-xs font-bold text-slate-600">
+                        {calculadoraExplicacoes.margemNegociacao.exemplo}
+                      </p>
+                      <p className="mt-2 text-[10px] font-bold text-slate-400">
+                        {calculadoraExplicacoes.margemNegociacao.fonte} ·{" "}
+                        {calculadoraExplicacoes.margemNegociacao.ano}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="card-brutal mt-4 rounded-2xl bg-white p-4">
+                    <p className="font-display text-sm font-black text-slate-950">
+                      {calculadoraExplicacoes.pjVsClt.titulo}
+                    </p>
+                    <ul className="mt-2 space-y-1.5">
+                      {calculadoraExplicacoes.pjVsClt.criterios.map(
+                        (criterio) => (
+                          <li
+                            key={criterio}
+                            className="flex items-start gap-2 text-sm text-slate-700"
+                          >
+                            <Check
+                              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"
+                              aria-hidden
+                            />
+                            {criterio}
+                          </li>
+                        ),
+                      )}
+                    </ul>
+                    <p className="mt-2 text-xs font-bold text-slate-600">
+                      {calculadoraExplicacoes.pjVsClt.exemplo}
+                    </p>
+                    <p className="mt-2 text-[10px] font-bold text-slate-400">
+                      {calculadoraExplicacoes.pjVsClt.fonte} ·{" "}
+                      {calculadoraExplicacoes.pjVsClt.ano}
+                    </p>
+                  </div>
                 </motion.div>
               </div>
             ) : null}
@@ -926,6 +1014,142 @@ export default function Salarios() {
                       Fontes: State of Data Brazil 2024, Pesquisa Coodesh 2024,
                       Guia Salarial Robert Half 2025.
                     </p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border-2 border-slate-900 bg-emerald-50 p-4 text-xs font-bold text-slate-600">
+                  Dados de referência de mercado (fontes: Robert Half, Coodesh,
+                  State of Data, Glassdoor). Consulte as fontes para valores
+                  atualizados.
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Tendências do mercado
+                  </h3>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    {marketTendencias.map((item) => (
+                      <div
+                        key={item.titulo}
+                        className="card-brutal flex flex-col rounded-2xl bg-white p-5"
+                      >
+                        <p className="font-display text-base font-black text-slate-950">
+                          {item.titulo}
+                        </p>
+                        <p className="mt-2 flex-1 text-sm text-slate-600">
+                          {item.descricao}
+                        </p>
+                        <p className="mt-3 text-[10px] font-bold text-slate-400">
+                          {item.fonte} · {item.ano}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Tecnologias mais valorizadas
+                  </h3>
+                  <div className="mt-4 grid gap-3">
+                    {marketTecnologias.map((item) => (
+                      <div
+                        key={item.nome}
+                        className="card-brutal flex flex-col gap-2 rounded-2xl bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-display text-sm font-black text-slate-950">
+                            {item.nome}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-600">
+                            {item.motivo}
+                          </p>
+                          <p className="mt-1 text-[10px] font-bold text-slate-400">
+                            {item.fonte} · {item.ano}
+                          </p>
+                        </div>
+                        <span className="inline-flex shrink-0 self-start rounded-full border-2 border-slate-900 bg-emerald-200 px-3 py-1 text-xs font-black text-emerald-900 sm:self-center">
+                          R$ {item.faixaSeniorSP}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs font-bold text-slate-500">
+                    Faixas de referência para nível sênior em São Paulo.
+                    Verifique nas fontes antes de negociar.
+                  </p>
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Benefícios por porte de empresa
+                  </h3>
+                  <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    {[
+                      { key: "Startup", label: "Startup" },
+                      { key: "Media", label: "Média" },
+                      { key: "Grande", label: "Grande" },
+                    ].map((porte) => (
+                      <div
+                        key={porte.key}
+                        className="card-brutal rounded-2xl bg-white p-5"
+                      >
+                        <p className="font-display text-lg font-black text-slate-950">
+                          {porte.label}
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          {marketBeneficios
+                            .filter((b) => b.porte === porte.key)
+                            .map((b) => (
+                              <div
+                                key={b.beneficio}
+                                className="rounded-xl border-2 border-slate-200 bg-emerald-50/60 p-3"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-bold text-slate-700">
+                                    {b.beneficio}
+                                  </span>
+                                  <span className="shrink-0 rounded-full border-2 border-slate-900 bg-emerald-200 px-2 py-0.5 text-[10px] font-black text-emerald-900">
+                                    {b.percentual}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-[10px] font-bold text-slate-400">
+                                  {b.fonte} · {b.ano}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="py-2">
+                  <h3 className="font-display text-xl font-black">
+                    Tempo de progressão
+                  </h3>
+                  <div className="mt-4 grid gap-3">
+                    {marketProgressao.map((item) => (
+                      <div
+                        key={item.area}
+                        className="card-brutal grid gap-2 rounded-2xl bg-white p-4 sm:grid-cols-[1.5fr_1fr_1fr] sm:items-center"
+                      >
+                        <p className="font-display text-sm font-black text-slate-950">
+                          {item.area}
+                        </p>
+                        <p className="text-sm text-slate-700">
+                          <span className="font-black">Júnior a Pleno:</span>{" "}
+                          {item.juniorParaPleno}
+                        </p>
+                        <p className="text-sm text-slate-700">
+                          <span className="font-black">Pleno a Sênior:</span>{" "}
+                          {item.plenoParaSenior}
+                        </p>
+                        <p className="text-[10px] font-bold text-slate-400 sm:col-span-3">
+                          {item.fonte} · {item.ano}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
