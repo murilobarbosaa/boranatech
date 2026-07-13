@@ -296,8 +296,8 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "title": "Blockchain e Web3 do Zero",
     "level": "Iniciante",
     "description": "Dos fundamentos de blockchain ao Solidity, contratos inteligentes, integração Web3 e a segurança que essa área exige acima de tudo. Conclua uma etapa pra liberar a próxima.",
-    "sectionCount": 7,
-    "stepCount": 13,
+    "sectionCount": 6,
+    "stepCount": 15,
     "hasProject": true,
     "hasQuiz": false
   },
