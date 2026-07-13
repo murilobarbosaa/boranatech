@@ -1,3 +1,8 @@
+// TODO(Ana): revisao editorial do upgrade da fase 3c, lote 5 (reescrita de
+// fundamentos.conta e do fecho do projeto, folha nova de rede privada com as
+// 3 variantes, fechos de criterio, conexoes nominais, bloco de Terraform e
+// resources novos). Enquadramento de papel: cloud constroi e opera na nuvem
+// (rede como recurso declarado num provedor, nao cabo fisico).
 import type { RoadmapV2 } from "../types";
 
 export const cloud: RoadmapV2 = {
@@ -67,7 +72,7 @@ export const cloud: RoadmapV2 = {
           description:
             "Criar uma conta e usar a camada gratuita pra praticar sem gastar.",
           content:
-            "A melhor forma de aprender nuvem é praticando nela, e os três provedores oferecem uma **camada gratuita** pra você começar sem gastar. Criar sua conta e explorar o painel é o primeiro passo prático da trilha.\n\nUm aviso que vale pra qualquer provedor: a camada gratuita tem limites, e passar deles gera cobrança. Por isso, dois hábitos desde o dia um. Configure **alertas de custo** pra ser avisado se a conta começar a gerar despesa. E **desligue ou remova** o que você criou pra testar quando terminar, porque recurso esquecido ligado é a causa número um de sustos na fatura. Trate isso como apagar a luz ao sair do quarto.\n\nEscolha seu provedor acima pra ver como criar a conta e o que a camada gratuita oferece.",
+            "Aprender nuvem sem tocar nela é como aprender a nadar na areia. Por isso o primeiro passo prático da trilha é criar sua conta e explorar o painel do provedor, e a boa notícia é que os três oferecem uma **camada gratuita** pra você praticar sem gastar.\n\nA camada gratuita costuma ter três formatos: serviços **sempre gratuitos** dentro de um limite mensal, ofertas **gratuitas por tempo limitado** pra contas novas, e **créditos** de teste. Dá pra subir um servidor pequeno, hospedar um site e mexer nos serviços centrais sem pagar, desde que você fique dentro dos limites.\n\nE aqui mora o aviso que vale pra qualquer provedor: passar do limite gera cobrança, e a causa número um de susto na fatura é **recurso esquecido ligado**. Dois hábitos protegem você desde o dia um. Configure **alertas de custo** (ou de orçamento) pra ser avisado assim que a conta começar a gerar despesa. E **desligue ou remova** tudo que criou pra testar quando terminar, como quem apaga a luz ao sair do quarto. Esse reflexo de cuidar do custo não é um detalhe: é uma das coisas que mais distinguem um bom profissional de cloud.\n\nVocê domina este passo quando cria a conta, ativa o alerta de custo antes de qualquer outra coisa, e encerra os recursos de teste sem deixar rastro na fatura.\n\nEscolha seu provedor acima pra ver como criar a conta e o que a camada gratuita oferece.",
           byLanguage: {
             aws: {
               content:
@@ -133,7 +138,7 @@ export const cloud: RoadmapV2 = {
           description:
             "Como os recursos se conectam e se isolam dentro da nuvem.",
           content:
-            "Toda a nuvem é construída sobre **redes**, então entender o básico de redes é pré-requisito pra praticamente tudo. Vale ter clara a ideia de endereço **IP** (o endereço de cada máquina), de **portas** (os pontos por onde os serviços conversam) e de como os dados viajam em pacotes pela internet.\n\nNa nuvem, aparece um conceito central: a **rede virtual privada**. Em vez de uma rede física, você cria, por software, uma rede isolada onde seus servidores vivem, com controle total sobre quem pode falar com quem. Dentro dela você define **sub-redes**, decide o que fica acessível da internet e o que fica privado, e configura **firewalls** (regras que liberam ou bloqueiam tráfego por porta e origem).\n\nEsse isolamento é a base da segurança em cloud. A boa prática é deixar exposto à internet apenas o mínimo necessário (por exemplo, só a porta de um site), mantendo bancos de dados e servidores internos em sub-redes privadas, sem acesso direto de fora. Cada provedor tem seu nome pra essa rede virtual, mas a ideia é idêntica nos três.\n\nVocê não precisa virar especialista em redes agora, mas precisa entender rede virtual, sub-rede e regra de firewall, porque esses conceitos aparecem toda vez que você sobe um recurso. Escolha seu provedor pra ver a documentação da rede virtual dele.",
+            "Toda a nuvem é construída sobre **redes**, então entender o básico de redes é pré-requisito pra praticamente tudo. Vale ter clara a ideia de endereço **IP** (o endereço de cada máquina), de **portas** (os pontos por onde os serviços conversam) e de como os dados viajam em pacotes pela internet.\n\nNa nuvem, aparece um conceito central: a **rede virtual privada**. Em vez de uma rede física, você cria, por software, uma rede isolada onde seus servidores vivem, com controle total sobre quem pode falar com quem. Dentro dela você define **sub-redes**, decide o que fica acessível da internet e o que fica privado, e configura **firewalls** (regras que liberam ou bloqueiam tráfego por porta e origem).\n\nEsse isolamento é a base da segurança em cloud. A boa prática é deixar exposto à internet apenas o mínimo necessário (por exemplo, só a porta de um site), mantendo bancos de dados e servidores internos em sub-redes privadas, sem acesso direto de fora. Cada provedor tem seu nome pra essa rede virtual, mas a ideia é idêntica nos três.\n\nVocê não precisa virar especialista em redes agora, mas precisa entender rede virtual, sub-rede e regra de firewall, porque esses conceitos aparecem toda vez que você sobe um recurso. O passo Redes privadas e isolamento aprofunda como desenhar essa rede com segurança. Escolha seu provedor pra ver a documentação da rede virtual dele.",
           byLanguage: {
             aws: {
               content:
@@ -184,7 +189,7 @@ export const cloud: RoadmapV2 = {
           title: "Regiões e zonas",
           description: "Onde, no mundo, sua infraestrutura de fato roda.",
           content:
-            "A nuvem parece etérea, mas roda em prédios cheios de servidores espalhados pelo mundo, os **data centers**. Os provedores organizam isso em **regiões** (áreas geográficas, como uma no Brasil, outra nos Estados Unidos) e, dentro de cada região, em **zonas de disponibilidade** (data centers isolados entre si, mas próximos).\n\nEssa geografia importa por três motivos práticos que você considera ao subir qualquer recurso. A **latência**: quanto mais perto seus servidores estão dos usuários, mais rápida a resposta; um site pra brasileiros roda melhor numa região no Brasil. A **conformidade**: leis de proteção de dados às vezes exigem que a informação fique em determinado país. E o **custo**: o preço dos serviços varia de uma região pra outra.\n\nAs zonas existem pra dar **resiliência**. Se você quer que sua aplicação continue no ar mesmo que um data center tenha um problema, distribui os recursos em mais de uma zona. Assim, a falha de uma não derruba tudo. Esse é um princípio central de arquitetura confiável na nuvem, que conecta com a ideia de alta disponibilidade.\n\nO conceito é idêntico nos três provedores, mudando só os nomes das regiões. A lição prática pra agora: ao criar um recurso, repare sempre em qual região você está, porque é fácil criar coisas espalhadas por engano (e até esquecer recursos rodando numa região que você nem olha, gerando custo).",
+            "A nuvem parece etérea, mas roda em prédios cheios de servidores espalhados pelo mundo, os **data centers**. Os provedores organizam isso em **regiões** (áreas geográficas, como uma no Brasil, outra nos Estados Unidos) e, dentro de cada região, em **zonas de disponibilidade** (data centers isolados entre si, mas próximos).\n\nEssa geografia importa por três motivos práticos que você considera ao subir qualquer recurso. A **latência**: quanto mais perto seus servidores estão dos usuários, mais rápida a resposta; um site pra brasileiros roda melhor numa região no Brasil. A **conformidade**: leis de proteção de dados às vezes exigem que a informação fique em determinado país. E o **custo**: o preço dos serviços varia de uma região pra outra.\n\nAs zonas existem pra dar **resiliência**. Se você quer que sua aplicação continue no ar mesmo que um data center tenha um problema, distribui os recursos em mais de uma zona. Assim, a falha de uma não derruba tudo. Esse é um princípio central de arquitetura confiável na nuvem, e é o que o projeto final, Arquitetura de alta disponibilidade, coloca em prática.\n\nO conceito é idêntico nos três provedores, mudando só os nomes das regiões. A lição prática pra agora: ao criar um recurso, repare sempre em qual região você está, porque é fácil criar coisas espalhadas por engano (e até esquecer recursos rodando numa região que você nem olha, gerando custo).",
         },
         {
           id: "computacao.vm",
@@ -192,7 +197,7 @@ export const cloud: RoadmapV2 = {
           description:
             "O recurso mais fundamental: uma máquina na nuvem que você controla.",
           content:
-            "O serviço mais básico de qualquer nuvem é o **servidor virtual**: uma máquina, criada por software, que você liga em minutos e controla como se fosse um computador remoto. É o coração do modelo IaaS e onde muita gente roda aplicações, bancos e serviços.\n\nAo criar um, você escolhe alguns parâmetros: o **tamanho** (quanta CPU e memória, que define o preço), o **sistema operacional** (em geral uma distribuição Linux), a **região** onde vai rodar e as regras de rede e firewall que o protegem. Depois, você se conecta a ele por SSH e o administra pelo terminal.\n\nUm ponto de atenção que se repete: o servidor virtual cobra enquanto está **ligado**, mesmo sem uso. Esquecer uma máquina ligada é a causa clássica de fatura inesperada. Desligue ou remova o que criou pra testar.\n\nEscolha seu provedor pra ver o serviço de servidores virtuais dele.",
+            "O serviço mais básico de qualquer nuvem é o **servidor virtual**: uma máquina, criada por software, que você liga em minutos e controla como se fosse um computador remoto. É o coração do modelo IaaS e onde muita gente roda aplicações, bancos e serviços.\n\nAo criar um, você escolhe alguns parâmetros: o **tamanho** (quanta CPU e memória, que define o preço), o **sistema operacional** (em geral uma distribuição Linux), a **região** onde vai rodar e as regras de rede e firewall que o protegem. Depois, você se conecta a ele por SSH e o administra pelo terminal.\n\nUm ponto de atenção que se repete: o servidor virtual cobra enquanto está **ligado**, mesmo sem uso. Esquecer uma máquina ligada é a causa clássica de fatura inesperada. Desligue ou remova o que criou pra testar. Você domina este passo quando sobe uma máquina, conecta nela por SSH pra administrá-la e a desliga ao terminar, sem deixar custo rodando.\n\nEscolha seu provedor pra ver o serviço de servidores virtuais dele.",
           byLanguage: {
             aws: {
               content:
@@ -287,7 +292,7 @@ export const cloud: RoadmapV2 = {
           description:
             "O serviço que decide quem acessa o quê, no coração da segurança em nuvem.",
           content:
-            'Um dos serviços mais importantes e mais negligenciados por iniciantes é o de **identidade e gerenciamento de acesso** (IAM). É ele que controla **quem** pode fazer **o quê** na sua nuvem, e configurar isso bem é metade da segurança.\n\nA estrutura, semelhante nos três provedores, gira em torno de poucos conceitos. **Identidades** representam pessoas ou sistemas (um usuário, uma aplicação). **Permissões** ou políticas dizem quais ações cada identidade pode realizar em quais recursos. E **papéis** (roles) agrupam permissões pra serem atribuídos com facilidade.\n\nO princípio que guia tudo é o **menor privilégio**: dê a cada identidade apenas as permissões mínimas necessárias pro seu trabalho, e nada além. Se uma credencial vazar, o estrago fica contido ao pouco que ela podia fazer. O oposto, dar acesso total "pra não ter dor de cabeça", é justamente a receita da dor de cabeça grande.\n\nDuas práticas valem desde o início. Proteja a conta principal (a de administrador) com autenticação de múltiplos fatores e use-a o mínimo possível, criando identidades específicas pro dia a dia. E prefira dar permissões a **papéis** que os serviços assumem, em vez de espalhar credenciais fixas pelo código.\n\nEscolha seu provedor pra ver o serviço de identidade dele.',
+            'Um dos serviços mais importantes e mais negligenciados por iniciantes é o de **identidade e gerenciamento de acesso** (IAM). É ele que controla **quem** pode fazer **o quê** na sua nuvem, e configurar isso bem é metade da segurança.\n\nA estrutura, semelhante nos três provedores, gira em torno de poucos conceitos. **Identidades** representam pessoas ou sistemas (um usuário, uma aplicação). **Permissões** ou políticas dizem quais ações cada identidade pode realizar em quais recursos. E **papéis** (roles) agrupam permissões pra serem atribuídos com facilidade.\n\nO princípio que guia tudo é o **menor privilégio**: dê a cada identidade apenas as permissões mínimas necessárias pro seu trabalho, e nada além. Se uma credencial vazar, o estrago fica contido ao pouco que ela podia fazer. O oposto, dar acesso total "pra não ter dor de cabeça", é justamente a receita da dor de cabeça grande.\n\nDuas práticas valem desde o início. Proteja a conta principal (a de administrador) com autenticação de múltiplos fatores e use-a o mínimo possível, criando identidades específicas pro dia a dia. E prefira dar permissões a **papéis** que os serviços assumem, em vez de espalhar credenciais fixas pelo código. Você domina este passo quando cria uma identidade com só as permissões que a tarefa exige, em vez de dar acesso amplo pra evitar trabalho.\n\nEscolha seu provedor pra ver o serviço de identidade dele.',
           byLanguage: {
             aws: {
               content:
@@ -325,12 +330,62 @@ export const cloud: RoadmapV2 = {
           },
         },
         {
+          id: "identidade.rede",
+          title: "Redes privadas e isolamento",
+          description:
+            "Isolar recursos numa rede virtual e decidir o que fica exposto, com o banco sempre protegido.",
+          content:
+            "Na nuvem, a segurança começa pela **rede**: decidir o que pode alcançar o quê. O primeiro conceito é a **rede virtual privada** (a VPC, ou equivalente): uma rede isolada, criada por software, onde seus recursos vivem sem se misturar com os de mais ninguém, e onde você tem controle total sobre o tráfego.\n\nA decisão central é dividir essa rede em **sub-redes** por nível de exposição. A **sub-rede pública** tem rota pra internet e abriga só o que precisa ser alcançado de fora: um balanceador de carga, um servidor web. A **sub-rede privada** não tem rota de entrada da internet e abriga o que deve ficar escondido: a aplicação interna e, principalmente, o **banco de dados**.\n\n```\nsub-rede publica  -> balanceador, web\nsub-rede privada  -> aplicacao, banco\n```\n\nO **grupo de segurança** é o firewall do recurso: um conjunto de regras que diz quais portas e origens podem falar com aquela máquina. O servidor web aceita tráfego da internet na porta do site; o banco aceita conexão **apenas** da aplicação, de mais ninguém.\n\nO modelo mental que fecha tudo, e o erro que separa o iniciante do profissional: **o banco nunca fica na sub-rede pública**. Ele vive na privada, alcançável só por quem está dentro da rede. Expor um banco à internet é um dos vazamentos mais comuns e mais caros da nuvem.\n\nEscolha seu provedor pra ver como ele nomeia a rede virtual e o firewall do recurso.",
+          byLanguage: {
+            aws: {
+              content:
+                "Na AWS, a rede virtual é a **VPC**, e o firewall do recurso é o **security group** (regras de entrada e saída por porta e origem), com as network ACLs atuando por sub-rede. Na prática, o banco fica numa sub-rede privada, com um security group que só aceita a porta do banco quando a origem é o security group da aplicação, e nada além.",
+              resources: [
+                {
+                  label: "AWS: security groups da VPC (oficial)",
+                  url: "https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html",
+                  kind: "doc",
+                },
+              ],
+            },
+            azure: {
+              content:
+                "No Azure, a rede virtual é a **VNet**, e o firewall do recurso é o **Network Security Group** (NSG), com regras de entrada e saída por porta e origem. Na prática, o banco fica numa sub-rede privada, com um NSG que libera a porta do banco apenas quando a origem é a sub-rede da aplicação, mantendo tudo o mais bloqueado.",
+              resources: [
+                {
+                  label: "Azure: Network Security Groups (oficial)",
+                  url: "https://learn.microsoft.com/en-us/azure/virtual-network/network-security-groups-overview",
+                  kind: "doc",
+                },
+              ],
+            },
+            gcp: {
+              content:
+                "No Google Cloud, a rede virtual é a **VPC** (global por padrão), e o firewall é definido por **regras de firewall da VPC**, aplicadas por etiquetas e contas de serviço. Na prática, o banco fica numa sub-rede sem acesso externo, com uma regra que só permite a porta do banco quando a origem são as instâncias da aplicação.",
+              resources: [
+                {
+                  label: "Google Cloud: regras de firewall da VPC (oficial)",
+                  url: "https://cloud.google.com/firewall/docs/firewalls",
+                  kind: "doc",
+                },
+              ],
+            },
+          },
+        },
+        {
           id: "identidade.responsabilidade",
           title: "Responsabilidade compartilhada",
           description:
             "Quem cuida da segurança de quê quando você usa a nuvem.",
           content:
             'Uma confusão comum de quem começa é achar que, ao usar a nuvem, toda a segurança fica por conta do provedor. Não é assim. Vale entender o **modelo de responsabilidade compartilhada**, que os três grandes provedores adotam com a mesma lógica.\n\nA divisão é mais ou menos esta: o provedor é responsável pela segurança **da** nuvem (os data centers físicos, o hardware, a infraestrutura que sustenta os serviços), e você é responsável pela segurança **na** nuvem (como você configura seus recursos, quem tem acesso, se seus dados estão protegidos, se as portas certas estão fechadas).\n\nNa prática, isso significa que a maioria dos incidentes de segurança na nuvem vem de **erros de configuração do cliente**, não de falhas do provedor: um bucket de armazenamento deixado público, permissões largas demais, uma porta aberta sem necessidade, uma senha fraca. O provedor te dá ferramentas seguras, mas a configuração é sua.\n\nO quanto cabe a você varia com o modelo de serviço. Num servidor virtual (IaaS), você cuida de mais coisas, inclusive de atualizar o sistema operacional. Num serviço gerenciado (PaaS), o provedor assume mais, e você foca na aplicação e nos acessos.\n\nA lição prática: nunca presuma que "está na nuvem, então está seguro". Aplique o que a trilha ensina (menor privilégio no IAM, redes privadas, buckets fechados, MFA) porque essa parte é, por contrato, sua responsabilidade.',
+          resources: [
+            {
+              label: "AWS: modelo de responsabilidade compartilhada (oficial)",
+              url: "https://aws.amazon.com/compliance/shared-responsibility-model/",
+              kind: "doc",
+            },
+          ],
         },
       ],
     },
@@ -347,7 +402,7 @@ export const cloud: RoadmapV2 = {
           description:
             "Deixar o provedor cuidar da operação do banco enquanto você usa.",
           content:
-            "Você poderia instalar e administrar um banco de dados na mão, num servidor virtual, mas a nuvem oferece um caminho melhor: o **banco de dados gerenciado**. Você contrata o banco como serviço, e o provedor cuida da instalação, das atualizações, dos backups e da disponibilidade, enquanto você só usa.\n\nO ganho é enorme em trabalho e em segurança. Tarefas que exigem conhecimento especializado e atenção constante (manter backups confiáveis, aplicar correções de segurança, garantir que o banco não caia) passam a ser responsabilidade do provedor. Pra um iniciante, isso remove uma fonte gigante de risco: banco sem backup é tragédia anunciada, e o gerenciado resolve isso por padrão.\n\nOs provedores oferecem bancos gerenciados de vários tipos, dos relacionais (como PostgreSQL e MySQL) aos não relacionais. Pra começar, um banco relacional gerenciado cobre a maioria dos casos e conversa com tudo que você já viu sobre dados.\n\nEscolha seu provedor pra ver o serviço de banco gerenciado dele.",
+            "Você poderia instalar e administrar um banco de dados na mão, num servidor virtual, mas a nuvem oferece um caminho melhor: o **banco de dados gerenciado**. Você contrata o banco como serviço, e o provedor cuida da instalação, das atualizações, dos backups e da disponibilidade, enquanto você só usa.\n\nO ganho é enorme em trabalho e em segurança. Tarefas que exigem conhecimento especializado e atenção constante (manter backups confiáveis, aplicar correções de segurança, garantir que o banco não caia) passam a ser responsabilidade do provedor. Pra um iniciante, isso remove uma fonte gigante de risco: banco sem backup é tragédia anunciada, e o gerenciado resolve isso por padrão.\n\nOs provedores oferecem bancos gerenciados de vários tipos, dos relacionais (como PostgreSQL e MySQL) aos não relacionais. Pra começar, um banco relacional gerenciado cobre a maioria dos casos e conversa com tudo que você já viu sobre dados. E, como o passo Redes privadas e isolamento reforça, esse banco vive numa sub-rede privada, nunca exposto direto à internet.\n\nEscolha seu provedor pra ver o serviço de banco gerenciado dele.",
           byLanguage: {
             aws: {
               content:
@@ -500,7 +555,7 @@ export const cloud: RoadmapV2 = {
           description:
             "Descrever sua infraestrutura em arquivos versionados, em vez de clicar no painel.",
           content:
-            "No começo, você cria recursos clicando no painel do provedor. Isso ensina, mas não escala nem se repete com confiança: cliques não ficam registrados, e recriar tudo na mão é lento e propenso a erro. A solução profissional é a **infraestrutura como código** (IaC): descrever toda a sua infraestrutura em arquivos de texto, que você versiona no Git como qualquer código.\n\nA vantagem é grande. A infraestrutura vira **reproduzível**: o mesmo arquivo cria o mesmo ambiente quantas vezes você quiser, idêntico, em segundos. Vira **versionada**: você vê o histórico de mudanças e volta atrás se algo quebrar. E vira **documentada por definição**, porque o arquivo descreve exatamente o que existe, sem depender da memória de ninguém.\n\nA ferramenta mais popular pra isso é o **Terraform**, que tem uma grande vantagem pra esta trilha: ele funciona com os três provedores. Você descreve os recursos desejados (uma rede, um servidor, um banco), e o Terraform cuida de criá-los, atualizá-los ou removê-los pra bater com o que você declarou. Existem também ferramentas próprias de cada provedor, mas o Terraform, por ser multi-nuvem, é um conhecimento que viaja bem.\n\nÉ um tema avançado, e faz mais sentido depois que você já criou recursos na mão e entende o que eles são. Mas é uma habilidade muito valorizada: saber IaC é o que separa quem opera nuvem de forma artesanal de quem opera de forma profissional e em escala.",
+            'No começo, você cria recursos clicando no painel do provedor. Isso ensina, mas não escala nem se repete com confiança: cliques não ficam registrados, e recriar tudo na mão é lento e propenso a erro. A solução profissional é a **infraestrutura como código** (IaC): descrever toda a sua infraestrutura em arquivos de texto, que você versiona no Git como qualquer código.\n\nA vantagem é grande. A infraestrutura vira **reproduzível**: o mesmo arquivo cria o mesmo ambiente quantas vezes você quiser, idêntico, em segundos. Vira **versionada**: você vê o histórico de mudanças e volta atrás se algo quebrar. E vira **documentada por definição**, porque o arquivo descreve exatamente o que existe, sem depender da memória de ninguém.\n\nA ferramenta mais popular pra isso é o **Terraform**, que tem uma grande vantagem pra esta trilha: ele funciona com os três provedores. Você descreve os recursos desejados (uma rede, um servidor, um banco), e o Terraform cuida de criá-los, atualizá-los ou removê-los pra bater com o que você declarou. Um recurso declarado tem esta forma:\n\n```hcl\nresource "aws_instance" "web" {\n  instance_type = "t2.micro"\n  ami           = "ami-0abc123"\n}\n```\n\nVocê diz o **quê** (um servidor deste tamanho, com esta imagem), não o passo a passo pra criar, e o Terraform descobre como chegar lá. Existem também ferramentas próprias de cada provedor, mas o Terraform, por ser multi-nuvem, é um conhecimento que viaja bem.\n\nÉ um tema avançado, e faz mais sentido depois que você já criou recursos na mão e entende o que eles são. Mas é uma habilidade muito valorizada: saber IaC é o que separa quem opera nuvem de forma artesanal de quem opera de forma profissional e em escala.',
           resources: [
             {
               label: "Terraform: documentação oficial",
@@ -521,6 +576,13 @@ export const cloud: RoadmapV2 = {
             "Automatizar a entrega de aplicações pra a nuvem a cada mudança.",
           content:
             "Em cloud, você não quer publicar aplicações na mão a cada mudança: é lento, manual e cheio de erro. A prática que resolve isso é o **CI/CD** (integração e entrega contínuas): um fluxo automatizado que, a cada alteração no código, testa, constrói e publica a aplicação na nuvem sozinho.\n\nVale separar as duas partes. A **integração contínua** (CI) cuida de, a cada envio de código, rodar verificações e testes automaticamente, pegando problemas cedo, antes de chegarem à produção. A **entrega contínua** (CD) cuida de levar o código aprovado até o ambiente onde ele roda, de forma automatizada e confiável.\n\nO efeito combinado é um **pipeline**: o desenvolvedor envia o código, as checagens rodam, e se tudo passa a nova versão é publicada sem intervenção manual. Isso torna as entregas mais frequentes, mais rápidas e muito mais seguras, porque o processo é sempre o mesmo, sem o fator humano de esquecer um passo.\n\nExistem várias ferramentas pra montar pipelines (uma das mais comuns é o GitHub Actions, integrado ao repositório), e os próprios provedores têm serviços nativos pra isso. Pra um projeto de portfólio, configurar um pipeline simples que publica sua aplicação na nuvem a cada push demonstra exatamente a mentalidade de automação que a área valoriza. É a peça que conecta o seu código ao seu deploy de forma profissional.",
+          resources: [
+            {
+              label: "GitHub Actions (documentação oficial)",
+              url: "https://docs.github.com/en/actions",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "automacao.custos",
@@ -602,7 +664,16 @@ export const cloud: RoadmapV2 = {
           title: "Projeto final: arquitetura de alta disponibilidade",
           description:
             "Uma aplicação web desenhada pra sobreviver a falhas, aplicando os pilares da trilha.",
+          content:
+            "Olhe pra trás um instante: você entrou nesta trilha sem uma conta na nuvem, e agora sobe servidores virtuais, isola recursos numa rede privada, usa banco gerenciado, controla acesso com IAM e descreve tudo como código com Terraform. Este passo junta os pilares numa entrega só: uma arquitetura desenhada pra **sobreviver a falhas**.\n\nA encomenda é a arquitetura do projeto abaixo: uma aplicação web que continua no ar mesmo quando um data center tem problema. Distribua os servidores em **mais de uma zona de disponibilidade**, coloque um balanceador de carga na sub-rede pública repartindo o tráfego, mantenha o banco gerenciado numa sub-rede privada (com réplica pra disponibilidade), e configure os alertas de custo e de saúde. A ideia central da trilha, projetar esperando a falha, vira concreta aqui.\n\nO que separa este projeto de um servidor solto é a **resiliência provada**: derrube uma instância de propósito e mostre que a aplicação continua respondendo, porque a outra zona assume. E descreva tudo com **infraestrutura como código**, pra a arquitetura ser reproduzível, não um monte de cliques que ninguém lembra.\n\nO critério de chegada é objetivo: a arquitetura no ar (ou descrita em código no GitHub), redundante em mais de uma zona, com o diagrama e um README explicando cada decisão de disponibilidade e de custo, e você justificando por que o banco está na sub-rede privada e o que acontece quando uma zona cai. É este projeto que prova que você não apenas usa a nuvem, você a **arquiteta**.",
           project: "arquitetura-alta-disponibilidade",
+          resources: [
+            {
+              label: "Terraform: tutoriais oficiais",
+              url: "https://developer.hashicorp.com/terraform/tutorials",
+              kind: "doc",
+            },
+          ],
         },
         {
           id: "carreira.entrar",
