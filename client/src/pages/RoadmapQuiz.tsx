@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { ArrowLeft, ArrowRight, CheckCircle2, Send } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
 import { fireProCelebration } from "@/lib/proConfetti";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import {
@@ -29,12 +28,17 @@ import {
 // MEDIDAS ANTI-COPIA, EXPECTATIVA HONESTA: aqui bloqueamos so a copia casual
 // (selecao de texto, clipboard, menu de contexto, impressao, atalhos de
 // copia/impressao no container e conteudo oculto quando a janela perde o
-// foco) e marcamos a tela com o e-mail do usuario. Screenshot de sistema NAO
-// tem bloqueio real na web; a protecao de verdade e o pool grande com
-// sorteio por tentativa e a revelacao restrita do gabarito, ambos no server
-// (fases 4.1/4.2). NAO "melhorar" isto com hostilidade inutil (bloquear
-// teclas de acessibilidade, detectar devtools, punir perda de foco etc.):
-// dissuasao proporcional, acessibilidade preservada.
+// foco). Screenshot de sistema NAO tem bloqueio real na web; a protecao de
+// verdade e o pool grande com sorteio por tentativa e a revelacao restrita
+// do gabarito, ambos no server (fases 4.1/4.2). NAO "melhorar" isto com
+// hostilidade inutil (bloquear teclas de acessibilidade, detectar devtools,
+// punir perda de foco etc.): dissuasao proporcional, acessibilidade
+// preservada.
+//
+// A marca d'agua com o e-mail do usuario foi REMOVIDA por decisao de produto
+// (Ana e Murilo): visual mais limpo, e ela nunca foi a protecao real do
+// exame. NAO reintroduzir achando que e melhoria de seguranca; a protecao
+// real e a do server, acima.
 
 const AUTOSAVE_DEBOUNCE_MS = 2000;
 
@@ -54,32 +58,6 @@ const primaryBtn =
   "inline-flex items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-[#FFB800] px-4 py-2.5 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:pointer-events-none disabled:opacity-50";
 const secondaryBtn =
   "inline-flex items-center justify-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-white px-4 py-2.5 text-sm font-black text-slate-900 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] disabled:pointer-events-none disabled:opacity-50";
-
-// Marca d'agua com o e-mail do usuario em repeticao diagonal sobre a area da
-// pergunta: legivel numa foto, discreta no uso. Decorativa pra leitores de
-// tela e transparente pra interacao.
-function Watermark({ text }: { text: string }) {
-  if (!text) return null;
-  return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 select-none overflow-hidden"
-    >
-      <div className="absolute -inset-[40%] flex -rotate-[22deg] flex-col justify-between opacity-[0.07]">
-        {Array.from({ length: 14 }, (_, row) => (
-          <div
-            key={row}
-            className="flex justify-between gap-8 whitespace-nowrap text-sm font-bold text-slate-900"
-          >
-            {Array.from({ length: 5 }, (_, col) => (
-              <span key={col}>{text}</span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export default function RoadmapQuiz() {
   const params = useParams();
@@ -103,8 +81,6 @@ export default function RoadmapQuiz() {
   // JSON das ultimas respostas persistidas com sucesso; falha de autosave
   // deixa o ref pra tras e a proxima mudanca re-tenta.
   const savedRef = useRef("{}");
-  const { user } = useAuth();
-  const watermarkText = user?.email ?? "";
   // Conteudo oculto enquanto a janela esta sem foco ou a aba invisivel:
   // dissuasao de screenshot-por-troca-de-janela. Sem timer, sem punicao.
   const [obscured, setObscured] = useState(false);
@@ -362,7 +338,6 @@ export default function RoadmapQuiz() {
             onContextMenu={preventCopyEvent}
             onKeyDown={blockCopyShortcuts}
           >
-            <Watermark text={watermarkText} />
             {!reviewing && questions[index] && (
               <ExamQuestion
                 question={questions[index]}
