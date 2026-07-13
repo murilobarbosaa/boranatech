@@ -2,11 +2,17 @@ import { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Banknote,
+  BookOpen,
   Check,
   Coins,
   DollarSign,
   ExternalLink,
+  Handshake,
+  MapPin,
+  Scale,
+  Search,
   Sparkles,
+  TrendingUp,
   X,
 } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -316,9 +322,14 @@ function SalaryRangeCard({
         </span>
       </div>
       {isEstagio ? (
-        <p className="mt-3 text-sm font-black text-emerald-700">
-          Bolsa: {formatRange(row.bolsa)}/mês
-        </p>
+        <div className="mt-3">
+          <span className="inline-flex rounded-full border-2 border-slate-900 bg-emerald-200 px-2.5 py-0.5 text-[10px] font-black uppercase text-emerald-900">
+            Bolsa de estágio
+          </span>
+          <p className="mt-2 font-display text-lg font-black text-emerald-700">
+            {formatRange(row.bolsa)}/mês
+          </p>
+        </div>
       ) : (
         <>
           <div
@@ -359,6 +370,11 @@ function SalaryRangeCard({
           </div>
         </>
       )}
+      {row.fonte ? (
+        <p className="mt-3 text-[10px] font-bold text-slate-400">
+          {String(row.fonte)}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -493,11 +509,13 @@ export default function Salarios() {
                     ["Cidade", city, setCity, cities],
                     ["Tipo", type, setType, workTypes],
                   ].map(([label, value, setter, options]) => (
-                    <label key={String(label)} className="text-sm font-black">
-                      {String(label)}
+                    <label key={String(label)} className="block">
+                      <span className="mb-1 block text-xs font-black uppercase tracking-wide text-slate-500">
+                        {String(label)}
+                      </span>
                       <select
                         className={cn(
-                          "mt-1 w-full rounded-xl border-2 bg-white p-3",
+                          "w-full rounded-xl border-2 bg-white p-3",
                           ac.input,
                         )}
                         value={String(value)}
@@ -519,9 +537,14 @@ export default function Salarios() {
                   )}
                 >
                   {ordered.length === 0 ? (
-                    <div className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center text-sm font-bold text-slate-500 sm:col-span-2">
-                      Nenhuma faixa pra esse recorte. Tente ampliar a área, o
-                      nível ou a cidade.
+                    <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center sm:col-span-2">
+                      <p className="font-display text-lg font-black text-slate-700">
+                        Nenhuma faixa pra esse recorte
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-slate-500">
+                        Tente ampliar a área, o nível ou a cidade nos filtros
+                        acima.
+                      </p>
                     </div>
                   ) : (
                     ordered.map((row) => (
@@ -541,12 +564,13 @@ export default function Salarios() {
                 </p>
                 {filteredFontes.length > 0 ? (
                   <p className="mt-1 text-xs font-bold text-slate-500">
-                    Fonte dos dados: {filteredFontes.join(", ")}.
+                    Fontes: {filteredFontes.join(" · ")}.
                   </p>
                 ) : null}
                 {hasEstagio ? (
                   <p className="mt-1 text-xs font-bold text-slate-500">
-                    Estágio = bolsa-auxílio mensal (valores aproximados).
+                    Valores de estágio = bolsa-auxílio mensal (referência, não
+                    CLT/PJ formal).
                   </p>
                 ) : null}
               </div>
@@ -590,8 +614,11 @@ export default function Salarios() {
                   className="card-brutal rounded-2xl bg-emerald-100 p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#6ee7b7]"
                 >
                   <h2 className="font-display text-2xl font-black">
-                    Calculadora CLT vs PJ
+                    Proposta PJ
                   </h2>
+                  <p className="mt-1 text-sm font-bold text-slate-600">
+                    Quanto equivale em CLT?
+                  </p>
                   <label className="mt-4 block text-sm font-black">
                     Proposta PJ (R$)
                     <input
@@ -669,8 +696,11 @@ export default function Salarios() {
                   className="card-brutal rounded-2xl bg-white p-6 transition-shadow duration-200 hover:shadow-[8px_8px_0_#6ee7b7]"
                 >
                   <h2 className="font-display text-2xl font-black">
-                    Calculadora de negociação salarial
+                    Negociação salarial
                   </h2>
+                  <p className="mt-1 text-sm font-bold text-slate-600">
+                    Qual faixa pedir?
+                  </p>
                   <label className="mt-4 block text-sm font-black">
                     Área
                     <select
@@ -695,7 +725,11 @@ export default function Salarios() {
                       ))}
                     </select>
                   </label>
-                  <div
+                  <motion.div
+                    key={`${negArea}-${negLevel}`}
+                    initial={reduce ? false : { opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
                     className={cn(
                       "mt-5 rounded-2xl border-2 p-5",
                       ac.panelBorder,
@@ -705,28 +739,43 @@ export default function Salarios() {
                     {negBase !== null && negTeto !== null ? (
                       <>
                         <p className="font-black">
-                          Referência da tabela: R${" "}
-                          <CountUp to={negBase} separator="." />. Você pode pedir
-                          entre R$ <CountUp to={negBase} separator="." /> e R${" "}
+                          Você pode pedir entre R${" "}
+                          <CountUp to={negBase} separator="." /> e R${" "}
                           <CountUp to={negTeto} separator="." />.
                         </p>
+                        <div className="relative mt-3 h-3 w-full rounded-full bg-white">
+                          <div className="absolute inset-y-0 left-[6%] right-[6%] rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" />
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-xs font-black text-slate-700">
+                          <span>
+                            base R$ <CountUp to={negBase} separator="." />
+                          </span>
+                          <span>
+                            teto R$ <CountUp to={negTeto} separator="." />
+                          </span>
+                        </div>
                         <p className="mt-2 text-xs font-bold text-slate-500">
                           Faixa baseada na tabela acima, com até 15% de margem de
                           negociação.
                         </p>
                       </>
                     ) : (
-                      <p className="font-bold text-slate-700">
-                        Ainda não temos {negArea} {negLevel} na tabela. Use os
-                        recortes disponíveis como referência.
-                      </p>
+                      <div className="rounded-xl border-2 border-amber-500 bg-amber-50 p-4">
+                        <p className="font-black text-amber-900">
+                          Ainda não temos {negArea} {negLevel} na tabela.
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-amber-800">
+                          Escolha outra área ou nível, ou use os recortes
+                          disponíveis como referência.
+                        </p>
+                      </div>
                     )}
                     <ul className="mt-3 space-y-2 text-sm text-slate-700">
                       <li>Tenho projetos práticos alinhados com {negArea}.</li>
                       <li>Trago repertório das tecnologias pedidas na vaga.</li>
                       <li>Posso mostrar evolução e entregas documentadas.</li>
                     </ul>
-                  </div>
+                  </motion.div>
                 </motion.div>
               </div>
             ) : null}
@@ -785,58 +834,99 @@ export default function Salarios() {
                   <p className="mt-1 text-sm text-slate-600">
                     Referências gerais de mercado, sem faixa CLT/PJ por cargo.
                   </p>
-                  <div className="mt-4 grid gap-5 md:grid-cols-2">
-                    <div className="card-brutal rounded-2xl bg-white p-5">
-                      <h4 className="font-display text-lg font-black">
+                  <div className="mt-4 space-y-6">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
                         Salário médio por região
-                      </h4>
-                      <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                         {marketContext
                           .filter((item) => item.tipo === "salario_medio_regiao")
                           .map((item) => (
-                            <li key={String(item.regiao)}>
-                              <span className="font-black text-slate-900">
-                                {String(item.regiao)}:
-                              </span>{" "}
-                              {formatBRL(Number(item.valorMedio))} ·{" "}
-                              {item.descricao}
-                            </li>
+                            <div
+                              key={String(item.regiao)}
+                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <MapPin
+                                  className="h-4 w-4 text-emerald-700"
+                                  aria-hidden
+                                />
+                                <p className="text-sm font-black text-slate-900">
+                                  {String(item.regiao)}
+                                </p>
+                              </div>
+                              <p className="mt-2 font-display text-xl font-black text-emerald-700">
+                                {formatBRL(Number(item.valorMedio))}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-600">
+                                {item.descricao}
+                              </p>
+                              <p className="mt-2 text-[10px] font-bold text-slate-400">
+                                {item.fonte}
+                              </p>
+                            </div>
                           ))}
-                      </ul>
+                      </div>
                     </div>
-                    <div className="card-brutal rounded-2xl bg-white p-5">
-                      <h4 className="font-display text-lg font-black">
-                        Diferença CLT vs PJ por nível
-                      </h4>
-                      <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                        Diferença CLT vs PJ
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
                         {marketContext
                           .filter((item) => item.tipo === "diferenca_clt_pj")
                           .map((item) => (
-                            <li key={String(item.nivel)}>
-                              <span className="font-black text-slate-900">
-                                {String(item.nivel)}:
-                              </span>{" "}
-                              PJ {item.percentualMedio} · {item.descricao}
-                            </li>
+                            <div
+                              key={String(item.nivel)}
+                              className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]"
+                            >
+                              <p className="text-sm font-black text-slate-900">
+                                {String(item.nivel)}
+                              </p>
+                              <p className="mt-1 font-display text-2xl font-black text-emerald-700">
+                                PJ {item.percentualMedio}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-600">
+                                {item.descricao}
+                              </p>
+                              <p className="mt-2 text-[10px] font-bold text-slate-400">
+                                {item.fonte}
+                              </p>
+                            </div>
                           ))}
-                      </ul>
+                      </div>
                     </div>
+                    {marketContext
+                      .filter((item) => item.tipo === "crescimento_salarial")
+                      .map((item) => (
+                        <div
+                          key={String(item.periodo)}
+                          className="rounded-2xl border-2 border-slate-900 bg-emerald-100 p-5 shadow-[4px_4px_0_#0f172a]"
+                        >
+                          <div className="flex items-center gap-2">
+                            <TrendingUp
+                              className="h-5 w-5 text-emerald-700"
+                              aria-hidden
+                            />
+                            <p className="font-display text-lg font-black">
+                              Crescimento salarial {item.periodo}:{" "}
+                              {item.percentualMedio}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-sm font-bold text-slate-700">
+                            {item.descricao}
+                          </p>
+                          <p className="mt-2 text-[10px] font-bold text-slate-500">
+                            {item.fonte}
+                          </p>
+                        </div>
+                      ))}
+                    <p className="text-xs font-bold text-slate-500">
+                      Fontes: State of Data Brazil 2024, Pesquisa Coodesh 2024,
+                      Guia Salarial Robert Half 2025.
+                    </p>
                   </div>
-                  {marketContext
-                    .filter((item) => item.tipo === "crescimento_salarial")
-                    .map((item) => (
-                      <p
-                        key={String(item.periodo)}
-                        className="mt-4 rounded-2xl border-2 border-slate-900 bg-emerald-50 p-4 text-sm font-bold text-slate-700"
-                      >
-                        Crescimento salarial {item.periodo}:{" "}
-                        {item.percentualMedio} · {item.descricao}
-                      </p>
-                    ))}
-                  <p className="mt-3 text-xs font-bold text-slate-500">
-                    Fontes: State of Data Brazil 2024, Pesquisa Coodesh 2024,
-                    Guia Salarial Robert Half 2025.
-                  </p>
                 </div>
               </div>
             ) : null}
@@ -857,10 +947,14 @@ export default function Salarios() {
                 </div>
 
                 <div>
-                  <h2 className="mb-4 font-display text-2xl font-black">
+                  <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black">
+                    <BookOpen
+                      className="h-6 w-6 text-emerald-700"
+                      aria-hidden
+                    />
                     Glossário do salário
                   </h2>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-2">
                     {salarioGlossario.map((item) => (
                       <div
                         key={item.termo}
@@ -881,15 +975,43 @@ export default function Salarios() {
                   </div>
                 </div>
 
+                <div className="card-brutal rounded-2xl bg-emerald-100 p-6">
+                  <h2 className="flex items-center gap-2 font-display text-2xl font-black">
+                    <Handshake
+                      className="h-6 w-6 text-emerald-700"
+                      aria-hidden
+                    />
+                    Dicas de negociação
+                  </h2>
+                  <ul className="mt-3 space-y-2">
+                    {salarioDicasNegociacao.map((dica) => (
+                      <li
+                        key={dica}
+                        className="flex items-start gap-2 text-sm font-bold text-slate-800"
+                      >
+                        <Check
+                          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"
+                          aria-hidden
+                        />
+                        {dica}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 <div>
-                  <h2 className="mb-4 font-display text-2xl font-black">
+                  <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black">
+                    <Scale className="h-6 w-6 text-emerald-700" aria-hidden />
                     CLT vs PJ
                   </h2>
                   <div className="grid gap-5 md:grid-cols-2">
-                    {[salarioCltPj.clt, salarioCltPj.pj].map((bloco) => (
+                    {[salarioCltPj.clt, salarioCltPj.pj].map((bloco, index) => (
                       <div
                         key={bloco.titulo}
-                        className="card-brutal rounded-2xl bg-white p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]"
+                        className={cn(
+                          "card-brutal rounded-2xl p-5 transition-transform duration-200 motion-safe:hover:-translate-y-1 hover:shadow-[6px_6px_0_#6ee7b7]",
+                          index === 0 ? "bg-emerald-50" : "bg-amber-50",
+                        )}
                       >
                         <h3 className="font-display text-xl font-black text-slate-950">
                           {bloco.titulo}
@@ -933,28 +1055,9 @@ export default function Salarios() {
                   </div>
                 </div>
 
-                <div className="card-brutal rounded-2xl bg-emerald-100 p-6">
-                  <h2 className="font-display text-2xl font-black">
-                    Dicas de negociação
-                  </h2>
-                  <ul className="mt-3 space-y-2">
-                    {salarioDicasNegociacao.map((dica) => (
-                      <li
-                        key={dica}
-                        className="flex items-start gap-2 text-sm font-bold text-slate-800"
-                      >
-                        <Check
-                          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700"
-                          aria-hidden
-                        />
-                        {dica}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
                 <div>
-                  <h2 className="mb-4 font-display text-2xl font-black">
+                  <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-black">
+                    <Search className="h-6 w-6 text-emerald-700" aria-hidden />
                     Onde pesquisar salário
                   </h2>
                   <div className="grid gap-4 md:grid-cols-3">
