@@ -21,6 +21,8 @@ import gamedev from "./gamedev";
 import gestao from "./gestao";
 import ia from "./ia";
 import infraestrutura from "./infraestrutura";
+import iot from "./iot";
+import mainframe from "./mainframe";
 import mobile from "./mobile";
 import produto from "./produto";
 import qa from "./qa";
@@ -44,6 +46,8 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   gestao,
   ia,
   infraestrutura,
+  iot,
+  mainframe,
   mobile,
   produto,
   qa,
