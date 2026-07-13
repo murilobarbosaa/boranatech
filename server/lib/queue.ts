@@ -154,10 +154,11 @@ export function createEmailWorker() {
 
 // Teto pro enfileiramento. Com Redis fora, a conexao de fila (offline queue
 // ligada, exigencia do BullMQ) segura o add() indefinidamente em vez de
-// rejeitar, o catch nunca dispara e a rota pendura. Estourado o teto, cai pro
-// envio direto. Trade-off consciente: se o Redis voltar com o processo vivo, o
-// add preso na offline queue ainda pode completar e o e-mail sai duplicado;
-// melhor que pendurar a rota ou perder o e-mail.
+// rejeitar, entao sem este teto a rota penduraria. Estourado o teto, o enqueue
+// PROPAGA o erro em vez de enviar direto: o add preso na offline queue completa
+// quando o Redis volta (o worker envia), entao um envio direto aqui duplicaria
+// o e-mail e furaria o limiter de taxa. O chamador trata o erro (best-effort
+// nos nao criticos; nos criticos o e-mail ainda sai pela fila que se recupera).
 const ENQUEUE_TIMEOUT_MS = 2_000;
 
 const ENQUEUE_TIMEOUT = Symbol("email-enqueue-timeout");
@@ -184,11 +185,10 @@ export async function enqueueEmail(data: EmailJobData) {
     );
   }
 
-  // sendDirect fica FORA do try: se rodasse dentro, uma falha dele cairia no
-  // catch e dispararia um segundo envio. Exatamente um sendDirect por chamada;
-  // falha dele propaga ao chamador.
+  // Fila existe: o e-mail vai pela fila OU falha. Nunca envio direto aqui.
+  // Timeout do add (Redis lento) ou rejeicao propagam pro chamador; enviar
+  // direto duplicaria (o add preso completa depois) e furaria o limiter.
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let needsDirectSend = false;
   try {
     const added = await Promise.race([
       emailQueue.add(data.type, data),
@@ -198,22 +198,11 @@ export async function enqueueEmail(data: EmailJobData) {
       }),
     ]);
     if (added === ENQUEUE_TIMEOUT) {
-      console.error(
-        "[queue] Timeout ao enfileirar e-mail. Enviando diretamente.",
+      throw new Error(
+        `Timeout ao enfileirar e-mail (${data.type}) apos ${ENQUEUE_TIMEOUT_MS}ms.`,
       );
-      needsDirectSend = true;
     }
-  } catch (err) {
-    console.error(
-      "[queue] Erro ao enfileirar e-mail. Enviando diretamente.",
-      err,
-    );
-    needsDirectSend = true;
   } finally {
     clearTimeout(timer);
-  }
-
-  if (needsDirectSend) {
-    await sendDirect(data);
   }
 }
