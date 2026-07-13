@@ -275,7 +275,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De hardware e sistemas operacionais a redes, servidores e atendimento: a porta de entrada mais acessível da TI. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 17,
+    "stepCount": 19,
     "hasProject": true,
     "hasQuiz": false
   },
