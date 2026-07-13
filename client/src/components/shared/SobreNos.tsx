@@ -121,10 +121,6 @@ const team: TeamMember[] = [
   },
 ];
 
-const TEAM_PHOTO = "/sobre/fundadores-juntos.jpg";
-// TODO(Ana): revisar a legenda da foto do time.
-const TEAM_PHOTO_CAPTION = "Ana e Murilo num hackathon em Brasília.";
-
 // 5. O que construimos: so numeros VERIFICAVEIS no proprio catalogo.
 // tecnologias=200 (technologyData) e roadmaps=30 (roadmapV2) sao contados no
 // codigo. TODO(Ana): "39 areas" vem da contagem dinamica da base (o dado
@@ -176,35 +172,6 @@ function PersonPhoto({ member }: { member: TeamMember }) {
       ) : (
         <span aria-hidden="true">{member.initials}</span>
       )}
-    </div>
-  );
-}
-
-function TeamPhoto() {
-  const [failed, setFailed] = useState(false);
-  if (!failed) {
-    return (
-      <img
-        src={TEAM_PHOTO}
-        alt="Ana Julia Moura e Murilo Cardoso, fundadores do Bora na Tech, num hackathon"
-        className="h-full w-full object-cover"
-        loading="lazy"
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-  // Fallback enquanto a foto nao foi adicionada: iniciais do time, sem inventar.
-  return (
-    <div className="flex h-full w-full items-center justify-center gap-4 bg-[image:linear-gradient(160deg,#6b1fc9,#3f1185)]">
-      {team.map((member) => (
-        <span
-          key={member.name}
-          className="grid h-20 w-20 place-items-center rounded-full border-2 border-slate-900 bg-violet-300 font-display text-2xl font-black text-slate-950"
-          aria-hidden="true"
-        >
-          {member.initials}
-        </span>
-      ))}
     </div>
   );
 }
@@ -323,18 +290,7 @@ export default function SobreNos() {
             Quem está por trás
           </p>
 
-          {/* Foto do time em client/public/sobre/fundadores-juntos.jpg */}
-          <figure className="mt-6">
-            <div className="aspect-[16/10] w-full overflow-hidden rounded-2xl border-2 border-slate-900 shadow-[8px_8px_0_#c4b5fd] sm:aspect-[21/9]">
-              <TeamPhoto />
-            </div>
-            {/* TODO(Ana): revisar a legenda */}
-            <figcaption className="mt-3 text-sm font-bold text-slate-500">
-              {TEAM_PHOTO_CAPTION}
-            </figcaption>
-          </figure>
-
-          <div className="mt-8 grid gap-5 md:grid-cols-2">
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
             {team.map((person) => (
               <div
                 key={person.name}
