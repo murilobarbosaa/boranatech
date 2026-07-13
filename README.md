@@ -89,6 +89,23 @@ daquele ambiente, e cole as linhas `STRIPE_PRICE_*` impressas nas envs:
 STRIPE_SECRET_KEY=sk_test_... pnpm exec tsx scripts/stripe-setup.mjs
 ```
 
+### Cupons de afiliado
+
+O desconto de afiliado e sempre percentual (`affiliates.discount_percent`) e vale
+so na primeira cobranca. No Stripe isso vira um coupon `duration: "once"` com id
+DETERMINISTICO `bnt_aff_<percent>_once` (dois afiliados com o mesmo percentual
+compartilham o coupon; a atribuicao fica no `affiliate_code`). O checkout ja cria
+o coupon sob demanda para percentuais ineditos, entao o script abaixo e opcional
+(pre-cria os coupons dos percentuais ativos):
+
+```bash
+STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-coupons.mjs   # sandbox
+STRIPE_SECRET_KEY=sk_live_... node scripts/stripe-coupons.mjs   # producao
+```
+
+Rode nos DOIS modos: o id e o mesmo, mas o coupon de sandbox e o de producao sao
+objetos DIFERENTES (a `STRIPE_SECRET_KEY` decide qual voce acerta).
+
 ### Testar o webhook localmente
 
 ```bash
