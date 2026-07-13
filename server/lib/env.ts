@@ -69,6 +69,11 @@ export const env = {
   asaasApiKey: requireEnv("ASAAS_API_KEY"),
   asaasWebhookToken: requireEnv("ASAAS_WEBHOOK_TOKEN"),
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
+  // Kill-switch do pagamento. FAIL-CLOSED: so a string exata "true" liga; ausente,
+  // vazia ou qualquer outro valor deixa o checkout desligado (default off). Usado
+  // enquanto a conta de producao do Asaas esta em analise: a vitrine do Pro segue
+  // visivel, so o pagamento fica fechado.
+  billingEnabled: process.env.BILLING_ENABLED === "true",
   aiDailyLimitFree: parseInt(process.env.AI_DAILY_LIMIT_FREE || "5", 10),
   aiDailyLimitPro: parseInt(process.env.AI_DAILY_LIMIT_PRO || "50", 10),
   // Teto diario do agente conversacional, separado das ferramentas de IA para o

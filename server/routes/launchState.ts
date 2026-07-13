@@ -93,7 +93,10 @@ launchStateRouter.get("/", (req, res) => {
     access = verifyToken(token, env.waitlistTokenSecret);
   }
 
-  res.json({ status, access });
+  // billingEnabled: kill-switch do pagamento exposto ao client no mesmo endpoint
+  // publico de flags. Apenas acrescenta a chave; o shape { status, access } segue
+  // intacto. Fail-closed ja garantido pelo env (default off).
+  res.json({ status, access, billingEnabled: env.billingEnabled });
 });
 
 // POST /api/beta/unlock
