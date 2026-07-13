@@ -48,7 +48,7 @@ export const womenArea = {
     handle: "@ana.natech",
     instagramUrl: "https://www.instagram.com/ana.natech/",
     message: "",
-    photoUrl: "",
+    photoUrl: creatorPhotoUrl,
   },
   tips: [
     "Procure comunidades com moderação ativa e canais para iniciantes.",
