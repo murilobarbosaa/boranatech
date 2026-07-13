@@ -289,7 +289,7 @@ export default function Checkout() {
     setLoading(true);
     try {
       const { checkoutUrl } = await createCheckout(selectedPlan);
-      if (checkoutUrl) window.open(checkoutUrl, "_blank");
+      if (checkoutUrl) window.location.href = checkoutUrl;
     } catch (error) {
       console.error("[Checkout] createCheckout failed", error);
       toast.error("Não foi possível iniciar o checkout. Tente novamente.");
