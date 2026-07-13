@@ -311,6 +311,12 @@ const menuData: DropdownMenu[] = [
             path: "/comunidades",
           },
           {
+            // TODO(Ana): escolher entre "Sobre nós" e "Quem somos", e revisar o subtitulo.
+            label: "Sobre nós",
+            description: "Quem está por trás do Bora na Tech",
+            path: "/comunidades#sobre",
+          },
+          {
             label: "Mentorias e Ebooks",
             description: "Mentorias e ebooks de parceiros",
             path: "/mentorias",
