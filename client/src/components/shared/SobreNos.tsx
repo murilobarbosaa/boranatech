@@ -85,9 +85,8 @@ const team: TeamMember[] = [
   {
     name: "Ana Julia Moura",
     role: "CEO e cofundadora",
-    // Foto real via proxy estavel do LinkedIn. TODO(Ana): pra usar a foto do
-    // hackathon, salve em client/public/sobre/ana.jpg e troque aqui.
-    photo: "https://unavatar.io/linkedin/anajulia-moura",
+    // Foto do hackathon em client/public/sobre/ana.jpg (fallback nas iniciais).
+    photo: "/sobre/ana.jpg",
     initials: "AJ",
     chips: [
       "IBM Z Ambassador",
@@ -106,9 +105,8 @@ const team: TeamMember[] = [
   {
     name: "Murilo Cardoso",
     role: "CTO e cofundador",
-    // Foto real via proxy estavel do LinkedIn. TODO(Murilo): pra usar a foto do
-    // hackathon, salve em client/public/sobre/murilo.jpg e troque aqui.
-    photo: "https://unavatar.io/linkedin/murilocardoso-dev",
+    // Foto do hackathon em client/public/sobre/murilo.jpg (fallback nas iniciais).
+    photo: "/sobre/murilo.jpg",
     initials: "MC",
     chips: ["Engenheiro de IA", "20+ agentes de IA", "Ciência da Computação · UniCEUB"],
     // TODO(Murilo): revisar. Texto do LinkedIn real, nao acrescentar nada.
@@ -325,7 +323,7 @@ export default function SobreNos() {
             Quem está por trás
           </p>
 
-          {/* Foto do time. TODO(Ana): adicionar fundadores-juntos.jpg */}
+          {/* Foto do time em client/public/sobre/fundadores-juntos.jpg */}
           <figure className="mt-6">
             <div className="aspect-[16/10] w-full overflow-hidden rounded-2xl border-2 border-slate-900 shadow-[8px_8px_0_#c4b5fd] sm:aspect-[21/9]">
               <TeamPhoto />
