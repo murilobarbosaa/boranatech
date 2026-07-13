@@ -27,6 +27,30 @@ export type EmailJobData =
   | { type: "newsletter_confirm"; to: string; confirmUrl: string }
   | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string };
 
+// Criticidade por tipo de e-mail, explicita (nunca inferida por string):
+// "critical" = o usuario perde algo que pagou ou fica travado sem ele (cobranca,
+// recibo, mudanca de acesso). "standard" = reenviavel (saudacao, waitlist,
+// newsletter). So os criticos mantem o envio direto quando NAO ha fila (Redis
+// ausente); os demais falham limpo. O Record forca exaustividade: um tipo novo
+// sem entrada aqui nao compila.
+const EMAIL_CRITICALITY: Record<
+  EmailJobData["type"],
+  "critical" | "standard"
+> = {
+  welcome: "standard",
+  pro_upgrade: "critical",
+  cancellation: "critical",
+  cancellation_scheduled: "critical",
+  payment_failed: "critical",
+  waitlist_confirmation: "standard",
+  newsletter_confirm: "standard",
+  newsletter_welcome: "standard",
+};
+
+function isCriticalEmail(type: EmailJobData["type"]): boolean {
+  return EMAIL_CRITICALITY[type] === "critical";
+}
+
 export const emailQueue = queueConnection
   ? new Queue<EmailJobData>("emails", {
       connection: queueConnection,
@@ -140,9 +164,24 @@ const ENQUEUE_TIMEOUT = Symbol("email-enqueue-timeout");
 
 export async function enqueueEmail(data: EmailJobData) {
   if (!emailQueue) {
-    console.warn("[queue] REDIS_URL ausente. Enviando e-mail diretamente.");
-    await sendDirect(data);
-    return;
+    // Redis nao configurado (sem fila): nao existe job pra completar depois,
+    // entao nao ha duplicata possivel e o envio direto e o unico caminho. So os
+    // e-mails CRITICOS (cobranca, recibo, acesso) valem esse envio fora da fila;
+    // os NAO CRITICOS falham limpo, o chamador devolve erro e o usuario reenvia
+    // (mesma politica da emailCampaignQueue, que recusa fallback de proposito).
+    if (isCriticalEmail(data.type)) {
+      console.warn(
+        `[queue] REDIS_URL ausente. Enviando e-mail critico (${data.type}) diretamente.`,
+      );
+      await sendDirect(data);
+      return;
+    }
+    console.warn(
+      `[queue] REDIS_URL ausente. E-mail nao critico (${data.type}) nao enviado.`,
+    );
+    throw new Error(
+      `Fila de e-mail indisponivel (REDIS_URL ausente); ${data.type} nao enviado.`,
+    );
   }
 
   // sendDirect fica FORA do try: se rodasse dentro, uma falha dele cairia no
