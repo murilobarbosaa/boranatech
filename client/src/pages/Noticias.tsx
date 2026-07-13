@@ -334,7 +334,7 @@ export default function Noticias() {
         </div>
       </section>
 
-      <section className="bg-sky-50 border-b-2 border-sky-200 py-4 sticky top-16 z-40">
+      <section className="bg-sky-50 border-b-2 border-sky-200 py-4">
         <div className="container">
           <div className="flex flex-col md:flex-row md:items-center gap-3">
             <div className="relative flex-1 max-w-md">

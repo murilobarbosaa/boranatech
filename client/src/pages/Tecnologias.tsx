@@ -199,7 +199,7 @@ export default function Tecnologias() {
 
       <section
         className={cn(
-          "sticky top-16 z-40 border-b-2 py-4 backdrop-blur",
+          "border-b-2 py-4",
           ac.stickyBar,
         )}
       >

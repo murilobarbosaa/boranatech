@@ -405,7 +405,7 @@ export default function Cursos() {
       </section>
 
       {/* Filters */}
-      <section className="bg-amber-50 border-b-2 border-amber-200 py-4 sticky top-16 z-40">
+      <section className="bg-amber-50 border-b-2 border-amber-200 py-4">
         <div className="container">
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:flex-wrap">
             {/* Search */}

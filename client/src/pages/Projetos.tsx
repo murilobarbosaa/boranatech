@@ -284,7 +284,7 @@ export default function Projetos() {
         </div>
       </section>
 
-      <section className="bg-orange-50 border-b-2 border-orange-200 py-4 sticky top-16 z-40">
+      <section className="bg-orange-50 border-b-2 border-orange-200 py-4">
         <div className="container">
           <div className="flex flex-col gap-3">
             <div className="relative w-full sm:max-w-sm">

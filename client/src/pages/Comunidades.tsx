@@ -142,7 +142,7 @@ export default function Comunidades() {
         </div>
       </section>
 
-      <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
+      <section className="bg-violet-50 border-b-2 border-violet-200 py-4">
         <div className="container space-y-3">
           <div
             role="tablist"

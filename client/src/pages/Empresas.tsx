@@ -250,7 +250,7 @@ export default function Empresas() {
         title="Empresas no Brasil"
         subtitle="Conheça as empresas, o que usam e quem elas contratam."
       />
-      <section className="sticky top-16 z-40 border-b-2 border-blue-200 bg-blue-50/95 py-4 backdrop-blur supports-[backdrop-filter]:bg-blue-50/90">
+      <section className="border-b-2 border-blue-200 bg-blue-50 py-4">
         <div className="container">
           <div className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[4px_4px_0_#93c5fd]">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
