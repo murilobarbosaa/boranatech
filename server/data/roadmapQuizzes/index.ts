@@ -17,7 +17,9 @@ import devops from "./devops";
 import engenhariaDados from "./engenharia-dados";
 import frontend from "./frontend";
 import fullstack from "./fullstack";
+import gamedev from "./gamedev";
 import gestao from "./gestao";
+import ia from "./ia";
 import infraestrutura from "./infraestrutura";
 import mobile from "./mobile";
 import produto from "./produto";
@@ -38,7 +40,9 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   "engenharia-dados": engenhariaDados,
   frontend,
   fullstack,
+  gamedev,
   gestao,
+  ia,
   infraestrutura,
   mobile,
   produto,
