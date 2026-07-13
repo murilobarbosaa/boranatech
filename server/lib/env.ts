@@ -120,6 +120,15 @@ export const env = {
     process.env.CAREER_PLAN_CHAT_DAILY_LIMIT_PRO || "60",
     10,
   ),
+  // Teto diario proprio do chat de intake do roadmap com IA, separado da quota
+  // global das ferramentas (padrao career-plan-chat). Pro-only: o gate barra
+  // antes de qualquer chamada. Conversar tem quota propria para nao consumir o
+  // orcamento de geracao (roadmap-generator).
+  // TODO: calibrar ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO.
+  roadmapIntakeChatDailyLimitPro: parseInt(
+    process.env.ROADMAP_INTAKE_CHAT_DAILY_LIMIT_PRO || "60",
+    10,
+  ),
   avatarReportHideThreshold: (() => {
     const raw = parseInt(process.env.AVATAR_REPORT_HIDE_THRESHOLD || "", 10);
     return Number.isInteger(raw) && raw > 0 ? raw : 3;

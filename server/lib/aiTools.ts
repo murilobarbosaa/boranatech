@@ -97,6 +97,23 @@ export const AI_TOOLS: Record<string, AiToolConfig> = {
     // server/lib/careerPlan/intakeChat.ts.
     systemPrompt: "",
   },
+  // Chat de intake conversacional do roadmap com IA (rota propria
+  // /api/roadmaps-ia/intake/chat). internalOnly: a rota generica /api/ai NUNCA a
+  // serve. Quota dedicada por tool (nao a global), no padrao career-plan-chat.
+  "roadmap-intake-chat": {
+    key: "roadmap-intake-chat",
+    requiresPro: true,
+    requiresAuth: true,
+    mode: "chat",
+    maxInputChars: 9_000,
+    temperature: 0.6,
+    model: DEFAULT_MODEL,
+    description: "Chat de intake conversacional do roadmap com IA",
+    internalOnly: true,
+    // O prompt real (contexto do usuario + roteiro do intake) e montado por
+    // server/lib/aiRoadmap/intakeChat.ts.
+    systemPrompt: "",
+  },
   // A antiga "resume-review" (chat placeholder de analise) saiu do registry:
   // a analise real e a "resume-analyzer" abaixo, servida em /api/resume.
   // Logs historicos de resume-review em ai_usage_logs ficam intactos.
