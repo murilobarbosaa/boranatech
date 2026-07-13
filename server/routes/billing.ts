@@ -5,7 +5,7 @@ import { isPlanId, type PlanId } from "../../shared/planPricing";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
-import { asaasProvider, getPaymentProvider } from "../providers";
+import { asaasProvider, getPaymentProvider, stripeProvider } from "../providers";
 
 const router = Router();
 
@@ -161,6 +161,21 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
 router.post("/webhook", async (req, res, next) => {
   try {
     const result = await asaasProvider.handleWebhook({
+      rawBody: (req as typeof req & { rawBody?: Buffer }).rawBody,
+      headers: req.headers,
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Webhook da Stripe: rota FIXA no provider Stripe (nao passa pelo seletor).
+// Cai no mesmo express.raw de app.ts (match por prefixo /api/billing/webhook),
+// entao req.rawBody chega intacto para stripe.webhooks.constructEvent.
+router.post("/webhook/stripe", async (req, res, next) => {
+  try {
+    const result = await stripeProvider.handleWebhook({
       rawBody: (req as typeof req & { rawBody?: Buffer }).rawBody,
       headers: req.headers,
     });

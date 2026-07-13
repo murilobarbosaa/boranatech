@@ -1,5 +1,7 @@
 import { config } from "dotenv";
 
+import type { PlanId } from "../../shared/planPricing";
+
 config({ quiet: true });
 
 function readEnv(key: string, fallbackKeys: string[] = []): string | undefined {
@@ -76,6 +78,19 @@ export const env = {
   paymentProvider: (process.env.PAYMENT_PROVIDER || "asaas") as
     | "asaas"
     | "stripe",
+  // Segredos Stripe: SO no backend (Railway), nunca com prefixo VITE_. Opcionais
+  // (vazios) quando o provider ativo e o Asaas; o provider Stripe valida presenca
+  // no uso (fail-closed no webhook e no checkout).
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
+  // Allowlist de price por plano. O cliente manda PlanId; o servidor resolve o
+  // price_id daqui. NUNCA aceitar price_id arbitrario do cliente. price_ids de
+  // sandbox e producao sao diferentes, por isso vem de env e nao do banco.
+  stripePriceIds: {
+    pro_monthly: process.env.STRIPE_PRICE_PRO_MONTHLY || "",
+    pro_semiannual: process.env.STRIPE_PRICE_PRO_SEMIANNUAL || "",
+    pro_annual: process.env.STRIPE_PRICE_PRO_ANNUAL || "",
+  } as Record<PlanId, string>,
   // Kill-switch do pagamento. FAIL-CLOSED: so a string exata "true" liga; ausente,
   // vazia ou qualquer outro valor deixa o checkout desligado (default off). Usado
   // enquanto a conta de producao do Asaas esta em analise: a vitrine do Pro segue
