@@ -372,6 +372,9 @@ export default function Mulheres() {
           <motion.div {...reveal}>
             <Section title="Leituras e listas" items={womenArea.articles} />
           </motion.div>
+          <motion.div {...reveal}>
+            <EbooksSection ebooks={womenArea.ebooks} />
+          </motion.div>
 
           <motion.div {...reveal} className="grid gap-5 md:grid-cols-2">
             <ListCard
@@ -480,6 +483,7 @@ function CreatorsSection({
     topic: string;
     url: string;
     avatarUrl: string;
+    parceira?: boolean;
   }[];
 }) {
   const initials = (fullName: string) =>
@@ -519,7 +523,13 @@ function CreatorsSection({
                 <h3 className="font-display font-black text-slate-950">
                   {creator.name}
                 </h3>
-                <p className="flex items-center gap-1.5 text-xs font-semibold text-pink-700">
+                {creator.parceira ? (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-pink-300 px-2 py-0.5 text-[10px] font-black uppercase text-slate-950">
+                    <Sparkles className="h-3 w-3" aria-hidden />
+                    Parceira BoraNaTech
+                  </span>
+                ) : null}
+                <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-pink-700">
                   {favicon && (
                     <img
                       src={favicon}
@@ -535,6 +545,70 @@ function CreatorsSection({
                   Conhecer <ExternalLink className="h-3 w-3" />
                 </span>
               </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EbooksSection({
+  ebooks,
+}: {
+  ebooks: {
+    title: string;
+    author: string;
+    desc: string;
+    url: string;
+    free: boolean;
+  }[];
+}) {
+  return (
+    <div>
+      <h2 className="font-display mb-4 text-2xl font-black text-slate-950">
+        Leituras e ebooks
+      </h2>
+      <div className="grid gap-4 md:grid-cols-3">
+        {ebooks.map((ebook) => {
+          const favicon = getFaviconUrl(ebook.url);
+          return (
+            <a
+              key={ebook.url}
+              href={ebook.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="card-invite flex flex-col rounded-2xl border-pink-100 bg-white p-5 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-600 focus-visible:ring-offset-2"
+            >
+              <div className="flex items-center gap-2">
+                {favicon && (
+                  <img
+                    src={favicon}
+                    alt=""
+                    onError={hideBrokenImage}
+                    className="h-5 w-5 shrink-0 rounded border border-slate-300"
+                  />
+                )}
+                <span
+                  className={`inline-flex rounded-full border-2 border-slate-900 px-2 py-0.5 text-[10px] font-black uppercase ${
+                    ebook.free
+                      ? "bg-emerald-200 text-emerald-900"
+                      : "bg-amber-200 text-amber-900"
+                  }`}
+                >
+                  {ebook.free ? "Gratuito" : "Pago"}
+                </span>
+              </div>
+              <h3 className="mt-3 font-display font-black text-slate-950">
+                {ebook.title}
+              </h3>
+              <p className="mt-1 text-xs font-bold text-pink-700">
+                {ebook.author}
+              </p>
+              <p className="mt-2 flex-1 text-sm text-slate-600">{ebook.desc}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-pink-700">
+                Ver <ExternalLink className="h-3 w-3" />
+              </span>
             </a>
           );
         })}

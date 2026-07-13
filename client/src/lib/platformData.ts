@@ -274,6 +274,15 @@ export const womenArea = {
       topic: "Programação, carreira e comunidade",
       url: "https://www.youtube.com/@rafaellaballerini",
       avatarUrl: "https://unavatar.io/youtube/rafaellaballerini",
+      parceira: true,
+    },
+    {
+      name: "Grazi",
+      handle: "grazi.tech",
+      topic: "Programação e carreira em tecnologia",
+      url: "https://www.instagram.com/grazi.tech/",
+      avatarUrl: "https://unavatar.io/instagram/grazi.tech",
+      parceira: true,
     },
     {
       name: "Loiane Groner",
@@ -316,6 +325,28 @@ export const womenArea = {
       topic: "Desenvolvimento de apps, games e carreira em tecnologia",
       url: "https://www.youtube.com/@attekitadev",
       avatarUrl: "https://unavatar.io/youtube/attekitadev",
+      parceira: true,
+    },
+    {
+      name: "Simara Conceição",
+      handle: "@SimaraConceicao",
+      topic: "Transição de carreira, front-end e JavaScript",
+      url: "https://www.youtube.com/@SimaraConceicao",
+      avatarUrl: "https://unavatar.io/youtube/SimaraConceicao",
+    },
+    {
+      name: "Michelli Brito",
+      handle: "@MichelliBrito",
+      topic: "Back-end, Java e Spring",
+      url: "https://www.youtube.com/@MichelliBrito",
+      avatarUrl: "https://unavatar.io/youtube/MichelliBrito",
+    },
+    {
+      name: "Ca Byte",
+      handle: "@caByte",
+      topic: "Programação para iniciantes",
+      url: "https://www.youtube.com/@caByte",
+      avatarUrl: "https://unavatar.io/youtube/caByte",
     },
     {
       name: "Professora Nattane",
@@ -404,20 +435,24 @@ export const womenArea = {
   ],
   videos: [
     {
-      title: "Mulheres em tecnologia: primeiros passos",
-      url: "https://www.youtube.com/results?search_query=mulheres+em+tecnologia+primeiros+passos",
+      title: "Canal Attekita Dev: dev, games e carreira",
+      url: "https://www.youtube.com/@attekitadev",
     },
     {
-      title: "Como construir portfólio iniciante",
-      url: "https://www.youtube.com/results?search_query=portfolio+iniciante+programacao+mulheres",
+      title: "Canal Rafaella Ballerini: programação e carreira",
+      url: "https://www.youtube.com/@rafaellaballerini",
     },
     {
-      title: "Síndrome da impostora na tecnologia",
-      url: "https://www.youtube.com/results?search_query=sindrome+da+impostora+mulheres+tecnologia",
+      title: "Canal Simara Conceição: transição para dev",
+      url: "https://www.youtube.com/@SimaraConceicao",
     },
     {
-      title: "Como se posicionar em tecnologia",
-      url: "https://www.youtube.com/results?search_query=mulheres+tecnologia+marca+pessoal+linkedin",
+      title: "Canal Michelli Brito: back-end e Java",
+      url: "https://www.youtube.com/@MichelliBrito",
+    },
+    {
+      title: "Canal Loiane Groner: Java e Angular",
+      url: "https://www.youtube.com/@loianegroner",
     },
   ],
   affirmativeJobs: [
@@ -514,19 +549,32 @@ export const womenArea = {
       url: "https://olhardigital.com.br/2025/03/22/colunistas/mulheres-na-tecnologia-em-2025-sera-que-avancamos/",
     },
     {
-      name: "Lista: comunidades e recursos para mulheres devs (GitHub)",
-      desc: "Coletânea colaborativa de comunidades, eventos e materiais.",
-      url: "https://github.com/FreeCodeCampSp/mulheresprogramam",
-    },
-    {
-      name: "Lista: canais e cursos de tech feitos por mulheres (GitHub)",
-      desc: "Coletânea de criadoras e cursos de tecnologia feitos por mulheres.",
-      url: "https://github.com/ComunidadeCafeina/women-teaching-tech",
-    },
-    {
       name: "Mulheres na tecnologia: representatividade e desafios (Tech4Humans)",
       desc: "Análise sobre a presença feminina na tecnologia no Brasil e no mundo.",
       url: "https://blog.techforhumans.com.br/post/mulheres-na-tecnologia-uma-analise-global-e-brasileira-da-representatividade-e-desafios",
+    },
+  ],
+  ebooks: [
+    {
+      title: "Mulheres em Tecnologia",
+      author: "Mariana Carvalho e Beatriz Oliveira",
+      desc: "Dados, experiências e chamado à ação para diversidade na tech brasileira.",
+      url: "https://www.casadocodigo.com.br/products/livro-mulheres-em-tecnologia",
+      free: false,
+    },
+    {
+      title: "Lista: canais e cursos de tech feitos por mulheres",
+      author: "Comunidade Cafeína (GitHub)",
+      desc: "Repositório colaborativo com canais, cursos e recursos produzidos por mulheres.",
+      url: "https://github.com/ComunidadeCafeina/women-teaching-tech",
+      free: true,
+    },
+    {
+      title: "Lista: comunidades e recursos para mulheres devs",
+      author: "FreeCodeCamp SP (GitHub)",
+      desc: "Curadoria de comunidades, bolsas e recursos para mulheres que programam.",
+      url: "https://github.com/FreeCodeCampSp/mulheresprogramam",
+      free: true,
     },
   ],
   reassurance: {
