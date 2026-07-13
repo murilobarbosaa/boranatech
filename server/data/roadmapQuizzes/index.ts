@@ -9,6 +9,8 @@ import analiseDados from "./analise-dados";
 import analiseSistemas from "./analise-sistemas";
 import backend from "./backend";
 import bancoDeDados from "./banco-de-dados";
+import blockchain from "./blockchain";
+import ciberseguranca from "./ciberseguranca";
 import cloud from "./cloud";
 import dados from "./dados";
 import devops from "./devops";
@@ -28,6 +30,8 @@ export const roadmapQuizPools: Record<string, QuizPool> = {
   "analise-sistemas": analiseSistemas,
   backend,
   "banco-de-dados": bancoDeDados,
+  blockchain,
+  ciberseguranca,
   cloud,
   dados,
   devops,

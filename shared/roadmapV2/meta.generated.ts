@@ -110,7 +110,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 21,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "cloud",
@@ -299,7 +299,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 6,
     "stepCount": 15,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "iot",
