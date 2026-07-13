@@ -308,7 +308,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De C e eletrônica básica a microcontroladores, sensores, conectividade e projetos de IoT conectados à nuvem. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 14,
+    "stepCount": 15,
     "hasProject": true,
     "hasQuiz": false
   },

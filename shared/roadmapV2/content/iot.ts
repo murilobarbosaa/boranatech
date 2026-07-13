@@ -167,6 +167,11 @@ export const iot: RoadmapV2 = {
               url: "https://docs.espressif.com/projects/esp-idf/en/latest/esp32/",
               kind: "doc",
             },
+            {
+              label: "Raspberry Pi: documentação oficial",
+              url: "https://www.raspberrypi.com/documentation/",
+              kind: "doc",
+            },
           ],
         },
         {
@@ -180,6 +185,21 @@ export const iot: RoadmapV2 = {
             {
               label: "MQTT (site oficial do protocolo)",
               url: "https://mqtt.org/",
+              kind: "doc",
+            },
+          ],
+        },
+        {
+          id: "conectividade.seguranca",
+          title: "Segurança de dispositivos IoT",
+          description:
+            "Por que dispositivos conectados são alvo fácil, e o básico inegociável pra não ser um.",
+          content:
+            "No momento em que o seu dispositivo se conecta à internet, ele deixa de ser um brinquedo isolado e vira um **alvo**. IoT tem fama de ser o elo fraco da segurança, e por motivos concretos: o dispositivo é físico e muitas vezes fica exposto (num poste, numa fábrica, na rua), raramente recebe atualização depois de instalado, e costuma sair de fábrica com uma **senha padrão** que quase ninguém troca. Some isso a recursos limitados que dificultam proteções pesadas, e você tem o cenário perfeito pra um invasor.\n\nA lição que a área aprendeu na dor tem nome: **botnets**. Redes gigantes de dispositivos sequestrados, formadas por câmeras, roteadores e gravadores domésticos que ficaram na internet com a senha de fábrica, foram usadas pra derrubar serviços enormes com ataques coordenados. Cada aparelho parecia inofensivo; juntos, viraram uma arma, e o dono de cada um nem percebia que fazia parte.\n\nO básico inegociável não é opcional, e cabe numa lista curta:\n\n```\nAntes de conectar um dispositivo:\n- trocar a senha padrão de fábrica\n- cifrar a comunicação (nada em texto puro)\n- manter o firmware atualizável e atualizado\n- abrir só as portas que o projeto usa\n```\n\nNenhum desses passos é avançado, e a maioria dos desastres de IoT vem de pular o mais óbvio deles. Pensar em segurança desde o projeto, e não como remendo no fim, é o que separa um produto de um problema. Esta folha é só a porta de entrada: o raciocínio defensivo (o que proteger, contra quem, como) é o assunto da trilha de cibersegurança, que vale visitar pra aprofundar. Você domina esta etapa quando, antes de pôr qualquer dispositivo na rede, consegue listar o que precisa fechar (senha, comunicação, firmware, portas) sem consultar nada.",
+          resources: [
+            {
+              label: "OWASP Internet of Things Project (oficial)",
+              url: "https://owasp.org/www-project-internet-of-things/",
               kind: "doc",
             },
           ],
@@ -214,7 +234,7 @@ export const iot: RoadmapV2 = {
           description:
             "Coordenar várias tarefas em tempo real e investigar problemas físicos.",
           content:
-            "Dois temas mais avançados aparecem quando os projetos crescem em complexidade: os sistemas operacionais de tempo real e as técnicas de depuração de hardware.\n\nUm **RTOS** (Real-Time Operating System, sistema operacional de tempo real) é um sistema leve que roda no microcontrolador pra ajudar a coordenar **várias tarefas ao mesmo tempo** com garantias de tempo. Em projetos simples, seu código roda num único loop fazendo uma coisa de cada vez. Mas quando o dispositivo precisa fazer várias coisas aparentemente em paralelo (ler sensores, manter a comunicação de rede, responder a botões, controlar um motor), organizar isso num loop só vira um pesadelo. O RTOS resolve, permitindo dividir o programa em tarefas independentes que ele agenda, garantindo que as mais urgentes rodem no tempo certo. O **FreeRTOS** é um dos mais conhecidos e usados, inclusive no ESP32. É um tema avançado, que faz sentido depois que você domina os fundamentos.\n\nA **depuração de hardware** é a habilidade de investigar problemas que misturam software e eletrônica, e é onde a paciência da área é mais exigida. Diferente de um programa comum, nem sempre há uma mensagem de erro clara: o dispositivo simplesmente não funciona, ou se comporta de forma estranha, e a causa pode estar num fio, num componente ou no código. As ferramentas e técnicas incluem usar a comunicação serial pra imprimir mensagens e acompanhar o que o código está fazendo, o **multímetro** pra verificar tensões e conexões, e o **osciloscópio** pra visualizar sinais elétricos que variam rápido demais pra o multímetro. Aprender a isolar se o problema é de hardware ou de software, testando uma hipótese de cada vez, é uma arte que se desenvolve com prática e é central no dia a dia de embarcados.",
+            "Dois temas mais avançados aparecem quando os projetos crescem em complexidade: os sistemas operacionais de tempo real e as técnicas de depuração de hardware.\n\nUm **RTOS** (Real-Time Operating System, sistema operacional de tempo real) é um sistema leve que roda no microcontrolador pra ajudar a coordenar **várias tarefas ao mesmo tempo** com garantias de tempo. Em projetos simples, seu código roda num único loop fazendo uma coisa de cada vez. Mas quando o dispositivo precisa fazer várias coisas aparentemente em paralelo (ler sensores, manter a comunicação de rede, responder a botões, controlar um motor), organizar isso num loop só vira um pesadelo. O RTOS resolve, permitindo dividir o programa em tarefas independentes que ele agenda, garantindo que as mais urgentes rodem no tempo certo. O **FreeRTOS** é um dos mais conhecidos e usados, inclusive no ESP32. É um tema avançado, que faz sentido depois que você domina os fundamentos.\n\nA **depuração de hardware** é a habilidade de investigar problemas que misturam software e eletrônica, e é onde a paciência da área é mais exigida. Diferente de um programa comum, nem sempre há uma mensagem de erro clara: o dispositivo simplesmente não funciona, ou se comporta de forma estranha, e a causa pode estar num fio solto, numa alimentação insuficiente, num sensor que mente (retorna um valor errado com toda a naturalidade) ou no código. As ferramentas e técnicas incluem usar a comunicação serial pra imprimir mensagens e acompanhar o que o código está fazendo, o **multímetro** pra verificar tensões e conexões, e o **osciloscópio** pra visualizar sinais elétricos que variam rápido demais pra o multímetro. Aprender a isolar se o problema é de hardware ou de software, testando uma hipótese de cada vez, é uma arte que se desenvolve com prática e é central no dia a dia de embarcados.",
           resources: [
             {
               label: "FreeRTOS (site e documentação oficial)",
@@ -237,6 +257,8 @@ export const iot: RoadmapV2 = {
           title: "Projeto final: estação de monitoramento",
           description:
             "Sensor, MQTT e dashboard em tempo real: o ciclo completo de IoT num projeto só.",
+          content:
+            "Esta é a hora de fechar o ciclo completo da IoT num aparelho que você segura na mão e vê funcionando. Você aprendeu C e eletrônica, o microcontrolador e o GPIO, sensores e atuadores, os protocolos que os fazem conversar, a conectividade do ESP32 e o MQTT, e o cuidado com segurança. O projeto final junta tudo num sistema de ponta a ponta.\n\nO projeto vinculado te encomenda uma **estação de monitoramento**: um dispositivo que lê o mundo com um ou mais sensores (temperatura, umidade, luz, o que fizer sentido), conecta-se por Wi-Fi, publica os valores via MQTT, e os mostra num dashboard na nuvem que você acessa de qualquer lugar, com o histórico se acumulando. É o padrão sentir, conectar, publicar e visualizar, que define a IoT, num projeto só.\n\nComo a trilha insistiu, trate o hardware com a paciência que ele exige: valide cada sensor antes de conectar tudo, cuide da alimentação, e não ponha o dispositivo na rede sem o básico de segurança (senha trocada, comunicação cifrada). Você chega ao fim quando outra pessoa consegue abrir o seu dashboard, ver os dados do seu dispositivo real chegando e atualizando em tempo real, e você consegue explicar o caminho completo do dado, do sensor físico até a tela. Um aparelho físico que faz isso é a peça de portfólio mais convincente da área, porque é tangível.",
           project: "estacao-monitoramento-iot",
         },
         {
