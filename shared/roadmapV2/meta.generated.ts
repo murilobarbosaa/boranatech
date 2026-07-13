@@ -253,7 +253,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De SQL e modelagem a índices, transações, backup e segurança: como manter bancos de dados rápidos, seguros e confiáveis. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 17,
+    "stepCount": 18,
     "hasProject": true,
     "hasQuiz": false
   },
