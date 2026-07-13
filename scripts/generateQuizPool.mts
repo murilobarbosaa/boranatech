@@ -15,6 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
+  POOL_MIN_PER_LEVEL,
   POOL_TARGET_PER_LEVEL,
   type QuizAlternativaId,
   type QuizNivel,
@@ -37,8 +38,8 @@ const QUIZ_DIR = path.join(ROOT, "server", "data", "roadmapQuizzes");
 
 const NIVEIS: QuizNivel[] = ["iniciante", "intermediario", "avancado"];
 const MAX_PER_FONTE = 3;
-const AI_MAX_ATTEMPTS = 3;
-const AI_BACKOFF_MS = [400, 800];
+const AI_MAX_ATTEMPTS = 5;
+const AI_BACKOFF_MS = [400, 800, 800, 800];
 const AI_TEMPERATURE = 0.4;
 const AI_MAX_TOKENS = 4000;
 // Precos do gpt-4o-mini (USD por 1M tokens), so pro log de custo.
@@ -316,6 +317,13 @@ async function generateSection(
 
   let rebalanceNote: string | null = null;
   let lastError: unknown;
+  // Melhor resposta schema-valida ate agora, usada como fallback se o teto por
+  // fonte nao for atingido em nenhuma tentativa. O teto (MAX_PER_FONTE) e uma
+  // preferencia de qualidade, nao uma regra de validacao do pool: em secoes
+  // finas (2-3 folhas) o modelo as vezes nao distribui o suficiente, e abortar
+  // a trilha inteira por isso seria pior que aceitar leve concentracao. A
+  // cobertura por secao continua garantida pela validacao do pool.
+  let bestValid: GeneratedQuestion[] | null = null;
   for (let attempt = 1; attempt <= AI_MAX_ATTEMPTS; attempt += 1) {
     try {
       const userPrompt = buildUserPrompt(
@@ -345,14 +353,18 @@ async function generateSection(
             .join("; ")}`,
         );
       }
+      bestValid = validation.data.questions;
       const excedidos = overusedFontes(validation.data.questions);
-      if (excedidos.length > 0) {
-        rebalanceNote = `Na tentativa anterior os passos a seguir originaram mais de ${MAX_PER_FONTE} perguntas cada: ${excedidos.join(", ")}. Gere as ${quota} perguntas de novo redistribuindo entre outros passos do material, respeitando o maximo de ${MAX_PER_FONTE} por passo.`;
-        throw new Error(
-          `Concentracao acima de ${MAX_PER_FONTE} por passo: ${excedidos.join(", ")}`,
-        );
+      if (excedidos.length === 0) {
+        return validation.data.questions;
       }
-      return validation.data.questions;
+      rebalanceNote = `Na tentativa anterior estes passos passaram do limite: ${excedidos.join(", ")}. REGRA DURA: nenhum passo pode originar mais de ${MAX_PER_FONTE} perguntas. Distribua as ${quota} perguntas o mais uniformemente possivel entre os ${section.leaves.length} passos do material (cerca de ${Math.ceil(quota / section.leaves.length)} por passo), cobrindo todos. Antes de responder, conte quantas perguntas voce colocou em cada fonte e corrija se alguma passar de ${MAX_PER_FONTE}.`;
+      console.error(
+        `[generateQuizPool] ${label} tentativa ${attempt}/${AI_MAX_ATTEMPTS}: concentracao acima de ${MAX_PER_FONTE} (${excedidos.join(", ")}), reequilibrando.`,
+      );
+      if (attempt < AI_MAX_ATTEMPTS) {
+        await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
+      }
     } catch (err) {
       lastError = err;
       const detail = err instanceof Error ? err.message : String(err);
@@ -363,6 +375,14 @@ async function generateSection(
         await sleep(AI_BACKOFF_MS[attempt - 1] ?? 800);
       }
     }
+  }
+  // Esgotou as tentativas sem atingir o teto. Aceita o ultimo resultado
+  // schema-valido com aviso; so falha se nenhuma resposta foi schema-valida.
+  if (bestValid) {
+    console.warn(
+      `[generateQuizPool] ${label}: aceitando com concentracao residual apos ${AI_MAX_ATTEMPTS} tentativas (secao fina, distribuicao ideal inatingivel).`,
+    );
+    return bestValid;
   }
   throw lastError instanceof Error
     ? lastError
@@ -404,7 +424,25 @@ for (const nivel of NIVEIS) {
     );
     process.exit(1);
   }
-  const quotas = sectionQuotas(sections, POOL_TARGET_PER_LEVEL);
+  // Alvo do nivel adaptado a capacidade: um nivel com poucas folhas nao
+  // comporta 15 perguntas com o teto de MAX_PER_FONTE por folha. Reduzimos o
+  // alvo pra capacidade real (folhas x teto) em vez de estourar; abaixo do
+  // minimo por nivel, aborta com aviso (o nivel e fino demais pra prova).
+  const levelLeaves = sections.reduce(
+    (sum, section) => sum + section.leaves.length,
+    0,
+  );
+  const levelTarget = Math.min(
+    POOL_TARGET_PER_LEVEL,
+    levelLeaves * MAX_PER_FONTE,
+  );
+  if (levelTarget < POOL_MIN_PER_LEVEL) {
+    console.error(
+      `[generateQuizPool] nivel ${nivel} de ${slug} comporta no maximo ${levelTarget} perguntas (${levelLeaves} folhas x ${MAX_PER_FONTE}), abaixo do minimo ${POOL_MIN_PER_LEVEL}.`,
+    );
+    process.exit(1);
+  }
+  const quotas = sectionQuotas(sections, levelTarget);
   for (let i = 0; i < sections.length; i += 1) {
     console.log(
       `[generateQuizPool] orcamento ${nivel} / ${sections[i].title}: ${sections[i].leaves.length} folhas, cota ${quotas[i]}`,
