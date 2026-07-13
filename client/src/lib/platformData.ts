@@ -130,6 +130,11 @@ export const womenArea = {
       desc: "Organização internacional que conecta e apoia mulheres em computação e as empresas que as empregam.",
       url: "https://anitab.org/",
     },
+    {
+      name: "Elas Programam",
+      desc: "Comunidade voltada à inserção e evolução de mulheres na tecnologia.",
+      url: "https://elasprogramam.com.br/",
+    },
   ],
   courses: [
     {
@@ -349,6 +354,41 @@ export const womenArea = {
       avatarUrl: "https://unavatar.io/youtube/caByte",
     },
     {
+      name: "Giovanna Moeller",
+      handle: "",
+      topic: "Front-end, mobile e desenvolvimento iOS",
+      url: "https://www.youtube.com/c/GirlCoding",
+      avatarUrl: "https://unavatar.io/youtube/GirlCoding",
+    },
+    {
+      name: "Fernanda Kipper",
+      handle: "@kipperdev",
+      topic: "Back-end, Java, Spring e carreira",
+      url: "https://www.youtube.com/@kipperdev",
+      avatarUrl: "https://unavatar.io/youtube/kipperdev",
+    },
+    {
+      name: "Pachi Parra",
+      handle: "@PachiCodes",
+      topic: "DevRel, open source e comunidades",
+      url: "https://www.youtube.com/@PachiCodes",
+      avatarUrl: "https://unavatar.io/youtube/PachiCodes",
+    },
+    {
+      name: "Cynthia Zanoni",
+      handle: "",
+      topic: "Cloud, Azure e DevOps",
+      url: "https://www.youtube.com/c/cynthiazanoni",
+      avatarUrl: "https://unavatar.io/youtube/cynthiazanoni",
+    },
+    {
+      name: "Larissa Cassiano",
+      handle: "@larissacassiano",
+      topic: "Java e engenharia de software",
+      url: "https://www.youtube.com/@larissacassiano",
+      avatarUrl: "https://unavatar.io/youtube/larissacassiano",
+    },
+    {
       name: "Professora Nattane",
       handle: "",
       topic: "Doutora em Computação que explica redes, programação e fundamentos de forma acessível.",
@@ -531,6 +571,18 @@ export const womenArea = {
       title: "Start Coding",
       url: "https://open.spotify.com/show/0dTUNs8tpqAC5d71m8SGU0",
     },
+    {
+      title: "PodProgramar",
+      url: "https://open.spotify.com/show/16ZtU9p6Pja5H87W35owjY",
+    },
+    {
+      title: "Mulheres de Produto",
+      url: "https://open.spotify.com/show/1rfUWxL2Ia7kA343ClLya1",
+    },
+    {
+      title: "Feministech Podcast",
+      url: "https://open.spotify.com/show/2iVISfGEaGBjgGNiAnP0xB",
+    },
   ],
   articles: [
     {
@@ -574,6 +626,13 @@ export const womenArea = {
       author: "FreeCodeCamp SP (GitHub)",
       desc: "Curadoria de comunidades, bolsas e recursos para mulheres que programam.",
       url: "https://github.com/FreeCodeCampSp/mulheresprogramam",
+      free: true,
+    },
+    {
+      title: "Mulheres e Inteligência Artificial (UNESCO)",
+      author: "UNESCO",
+      desc: "Relatório oficial sobre mulheres e inteligência artificial, com dados e recomendações.",
+      url: "https://unesdoc.unesco.org/ark:/48223/pf0000375429_por.pdf",
       free: true,
     },
   ],
