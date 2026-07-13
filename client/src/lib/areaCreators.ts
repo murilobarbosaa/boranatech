@@ -29,7 +29,7 @@ function fromHandles(...handles: string[]): AreaCreator[] {
 export const areaCreators: Record<string, AreaCreator[]> = {
   uxui: fromHandles("vua_nessa"),
   frontend: fromHandles("monihillman"),
-  // backend: Erika pendente, aguardando handle e foto (Murilo).
+  backend: fromHandles("erikabusiness"),
   sre: fromHandles("andrebrito.dev"),
   // Andre cobre SRE e DevOps de proposito, mesma pessoa nas duas areas.
   devops: fromHandles("andrebrito.dev"),

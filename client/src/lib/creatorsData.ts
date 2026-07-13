@@ -158,6 +158,16 @@ export const creators: Creator[] = [
     area: "",
     redes: [],
   },
+  {
+    // TODO(Ana): confirmar nome de exibicao da Erika.
+    name: "Erika",
+    handle: "erikabusiness",
+    photo: "/creators/erikabusiness.jpg",
+    instagram: "https://instagram.com/erikabusiness",
+    bio: "",
+    area: "",
+    redes: [],
+  },
 ];
 
 // TODO(Ana): fundadores. Voce notou que voce e o Murilo ainda nao aparecem
