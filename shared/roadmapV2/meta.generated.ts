@@ -233,7 +233,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 18,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "engenharia-dados",
@@ -244,7 +244,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 17,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "banco-de-dados",
@@ -255,7 +255,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "sectionCount": 7,
     "stepCount": 18,
     "hasProject": true,
-    "hasQuiz": false
+    "hasQuiz": true
   },
   {
     "slug": "sre",
