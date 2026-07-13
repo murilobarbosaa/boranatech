@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { Queue, Worker, type Job } from "bullmq";
 
 import type { Gender } from "../../shared/gender";
+import { env } from "./env";
 import { queueConnection } from "./redis";
 import {
   sendCancellationEmail,
@@ -91,6 +92,16 @@ export function createEmailWorker() {
     {
       connection: queueConnection,
       concurrency: 5,
+      // Rate limiter GLOBAL por fila (BullMQ v5, coordenado via Redis): mesmo com o
+      // worker rodando em varias replicas, o teto e compartilhado, nao multiplicado.
+      // O Resend limita a 2 req/s e a fila email-campaign ja reserva ~1 req/s, entao
+      // 1 envio por TRANSACTIONAL_EMAIL_RATE_MS (default 1000ms) mantem o total no
+      // teto. O limiter controla o inicio dos jobs, entao a concorrencia acima nao
+      // fura o limite. Configuravel por env pra afrouxar quando a conta virar Pro.
+      limiter: {
+        max: 1,
+        duration: env.transactionalEmailRateMs,
+      },
     },
   );
 

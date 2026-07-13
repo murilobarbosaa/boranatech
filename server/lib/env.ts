@@ -170,6 +170,20 @@ export const env = {
     );
     return 1000;
   })(),
+  // Intervalo minimo (ms) entre jobs da fila emails (transacionais) no limiter do
+  // BullMQ. O Resend limita a 2 req/s e a fila email-campaign ja reserva ~1 req/s
+  // (EMAIL_CAMPAIGN_RATE_MS), entao o default de 1 envio por 1000ms mantem o total
+  // dentro do teto. Invalido (nao inteiro ou < 100) cai no default com warn no boot.
+  transactionalEmailRateMs: (() => {
+    const raw = process.env.TRANSACTIONAL_EMAIL_RATE_MS;
+    if (!raw) return 1000;
+    const parsed = parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 100) return parsed;
+    console.warn(
+      `[env] AVISO: TRANSACTIONAL_EMAIL_RATE_MS invalido ("${raw}"), usando 1000`,
+    );
+    return 1000;
+  })(),
   // Allowlist dev-only de user ids que enxergam como Pro fora de producao.
   // Ignorada quando NODE_ENV === "production". Nunca prefixar com VITE_.
   devProUserIds: (process.env.DEV_PRO_USER_IDS || "")
