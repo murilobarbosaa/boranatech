@@ -64,7 +64,7 @@ export const creators: Creator[] = [
     photo: "/creators/grazi-tech.jpg",
     instagram: "https://instagram.com/grazi.tech",
     bio: "",
-    area: "",
+    area: "dados",
     redes: [],
   },
   {
@@ -145,7 +145,7 @@ export const creators: Creator[] = [
     photo: "/creators/raibyhei.jpg",
     instagram: "https://instagram.com/raibyhei",
     bio: "",
-    area: "",
+    area: "dados",
     redes: [],
   },
   {

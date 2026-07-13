@@ -36,4 +36,5 @@ export const areaCreators: Record<string, AreaCreator[]> = {
   // TODO(Ana): confirmar area da Evelyn, mapeada provisoriamente como fullstack.
   fullstack: fromHandles("dioaugusto.dev", "code.evelyn"),
   "desenvolvimento-software": fromHandles("code.evelyn"),
+  dados: fromHandles("grazi.tech", "raibyhei"),
 };
