@@ -90,9 +90,17 @@ export interface TrailVM {
 }
 
 // Formatador unico de valor+moeda: itens de linha e totais do investimento
-// passam pelo MESMO caminho, sem template cru duplicado.
-export function formatAmount(amount: number, currency: "USD" | "BRL"): string {
-  return currency === "BRL" ? `R$ ${amount}` : `USD ${amount}`;
+// passam pelo MESMO caminho, sem template cru duplicado. period "monthly"
+// sufixa o valor, deixando explicito que e mensalidade e nao pagamento unico;
+// NUNCA estima duracao nem multiplica por um numero de meses chutado.
+export function formatAmount(
+  amount: number,
+  currency: "USD" | "BRL",
+  period: "once" | "monthly" = "once",
+): string {
+  const base = currency === "BRL" ? `R$ ${amount}` : `USD ${amount}`;
+  // TODO(Ana): sufixo de periodicidade da assinatura mensal.
+  return period === "monthly" ? `${base}/mês` : base;
 }
 
 // Preco de exibicao SEMPRE do catalogo curado; "" quando o item saiu do
@@ -101,7 +109,71 @@ export function formatPrice(catalogId: string): string {
   const item = getCatalogItem(catalogId);
   if (!item) return "";
   if ("free" in item.price) return "Gratuito";
-  return formatAmount(item.price.amount, item.price.currency);
+  return formatAmount(item.price.amount, item.price.currency, item.price.period);
+}
+
+export type PriceCurrency = "USD" | "BRL";
+
+export interface CurrencyTotal {
+  currency: PriceCurrency;
+  required: number;
+  withOptionals: number;
+}
+
+export interface InvestmentBreakdown {
+  // Totais de itens de PAGAMENTO UNICO, por moeda (BRL antes de USD).
+  onceTotals: CurrencyTotal[];
+  // Totais de itens de ASSINATURA MENSAL, por moeda. NUNCA somados aos
+  // onceTotals: naturezas diferentes que a UI mostra em linhas separadas.
+  monthlyTotals: CurrencyTotal[];
+  freeCount: number;
+  outdatedCount: number;
+}
+
+// Pura: separa o investimento por natureza (pagamento unico x assinatura
+// mensal), sem NUNCA misturar as duas nem converter moedas entre si. Itens
+// gratuitos e fora do catalogo atual ficam fora das somas, contados a parte
+// (mesmas regras de honestidade das fases anteriores).
+export function summarizeInvestment(
+  certs: StationCertVM[],
+): InvestmentBreakdown {
+  const onceByCurrency = new Map<PriceCurrency, CurrencyTotal>();
+  const monthlyByCurrency = new Map<PriceCurrency, CurrencyTotal>();
+  let freeCount = 0;
+  let outdatedCount = 0;
+
+  for (const cert of certs) {
+    const item = getCatalogItem(cert.catalogId);
+    if (!item) {
+      outdatedCount += 1;
+      continue;
+    }
+    if ("free" in item.price) {
+      freeCount += 1;
+      continue;
+    }
+    const target =
+      item.price.period === "monthly" ? monthlyByCurrency : onceByCurrency;
+    const { amount, currency } = item.price;
+    const entry = target.get(currency) ?? {
+      currency,
+      required: 0,
+      withOptionals: 0,
+    };
+    entry.withOptionals += amount;
+    if (!cert.optional) entry.required += amount;
+    target.set(currency, entry);
+  }
+
+  const sorted = (m: Map<PriceCurrency, CurrencyTotal>): CurrencyTotal[] =>
+    Array.from(m.values()).sort((a, b) => a.currency.localeCompare(b.currency));
+
+  return {
+    onceTotals: sorted(onceByCurrency),
+    monthlyTotals: sorted(monthlyByCurrency),
+    freeCount,
+    outdatedCount,
+  };
 }
 
 function certToVM(

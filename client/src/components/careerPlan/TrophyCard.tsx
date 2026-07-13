@@ -184,6 +184,7 @@ export default function TrophyCard({
                             {formatAmount(
                               Math.round(item.price.amount * fx.usdBrl),
                               "BRL",
+                              item.price.period,
                             )}
                           </span>
                         ) : null}
