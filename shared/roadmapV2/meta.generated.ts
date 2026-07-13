@@ -286,7 +286,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "De levantar requisitos a modelar processos e validar entregas: a ponte entre o negócio e o time de desenvolvimento. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 6,
-    "stepCount": 14,
+    "stepCount": 15,
     "hasProject": true,
     "hasQuiz": false
   },
