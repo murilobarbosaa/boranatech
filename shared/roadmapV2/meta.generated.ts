@@ -164,7 +164,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "area": "mobile",
     "title": "Desenvolvimento Mobile do Zero",
     "level": "Iniciante",
-    "description": "Da escolha da stack à publicação de um app na loja, passando por linguagem, telas, dados e recursos do dispositivo. Escolha seu caminho e conclua uma etapa pra liberar a próxima.",
+    "description": "Da escolha da stack à publicação de um app na loja, passando por linguagem, telas, dados, recursos do dispositivo e qualidade. Escolha seu caminho e conclua uma etapa pra liberar a próxima.",
     "languages": [
       {
         "id": "react-native",
@@ -184,7 +184,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
       }
     ],
     "sectionCount": 7,
-    "stepCount": 15,
+    "stepCount": 22,
     "hasProject": true,
     "hasQuiz": false
   },
