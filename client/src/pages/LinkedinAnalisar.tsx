@@ -990,6 +990,16 @@ export default function LinkedinAnalisar() {
             </p>
           </motion.div>
 
+          {/* Faixa "Como funciona" de largura total: so na entrada e so pra
+              quem ainda nao tem analise. analyses fica vazio tambem quando o
+              historico falha ao carregar, entao a faixa segue visivel nesse
+              caso (mostrar a ajuda e o fallback seguro). Fica acima do grid e,
+              pra quem nao e Pro, acima do ProGate. */}
+          {showEntry && analyses.length === 0 ? (
+            <div className="mb-10">
+              <HowItWorksTimeline />
+            </div>
+          ) : null}
           {!isPro ? (
             <ProGate description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno." />
           ) : (
@@ -1010,12 +1020,7 @@ export default function LinkedinAnalisar() {
                       : undefined
                   }
                 >
-                  {showEntry ? (
-                    <div className="space-y-12">
-                      <HowItWorksTimeline />
-                      <ResultShowcase />
-                    </div>
-                  ) : null}
+                  {showEntry ? <ResultShowcase /> : null}
                   {/* Palco de intake: peca da familia da vitrine (rotacao leve
                     + selo de proposito), contendo TODO o fluxo de entrada
                     existente (PDF -> revisao -> analise, fallback manual). */}
