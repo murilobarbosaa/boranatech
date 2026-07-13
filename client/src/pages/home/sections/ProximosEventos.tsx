@@ -18,11 +18,12 @@ export default function ProximosEventos() {
   useEffect(() => {
     let ativo = true;
     Promise.all([import("@/lib/eventosData"), import("@/lib/eventFilters")])
-      .then(([{ eventos }, { isEventoPassado }]) => {
+      .then(([{ eventos }, { isEventoPassado, eventoSortKey }]) => {
         if (!ativo) return;
         setProximos(
           eventos
             .filter((evento) => !isEventoPassado(evento) && Boolean(evento.link))
+            .sort((a, b) => eventoSortKey(a).localeCompare(eventoSortKey(b)))
             .slice(0, 3),
         );
       })
