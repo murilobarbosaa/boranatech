@@ -548,8 +548,8 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.6 }}
-          className="font-display mx-auto mt-4 max-w-4xl font-black leading-tight text-balance text-slate-950"
-          style={{ fontSize: "clamp(36px, 6vw, 76px)" }}
+          className="font-display mx-auto mt-4 max-w-4xl font-black leading-tight text-slate-950 md:text-balance"
+          style={{ fontSize: "clamp(30px, 6vw, 76px)" }}
         >
           Cada ferramenta que você precisa pra{" "}
           <span className="relative isolate inline-block px-3 py-1">
@@ -562,7 +562,7 @@ export default function Hero() {
                 key={currentHighlight}
                 initial={{ opacity: 0, y: 20, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 1.1 }}
+                exit={{ opacity: 0, y: -20, scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeInOut" }}
                 className="relative inline-block"
               >

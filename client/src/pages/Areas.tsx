@@ -242,7 +242,7 @@ export default function Areas() {
         subtitle="Cada área é um caminho dentro da tech. Filtra pelo que te interessa, clica numa e veja o que ela é, o que faz e por onde começar."
         actions={
           <motion.div
-            className="relative inline-block"
+            className="relative block w-full md:inline-block md:w-auto"
             animate={reduce ? undefined : { scale: [1, 1.03, 1] }}
             transition={
               reduce
@@ -272,7 +272,7 @@ export default function Areas() {
             />
             <Link
               href="/quiz-carreira"
-              className="pro-glare inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 text-center font-display text-sm font-black leading-snug text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2"
+              className="pro-glare inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-slate-900 bg-amber-300 px-5 py-3 text-center font-display text-sm font-black leading-snug text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-700 focus-visible:ring-offset-2 md:w-auto"
             >
               <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
               Não sabe por onde começar? Faça o quiz
@@ -350,7 +350,7 @@ export default function Areas() {
         </div>
         <div className="container relative z-10">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="relative w-full max-w-sm">
+            <div className="relative w-full sm:max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"

@@ -904,11 +904,11 @@ export default function Header() {
       ) : null}
 
       <div
-        className={`fixed right-0 top-0 z-[1002] h-full w-[280px] border-l-2 border-slate-900 bg-white transition-transform duration-300 2xl:hidden ${
+        className={`fixed right-0 top-0 z-[1002] flex h-full w-[280px] flex-col border-l-2 border-slate-900 bg-white transition-transform duration-300 2xl:hidden ${
           mobileOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between border-b-2 border-slate-900 p-4">
+        <div className="flex shrink-0 items-center justify-between border-b-2 border-slate-900 p-4">
           <span className="font-display font-bold text-lg">
             BORA NA TECH<span className="text-yellow-500">?</span>
           </span>
@@ -923,7 +923,7 @@ export default function Header() {
         </div>
 
         <nav
-          className="h-[calc(100%-64px)] overflow-y-auto pb-24"
+          className="min-h-0 flex-1 overflow-y-auto pb-4"
           aria-label="Navegação principal mobile"
         >
           {!user ? (
@@ -1011,7 +1011,7 @@ export default function Header() {
         </nav>
 
         {!user ? (
-          <div className="absolute bottom-0 left-0 right-0 border-t-2 border-slate-900 bg-white p-4">
+          <div className="shrink-0 border-t-2 border-slate-900 bg-white p-4">
             <Link
               href="/cadastro"
               onClick={closeMobileDrawer}

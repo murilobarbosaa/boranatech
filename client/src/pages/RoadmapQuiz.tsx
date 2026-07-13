@@ -229,7 +229,7 @@ export default function RoadmapQuiz() {
   };
 
   return (
-    <div className="min-h-screen bg-[#faf8f4]">
+    <div className="bg-[#faf8f4]">
       <div className="mx-auto w-full max-w-2xl px-4 py-8">
         <header className="mb-6">
           <Link

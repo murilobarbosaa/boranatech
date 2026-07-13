@@ -98,7 +98,10 @@ export default function CreatorsBand() {
       </p>
 
       {reduce ? (
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-y-3 px-4">
+        <div
+          className="flex items-center overflow-x-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ WebkitMaskImage: FADE_MASK, maskImage: FADE_MASK }}
+        >
           {CREATORS.map((creator, i) => (
             <Chip key={creator.handle} creator={creator} index={i} />
           ))}

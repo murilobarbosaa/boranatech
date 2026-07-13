@@ -170,7 +170,7 @@ export default function Eventos() {
         </div>
       </section>
 
-      <section className="bg-fuchsia-50 border-b-2 border-fuchsia-200 py-4 sticky top-16 z-40">
+      <section className="bg-fuchsia-50 border-b-2 border-fuchsia-200 py-4">
         <div className="container">
           <div
             role="tablist"

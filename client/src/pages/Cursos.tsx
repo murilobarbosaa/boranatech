@@ -405,11 +405,11 @@ export default function Cursos() {
       </section>
 
       {/* Filters */}
-      <section className="bg-amber-50 border-b-2 border-amber-200 py-4 sticky top-16 z-40">
+      <section className="bg-amber-50 border-b-2 border-amber-200 py-4">
         <div className="container">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:flex-wrap">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {/* Search */}
-            <div className="flex max-w-sm flex-1 flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <label
                 htmlFor="cursos-busca"
                 className="text-[11px] font-black uppercase tracking-wide text-amber-800"
@@ -440,7 +440,7 @@ export default function Cursos() {
                 id="cursos-area"
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
-                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
               >
                 {areaSlugOptions.map((slug) => {
                   const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
@@ -469,7 +469,7 @@ export default function Cursos() {
                 id="cursos-nivel"
                 value={nivel}
                 onChange={(e) => setNivel(e.target.value)}
-                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
               >
                 {nivelOptions.map((o) => (
                   <option key={o} value={o}>
@@ -490,7 +490,7 @@ export default function Cursos() {
                 id="cursos-idioma"
                 value={idioma}
                 onChange={(e) => setIdioma(e.target.value)}
-                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
               >
                 {idiomaOptions.map((o) => (
                   <option key={o} value={o}>
@@ -511,7 +511,7 @@ export default function Cursos() {
                 id="cursos-preco"
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value)}
-                className="px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
+                className="w-full px-3 py-2 border-2 border-amber-200 rounded-lg text-sm focus:outline-none focus:border-amber-500 bg-white"
               >
                 {tipoOptions.map((o) => (
                   <option key={o} value={o}>

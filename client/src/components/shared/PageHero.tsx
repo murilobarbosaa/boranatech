@@ -86,8 +86,8 @@ export default function PageHero({
       )}
       {backgroundSlot}
       <div className="container relative">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="max-w-2xl min-w-0 flex-1">
+        <div className="flex flex-col gap-6 md:flex-row md:flex-wrap md:items-start md:justify-between">
+          <div className="min-w-0 md:max-w-2xl md:flex-1">
             {topSlot ? <div className="mb-4">{topSlot}</div> : null}
             {eyebrow ? (
               <p

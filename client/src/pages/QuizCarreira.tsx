@@ -594,7 +594,7 @@ export default function QuizCarreira() {
         schemaType="WebPage"
       />
 
-      <div className="min-h-screen bg-[#faf8f4]">
+      <div className="bg-[#faf8f4]">
         {inQuestionPhase && (
           <ProgressBar
             current={(phase === "triage" ? triageIndex : currentIndex) + 1}

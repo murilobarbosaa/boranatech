@@ -268,7 +268,7 @@ const csCreators = [
     name: "Ana",
     handle: "@ana.natech",
     url: "https://instagram.com/ana.natech",
-    avatarUrl: "https://www.google.com/s2/favicons?domain=instagram.com&sz=128",
+    avatarUrl: "https://unavatar.io/linkedin/anajulia-moura",
   },
 ];
 
@@ -705,7 +705,7 @@ export default function Faculdades() {
         </div>
       </section>
 
-      <section className="bg-violet-50 border-b-2 border-violet-200 py-4 sticky top-16 z-40">
+      <section className="bg-violet-50 border-b-2 border-violet-200 py-4">
         <div className="container">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex gap-2">

@@ -176,7 +176,7 @@ export const founders: Creator[] = [
   {
     name: "Ana",
     handle: "",
-    photo: "",
+    photo: "https://unavatar.io/linkedin/anajulia-moura",
     instagram: "",
     bio: "",
     area: "",
