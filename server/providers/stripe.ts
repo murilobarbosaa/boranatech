@@ -5,6 +5,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
+import { isFirstPurchase } from "./shared";
 import type { Gender } from "../../shared/gender";
 import type { PlanId } from "../../shared/planPricing";
 import type {
@@ -405,6 +406,46 @@ async function onInvoiceFailed(
   await handleTransition(existing.user_id, existing.status, "past_due", {});
 }
 
+function isStripeError(err: unknown): err is Stripe.errors.StripeError {
+  return err instanceof Stripe.errors.StripeError;
+}
+
+// Coupon DETERMINISTICO por percentual: bnt_aff_<percent>_once. Nao depende de
+// afiliado (dois afiliados com 20% usam o mesmo objeto); a atribuicao vive no
+// affiliate_code. duration "once" = desconto so na primeira cobranca (paridade
+// com o Asaas, que so edita a primeira cobranca). Garante o coupon de forma
+// idempotente: retrieve; se faltar, cria; corrida na criacao conta como sucesso.
+async function ensureAffiliateCoupon(
+  couponId: string,
+  percentOff: number,
+): Promise<void> {
+  const stripe = getStripe();
+  try {
+    await stripe.coupons.retrieve(couponId);
+    return;
+  } catch (err) {
+    if (
+      !(
+        isStripeError(err) &&
+        (err.code === "resource_missing" || err.statusCode === 404)
+      )
+    ) {
+      throw err;
+    }
+  }
+  try {
+    await stripe.coupons.create({
+      id: couponId,
+      percent_off: percentOff,
+      duration: "once",
+      metadata: { source: "bnt_affiliate", discount_percent: String(percentOff) },
+    });
+  } catch (err) {
+    if (isStripeError(err) && err.code === "resource_already_exists") return;
+    throw err;
+  }
+}
+
 async function createCheckout(
   input: CreateCheckoutInput,
 ): Promise<CreateCheckoutResult> {
@@ -428,13 +469,53 @@ async function createCheckout(
     throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
   }
 
+  // Afiliado/desconto: mesma regra do Asaas. So valida afiliado ativo; o desconto
+  // (cupom once) e o increment_affiliate_trials so entram na PRIMEIRA compra.
+  let validAffiliateCode = "";
+  let discounts: Stripe.Checkout.SessionCreateParams.Discount[] | undefined;
+
+  if (input.affiliateCode) {
+    const { data: affiliate } = await supabaseAdmin
+      .from("affiliates")
+      .select("id, code, discount_percent")
+      .eq("code", input.affiliateCode)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (affiliate) {
+      validAffiliateCode = affiliate.code;
+
+      if (await isFirstPurchase(input.user.id)) {
+        // Cupom NUNCA impede a assinatura: se qualquer passo falhar, segue sem
+        // desconto e loga. So percentual (discount_percent e integer 1..100).
+        try {
+          const couponId = `bnt_aff_${affiliate.discount_percent}_once`;
+          await ensureAffiliateCoupon(couponId, affiliate.discount_percent);
+          discounts = [{ coupon: couponId }];
+        } catch (couponErr) {
+          console.error(
+            "[billing/checkout] cupom Stripe falhou, seguindo sem desconto:",
+            couponErr,
+          );
+        }
+
+        // trials: mesma condicao do Asaas (1a compra + afiliado ativo),
+        // independente de o cupom ter sido aplicado.
+        await supabaseAdmin.rpc("increment_affiliate_trials", {
+          p_affiliate_id: affiliate.id,
+        });
+      }
+    }
+  }
+
   // metadata replicado na sessao E na subscription: assim TODO evento
   // customer.subscription.* carrega supabase_user_id/plan_id/affiliate_code, e o
-  // affiliate_code sobrevive ate a linha em subscriptions (paridade com Asaas).
+  // affiliate_code (validado) sobrevive ate a linha em subscriptions (paridade
+  // com Asaas, que so propaga o codigo validado).
   const metadata = {
     supabase_user_id: input.user.id,
     plan_id: input.planId,
-    affiliate_code: input.affiliateCode || "",
+    affiliate_code: validAffiliateCode || "",
   };
 
   const session = await getStripe().checkout.sessions.create({
@@ -444,6 +525,7 @@ async function createCheckout(
     customer_email: input.user.email || undefined,
     metadata,
     subscription_data: { metadata },
+    discounts,
     success_url: `${env.appPublicUrl}/planos/sucesso`,
     cancel_url: `${env.appPublicUrl}/planos`,
   });

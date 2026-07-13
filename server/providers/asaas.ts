@@ -18,6 +18,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
+import { isFirstPurchase } from "./shared";
 import type { Gender } from "../../shared/gender";
 import type {
   CancelInput,
@@ -84,14 +85,7 @@ async function createCheckout(
     throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
   }
 
-  const { data: priorActivated } = await supabaseAdmin
-    .from("subscriptions")
-    .select("id")
-    .eq("user_id", userId)
-    .not("current_period_start", "is", null)
-    .limit(1)
-    .maybeSingle();
-  const isFirstPurchase = !priorActivated;
+  const firstPurchase = await isFirstPurchase(userId);
 
   const customer = await getOrCreateAsaasCustomer({
     userId,
@@ -113,7 +107,7 @@ async function createCheckout(
 
     if (!affiliateError && affiliate) {
       validAffiliateCode = affiliate.code; // atribuicao/comissao inalterada
-      if (isFirstPurchase) {
+      if (firstPurchase) {
         firstPaymentValue = Number(
           (
             fullValue *
