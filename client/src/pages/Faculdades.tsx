@@ -256,6 +256,22 @@ const caminhoQuizResultados = {
   },
 };
 
+// TODO(Ana): revisar a copy do bloco de criadoras de Ciencia da Computacao.
+const csCreators = [
+  {
+    name: "Raissa",
+    handle: "@raibyhei",
+    url: "https://instagram.com/raibyhei",
+    avatarUrl: "/creators/raibyhei.jpg",
+  },
+  {
+    name: "Ana",
+    handle: "@ana.natech",
+    url: "https://instagram.com/ana.natech",
+    avatarUrl: "https://www.google.com/s2/favicons?domain=instagram.com&sz=128",
+  },
+];
+
 const GRAU_INFO = [
   {
     grau: "Técnico",
@@ -652,6 +668,39 @@ export default function Faculdades() {
                 </AnimatedContent>
               );
             })}
+          </div>
+          <div className="rounded-2xl border-2 border-slate-900 bg-emerald-50 p-5 shadow-[4px_4px_0_#0f172a]">
+            <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+              Criadoras de Ciência da Computação
+            </p>
+            <p className="mt-1 text-sm text-slate-700">
+              Acompanhe quem produz conteúdo sobre a área.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {csCreators.map((creator) => (
+                <a
+                  key={creator.handle}
+                  href={creator.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-3 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a] transition-transform motion-safe:hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                >
+                  <img
+                    src={creator.avatarUrl}
+                    alt={`Foto de ${creator.name}`}
+                    className="h-12 w-12 shrink-0 rounded-full border-2 border-slate-900 object-cover"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-display font-black text-slate-950">
+                      {creator.name}
+                    </p>
+                    <p className="text-sm font-bold text-emerald-700">
+                      {creator.handle}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       </section>
