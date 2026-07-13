@@ -263,3 +263,121 @@ export function streamResume(
     handlers,
   );
 }
+
+// Chat de intake guiado (POST /api/roadmaps-ia/intake/chat). Turno unico
+// nao-streaming: o client reenvia o historico completo e recebe a fala do
+// assistente + o intake parcial proposto. Nada persiste no server; o rascunho
+// vive no client. Erros vem tipados por codigo (padrao do careerPlanService).
+
+export interface IntakeChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+// Intake proposto pelo chat: espelha o IntakeProposalSchema do backend
+// (server/lib/aiRoadmap/intakeChat.ts). Todos os campos nullable; format NAO
+// existe aqui (o chat nao pergunta; a pagina assume "misto" ao gerar).
+export interface IntakeChatProposal {
+  goal: "primeira-vaga" | "transicao" | "freela" | "aprofundar" | null;
+  hoursPerWeek: "ate-5" | "5-10" | "10-20" | "20-mais" | null;
+  deadline: "3m" | "6m" | "12m" | "sem-prazo" | null;
+  stackFocus: string | null;
+  startingPoint: string | null;
+  motivation: string | null;
+  constraints: string | null;
+}
+
+export interface IntakeChatTurnResult {
+  reply: string;
+  intake: IntakeChatProposal;
+  missing: string[];
+  ready: boolean;
+}
+
+export type IntakeChatErrorCode =
+  | "pro_required"
+  | "turn_limit"
+  | "payload_too_large"
+  | "rate_limited"
+  | "rate_check_failed"
+  | "upstream_error"
+  | "invalid_request"
+  | "login_required"
+  | "unknown";
+
+export class IntakeChatApiError extends Error {
+  readonly code: IntakeChatErrorCode;
+  constructor(code: IntakeChatErrorCode, message: string) {
+    super(message);
+    this.name = "IntakeChatApiError";
+    this.code = code;
+  }
+}
+
+const INTAKE_CHAT_CODES: readonly IntakeChatErrorCode[] = [
+  "pro_required",
+  "turn_limit",
+  "payload_too_large",
+  "rate_limited",
+  "rate_check_failed",
+  "upstream_error",
+  "invalid_request",
+  "login_required",
+];
+
+// Prioriza o code que o server mandou (createError manda error.code); se vier
+// desconhecido, deriva do status HTTP. A mensagem vem do server ou de um
+// fallback do readErrorBody.
+function toIntakeChatError(status: number, body: unknown): IntakeChatApiError {
+  const parsed = readErrorBody(body);
+  const known = INTAKE_CHAT_CODES.includes(parsed.code as IntakeChatErrorCode);
+  const code: IntakeChatErrorCode = known
+    ? (parsed.code as IntakeChatErrorCode)
+    : status === 401
+      ? "login_required"
+      : status === 403
+        ? "pro_required"
+        : status === 429
+          ? "rate_limited"
+          : status === 503
+            ? "rate_check_failed"
+            : "unknown";
+  return new IntakeChatApiError(code, parsed.message);
+}
+
+export async function sendIntakeChatTurn(
+  messages: IntakeChatMessage[],
+): Promise<IntakeChatTurnResult> {
+  const authHeader = await getAuthHeader();
+  const response = await fetch(apiUrl("/api/roadmaps-ia/intake/chat"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader,
+    },
+    body: JSON.stringify({ messages }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as unknown;
+    throw toIntakeChatError(response.status, body);
+  }
+  const data = (await response.json()) as Partial<IntakeChatTurnResult>;
+  if (
+    typeof data.reply !== "string" ||
+    typeof data.ready !== "boolean" ||
+    !data.intake ||
+    !Array.isArray(data.missing)
+  ) {
+    // TODO(Ana): mensagem de resposta inesperada do chat de intake.
+    throw new IntakeChatApiError(
+      "unknown",
+      "Resposta inesperada do chat de intake.",
+    );
+  }
+  return {
+    reply: data.reply,
+    intake: data.intake,
+    missing: data.missing as string[],
+    ready: data.ready,
+  };
+}

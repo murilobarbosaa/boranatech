@@ -1,59 +1,69 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, Loader2, Sparkles } from "lucide-react";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import ProGate from "@/components/pro/ProGate";
+import IntakeChatPanel, {
+  type IntakeChatMessage,
+} from "@/components/ai/IntakeChatPanel";
 import {
   AiGenerationProgressCard,
   useAiGeneration,
 } from "@/components/roadmapV2/AiGenerationProgress";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import {
   getAiRoadmapContext,
+  IntakeChatApiError,
   listAiRoadmaps,
+  sendIntakeChatTurn,
   streamGeneration,
   streamResume,
   type AiRoadmapContext,
   type AiRoadmapListItem,
+  type IntakeChatProposal,
 } from "@/services/aiRoadmapService";
-import { RoadmapIntakeSchema, type RoadmapIntake } from "@shared/aiRoadmap";
+import { RoadmapIntakeSchema } from "@shared/aiRoadmap";
 
 // Pagina do Roadmap com IA (Pro): entendimento (intake), geracao ao vivo por
 // SSE e lista dos roadmaps ja gerados. A visualizacao vive em /roadmaps/ia/:slug.
 
-const EXTRA_CONTEXT_MAX = 500;
 // Janela em que um status generating e considerado geracao ATIVA (espelha a
 // janela anti-abuso do server). Mais velho que isso, a geracao morreu no meio.
 const GENERATING_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
 
-type IntakeChoiceKey = "hoursPerWeek" | "goal" | "deadline" | "format";
-
-interface IntakeQuestion {
-  key: IntakeChoiceKey;
-  question: string;
-  options: Array<{ value: string; label: string }>;
+// Rascunho do chat no localStorage: chave por usuario, no padrao bnt:<feature>:v1.
+// TTL curto (24h): uma conversa de 7 etapas nao pode se perder num reload, mas
+// tambem nao deve ressuscitar dias depois. Limpo ao concluir a geracao.
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+function draftKey(userId: string): string {
+  return `bnt:roadmap-intake-chat:v1:${userId}`;
 }
 
-// TODO(Ana): revisar TODOS os textos deste bloco (perguntas, opcoes, copy da
-// pagina, badges de status e mensagens de erro do formulario).
+// Campos essenciais para gerar (os 3 enums que viram os rotulos do prompt de
+// geracao; format e assumido "misto"). O progresso da conversa e quantos deles
+// ja foram capturados, derivado do missing[] que o backend devolve.
+const ESSENTIAL_FIELDS = ["goal", "hoursPerWeek", "deadline"] as const;
+
+// TODO(Ana): revisar a mensagem de abertura enviada ao backend. Ela NAO aparece
+// como bolha na tela: so dispara o primeiro turno, cuja primeira pergunta ja usa
+// o contexto do pool. O backend exige historico nao-vazio, entao esta semente
+// entra sempre na frente do historico enviado.
+const CHAT_KICKOFF = "Quero montar meu roadmap de estudos. Pode comecar.";
+
+// TODO(Ana): revisar TODOS os textos deste bloco (copy da pagina, badges de
+// status, copy do chat e do resumo do intake).
 const COPY = {
   seoTitle: "Roadmap com IA, sua trilha sob medida",
   seoDescription:
-    "Responda quatro perguntas e receba um roadmap de estudos gerado sob medida para o seu momento, seu tempo e seu objetivo em tecnologia.",
+    "Converse com o Natechinho e receba um roadmap de estudos gerado sob medida para o seu momento, seu tempo e seu objetivo em tecnologia.",
   eyebrow: "exclusivo do pro",
   title: "Roadmap com IA",
   subtitle:
-    "Um plano de estudos feito pra voce: a IA cruza suas respostas com o que voce ja fez na plataforma e monta a trilha sob medida.",
+    "Um plano de estudos feito pra voce: o Natechinho conversa, cruza o que voce ja fez na plataforma e monta a trilha sob medida.",
   proGateDescription:
-    "Responda quatro perguntas rapidas e receba um roadmap de estudos unico, gerado sob medida pro seu tempo, seu objetivo e o que voce ja sabe.",
-  stackFocusLabel: "Quer focar em alguma stack? (opcional)",
-  stackFocusPlaceholder: "ex: react, python, aws",
-  extraContextLabel: "Algo mais que a IA deva saber? (opcional)",
-  extraContextPlaceholder:
-    "ex: ja trabalho com suporte tecnico e quero migrar por dentro da empresa",
-  submit: "Gerar meu roadmap",
-  formError: "Responda as quatro perguntas antes de gerar.",
+    "Converse rapido com o Natechinho e receba um roadmap de estudos unico, gerado sob medida pro seu tempo, seu objetivo e o que voce ja sabe.",
   listTitle: "Seus roadmaps gerados",
   listEmpty: "Voce ainda nao gerou nenhum roadmap.",
   listLoadError: "Nao foi possivel carregar seus roadmaps agora.",
@@ -71,50 +81,108 @@ const COPY = {
   contextHint: "Algo desatualizado?",
   contextUpdateProfile: "atualizar no perfil",
   contextUpdateQuiz: "refazer o quiz",
+  // TODO(Ana): revisar copy do chat e do resumo do intake.
+  chatTitle: "Papo com o Natechinho",
+  chatSubtitle: "Uma pergunta por vez. No fim, seu roadmap.",
+  chatPlaceholder: "Escreva sua resposta",
+  chatOpeningError: "Nao consegui comecar a conversa agora. Tente de novo.",
+  chatGenericError: "Nao consegui responder agora. Tente de novo.",
+  // 429 do chat: cota SEPARADA da de gerar, a copy nao pode dizer que acabou a
+  // cota de gerar.
+  chatQuotaError:
+    "Voce atingiu o limite diario de mensagens do chat. Isso e separado da cota de gerar roadmap; tente de novo amanha.",
+  chatTurnLimit:
+    "Chegamos ao limite desta conversa. Voce ja pode gerar o roadmap com o que montamos ate aqui.",
+  summaryTitle: "Fechou. Isto e o que eu entendi:",
+  summaryHint: "Se algo ficou torto, e so me dizer aqui embaixo antes de gerar.",
+  summaryGoal: "Objetivo",
+  summaryHours: "Tempo por semana",
+  summaryDeadline: "Prazo",
+  summaryStack: "Foco de stack",
+  summaryStartingPoint: "Ponto de partida",
+  summaryMotivation: "Motivacao",
+  summaryConstraints: "Obstaculos",
+  generate: "Gerar meu roadmap",
+  finalError:
+    "Faltou alguma informacao essencial pra gerar. Me conta mais um pouco no chat e a gente tenta de novo.",
 } as const;
 
-const INTAKE_QUESTIONS: IntakeQuestion[] = [
-  {
-    key: "hoursPerWeek",
-    question: "Quanto tempo por semana voce tem pra estudar?",
-    options: [
-      { value: "ate-5", label: "Ate 5 horas" },
-      { value: "5-10", label: "5 a 10 horas" },
-      { value: "10-20", label: "10 a 20 horas" },
-      { value: "20-mais", label: "Mais de 20 horas" },
-    ],
-  },
-  {
-    key: "goal",
-    question: "Qual e o seu objetivo principal?",
-    options: [
-      { value: "primeira-vaga", label: "Conquistar a primeira vaga" },
-      { value: "transicao", label: "Mudar de carreira pra tech" },
-      { value: "freela", label: "Trabalhar como freelancer" },
-      { value: "aprofundar", label: "Me aprofundar na minha area" },
-    ],
-  },
-  {
-    key: "deadline",
-    question: "Em quanto tempo voce quer chegar la?",
-    options: [
-      { value: "3m", label: "3 meses" },
-      { value: "6m", label: "6 meses" },
-      { value: "12m", label: "12 meses" },
-      { value: "sem-prazo", label: "Sem prazo definido" },
-    ],
-  },
-  {
-    key: "format",
-    question: "Como voce prefere aprender?",
-    options: [
-      { value: "video", label: "Video" },
-      { value: "texto", label: "Texto" },
-      { value: "projetos", label: "Projetos praticos" },
-      { value: "misto", label: "Um pouco de tudo" },
-    ],
-  },
-];
+// Rotulos de exibicao dos enums no resumo do intake (nao vao ao server; o server
+// recebe o enum cru). TODO(Ana): revisar rotulos.
+const GOAL_DISPLAY: Record<NonNullable<IntakeChatProposal["goal"]>, string> = {
+  "primeira-vaga": "Conquistar a primeira vaga",
+  transicao: "Mudar de carreira pra tech",
+  freela: "Trabalhar como freelancer",
+  aprofundar: "Aprofundar na area atual",
+};
+const HOURS_DISPLAY: Record<
+  NonNullable<IntakeChatProposal["hoursPerWeek"]>,
+  string
+> = {
+  "ate-5": "Ate 5 horas",
+  "5-10": "5 a 10 horas",
+  "10-20": "10 a 20 horas",
+  "20-mais": "Mais de 20 horas",
+};
+const DEADLINE_DISPLAY: Record<
+  NonNullable<IntakeChatProposal["deadline"]>,
+  string
+> = {
+  "3m": "3 meses",
+  "6m": "6 meses",
+  "12m": "12 meses",
+  "sem-prazo": "Sem prazo definido",
+};
+
+interface ChatDraft {
+  savedAt: number;
+  messages: IntakeChatMessage[];
+  intake: IntakeChatProposal | null;
+  missing: string[];
+  ready: boolean;
+}
+
+function loadDraft(userId: string): ChatDraft | null {
+  try {
+    const raw = window.localStorage.getItem(draftKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ChatDraft;
+    if (
+      !parsed ||
+      typeof parsed.savedAt !== "number" ||
+      !Array.isArray(parsed.messages) ||
+      parsed.messages.length === 0
+    ) {
+      return null;
+    }
+    if (Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
+      window.localStorage.removeItem(draftKey(userId));
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(userId: string, draft: Omit<ChatDraft, "savedAt">): void {
+  try {
+    window.localStorage.setItem(
+      draftKey(userId),
+      JSON.stringify({ savedAt: Date.now(), ...draft }),
+    );
+  } catch {
+    // Storage cheio ou indisponivel: o rascunho e best-effort, ignora.
+  }
+}
+
+function clearDraft(userId: string): void {
+  try {
+    window.localStorage.removeItem(draftKey(userId));
+  } catch {
+    // Ignora: limpeza best-effort.
+  }
+}
 
 function formatDate(iso: string): string {
   const date = new Date(iso);
@@ -163,20 +231,42 @@ function StatusBadge({ item }: { item: AiRoadmapListItem }) {
   );
 }
 
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="shrink-0 font-black text-slate-500">{label}:</dt>
+      <dd className="min-w-0 font-semibold text-slate-900">{value}</dd>
+    </div>
+  );
+}
+
 export default function RoadmapIA() {
   const { isPro } = useSubscription();
   const [, setLocation] = useLocation();
 
-  const [answers, setAnswers] = useState<
-    Partial<Record<IntakeChoiceKey, string>>
-  >({});
-  const [stackFocus, setStackFocus] = useState("");
-  const [extraContext, setExtraContext] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+
+  // Estado do chat de intake guiado. O historico e efemero (reenviado a cada
+  // turno) e persistido so no localStorage; o intake parcial mais recente vem do
+  // backend a cada turno.
+  const [messages, setMessages] = useState<IntakeChatMessage[]>([]);
+  const [sending, setSending] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [turnLimitReached, setTurnLimitReached] = useState(false);
+  const [intake, setIntake] = useState<IntakeChatProposal | null>(null);
+  const [missing, setMissing] = useState<string[]>([...ESSENTIAL_FIELDS]);
+  const [ready, setReady] = useState(false);
+  const [finalError, setFinalError] = useState<string | null>(null);
+  // Guarda de uma execucao so do bootstrap (restore do rascunho ou abertura).
+  const bootstrappedRef = useRef(false);
 
   const onDone = useCallback(
-    (slug: string) => setLocation(`/roadmaps/ia/${slug}`),
-    [setLocation],
+    (slug: string) => {
+      if (userId) clearDraft(userId);
+      setLocation(`/roadmaps/ia/${slug}`);
+    },
+    [setLocation, userId],
   );
   const { state, start, reset } = useAiGeneration(onDone);
 
@@ -232,27 +322,115 @@ export default function RoadmapIA() {
     if (state.phase === "error" || state.phase === "blocked") loadList();
   }, [state.phase, loadList]);
 
-  const submit = async () => {
-    const candidate = {
-      ...answers,
-      stackFocus: stackFocus.trim() === "" ? undefined : stackFocus.trim(),
-      extraContext: extraContext.trim() === "" ? undefined : extraContext.trim(),
-    };
-    const parsed = RoadmapIntakeSchema.safeParse(candidate);
-    if (!parsed.success) {
-      setFormError(COPY.formError);
+  // Um turno do chat: envia [semente, ...historico] e aplica o resultado. Erro
+  // de turno vira mensagem amigavel; limite de turnos trava o input; 429 tem
+  // copy propria (a cota do chat e separada da de gerar).
+  const runTurn = useCallback(
+    async (history: IntakeChatMessage[], isOpening: boolean) => {
+      setSending(true);
+      setChatError(null);
+      setFinalError(null);
+      try {
+        const result = await sendIntakeChatTurn([
+          { role: "user", content: CHAT_KICKOFF },
+          ...history,
+        ]);
+        setMessages([...history, { role: "assistant", content: result.reply }]);
+        setIntake(result.intake);
+        setMissing(result.missing);
+        setReady(result.ready);
+      } catch (err) {
+        if (err instanceof IntakeChatApiError && err.code === "turn_limit") {
+          setTurnLimitReached(true);
+          return;
+        }
+        if (err instanceof IntakeChatApiError && err.code === "rate_limited") {
+          setChatError(COPY.chatQuotaError);
+          return;
+        }
+        setChatError(isOpening ? COPY.chatOpeningError : COPY.chatGenericError);
+      } finally {
+        setSending(false);
+      }
+    },
+    [],
+  );
+
+  const handleSend = useCallback(
+    (text: string) => {
+      const next = [...messages, { role: "user" as const, content: text }];
+      setMessages(next);
+      void runTurn(next, false);
+    },
+    [messages, runTurn],
+  );
+
+  // Reenvia a ultima mensagem do usuario sem duplicar: o historico ja termina
+  // nela (a resposta do assistente nao foi anexada por causa do erro).
+  const handleRetry = useCallback(() => {
+    if (sending) return;
+    void runTurn(messages, false);
+  }, [messages, runTurn, sending]);
+
+  // Bootstrap (uma vez, so Pro, com sessao e no phase idle): restaura o rascunho
+  // ou dispara o turno de abertura. O phase idle evita gerar um turno por engano
+  // enquanto uma geracao roda.
+  useEffect(() => {
+    if (!isPro || !userId || state.phase !== "idle") return;
+    if (bootstrappedRef.current) return;
+    bootstrappedRef.current = true;
+    const draft = loadDraft(userId);
+    if (draft) {
+      setMessages(draft.messages);
+      setIntake(draft.intake);
+      setMissing(draft.missing);
+      setReady(draft.ready);
       return;
     }
-    setFormError(null);
-    const intake: RoadmapIntake = parsed.data;
-    await start((handlers) => streamGeneration(intake, handlers));
-  };
+    void runTurn([], true);
+  }, [isPro, userId, state.phase, runTurn]);
+
+  // Persiste o rascunho a cada mudanca relevante (best-effort; TTL na leitura).
+  useEffect(() => {
+    if (!userId || messages.length === 0) return;
+    saveDraft(userId, { messages, intake, missing, ready });
+  }, [userId, messages, intake, missing, ready]);
+
+  // ready + confirmacao: monta o RoadmapIntake final (intake do chat + format
+  // "misto"), valida no client e chama a geracao existente. Falha de validacao
+  // (nao deveria acontecer) mostra erro claro em vez de mandar lixo ao server.
+  const generate = useCallback(async () => {
+    if (!intake) return;
+    const candidate: Record<string, unknown> = {
+      goal: intake.goal ?? undefined,
+      hoursPerWeek: intake.hoursPerWeek ?? undefined,
+      deadline: intake.deadline ?? undefined,
+      format: "misto",
+    };
+    if (intake.stackFocus) candidate.stackFocus = intake.stackFocus;
+    if (intake.startingPoint) candidate.startingPoint = intake.startingPoint;
+    if (intake.motivation) candidate.motivation = intake.motivation;
+    if (intake.constraints) candidate.constraints = intake.constraints;
+    const parsed = RoadmapIntakeSchema.safeParse(candidate);
+    if (!parsed.success) {
+      setFinalError(COPY.finalError);
+      return;
+    }
+    setFinalError(null);
+    await start((handlers) => streamGeneration(parsed.data, handlers));
+  }, [intake, start]);
 
   const resume = async (slug: string) => {
     await start((handlers) => streamResume(slug, handlers));
   };
 
   const generationActive = state.phase === "running" || state.phase === "done";
+
+  // Progresso da conversa: quantos campos essenciais ja sairam do missing[].
+  const essentialOpen = missing.filter((f) =>
+    (ESSENTIAL_FIELDS as readonly string[]).includes(f),
+  ).length;
+  const essentialDone = ESSENTIAL_FIELDS.length - essentialOpen;
 
   return (
     <Layout>
@@ -295,130 +473,126 @@ export default function RoadmapIA() {
                 onReset={reset}
               />
             ) : (
-              <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-6 shadow-[4px_4px_0_#FCC700]">
-                <div className="space-y-7">
-                  {contextChips.length > 0 ? (
-                    <div className="rounded-[12px] border-[2px] border-slate-900 bg-violet-50 p-4">
-                      <p className="text-sm font-black uppercase tracking-[0.14em] text-violet-900">
-                        {COPY.contextTitle}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {contextChips.map((chip) => (
-                          <span
-                            key={chip}
-                            className="rounded-full border-[1.5px] border-slate-900 bg-white px-2.5 py-1 text-xs font-bold text-slate-800"
-                          >
-                            {chip}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="mt-3 text-xs font-semibold text-slate-500">
-                        {COPY.contextHint}{" "}
-                        <Link
-                          href="/perfil"
-                          className="font-bold text-violet-800 underline underline-offset-2"
-                        >
-                          {COPY.contextUpdateProfile}
-                        </Link>{" "}
-                        ou{" "}
-                        <Link
-                          href="/quiz-carreira"
-                          className="font-bold text-violet-800 underline underline-offset-2"
-                        >
-                          {COPY.contextUpdateQuiz}
-                        </Link>
-                        .
-                      </p>
-                    </div>
-                  ) : null}
-                  {INTAKE_QUESTIONS.map((q) => (
-                    <fieldset key={q.key}>
-                      <legend className="font-display text-lg font-black text-slate-950">
-                        {q.question}
-                      </legend>
-                      <div className="mt-3 flex flex-wrap gap-2.5">
-                        {q.options.map((option) => {
-                          const active = answers[q.key] === option.value;
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              aria-pressed={active}
-                              onClick={() =>
-                                setAnswers((prev) => ({
-                                  ...prev,
-                                  [q.key]: option.value,
-                                }))
-                              }
-                              className={`rounded-[11px] border-[2.5px] border-slate-900 px-4 py-2.5 text-sm font-extrabold shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a] ${
-                                active
-                                  ? "bg-[#FFB800] text-slate-950"
-                                  : "bg-white text-slate-600"
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-                  ))}
-
-                  <label className="block">
-                    <span className="font-display text-lg font-black text-slate-950">
-                      {COPY.stackFocusLabel}
-                    </span>
-                    <input
-                      type="text"
-                      value={stackFocus}
-                      onChange={(event) =>
-                        setStackFocus(
-                          event.target.value
-                            .toLowerCase()
-                            .replace(/[^a-z0-9-]/g, "")
-                            .slice(0, 32),
-                        )
-                      }
-                      placeholder={COPY.stackFocusPlaceholder}
-                      className="mt-2 w-full rounded-[11px] border-[2.5px] border-slate-900 bg-white p-3 text-sm font-semibold text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="font-display text-lg font-black text-slate-950">
-                      {COPY.extraContextLabel}
-                    </span>
-                    <textarea
-                      value={extraContext}
-                      onChange={(event) =>
-                        setExtraContext(
-                          event.target.value.slice(0, EXTRA_CONTEXT_MAX),
-                        )
-                      }
-                      placeholder={COPY.extraContextPlaceholder}
-                      rows={3}
-                      className="mt-2 w-full rounded-[11px] border-[2.5px] border-slate-900 bg-white p-3 text-sm font-semibold text-slate-900 shadow-[2px_2px_0_#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-600"
-                    />
-                    <span className="mt-1 block text-right text-xs font-bold text-slate-400">
-                      {extraContext.length}/{EXTRA_CONTEXT_MAX}
-                    </span>
-                  </label>
-
-                  {formError ? (
-                    <p className="rounded-[11px] border-[2px] border-slate-900 bg-rose-100 px-3 py-2 text-sm font-bold text-rose-800">
-                      {formError}
+              <div className="space-y-5">
+                {contextChips.length > 0 ? (
+                  <div className="rounded-[12px] border-[2px] border-slate-900 bg-violet-50 p-4">
+                    <p className="text-sm font-black uppercase tracking-[0.14em] text-violet-900">
+                      {COPY.contextTitle}
                     </p>
-                  ) : null}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {contextChips.map((chip) => (
+                        <span
+                          key={chip}
+                          className="rounded-full border-[1.5px] border-slate-900 bg-white px-2.5 py-1 text-xs font-bold text-slate-800"
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs font-semibold text-slate-500">
+                      {COPY.contextHint}{" "}
+                      <Link
+                        href="/perfil"
+                        className="font-bold text-violet-800 underline underline-offset-2"
+                      >
+                        {COPY.contextUpdateProfile}
+                      </Link>{" "}
+                      ou{" "}
+                      <Link
+                        href="/quiz-carreira"
+                        className="font-bold text-violet-800 underline underline-offset-2"
+                      >
+                        {COPY.contextUpdateQuiz}
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                ) : null}
 
-                  <button
-                    type="button"
-                    onClick={() => void submit()}
-                    className="bnt-pressable inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    {COPY.submit}
-                  </button>
-                </div>
+                <IntakeChatPanel
+                  messages={messages}
+                  sending={sending}
+                  onSend={handleSend}
+                  title={COPY.chatTitle}
+                  subtitle={COPY.chatSubtitle}
+                  error={chatError}
+                  onRetry={chatError ? handleRetry : undefined}
+                  turnLimitReached={turnLimitReached}
+                  turnLimitMessage={COPY.chatTurnLimit}
+                  progress={{
+                    done: essentialDone,
+                    total: ESSENTIAL_FIELDS.length,
+                  }}
+                  placeholder={COPY.chatPlaceholder}
+                />
+
+                {ready && intake ? (
+                  <div className="rounded-[14px] border-[2.5px] border-slate-900 bg-white p-5 shadow-[4px_4px_0_#FCC700]">
+                    <p className="font-display text-lg font-black text-slate-950">
+                      {COPY.summaryTitle}
+                    </p>
+                    <dl className="mt-3 space-y-1.5 text-sm">
+                      {intake.goal ? (
+                        <SummaryRow
+                          label={COPY.summaryGoal}
+                          value={GOAL_DISPLAY[intake.goal]}
+                        />
+                      ) : null}
+                      {intake.hoursPerWeek ? (
+                        <SummaryRow
+                          label={COPY.summaryHours}
+                          value={HOURS_DISPLAY[intake.hoursPerWeek]}
+                        />
+                      ) : null}
+                      {intake.deadline ? (
+                        <SummaryRow
+                          label={COPY.summaryDeadline}
+                          value={DEADLINE_DISPLAY[intake.deadline]}
+                        />
+                      ) : null}
+                      {intake.stackFocus ? (
+                        <SummaryRow
+                          label={COPY.summaryStack}
+                          value={intake.stackFocus}
+                        />
+                      ) : null}
+                      {intake.startingPoint ? (
+                        <SummaryRow
+                          label={COPY.summaryStartingPoint}
+                          value={intake.startingPoint}
+                        />
+                      ) : null}
+                      {intake.motivation ? (
+                        <SummaryRow
+                          label={COPY.summaryMotivation}
+                          value={intake.motivation}
+                        />
+                      ) : null}
+                      {intake.constraints ? (
+                        <SummaryRow
+                          label={COPY.summaryConstraints}
+                          value={intake.constraints}
+                        />
+                      ) : null}
+                    </dl>
+                    <p className="mt-3 text-xs font-semibold text-slate-500">
+                      {COPY.summaryHint}
+                    </p>
+                    {finalError ? (
+                      <p className="mt-3 rounded-[11px] border-[2px] border-slate-900 bg-rose-100 px-3 py-2 text-sm font-bold text-rose-800">
+                        {finalError}
+                      </p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void generate()}
+                      className="bnt-pressable mt-4 inline-flex items-center gap-2 rounded-[11px] border-[2.5px] border-slate-900 bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-px hover:shadow-[4px_4px_0_#0f172a]"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {COPY.generate}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
