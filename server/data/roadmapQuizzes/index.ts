@@ -9,16 +9,20 @@ import analiseDados from "./analise-dados";
 import backend from "./backend";
 import bancoDeDados from "./banco-de-dados";
 import dados from "./dados";
+import devops from "./devops";
 import engenhariaDados from "./engenharia-dados";
 import frontend from "./frontend";
 import fullstack from "./fullstack";
+import sre from "./sre";
 
 export const roadmapQuizPools: Record<string, QuizPool> = {
   "analise-dados": analiseDados,
   backend,
   "banco-de-dados": bancoDeDados,
   dados,
+  devops,
   "engenharia-dados": engenhariaDados,
   frontend,
   fullstack,
+  sre,
 };
