@@ -195,7 +195,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Da cultura e das bases de Linux e Git aos containers, CI/CD, infraestrutura como código e observabilidade. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 16,
+    "stepCount": 18,
     "hasProject": true,
     "hasQuiz": false
   },
