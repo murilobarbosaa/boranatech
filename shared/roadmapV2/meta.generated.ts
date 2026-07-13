@@ -108,7 +108,7 @@ export const roadmapsMeta: RoadmapMeta[] = [
     "level": "Iniciante",
     "description": "Das bases de redes e Linux aos conceitos de segurança, times ofensivo e defensivo, prática ética e certificações. Conclua uma etapa pra liberar a próxima.",
     "sectionCount": 7,
-    "stepCount": 19,
+    "stepCount": 21,
     "hasProject": true,
     "hasQuiz": false
   },
