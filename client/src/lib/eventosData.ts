@@ -853,5 +853,26 @@ export const eventos = [
     certificado: false,
     categoria: "Conferência",
   },
+  {
+    id: "mindthesec-sp",
+    nome: "Mind The Sec",
+    data: "15 a 17 de setembro de 2026",
+    horario: "Vários horários",
+    cidade: "São Paulo",
+    estado: "SP",
+    formato: "Presencial",
+    area: "Cibersegurança / AppSec",
+    valor: "Pago",
+    link: "https://www.mindthesec.com.br/",
+    logoUrl:
+      "https://www.google.com/s2/favicons?domain=mindthesec.com.br&sz=128",
+    calendarStart: "20260915",
+    calendarEnd: "20260917",
+    descricao:
+      "O maior evento de segurança da informação do Hemisfério Sul, no Transamérica Expo Center. Trilhas de cibersegurança, privacidade e compliance.",
+    organizador: "Mind The Sec",
+    certificado: true,
+    categoria: "Conferência",
+  },
 ];
 
