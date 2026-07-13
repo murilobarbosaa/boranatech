@@ -14,71 +14,117 @@
 //
 // Idempotente por construcao: retrieve por id; se 404, cria.
 //
-// Uso (precisa STRIPE_SECRET_KEY + SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY):
+// Sem SDK: fala direto com a REST da Stripe e do Supabase via fetch (mesmo padrao
+// do stripe-setup.mjs), entao roda com `node` sem interop de pacote.
+//
+// Uso (precisa STRIPE_SECRET_KEY + SUPABASE_URL|VITE_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY):
 //   STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-coupons.mjs   # sandbox
 //   STRIPE_SECRET_KEY=sk_live_... node scripts/stripe-coupons.mjs   # producao
 // Rode nos DOIS modos: coupon de sandbox e de producao sao objetos diferentes.
 
 import { config } from "dotenv";
-import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
 
 config({ quiet: true });
 
-const STRIPE_API_VERSION = "2026-06-24.dahlia";
+const STRIPE_API = "https://api.stripe.com/v1";
 
 const secretKey = process.env.STRIPE_SECRET_KEY;
-const supabaseUrl = process.env.SUPABASE_URL;
+// O .env do projeto usa VITE_SUPABASE_URL; aceita os dois nomes com fallback.
+const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!secretKey) {
-  console.error(
-    "[stripe-coupons] STRIPE_SECRET_KEY ausente. Defina a chave (sk_test_... ou sk_live_...) e rode de novo.",
-  );
-  process.exit(1);
-}
-if (!supabaseUrl || !serviceKey) {
-  console.error(
-    "[stripe-coupons] SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY ausentes.",
-  );
+const missing = [];
+if (!secretKey) missing.push("STRIPE_SECRET_KEY");
+if (!supabaseUrl) missing.push("SUPABASE_URL (ou VITE_SUPABASE_URL)");
+if (!serviceKey) missing.push("SUPABASE_SERVICE_ROLE_KEY");
+if (missing.length > 0) {
+  console.error(`[stripe-coupons] env faltando: ${missing.join(", ")}`);
   process.exit(1);
 }
 
-const stripe = new Stripe(secretKey, { apiVersion: STRIPE_API_VERSION });
-const supabase = createClient(supabaseUrl, serviceKey);
+const supabaseBase = supabaseUrl.replace(/\/$/, "");
 
-function isResourceMissing(err) {
-  return Boolean(err) && (err.code === "resource_missing" || err.statusCode === 404);
+// Codifica objeto (com aninhamento) em application/x-www-form-urlencoded no
+// formato que a Stripe espera: metadata[source]=..., etc.
+function encodeForm(obj, prefix) {
+  const parts = [];
+  for (const [rawKey, value] of Object.entries(obj)) {
+    if (value === undefined || value === null) continue;
+    const key = prefix ? `${prefix}[${rawKey}]` : rawKey;
+    if (typeof value === "object") {
+      const nested = encodeForm(value, key);
+      if (nested) parts.push(nested);
+    } else {
+      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+    }
+  }
+  return parts.join("&");
+}
+
+async function stripeRequest(method, path, body) {
+  const res = await fetch(`${STRIPE_API}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: body ? encodeForm(body) : undefined,
+  });
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function fetchActivePercents() {
+  const url = `${supabaseBase}/rest/v1/affiliates?select=discount_percent&status=eq.active`;
+  const res = await fetch(url, {
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`Supabase ${res.status}: ${JSON.stringify(data)}`);
+  }
+  const rows = Array.isArray(data) ? data : [];
+  return [...new Set(rows.map((row) => row.discount_percent))]
+    .filter((p) => Number.isInteger(p) && p >= 1 && p <= 100)
+    .sort((a, b) => a - b);
 }
 
 async function ensureCoupon(percent) {
   const id = `bnt_aff_${percent}_once`;
-  try {
-    await stripe.coupons.retrieve(id);
+
+  const found = await stripeRequest(
+    "GET",
+    `/coupons/${encodeURIComponent(id)}`,
+  );
+  if (found.ok) {
     console.log(`[stripe-coupons] reutilizado: ${id}`);
     return;
-  } catch (err) {
-    if (!isResourceMissing(err)) throw err;
   }
-  await stripe.coupons.create({
+  if (found.status !== 404) {
+    throw new Error(
+      `Stripe GET coupon ${id} -> ${found.status}: ${JSON.stringify(found.data?.error || found.data)}`,
+    );
+  }
+
+  const created = await stripeRequest("POST", "/coupons", {
     id,
     percent_off: percent,
     duration: "once",
     metadata: { source: "bnt_affiliate", discount_percent: String(percent) },
   });
+  if (!created.ok) {
+    throw new Error(
+      `Stripe POST coupon ${id} -> ${created.status}: ${JSON.stringify(created.data?.error || created.data)}`,
+    );
+  }
   console.log(`[stripe-coupons] criado: ${id} (${percent}% once)`);
 }
 
 async function main() {
-  const { data, error } = await supabase
-    .from("affiliates")
-    .select("discount_percent")
-    .eq("status", "active");
-  if (error) throw new Error(`Supabase: ${error.message}`);
-
-  const percents = [...new Set((data || []).map((row) => row.discount_percent))]
-    .filter((p) => Number.isInteger(p) && p >= 1 && p <= 100)
-    .sort((a, b) => a - b);
+  const percents = await fetchActivePercents();
 
   if (percents.length === 0) {
     console.log("[stripe-coupons] nenhum afiliado ativo; nada a criar.");
