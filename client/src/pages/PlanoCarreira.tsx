@@ -993,7 +993,7 @@ export default function PlanoCarreira() {
                 ProGate/intake. */}
             {entryState ? (
               <div className="mx-auto max-w-6xl">
-                <div className="grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:items-center">
+                <div className="grid gap-10 [&>*]:min-w-0 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] lg:items-center">
                   <HowItWorksSteps />
                   <TrailShowcase />
                 </div>
