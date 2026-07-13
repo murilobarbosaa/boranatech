@@ -287,7 +287,8 @@ export default function Projetos() {
       <section className="bg-orange-50 border-b-2 border-orange-200 py-4">
         <div className="container">
           <div className="flex flex-col gap-3">
-            <div className="relative w-full sm:max-w-sm">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="relative w-full">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
                 aria-hidden
@@ -300,13 +301,12 @@ export default function Projetos() {
                 placeholder="Buscar por nome, objetivo ou tecnologia..."
                 className="w-full pl-9 pr-4 py-2 border-2 border-orange-200 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500"
               />
-            </div>
-            <div className="flex flex-wrap gap-3">
+              </div>
               <select
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
                 aria-label="Filtrar por área"
-                className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+                className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
               >
                 {areaSlugOptions.map((slug) => {
                   const value = slug === AREA_ALL ? AREA_ALL : (slug ?? "");
@@ -326,7 +326,7 @@ export default function Projetos() {
                 value={nivel}
                 onChange={(e) => setNivel(e.target.value)}
                 aria-label="Filtrar por nível"
-                className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+                className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
               >
                 {niveis.map((n) => (
                   <option key={n} value={n}>
@@ -338,7 +338,7 @@ export default function Projetos() {
                 value={tech}
                 onChange={(e) => setTech(e.target.value)}
                 aria-label="Filtrar por tecnologia"
-                className="px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
+                className="w-full px-3 py-2 border-2 border-orange-200 rounded-lg text-sm focus:outline-none focus:border-orange-500 bg-white"
               >
                 <option value={TECH_ALL}>Todas as tecnologias</option>
                 {techOptions.map((t) => (
