@@ -268,7 +268,7 @@ const csCreators = [
     name: "Ana",
     handle: "@ana.natech",
     url: "https://instagram.com/ana.natech",
-    avatarUrl: "https://www.google.com/s2/favicons?domain=instagram.com&sz=128",
+    avatarUrl: "https://unavatar.io/linkedin/anajulia-moura",
   },
 ];
 

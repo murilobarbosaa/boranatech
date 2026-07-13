@@ -85,7 +85,9 @@ const team: TeamMember[] = [
   {
     name: "Ana Julia Moura",
     role: "CEO e cofundadora",
-    photo: "/sobre/ana.jpg",
+    // Foto real via proxy estavel do LinkedIn. TODO(Ana): pra usar a foto do
+    // hackathon, salve em client/public/sobre/ana.jpg e troque aqui.
+    photo: "https://unavatar.io/linkedin/anajulia-moura",
     initials: "AJ",
     chips: [
       "IBM Z Ambassador",
@@ -104,7 +106,9 @@ const team: TeamMember[] = [
   {
     name: "Murilo Cardoso",
     role: "CTO e cofundador",
-    photo: "/sobre/murilo.jpg",
+    // Foto real via proxy estavel do LinkedIn. TODO(Murilo): pra usar a foto do
+    // hackathon, salve em client/public/sobre/murilo.jpg e troque aqui.
+    photo: "https://unavatar.io/linkedin/murilocardoso-dev",
     initials: "MC",
     chips: ["Engenheiro de IA", "20+ agentes de IA", "Ciência da Computação · UniCEUB"],
     // TODO(Murilo): revisar. Texto do LinkedIn real, nao acrescentar nada.
