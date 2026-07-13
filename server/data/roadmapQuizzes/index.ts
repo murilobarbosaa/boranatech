@@ -8,21 +8,25 @@ import type { QuizPool } from "../../../shared/roadmapQuiz/types";
 import analiseDados from "./analise-dados";
 import backend from "./backend";
 import bancoDeDados from "./banco-de-dados";
+import cloud from "./cloud";
 import dados from "./dados";
 import devops from "./devops";
 import engenhariaDados from "./engenharia-dados";
 import frontend from "./frontend";
 import fullstack from "./fullstack";
+import infraestrutura from "./infraestrutura";
 import sre from "./sre";
 
 export const roadmapQuizPools: Record<string, QuizPool> = {
   "analise-dados": analiseDados,
   backend,
   "banco-de-dados": bancoDeDados,
+  cloud,
   dados,
   devops,
   "engenharia-dados": engenhariaDados,
   frontend,
   fullstack,
+  infraestrutura,
   sre,
 };
