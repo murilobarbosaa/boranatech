@@ -217,6 +217,58 @@ function toCursoItem(row: CursoRow) {
   };
 }
 
+// Linha achatada devolvida pela RPC buscar_faculdades_cursos (join ja resolvido
+// com prefixo ies_). Reaproveita toCursoItem para o mesmo formato de saida.
+interface RpcCursoRow {
+  co_curso: number;
+  co_ies: number;
+  no_curso: string;
+  no_curso_raw: string;
+  no_cine_rotulo: string | null;
+  co_cine_area_detalhada: string | null;
+  subarea: string;
+  tp_grau_academico: number | null;
+  no_grau_academico: string | null;
+  tp_modalidade_ensino: number | null;
+  no_modalidade_ensino: string | null;
+  sg_uf: string | null;
+  no_municipio: string | null;
+  qt_vg_total: number | null;
+  ies_no_ies: string;
+  ies_sg_ies: string | null;
+  ies_tp_organizacao_academica: number | null;
+  ies_no_organizacao_academica: string | null;
+  ies_no_rede: string | null;
+  total_count: number;
+}
+
+function toCursoItemFromRpc(row: RpcCursoRow) {
+  return toCursoItem({
+    co_curso: row.co_curso,
+    co_ies: row.co_ies,
+    no_curso: row.no_curso,
+    no_curso_raw: row.no_curso_raw,
+    no_cine_rotulo: row.no_cine_rotulo,
+    co_cine_area_detalhada: row.co_cine_area_detalhada,
+    subarea: row.subarea,
+    tp_grau_academico: row.tp_grau_academico,
+    no_grau_academico: row.no_grau_academico,
+    tp_modalidade_ensino: row.tp_modalidade_ensino,
+    no_modalidade_ensino: row.no_modalidade_ensino,
+    sg_uf: row.sg_uf,
+    no_municipio: row.no_municipio,
+    qt_vg_total: row.qt_vg_total,
+    faculdades_ies: {
+      no_ies: row.ies_no_ies,
+      sg_ies: row.ies_sg_ies,
+      tp_organizacao_academica: row.ies_tp_organizacao_academica,
+      no_organizacao_academica: row.ies_no_organizacao_academica,
+      tp_rede: null,
+      no_rede: row.ies_no_rede,
+    },
+  });
+}
+
 // GET /api/faculdades/cursos: lista paginada com filtros server-side.
 router.get("/cursos", async (req, res, next) => {
   if (!(await enforceRateLimit(req, next))) return;
@@ -244,40 +296,54 @@ router.get("/cursos", async (req, res, next) => {
       }),
       LIST_TTL_SECONDS,
       async () => {
-        // Busca textual: q casa nome de curso OU nome de instituicao. Como o
-        // nome da IES vive na tabela embedada, resolvemos os co_ies que casam
-        // primeiro (indice trigram em no_ies) e depois OR com no_curso.
-        // LIMITACAO conhecida: ilike e case-insensitive mas accent-SENSITIVE
-        // ("estacio" nao casa "ESTÁCIO", "ciencia" nao casa "Ciência"). Folding
-        // de acento exige a extensao unaccent + indice funcional, ou seja uma
-        // migration, fora do escopo desta fase (rota). Fica para a fase 2.
-        let iesIds: number[] = [];
         const safeQuery = q ? sanitizeQuery(q) : "";
+
+        // Com busca textual: a comparacao accent-insensitive
+        // (immutable_unaccent(lower(col))) e a ordenacao por similarity() nao
+        // sao expressaveis pelo PostgREST, entao delegamos para a RPC
+        // buscar_faculdades_cursos, que usa os indices trigram FUNCIONAIS e
+        // ranqueia por relevancia. Ela devolve total_count (janela) em cada
+        // linha, evitando uma segunda query de contagem.
         if (safeQuery) {
-          const { data: iesMatch, error: iesErr } = await supabaseAdmin
-            .from("faculdades_ies")
-            .select("co_ies")
-            .ilike("no_ies", `%${safeQuery}%`);
-          if (iesErr) {
+          const { data, error } = await supabaseAdmin.rpc(
+            "buscar_faculdades_cursos",
+            {
+              p_termo: safeQuery,
+              p_uf: uf ?? null,
+              p_modalidade: modalidade ? MODALIDADE_CODE[modalidade] : null,
+              p_grau: grau ? GRAU_CODE[grau] : null,
+              p_subarea: subarea ?? null,
+              p_rede: rede ? REDE_CODE[rede] : null,
+              p_limit: limit,
+              p_offset: offset,
+            },
+          );
+          if (error) {
             throw createError(500, "db_error", "Erro ao buscar faculdades.");
           }
-          iesIds = ((iesMatch ?? []) as Array<{ co_ies: number }>).map(
-            (r) => r.co_ies,
-          );
+          const rows = (data ?? []) as RpcCursoRow[];
+          const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+          return {
+            items: rows.map(toCursoItemFromRpc),
+            total,
+            page,
+            limit,
+            hasMore: offset + limit < total,
+          };
         }
 
+        // Sem q: caminho PostgREST, ordem atual. qt_vg_total=0 e real (curso
+        // ativo sem vaga no censo): nao esconde, so ranqueia por baixo.
+        // co_curso e o desempate final para paginacao 100% estavel.
         let query = supabaseAdmin
           .from("faculdades_cursos")
           .select(CURSO_SELECT, { count: "exact" })
-          // qt_vg_total=0 e real (curso ativo sem vaga no censo): nao esconde,
-          // so ranqueia por baixo. Ordem deterministica = paginacao estavel.
-          // Relevancia real por trigram (similarity) exige funcao no banco,
-          // fora do escopo desta fase; aproximamos pela mesma ordem estavel.
           .order("qt_vg_total", { ascending: false })
           .order("no_curso", { ascending: true })
+          .order("co_curso", { ascending: true })
           .range(offset, offset + limit - 1);
 
-        // Ponto sutil da rota (filtro por UF x EAD sem UF):
+        // Ponto sutil (filtro UF x EAD). MESMA regra do case SQL na RPC:
         //  - modalidade=ead: so EAD, IGNORA uf.
         //  - modalidade=presencial: so presenciais (+ uf se veio).
         //  - uf sem modalidade: presenciais da UF E os EAD (nacionais), que e
@@ -296,13 +362,6 @@ router.get("/cursos", async (req, res, next) => {
         if (grau) query = query.eq("tp_grau_academico", GRAU_CODE[grau]);
         if (rede) {
           query = query.eq("faculdades_ies.tp_rede", REDE_CODE[rede]);
-        }
-        if (safeQuery) {
-          const parts = [`no_curso.ilike.%${safeQuery}%`];
-          if (iesIds.length > 0) {
-            parts.push(`co_ies.in.(${iesIds.join(",")})`);
-          }
-          query = query.or(parts.join(","));
         }
 
         const { data, error, count } = await query;
