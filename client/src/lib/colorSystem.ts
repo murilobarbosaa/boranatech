@@ -140,7 +140,6 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
 
   // community
   eventos: "community",
-  simulador: "community",
   "estudos/diario": "community",
 
   // women

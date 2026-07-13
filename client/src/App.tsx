@@ -77,7 +77,6 @@ const RoadmapQuiz = lazy(() => import("@/pages/RoadmapQuiz"));
 const RoadmapsV2 = lazy(() => import("@/pages/RoadmapsV2"));
 const RoadmapsV2Index = lazy(() => import("@/pages/RoadmapsV2Index"));
 const Salarios = lazy(() => import("@/pages/Salarios"));
-const Simulador = lazy(() => import("@/pages/Simulador"));
 const Sobre = lazy(() => import("@/pages/Sobre"));
 const SubAreaDetalhe = lazy(() => import("@/pages/SubAreaDetalhe"));
 const TecnologiaComparador = lazy(() => import("@/pages/TecnologiaComparador"));
@@ -201,7 +200,8 @@ function Router() {
         {/* TODO: remover redirect apos 90 dias em prod */}
         <Route path="/freelance">{() => <Redirect to="/vagas" />}</Route>
         <Route path="/evolucao" component={Evolucao} />
-        <Route path="/simulador" component={Simulador} />
+        {/* TODO: remover redirect após 90 dias em prod */}
+        <Route path="/simulador">{() => <Redirect to="/" />}</Route>
         <Route path="/ingles" component={Ingles} />
         <Route path="/ingles/onde-estudar" component={InglesOndeEstudar} />
         <Route path="/ingles/no-trabalho" component={InglesNoTrabalho} />

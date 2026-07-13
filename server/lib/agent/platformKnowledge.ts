@@ -33,7 +33,6 @@ export const PLATFORM_ROUTES: PlatformRoute[] = [
   { route: "/portfolio", tier: "free", label: "Guia de portfolio." },
   { route: "/plano-carreira", tier: "pro", label: "Plano de carreira por IA: rota com degraus, certificacoes e cronograma." },
   { route: "/evolucao", tier: "free", label: "Trilhas de evolucao de carreira." },
-  { route: "/simulador", tier: "free", label: "Simulador de carreira." },
   { route: "/ingles", tier: "free", label: "Recursos de ingles para tecnologia." },
   { route: "/ingles/onde-estudar", tier: "free", label: "Onde estudar ingles." },
   { route: "/ingles/no-trabalho", tier: "free", label: "Ingles no trabalho." },

@@ -23,6 +23,7 @@
       "destination": "/entrevistas",
       "permanent": true
     },
+    { "source": "/simulador", "destination": "/", "permanent": true },
     {
       "source": "/estudos",
       "destination": "/plano-carreira",

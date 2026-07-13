@@ -74,9 +74,9 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     pergunta: "Quanto tempo leva até a primeira vaga?",
+    // TODO(Ana): copy ajustada apos remocao do simulador de carreira
     resposta:
-      "Não existe prazo único: depende do seu ponto de partida, das horas de estudo por semana e da área escolhida. O simulador de carreira faz um diagnóstico rápido da sua situação e estima um prazo orientativo até a sua meta, junto com o que priorizar para chegar mais rápido. Use a estimativa como referência de planejamento, não como promessa.",
-    link: { href: "/simulador", label: "Usar o simulador de carreira" },
+      "Não existe prazo único: depende do seu ponto de partida, das horas de estudo por semana e da área escolhida. Trate qualquer estimativa como referência de planejamento, não como promessa, e priorize constância no estudo e projetos que mostrem o seu trabalho.",
   },
   {
     pergunta: "O que o plano Pro inclui?",

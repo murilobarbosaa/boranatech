@@ -199,12 +199,6 @@ const menuData: DropdownMenu[] = [
             description: "Conheça quem contrata",
             path: "/empresas",
           },
-          {
-            // TODO(Ana): rotulo provisorio, decidir nome final (a ferramenta estima o prazo ate a sua meta)
-            label: "Simule sua evolução",
-            description: "Quanto tempo até sua primeira vaga",
-            path: "/simulador",
-          },
         ],
       },
       {
