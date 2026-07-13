@@ -1,8 +1,10 @@
 // ============================================================================
 // CATALOGO CURADO DE CERTIFICACOES, CURSOS E RECURSOS GRATUITOS.
 //
-// TODO(Ana): revisar itens, precos e URLs antes do lancamento da feature;
-// este catalogo e a UNICA fonte citavel pelo gerador de plano de carreira.
+// Precos auditados em julho de 2026 com fonte (reajuste da linha CompTIA em
+// 01/06/2026, fim do programa gratuito ISC2 CC em 20/05/2026). Este catalogo e
+// a UNICA fonte citavel pelo gerador de plano de carreira.
+// TODO(Ana): conferencia editorial final dos itens e das URLs.
 //
 // Trava de honestidade da feature: o modelo NUNCA escreve nome, preco ou URL
 // de certificacao/curso; ele so referencia IDs deste catalogo. Os precos sao
@@ -164,7 +166,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "CompTIA A+",
     provider: "CompTIA",
     level: "fundamental",
-    price: { amount: 250, currency: "USD" },
+    price: { amount: 274, currency: "USD" },
     priceAsOf: "2026-07",
     url: "https://www.comptia.org/certifications/a",
     areas: ["infraestrutura"],
@@ -176,7 +178,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "CompTIA Network+",
     provider: "CompTIA",
     level: "associate",
-    price: { amount: 350, currency: "USD" },
+    price: { amount: 399, currency: "USD" },
     priceAsOf: "2026-07",
     url: "https://www.comptia.org/certifications/network",
     areas: ["infraestrutura", "sre", "ciberseguranca"],
@@ -189,7 +191,7 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "CompTIA Security+",
     provider: "CompTIA",
     level: "associate",
-    price: { amount: 400, currency: "USD" },
+    price: { amount: 439, currency: "USD" },
     priceAsOf: "2026-07",
     url: "https://www.comptia.org/certifications/security",
     areas: ["ciberseguranca", "infraestrutura", "devops"],
@@ -204,12 +206,12 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "ISC2 Certified in Cybersecurity (CC)",
     provider: "ISC2",
     level: "fundamental",
-    price: { free: true },
+    price: { amount: 199, currency: "USD" },
     priceAsOf: "2026-07",
     url: "https://www.isc2.org/certifications/cc",
     areas: ["ciberseguranca"],
     notes:
-      "Exame gratuito pelo programa de gratuidade da ISC2; confirmar vigencia e a taxa anual de manutencao (AMF).",
+      "O programa gratuito One Million Certified in Cybersecurity encerrou novas inscricoes em 20 de maio de 2026 e o exame voltou ao preco padrao. Ha uma taxa anual de manutencao separada de US$ 50, nao inclusa no preco do exame.",
   },
   // ------------------------------ Scrum.org -------------------------------
   {
@@ -235,7 +237,8 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     priceAsOf: "2026-07",
     url: "https://resources.github.com/learn/certifications/",
     areas: ["geral"],
-    notes: "Fundamentos de Git e GitHub; util em qualquer area tecnica.",
+    notes:
+      "Fundamentos de Git e GitHub; util em qualquer area tecnica. A prova esta disponivel em portugues do Brasil e e gratuita para estudantes verificados no GitHub Education.",
   },
   {
     id: "github-actions",
@@ -261,7 +264,8 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     priceAsOf: "2026-07",
     url: "https://www.lpi.org/our-certifications/linux-essentials-overview/",
     areas: ["infraestrutura", "devops", "sre", "backend"],
-    notes: "Porta de entrada de Linux; sem pre-requisito.",
+    notes:
+      "Porta de entrada de Linux; sem pre-requisito. O valor e da faixa Tier 1; o Brasil esta na Tier 2, com preco menor (cerca de US$ 100); confirmar no site da LPI.",
   },
   {
     id: "cncf-cka",
@@ -269,13 +273,13 @@ export const CAREER_CATALOG: CareerCatalogItem[] = [
     name: "Certified Kubernetes Administrator (CKA)",
     provider: "Linux Foundation / CNCF",
     level: "professional",
-    price: { amount: 395, currency: "USD" },
+    price: { amount: 445, currency: "USD" },
     priceAsOf: "2026-07",
     url: "https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/",
     areas: ["devops", "sre", "cloud"],
     prereqIds: ["lpi-linux-essentials"],
     notes:
-      "Prova pratica (hands-on); exige experiencia real com Kubernetes antes.",
+      "Prova pratica (hands-on); exige experiencia real com Kubernetes antes. O preco inclui um retake.",
   },
   // -------------------- Coursera Professional Certificates ----------------
   {
