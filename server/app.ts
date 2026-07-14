@@ -335,6 +335,14 @@ app.use(
   express.json({ limit: "10mb" }),
 );
 
+// Import de lista de contatos: preview recebe arquivo em base64 (teto de 5mb no
+// arquivo, ~6.7mb em base64). Parser dedicado ANTES do json global (mesmo padrao
+// do avatar). So o /preview precisa do limite maior; o confirm (POST /) e leve.
+app.use(
+  "/api/admin/contact-lists/preview",
+  express.json({ limit: "10mb" }),
+);
+
 app.use(express.json({ limit: "2mb" }));
 
 app.use("/api/affiliates", affiliatesRouter);
