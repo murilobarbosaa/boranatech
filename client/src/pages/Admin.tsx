@@ -170,12 +170,6 @@ type AdminUserRecord = {
   created_at?: string | null;
 };
 
-type SubscriptionRecord = {
-  user_id?: string | null;
-  status?: string | null;
-  plans?: { name?: string | null; price_cents?: number | null } | null;
-};
-
 type HealthResponse = {
   status: string;
   uptime?: number;
@@ -4737,7 +4731,9 @@ export default function Admin() {
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
     null,
   );
-  const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
+  const [selectedUserSub, setSelectedUserSub] = useState<{
+    status: string | null;
+  } | null>(null);
   const [billingMetrics, setBillingMetrics] = useState<BillingMetricsData | null>(
     null,
   );
@@ -4807,7 +4803,6 @@ export default function Admin() {
           posthogResult,
           churnResult,
           affiliatesResult,
-          subscriptionsJson,
           billingMetricsResult,
         ] = await Promise.all([
           adminFetch("/dashboard"),
@@ -4859,7 +4854,6 @@ export default function Admin() {
                   ? err.message
                   : "Erro ao carregar afiliados.",
             })),
-          adminFetch("/subscriptions"),
           // Falha de metricas de cobranca vira ESTADO de erro na secao, nao dado
           // vazio: capturamos o erro num resultado tagueado, sem colapsar em 0.
           adminFetch("/billing-metrics")
@@ -4905,9 +4899,6 @@ export default function Admin() {
           setAffiliates([]);
           setAffiliatesError(affiliatesResult.error);
         }
-        setSubscriptions(
-          Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
-        );
         if (billingMetricsResult.ok) {
           setBillingMetrics(billingMetricsResult.data);
           setBillingMetricsError(null);
@@ -4977,7 +4968,6 @@ export default function Admin() {
           setAffiliates([]);
           setAffiliatesError(null);
           setQueueError(null);
-          setSubscriptions([]);
           setBillingMetrics(null);
           setBillingMetricsError(null);
           setAccessState("forbidden");
@@ -5044,11 +5034,39 @@ export default function Admin() {
     userProfiles.find((user) => user.email === selectedUserEmail) ??
     userProfiles[0] ??
     null;
-  const selectedUserSubscription = selectedUser?.userId
-    ? subscriptions.find(
-        (subscription) => subscription.user_id === selectedUser.userId,
-      )
-    : undefined;
+  // Lookup da assinatura do usuario selecionado via /subscribers (filtro por
+  // email), no lugar do endpoint deprecated /subscriptions.
+  useEffect(() => {
+    const email = selectedUser?.email;
+    const userId = selectedUser?.userId;
+    if (!email) {
+      setSelectedUserSub(null);
+      return;
+    }
+    let cancelled = false;
+    adminFetch(`/subscribers?pageSize=25&search=${encodeURIComponent(email)}`)
+      .then((json) => {
+        if (cancelled) return;
+        const rows: Array<{
+          userId: string | null;
+          email: string | null;
+          status: string | null;
+        }> = Array.isArray(json.data?.rows) ? json.data.rows : [];
+        const match =
+          rows.find((row) =>
+            userId ? row.userId === userId : row.email === email,
+          ) ??
+          rows[0] ??
+          null;
+        setSelectedUserSub(match ? { status: match.status } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedUserSub(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedUser?.email, selectedUser?.userId]);
   const aiUsageReal = useMemo<AiUsage[]>(() => {
     return Object.entries(aiStats).map(([tool, stats]) => {
       const successRate =
@@ -5885,8 +5903,7 @@ export default function Admin() {
                         ["Cadastro", selectedUser.signedUpAt],
                         [
                           "Assinatura",
-                          selectedUserSubscription?.status ||
-                            "Sem assinatura ativa",
+                          selectedUserSub?.status || "Sem assinatura ativa",
                         ],
                         ["Área", selectedUser.interest],
                         ["Origem", selectedUser.source],
