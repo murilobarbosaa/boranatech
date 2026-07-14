@@ -47,6 +47,12 @@ export const DRAW_BY_LEVEL: Record<QuizNivel, number> = {
 };
 export const PASS_SCORE = 6;
 
+// Barra do CERTIFICADO, distinta e mais alta que PASS_SCORE por design: 6
+// acertos fecham a trilha (roadmap_completions), 8 certificam. Congelada em
+// cada certificado emitido (coluna cert_score) para a nota de corte histórica
+// nunca mudar retroativamente.
+export const CERT_SCORE = 8;
+
 // Tamanho do pool por nivel: o gerador mira 15 e a validacao exige pelo
 // menos 9 (o sorteio precisa de folga pra variar entre tentativas). O piso e
 // 9, e nao 10, porque um nivel com um unico secao de 3 folhas comporta no
