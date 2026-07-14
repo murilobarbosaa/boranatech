@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
+import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
@@ -5821,78 +5822,7 @@ export default function Admin() {
               title="De onde vem a assinatura Pro"
               subtitle="Entenda a última página, o tempo, a quantidade de sessões e a funcionalidade Pro que mais empurra o usuário para assinar."
             >
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                {overviewLoading ? (
-                  <div className="md:col-span-2 xl:col-span-4">
-                    <LoadingBlock />
-                  </div>
-                ) : posthogHasData ? (
-                  [
-                    {
-                      label: "Visitantes únicos",
-                      value: formatCount(posthogStats?.uniqueUsers || 0),
-                      detail: "Últimos 30 dias no Posthog",
-                    },
-                    {
-                      label: "Cadastros",
-                      value: formatCount(
-                        posthogStats?.events.user_signed_up || 0,
-                      ),
-                      detail: `${posthogSignupConversion}% dos visitantes únicos`,
-                    },
-                    {
-                      label: "Logins",
-                      value: formatCount(
-                        posthogStats?.events.user_signed_in || 0,
-                      ),
-                      detail: "Evento user_signed_in",
-                    },
-                    {
-                      label: "Checkouts",
-                      value: formatCount(
-                        posthogStats?.events.checkout_started || 0,
-                      ),
-                      detail: `${posthogCheckoutConversion}% dos visitantes únicos`,
-                    },
-                  ].map((metric) => (
-                    <div
-                      key={metric.label}
-                      className="card-brutal rounded-3xl bg-white p-5"
-                    >
-                      <p className="text-xs font-black uppercase text-violet-700">
-                        {metric.label}
-                      </p>
-                      <p className="font-display mt-2 text-3xl font-black text-slate-950">
-                        {metric.value}
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-slate-500">
-                        {metric.detail}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="md:col-span-2 xl:col-span-4">
-                    <PosthogStateNotice state={posthogState} />
-                  </div>
-                )}
-              </div>
-              <div className="mt-6">
-                {/* TODO(Ana): copy final da atribuicao de jornada de conversao. */}
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h3 className="font-display text-2xl font-black text-slate-950">
-                    Jornada até a assinatura
-                  </h3>
-                  <p className="mt-3 max-w-3xl text-sm font-semibold text-slate-600">
-                    A atribuição de jornada (quais páginas e recursos Pro
-                    antecedem a assinatura) começa a ficar disponível conforme os
-                    eventos de conversão recém-instrumentados (checkout_started,
-                    pro_gate_hit, subscription_completed) acumulam no PostHog.
-                    Enquanto isso, o volume bruto por página está na aba Páginas,
-                    não aqui: aquele número é tráfego do site, não jornada de quem
-                    assinou.
-                  </p>
-                </article>
-              </div>
+              <ConversionDashboard />
             </AdminSection>
           ) : null}
 
