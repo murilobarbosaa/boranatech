@@ -1,3 +1,7 @@
+import {
+  captureUserSignedUpForEmail,
+  captureUserSignedUpForOAuth,
+} from "@/lib/analytics";
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
 import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
 import { reconcilePendingQuizResult } from "@/services/careerQuizService";
@@ -298,6 +302,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         if (nextSession.user) {
           posthog.identify(nextSession.user.id);
+          // Cadastro via OAuth: dispara user_signed_up UMA vez, so quando a conta
+          // acabou de ser criada (created_at ~ last_sign_in_at). Nunca em login de
+          // conta existente nem em TOKEN_REFRESHED (so no SIGNED_IN). O fluxo
+          // email/senha ja dispara no signUp; a funcao ignora provider=email.
+          if (event === "SIGNED_IN") {
+            captureUserSignedUpForOAuth(nextSession.user);
+          }
         }
         reconcileQuizForSession(nextSession);
         // Modo 'initial' apenas quando ainda não há perfil cacheado.
@@ -352,7 +363,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) throw error;
 
-        posthog.capture("user_signed_up");
+        captureUserSignedUpForEmail();
       } catch (error) {
         console.error("[AuthContext] signUp failed", error);
         throw error;
