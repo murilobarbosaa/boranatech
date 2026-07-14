@@ -72,12 +72,19 @@ export const env = {
   asaasWebhookToken: requireEnv("ASAAS_WEBHOOK_TOKEN"),
   asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
   // Seletor do provider de pagamento dos fluxos de saida (checkout/cancel/
-  // reactivate). Default "asaas" preserva o comportamento atual; "stripe" entra
-  // quando o provider Stripe estiver validado. Webhooks tem rota fixa por
-  // provider e nao dependem deste seletor.
-  paymentProvider: (process.env.PAYMENT_PROVIDER || "asaas") as
-    | "asaas"
-    | "stripe",
+  // reactivate). Default "stripe" (provider ativo); "asaas" fica legado para
+  // manter as assinaturas existentes. Valor invalido e fatal no boot
+  // (fail-closed). Webhooks tem rota fixa por provider e nao dependem deste
+  // seletor.
+  paymentProvider: ((): "asaas" | "stripe" => {
+    const raw = process.env.PAYMENT_PROVIDER;
+    if (!raw) return "stripe";
+    if (raw === "stripe" || raw === "asaas") return raw;
+    console.error(
+      `[env] ERRO FATAL: PAYMENT_PROVIDER invalido ("${raw}"). Use "stripe" ou "asaas".`,
+    );
+    process.exit(1);
+  })(),
   // Segredos Stripe: SO no backend (Railway), nunca com prefixo VITE_. Opcionais
   // (vazios) quando o provider ativo e o Asaas; o provider Stripe valida presenca
   // no uso (fail-closed no webhook e no checkout).

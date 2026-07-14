@@ -1,3 +1,4 @@
+// LEGADO: fluxos de cancel/reactivate no Asaas mantidos para assinaturas existentes, sem novos checkouts. Provider ativo e a Stripe.
 import {
   cancelAsaasSubscription,
   deleteAsaasPayment,

@@ -1,3 +1,4 @@
+// LEGADO: provider Asaas mantido para manter as assinaturas existentes (webhook/cancel/reactivate), sem novos checkouts. Provider ativo e a Stripe.
 import crypto from "crypto";
 
 import {

@@ -1,3 +1,4 @@
+// LEGADO: cliente Asaas mantido para as assinaturas existentes (cancel/reconcile), sem novos checkouts. Provider ativo e a Stripe.
 import { env } from "./env";
 import { fetchWithTimeout } from "./http";
 

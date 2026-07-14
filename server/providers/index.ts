@@ -13,8 +13,14 @@ export function getPaymentProvider(): PaymentProvider {
     case "stripe":
       return stripeProvider;
     case "asaas":
-    default:
       return asaasProvider;
+    default: {
+      // Fail-closed: PAYMENT_PROVIDER ja e validado no boot (env.ts), que aborta
+      // com valor desconhecido. Este ramo existe so como defesa exaustiva e
+      // nunca deve ser alcancado; nunca cai num provider por default.
+      const exhaustive: never = env.paymentProvider;
+      throw new Error(`Unknown payment provider: ${String(exhaustive)}`);
+    }
   }
 }
 
