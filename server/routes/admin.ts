@@ -316,7 +316,7 @@ router.get("/integrations/health", async (_req, res, next) => {
 
     res.json({
       data: {
-        paymentProvider: env.paymentProvider,
+        billingEnabled: env.billingEnabled,
         posthog,
         stripe: {
           secretKey: Boolean(env.stripeSecretKey),
@@ -326,11 +326,6 @@ router.get("/integrations/health", async (_req, res, next) => {
             pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
             pro_annual: Boolean(env.stripePriceIds.pro_annual),
           },
-        },
-        asaas: {
-          apiKey: Boolean(env.asaasApiKey),
-          webhookToken: Boolean(env.asaasWebhookToken),
-          env: env.asaasEnv,
         },
         redis,
         resend: { apiKey: Boolean(env.resendApiKey) },

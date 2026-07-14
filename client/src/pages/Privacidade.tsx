@@ -146,9 +146,8 @@ export default function Privacidade() {
                 {/* TODO(Ana): Ana precisa aprovar o texto da politica de privacidade antes de publicar. */}
                 <LegalText>
                   Serviços usados ou previstos no projeto incluem Supabase,
-                  Stripe (processador de pagamento atual, com Asaas mantido para
-                  assinaturas legadas), OpenAI, Resend, PostHog e provedores de
-                  hospedagem e infraestrutura.
+                  Stripe (processador de pagamento), OpenAI, Resend, PostHog e
+                  provedores de hospedagem e infraestrutura.
                 </LegalText>
               </>
             ),

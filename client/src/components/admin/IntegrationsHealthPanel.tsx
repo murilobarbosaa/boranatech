@@ -11,7 +11,7 @@ type PosthogHealth =
   | { state: "ok"; hasData: boolean };
 
 type IntegrationsHealth = {
-  paymentProvider: string;
+  billingEnabled: boolean;
   posthog: PosthogHealth;
   stripe: {
     secretKey: boolean;
@@ -22,7 +22,6 @@ type IntegrationsHealth = {
       pro_annual: boolean;
     };
   };
-  asaas: { apiKey: boolean; webhookToken: boolean; env: string };
   redis: { configured: boolean; ok: boolean };
   resend: { apiKey: boolean };
 };
@@ -88,21 +87,13 @@ function stripeStatus(stripe: IntegrationsHealth["stripe"]): IntegrationStatus {
       detail: "Secret, webhook e price ids presentes.",
     };
   }
+  // Stripe e o UNICO provider de pagamento: qualquer credencial faltando impede
+  // vender. Tom "error" (vermelho) para ser impossivel de passar despercebido.
   return {
     name: "Stripe",
-    tone: "warn",
+    tone: "error",
     label: missing.length >= 5 ? "Não configurado" : "Parcial",
     detail: `Faltando: ${missing.join(", ")}`,
-  };
-}
-
-function asaasStatus(asaas: IntegrationsHealth["asaas"]): IntegrationStatus {
-  const configured = asaas.apiKey && asaas.webhookToken;
-  return {
-    name: "Asaas (legado)",
-    tone: configured ? "ok" : "warn",
-    label: configured ? "Configurado" : "Incompleto",
-    detail: `Ambiente: ${asaas.env}. ${configured ? "Mantido para assinaturas existentes." : "Chave ou token ausente."}`,
   };
 }
 
@@ -170,7 +161,6 @@ export function IntegrationsHealthPanel() {
     ? [
         posthogStatus(data.posthog),
         stripeStatus(data.stripe),
-        asaasStatus(data.asaas),
         redisStatus(data.redis),
         resendStatus(data.resend),
       ]
@@ -183,8 +173,15 @@ export function IntegrationsHealthPanel() {
           Saúde das integrações
         </h2>
         {data ? (
-          <span className="rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-1 text-xs font-black uppercase text-violet-800">
-            Provider de pagamento: {data.paymentProvider}
+          // TODO(Ana): copy do selo de estado do billing.
+          <span
+            className={`rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black uppercase ${
+              data.billingEnabled
+                ? "bg-emerald-50 text-emerald-800"
+                : "bg-amber-50 text-amber-900"
+            }`}
+          >
+            Billing: {data.billingEnabled ? "ligado" : "desligado"}
           </span>
         ) : null}
       </div>

@@ -3,14 +3,13 @@ import { useEffect, useState } from "react";
 import { adminFetch } from "@/lib/adminApi";
 
 // TODO(Ana): revisar TODA a copy visivel deste componente (titulos, labels de
-// filtro, cabecalhos de coluna, badges de status/provider e mensagens de estado).
+// filtro, cabecalhos de coluna, badges de status e mensagens de estado).
 
 type SubscriberRow = {
   userId: string | null;
   email: string | null;
   planCode: string | null;
   planName: string | null;
-  provider: string | null;
   status: string | null;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
@@ -41,12 +40,6 @@ const STATUS_OPTIONS = [
   { value: "past_due", label: "Inadimplente" },
   { value: "canceled", label: "Cancelado" },
   { value: "incomplete", label: "Incompleto" },
-];
-
-const PROVIDER_OPTIONS = [
-  { value: "", label: "Todos os provedores" },
-  { value: "stripe", label: "Stripe" },
-  { value: "asaas", label: "Asaas (legado)" },
 ];
 
 const PLAN_OPTIONS = [
@@ -80,35 +73,12 @@ function StatusBadge({ status }: { status: string | null }) {
   );
 }
 
-function ProviderBadge({ provider }: { provider: string | null }) {
-  if (provider === "stripe") {
-    return (
-      <span className="inline-flex rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-xs font-black text-violet-800">
-        Stripe
-      </span>
-    );
-  }
-  if (provider === "asaas") {
-    return (
-      <span className="inline-flex rounded-full border-2 border-slate-900 bg-amber-100 px-2.5 py-0.5 text-xs font-black text-amber-800">
-        Asaas (legado)
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex rounded-full border-2 border-slate-300 bg-slate-50 px-2.5 py-0.5 text-xs font-black text-slate-500">
-      {provider ?? "-"}
-    </span>
-  );
-}
-
 export function SubscribersTable() {
   const [data, setData] = useState<SubscriberListData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
-  const [provider, setProvider] = useState("");
   const [planCode, setPlanCode] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -125,7 +95,6 @@ export function SubscribersTable() {
         params.set("page", String(page));
         params.set("pageSize", String(pageSize));
         if (status) params.set("status", status);
-        if (provider) params.set("provider", provider);
         if (planCode) params.set("planCode", planCode);
         if (search) params.set("search", search);
         const json: { data: SubscriberListData } = await adminFetch(
@@ -147,7 +116,7 @@ export function SubscribersTable() {
     return () => {
       cancelled = true;
     };
-  }, [page, status, provider, planCode, search]);
+  }, [page, status, planCode, search]);
 
   const rows = data?.rows ?? [];
   const total = data?.total ?? 0;
@@ -170,22 +139,6 @@ export function SubscribersTable() {
             className="mt-1 block rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
           >
             {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-black uppercase text-slate-600">
-          Provedor
-          <select
-            value={provider}
-            onChange={(event) =>
-              resetToFirstPage(setProvider, event.target.value)
-            }
-            className="mt-1 block rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
-          >
-            {PROVIDER_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -252,7 +205,6 @@ export function SubscribersTable() {
                 <tr className="border-b-2 border-slate-900 bg-slate-50">
                   <th className="px-4 py-3 font-black uppercase text-slate-600">E-mail</th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Plano</th>
-                  <th className="px-4 py-3 font-black uppercase text-slate-600">Provedor</th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Status</th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Início período</th>
                   <th className="px-4 py-3 font-black uppercase text-slate-600">Fim período</th>
@@ -272,9 +224,6 @@ export function SubscribersTable() {
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {row.planName ?? row.planCode ?? "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <ProviderBadge provider={row.provider} />
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={row.status} />
@@ -424,7 +373,6 @@ export function SubscribersSummary({ onSeeAll }: { onSeeAll?: () => void }) {
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <ProviderBadge provider={row.provider} />
                 <StatusBadge status={row.status} />
               </div>
             </li>

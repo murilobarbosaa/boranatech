@@ -5,7 +5,7 @@ import { isPlanId, type PlanId } from "../../shared/planPricing";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
-import { asaasProvider, getPaymentProvider, stripeProvider } from "../providers";
+import { stripeProvider } from "../providers";
 
 const router = Router();
 
@@ -96,7 +96,7 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
       );
     }
 
-    const data = await getPaymentProvider().cancel({
+    const data = await stripeProvider.cancel({
       userId,
       reasonCode,
       reasonText,
@@ -111,7 +111,7 @@ router.post("/cancel", requireAuth, async (req, res, next) => {
 router.post("/reactivate", requireAuth, async (req, res, next) => {
   try {
     const userId = req.user!.id;
-    const data = await getPaymentProvider().reactivate({ userId });
+    const data = await stripeProvider.reactivate({ userId });
     res.json({ data });
   } catch (err) {
     next(err);
@@ -143,7 +143,7 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
         ? req.body.planId
         : "pro_monthly";
 
-    const data = await getPaymentProvider().createCheckout({
+    const data = await stripeProvider.createCheckout({
       user: { id: userId, email: req.user!.email },
       planId,
       affiliateCode,
@@ -155,24 +155,9 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
   }
 });
 
-// Webhook do Asaas: rota FIXA no provider Asaas (nao passa pelo seletor).
-// O parser dedicado em app.ts (express.raw com match por prefixo) preserva
-// req.rawBody para a validacao do token.
-router.post("/webhook", async (req, res, next) => {
-  try {
-    const result = await asaasProvider.handleWebhook({
-      rawBody: (req as typeof req & { rawBody?: Buffer }).rawBody,
-      headers: req.headers,
-    });
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Webhook da Stripe: rota FIXA no provider Stripe (nao passa pelo seletor).
-// Cai no mesmo express.raw de app.ts (match por prefixo /api/billing/webhook),
-// entao req.rawBody chega intacto para stripe.webhooks.constructEvent.
+// Webhook da Stripe: rota FIXA. Cai no express.raw de app.ts (match por prefixo
+// /api/billing/webhook), entao req.rawBody chega intacto para
+// stripe.webhooks.constructEvent.
 router.post("/webhook/stripe", async (req, res, next) => {
   try {
     const result = await stripeProvider.handleWebhook({

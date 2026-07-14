@@ -1,7 +1,5 @@
-// Interface de provider de pagamento. Abstrai os fluxos de saida (checkout,
-// cancel, reactivate) e o webhook de cada provedor (Asaas hoje, Stripe a seguir)
-// atras de um contrato unico, para o seletor por env (PAYMENT_PROVIDER) escolher
-// a implementacao sem que as rotas ou o frontend mudem.
+// Interface do provider de pagamento (Stripe). Abstrai os fluxos de saida
+// (checkout, cancel, reactivate) e o webhook atras de um contrato unico.
 
 import type { PlanId } from "../../shared/planPricing";
 
@@ -59,7 +57,7 @@ export interface WebhookInput {
 export type WebhookResult = Record<string, unknown>;
 
 export interface PaymentProvider {
-  readonly name: "asaas" | "stripe";
+  readonly name: "stripe";
   createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult>;
   cancel(input: CancelInput): Promise<CancelResult>;
   reactivate(input: ReactivateInput): Promise<ReactivateResult>;
