@@ -47,8 +47,6 @@ function warnIfMissing(key: string, fallbackKeys: string[] = []) {
   }
 }
 
-warnIfMissing("ASAAS_API_KEY");
-warnIfMissing("ASAAS_WEBHOOK_TOKEN");
 warnIfMissing("AI_DAILY_LIMIT_FREE");
 warnIfMissing("AI_DAILY_LIMIT_PRO");
 warnIfMissing("AGENT_DAILY_LIMIT_FREE");
@@ -68,26 +66,9 @@ export const env = {
     "http://localhost:3000",
   ),
   corsOrigin: requireEnvWithDefault("CORS_ORIGIN", "http://localhost:5173"),
-  asaasApiKey: requireEnv("ASAAS_API_KEY"),
-  asaasWebhookToken: requireEnv("ASAAS_WEBHOOK_TOKEN"),
-  asaasEnv: (process.env.ASAAS_ENV || "sandbox") as "sandbox" | "production",
-  // Seletor do provider de pagamento dos fluxos de saida (checkout/cancel/
-  // reactivate). Default "stripe" (provider ativo); "asaas" fica legado para
-  // manter as assinaturas existentes. Valor invalido e fatal no boot
-  // (fail-closed). Webhooks tem rota fixa por provider e nao dependem deste
-  // seletor.
-  paymentProvider: ((): "asaas" | "stripe" => {
-    const raw = process.env.PAYMENT_PROVIDER;
-    if (!raw) return "stripe";
-    if (raw === "stripe" || raw === "asaas") return raw;
-    console.error(
-      `[env] ERRO FATAL: PAYMENT_PROVIDER invalido ("${raw}"). Use "stripe" ou "asaas".`,
-    );
-    process.exit(1);
-  })(),
-  // Segredos Stripe: SO no backend (Railway), nunca com prefixo VITE_. Opcionais
-  // (vazios) quando o provider ativo e o Asaas; o provider Stripe valida presenca
-  // no uso (fail-closed no webhook e no checkout).
+  // Segredos Stripe: SO no backend (Railway), nunca com prefixo VITE_. Com
+  // BILLING_ENABLED ligado, o boot aborta se faltar qualquer um deles (a
+  // verificacao fail-closed roda abaixo do objeto env).
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
   // Allowlist de price por plano. O cliente manda PlanId; o servidor resolve o
@@ -99,9 +80,9 @@ export const env = {
     pro_annual: process.env.STRIPE_PRICE_PRO_ANNUAL || "",
   } as Record<PlanId, string>,
   // Kill-switch do pagamento. FAIL-CLOSED: so a string exata "true" liga; ausente,
-  // vazia ou qualquer outro valor deixa o checkout desligado (default off). Usado
-  // enquanto a conta de producao do Asaas esta em analise: a vitrine do Pro segue
-  // visivel, so o pagamento fica fechado.
+  // vazia ou qualquer outro valor deixa o checkout desligado (default off). Com
+  // ele ligado, o boot exige as credenciais Stripe (verificacao abaixo do objeto
+  // env): a vitrine do Pro segue visivel, mas billing so liga com tudo pronto.
   billingEnabled: (() => {
     const raw = process.env.BILLING_ENABLED;
     if (!raw) return false; // ausente: billing off, esperado em dev, sem alarde.
@@ -256,3 +237,26 @@ export const env = {
     .map((id) => id.trim())
     .filter(Boolean),
 };
+
+// Fail-closed comercial: com o billing LIGADO, faltar qualquer credencial Stripe
+// resulta num site que aparenta vender e nao consegue. Entao o processo NAO sobe:
+// loga exatamente o que falta e aborta. Com billing desligado, nao ha o que exigir
+// (o checkout ja responde 503 billing_disabled).
+if (env.billingEnabled) {
+  const missingStripe: string[] = [];
+  if (!env.stripeSecretKey) missingStripe.push("STRIPE_SECRET_KEY");
+  if (!env.stripeWebhookSecret) missingStripe.push("STRIPE_WEBHOOK_SECRET");
+  if (!env.stripePriceIds.pro_monthly)
+    missingStripe.push("STRIPE_PRICE_PRO_MONTHLY");
+  if (!env.stripePriceIds.pro_semiannual)
+    missingStripe.push("STRIPE_PRICE_PRO_SEMIANNUAL");
+  if (!env.stripePriceIds.pro_annual)
+    missingStripe.push("STRIPE_PRICE_PRO_ANNUAL");
+  if (missingStripe.length > 0) {
+    console.error(
+      `[env] ERRO FATAL: BILLING_ENABLED=true mas faltam credenciais Stripe: ${missingStripe.join(", ")}. Configure todas ou desligue BILLING_ENABLED.`,
+    );
+    process.exit(1);
+  }
+  console.log("[env] Stripe: credenciais completas, billing pronto.");
+}
