@@ -106,6 +106,7 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
   const [breakdown, setBreakdown] = useState<
     Array<{ category: string; cents: number }>
   >([]);
+  const [breakdownError, setBreakdownError] = useState<string | null>(null);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -136,10 +137,13 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
       const json: { data: { despesasPorCategoria: Array<{ category: string; cents: number }> } } =
         await adminFetch(`/finance/summary?${params.toString()}`);
       setBreakdown(json.data.despesasPorCategoria ?? []);
-    } catch {
-      // O breakdown e um extra; o resultado de caixa ja mostra erro na secao
-      // principal. Aqui um vazio nao mascara falha de metrica de resultado.
+      setBreakdownError(null);
+    } catch (err) {
+      // Erro vira estado de erro visivel, nunca vazio mascarando falha.
       setBreakdown([]);
+      setBreakdownError(
+        err instanceof Error ? err.message : "Erro ao carregar o breakdown.",
+      );
     }
   }, []);
 
@@ -504,7 +508,9 @@ export function ExpensesManager({ onChanged }: { onChanged?: () => void }) {
           Por categoria (12 meses)
         </h3>
         <div className="mt-4 space-y-3">
-          {breakdown.length === 0 ? (
+          {breakdownError ? (
+            <ErrorBlock message={breakdownError} />
+          ) : breakdown.length === 0 ? (
             <p className="rounded-2xl bg-slate-50 p-3 text-sm font-bold text-slate-500">
               Nenhuma despesa no período.
             </p>
