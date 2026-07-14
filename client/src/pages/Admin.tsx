@@ -42,6 +42,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
@@ -1860,7 +1861,14 @@ type EmailCampaign = {
 
 type EmailCampaignBatchStatus = "pending" | "dispatched" | "canceled";
 
-type EmailBatchSource = "waitlist" | "newsletter" | "custom" | "users";
+type EmailBatchSource =
+  | "waitlist"
+  | "newsletter"
+  | "custom"
+  | "users"
+  | "contact_list";
+
+type ContactListOption = { id: string; name: string; valid_count: number };
 
 type EmailUserSegment = "all" | "never_pro" | "active_pro" | "ex_pro";
 
@@ -1884,6 +1892,7 @@ const EMAIL_BATCH_SOURCE_META: Record<EmailBatchSource, string> = {
   newsletter: "Newsletter",
   custom: "Lista avulsa",
   users: "Usuários",
+  contact_list: "Lista importada",
 };
 
 // TODO(Ana): rótulos e descrições das categorias de campanha.
@@ -2054,10 +2063,11 @@ function EmailCampaignsAdminSection() {
 
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [batchMode, setBatchMode] = useState<"next" | "selected">("next");
-  const [batchSource, setBatchSource] = useState<
-    "waitlist" | "newsletter" | "custom" | "users"
-  >("waitlist");
+  const [batchSource, setBatchSource] = useState<EmailBatchSource>("waitlist");
   const [batchSegment, setBatchSegment] = useState<EmailUserSegment>("all");
+  const [contactLists, setContactLists] = useState<ContactListOption[]>([]);
+  const [selectedContactListId, setSelectedContactListId] = useState("");
+  const [contactListsError, setContactListsError] = useState<string | null>(null);
   const [customText, setCustomText] = useState("");
   const [excludeOther, setExcludeOther] = useState(true);
   const [whenMode, setWhenMode] = useState<"now" | "schedule">("now");
@@ -2387,12 +2397,27 @@ function EmailCampaignsAdminSection() {
     setPickerSearchInput("");
     setPickerSearch("");
     setPickerError(null);
+    setSelectedContactListId("");
+    setContactLists([]);
+    setContactListsError(null);
     void loadEligibleCount(detail.id, true, "waitlist");
   }
 
-  function selectBatchSource(
-    next: "waitlist" | "newsletter" | "custom" | "users",
-  ) {
+  async function loadContactListsForBatch() {
+    setContactListsError(null);
+    try {
+      const json = await adminFetch("/contact-lists?page=1&pageSize=100");
+      const rows = (json.data as { rows: ContactListOption[] }).rows ?? [];
+      setContactLists(rows);
+    } catch (err) {
+      setContactLists([]);
+      setContactListsError(
+        err instanceof Error ? err.message : "Erro ao carregar as listas.",
+      );
+    }
+  }
+
+  function selectBatchSource(next: EmailBatchSource) {
     if (!detail || next === batchSource) return;
     setBatchSource(next);
     setBatchSegment("all");
@@ -2403,12 +2428,20 @@ function EmailCampaignsAdminSection() {
     setPickerError(null);
     setCustomText("");
     setLimitText("");
+    setSelectedContactListId("");
     if (next === "custom") {
       // Lista avulsa é sempre a lista colada: sem modo "próximos" nem contagem
       // de origem (a contagem útil é a de e-mails válidos colados).
       setBatchMode("selected");
       setEligibleCount(null);
       setEligibleError(null);
+    } else if (next === "contact_list") {
+      // Lista importada: modo selected, sem contagem de origem (a contagem util
+      // e a de validos da lista). O server resolve os membros validos.
+      setBatchMode("selected");
+      setEligibleCount(null);
+      setEligibleError(null);
+      void loadContactListsForBatch();
     } else {
       setBatchMode("next");
       void loadEligibleCount(detail.id, excludeOther, next, "all");
@@ -2429,8 +2462,14 @@ function EmailCampaignsAdminSection() {
     if (!detail) return;
     const next = !excludeOther;
     setExcludeOther(next);
-    if (batchSource !== "custom") {
+    if (
+      batchSource !== "custom" &&
+      batchSource !== "contact_list" &&
+      batchSource !== "users"
+    ) {
       void loadEligibleCount(detail.id, next, batchSource, batchSegment);
+    } else if (batchSource === "users") {
+      void loadEligibleCount(detail.id, next, "users", batchSegment);
     }
   }
 
@@ -2545,6 +2584,12 @@ function EmailCampaignsAdminSection() {
         );
         return;
       }
+    } else if (batchSource === "contact_list") {
+      if (!selectedContactListId) {
+        // TODO(Ana): mensagem de lista importada nao selecionada.
+        toast.error("Selecione a lista importada.");
+        return;
+      }
     } else if (batchMode === "next") {
       const trimmedLimit = limitText.trim();
       if (trimmedLimit) {
@@ -2580,27 +2625,38 @@ function EmailCampaignsAdminSection() {
     setBatchBusy(true);
     try {
       const userSegment = batchSource === "users" ? batchSegment : undefined;
-      const payload =
-        batchSource !== "custom" && batchMode === "next"
-          ? {
-              mode: "next",
-              source: batchSource,
-              userSegment,
-              limit,
-              scheduledFor,
-              excludeOtherCampaigns: excludeOther,
-            }
-          : {
-              mode: "selected",
-              source: batchSource,
-              userSegment,
-              emails:
-                batchSource === "custom"
-                  ? parsedCustom.valid
-                  : Array.from(selectedEmails),
-              scheduledFor,
-              excludeOtherCampaigns: excludeOther,
-            };
+      let payload: Record<string, unknown>;
+      if (batchSource === "contact_list") {
+        // Lista importada: o server resolve os membros validos pelo id da lista.
+        payload = {
+          mode: "selected",
+          source: "contact_list",
+          contactListId: selectedContactListId,
+          scheduledFor,
+          excludeOtherCampaigns: excludeOther,
+        };
+      } else if (batchSource !== "custom" && batchMode === "next") {
+        payload = {
+          mode: "next",
+          source: batchSource,
+          userSegment,
+          limit,
+          scheduledFor,
+          excludeOtherCampaigns: excludeOther,
+        };
+      } else {
+        payload = {
+          mode: "selected",
+          source: batchSource,
+          userSegment,
+          emails:
+            batchSource === "custom"
+              ? parsedCustom.valid
+              : Array.from(selectedEmails),
+          scheduledFor,
+          excludeOtherCampaigns: excludeOther,
+        };
+      }
       const json = await adminFetch(`/email-campaigns/${detail.id}/batches`, {
         method: "POST",
         body: JSON.stringify(payload),
@@ -2670,6 +2726,10 @@ function EmailCampaignsAdminSection() {
       title="Campanhas de e-mail para a waitlist"
       subtitle="Crie uma campanha, envie um teste para você e dispare para a lista de espera com fila e limite de velocidade."
     >
+      <div className="mb-8 border-b-4 border-slate-900 pb-8">
+        <ContactListsManager />
+      </div>
+
       <div className="grid gap-5 lg:grid-cols-2">
         <article className="card-brutal rounded-3xl bg-white p-6">
           {/* TODO(Ana): rótulos do formulário de campanha. */}
@@ -3373,6 +3433,7 @@ function EmailCampaignsAdminSection() {
                   { id: "newsletter" as const, label: "Newsletter" },
                   { id: "custom" as const, label: "Lista avulsa" },
                   { id: "users" as const, label: "Usuários" },
+                  { id: "contact_list" as const, label: "Lista importada" },
                 ].map((option) => (
                   <button
                     key={option.id}
@@ -3425,7 +3486,46 @@ function EmailCampaignsAdminSection() {
               </div>
             ) : null}
 
-            {batchSource !== "custom" ? (
+            {batchSource === "contact_list" ? (
+              <div className="mt-4">
+                {/* TODO(Ana): rótulo do seletor de lista importada. */}
+                <p className="text-xs font-black uppercase text-slate-500">
+                  Lista importada
+                </p>
+                {contactListsError ? (
+                  <p className="mt-2 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+                    {contactListsError}
+                  </p>
+                ) : contactLists.length === 0 ? (
+                  <p className="mt-2 text-sm font-semibold text-slate-500">
+                    {/* TODO(Ana): mensagem sem listas importadas. */}
+                    Nenhuma lista importada. Importe uma lista no bloco acima.
+                  </p>
+                ) : (
+                  <select
+                    value={selectedContactListId}
+                    onChange={(event) =>
+                      setSelectedContactListId(event.target.value)
+                    }
+                    className="mt-2 block w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-bold"
+                  >
+                    <option value="">Escolha uma lista...</option>
+                    {contactLists.map((list) => (
+                      <option key={list.id} value={list.id}>
+                        {list.name} ({list.valid_count} válidos)
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="mt-2 text-xs font-bold text-slate-500">
+                  {/* TODO(Ana): explicação da reconsulta no envio. */}
+                  No envio, cada lote pega até 500 válidos novos; supressão e
+                  consentimento são reconsultados na hora.
+                </p>
+              </div>
+            ) : null}
+
+            {batchSource !== "custom" && batchSource !== "contact_list" ? (
               eligibleError ? (
                 <p className="mt-3 rounded-2xl border-2 border-rose-300 bg-rose-50 p-3 text-sm font-bold text-rose-700">
                   {eligibleError}
@@ -3459,7 +3559,7 @@ function EmailCampaignsAdminSection() {
               Pular quem já recebeu outra campanha
             </label>
 
-            {batchSource !== "custom" ? (
+            {batchSource === "contact_list" ? null : batchSource !== "custom" ? (
               <div className="mt-4">
                 {/* TODO(Ana): rótulos dos modos. */}
                 <p className="text-xs font-black uppercase text-slate-500">
@@ -3524,7 +3624,7 @@ function EmailCampaignsAdminSection() {
               </div>
             )}
 
-            {batchSource === "custom" ? null : batchMode === "next" ? (
+            {batchSource === "custom" || batchSource === "contact_list" ? null : batchMode === "next" ? (
               <div className="mt-4">
                 <label
                   htmlFor="email-batch-limit"
