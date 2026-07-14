@@ -35,10 +35,28 @@ export type Eligibility =
   | ({ status: "not_complete" } & EligibilityHours)
   | ({ status: "quiz_required" } & EligibilityHours)
   | ({ status: "score_below_cert"; score: number; certScore: number } & EligibilityHours)
+  | ({ status: "pro_required" } & EligibilityHours)
   | ({ status: "profile_incomplete"; missing: MissingProfileField[] } & EligibilityHours)
   | ({ status: "already_issued"; code: string } & EligibilityHours)
   | ({ status: "unavailable" } & EligibilityHours)
   | ({ status: "eligible" } & EligibilityHours);
+
+// Projecao PUBLICA de um certificado, exposta sem sessao na verificacao por
+// code. Whitelist explicita (toPublicCertificate): NUNCA carrega user_id, cpf
+// completo, score, cert_score, quiz_attempt_id nem o id interno. cpfMasked
+// revela so os digitos do meio (***.456.789-**). revokedReason so aparece
+// quando revoked e true.
+export interface PublicCertificate {
+  code: string;
+  holderName: string;
+  cpfMasked: string;
+  roadmapTitle: string;
+  hours: number;
+  syllabus: SyllabusSection[];
+  issuedAt: string;
+  revoked: boolean;
+  revokedReason?: string;
+}
 
 // Valida CPF pelos dois digitos verificadores. Opera so sobre digitos
 // (qualquer mascara e ignorada). Rejeita comprimento != 11 e as sequencias de

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Request } from "express";
 
+import { isValidCpf } from "../../shared/certificates/types";
 import { PRO_AVATAR_BORDERS } from "../lib/avatarBorders";
 import { enqueueEmail } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -52,6 +53,8 @@ const EDITABLE_FIELDS = [
   "github_url",
   "linkedin_url",
   "website_url",
+  "full_name",
+  "cpf",
 ];
 
 const AVATAR_VALUES = {
@@ -319,6 +322,40 @@ router.patch("/", checkProStatus, async (req, res, next) => {
         const textError = validateProfileText(field, updates[field], max);
         if (textError) return next(textError);
       }
+    }
+
+    // Identidade do certificado (C1). Ambos opcionais: mandar so um nao apaga
+    // o outro (so entram em updates quando presentes no body).
+    if ("full_name" in updates) {
+      const value = updates.full_name;
+      const trimmed = typeof value === "string" ? value.trim() : "";
+      const words = trimmed.split(/\s+/).filter(Boolean);
+      if (
+        typeof value !== "string" ||
+        trimmed.length > 120 ||
+        words.length < 2 ||
+        !words.every((word) => word.length >= 2)
+      ) {
+        return next(
+          createError(
+            400,
+            "invalid_full_name",
+            "Informe o nome completo (nome e sobrenome).",
+          ),
+        );
+      }
+      updates.full_name = trimmed;
+    }
+
+    // CPF: aceita mascara, GRAVA SO DIGITOS. 400 se os digitos verificadores
+    // nao baterem.
+    if ("cpf" in updates) {
+      const value = updates.cpf;
+      const digits = typeof value === "string" ? value.replace(/\D/g, "") : "";
+      if (typeof value !== "string" || !isValidCpf(digits)) {
+        return next(createError(400, "invalid_cpf", "CPF inválido."));
+      }
+      updates.cpf = digits;
     }
 
     for (const field of PROFILE_URL_FIELDS) {

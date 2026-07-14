@@ -21,7 +21,9 @@ import badgesRouter from "./routes/badges";
 import billingRouter from "./routes/billing";
 import bookmarksRouter from "./routes/bookmarks";
 import careerPlanRouter from "./routes/careerPlan";
-import certificatesRouter from "./routes/certificates";
+import certificatesRouter, {
+  publicCertificatesRouter,
+} from "./routes/certificates";
 import consentRouter from "./routes/consent";
 import contentRouter from "./routes/content";
 import cronRouter from "./routes/cron";
@@ -342,6 +344,7 @@ app.use("/api/newsletter", newsletterRouter);
 app.use("/api/launch-state", launchStateRouter);
 app.use("/api/beta", betaRouter);
 app.use("/api/faculdades", faculdadesRouter);
+app.use("/api/public/certificates", publicCertificatesRouter);
 
 app.use("/api", validateSupabaseJwt);
 

@@ -3,12 +3,18 @@
 // "unavailable"), nunca em "eligible". O userId vem SEMPRE do JWT (quem chama
 // passa req.user.id), nunca de body ou param, e TODA query com supabaseAdmin
 // filtra por user_id explicitamente porque o service role bypassa a RLS.
+import {
+  generateCertificateCode,
+  normalizeCertificateCode,
+} from "../../shared/certificates/code";
 import { computeHours } from "../../shared/certificates/hours";
 import {
   isValidCpf,
   type Eligibility,
   type EligibilityHours,
   type MissingProfileField,
+  type PublicCertificate,
+  type SyllabusSection,
 } from "../../shared/certificates/types";
 import { roadmapsV2 } from "../../shared/roadmapV2/content";
 import { CERT_SCORE } from "../../shared/roadmapQuiz/types";
@@ -25,6 +31,7 @@ function isValidFullName(name: string | null | undefined): boolean {
 export async function getCertificateEligibility(
   userId: string,
   slug: string,
+  isPro: boolean,
 ): Promise<Eligibility> {
   // a. Roadmap estatico existente e nao gerado por IA.
   const roadmap = roadmapsV2.find((r) => r.slug === slug);
@@ -83,6 +90,13 @@ export async function getCertificateEligibility(
     return { status: "score_below_cert", score, certScore: CERT_SCORE, ...hours };
   }
 
+  // Gate Pro DEPOIS da barra de nota: so pede assinatura pra quem ja passou nos
+  // 8 acertos. Quem reprovou ve "refaca a prova", nunca um paywall. Nao e 403;
+  // e um status pra UI mostrar o certificado conquistado e o upgrade.
+  if (!isPro) {
+    return { status: "pro_required", ...hours };
+  }
+
   // f. Identidade do titular completa (snapshot da emissao sai daqui).
   const { data: profileRaw, error: profileError } = await supabaseAdmin
     .from("profiles")
@@ -121,4 +135,184 @@ export async function getCertificateEligibility(
 
   // h. Tudo verde.
   return { status: "eligible", ...hours };
+}
+
+// 23505 disparado por um unique index especifico? PostgREST devolve o nome da
+// constraint na message/details; e assim que distinguimos colisao de code de
+// corrida de emissao dupla.
+function isUniqueViolationOn(
+  error: { code: string; message: string; details?: string | null } | null,
+  constraint: string,
+): boolean {
+  if (!error || error.code !== "23505") return false;
+  return `${error.message} ${error.details ?? ""}`.includes(constraint);
+}
+
+// Emissao. NAO confia em NADA do client: reavalia a elegibilidade agora e so
+// emite se o status for exatamente "eligible". Todo o snapshot e derivado
+// server-side (perfil, conteudo estatico, tentativa aprovada); o front nunca
+// informa nota, horas, nome nem trilha.
+export async function issueCertificate(
+  userId: string,
+  slug: string,
+  isPro: boolean,
+): Promise<{ ok: true; code: string } | { ok: false; reason: Eligibility }> {
+  const eligibility = await getCertificateEligibility(userId, slug, isPro);
+  if (eligibility.status !== "eligible") {
+    return { ok: false, reason: eligibility };
+  }
+
+  const roadmap = roadmapsV2.find((r) => r.slug === slug);
+  if (!roadmap) {
+    // Inalcancavel apos "eligible" (o roadmap existe), mas fail-closed sem "!".
+    return { ok: false, reason: { status: "not_certifiable" } };
+  }
+  const { totalHours, sections } = computeHours(roadmap);
+  const hours: EligibilityHours = { hours: totalHours, syllabus: sections };
+
+  // Reconsulta perfil e tentativa aprovada pro snapshot (dado do server).
+  const { data: profileRaw, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("full_name, cpf")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (profileError) {
+    return { ok: false, reason: { status: "unavailable", ...hours } };
+  }
+  const profile = profileRaw as {
+    full_name: string | null;
+    cpf: string | null;
+  } | null;
+
+  const { data: attemptRaw, error: attemptError } = await supabaseAdmin
+    .from("roadmap_quiz_attempts")
+    .select("id, score")
+    .eq("user_id", userId)
+    .eq("roadmap_slug", slug)
+    .eq("status", "aprovada")
+    .maybeSingle();
+  if (attemptError) {
+    return { ok: false, reason: { status: "unavailable", ...hours } };
+  }
+  const attempt = attemptRaw as { id: string; score: number | null } | null;
+
+  // Reconfirma o que a elegibilidade ja garantiu; qualquer buraco vira
+  // unavailable, nunca um snapshot pela metade.
+  if (
+    !profile ||
+    !profile.full_name ||
+    profile.cpf == null ||
+    !attempt ||
+    attempt.score == null
+  ) {
+    return { ok: false, reason: { status: "unavailable", ...hours } };
+  }
+  const holderCpf = profile.cpf.replace(/\D/g, "");
+
+  // Ate 3 tentativas contra colisao de code (unique certificates_code_key).
+  for (let tentativa = 0; tentativa < 3; tentativa += 1) {
+    const code = generateCertificateCode();
+    const { error: insertError } = await supabaseAdmin
+      .from("certificates")
+      .insert({
+        user_id: userId,
+        roadmap_slug: slug,
+        code,
+        holder_name: profile.full_name,
+        holder_cpf: holderCpf,
+        roadmap_title: roadmap.title,
+        hours: totalHours,
+        score: attempt.score,
+        cert_score: CERT_SCORE,
+        quiz_attempt_id: attempt.id,
+        syllabus: sections,
+      });
+
+    if (!insertError) {
+      return { ok: true, code };
+    }
+
+    // Corrida de emissao dupla: o unique parcial one_per_roadmap disparou.
+    // Releia o existente e devolva already_issued (nunca cria dois).
+    if (isUniqueViolationOn(insertError, "certificates_one_per_roadmap")) {
+      const { data: existingRaw } = await supabaseAdmin
+        .from("certificates")
+        .select("code")
+        .eq("user_id", userId)
+        .eq("roadmap_slug", slug)
+        .is("revoked_at", null)
+        .maybeSingle();
+      const existing = existingRaw as { code: string } | null;
+      if (existing) {
+        return {
+          ok: false,
+          reason: { status: "already_issued", code: existing.code, ...hours },
+        };
+      }
+      return { ok: false, reason: { status: "unavailable", ...hours } };
+    }
+
+    // So repete se foi colisao de code; qualquer outro erro aborta fail-closed.
+    if (!isUniqueViolationOn(insertError, "certificates_code_key")) {
+      return { ok: false, reason: { status: "unavailable", ...hours } };
+    }
+  }
+
+  // Tres codes colidiram em sequencia (astronomicamente improvavel): desiste.
+  return { ok: false, reason: { status: "unavailable", ...hours } };
+}
+
+// Linha crua do banco lida na verificacao publica. Nao sai deste modulo: o
+// publico so ve o retorno de toPublicCertificate.
+interface CertificateRow {
+  code: string;
+  holder_name: string;
+  holder_cpf: string;
+  roadmap_title: string;
+  hours: number;
+  syllabus: SyllabusSection[];
+  issued_at: string;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+}
+
+// Whitelist EXPLICITA do que o publico pode ver. Tudo que nao esta aqui
+// (user_id, cpf completo, score, cert_score, quiz_attempt_id, id) fica de fora
+// por construcao. cpfMasked revela so os digitos do meio.
+function toPublicCertificate(row: CertificateRow): PublicCertificate {
+  const digits = row.holder_cpf;
+  const cpfMasked = `***.${digits.slice(3, 6)}.${digits.slice(6, 9)}-**`;
+  const revoked = row.revoked_at != null;
+  return {
+    code: row.code,
+    holderName: row.holder_name,
+    cpfMasked,
+    roadmapTitle: row.roadmap_title,
+    hours: row.hours,
+    syllabus: row.syllabus,
+    issuedAt: row.issued_at,
+    revoked,
+    ...(revoked && row.revoked_reason
+      ? { revokedReason: row.revoked_reason }
+      : {}),
+  };
+}
+
+// Leitura PUBLICA por code, via supabaseAdmin (fora da RLS de proposito:
+// verificacao publica nao tem sessao). null se nao achar; revogado tambem
+// retorna (a pagina precisa dizer "revogado", nao "nao existe").
+export async function getCertificateByCode(
+  code: string,
+): Promise<PublicCertificate | null> {
+  const normalized = normalizeCertificateCode(code);
+  if (!normalized) return null;
+  const { data, error } = await supabaseAdmin
+    .from("certificates")
+    .select(
+      "code, holder_name, holder_cpf, roadmap_title, hours, syllabus, issued_at, revoked_at, revoked_reason",
+    )
+    .eq("code", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toPublicCertificate(data as CertificateRow);
 }
