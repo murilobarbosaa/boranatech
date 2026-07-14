@@ -316,3 +316,63 @@ export async function getCertificateByCode(
   if (error || !data) return null;
   return toPublicCertificate(data as CertificateRow);
 }
+
+// Status por trilha pro selo da vitrine (/roadmaps). NAO e recurso Pro.
+// "certificada" > "concluida" > "em_progresso"; trilha sem atividade nao entra
+// na resposta (cai no comportamento de hoje na UI).
+//
+// Regra central: "concluida" exige QUIZ APROVADO, nunca roadmap_completions
+// sozinho (autodeclarado e falsificavel). Por isso a query e em
+// roadmap_quiz_attempts, nao em roadmap_completions.
+export type CertificateStatus = "em_progresso" | "concluida" | "certificada";
+
+export async function getCertificateStatuses(
+  userId: string,
+): Promise<Array<{ roadmapSlug: string; status: CertificateStatus }>> {
+  // Duas queries no maximo, ambas com user_id explicito. FAIL-CLOSED: erro em
+  // qualquer uma zera tudo (array vazio), nunca um status parcial que pareca
+  // legitimo. Melhor nenhum selo do que selo errado.
+  const { data: certsRaw, error: certsError } = await supabaseAdmin
+    .from("certificates")
+    .select("roadmap_slug")
+    .eq("user_id", userId)
+    .is("revoked_at", null);
+  if (certsError) return [];
+
+  const { data: attemptsRaw, error: attemptsError } = await supabaseAdmin
+    .from("roadmap_quiz_attempts")
+    .select("roadmap_slug, status")
+    .eq("user_id", userId);
+  if (attemptsError) return [];
+
+  const certifiedSlugs = (
+    (certsRaw as { roadmap_slug: string }[] | null) ?? []
+  ).map((row) => row.roadmap_slug);
+  const attempts =
+    (attemptsRaw as { roadmap_slug: string; status: string }[] | null) ?? [];
+  const approved = new Set(
+    attempts
+      .filter((row) => row.status === "aprovada")
+      .map((row) => row.roadmap_slug),
+  );
+
+  // Sets so pra .has (sem iterar Set, que exigiria target maior). Percorremos
+  // arrays; seen deduplica trilha certificada + com multiplas tentativas.
+  const seen = new Set<string>();
+  const result: Array<{ roadmapSlug: string; status: CertificateStatus }> = [];
+  for (const slug of certifiedSlugs) {
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    result.push({ roadmapSlug: slug, status: "certificada" });
+  }
+  for (const row of attempts) {
+    const slug = row.roadmap_slug;
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    result.push({
+      roadmapSlug: slug,
+      status: approved.has(slug) ? "concluida" : "em_progresso",
+    });
+  }
+  return result;
+}

@@ -1,0 +1,134 @@
+import { apiUrl } from "@/lib/api";
+import { supabase } from "@/lib/supabase";
+import type {
+  Eligibility,
+  PublicCertificate,
+} from "@shared/certificates/types";
+
+// Service dos certificados (C1, fase 2B). Mesmo padrao dos demais services:
+// apiUrl + Bearer da sessao Supabase, resposta em { data }. O gabarito de
+// elegibilidade e emissao mora no server; aqui so consumimos.
+
+async function authHeader(): Promise<Record<string, string>> {
+  const {
+    data: { session },
+  } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+  if (!session?.access_token) return {};
+  return { Authorization: `Bearer ${session.access_token}` };
+}
+
+export interface CertificateListItem {
+  code: string;
+  roadmapSlug: string;
+  roadmapTitle: string;
+  hours: number;
+  issuedAt: string;
+}
+
+export type CertificateStatus = "em_progresso" | "concluida" | "certificada";
+
+export interface RoadmapCertificateStatus {
+  roadmapSlug: string;
+  status: CertificateStatus;
+}
+
+export type IssueResult =
+  | { ok: true; code: string }
+  | { ok: false; reason: Eligibility }
+  | { ok: false; error: true };
+
+// Elegibilidade da trilha. null = falha de rede/servidor: a UI trata como o
+// estado "unavailable" (erro e erro, nao sucesso nem perfil incompleto).
+export async function getEligibility(
+  slug: string,
+): Promise<Eligibility | null> {
+  try {
+    const header = await authHeader();
+    const res = await fetch(
+      apiUrl(`/api/certificates/eligibility/${encodeURIComponent(slug)}`),
+      { headers: { ...header } },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: Eligibility };
+    return json.data ?? null;
+  } catch (err) {
+    console.error("[certificates] getEligibility error:", err);
+    return null;
+  }
+}
+
+// Emissao. Body vazio de proposito: o server reavalia tudo. 201 -> code;
+// 409 -> reason (Eligibility); qualquer outra falha -> { error: true }.
+export async function issueCertificate(slug: string): Promise<IssueResult> {
+  try {
+    const header = await authHeader();
+    const res = await fetch(
+      apiUrl(`/api/certificates/issue/${encodeURIComponent(slug)}`),
+      { method: "POST", headers: { ...header } },
+    );
+    const json = (await res.json().catch(() => null)) as {
+      data?: { code?: string; reason?: Eligibility };
+    } | null;
+    if (res.status === 201 && json?.data?.code) {
+      return { ok: true, code: json.data.code };
+    }
+    if (res.status === 409 && json?.data?.reason) {
+      return { ok: false, reason: json.data.reason };
+    }
+    return { ok: false, error: true };
+  } catch (err) {
+    console.error("[certificates] issueCertificate error:", err);
+    return { ok: false, error: true };
+  }
+}
+
+// Status por trilha pro selo da vitrine. [] em qualquer falha (o selo some, a
+// listagem cai no comportamento de hoje). Nao chame deslogado.
+export async function getCertificateStatuses(): Promise<
+  RoadmapCertificateStatus[]
+> {
+  try {
+    const header = await authHeader();
+    const res = await fetch(apiUrl("/api/certificates/status"), {
+      headers: { ...header },
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data?: RoadmapCertificateStatus[] };
+    return json.data ?? [];
+  } catch (err) {
+    console.error("[certificates] getCertificateStatuses error:", err);
+    return [];
+  }
+}
+
+export async function listCertificates(): Promise<CertificateListItem[]> {
+  try {
+    const header = await authHeader();
+    const res = await fetch(apiUrl("/api/certificates"), {
+      headers: { ...header },
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data?: CertificateListItem[] };
+    return json.data ?? [];
+  } catch (err) {
+    console.error("[certificates] listCertificates error:", err);
+    return [];
+  }
+}
+
+// Verificacao PUBLICA por code, sem auth. null se nao existir (404) ou falhar.
+export async function getPublicCertificate(
+  code: string,
+): Promise<PublicCertificate | null> {
+  try {
+    const res = await fetch(
+      apiUrl(`/api/public/certificates/${encodeURIComponent(code)}`),
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: PublicCertificate };
+    return json.data ?? null;
+  } catch (err) {
+    console.error("[certificates] getPublicCertificate error:", err);
+    return null;
+  }
+}

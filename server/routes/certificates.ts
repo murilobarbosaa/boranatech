@@ -9,6 +9,7 @@ import { Router } from "express";
 import {
   getCertificateByCode,
   getCertificateEligibility,
+  getCertificateStatuses,
   issueCertificate,
 } from "../lib/certificates";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -18,6 +19,19 @@ import { createError } from "../middleware/error";
 const router = Router();
 
 router.use(requireAuth);
+
+// Status por trilha pro selo da vitrine. Declarada ANTES do checkProStatus de
+// proposito: o selo nao e recurso Pro, entao nao paga a latencia do cache+RPC
+// de Pro. userId SEMPRE do JWT.
+router.get("/status", async (req, res, next) => {
+  try {
+    const statuses = await getCertificateStatuses(req.user!.id);
+    res.json({ data: statuses });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.use(checkProStatus);
 
 // Elegibilidade: sempre 200. isPro vira parametro (status pro_required), nunca

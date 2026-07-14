@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, Redirect, useSearch } from "wouter";
 import {
   ArrowRight,
+  Award,
+  BadgeCheck,
   Building2,
   Code2,
   Compass,
@@ -24,9 +27,39 @@ import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import { useAuth } from "@/contexts/AuthContext";
 import { roadmapsMeta } from "@/lib/roadmapV2/meta";
 import { prefetchRoadmap } from "@/lib/roadmapV2/loaders";
 import { areasTI } from "@/lib/data";
+import {
+  getCertificateStatuses,
+  type CertificateStatus,
+} from "@/services/certificateService";
+
+// Selo da vitrine. So "certificada" e "concluida" ganham marca (ambas exigem
+// quiz aprovado no server). "em_progresso" nao tem selo proprio: a listagem
+// nao exibe percentual hoje, entao cai no comportamento de sempre.
+function CertBadge({ status }: { status: CertificateStatus }) {
+  if (status === "certificada") {
+    return (
+      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-amber-300 px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[2px_2px_0_#0f172a]">
+        <Award className="h-3.5 w-3.5" />
+        {/* TODO(Ana): selo de trilha certificada na vitrine */}
+        Certificada
+      </span>
+    );
+  }
+  if (status === "concluida") {
+    return (
+      <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border-[1.5px] border-slate-900 bg-emerald-200 px-2.5 py-0.5 text-[11px] font-black text-emerald-900 shadow-[2px_2px_0_#0f172a]">
+        <BadgeCheck className="h-3.5 w-3.5" />
+        {/* TODO(Ana): selo de trilha concluida na vitrine */}
+        Concluída
+      </span>
+    );
+  }
+  return null;
+}
 
 // Trilhas kind "carreira" nao tem entrada em areasTI, entao icone e cor dos
 // cards ficam definidos aqui, com fallback neutro pra trilhas futuras.
@@ -262,6 +295,31 @@ function TrailMascot({
 export default function RoadmapsV2Index() {
   const search = useSearch();
   const reduce = useReducedMotion();
+  const { user } = useAuth();
+
+  // Uma unica chamada por mount, so quando logado. Falha -> mapa vazio (sem
+  // selo). Deslogado nunca chama a rota autenticada. Record, nao Map: o icone
+  // Map do lucide sombreia o construtor global neste arquivo.
+  const [statusBySlug, setStatusBySlug] = useState<
+    Record<string, CertificateStatus>
+  >({});
+  useEffect(() => {
+    if (!user) {
+      setStatusBySlug({});
+      return;
+    }
+    let cancelled = false;
+    getCertificateStatuses().then((statuses) => {
+      if (cancelled) return;
+      setStatusBySlug(
+        Object.fromEntries(statuses.map((s) => [s.roadmapSlug, s.status])),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const areaParam = new URLSearchParams(search).get("area");
   if (areaParam && roadmapsMeta.some((r) => r.slug === areaParam)) {
     return <Redirect to={`/roadmaps/${areaParam}`} />;
@@ -388,6 +446,10 @@ export default function RoadmapsV2Index() {
                         {area.descricaoCurta}
                       </p>
 
+                      {statusBySlug[r.slug] ? (
+                        <CertBadge status={statusBySlug[r.slug]} />
+                      ) : null}
+
                       <div className="mt-3 flex flex-wrap gap-2">
                         <span className="rounded-full border-[1.5px] border-slate-900 bg-slate-100 px-2 py-0.5 text-[11px] font-black text-slate-700">
                           {r.sectionCount} etapas
@@ -476,6 +538,10 @@ export default function RoadmapsV2Index() {
                         <p className="mt-3 line-clamp-2 text-[13px] text-slate-600">
                           {r.description}
                         </p>
+
+                        {statusBySlug[r.slug] ? (
+                          <CertBadge status={statusBySlug[r.slug]} />
+                        ) : null}
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className="rounded-full border-[1.5px] border-slate-900 bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">

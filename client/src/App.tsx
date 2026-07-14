@@ -23,6 +23,10 @@ const Areas = lazyWithRetry(() => import("@/pages/Areas"));
 const Auth = lazyWithRetry(() => import("@/pages/Auth"));
 const BemVindo = lazyWithRetry(() => import("@/pages/BemVindo"));
 const Cadastro = lazyWithRetry(() => import("@/pages/Cadastro"));
+const Certificados = lazyWithRetry(() => import("@/pages/Certificados"));
+const CertificadoPublico = lazyWithRetry(
+  () => import("@/pages/CertificadoPublico"),
+);
 const Checkout = lazyWithRetry(() => import("@/pages/Checkout"));
 const CheckoutSucesso = lazyWithRetry(() => import("@/pages/CheckoutSucesso"));
 const Comparador = lazyWithRetry(() => import("@/pages/Comparador"));
@@ -312,6 +316,10 @@ function Router() {
         <Route path="/licenca" component={Licenca} />
         <Route path="/privacidade" component={Privacidade} />
         <Route path="/termos-de-uso" component={TermosDeUso} />
+        {/* Rotas PUBLICAS de certificado (precedente: /projetos/:id), sem
+            RequireAuth. Indice ANTES do :code por clareza de ordem literal. */}
+        <Route path="/certificados" component={Certificados} />
+        <Route path="/certificados/:code" component={CertificadoPublico} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
