@@ -8,9 +8,16 @@ import {
   getSubscriberList,
 } from "../lib/billingMetrics";
 import { env } from "../lib/env";
+import {
+  getDeferredRevenue,
+  getFinanceSummary,
+  getFinanceTimeseries,
+} from "../lib/financeMetrics";
+import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import { getPosthogStats } from "../lib/posthog";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
+import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -761,6 +768,369 @@ router.get("/billing-metrics", async (_req, res, next) => {
       getChurnSnapshot({}),
     ]);
     res.json({ data: { mrr, churn } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Financeiro (regime de caixa; fonte de verdade: Stripe balance transactions)
+// ---------------------------------------------------------------------------
+
+const EXPENSE_CATEGORIES = new Set([
+  "infra",
+  "ia",
+  "email",
+  "marketing",
+  "juridico",
+  "contabil",
+  "ferramentas",
+  "dominio",
+  "outros",
+]);
+const EXPENSE_KINDS = new Set(["recurring", "one_off"]);
+const EXPENSE_INTERVALS = new Set(["monthly", "yearly"]);
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseDateParam(value: unknown, fallback: Date): Date {
+  if (typeof value === "string") {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return fallback;
+}
+
+function parsePageParams(query: Record<string, unknown>): {
+  page: number;
+  pageSize: number;
+} {
+  const pageRaw = parseInt(String(query.page ?? "1"), 10);
+  const sizeRaw = parseInt(String(query.pageSize ?? "25"), 10);
+  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
+  const pageSize = Math.min(
+    Math.max(Number.isFinite(sizeRaw) ? sizeRaw : 25, 1),
+    100,
+  );
+  return { page, pageSize };
+}
+
+// Converte para BRL travando o cambio no lancamento. BRL: 1:1. USD: PTAX. Moeda
+// nao suportada ou PTAX indisponivel: ERRO (nunca grava cambio chutado nem 1:1).
+async function resolveBrlAmount(
+  amountCents: number,
+  currency: string,
+): Promise<{ amountBrlCents: number; fxRate: number | null; fxDate: string | null }> {
+  const cur = currency.toUpperCase();
+  if (cur === "BRL") {
+    return { amountBrlCents: amountCents, fxRate: null, fxDate: null };
+  }
+  if (cur === "USD") {
+    const rate = await fetchUsdBrlRate();
+    if (!rate) {
+      throw createError(
+        502,
+        "fx_unavailable",
+        // TODO(Ana)
+        "Cotação do dólar (PTAX) indisponível agora. Tente novamente em instantes.",
+      );
+    }
+    return {
+      amountBrlCents: Math.round(amountCents * rate.usdBrl),
+      fxRate: rate.usdBrl,
+      fxDate: rate.quoteDate,
+    };
+  }
+  throw createError(
+    400,
+    "unsupported_currency",
+    // TODO(Ana)
+    "Moeda não suportada. Use BRL ou USD.",
+  );
+}
+
+type ExpenseInput = {
+  description: string;
+  category: string;
+  vendor: string | null;
+  kind: string;
+  amount_cents: number;
+  currency: string;
+  incurred_on: string;
+  recurrence_start: string | null;
+  recurrence_end: string | null;
+  recurrence_interval: string | null;
+  notes: string | null;
+};
+
+// Valida e normaliza o corpo de uma despesa; lanca createError em invalido.
+function parseExpenseBody(body: Record<string, unknown>): ExpenseInput {
+  const description =
+    typeof body.description === "string" ? body.description.trim() : "";
+  if (!description) {
+    // TODO(Ana)
+    throw createError(400, "invalid_description", "Descrição obrigatória.");
+  }
+
+  const category = typeof body.category === "string" ? body.category : "";
+  if (!EXPENSE_CATEGORIES.has(category)) {
+    // TODO(Ana)
+    throw createError(400, "invalid_category", "Categoria inválida.");
+  }
+
+  const kind = typeof body.kind === "string" ? body.kind : "";
+  if (!EXPENSE_KINDS.has(kind)) {
+    // TODO(Ana)
+    throw createError(400, "invalid_kind", "Tipo inválido (recurring ou one_off).");
+  }
+
+  const amountCents = Number(body.amount_cents);
+  if (!Number.isInteger(amountCents) || amountCents <= 0) {
+    // TODO(Ana)
+    throw createError(
+      400,
+      "invalid_amount",
+      "Valor inválido (centavos inteiros maiores que zero).",
+    );
+  }
+
+  const currency =
+    typeof body.currency === "string" && body.currency ? body.currency : "BRL";
+
+  const incurredOn =
+    typeof body.incurred_on === "string" ? body.incurred_on : "";
+  if (!ISO_DATE_RE.test(incurredOn)) {
+    // TODO(Ana)
+    throw createError(
+      400,
+      "invalid_incurred_on",
+      "Data de competência inválida (AAAA-MM-DD).",
+    );
+  }
+
+  const vendor =
+    typeof body.vendor === "string" && body.vendor.trim()
+      ? body.vendor.trim()
+      : null;
+  const notes =
+    typeof body.notes === "string" && body.notes.trim()
+      ? body.notes.trim()
+      : null;
+
+  let recurrenceStart: string | null = null;
+  let recurrenceEnd: string | null = null;
+  let recurrenceInterval: string | null = null;
+  if (kind === "recurring") {
+    recurrenceInterval =
+      typeof body.recurrence_interval === "string"
+        ? body.recurrence_interval
+        : "";
+    if (!EXPENSE_INTERVALS.has(recurrenceInterval)) {
+      // TODO(Ana)
+      throw createError(
+        400,
+        "invalid_interval",
+        "Recorrência inválida (monthly ou yearly).",
+      );
+    }
+    recurrenceStart =
+      typeof body.recurrence_start === "string" &&
+      ISO_DATE_RE.test(body.recurrence_start)
+        ? body.recurrence_start
+        : incurredOn;
+    recurrenceEnd =
+      typeof body.recurrence_end === "string" &&
+      ISO_DATE_RE.test(body.recurrence_end)
+        ? body.recurrence_end
+        : null;
+  }
+
+  return {
+    description,
+    category,
+    vendor,
+    kind,
+    amount_cents: amountCents,
+    currency,
+    incurred_on: incurredOn,
+    recurrence_start: recurrenceStart,
+    recurrence_end: recurrenceEnd,
+    recurrence_interval: recurrenceInterval,
+    notes,
+  };
+}
+
+function expenseRowFromInput(
+  input: ExpenseInput,
+  fx: { amountBrlCents: number; fxRate: number | null; fxDate: string | null },
+) {
+  return {
+    description: input.description,
+    category: input.category,
+    vendor: input.vendor,
+    kind: input.kind,
+    amount_cents: input.amount_cents,
+    currency: input.currency.toUpperCase(),
+    amount_brl_cents: fx.amountBrlCents,
+    fx_rate: fx.fxRate,
+    fx_date: fx.fxDate,
+    incurred_on: input.incurred_on,
+    recurrence_start: input.recurrence_start,
+    recurrence_end: input.recurrence_end,
+    recurrence_interval: input.recurrence_interval,
+    notes: input.notes,
+  };
+}
+
+router.get("/finance/summary", async (req, res, next) => {
+  try {
+    const now = new Date();
+    const defFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    const from = parseDateParam(req.query.from, defFrom);
+    const to = parseDateParam(req.query.to, now);
+    const [summary, deferred] = await Promise.all([
+      getFinanceSummary({ from, to }),
+      getDeferredRevenue(),
+    ]);
+    res.json({ data: { ...summary, deferred } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/finance/timeseries", async (req, res, next) => {
+  try {
+    const now = new Date();
+    const defFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    const from = parseDateParam(req.query.from, defFrom);
+    const to = parseDateParam(req.query.to, now);
+    const series = await getFinanceTimeseries({ from, to, granularity: "month" });
+    res.json({ data: series });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/finance/transactions", async (req, res, next) => {
+  try {
+    const { page, pageSize } = parsePageParams(
+      req.query as Record<string, unknown>,
+    );
+    const rangeFrom = (page - 1) * pageSize;
+    const rangeTo = rangeFrom + pageSize - 1;
+
+    let query = supabaseAdmin
+      .from("finance_transactions")
+      .select(
+        "id, stripe_charge_id, stripe_invoice_id, type, gross_cents, fee_cents, net_cents, currency, occurred_at, user_id, plan_code",
+        { count: "exact" },
+      )
+      .order("occurred_at", { ascending: false })
+      .range(rangeFrom, rangeTo);
+
+    const typeFilter =
+      typeof req.query.type === "string" ? req.query.type : "";
+    if (typeFilter) query = query.eq("type", typeFilter);
+
+    const { data, count, error } = await query;
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar transações."));
+
+    res.json({
+      data: { rows: data ?? [], total: count ?? 0, page, pageSize },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/finance/expenses", async (req, res, next) => {
+  try {
+    const { page, pageSize } = parsePageParams(
+      req.query as Record<string, unknown>,
+    );
+    const rangeFrom = (page - 1) * pageSize;
+    const rangeTo = rangeFrom + pageSize - 1;
+
+    let query = supabaseAdmin
+      .from("expenses")
+      .select("*", { count: "exact" })
+      .order("incurred_on", { ascending: false })
+      .range(rangeFrom, rangeTo);
+
+    const category =
+      typeof req.query.category === "string" ? req.query.category : "";
+    const kind = typeof req.query.kind === "string" ? req.query.kind : "";
+    if (category) query = query.eq("category", category);
+    if (kind) query = query.eq("kind", kind);
+
+    const { data, count, error } = await query;
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar despesas."));
+
+    res.json({
+      data: { rows: data ?? [], total: count ?? 0, page, pageSize },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/finance/expenses", async (req, res, next) => {
+  try {
+    const input = parseExpenseBody((req.body ?? {}) as Record<string, unknown>);
+    const fx = await resolveBrlAmount(input.amount_cents, input.currency);
+    const { data, error } = await supabaseAdmin
+      .from("expenses")
+      .insert({ ...expenseRowFromInput(input, fx), created_by: req.user!.id })
+      .select()
+      .single();
+    if (error)
+      return next(createError(500, "db_error", "Erro ao criar despesa."));
+    res.status(201).json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/finance/expenses/:id", async (req, res, next) => {
+  try {
+    const input = parseExpenseBody((req.body ?? {}) as Record<string, unknown>);
+    const fx = await resolveBrlAmount(input.amount_cents, input.currency);
+    const { data, error } = await supabaseAdmin
+      .from("expenses")
+      .update(expenseRowFromInput(input, fx))
+      .eq("id", req.params.id)
+      .select()
+      .maybeSingle();
+    if (error)
+      return next(createError(500, "db_error", "Erro ao atualizar despesa."));
+    if (!data)
+      return next(createError(404, "not_found", "Despesa não encontrada."));
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/finance/expenses/:id", async (req, res, next) => {
+  try {
+    const { error } = await supabaseAdmin
+      .from("expenses")
+      .delete()
+      .eq("id", req.params.id);
+    if (error)
+      return next(createError(500, "db_error", "Erro ao remover despesa."));
+    res.json({ data: { deleted: true, id: req.params.id } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Sincroniza balance transactions da Stripe sob demanda (botao "sincronizar agora").
+router.post("/finance/sync", async (_req, res, next) => {
+  try {
+    const result = await syncBalanceTransactions({});
+    res.json({ data: result });
   } catch (err) {
     next(err);
   }
