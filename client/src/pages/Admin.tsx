@@ -285,11 +285,14 @@ type ContentType =
   | "courses"
   | "roadmaps";
 
+// Cada card declara seu proprio label junto do proprio valor (sem override em
+// runtime). O label da base e o mesmo exibido; adminMetricCards so preenche os
+// valores reais, nunca troca o label por outro nao relacionado.
 const metricCards: MetricCard[] = [
   {
-    label: "Usuários ativos",
+    label: "Usuários",
     value: "0",
-    detail: "Aguardando /api/admin/dashboard",
+    detail: "Perfis cadastrados no banco",
     trend: "real",
     direction: "neutral",
     icon: <Users className="h-6 w-6" />,
@@ -298,7 +301,7 @@ const metricCards: MetricCard[] = [
   {
     label: "Assinantes Pro",
     value: "0",
-    detail: "Aguardando /api/admin/dashboard",
+    detail: "Assinaturas ativas no banco",
     trend: "real",
     direction: "neutral",
     icon: <CreditCard className="h-6 w-6" />,
@@ -307,37 +310,37 @@ const metricCards: MetricCard[] = [
   {
     label: "Receita recorrente",
     value: "0",
-    detail: "Aguardando /api/admin/dashboard",
+    detail: "MRR das assinaturas ativas",
     trend: "real",
     direction: "neutral",
     icon: <DollarSign className="h-6 w-6" />,
     color: "bg-emerald-600 text-white",
   },
   {
-    label: "Créditos de IA",
+    label: "Chamadas de IA",
     value: "0",
-    detail: "Aguardando ai_usage_logs",
+    detail: "Registros em ai_usage_logs",
     trend: "real",
     direction: "neutral",
     icon: <Bot className="h-6 w-6" />,
     color: "bg-pink-600 text-white",
   },
   {
-    label: "Conversão cadastro",
+    label: "Cursos cadastrados",
     value: "0",
-    detail: "Aguardando dados reais",
-    trend: "pendente",
+    detail: "Itens na tabela courses",
+    trend: "real",
     direction: "neutral",
-    icon: <MousePointerClick className="h-6 w-6" />,
+    icon: <FileText className="h-6 w-6" />,
     color: "bg-blue-600 text-white",
   },
   {
-    label: "Retenção 7 dias",
+    label: "Custo de IA",
     value: "0",
-    detail: "Aguardando analytics",
-    trend: "pendente",
+    detail: "Custo estimado dos últimos 30 dias",
+    trend: "real",
     direction: "neutral",
-    icon: <RefreshCcw className="h-6 w-6" />,
+    icon: <Zap className="h-6 w-6" />,
     color: "bg-orange-500 text-white",
   },
 ];
@@ -5113,51 +5116,30 @@ export default function Admin() {
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!dashboard?.counts) return metricCards;
 
+    const aiCost = formatCurrency(
+      Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0),
+    );
+    // MRR real quando disponivel. Ausencia e estado nomeado, nunca um 0 falso.
+    // TODO(Ana): copy do estado indisponivel do card de receita.
+    const mrrValue = billingMetrics
+      ? formatCents(billingMetrics.mrr.mrrCents)
+      : "indisponível";
+    const mrrDetail = billingMetrics
+      ? "MRR das assinaturas ativas"
+      : billingMetricsError
+        ? "Falha ao carregar métricas"
+        : "Carregando métricas";
+
+    // So os VALORES sao preenchidos; o label vem da base e nunca e sobrescrito.
     return [
-      {
-        ...metricCards[0],
-        value: String(dashboard.counts.users),
-        detail: "Perfis cadastrados no banco",
-        trend: "real",
-        direction: "neutral",
-      },
-      {
-        ...metricCards[1],
-        value: String(dashboard.counts.active_subscriptions),
-        detail: "Assinaturas ativas no banco",
-        trend: "real",
-        direction: "neutral",
-      },
-      {
-        ...metricCards[2],
-        value: String(dashboard.counts.areas),
-        label: "Áreas publicadas",
-        detail: "Itens na tabela areas",
-      },
-      {
-        ...metricCards[3],
-        value: String(dashboard.counts.ai_calls_total),
-        label: "Chamadas de IA",
-        detail: "Chamadas registradas em ai_usage_logs",
-      },
-      {
-        ...metricCards[4],
-        value: String(dashboard.counts.courses),
-        label: "Cursos cadastrados",
-        detail: "Itens na tabela courses",
-      },
-      {
-        ...metricCards[5],
-        value: formatCurrency(
-          Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0),
-        ),
-        label: "Custo de IA",
-        detail: "Custo estimado dos últimos 30 dias",
-        trend: "real",
-        direction: "neutral",
-      },
+      { ...metricCards[0], value: String(dashboard.counts.users) },
+      { ...metricCards[1], value: String(dashboard.counts.active_subscriptions) },
+      { ...metricCards[2], value: mrrValue, detail: mrrDetail },
+      { ...metricCards[3], value: String(dashboard.counts.ai_calls_total) },
+      { ...metricCards[4], value: String(dashboard.counts.courses) },
+      { ...metricCards[5], value: aiCost },
     ];
-  }, [dashboard, aiStats]);
+  }, [dashboard, aiStats, billingMetrics, billingMetricsError]);
 
   async function handleLogout() {
     setLoggingOut(true);
