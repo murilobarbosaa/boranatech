@@ -70,6 +70,7 @@ export type SubscriberRow = {
   planName: string | null;
   provider: string | null;
   status: string | null;
+  currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean | null;
   affiliateCode: string | null;
@@ -87,6 +88,7 @@ type RawSubscriberRow = {
   user_id: string | null;
   provider: string | null;
   status: string | null;
+  current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean | null;
   affiliate_code: string | null;
@@ -110,7 +112,7 @@ export async function getSubscriberList(
   let query = supabaseAdmin
     .from("subscriptions")
     .select(
-      "user_id, provider, status, current_period_end, cancel_at_period_end, affiliate_code, created_at, plans!inner(code, name)",
+      "user_id, provider, status, current_period_start, current_period_end, cancel_at_period_end, affiliate_code, created_at, plans!inner(code, name)",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -172,6 +174,7 @@ export async function getSubscriberList(
       planName: plan.name,
       provider: s.provider,
       status: s.status,
+      currentPeriodStart: s.current_period_start,
       currentPeriodEnd: s.current_period_end,
       cancelAtPeriodEnd: s.cancel_at_period_end,
       affiliateCode: s.affiliate_code,
