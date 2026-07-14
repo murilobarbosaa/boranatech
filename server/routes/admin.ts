@@ -187,6 +187,54 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
   return payload;
 }
 
+type AuthUserLite = {
+  email: string | null;
+  lastSignInAt: string | null;
+  createdAt: string | null;
+  name: string | null;
+};
+
+// Resolve dados de Auth (email, last_sign_in_at, created_at, nome do metadata)
+// de varios usuarios em UMA varredura paginada de listUsers, no lugar do
+// anti-padrao de um getUserById por linha. last_sign_in_at so existe em
+// auth.users (nao em profiles), por isso a varredura do Auth e necessaria aqui.
+// Para o alvo de hoje (poucos assinantes ativos) a varredura e barata; se a base
+// crescer muito, avaliar um RPC dedicado. Erro propaga, nunca vira mapa vazio.
+async function fetchAuthUsersByIds(
+  ids: string[],
+): Promise<Map<string, AuthUserLite>> {
+  const result = new Map<string, AuthUserLite>();
+  if (ids.length === 0) return result;
+
+  const wanted = new Set(ids);
+  const perPage = 1000;
+  let page = 1;
+  for (;;) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error) throw error;
+
+    const users = data.users;
+    for (const user of users) {
+      if (!wanted.has(user.id)) continue;
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const metaName = typeof meta.name === "string" ? meta.name : null;
+      result.set(user.id, {
+        email: user.email ?? null,
+        lastSignInAt: user.last_sign_in_at ?? null,
+        createdAt: user.created_at ?? null,
+        name: metaName,
+      });
+    }
+
+    if (users.length < perPage || result.size === wanted.size) break;
+    page += 1;
+  }
+  return result;
+}
+
 const emptyPosthogStats = {
   configured: false,
   totalPageviews: 0,
@@ -365,21 +413,20 @@ router.get("/posthog-stats", async (_req, res) => {
   res.json({ data });
 });
 
-router.get("/churn-risk", async (_req, res) => {
+router.get("/churn-risk", async (_req, res, next) => {
   try {
     const { data: subscriptions, error } = await supabaseAdmin
       .from("subscriptions")
       .select("user_id, status, plans(name, price_cents)")
       .eq("status", "active");
 
-    if (error) {
-      console.error(
-        "[admin] Erro ao buscar assinaturas para churn-risk",
-        error,
+    // Propaga o erro (nao mascara com lista vazia): o client sera ajustado para
+    // exibir estado de erro na proxima sessao.
+    if (error)
+      return next(
+        // TODO(Ana)
+        createError(500, "db_error", "Erro ao buscar assinaturas."),
       );
-      res.json({ data: [] });
-      return;
-    }
 
     const activeSubscriptions = (subscriptions || []).filter(
       (subscription) => subscription.user_id,
@@ -387,59 +434,61 @@ router.get("/churn-risk", async (_req, res) => {
     const userIds = activeSubscriptions.map(
       (subscription) => subscription.user_id as string,
     );
-    const { data: profiles } = userIds.length
+
+    const { data: profiles, error: profilesError } = userIds.length
       ? await supabaseAdmin
           .from("profiles")
           .select("user_id, name, email")
           .in("user_id", userIds)
-      : { data: [] };
+      : { data: [], error: null };
+    if (profilesError)
+      return next(
+        // TODO(Ana)
+        createError(500, "db_error", "Erro ao buscar perfis."),
+      );
     const profilesByUserId = new Map(
       (profiles || []).map((profile) => [profile.user_id, profile]),
     );
+
+    // Um unico batch de Auth para todos os assinantes ativos, no lugar do loop
+    // Promise.all de getUserById (uma ida ao Auth por linha).
+    const authByUserId = await fetchAuthUsersByIds(userIds);
+
     const inactiveThresholdMs = 14 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
-    const users = await Promise.all(
-      activeSubscriptions.map(async (subscription) => {
-        const userId = subscription.user_id as string;
-        const { data: authData, error: authError } =
-          await supabaseAdmin.auth.admin.getUserById(userId);
-        if (authError || !authData.user) return null;
+    const users = activeSubscriptions.map((subscription) => {
+      const userId = subscription.user_id as string;
+      const authUser = authByUserId.get(userId);
+      if (!authUser) return null;
 
-        const lastSeenAt =
-          authData.user.last_sign_in_at || authData.user.created_at;
-        if (!lastSeenAt) return null;
+      const lastSeenAt = authUser.lastSignInAt || authUser.createdAt;
+      if (!lastSeenAt) return null;
 
-        const daysInactive = Math.floor(
-          (now - new Date(lastSeenAt).getTime()) / (24 * 60 * 60 * 1000),
-        );
-        if (
-          daysInactive < 14 ||
-          now - new Date(lastSeenAt).getTime() < inactiveThresholdMs
-        )
-          return null;
+      const daysInactive = Math.floor(
+        (now - new Date(lastSeenAt).getTime()) / (24 * 60 * 60 * 1000),
+      );
+      if (
+        daysInactive < 14 ||
+        now - new Date(lastSeenAt).getTime() < inactiveThresholdMs
+      )
+        return null;
 
-        const profile = profilesByUserId.get(userId);
-        const metadata = authData.user.user_metadata || {};
-        const plan = Array.isArray(subscription.plans)
-          ? subscription.plans[0]
-          : subscription.plans;
-        const priceCents = Number(plan?.price_cents || 0);
+      const profile = profilesByUserId.get(userId);
+      const plan = Array.isArray(subscription.plans)
+        ? subscription.plans[0]
+        : subscription.plans;
+      const priceCents = Number(plan?.price_cents || 0);
 
-        return {
-          name: String(
-            profile?.name ||
-              metadata.name ||
-              metadata.full_name ||
-              authData.user.email ||
-              "Usuário",
-          ),
-          email: String(profile?.email || authData.user.email || ""),
-          days_inactive: daysInactive,
-          mrr: priceCents / 100,
-        };
-      }),
-    );
+      return {
+        name: String(
+          profile?.name || authUser.name || authUser.email || "Usuário",
+        ),
+        email: String(profile?.email || authUser.email || ""),
+        days_inactive: daysInactive,
+        mrr: priceCents / 100,
+      };
+    });
 
     res.json({
       data: users
@@ -457,8 +506,7 @@ router.get("/churn-risk", async (_req, res) => {
         .slice(0, 10),
     });
   } catch (err) {
-    console.error("[admin] Erro inesperado ao buscar churn-risk", err);
-    res.json({ data: [] });
+    next(err);
   }
 });
 
@@ -855,11 +903,14 @@ router.get("/ai-usage-summary", async (req, res, next) => {
   }
 });
 
-router.get("/queue-stats", async (_req, res) => {
+router.get("/queue-stats", async (_req, res, next) => {
   try {
     if (!emailQueue) {
-      res.json({ data: { waiting: 0, active: 0, completed: 0, failed: 0 } });
-      return;
+      // Fila indisponivel (sem Redis) e um estado NOMEADO, nao zeros mascarados.
+      return next(
+        // TODO(Ana)
+        createError(503, "queue_unavailable", "Fila de e-mail indisponível."),
+      );
     }
 
     const [waiting, active, completed, failed] = await Promise.all([
@@ -870,28 +921,27 @@ router.get("/queue-stats", async (_req, res) => {
     ]);
     res.json({ data: { waiting, active, completed, failed } });
   } catch (err) {
-    console.error("[queue] Erro ao buscar stats", err);
-    res.json({ data: { waiting: 0, active: 0, completed: 0, failed: 0 } });
+    next(err);
   }
 });
 
-router.get("/affiliates-stats", async (_req, res) => {
+router.get("/affiliates-stats", async (_req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("affiliates")
       .select("*")
       .order("revenue_cents", { ascending: false });
 
-    if (error) {
-      console.error("[admin] Erro ao buscar afiliados", error);
-      res.json({ data: [] });
-      return;
-    }
+    // Propaga o erro em vez de mascarar com lista vazia.
+    if (error)
+      return next(
+        // TODO(Ana)
+        createError(500, "db_error", "Erro ao buscar afiliados."),
+      );
 
     res.json({ data: data || [] });
   } catch (err) {
-    console.error("[admin] Erro inesperado ao buscar afiliados", err);
-    res.json({ data: [] });
+    next(err);
   }
 });
 
