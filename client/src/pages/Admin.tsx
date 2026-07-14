@@ -201,8 +201,7 @@ type ChurnRiskUser = {
   mrr: number;
 };
 
-type PosthogStatsData = {
-  configured?: boolean;
+type PosthogStats = {
   totalPageviews: number;
   uniqueUsers: number;
   pages: Array<{ page: string; views: number }>;
@@ -214,6 +213,13 @@ type PosthogStatsData = {
   };
   acquisition: Array<{ channel: string; users: number }>;
 };
+
+// Espelha o union discriminado do backend (server/lib/posthog.ts). O client
+// deixa de colapsar not_configured / error / ok-sem-dados numa tela so.
+type PosthogState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; hasData: boolean; stats: PosthogStats };
 
 type PlanMrr = {
   code: string;
@@ -666,6 +672,58 @@ function churnInsufficientReason(reason: string): string {
     default:
       return "Dados insuficientes para calcular churn.";
   }
+}
+
+// PostHog como quatro telas DISTINTAS (not_configured / error / ok-sem-dados /
+// ok-com-dados). A tela sem dados parece saudavel, nao quebrada.
+// TODO(Ana): revisar copy dos estados do PostHog.
+function PosthogStateNotice({ state }: { state: PosthogState | null }) {
+  if (!state) return <LoadingBlock />;
+
+  if (state.state === "not_configured") {
+    return (
+      <div className="rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-4">
+        <p className="font-display text-lg font-black text-amber-900">
+          PostHog não configurado
+        </p>
+        <p className="mt-1 text-sm font-semibold text-amber-800">
+          Faltando no servidor:{" "}
+          {state.missing.length
+            ? state.missing.join(", ")
+            : "credenciais do PostHog"}
+          .
+        </p>
+      </div>
+    );
+  }
+
+  if (state.state === "error") {
+    return (
+      <div className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-4">
+        <p className="font-display text-lg font-black text-rose-800">
+          Falha ao consultar o PostHog
+          {typeof state.httpStatus === "number"
+            ? ` (HTTP ${state.httpStatus})`
+            : ""}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-rose-700">
+          {state.reason}
+        </p>
+      </div>
+    );
+  }
+
+  // state.state === "ok" (hasData false ou recorte vazio): estado saudavel.
+  return (
+    <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4">
+      <p className="font-display text-lg font-black text-slate-700">
+        PostHog conectado
+      </p>
+      <p className="mt-1 text-sm font-semibold text-slate-500">
+        Sem eventos neste recorte no período.
+      </p>
+    </div>
+  );
 }
 
 // Painel de metricas de cobranca (MRR, ARPU, churn, LTV, distribuicao por plano).
@@ -4671,9 +4729,7 @@ export default function Admin() {
     completed: 0,
     failed: 0,
   });
-  const [posthogStats, setPosthogStats] = useState<PosthogStatsData | null>(
-    null,
-  );
+  const [posthogState, setPosthogState] = useState<PosthogState | null>(null);
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
     null,
   );
@@ -4684,6 +4740,9 @@ export default function Admin() {
   const [billingMetricsError, setBillingMetricsError] = useState<string | null>(
     null,
   );
+  const [queueError, setQueueError] = useState<string | null>(null);
+  const [churnError, setChurnError] = useState<string | null>(null);
+  const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [activeSection, setActiveSection] =
     useState<AdminSectionId>("visao-geral");
@@ -4740,22 +4799,62 @@ export default function Admin() {
           dashboardJson,
           healthJson,
           aiJson,
-          queueJson,
-          posthogJson,
-          churnRiskJson,
-          affiliatesJson,
+          queueResult,
+          posthogResult,
+          churnResult,
+          affiliatesResult,
           subscriptionsJson,
           billingMetricsResult,
         ] = await Promise.all([
           adminFetch("/dashboard"),
           fetch(apiUrl("/api/health")).then((res) => res.json()),
           adminFetch("/ai-stats"),
-          adminFetch("/queue-stats").catch(() => ({
-            data: { waiting: 0, active: 0, completed: 0, failed: 0 },
-          })),
-          adminFetch("/posthog-stats"),
-          adminFetch("/churn-risk").catch(() => ({ data: null })),
-          adminFetch("/affiliates-stats").catch(() => ({ data: [] })),
+          // Sem colapso: falha de fetch vira estado de erro da secao, nao zeros.
+          adminFetch("/queue-stats")
+            .then((json) => ({ ok: true as const, data: json.data as QueueStats }))
+            .catch((err: unknown) => ({
+              ok: false as const,
+              error:
+                err instanceof Error ? err.message : "Erro ao carregar a fila.",
+            })),
+          // PostHog: union do backend; falha de fetch vira o proprio estado error.
+          adminFetch("/posthog-stats")
+            .then((json) => json.data as PosthogState)
+            .catch(
+              (err: unknown): PosthogState => ({
+                state: "error",
+                reason:
+                  err instanceof Error
+                    ? err.message
+                    : "Erro ao consultar o PostHog.",
+              }),
+            ),
+          adminFetch("/churn-risk")
+            .then((json) => ({
+              ok: true as const,
+              data: Array.isArray(json.data) ? (json.data as ChurnRiskUser[]) : [],
+            }))
+            .catch((err: unknown) => ({
+              ok: false as const,
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Erro ao carregar risco de churn.",
+            })),
+          adminFetch("/affiliates-stats")
+            .then((json) => ({
+              ok: true as const,
+              data: Array.isArray(json.data)
+                ? (json.data as AffiliateRecord[])
+                : [],
+            }))
+            .catch((err: unknown) => ({
+              ok: false as const,
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Erro ao carregar afiliados.",
+            })),
           adminFetch("/subscriptions"),
           // Falha de metricas de cobranca vira ESTADO de erro na secao, nao dado
           // vazio: capturamos o erro num resultado tagueado, sem colapsar em 0.
@@ -4781,21 +4880,27 @@ export default function Admin() {
             : [],
         );
         setAiStats(aiJson.data || {});
-        setQueueStats(
-          queueJson.data || {
-            waiting: 0,
-            active: 0,
-            completed: 0,
-            failed: 0,
-          },
-        );
-        setPosthogStats(posthogJson.data || null);
-        setChurnRiskUsers(
-          Array.isArray(churnRiskJson.data) ? churnRiskJson.data : null,
-        );
-        setAffiliates(
-          Array.isArray(affiliatesJson.data) ? affiliatesJson.data : [],
-        );
+        if (queueResult.ok) {
+          setQueueStats(queueResult.data);
+          setQueueError(null);
+        } else {
+          setQueueError(queueResult.error);
+        }
+        setPosthogState(posthogResult);
+        if (churnResult.ok) {
+          setChurnRiskUsers(churnResult.data);
+          setChurnError(null);
+        } else {
+          setChurnRiskUsers(null);
+          setChurnError(churnResult.error);
+        }
+        if (affiliatesResult.ok) {
+          setAffiliates(affiliatesResult.data);
+          setAffiliatesError(null);
+        } else {
+          setAffiliates([]);
+          setAffiliatesError(affiliatesResult.error);
+        }
         setSubscriptions(
           Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
         );
@@ -4862,9 +4967,12 @@ export default function Admin() {
           setAuditLogs([]);
           setAiStats({});
           setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
-          setPosthogStats(null);
+          setPosthogState(null);
           setChurnRiskUsers(null);
+          setChurnError(null);
           setAffiliates([]);
+          setAffiliatesError(null);
+          setQueueError(null);
           setSubscriptions([]);
           setBillingMetrics(null);
           setBillingMetricsError(null);
@@ -4951,13 +5059,13 @@ export default function Admin() {
     });
   }, [aiStats]);
   const healthItemsReal = useMemo(() => buildHealthItems(health), [health]);
+  // Deriva os stats so quando o estado e "ok"; caso contrario null. Mantem o
+  // nome posthogStats para as leituras de render continuarem validas.
+  const posthogStats =
+    posthogState?.state === "ok" ? posthogState.stats : null;
+  // hasData vem do backend (nunca inferido de zeros no client).
   const posthogHasData = Boolean(
-    posthogStats &&
-    (posthogStats.totalPageviews > 0 ||
-      posthogStats.uniqueUsers > 0 ||
-      posthogStats.pages.length > 0 ||
-      Object.values(posthogStats.events).some((value) => value > 0) ||
-      posthogStats.acquisition.length > 0),
+    posthogState?.state === "ok" && posthogState.hasData,
   );
   const posthogSignupConversion =
     posthogStats && posthogStats.uniqueUsers > 0
@@ -5318,10 +5426,12 @@ export default function Admin() {
                         Do visitante ao assinante Pro
                       </h2>
                     </div>
-                    <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
-                      <PieChart className="h-4 w-4" />
-                      conversão cadastro {posthogSignupConversion}%
-                    </span>
+                    {posthogHasData ? (
+                      <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-50 px-3 py-2 text-xs font-black text-violet-800">
+                        <PieChart className="h-4 w-4" />
+                        conversão cadastro {posthogSignupConversion}%
+                      </span>
+                    ) : null}
                   </div>
                   <div className="mt-6 space-y-4">
                     {overviewLoading ? (
@@ -5362,10 +5472,7 @@ export default function Admin() {
                         );
                       })
                     ) : (
-                      <PendingIntegration
-                        tool="Posthog"
-                        description="Configure POSTHOG_API_KEY e POSTHOG_PROJECT_ID para rastrear visitantes e sessões"
-                      />
+                      <PosthogStateNotice state={posthogState} />
                     )}
                   </div>
                 </article>
@@ -5430,26 +5537,32 @@ export default function Admin() {
                       </h2>
                     </div>
                   </div>
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    {[
-                      { label: "na fila", value: queueStats.waiting },
-                      { label: "processando", value: queueStats.active },
-                      { label: "enviados", value: queueStats.completed },
-                      { label: "com falha", value: queueStats.failed },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                      >
-                        <p className="text-2xl font-black text-slate-950">
-                          {item.value}
-                        </p>
-                        <p className="text-xs font-bold text-slate-500">
-                          {item.label}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                  {queueError ? (
+                    <div className="mt-6">
+                      <ErrorBlock message={queueError} />
+                    </div>
+                  ) : (
+                    <div className="mt-6 grid grid-cols-2 gap-3">
+                      {[
+                        { label: "na fila", value: queueStats.waiting },
+                        { label: "processando", value: queueStats.active },
+                        { label: "enviados", value: queueStats.completed },
+                        { label: "com falha", value: queueStats.failed },
+                      ].map((item) => (
+                        <div
+                          key={item.label}
+                          className="rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
+                        >
+                          <p className="text-2xl font-black text-slate-950">
+                            {item.value}
+                          </p>
+                          <p className="text-xs font-bold text-slate-500">
+                            {item.label}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </article>
               </div>
 
@@ -5597,10 +5710,7 @@ export default function Admin() {
                   ))
                 ) : (
                   <div className="md:col-span-2 xl:col-span-4">
-                    <PendingIntegration
-                      tool="Posthog"
-                      description="Requer eventos de sessão do Posthog"
-                    />
+                    <PosthogStateNotice state={posthogState} />
                   </div>
                 )}
               </div>
@@ -5627,10 +5737,7 @@ export default function Admin() {
                         ))}
                       </div>
                     ) : (
-                      <PendingIntegration
-                        tool="Posthog"
-                        description="Requer eventos de sessão do Posthog"
-                      />
+                      <PosthogStateNotice state={posthogState} />
                     )}
                   </div>
                 </article>
@@ -5656,10 +5763,7 @@ export default function Admin() {
                         </p>
                       </div>
                     ) : (
-                      <PendingIntegration
-                        tool="Posthog"
-                        description="Requer eventos de sessão do Posthog"
-                      />
+                      <PosthogStateNotice state={posthogState} />
                     )}
                   </div>
                 </article>
@@ -5716,10 +5820,7 @@ export default function Admin() {
                       </table>
                     </div>
                   ) : (
-                    <PendingIntegration
-                      tool="Posthog"
-                      description="Requer rastreamento de páginas e sessões"
-                    />
+                    <PosthogStateNotice state={posthogState} />
                   )}
                 </div>
               </article>
@@ -5896,9 +5997,11 @@ export default function Admin() {
                       {overviewLoading ? (
                         <LoadingBlock />
                       ) : churnRiskUsers === null ? (
-                        <PendingIntegration
-                          tool="Supabase Admin API"
-                          description="Requer endpoint de último login via Supabase Admin API"
+                        // churnRiskUsers null so acontece em erro de fetch agora
+                        // (sucesso sempre retorna lista). Mostra erro, nao vazio.
+                        // TODO(Ana): copy de fallback do erro de churn.
+                        <ErrorBlock
+                          message={churnError ?? "Erro ao carregar risco de churn."}
                         />
                       ) : churnRiskUsers.length ? (
                         <div className="space-y-3">
@@ -6143,6 +6246,12 @@ export default function Admin() {
                   </div>
                 </div>
               </div>
+
+              {affiliatesError ? (
+                <div className="border-b-2 border-slate-900 p-6">
+                  <ErrorBlock message={affiliatesError} />
+                </div>
+              ) : null}
 
               <div className="grid gap-5 border-b-2 border-slate-900 bg-violet-50 p-6 md:grid-cols-2 xl:grid-cols-4">
                 {[
@@ -6606,10 +6715,7 @@ export default function Admin() {
                       </div>
                     ) : (
                       <div className="p-5">
-                        <PendingIntegration
-                          tool="Posthog"
-                          description="Requer rastreamento de páginas e sessões"
-                        />
+                        <PosthogStateNotice state={posthogState} />
                       </div>
                     )}
                   </div>
@@ -6658,10 +6764,7 @@ export default function Admin() {
                         );
                       })
                     ) : (
-                      <PendingIntegration
-                        tool="Posthog"
-                        description="Requer eventos com origem/referrer para rastrear aquisição"
-                      />
+                      <PosthogStateNotice state={posthogState} />
                     )}
                   </div>
                 </article>
