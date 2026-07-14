@@ -54,7 +54,17 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.disable("x-powered-by");
-app.set("trust proxy", 1);
+// trust proxy = 2: MEDIDO em producao (campo de debug xff/remote, commit 2837eaa),
+// nao chutado. Cadeia real a partir do socket:
+//   [100.64.x LB interno do Railway] -> [152.233.x edge do Railway] -> [cliente real]
+// (o cliente real e o IP mais a esquerda do X-Forwarded-For). Sao 2 hops de infra
+// confiavel (LB interno no socket + edge), entao descascar 2 faz req.ip resolver o
+// cliente real (ex.: 216.28.246.67) em vez do IP constante do edge (152.233.x), que
+// colapsava todos os clientes num unico bucket de rate limit. NAO usar "true": com o
+// numero exato (2), um XFF forjado pelo cliente cai a ESQUERDA do IP que o edge
+// carimba, FORA da janela confiavel, entao req.ip nunca vira spoofavel (protege
+// tambem o throttle de brute-force do beta-unlock, que tambem chaveia em req.ip).
+app.set("trust proxy", 2);
 
 // Request id unificado, gerado na borda. NAO confiamos em X-Request-Id de
 // entrada (cliente pode forjar; somos a borda). Correlaciona log estruturado,
