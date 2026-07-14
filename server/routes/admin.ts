@@ -295,9 +295,18 @@ router.get("/dashboard", async (_req, res, next) => {
 // Estado do PostHog como union discriminado (not_configured | error | ok). A
 // logica vive em lib/posthog.ts; erro nunca vira zero. O client sera migrado
 // para ler o novo shape na proxima sessao.
-router.get("/posthog-stats", async (_req, res, next) => {
+router.get("/posthog-stats", async (req, res, next) => {
   try {
-    const result = await getPosthogStats();
+    // Periodo opcional (from/to ISO). Datas invalidas caem no default (30 dias)
+    // do proprio getPosthogStats; nunca mascaram falha (erro real vira state error).
+    const fromRaw = typeof req.query.from === "string" ? req.query.from : "";
+    const toRaw = typeof req.query.to === "string" ? req.query.to : "";
+    const fromDate = fromRaw ? new Date(fromRaw) : undefined;
+    const toDate = toRaw ? new Date(toRaw) : undefined;
+    const from =
+      fromDate && !Number.isNaN(fromDate.getTime()) ? fromDate : undefined;
+    const to = toDate && !Number.isNaN(toDate.getTime()) ? toDate : undefined;
+    const result = await getPosthogStats({ from, to });
     res.json({ data: result });
   } catch (err) {
     next(err);

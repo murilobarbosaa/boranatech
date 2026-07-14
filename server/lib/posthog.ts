@@ -8,6 +8,16 @@ import { env } from "./env";
 // getPosthogStats o traduz para o estado 'error'. Assim o admin distingue "nao
 // configurado" de "configurado mas falhando" de "ok sem dados".
 
+// Ranking de gate Pro: por funcionalidade (properties.feature de pro_gate_hit),
+// quantas batidas (hits), quantas pessoas distintas bateram (people) e quantas
+// dessas assinaram (subscribers, overlap de person_id no periodo). taxa = subscribers/people.
+export type ProGateRank = {
+  feature: string;
+  hits: number;
+  people: number;
+  subscribers: number;
+};
+
 export type PosthogStats = {
   totalPageviews: number;
   uniqueUsers: number;
@@ -16,8 +26,11 @@ export type PosthogStats = {
     user_signed_up: number;
     user_signed_in: number;
     checkout_started: number;
+    checkout_abandoned: number;
+    subscription_completed: number;
     quiz_completed: number;
   };
+  proGates: ProGateRank[];
   acquisition: Array<{ channel: string; users: number }>;
 };
 
@@ -87,47 +100,73 @@ function emptyStats(): PosthogStats {
       user_signed_up: 0,
       user_signed_in: 0,
       checkout_started: 0,
+      checkout_abandoned: 0,
+      subscription_completed: 0,
       quiz_completed: 0,
     },
+    proGates: [],
     acquisition: [],
   };
+}
+
+// Formato de data aceito por toDateTime() do HogQL: 'YYYY-MM-DD HH:MM:SS' em UTC.
+// A data vem re-serializada de um Date (canonica), entao nao ha injecao possivel.
+function hogTime(date: Date): string {
+  return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
 // Estado de leitura do PostHog para o admin. Nunca retorna zeros por falha:
 // - falta de env -> not_configured (lista o que falta).
 // - falha de rede/HTTP -> error (com reason e httpStatus).
 // - resposta valida -> ok, com hasData=false legitimo quando nao ha trafego.
-export async function getPosthogStats(): Promise<PosthogStatsState> {
+export async function getPosthogStats(
+  params: { from?: Date; to?: Date } = {},
+): Promise<PosthogStatsState> {
   const missing: string[] = [];
   if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
   if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
   if (missing.length > 0) return { state: "not_configured", missing };
 
-  const since = "now() - interval 30 day";
+  // Default: ultimos 30 dias (nao quebra chamadas existentes, ex.: integrations/health).
+  const to = params.to ?? new Date();
+  const from = params.from ?? new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  // Janela [from, to] em toDateTime; reusada em todas as queries e nas subqueries.
+  const win = `timestamp >= toDateTime('${hogTime(from)}') and timestamp <= toDateTime('${hogTime(to)}')`;
+
   const eventNames: PosthogEventName[] = [
     "user_signed_up",
     "user_signed_in",
     "checkout_started",
+    "checkout_abandoned",
+    "subscription_completed",
     "quiz_completed",
   ];
+  const eventList = eventNames.map((e) => `'${e}'`).join(",");
 
   try {
-    const [pageviews, uniqueUsers, pages, customEvents, acquisition] =
+    const [pageviews, uniqueUsers, pages, customEvents, proGates, acquisition] =
       await Promise.all([
         runPosthogQuery(
-          `select count() from events where event = '$pageview' and timestamp > ${since}`,
+          `select count() from events where event = '$pageview' and ${win}`,
         ),
         runPosthogQuery(
-          `select count(distinct person_id) from events where event = '$pageview' and timestamp > ${since}`,
+          `select count(distinct person_id) from events where event = '$pageview' and ${win}`,
         ),
         runPosthogQuery(
-          `select if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/')) as page, count() as views from events where event = '$pageview' and timestamp > ${since} group by page order by views desc limit 10`,
+          `select if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/')) as page, count() as views from events where event = '$pageview' and ${win} group by page order by views desc limit 10`,
         ),
         runPosthogQuery(
-          `select event, count() as total from events where event in ('user_signed_up','user_signed_in','checkout_started','quiz_completed') and timestamp > ${since} group by event`,
+          `select event, count() as total from events where event in (${eventList}) and ${win} group by event`,
+        ),
+        // Ranking de gate Pro com taxa de conversao. subscribers = pessoas que
+        // bateram no gate E aparecem em subscription_completed no MESMO periodo
+        // (overlap de person_id; aproximacao documentada, nao "estritamente
+        // depois"). Query unica via subquery IN.
+        runPosthogQuery(
+          `select properties.feature as feature, count() as hits, count(distinct person_id) as people, count(distinct if(person_id in (select distinct person_id from events where event = 'subscription_completed' and ${win}), person_id, null)) as subscribers from events where event = 'pro_gate_hit' and ${win} and properties.feature is not null group by feature order by people desc limit 20`,
         ),
         runPosthogQuery(
-          `select trimRight(properties.$referring_domain, '/') as domain, count(distinct person_id) as users from events where event = '$pageview' and timestamp > ${since} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
+          `select trimRight(properties.$referring_domain, '/') as domain, count(distinct person_id) as users from events where event = '$pageview' and ${win} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
         ),
       ]);
 
@@ -144,6 +183,15 @@ export async function getPosthogStats(): Promise<PosthogStatsState> {
       if (eventName) stats.events[eventName] = cellToNumber(row[1]);
     }
 
+    stats.proGates = (proGates.results || [])
+      .map((row) => ({
+        feature: String(row[0] ?? ""),
+        hits: cellToNumber(row[1]),
+        people: cellToNumber(row[2]),
+        subscribers: cellToNumber(row[3]),
+      }))
+      .filter((item) => item.feature && item.people > 0);
+
     stats.acquisition = (acquisition.results || [])
       .map((row) => ({
         channel: String(row[0] ?? "Direto"),
@@ -157,6 +205,7 @@ export async function getPosthogStats(): Promise<PosthogStatsState> {
       stats.uniqueUsers > 0 ||
       stats.pages.length > 0 ||
       Object.values(stats.events).some((value) => value > 0) ||
+      stats.proGates.length > 0 ||
       stats.acquisition.length > 0;
 
     return { state: "ok", hasData, stats };
