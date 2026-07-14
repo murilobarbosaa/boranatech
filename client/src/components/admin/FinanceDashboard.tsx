@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   CartesianGrid,
@@ -162,7 +162,15 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [localRefresh, setLocalRefresh] = useState(0);
 
-  const range = computeRange(preset, customFrom, customTo);
+  // Range memoizado: o `now` do preset e calculado UMA vez por combinacao de
+  // [preset, customFrom, customTo], nao a cada render. Assim a identidade do
+  // objeto (e o valor de `to`) so muda quando o usuario muda o filtro, o que
+  // quebra o loop de requisicoes (antes `to = now.toISOString()` mudava todo
+  // render, recriando loadResult e redisparando o effect indefinidamente).
+  const range = useMemo(
+    () => computeRange(preset, customFrom, customTo),
+    [preset, customFrom, customTo],
+  );
 
   const loadResult = useCallback(async () => {
     if (!range) return;
@@ -188,9 +196,7 @@ export function FinanceDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
     } finally {
       setLoading(false);
     }
-    // range depende de preset/custom; incluidos abaixo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range?.from, range?.to]);
+  }, [range]);
 
   useEffect(() => {
     void loadResult();
