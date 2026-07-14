@@ -1136,6 +1136,41 @@ router.post("/finance/sync", async (_req, res, next) => {
   }
 });
 
+// Cotacao PTAX que SERA usada ao salvar uma despesa em moeda estrangeira (preview
+// antes de gravar). BRL: 1:1. USD: PTAX. Outra moeda ou PTAX indisponivel: erro.
+router.get("/finance/fx-preview", async (req, res, next) => {
+  try {
+    const currency =
+      typeof req.query.currency === "string"
+        ? req.query.currency.toUpperCase()
+        : "BRL";
+    if (currency === "BRL") {
+      res.json({ data: { rate: 1, quoteDate: null } });
+      return;
+    }
+    if (currency !== "USD") {
+      // TODO(Ana)
+      return next(
+        createError(400, "unsupported_currency", "Moeda não suportada. Use BRL ou USD."),
+      );
+    }
+    const rate = await fetchUsdBrlRate();
+    if (!rate) {
+      // TODO(Ana)
+      return next(
+        createError(
+          502,
+          "fx_unavailable",
+          "Cotação do dólar (PTAX) indisponível agora. Tente novamente em instantes.",
+        ),
+      );
+    }
+    res.json({ data: { rate: rate.usdBrl, quoteDate: rate.quoteDate } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/ai-stats", async (_req, res, next) => {
   try {
     const { data: byTool, error } = await supabaseAdmin

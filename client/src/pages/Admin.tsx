@@ -42,6 +42,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import PendingIntegration from "@/components/admin/PendingIntegration";
@@ -6101,6 +6102,21 @@ export default function Admin() {
               {/* TODO(Ana): titulo e subtitulo da secao financeiro (title/subtitle acima). */}
               {/* RESULTADO DE CAIXA (fonte: Stripe balance transactions) */}
               <FinanceDashboard refreshKey={financeRefreshKey} />
+
+              {/* DESPESAS (CRUD manual, cambio travado no lancamento) */}
+              <div className="mt-10">
+                {/* TODO(Ana): titulo e subtitulo do bloco de despesas. */}
+                <h2 className="font-display text-3xl font-black text-slate-950">
+                  Despesas
+                </h2>
+                <p className="mb-5 mt-1 max-w-3xl text-sm font-semibold text-slate-600">
+                  Lance cobranças recorrentes e gastos pontuais. Moeda estrangeira
+                  trava o câmbio (PTAX) na data do lançamento.
+                </p>
+                <ExpensesManager
+                  onChanged={() => setFinanceRefreshKey((k) => k + 1)}
+                />
+              </div>
 
               {/* METRICAS DE RECORRENCIA, claramente separadas do caixa acima */}
               <div className="mt-12 border-t-4 border-slate-900 pt-8">
