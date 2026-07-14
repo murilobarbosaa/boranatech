@@ -170,6 +170,17 @@ type AdminUserRecord = {
   created_at?: string | null;
 };
 
+type DashboardData = {
+  counts?: {
+    users: number;
+    active_subscriptions: number;
+    areas: number;
+    courses: number;
+    ai_calls_total: number;
+  };
+  recent_audit?: AuditLog[];
+};
+
 type HealthResponse = {
   status: string;
   uptime?: number;
@@ -4703,24 +4714,12 @@ export default function Admin() {
   const [accessState, setAccessState] = useState<
     "loading" | "login" | "forbidden" | "allowed"
   >("loading");
-  const [dashboard, setDashboard] = useState<{
-    counts?: {
-      users: number;
-      active_subscriptions: number;
-      areas: number;
-      courses: number;
-      ai_calls_total: number;
-    };
-    recent_audit?: Array<{
-      action: string;
-      resource_type: string;
-      resource_slug: string;
-      created_at: string;
-    }>;
-  } | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [aiStats, setAiStats] = useState<AiStatsData>({});
+  const [aiStatsError, setAiStatsError] = useState<string | null>(null);
   const [queueStats, setQueueStats] = useState<QueueStats>({
     waiting: 0,
     active: 0,
@@ -4796,18 +4795,46 @@ export default function Admin() {
       setOverviewLoading(true);
       try {
         const [
-          dashboardJson,
-          healthJson,
-          aiJson,
+          dashboardResult,
+          healthResult,
+          aiResult,
           queueResult,
           posthogResult,
           churnResult,
           affiliatesResult,
           billingMetricsResult,
         ] = await Promise.all([
-          adminFetch("/dashboard"),
-          fetch(apiUrl("/api/health")).then((res) => res.json()),
-          adminFetch("/ai-stats"),
+          // Core tagueado: falha de /dashboard NAO pode virar 0 nos contadores.
+          // Alem disso, tagueando os tres cores o Promise.all nunca rejeita, entao
+          // cada resultado (inclusive o do dashboard) e sempre aplicado.
+          adminFetch("/dashboard")
+            .then((json) => ({
+              ok: true as const,
+              data: json.data as DashboardData,
+            }))
+            .catch((err: unknown) => ({
+              ok: false as const,
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Erro ao carregar o dashboard.",
+            })),
+          fetch(apiUrl("/api/health"))
+            .then((res) => res.json())
+            .then((data) => ({ ok: true as const, data: data as HealthResponse }))
+            .catch(() => ({ ok: false as const })),
+          adminFetch("/ai-stats")
+            .then((json) => ({
+              ok: true as const,
+              data: (json.data || {}) as AiStatsData,
+            }))
+            .catch((err: unknown) => ({
+              ok: false as const,
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Erro ao carregar uso de IA.",
+            })),
           // Sem colapso: falha de fetch vira estado de erro da secao, nao zeros.
           adminFetch("/queue-stats")
             .then((json) => ({ ok: true as const, data: json.data as QueueStats }))
@@ -4870,14 +4897,27 @@ export default function Admin() {
             })),
         ]);
         if (cancelled) return;
-        setDashboard(dashboardJson.data);
-        setHealth(healthJson);
-        setAuditLogs(
-          Array.isArray(dashboardJson.data?.recent_audit)
-            ? dashboardJson.data.recent_audit
-            : [],
-        );
-        setAiStats(aiJson.data || {});
+        if (dashboardResult.ok) {
+          setDashboard(dashboardResult.data);
+          setDashboardError(null);
+          setAuditLogs(
+            Array.isArray(dashboardResult.data?.recent_audit)
+              ? dashboardResult.data.recent_audit
+              : [],
+          );
+        } else {
+          setDashboard(null);
+          setDashboardError(dashboardResult.error);
+          setAuditLogs([]);
+        }
+        setHealth(healthResult.ok ? healthResult.data : null);
+        if (aiResult.ok) {
+          setAiStats(aiResult.data);
+          setAiStatsError(null);
+        } else {
+          setAiStats({});
+          setAiStatsError(aiResult.error);
+        }
         if (queueResult.ok) {
           setQueueStats(queueResult.data);
           setQueueError(null);
@@ -4958,9 +4998,11 @@ export default function Admin() {
           if (cancelled) return;
           setSession(null);
           setDashboard(null);
+          setDashboardError(null);
           setHealth(null);
           setAuditLogs([]);
           setAiStats({});
+          setAiStatsError(null);
           setQueueStats({ waiting: 0, active: 0, completed: 0, failed: 0 });
           setPosthogState(null);
           setChurnRiskUsers(null);
@@ -5134,9 +5176,16 @@ export default function Admin() {
   const adminMetricCards = useMemo<MetricCard[]>(() => {
     if (!dashboard?.counts) return metricCards;
 
-    const aiCost = formatCurrency(
-      Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0),
-    );
+    // Custo de IA cai em "indisponivel" (nunca R$ 0,00 falso) quando /ai-stats
+    // falha. TODO(Ana): copy do estado indisponivel do card de custo de IA.
+    const aiCost = aiStatsError
+      ? "indisponível"
+      : formatCurrency(
+          Object.values(aiStats).reduce((sum, item) => sum + item.cost, 0),
+        );
+    const aiCostDetail = aiStatsError
+      ? "Falha ao carregar uso de IA"
+      : "Custo estimado dos últimos 30 dias";
     // MRR real quando disponivel. Ausencia e estado nomeado, nunca um 0 falso.
     // TODO(Ana): copy do estado indisponivel do card de receita.
     const mrrValue = billingMetrics
@@ -5155,9 +5204,9 @@ export default function Admin() {
       { ...metricCards[2], value: mrrValue, detail: mrrDetail },
       { ...metricCards[3], value: String(dashboard.counts.ai_calls_total) },
       { ...metricCards[4], value: String(dashboard.counts.courses) },
-      { ...metricCards[5], value: aiCost },
+      { ...metricCards[5], value: aiCost, detail: aiCostDetail },
     ];
-  }, [dashboard, aiStats, billingMetrics, billingMetricsError]);
+  }, [dashboard, aiStats, aiStatsError, billingMetrics, billingMetricsError]);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -5387,6 +5436,11 @@ export default function Admin() {
           {activeSection === "visao-geral" ? (
             <>
               <IntegrationsHealthPanel />
+              {overviewLoading ? (
+                <LoadingBlock />
+              ) : dashboardError ? (
+                <ErrorBlock message={dashboardError} />
+              ) : (
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {adminMetricCards.map((metric) => (
                   <article
@@ -5416,6 +5470,7 @@ export default function Admin() {
                   </article>
                 ))}
               </div>
+              )}
 
               <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
                 <article className="card-brutal rounded-3xl bg-white p-6">
@@ -5489,9 +5544,12 @@ export default function Admin() {
                         insight rápido
                       </p>
                       <h2 className="font-display text-2xl font-black">
-                        {aiUsageReal.length
-                          ? "Uso de IA conectado."
-                          : "Sem uso de IA registrado."}
+                        {/* TODO(Ana): copy do estado indisponivel de uso de IA. */}
+                        {aiStatsError
+                          ? "Uso de IA indisponível."
+                          : aiUsageReal.length
+                            ? "Uso de IA conectado."
+                            : "Sem uso de IA registrado."}
                       </h2>
                     </div>
                   </div>
@@ -5503,7 +5561,11 @@ export default function Admin() {
                   <div className="mt-6 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
                       <p className="text-2xl font-black">
-                        {dashboard?.counts?.ai_calls_total ?? 0}
+                        {overviewLoading
+                          ? "…"
+                          : dashboard?.counts
+                            ? formatCount(dashboard.counts.ai_calls_total)
+                            : "indisponível"}
                       </p>
                       <p className="text-xs font-bold text-violet-100">
                         chamadas registradas
@@ -5511,12 +5573,14 @@ export default function Admin() {
                     </div>
                     <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
                       <p className="text-2xl font-black">
-                        {formatCurrency(
-                          Object.values(aiStats).reduce(
-                            (sum, item) => sum + item.cost,
-                            0,
-                          ),
-                        )}
+                        {aiStatsError
+                          ? "indisponível"
+                          : formatCurrency(
+                              Object.values(aiStats).reduce(
+                                (sum, item) => sum + item.cost,
+                                0,
+                              ),
+                            )}
                       </p>
                       <p className="text-xs font-bold text-violet-100">
                         custo estimado
@@ -5584,6 +5648,10 @@ export default function Admin() {
                       <div className="p-5">
                         <LoadingBlock />
                       </div>
+                    ) : aiStatsError ? (
+                      <div className="p-5">
+                        <ErrorBlock message={aiStatsError} />
+                      </div>
                     ) : aiUsageReal.length ? (
                       aiUsageReal.map((item) => (
                         <div
@@ -5631,7 +5699,11 @@ export default function Admin() {
                         Assinaturas ativas
                       </p>
                       <p className="font-display text-3xl font-black text-slate-950">
-                        {dashboard?.counts?.active_subscriptions ?? 0}
+                        {overviewLoading
+                          ? "…"
+                          : dashboard?.counts
+                            ? formatCount(dashboard.counts.active_subscriptions)
+                            : "indisponível"}
                       </p>
                       <p className="mt-1 text-sm font-semibold text-slate-500">
                         Fonte: /api/admin/dashboard
@@ -6147,7 +6219,9 @@ export default function Admin() {
                     Chamadas por ferramenta
                   </h3>
                   <div className="mt-4 space-y-3">
-                    {aiUsageReal.length ? (
+                    {aiStatsError ? (
+                      <ErrorBlock message={aiStatsError} />
+                    ) : aiUsageReal.length ? (
                       aiUsageReal.map((item) => (
                         <div
                           key={item.feature}
@@ -6174,7 +6248,9 @@ export default function Admin() {
                     Custo por ferramenta
                   </h3>
                   <div className="mt-4 space-y-4">
-                    {aiUsageReal.length ? (
+                    {aiStatsError ? (
+                      <ErrorBlock message={aiStatsError} />
+                    ) : aiUsageReal.length ? (
                       aiUsageReal.map((item) => (
                         <div key={item.feature}>
                           <div className="mb-1 flex justify-between text-sm font-bold">
