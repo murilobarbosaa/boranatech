@@ -1,5 +1,4 @@
 import * as XLSX from "xlsx";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 // Parsers de lista de contatos. Rodam SEMPRE no server. Cada parser extrai
 // linhas cruas { email, name } sem validar (a validacao/classificacao vive em
@@ -185,27 +184,45 @@ export function parseXlsxBuffer(buffer: Buffer): ParsedRow[] {
 
 const EMAIL_EXTRACT_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
 
-// PDF: extracao BEST-EFFORT. So extrai texto (isEvalSupported=false) e captura
-// emails por regex. A UI avisa que o preview PRECISA ser conferido linha a linha.
+// PDF: extracao BEST-EFFORT. So extrai texto e captura emails por regex. A UI
+// avisa que o preview PRECISA ser conferido linha a linha.
+//
+// pdfjs-dist e importado LAZY, dentro desta funcao, so quando um PDF e de fato
+// processado. Import estatico no topo do modulo faz o pdfjs rodar setup de
+// ambiente (require de canvas, polyfill de DOMMatrix e outros globais de
+// browser) na AVALIACAO do modulo. No bundle esbuild do server isso executa no
+// BOOT do processo Node, antes do servidor bindar a porta: crasha o boot, o
+// healthcheck /api/health/live falha e o Railway descarta o deploy. Lazy mantem
+// o boot limpo; PDF e a unica rota que paga o custo de carregar o pdfjs. Erro de
+// carga OU de parse vira ContactImportError (nunca derruba o processo).
 export async function parsePdfBuffer(buffer: Buffer): Promise<ParsedRow[]> {
-  const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
+  try {
+    const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
 
-  let text = "";
-  for (let p = 1; p <= pdf.numPages; p += 1) {
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    for (const item of content.items) {
-      if ("str" in item) text += `${item.str} `;
+    let text = "";
+    for (let p = 1; p <= pdf.numPages; p += 1) {
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      for (const item of content.items) {
+        if ("str" in item) text += `${item.str} `;
+      }
+      text += "\n";
     }
-    text += "\n";
-  }
 
-  const out: ParsedRow[] = [];
-  const matches = text.match(EMAIL_EXTRACT_RE) ?? [];
-  for (const email of matches) {
-    out.push({ email: email.trim(), name: null, rawLine: email.trim() });
+    const out: ParsedRow[] = [];
+    const matches = text.match(EMAIL_EXTRACT_RE) ?? [];
+    for (const email of matches) {
+      out.push({ email: email.trim(), name: null, rawLine: email.trim() });
+    }
+    return out;
+  } catch (err) {
+    if (err instanceof ContactImportError) throw err;
+    throw new ContactImportError(
+      "pdf_parse_failed",
+      "Não consegui ler este PDF. Confira se não está protegido ou escaneado, ou use CSV/XLSX.",
+    );
   }
-  return out;
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
