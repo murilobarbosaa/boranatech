@@ -247,6 +247,10 @@ app.use((req, res, next) => {
         status: res.statusCode,
         duration_ms: Date.now() - startedAt,
         ip: req.ip,
+        // TEMPORARIO: medir hops do X-Forwarded-For pra calibrar trust proxy.
+        // Remover apos definir o trust proxy (git revert deste commit).
+        xff: req.headers["x-forwarded-for"] ?? null,
+        remote: req.socket.remoteAddress ?? null,
         request_id: res.locals.requestId,
       }),
     );
