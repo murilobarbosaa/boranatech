@@ -180,6 +180,9 @@ export const env = {
     process.env.GITHUB_VAGAS_TOKEN || process.env.GITHUB_TOKEN || "",
   posthogApiKey: process.env.POSTHOG_API_KEY || "",
   posthogProjectId: process.env.POSTHOG_PROJECT_ID || "",
+  // Host da API do PostHog (regiao). NUNCA hardcodar a regiao no codigo: projeto
+  // na UE usa eu.posthog.com. Default US preserva o comportamento atual.
+  posthogHost: process.env.POSTHOG_HOST || "https://us.posthog.com",
   resendApiKey: process.env.RESEND_API_KEY || "",
   redisUrl: process.env.REDIS_URL || "",
   // DSN do Sentry (server). Ausente: Sentry desativado, no-op total.

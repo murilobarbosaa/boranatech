@@ -8,7 +8,9 @@ import {
   getSubscriberList,
 } from "../lib/billingMetrics";
 import { env } from "../lib/env";
+import { getPosthogStats } from "../lib/posthog";
 import { emailQueue } from "../lib/queue";
+import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
@@ -235,68 +237,6 @@ async function fetchAuthUsersByIds(
   return result;
 }
 
-const emptyPosthogStats = {
-  configured: false,
-  totalPageviews: 0,
-  uniqueUsers: 0,
-  pages: [] as Array<{ page: string; views: number }>,
-  events: {
-    user_signed_up: 0,
-    user_signed_in: 0,
-    checkout_started: 0,
-    quiz_completed: 0,
-  },
-  acquisition: [] as Array<{ channel: string; users: number }>,
-};
-
-type PosthogEventName = keyof typeof emptyPosthogStats.events;
-
-type PosthogQueryResponse = {
-  results: ReadonlyArray<ReadonlyArray<unknown>>;
-  columns?: ReadonlyArray<string>;
-};
-
-function cellToNumber(value: unknown): number {
-  return typeof value === "number" ? value : Number(value) || 0;
-}
-
-// Leitura via HogQL no endpoint /query/ (POST). E o caminho que a Personal API
-// Key escopada (phx_) autoriza; o legado /insights/trend/ retornava nao-2xx e o
-// erro era engolido. Aqui, em qualquer nao-2xx, logamos status E corpo da
-// resposta do PostHog (que explica o motivo) e retornamos null.
-async function runPosthogQuery(
-  hogql: string,
-): Promise<PosthogQueryResponse | null> {
-  try {
-    const response = await fetch(
-      `https://us.posthog.com/api/projects/${env.posthogProjectId}/query/`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.posthogApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: { kind: "HogQLQuery", query: hogql },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      console.error(
-        `[posthog] query falhou status=${response.status} body=${body}`,
-      );
-      return null;
-    }
-
-    return (await response.json()) as PosthogQueryResponse;
-  } catch (err) {
-    console.error("[posthog] erro ao executar query HogQL", err);
-    return null;
-  }
-}
-
 router.get("/dashboard", async (_req, res, next) => {
   try {
     const [
@@ -343,74 +283,62 @@ router.get("/dashboard", async (_req, res, next) => {
   }
 });
 
-router.get("/posthog-stats", async (_req, res) => {
-  const data = structuredClone(emptyPosthogStats);
-
-  if (!env.posthogApiKey || !env.posthogProjectId) {
-    res.json({ data });
-    return;
-  }
-
-  data.configured = true;
-
-  const since = "now() - interval 30 day";
-
+// Estado do PostHog como union discriminado (not_configured | error | ok). A
+// logica vive em lib/posthog.ts; erro nunca vira zero. O client sera migrado
+// para ler o novo shape na proxima sessao.
+router.get("/posthog-stats", async (_req, res, next) => {
   try {
-    const events: PosthogEventName[] = [
-      "user_signed_up",
-      "user_signed_in",
-      "checkout_started",
-      "quiz_completed",
-    ];
-    const [pageviews, uniqueUsers, pages, customEvents, acquisition] =
-      await Promise.all([
-        runPosthogQuery(
-          `select count() from events where event = '$pageview' and timestamp > ${since}`,
-        ),
-        runPosthogQuery(
-          `select count(distinct person_id) from events where event = '$pageview' and timestamp > ${since}`,
-        ),
-        runPosthogQuery(
-          `select if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/')) as page, count() as views from events where event = '$pageview' and timestamp > ${since} group by page order by views desc limit 10`,
-        ),
-        runPosthogQuery(
-          `select event, count() as total from events where event in ('user_signed_up','user_signed_in','checkout_started','quiz_completed') and timestamp > ${since} group by event`,
-        ),
-        runPosthogQuery(
-          `select trimRight(properties.$referring_domain, '/') as domain, count(distinct person_id) as users from events where event = '$pageview' and timestamp > ${since} and properties.$referring_domain is not null group by domain order by users desc limit 6`,
-        ),
-      ]);
+    const result = await getPosthogStats();
+    res.json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+});
 
-    data.totalPageviews = cellToNumber(pageviews?.results?.[0]?.[0]);
-    data.uniqueUsers = cellToNumber(uniqueUsers?.results?.[0]?.[0]);
+// Saude das integracoes, sem vazar segredos (so presenca/booleanos e o union do
+// PostHog). Responde de vez as perguntas de ambiente em aberto do relatorio.
+router.get("/integrations/health", async (_req, res, next) => {
+  try {
+    const posthog = await getPosthogStats();
 
-    data.pages = (pages?.results || [])
-      .map((row) => ({
-        page: String(row[0] ?? "/"),
-        views: cellToNumber(row[1]),
-      }))
-      .filter((item) => item.views > 0)
-      .slice(0, 10);
-
-    for (const row of customEvents?.results || []) {
-      const eventName = events.find((event) => event === String(row[0]));
-      if (eventName) data.events[eventName] = cellToNumber(row[1]);
+    let redis: { configured: boolean; ok: boolean } = {
+      configured: Boolean(env.redisUrl),
+      ok: false,
+    };
+    if (cacheConnection) {
+      try {
+        const pong = await cacheConnection.ping();
+        redis = { configured: true, ok: pong === "PONG" };
+      } catch {
+        redis = { configured: true, ok: false };
+      }
     }
 
-    data.acquisition = (acquisition?.results || [])
-      .map((row) => ({
-        channel: String(row[0] ?? "Direto"),
-        users: cellToNumber(row[1]),
-      }))
-      .filter((item) => item.users > 0)
-      .slice(0, 6);
+    res.json({
+      data: {
+        paymentProvider: env.paymentProvider,
+        posthog,
+        stripe: {
+          secretKey: Boolean(env.stripeSecretKey),
+          webhookSecret: Boolean(env.stripeWebhookSecret),
+          priceIds: {
+            pro_monthly: Boolean(env.stripePriceIds.pro_monthly),
+            pro_semiannual: Boolean(env.stripePriceIds.pro_semiannual),
+            pro_annual: Boolean(env.stripePriceIds.pro_annual),
+          },
+        },
+        asaas: {
+          apiKey: Boolean(env.asaasApiKey),
+          webhookToken: Boolean(env.asaasWebhookToken),
+          env: env.asaasEnv,
+        },
+        redis,
+        resend: { apiKey: Boolean(env.resendApiKey) },
+      },
+    });
   } catch (err) {
-    console.error("[posthog] Erro inesperado ao buscar analytics", err);
-    res.json({ data: { ...emptyPosthogStats, configured: true } });
-    return;
+    next(err);
   }
-
-  res.json({ data });
 });
 
 router.get("/churn-risk", async (_req, res, next) => {
