@@ -42,6 +42,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import {
   SubscribersSummary,
@@ -5385,6 +5386,7 @@ export default function Admin() {
         <div className="container space-y-10">
           {activeSection === "visao-geral" ? (
             <>
+              <IntegrationsHealthPanel />
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {adminMetricCards.map((metric) => (
                   <article
