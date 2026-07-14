@@ -10,6 +10,7 @@ import { env } from "../lib/env";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
+import { syncBalanceTransactions } from "../lib/stripeSync";
 import { createError } from "../middleware/error";
 import { getStripeSubscriptionState } from "../providers/stripe";
 
@@ -718,6 +719,33 @@ router.post("/reconcile-subscriptions", withCronLock("reconcile-subscriptions", 
   } catch (err) {
     await recordCronRun({
       jobName: "reconcile-subscriptions",
+      status: "error",
+      startedAt,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    next(err);
+  }
+}));
+
+// Rede de seguranca do financeiro: sincroniza as balance transactions das
+// ultimas 72h. O webhook e o caminho rapido; este cron garante contra evento
+// perdido. Idempotente pelo bt id. TTL 600s: poucos itens por dia.
+router.post("/sync-finance", withCronLock("sync-finance", 600, async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    const since = new Date(Date.now() - 72 * 60 * 60 * 1000);
+    const result = await syncBalanceTransactions({ since });
+    await recordCronRun({
+      jobName: "sync-finance",
+      status: "success",
+      startedAt,
+      payload: { ...result },
+    });
+    res.json({ data: result });
+  } catch (err) {
+    await recordCronRun({
+      jobName: "sync-finance",
       status: "error",
       startedAt,
       errorMessage: err instanceof Error ? err.message : String(err),

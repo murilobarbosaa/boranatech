@@ -3,6 +3,8 @@ import Stripe from "stripe";
 import { env } from "../lib/env";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
+import { getStripe } from "../lib/stripeClient";
+import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 import { isFirstPurchase } from "./shared";
@@ -20,32 +22,9 @@ import type {
   WebhookResult,
 } from "./types";
 
-// apiVersion fixada explicitamente (a mesma pinada pelo SDK 22.x). Fixar evita
-// que um upgrade do SDK mude o shape dos objetos sob os pes do codigo. Nesta
-// versao o periodo da assinatura vive em items.data[].current_period_end (nao
-// mais no topo do objeto Subscription) e invoice.subscription virou
+// Nota de shape (apiVersion fixada em lib/stripeClient): o periodo da assinatura
+// vive em items.data[].current_period_end e invoice.subscription virou
 // invoice.parent.subscription_details.subscription.
-const STRIPE_API_VERSION = "2026-06-24.dahlia";
-
-// Client lazy: instanciar Stripe com chave vazia lanca. Como esta rota
-// (POST /webhook/stripe) e montada mesmo com PAYMENT_PROVIDER=asaas, so
-// instanciamos quando de fato houver chamada Stripe e a chave existir.
-let stripeClient: Stripe | null = null;
-function getStripe(): Stripe {
-  if (!stripeClient) {
-    if (!env.stripeSecretKey) {
-      throw createError(
-        500,
-        "config_error",
-        "STRIPE_SECRET_KEY não configurada.",
-      );
-    }
-    stripeClient = new Stripe(env.stripeSecretKey, {
-      apiVersion: STRIPE_API_VERSION,
-    });
-  }
-  return stripeClient;
-}
 
 // Allowlist reversa price_id -> PlanId, para resolver o plano a partir do price
 // quando o metadata nao trouxer plan_id. Montada uma vez das envs.
@@ -812,6 +791,18 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         break;
       case "invoice.payment_failed":
         await onInvoiceFailed(event, eventCreatedAt);
+        break;
+      case "charge.succeeded":
+      case "charge.refunded":
+      case "charge.dispute.created":
+      case "charge.dispute.closed":
+        // Finance (caminho rapido): garante que as balance transactions recentes
+        // (cobranca, reembolso, disputa) entrem em finance_transactions. Janela de
+        // 2 dias por seguranca; idempotente pelo bt id. O cron diario e a rede de
+        // seguranca para webhook perdido.
+        await syncBalanceTransactions({
+          since: new Date(eventCreatedAt.getTime() - 2 * 24 * 60 * 60 * 1000),
+        });
         break;
       default:
         // Demais eventos: registrados para dedupe, sem mutacao.
