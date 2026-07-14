@@ -195,7 +195,7 @@ export type PlanMrr = {
 
 export type MrrSnapshot = {
   mrrCents: number;
-  // null quando nao ha base ativa/trialing: ausencia, nao zero.
+  // null quando activeCount === 0: ausencia, nao zero.
   arpuCents: number | null;
   activeCount: number;
   trialingCount: number;
@@ -207,14 +207,13 @@ type RawMrrRow = {
   plans: EmbeddedPlan | EmbeddedPlan[] | null;
 };
 
-// MRR normalizado em centavos: para cada assinatura active/trialing nao expirada
-// (mesma condicao do is_user_pro: period null ou > now), converte o preco do
-// plano para equivalente mensal via plans.interval.
+// MRR normalizado em centavos: SOMENTE assinaturas status='active' nao expiradas
+// (mesma condicao de periodo do is_user_pro: period null ou > now), com o preco
+// do plano convertido para equivalente mensal via plans.interval.
 //
-// SUPOSICAO documentada: 3.1 pede "arpu = mrr / assinantes ativos". Como o
-// numerador (MRR) inclui trialing, o denominador do ARPU aqui e o total que
-// contribui pro MRR (active + trialing), para o ARPU ficar coerente. Se essa
-// base for 0, ARPU e null (nunca 0).
+// DECISAO: trialing NAO paga, entao fica FORA do MRR, do ARPU e da distribuicao
+// por plano; entra so como contador separado (trialingCount). ARPU = mrrCents /
+// activeCount, null quando activeCount === 0 (nunca 0).
 export async function getMrrSnapshot(): Promise<MrrSnapshot> {
   const nowIso = new Date().toISOString();
 
@@ -239,13 +238,19 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
         "Assinatura ativa sem code de plano; dados de plano inconsistentes.",
       );
     }
+
+    // Trial nao paga: fora do MRR, do ARPU e da distribuicao por plano.
+    if (row.status === "trialing") {
+      trialingCount += 1;
+      continue;
+    }
+
     const priceCents = Number(plan.price_cents ?? 0);
     const interval = String(plan.interval ?? "");
     const perMonth = monthlyEquivalentCents(priceCents, interval);
 
     mrrCents += perMonth;
-    if (row.status === "trialing") trialingCount += 1;
-    else activeCount += 1;
+    activeCount += 1;
 
     const entry = byPlan.get(plan.code) ?? {
       code: plan.code,
@@ -258,8 +263,7 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     byPlan.set(plan.code, entry);
   }
 
-  const payingBase = activeCount + trialingCount;
-  const arpuCents = payingBase > 0 ? Math.round(mrrCents / payingBase) : null;
+  const arpuCents = activeCount > 0 ? Math.round(mrrCents / activeCount) : null;
 
   return {
     mrrCents,
