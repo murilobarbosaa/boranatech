@@ -2,6 +2,11 @@ import { Router } from "express";
 
 import { logAudit } from "../lib/audit";
 import { deleteAvatarObject } from "../lib/avatarUpload";
+import {
+  getChurnSnapshot,
+  getMrrSnapshot,
+  getSubscriberList,
+} from "../lib/billingMetrics";
 import { env } from "../lib/env";
 import { emailQueue } from "../lib/queue";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
@@ -724,6 +729,7 @@ router.get("/users", async (req, res, next) => {
   }
 });
 
+// DEPRECATED: use GET /subscribers (paginado). Mantido enquanto o client ainda o consome no lookup por usuario; sera removido apos a migracao do client.
 router.get("/subscriptions", async (_req, res, next) => {
   try {
     const { data, error } = await supabaseAdmin
@@ -736,6 +742,54 @@ router.get("/subscriptions", async (_req, res, next) => {
       return next(createError(500, "db_error", "Erro ao buscar assinaturas."));
 
     res.json({ data: data || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Lista paginada de assinantes (subscriptions join plans + email do usuario).
+// Substitui o /subscriptions legado (cap fixo de 100, sem paginacao).
+router.get("/subscribers", async (req, res, next) => {
+  try {
+    const pageRaw = parseInt(String(req.query.page ?? "1"), 10);
+    const pageSizeRaw = parseInt(String(req.query.pageSize ?? "25"), 10);
+    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
+    const pageSize = Math.min(
+      Math.max(Number.isFinite(pageSizeRaw) ? pageSizeRaw : 25, 1),
+      100,
+    );
+    const status =
+      typeof req.query.status === "string" ? req.query.status : undefined;
+    const provider =
+      typeof req.query.provider === "string" ? req.query.provider : undefined;
+    const planCode =
+      typeof req.query.planCode === "string" ? req.query.planCode : undefined;
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
+
+    const result = await getSubscriberList({
+      page,
+      pageSize,
+      status,
+      provider,
+      planCode,
+      search,
+    });
+    res.json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Metricas financeiras reais (MRR + churn), substituindo os mocks do admin.
+// Erros propagam (o modulo nunca colapsa em 0); ausencia vem como estado nomeado.
+router.get("/billing-metrics", async (_req, res, next) => {
+  try {
+    const [mrr, churn] = await Promise.all([
+      getMrrSnapshot(),
+      getChurnSnapshot({}),
+    ]);
+    res.json({ data: { mrr, churn } });
   } catch (err) {
     next(err);
   }
