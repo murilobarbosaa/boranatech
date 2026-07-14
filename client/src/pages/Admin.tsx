@@ -5967,9 +5967,10 @@ export default function Admin() {
                       Motivos de cancelamento
                     </h3>
                     <div className="mt-4">
+                      {/* TODO(Ana): copy do placeholder de motivos de cancelamento. */}
                       <PendingIntegration
-                        tool="Asaas Webhook"
-                        description="Requer pergunta de motivo no cancelamento do Asaas"
+                        tool="Motivos de cancelamento"
+                        description="Requer agregação dos motivos coletados no cancelamento."
                       />
                     </div>
                   </article>
@@ -6059,14 +6060,16 @@ export default function Admin() {
               subtitle="Separe assinatura própria, receita por canal, previsão de churn e comissões recebidas de parceiros como Alura e Udemy."
             >
               <div className="grid gap-6 xl:grid-cols-3">
-                <article className="card-brutal rounded-3xl bg-white p-6">
+                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
+                  {/* TODO(Ana): titulo do bloco de metricas de cobranca. */}
                   <h3 className="font-display text-2xl font-black">
-                    MRR por cohort
+                    MRR, ARPU e churn
                   </h3>
                   <div className="mt-4">
-                    <PendingIntegration
-                      tool="Asaas Webhook"
-                      description="Requer webhook de pagamento configurado no Asaas"
+                    <BillingMetricsPanel
+                      loading={overviewLoading}
+                      error={billingMetricsError}
+                      metrics={billingMetrics}
                     />
                   </div>
                 </article>
@@ -6075,9 +6078,10 @@ export default function Admin() {
                     Receita por canal
                   </h3>
                   <div className="mt-4">
+                    {/* TODO(Ana): copy do placeholder de receita por canal. */}
                     <PendingIntegration
-                      tool="GA4 + Asaas"
-                      description="Requer UTMs + webhook do Asaas"
+                      tool="Atribuição por canal"
+                      description="Requer atribuição por UTM (pendente)."
                     />
                   </div>
                 </article>
@@ -6822,11 +6826,11 @@ export default function Admin() {
                     Próximas integrações recomendadas
                   </h2>
                   <div className="mt-5 grid gap-4 md:grid-cols-2">
+                    {/* TODO(Ana): revisar a lista de integracoes ainda pendentes. */}
                     {[
-                      "Endpoint admin no backend para contar usuários e assinantes reais.",
-                      "Webhook do provedor de pagamento para MRR, churn e inadimplência.",
-                      "Tabela de affiliates, coupons e referrals para rastrear links, descontos e comissão.",
-                      "Tabela de usage_logs para registrar chamadas, tokens e custo de IA.",
+                      "Atribuição de aquisição por canal via UTM.",
+                      "Analytics por usuário (funcionalidades usadas e sessões).",
+                      "Agregação dos motivos de cancelamento no admin.",
                       "Monitor de erros por rota, dispositivo, navegador e usuário afetado.",
                     ].map((item) => (
                       <div
