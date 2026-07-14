@@ -31,6 +31,11 @@ import CeuEstrelado from "@/components/shared/CeuEstrelado";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
+import {
+  captureCheckoutAbandoned,
+  captureCheckoutStarted,
+  planPriceCents,
+} from "@/lib/analytics";
 import { createCheckout } from "@/services/subscriptionService";
 import { apiUrl } from "@/lib/api";
 import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
@@ -272,6 +277,16 @@ export default function Checkout() {
     };
   }, []);
 
+  // checkout_abandoned: se havia um checkout pendente (marcado antes do redirect
+  // para a Stripe) e a pessoa voltou para ca (cancel_url), registra o abandono.
+  useEffect(() => {
+    const pending = sessionStorage.getItem("bnt_checkout_pending");
+    if (pending) {
+      sessionStorage.removeItem("bnt_checkout_pending");
+      captureCheckoutAbandoned({ plan_code: pending });
+    }
+  }, []);
+
   function discountedPrice(price: number) {
     if (!discountPercent) return price;
     return Number((price * (1 - discountPercent / 100)).toFixed(2));
@@ -288,6 +303,15 @@ export default function Checkout() {
 
     setLoading(true);
     try {
+      // checkout_started ANTES do redirect. Marca o checkout como pendente para
+      // detectar abandono quando a pessoa voltar ao cancel_url (/planos).
+      captureCheckoutStarted({
+        plan_code: selectedPlan,
+        price_cents: planPriceCents(selectedPlan),
+        source_path: window.location.pathname,
+        cta_id: "checkout_page_subscribe",
+      });
+      sessionStorage.setItem("bnt_checkout_pending", selectedPlan);
       const { checkoutUrl } = await createCheckout(selectedPlan);
       if (checkoutUrl) window.location.href = checkoutUrl;
     } catch (error) {

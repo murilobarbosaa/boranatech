@@ -1036,7 +1036,7 @@ export default function PortfolioAnalisar() {
 
           {!isPro ? (
             <div className="space-y-10">
-              <ProGate description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
+              <ProGate feature="portfolio_analyzer" description="A análise lê seu perfil ou repositório público do GitHub, calcula uma nota e mostra o que melhorar pra vagas de estágio, trainee, júnior ou pleno." />
               <PortfolioFreeGuide />
             </div>
           ) : (

@@ -540,7 +540,7 @@ export default function CurriculoGerar() {
 
           {!isPro ? (
             <div className="print-hide">
-              <ProGate description="A geração assistida do currículo (e os formatos Híbrido, Cronológico e Harvard) é uma feature do Plano Pro. Assina pra desbloquear." />
+              <ProGate feature="curriculo_generator" description="A geração assistida do currículo (e os formatos Híbrido, Cronológico e Harvard) é uma feature do Plano Pro. Assina pra desbloquear." />
             </div>
           ) : authLoading ? (
             <div className="print-hide">

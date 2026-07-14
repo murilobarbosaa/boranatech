@@ -138,7 +138,7 @@ export default function Vagas() {
                 </h2>
                 <VagasShowcase />
               </div>
-              <ProGate description="O feed reúne vagas reais de estágio, trainee e júnior de várias fontes (Brasil e internacional), com busca, filtros por nível, modalidade e contrato, e vagas em destaque." />
+              <ProGate feature="vagas_feed" description="O feed reúne vagas reais de estágio, trainee e júnior de várias fontes (Brasil e internacional), com busca, filtros por nível, modalidade e contrato, e vagas em destaque." />
             </div>
           ) : (
             <div className="mb-2">

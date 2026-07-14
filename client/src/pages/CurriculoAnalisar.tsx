@@ -290,7 +290,7 @@ export default function CurriculoAnalisar() {
             </div>
           </div>
           {!isPro ? (
-            <ProGate description={COPY.proGateDescription} />
+            <ProGate feature="curriculo_analyzer" description={COPY.proGateDescription} />
           ) : result ? (
             <ResultView
               result={result}

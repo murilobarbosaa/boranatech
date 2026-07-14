@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { Lock } from "lucide-react";
 import { Link } from "wouter";
 
+import { captureProGateHit } from "@/lib/analytics";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +14,8 @@ import {
 interface ProUpsellModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // Identificador do recurso Pro para o evento pro_gate_hit (funil de conversao).
+  feature: string;
   // Reusavel: cada gatilho passa a sua copy. TODO(Ana): copy final por contexto.
   description?: string;
 }
@@ -22,8 +26,14 @@ interface ProUpsellModalProps {
 export default function ProUpsellModal({
   open,
   onOpenChange,
+  feature,
   description = "Esse recurso faz parte do Plano Pro. Assine pra desbloquear.", // TODO(Ana): copy final
 }: ProUpsellModalProps) {
+  // Gate por clique: registra o hit toda vez que o modal abre.
+  useEffect(() => {
+    if (open) captureProGateHit({ feature, path: window.location.pathname });
+  }, [open, feature]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-2xl border-2 border-slate-950 bg-white p-6 text-center shadow-[6px_6px_0_#0f172a] sm:max-w-md">

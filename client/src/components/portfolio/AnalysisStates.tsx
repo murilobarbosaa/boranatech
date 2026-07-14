@@ -29,7 +29,7 @@ interface AnalysisErrorProps {
 export function AnalysisError({ error, onRetry }: AnalysisErrorProps) {
   if (error === "PRO_REQUIRED") {
     return (
-      <ProGate description="O analisador de GitHub faz parte do Plano Pro. Assine para liberar a análise completa." />
+      <ProGate feature="github_analyzer" description="O analisador de GitHub faz parte do Plano Pro. Assine para liberar a análise completa." />
     );
   }
 

@@ -463,7 +463,7 @@ export default function RoadmapIA() {
 
           <div className="mt-8">
             {!isPro ? (
-              <ProGate description={COPY.proGateDescription} />
+              <ProGate feature="roadmap_ia" description={COPY.proGateDescription} />
             ) : generationActive ||
               state.phase === "error" ||
               state.phase === "blocked" ? (

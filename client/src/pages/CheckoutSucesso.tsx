@@ -7,6 +7,10 @@ import { fireProCelebration } from "@/lib/proConfetti";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import {
+  captureSubscriptionCompleted,
+  planPriceCents,
+} from "@/lib/analytics";
 import { clearStoredAffiliate } from "@/hooks/useAffiliate";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -91,6 +95,30 @@ export default function CheckoutSucesso() {
     affiliateConsumedRef.current = true;
     clearStoredAffiliate();
   }, [isPro]);
+
+  // subscription_completed: dispara uma unica vez quando a assinatura confirma.
+  // Tambem limpa a flag de checkout pendente para nao gerar um checkout_abandoned
+  // falso se a pessoa voltar ao /planos depois.
+  const completedFiredRef = useRef(false);
+  useEffect(() => {
+    if (!isPro || completedFiredRef.current) return;
+    completedFiredRef.current = true;
+    sessionStorage.removeItem("bnt_checkout_pending");
+    const sub = subscription as {
+      provider?: string | null;
+      plans?: { code?: string | null; price_cents?: number | null } | null;
+    } | null;
+    const planCode = sub?.plans?.code ?? "";
+    const priceCents =
+      typeof sub?.plans?.price_cents === "number"
+        ? sub.plans.price_cents
+        : planPriceCents(planCode);
+    captureSubscriptionCompleted({
+      plan_code: planCode,
+      price_cents: priceCents,
+      provider: sub?.provider ?? "stripe",
+    });
+  }, [isPro, subscription]);
 
   const fadeSlideUp = {
     initial: reduce ? false : { opacity: 0, y: 12 },

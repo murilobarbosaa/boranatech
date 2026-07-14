@@ -655,7 +655,7 @@ export default function EntrevistaSessao() {
                 </div>
               ) : !isPro ? (
                 <div className="mx-auto w-full max-w-3xl py-1">
-                  <ProGate description="Retomar esta entrevista faz parte do Plano Pro. Seu histórico continua aqui." />
+                  <ProGate feature="interview_resume" description="Retomar esta entrevista faz parte do Plano Pro. Seu histórico continua aqui." />
                 </div>
               ) : (
                 <>

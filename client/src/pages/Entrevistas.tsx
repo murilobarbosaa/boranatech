@@ -97,7 +97,7 @@ export default function Entrevistas() {
               className={!creatingSession ? "mt-14 sm:mt-16" : undefined}
             >
               {!isPro && !loading ? (
-                <ProGate description="Treine entrevistas com IA: perguntas calibradas pela vaga ou pela sua área, feedback honesto a cada resposta e um veredito final de preparo." />
+                <ProGate feature="interview" description="Treine entrevistas com IA: perguntas calibradas pela vaga ou pela sua área, feedback honesto a cada resposta e um veredito final de preparo." />
               ) : isPro ? (
                 <InterviewIntake onCreatingChange={setCreatingSession} />
               ) : null}

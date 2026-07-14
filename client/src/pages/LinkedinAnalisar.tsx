@@ -1013,7 +1013,7 @@ export default function LinkedinAnalisar() {
             </div>
           ) : null}
           {!isPro ? (
-            <ProGate description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno." />
+            <ProGate feature="linkedin_analyzer" description="A análise lê seu perfil do LinkedIn, calcula uma nota e entrega os textos prontos para você ser encontrado por recrutadores de estágio, trainee, júnior ou pleno." />
           ) : (
             <div className="space-y-8">
               {/* Ordem narrativa da entrada: explicacao (timeline + vitrine)

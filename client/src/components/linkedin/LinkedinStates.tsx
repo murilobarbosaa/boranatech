@@ -69,7 +69,7 @@ interface LinkedinErrorProps {
 export function LinkedinError({ error, onRetry }: LinkedinErrorProps) {
   if (error === "PRO_REQUIRED") {
     return (
-      <ProGate description="O analisador de LinkedIn faz parte do Plano Pro. Assine para liberar a análise completa." />
+      <ProGate feature="linkedin_analyzer" description="O analisador de LinkedIn faz parte do Plano Pro. Assine para liberar a análise completa." />
     );
   }
 

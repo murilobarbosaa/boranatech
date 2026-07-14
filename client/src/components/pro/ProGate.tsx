@@ -1,10 +1,14 @@
+import { useEffect, useRef } from "react";
 import { Lock, Sparkles } from "lucide-react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
+import { captureProGateHit } from "@/lib/analytics";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 
 interface ProGateProps {
   description: string;
+  // Identificador do recurso Pro para o evento pro_gate_hit (funil de conversao).
+  feature: string;
   className?: string;
 }
 
@@ -120,9 +124,23 @@ function StarField({ reduce }: { reduce: boolean | null }) {
   );
 }
 
-export default function ProGate({ description, className = "" }: ProGateProps) {
+export default function ProGate({
+  description,
+  feature,
+  className = "",
+}: ProGateProps) {
   const { loading } = useSubscription();
   const reduce = useReducedMotion();
+  const hitFiredRef = useRef(false);
+
+  // Gate visivel a um usuario free -> registra o hit uma unica vez (depois que a
+  // assinatura terminou de carregar). E o evento que responde "qual recurso Pro
+  // empurra a assinatura".
+  useEffect(() => {
+    if (loading || hitFiredRef.current) return;
+    hitFiredRef.current = true;
+    captureProGateHit({ feature, path: window.location.pathname });
+  }, [loading, feature]);
 
   if (loading) {
     return (

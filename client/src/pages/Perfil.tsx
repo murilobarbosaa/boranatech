@@ -1220,6 +1220,7 @@ export default function Perfil() {
                           />
                         ) : (
                           <ProGate
+                            feature="avatar_photo"
                             description="Use uma foto no lugar do ícone. Disponível no Plano Pro."
                             className="mt-4"
                           />
@@ -1839,6 +1840,7 @@ export default function Perfil() {
           <ProUpsellModal
             open={proUpsellOpen}
             onOpenChange={setProUpsellOpen}
+            feature="avatar_borders"
             description="As bordas animadas fazem parte do Plano Pro. Assine pra desbloquear."
           />
 

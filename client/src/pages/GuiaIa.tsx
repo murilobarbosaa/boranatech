@@ -1191,7 +1191,7 @@ export default function GuiaIa() {
                     <p className="mb-3 text-sm font-bold text-violet-700">
                       No Pro: notícias de IA em tempo real, sem limite.
                     </p>
-                    <ProGate description="Aqui ficam todas as notícias de IA num só lugar. Assine o Pro e acompanhe tudo em tempo real, sem limite." />
+                    <ProGate feature="ai_news" description="Aqui ficam todas as notícias de IA num só lugar. Assine o Pro e acompanhe tudo em tempo real, sem limite." />
                   </div>
                 )}
               </div>
@@ -1213,7 +1213,7 @@ export default function GuiaIa() {
                     <p className="mb-3 text-sm font-bold text-violet-700">
                       No Pro: mercado e bolsa de IA, com valores e variações.
                     </p>
-                    <ProGate description="No Pro você acompanha o mercado e as bolsas das empresas de IA: valores, variações e destaques. Chegando em breve." />
+                    <ProGate feature="ai_market" description="No Pro você acompanha o mercado e as bolsas das empresas de IA: valores, variações e destaques. Chegando em breve." />
                   </div>
                 )}
               </div>

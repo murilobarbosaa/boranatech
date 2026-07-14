@@ -836,7 +836,7 @@ export default function PlanoCarreira() {
   } else if (wantNew && !isPro) {
     // A volta pro plano atual vive no slot do cabecalho.
     mainBlock = (
-      <ProGate description="Gerar um plano de carreira novo faz parte do Plano Pro. Seu plano atual e o progresso continuam aqui." />
+      <ProGate feature="career_plan_new" description="Gerar um plano de carreira novo faz parte do Plano Pro. Seu plano atual e o progresso continuam aqui." />
     );
   } else if (wantNew || (!shown && isPro)) {
     mainBlock = (
@@ -858,7 +858,7 @@ export default function PlanoCarreira() {
     );
   } else {
     mainBlock = (
-      <ProGate description="A IA monta a rota da sua carreira: degraus ordenados, certificações que valem o preço pro seu orçamento, cronograma realista e um checklist pra acompanhar até a vaga." />
+      <ProGate feature="career_plan" description="A IA monta a rota da sua carreira: degraus ordenados, certificações que valem o preço pro seu orçamento, cronograma realista e um checklist pra acompanhar até a vaga." />
     );
   }
 
