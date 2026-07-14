@@ -42,8 +42,10 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import PendingIntegration from "@/components/admin/PendingIntegration";
+import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import {
   SubscribersSummary,
   SubscribersTable,
@@ -608,22 +610,6 @@ function PublishBadge({ published }: { published?: boolean }) {
     >
       {published ? "Publicado" : "Rascunho"}
     </span>
-  );
-}
-
-function LoadingBlock({ label = "Carregando dados..." }: { label?: string }) {
-  return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-6 text-center text-sm font-black text-slate-500">
-      {label}
-    </div>
-  );
-}
-
-function ErrorBlock({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-6 text-center text-sm font-black text-rose-700">
-      {message}
-    </div>
   );
 }
 
@@ -4742,6 +4728,7 @@ export default function Admin() {
   const [queueError, setQueueError] = useState<string | null>(null);
   const [churnError, setChurnError] = useState<string | null>(null);
   const [affiliatesError, setAffiliatesError] = useState<string | null>(null);
+  const [financeRefreshKey, setFinanceRefreshKey] = useState(0);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [activeSection, setActiveSection] =
     useState<AdminSectionId>("visao-geral");
@@ -6106,64 +6093,69 @@ export default function Admin() {
           {activeSection === "financeiro" ? (
             <AdminSection
               id="financeiro"
-              eyebrow="financeiro detalhado"
+              eyebrow="financeiro"
               icon={<DollarSign className="h-4 w-4" />}
-              title="MRR, canal, risco e afiliados externos"
-              subtitle="Separe assinatura própria, receita por canal, previsão de churn e comissões recebidas de parceiros como Alura e Udemy."
+              title="Financeiro"
+              subtitle="Resultado de caixa (entrou, saiu, lucro) separado das métricas de recorrência (MRR, ARPU, churn). São coisas diferentes."
             >
-              <div className="grid gap-6 xl:grid-cols-3">
-                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                  {/* TODO(Ana): titulo do bloco de metricas de cobranca. */}
-                  <h3 className="font-display text-2xl font-black">
-                    MRR, ARPU e churn
-                  </h3>
-                  <div className="mt-4">
-                    <BillingMetricsPanel
-                      loading={overviewLoading}
-                      error={billingMetricsError}
-                      metrics={billingMetrics}
-                    />
-                  </div>
-                </article>
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h3 className="font-display text-2xl font-black">
-                    Receita por canal
-                  </h3>
-                  <div className="mt-4">
-                    {/* TODO(Ana): copy do placeholder de receita por canal. */}
-                    <PendingIntegration
-                      tool="Atribuição por canal"
-                      description="Requer atribuição por UTM (pendente)."
-                    />
-                  </div>
-                </article>
-                <article className="card-brutal rounded-3xl bg-white p-6">
-                  <h3 className="font-display text-2xl font-black">
-                    Afiliados externos
-                  </h3>
-                  <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
-                    <p className="text-xs font-black uppercase text-violet-700">
-                      Comissões a pagar
-                    </p>
-                    <p className="font-display mt-1 text-2xl font-black text-slate-950">
-                      {formatCents(affiliateTotals.commissionDue)}
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">
-                      {formatCount(affiliateTotals.sales)} vendas atribuídas
-                    </p>
-                  </div>
-                </article>
-              </div>
+              {/* TODO(Ana): titulo e subtitulo da secao financeiro (title/subtitle acima). */}
+              {/* RESULTADO DE CAIXA (fonte: Stripe balance transactions) */}
+              <FinanceDashboard refreshKey={financeRefreshKey} />
 
-              <div className="mt-8">
-                {/* TODO(Ana): titulo e subtitulo da tabela de assinantes. */}
-                <h3 className="font-display text-2xl font-black text-slate-950">
-                  Assinantes
-                </h3>
-                <p className="mb-4 mt-1 text-sm font-semibold text-slate-600">
-                  Lista completa de assinaturas, com filtros e paginação.
+              {/* METRICAS DE RECORRENCIA, claramente separadas do caixa acima */}
+              <div className="mt-12 border-t-4 border-slate-900 pt-8">
+                {/* TODO(Ana): titulo e subtitulo do bloco de recorrencia. */}
+                <h2 className="font-display text-3xl font-black text-slate-950">
+                  Recorrência e assinantes
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm font-semibold text-slate-600">
+                  Métricas de assinatura (MRR, ARPU, churn) e comissões de
+                  afiliados. Diferente do resultado de caixa acima: aqui é o
+                  recorrente projetado, não o dinheiro que efetivamente entrou.
                 </p>
-                <SubscribersTable />
+
+                <div className="mt-5 grid gap-6 xl:grid-cols-3">
+                  <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
+                    {/* TODO(Ana): titulo do bloco de metricas de cobranca. */}
+                    <h3 className="font-display text-2xl font-black">
+                      MRR, ARPU e churn
+                    </h3>
+                    <div className="mt-4">
+                      <BillingMetricsPanel
+                        loading={overviewLoading}
+                        error={billingMetricsError}
+                        metrics={billingMetrics}
+                      />
+                    </div>
+                  </article>
+                  <article className="card-brutal rounded-3xl bg-white p-6">
+                    <h3 className="font-display text-2xl font-black">
+                      Afiliados externos
+                    </h3>
+                    <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
+                      <p className="text-xs font-black uppercase text-violet-700">
+                        Comissões a pagar
+                      </p>
+                      <p className="font-display mt-1 text-2xl font-black text-slate-950">
+                        {formatCents(affiliateTotals.commissionDue)}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-slate-500">
+                        {formatCount(affiliateTotals.sales)} vendas atribuídas
+                      </p>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="mt-8">
+                  {/* TODO(Ana): titulo e subtitulo da tabela de assinantes. */}
+                  <h3 className="font-display text-2xl font-black text-slate-950">
+                    Assinantes
+                  </h3>
+                  <p className="mb-4 mt-1 text-sm font-semibold text-slate-600">
+                    Lista completa de assinaturas, com filtros e paginação.
+                  </p>
+                  <SubscribersTable />
+                </div>
               </div>
             </AdminSection>
           ) : null}
