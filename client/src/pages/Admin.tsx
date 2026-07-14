@@ -215,6 +215,40 @@ type PosthogStatsData = {
   acquisition: Array<{ channel: string; users: number }>;
 };
 
+type PlanMrr = {
+  code: string;
+  name: string | null;
+  count: number;
+  mrrCents: number;
+};
+
+type MrrSnapshot = {
+  mrrCents: number;
+  arpuCents: number | null;
+  activeCount: number;
+  trialingCount: number;
+  byPlan: PlanMrr[];
+};
+
+type ChurnSnapshot =
+  | {
+      status: "insufficient_data";
+      reason: string;
+      windowDays: number;
+      canceledInWindow?: number;
+      activeAtStart?: number;
+    }
+  | {
+      status: "ok";
+      windowDays: number;
+      churnRate: number;
+      canceledInWindow: number;
+      activeAtStart: number;
+      ltvCents: number | null;
+    };
+
+type BillingMetricsData = { mrr: MrrSnapshot; churn: ChurnSnapshot };
+
 type ContentItem = {
   id: string;
   slug?: string;
@@ -566,6 +600,158 @@ function LoadingBlock({ label = "Carregando dados..." }: { label?: string }) {
   return (
     <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-white p-6 text-center text-sm font-black text-slate-500">
       {label}
+    </div>
+  );
+}
+
+function ErrorBlock({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border-2 border-rose-300 bg-rose-50 p-6 text-center text-sm font-black text-rose-700">
+      {message}
+    </div>
+  );
+}
+
+// Ausencia como estado VISIVEL e nomeado, nunca 0 nem traco.
+// TODO(Ana): revisar copy de "Dados insuficientes" e as explicacoes.
+function InsufficientDataBlock({
+  label,
+  explanation,
+}: {
+  label: string;
+  explanation: string;
+}) {
+  return (
+    <div className="rounded-2xl border-2 border-dashed border-slate-400 bg-slate-50 p-4">
+      <p className="text-xs font-black uppercase text-slate-500">{label}</p>
+      <p className="font-display text-lg font-black text-slate-700">
+        Dados insuficientes
+      </p>
+      <p className="mt-1 text-xs font-semibold text-slate-500">{explanation}</p>
+    </div>
+  );
+}
+
+function MetricTile({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4">
+      <p className="text-xs font-black uppercase text-violet-700">{label}</p>
+      <p className="font-display text-2xl font-black text-slate-950">{value}</p>
+      {hint ? (
+        <p className="mt-1 text-xs font-semibold text-slate-500">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function formatPercent1(value: number) {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+// TODO(Ana): revisar as explicacoes de churn insuficiente.
+function churnInsufficientReason(reason: string): string {
+  switch (reason) {
+    case "subscription_base_younger_than_window":
+      return "Base de assinaturas ainda nova demais para calcular churn de 30 dias.";
+    case "no_active_subscribers_at_window_start":
+      return "Não havia assinantes ativos no início da janela para calcular churn.";
+    default:
+      return "Dados insuficientes para calcular churn.";
+  }
+}
+
+// Painel de metricas de cobranca (MRR, ARPU, churn, LTV, distribuicao por plano).
+// Erro e ausencia sao estados visiveis: nunca renderiza 0 nem valor inventado.
+// TODO(Ana): revisar labels e hints das metricas de cobranca.
+function BillingMetricsPanel({
+  loading,
+  error,
+  metrics,
+}: {
+  loading: boolean;
+  error: string | null;
+  metrics: BillingMetricsData | null;
+}) {
+  if (loading) return <LoadingBlock />;
+  if (error) return <ErrorBlock message={error} />;
+  if (!metrics) return <LoadingBlock />;
+
+  const { mrr, churn } = metrics;
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MetricTile
+          label="MRR"
+          value={formatCents(mrr.mrrCents)}
+          hint={`${mrr.activeCount} ativos, ${mrr.trialingCount} em trial`}
+        />
+        {mrr.arpuCents === null ? (
+          <InsufficientDataBlock
+            label="ARPU"
+            explanation="Sem assinantes ativos para calcular ARPU."
+          />
+        ) : (
+          <MetricTile
+            label="ARPU"
+            value={formatCents(mrr.arpuCents)}
+            hint="Receita média por assinante ativo"
+          />
+        )}
+        {churn.status === "insufficient_data" ? (
+          <InsufficientDataBlock
+            label={`Churn (${churn.windowDays}d)`}
+            explanation={churnInsufficientReason(churn.reason)}
+          />
+        ) : (
+          <MetricTile
+            label={`Churn (${churn.windowDays}d)`}
+            value={formatPercent1(churn.churnRate)}
+            hint={`${churn.canceledInWindow} de ${churn.activeAtStart} no início da janela`}
+          />
+        )}
+        {churn.status === "ok" && churn.ltvCents !== null ? (
+          <MetricTile
+            label="LTV"
+            value={formatCents(churn.ltvCents)}
+            hint="ARPU dividido pelo churn"
+          />
+        ) : (
+          <InsufficientDataBlock
+            label="LTV"
+            explanation="LTV precisa de ARPU e churn maior que zero."
+          />
+        )}
+      </div>
+      {mrr.byPlan.length ? (
+        <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white">
+          <p className="border-b-2 border-slate-900 bg-slate-50 px-4 py-2 text-xs font-black uppercase text-slate-600">
+            Distribuição por plano
+          </p>
+          <ul className="divide-y divide-slate-200">
+            {mrr.byPlan.map((plan) => (
+              <li
+                key={plan.code}
+                className="flex items-center justify-between gap-3 px-4 py-2 text-sm"
+              >
+                <span className="font-black text-slate-900">
+                  {plan.name ?? plan.code}
+                </span>
+                <span className="font-semibold text-slate-600">
+                  {plan.count} · {formatCents(plan.mrrCents)}/mês
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -4492,6 +4678,12 @@ export default function Admin() {
     null,
   );
   const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
+  const [billingMetrics, setBillingMetrics] = useState<BillingMetricsData | null>(
+    null,
+  );
+  const [billingMetricsError, setBillingMetricsError] = useState<string | null>(
+    null,
+  );
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [activeSection, setActiveSection] =
     useState<AdminSectionId>("visao-geral");
@@ -4553,6 +4745,7 @@ export default function Admin() {
           churnRiskJson,
           affiliatesJson,
           subscriptionsJson,
+          billingMetricsResult,
         ] = await Promise.all([
           adminFetch("/dashboard"),
           fetch(apiUrl("/api/health")).then((res) => res.json()),
@@ -4564,6 +4757,20 @@ export default function Admin() {
           adminFetch("/churn-risk").catch(() => ({ data: null })),
           adminFetch("/affiliates-stats").catch(() => ({ data: [] })),
           adminFetch("/subscriptions"),
+          // Falha de metricas de cobranca vira ESTADO de erro na secao, nao dado
+          // vazio: capturamos o erro num resultado tagueado, sem colapsar em 0.
+          adminFetch("/billing-metrics")
+            .then((json) => ({
+              ok: true as const,
+              data: json.data as BillingMetricsData,
+            }))
+            .catch((err: unknown) => ({
+              ok: false as const,
+              error:
+                err instanceof Error
+                  ? err.message
+                  : "Erro ao carregar métricas de cobrança.",
+            })),
         ]);
         if (cancelled) return;
         setDashboard(dashboardJson.data);
@@ -4592,6 +4799,13 @@ export default function Admin() {
         setSubscriptions(
           Array.isArray(subscriptionsJson.data) ? subscriptionsJson.data : [],
         );
+        if (billingMetricsResult.ok) {
+          setBillingMetrics(billingMetricsResult.data);
+          setBillingMetricsError(null);
+        } else {
+          setBillingMetrics(null);
+          setBillingMetricsError(billingMetricsResult.error);
+        }
       } finally {
         if (!cancelled) setOverviewLoading(false);
       }
@@ -4652,6 +4866,8 @@ export default function Admin() {
           setChurnRiskUsers(null);
           setAffiliates([]);
           setSubscriptions([]);
+          setBillingMetrics(null);
+          setBillingMetricsError(null);
           setAccessState("forbidden");
         });
     };
@@ -5306,29 +5522,11 @@ export default function Admin() {
                         Fonte: /api/admin/dashboard
                       </p>
                     </div>
-                    <PendingIntegration
-                      tool="Asaas Webhook"
-                      description="Distribuição por plano e MRR requer webhook de pagamento configurado no Asaas"
+                    <BillingMetricsPanel
+                      loading={overviewLoading}
+                      error={billingMetricsError}
+                      metrics={billingMetrics}
                     />
-                  </div>
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    {[
-                      ["Churn", "3,1%"],
-                      ["LTV médio", "R$ 312"],
-                      ["ARPU", "R$ 36"],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4"
-                      >
-                        <p className="text-xs font-black uppercase text-violet-700">
-                          {label}
-                        </p>
-                        <p className="font-display text-2xl font-black text-slate-950">
-                          {value}
-                        </p>
-                      </div>
-                    ))}
                   </div>
                   <div className="mt-6">
                     <SubscribersSummary
