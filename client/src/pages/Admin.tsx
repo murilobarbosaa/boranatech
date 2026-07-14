@@ -43,6 +43,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import PendingIntegration from "@/components/admin/PendingIntegration";
+import {
+  SubscribersSummary,
+  SubscribersTable,
+} from "@/components/admin/SubscribersTable";
 import VagasDestaqueAdmin from "@/components/admin/VagasDestaqueAdmin";
 import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
@@ -5326,6 +5330,11 @@ export default function Admin() {
                       </div>
                     ))}
                   </div>
+                  <div className="mt-6">
+                    <SubscribersSummary
+                      onSeeAll={() => setActiveSection("financeiro")}
+                    />
+                  </div>
                 </article>
               </div>
             </>
@@ -5803,6 +5812,17 @@ export default function Admin() {
                     </p>
                   </div>
                 </article>
+              </div>
+
+              <div className="mt-8">
+                {/* TODO(Ana): titulo e subtitulo da tabela de assinantes. */}
+                <h3 className="font-display text-2xl font-black text-slate-950">
+                  Assinantes
+                </h3>
+                <p className="mb-4 mt-1 text-sm font-semibold text-slate-600">
+                  Lista completa de assinaturas, com filtros e paginação.
+                </p>
+                <SubscribersTable />
               </div>
             </AdminSection>
           ) : null}
