@@ -322,6 +322,101 @@ router.post("/reindex-search", withCronLock("reindex-search", 1200, async (_req,
   }
 }));
 
+// Cancelamento agendado de linha Asaas vencida: comportamento legado preservado
+// (avisa o Asaas e finaliza a linha no banco).
+async function processAsaasCancellation(sub: SubRow): Promise<RowOutcome> {
+  if (sub.provider_subscription_id) {
+    await cancelAsaasSubscription(sub.provider_subscription_id);
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from("subscriptions")
+    .update({ status: "canceled", canceled_at: new Date().toISOString() })
+    .eq("id", sub.id);
+  if (updateError) throw updateError;
+
+  // Deixou de ser Pro: invalida o cache do dono apos a escrita confirmada.
+  if (sub.user_id) {
+    void invalidateProStatusCache(sub.user_id);
+    await supabaseAdmin
+      .from("subscription_cancellations")
+      .update({ status: "completed" })
+      .eq("user_id", sub.user_id)
+      .eq("status", "scheduled");
+  }
+  return { provider: "asaas", outcome: "canceled" };
+}
+
+// Cancelamento agendado de linha Stripe vencida. O webhook de fim de periodo
+// (customer.subscription.deleted) pode ter se perdido, entao a UNICA verdade e a
+// API da Stripe: nunca presumimos que ela ja cancelou.
+async function reconcileStripeCancellation(sub: SubRow): Promise<RowOutcome> {
+  if (!env.stripeSecretKey) {
+    return {
+      provider: "stripe",
+      outcome: "skipped",
+      reason: "stripe_not_configured",
+    };
+  }
+  if (!sub.provider_subscription_id) {
+    return {
+      provider: "stripe",
+      outcome: "skipped",
+      reason: "missing_provider_subscription_id",
+    };
+  }
+
+  // Se esta leitura FALHAR (rede/5xx/rate limit), a excecao propaga ANTES de
+  // qualquer escrita e o caller conta failed. Falha de leitura nunca vira
+  // decisao: nem concede nem revoga acesso.
+  const state = await getStripeSubscriptionState(sub.provider_subscription_id);
+
+  const proNow = isProLikeStatus(state.status);
+  const statusChanged = state.status !== (sub.status ?? null);
+
+  const { error: updateError } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      status: state.status,
+      current_period_start: state.currentPeriodStart,
+      current_period_end: state.currentPeriodEnd,
+      cancel_at_period_end: state.cancelAtPeriodEnd,
+      canceled_at:
+        state.status === "canceled"
+          ? (state.canceledAt ?? new Date().toISOString())
+          : null,
+      last_event_at: new Date().toISOString(),
+    })
+    .eq("id", sub.id);
+  if (updateError) throw updateError;
+
+  // Status local mudou -> o boolean Pro pode ter mudado: invalida o cache.
+  if (statusChanged && sub.user_id) void invalidateProStatusCache(sub.user_id);
+
+  if (!proNow) {
+    // Terminou de fato na Stripe (canceled/past_due/incomplete): Pro cai e a
+    // auditoria de cancelamento agendado e fechada.
+    if (sub.user_id) {
+      await supabaseAdmin
+        .from("subscription_cancellations")
+        .update({ status: "completed" })
+        .eq("user_id", sub.user_id)
+        .eq("status", "scheduled");
+    }
+    return { provider: "stripe", outcome: "reconciled_terminal" };
+  }
+
+  if (state.cancelAtPeriodEnd) {
+    // Segue active com cancelamento agendado: a Stripe ainda nao finalizou.
+    // Nada a decidir agora (is_user_pro ja nega pelo periodo vencido).
+    return { provider: "stripe", outcome: "pending" };
+  }
+
+  // Cancelamento revertido direto no dashboard da Stripe: a Stripe e a fonte de
+  // verdade, entao a linha local reflete o ativo.
+  return { provider: "stripe", outcome: "reconciled_active" };
+}
+
 // NOTA (redesenho billing, abordagem C): desde que POST /billing/cancel passou a
 // avisar o Asaas na hora (endDate + DELETE das pendentes futuras), o cancelAsaasSubscription
 // abaixo deixou de ser o mecanismo PRIMARIO de parar o billing no caminho feliz, o Asaas
@@ -336,10 +431,14 @@ router.post("/process-cancellations", withCronLock("process-cancellations", 600,
   try {
     const nowIso = new Date().toISOString();
 
+    // Provider-agnostico. cancel_at_period_end=true NAO pode mais ser excluido
+    // silenciosamente do reconcile: para a Stripe o webhook de fim de periodo
+    // pode se perder, e ausencia de evento nunca pode manter Pro (fail-open).
     const { data: due, error: dueError } = await supabaseAdmin
       .from("subscriptions")
-      .select("id, user_id, provider_subscription_id, current_period_end")
-      .eq("provider", "asaas")
+      .select(
+        "id, user_id, provider, status, provider_subscription_id, current_period_end",
+      )
       .eq("cancel_at_period_end", true)
       .eq("status", "active")
       .lte("current_period_end", nowIso);
@@ -356,54 +455,56 @@ router.post("/process-cancellations", withCronLock("process-cancellations", 600,
       );
     }
 
-    const subscriptions = due || [];
-    let canceled = 0;
-    let failed = 0;
-    const failures: Array<{ subscription_id: string; reason: string }> = [];
+    const subs = (due || []) as SubRow[];
+    const outcomes: RowOutcome[] = [];
+    const failures: Array<{
+      subscription_id: string;
+      provider: string;
+      reason: string;
+    }> = [];
 
-    for (const sub of subscriptions) {
+    for (const sub of subs) {
+      const provider = sub.provider ?? "unknown";
       try {
-        if (sub.provider_subscription_id) {
-          await cancelAsaasSubscription(sub.provider_subscription_id);
+        let outcome: RowOutcome;
+        if (provider === "asaas") {
+          outcome = await processAsaasCancellation(sub);
+        } else if (provider === "stripe") {
+          outcome = await reconcileStripeCancellation(sub);
+        } else {
+          outcome = { provider, outcome: "skipped", reason: "unknown_provider" };
         }
 
-        const { error: updateError } = await supabaseAdmin
-          .from("subscriptions")
-          .update({ status: "canceled", canceled_at: new Date().toISOString() })
-          .eq("id", sub.id);
-
-        if (updateError) throw updateError;
-
-        // Deixou de ser Pro: invalida o cache do dono apos a escrita
-        // confirmada. Fire-and-forget, por usuario afetado (nao em lote).
-        void invalidateProStatusCache(sub.user_id);
-
-        await supabaseAdmin
-          .from("subscription_cancellations")
-          .update({ status: "completed" })
-          .eq("user_id", sub.user_id)
-          .eq("status", "scheduled");
-
-        canceled += 1;
+        if (outcome.outcome === "skipped") {
+          console.warn(
+            `[cron/process-cancellations] ${sub.id} skipped (provider=${provider}, reason=${outcome.reason ?? "n/a"})`,
+          );
+        }
+        outcomes.push(outcome);
       } catch (err) {
-        failed += 1;
-        failures.push({
-          subscription_id: sub.id,
-          reason: err instanceof Error ? err.message : String(err),
-        });
-        console.error(`[cron/process-cancellations] Falha em ${sub.id}:`, err);
+        const reason = err instanceof Error ? err.message : String(err);
+        failures.push({ subscription_id: sub.id, provider, reason });
+        outcomes.push({ provider, outcome: "failed", reason });
+        console.error(
+          `[cron/process-cancellations] ${sub.id} (${provider}) falhou:`,
+          err,
+        );
       }
     }
 
-    const processed = subscriptions.length;
+    const processed = subs.length;
+    const byProvider = tallyByProvider(outcomes);
+    const skipped = countOutcome(outcomes, "skipped");
+    const failed = countOutcome(outcomes, "failed");
+
     await recordCronRun({
       jobName: "process-cancellations",
       status: failed > 0 ? "partial" : "success",
       startedAt,
-      payload: { processed, canceled, failed },
+      payload: { processed, byProvider, skipped, failed },
     });
 
-    res.json({ data: { processed, canceled, failed, failures } });
+    res.json({ data: { processed, byProvider, skipped, failed, failures } });
   } catch (err) {
     await recordCronRun({
       jobName: "process-cancellations",
