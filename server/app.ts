@@ -66,6 +66,41 @@ app.use((req, res, next) => {
   next();
 });
 
+// CORS ANTES de tudo (rate limit, compressao, auth): garante que TODA resposta,
+// inclusive o 429 do rate limit e qualquer 4xx/5xx, carregue os headers
+// Access-Control-*. Com o CORS DEPOIS do rate limit, um 429 saia sem
+// Access-Control-Allow-Origin e o navegador reportava como erro de CORS,
+// mascarando o 429 (e derrubava ate o launch-state, jogando o app na landing de
+// waitlist). Alem disso, o preflight OPTIONS responde 204 e retorna aqui, ANTES
+// do rate limiter, entao nao consome cota de rate limit. NAO reordenar pra baixo.
+const allowedOrigins = env.corsOrigin.split(",").map((origin) => origin.trim());
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type,Authorization,x-beta-token",
+  );
+  // Preflight cacheado por 10 minutos: sem isso o navegador refaz o OPTIONS a
+  // cada POST cross-origin (landing -> api.), pagando um round-trip extra.
+  res.setHeader("Access-Control-Max-Age", "600");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+
+  next();
+});
+
 // Compressao de transporte (gzip/brotli). NUNCA comprimir SSE: compression
 // bufferiza e quebraria os streams do agente, do ai/stream e do roadmap IA.
 // Dupla guarda: request que aceita event-stream OU resposta ja marcada como
@@ -280,34 +315,6 @@ app.use(async (req, res, next) => {
         message: "Muitas requisições. Tente novamente em instantes.",
       },
     });
-  }
-
-  next();
-});
-
-const allowedOrigins = env.corsOrigin.split(",").map((origin) => origin.trim());
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type,Authorization,x-beta-token",
-  );
-  // Preflight cacheado por 10 minutos: sem isso o navegador refaz o OPTIONS a
-  // cada POST cross-origin (landing -> api.), pagando um round-trip extra.
-  res.setHeader("Access-Control-Max-Age", "600");
-
-  if (req.method === "OPTIONS") {
-    res.sendStatus(204);
-    return;
   }
 
   next();
