@@ -828,6 +828,32 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
   }
 }
 
+// Estado vivo de uma assinatura na Stripe, ja traduzido para o vocabulario do
+// banco. Usado pelo reconciliador (cron) como fonte de verdade quando o webhook
+// pode ter sido perdido: a subscription retrieve() da Stripe E o estado atual,
+// entao nao ha calculo de ciclo (isso e do Asaas).
+export type StripeSubscriptionState = {
+  status: string;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
+};
+
+export async function getStripeSubscriptionState(
+  subscriptionId: string,
+): Promise<StripeSubscriptionState> {
+  const sub = await getStripe().subscriptions.retrieve(subscriptionId);
+  const period = subItemPeriod(sub);
+  return {
+    status: mapStatus(sub.status),
+    currentPeriodStart: period.start,
+    currentPeriodEnd: period.end,
+    cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+    canceledAt: toIso(sub.canceled_at),
+  };
+}
+
 export const stripeProvider: PaymentProvider = {
   name: "stripe",
   createCheckout,

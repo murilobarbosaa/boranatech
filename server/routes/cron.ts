@@ -17,6 +17,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { cacheConnection } from "../lib/redis";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
+import { getStripeSubscriptionState } from "../providers/stripe";
 
 const router = Router();
 
@@ -423,12 +424,40 @@ const PAID_PAYMENT_STATUSES = new Set([
 type SubRow = {
   id: string;
   user_id?: string | null;
+  provider?: string | null;
+  status?: string | null;
   provider_subscription_id: string | null;
   current_period_end?: string | null;
   plans?: { code?: string } | { code?: string }[] | null;
 };
 
 type AsaasPayment = { status?: string; dueDate?: string };
+
+// Resultado de reconciliar UMA linha. `outcome` e provider-especifico
+// (promoted/renewed/downgraded para Asaas; activated/reconciled/downgraded para
+// Stripe; noop/unchanged/skipped/failed comuns). `reason` acompanha skipped e
+// failed. Nenhuma linha e assumida por default: provider desconhecido ou nao
+// configurado vira skipped, nunca cancelamento silencioso.
+type RowOutcome = { provider: string; outcome: string; reason?: string };
+
+function tallyByProvider(
+  outcomes: RowOutcome[],
+): Record<string, Record<string, number>> {
+  const acc: Record<string, Record<string, number>> = {};
+  for (const o of outcomes) {
+    const bucket = acc[o.provider] ?? (acc[o.provider] = {});
+    bucket[o.outcome] = (bucket[o.outcome] ?? 0) + 1;
+  }
+  return acc;
+}
+
+function countOutcome(outcomes: RowOutcome[], name: string): number {
+  return outcomes.filter((o) => o.outcome === name).length;
+}
+
+function isProLikeStatus(status: string | null | undefined): boolean {
+  return status === "active" || status === "trialing";
+}
 
 function planCodeOf(sub: SubRow): string {
   const plans = sub.plans;
@@ -453,8 +482,112 @@ function latestPaidPayment(
     );
 }
 
-// FASE 1: subscriptions presas em 'incomplete' ha >15min. Confirma pagamento
-// real no Asaas antes de promover. Sem pagamento pago: deixa como esta.
+// Reconcilia UMA linha Stripe (usado nas duas fases): o estado vivo da Stripe
+// (subscription retrieve) E a fonte de verdade, entao refletimos status/periodo
+// no banco sem calcular ciclo. Sem STRIPE_SECRET_KEY ou sem id do provedor:
+// skipped (nunca assume um estado). So escreve quando ha mudanca real.
+async function reconcileStripeRow(sub: SubRow): Promise<RowOutcome> {
+  if (!env.stripeSecretKey) {
+    return {
+      provider: "stripe",
+      outcome: "skipped",
+      reason: "stripe_not_configured",
+    };
+  }
+  if (!sub.provider_subscription_id) {
+    return {
+      provider: "stripe",
+      outcome: "skipped",
+      reason: "missing_provider_subscription_id",
+    };
+  }
+
+  const state = await getStripeSubscriptionState(sub.provider_subscription_id);
+  const prevStatus = sub.status ?? null;
+  const statusChanged = state.status !== prevStatus;
+  const periodChanged = state.currentPeriodEnd !== (sub.current_period_end ?? null);
+
+  if (!statusChanged && !periodChanged) {
+    return { provider: "stripe", outcome: "unchanged" };
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      status: state.status,
+      current_period_start: state.currentPeriodStart,
+      current_period_end: state.currentPeriodEnd,
+      cancel_at_period_end: state.cancelAtPeriodEnd,
+      canceled_at:
+        state.status === "canceled"
+          ? (state.canceledAt ?? new Date().toISOString())
+          : null,
+      last_event_at: new Date().toISOString(),
+    })
+    .eq("id", sub.id);
+  if (updateError) throw updateError;
+
+  // So o boolean Pro muda com o status; invalida o cache do dono nesse caso.
+  if (statusChanged && sub.user_id) void invalidateProStatusCache(sub.user_id);
+
+  if (isProLikeStatus(state.status) && !isProLikeStatus(prevStatus)) {
+    return { provider: "stripe", outcome: "activated" };
+  }
+  if (!isProLikeStatus(state.status) && isProLikeStatus(prevStatus)) {
+    return { provider: "stripe", outcome: "downgraded" };
+  }
+  return { provider: "stripe", outcome: "reconciled" };
+}
+
+// FASE 1, linha Asaas: confirma pagamento real no Asaas antes de promover
+// incomplete -> active. Sem pagamento pago: noop. Sem config/id: skipped.
+async function reconcileIncompleteAsaasRow(sub: SubRow): Promise<RowOutcome> {
+  if (!env.asaasApiKey) {
+    return {
+      provider: "asaas",
+      outcome: "skipped",
+      reason: "asaas_not_configured",
+    };
+  }
+  if (!sub.provider_subscription_id) {
+    return {
+      provider: "asaas",
+      outcome: "skipped",
+      reason: "missing_provider_subscription_id",
+    };
+  }
+
+  const payments = await getAsaasSubscriptionPayments(
+    sub.provider_subscription_id,
+  );
+  const paid = latestPaidPayment((payments?.data as AsaasPayment[]) || []);
+  if (!paid?.dueDate) return { provider: "asaas", outcome: "noop" };
+
+  const planCode = planCodeOf(sub);
+  const periodStart = new Date(paid.dueDate);
+  const periodEnd = addMonths(periodStart, PLAN_CYCLE_MONTHS[planCode] ?? 1);
+
+  const { error: updateError } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      status: "active",
+      current_period_start: periodStart.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      canceled_at: null,
+      last_event_at: new Date().toISOString(),
+      raw_provider_payload: paid,
+    })
+    .eq("id", sub.id);
+  if (updateError) throw updateError;
+
+  // incomplete -> active: virou Pro; invalida o cache do dono.
+  if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+  return { provider: "asaas", outcome: "promoted" };
+}
+
+// FASE 1: subscriptions presas em 'incomplete' ha >15min. Provider-agnostico:
+// cada linha e reconciliada contra o provider da PROPRIA coluna, nunca por
+// PAYMENT_PROVIDER global. Provider desconhecido/nao configurado: skipped.
 // NOTA: o filtro .or(...) com and(...) aninhado equivale a
 // coalesce(last_event_at, created_at) <= cutoff. Sintaxe PostgREST sensivel;
 // validar empiricamente ao testar o endpoint (supabaseAdmin e destipado).
@@ -463,8 +596,9 @@ async function reconcileIncompleteSubscriptions() {
 
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, user_id, provider_subscription_id, plans(code)")
-    .eq("provider", "asaas")
+    .select(
+      "id, user_id, provider, status, provider_subscription_id, current_period_end, plans(code)",
+    )
     .eq("status", "incomplete")
     .or(
       `last_event_at.lte.${cutoff},and(last_event_at.is.null,created_at.lte.${cutoff})`,
@@ -474,68 +608,142 @@ async function reconcileIncompleteSubscriptions() {
   if (error) throw error;
 
   const subs = (data || []) as SubRow[];
-  let promoted = 0;
-  let failed = 0;
-  const failures: Array<{ subscription_id: string; reason: string }> = [];
+  const outcomes: RowOutcome[] = [];
+  const failures: Array<{
+    subscription_id: string;
+    provider: string;
+    reason: string;
+  }> = [];
 
   for (const sub of subs) {
+    const provider = sub.provider ?? "unknown";
     try {
-      if (!sub.provider_subscription_id) continue;
+      let outcome: RowOutcome;
+      if (provider === "asaas") {
+        outcome = await reconcileIncompleteAsaasRow(sub);
+      } else if (provider === "stripe") {
+        outcome = await reconcileStripeRow(sub);
+      } else {
+        outcome = { provider, outcome: "skipped", reason: "unknown_provider" };
+      }
 
-      const payments = await getAsaasSubscriptionPayments(
-        sub.provider_subscription_id,
-      );
-      const paid = latestPaidPayment((payments?.data as AsaasPayment[]) || []);
-      if (!paid?.dueDate) continue; // sem pagamento pago: continua incomplete
-
-      const planCode = planCodeOf(sub);
-      const periodStart = new Date(paid.dueDate);
-      const periodEnd = addMonths(
-        periodStart,
-        PLAN_CYCLE_MONTHS[planCode] ?? 1,
-      );
-
-      const { error: updateError } = await supabaseAdmin
-        .from("subscriptions")
-        .update({
-          status: "active",
-          current_period_start: periodStart.toISOString(),
-          current_period_end: periodEnd.toISOString(),
-          canceled_at: null,
-          last_event_at: new Date().toISOString(),
-          raw_provider_payload: paid,
-        })
-        .eq("id", sub.id);
-      if (updateError) throw updateError;
-
-      // incomplete -> active: virou Pro; invalida o cache do dono.
-      if (sub.user_id) void invalidateProStatusCache(sub.user_id);
-
-      promoted += 1;
+      if (outcome.outcome === "skipped") {
+        console.warn(
+          `[cron/reconcile-subscriptions] incomplete ${sub.id} skipped (provider=${provider}, reason=${outcome.reason ?? "n/a"})`,
+        );
+      }
+      outcomes.push(outcome);
     } catch (err) {
-      failed += 1;
       const reason = err instanceof Error ? err.message : String(err);
-      failures.push({ subscription_id: sub.id, reason });
+      failures.push({ subscription_id: sub.id, provider, reason });
+      outcomes.push({ provider, outcome: "failed", reason });
       console.error(
-        `[cron/reconcile-subscriptions] incomplete ${sub.id} falhou:`,
+        `[cron/reconcile-subscriptions] incomplete ${sub.id} (${provider}) falhou:`,
         err,
       );
     }
   }
 
-  return { processed: subs.length, promoted, failed, failures };
+  return {
+    processed: subs.length,
+    byProvider: tallyByProvider(outcomes),
+    skipped: countOutcome(outcomes, "skipped"),
+    failed: countOutcome(outcomes, "failed"),
+    failures,
+  };
+}
+
+// FASE 2, linha Asaas: se o Asaas mostra um pagamento pago para um ciclo
+// posterior -> renovou (webhook perdeu); senao -> past_due (conservador).
+async function reconcileExpiredAsaasRow(sub: SubRow): Promise<RowOutcome> {
+  if (!env.asaasApiKey) {
+    return {
+      provider: "asaas",
+      outcome: "skipped",
+      reason: "asaas_not_configured",
+    };
+  }
+  if (!sub.provider_subscription_id) {
+    return {
+      provider: "asaas",
+      outcome: "skipped",
+      reason: "missing_provider_subscription_id",
+    };
+  }
+
+  const payments = await getAsaasSubscriptionPayments(
+    sub.provider_subscription_id,
+  );
+  const periodEnd = sub.current_period_end
+    ? new Date(sub.current_period_end)
+    : null;
+  const renewal = latestPaidPayment(
+    (payments?.data as AsaasPayment[]) || [],
+    periodEnd,
+  );
+
+  if (renewal?.dueDate) {
+    const planCode = planCodeOf(sub);
+    const newEnd = addMonths(
+      new Date(renewal.dueDate),
+      PLAN_CYCLE_MONTHS[planCode] ?? 1,
+    );
+
+    const { error: updateError } = await supabaseAdmin
+      .from("subscriptions")
+      .update({
+        current_period_end: newEnd.toISOString(),
+        last_event_at: new Date().toISOString(),
+        raw_provider_payload: renewal,
+      })
+      .eq("id", sub.id);
+    if (updateError) throw updateError;
+
+    // Renovou com periodo que ja tinha vencido (>3d de grace): o is_user_pro
+    // estava false pelo current_period_end; o novo periodo religa o boolean.
+    if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+    return { provider: "asaas", outcome: "renewed" };
+  }
+
+  // Observabilidade: registra o status real no Asaas (nao decide nada).
+  let asaasStatus = "unknown";
+  try {
+    const remote = await getAsaasSubscription(sub.provider_subscription_id);
+    asaasStatus = String(remote?.status || "unknown");
+  } catch (err) {
+    console.warn(
+      `[cron/reconcile-subscriptions] expired ${sub.id} getAsaasSubscription falhou:`,
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from("subscriptions")
+    .update({ status: "past_due", last_event_at: new Date().toISOString() })
+    .eq("id", sub.id);
+  if (updateError) throw updateError;
+
+  // active -> past_due: o boolean ja estava false pelo periodo vencido, mas
+  // invalidar e barato e elimina qualquer janela residual.
+  if (sub.user_id) void invalidateProStatusCache(sub.user_id);
+  console.warn(
+    `[cron/reconcile-subscriptions] downgrade ${sub.id} -> past_due (asaas status: ${asaasStatus})`,
+  );
+  return { provider: "asaas", outcome: "downgraded" };
 }
 
 // FASE 2: subscriptions 'active' com periodo vencido ha >3 dias (grace) e que
-// NAO estao marcadas para cancelar. Se o Asaas mostra um pagamento pago para um
-// ciclo posterior -> renovou (webhook perdeu); senao -> past_due (conservador).
+// NAO estao marcadas para cancelar. Provider-agnostico: reconcilia cada linha
+// contra o provider da propria coluna. Stripe: reflete o estado vivo da
+// subscription. Provider desconhecido/nao configurado: skipped.
 async function reconcileExpiredSubscriptions() {
   const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, user_id, provider_subscription_id, current_period_end, plans(code)")
-    .eq("provider", "asaas")
+    .select(
+      "id, user_id, provider, status, provider_subscription_id, current_period_end, plans(code)",
+    )
     .eq("status", "active")
     .or("cancel_at_period_end.is.null,cancel_at_period_end.eq.false")
     .lte("current_period_end", cutoff)
@@ -544,94 +752,49 @@ async function reconcileExpiredSubscriptions() {
   if (error) throw error;
 
   const subs = (data || []) as SubRow[];
-  let renewed = 0;
-  let downgraded = 0;
-  let failed = 0;
-  const failures: Array<{ subscription_id: string; reason: string }> = [];
+  const outcomes: RowOutcome[] = [];
+  const failures: Array<{
+    subscription_id: string;
+    provider: string;
+    reason: string;
+  }> = [];
 
   for (const sub of subs) {
+    const provider = sub.provider ?? "unknown";
     try {
-      if (!sub.provider_subscription_id) continue;
-
-      const payments = await getAsaasSubscriptionPayments(
-        sub.provider_subscription_id,
-      );
-      const periodEnd = sub.current_period_end
-        ? new Date(sub.current_period_end)
-        : null;
-      const renewal = latestPaidPayment(
-        (payments?.data as AsaasPayment[]) || [],
-        periodEnd,
-      );
-
-      if (renewal?.dueDate) {
-        const planCode = planCodeOf(sub);
-        const newEnd = addMonths(
-          new Date(renewal.dueDate),
-          PLAN_CYCLE_MONTHS[planCode] ?? 1,
-        );
-
-        const { error: updateError } = await supabaseAdmin
-          .from("subscriptions")
-          .update({
-            current_period_end: newEnd.toISOString(),
-            last_event_at: new Date().toISOString(),
-            raw_provider_payload: renewal,
-          })
-          .eq("id", sub.id);
-        if (updateError) throw updateError;
-
-        // Renovou com periodo que ja tinha vencido (>3d de grace): o
-        // is_user_pro estava false pelo current_period_end; o novo periodo
-        // religa o boolean. Invalida o cache do dono.
-        if (sub.user_id) void invalidateProStatusCache(sub.user_id);
-
-        renewed += 1;
+      let outcome: RowOutcome;
+      if (provider === "asaas") {
+        outcome = await reconcileExpiredAsaasRow(sub);
+      } else if (provider === "stripe") {
+        outcome = await reconcileStripeRow(sub);
       } else {
-        // Observabilidade: registra o status real no Asaas (nao decide nada).
-        let asaasStatus = "unknown";
-        try {
-          const remote = await getAsaasSubscription(
-            sub.provider_subscription_id,
-          );
-          asaasStatus = String(remote?.status || "unknown");
-        } catch (err) {
-          console.warn(
-            `[cron/reconcile-subscriptions] expired ${sub.id} getAsaasSubscription falhou:`,
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-
-        const { error: updateError } = await supabaseAdmin
-          .from("subscriptions")
-          .update({
-            status: "past_due",
-            last_event_at: new Date().toISOString(),
-          })
-          .eq("id", sub.id);
-        if (updateError) throw updateError;
-
-        // active -> past_due: o boolean ja estava false pelo periodo vencido,
-        // mas invalidar e barato e elimina qualquer janela residual.
-        if (sub.user_id) void invalidateProStatusCache(sub.user_id);
-
-        console.warn(
-          `[cron/reconcile-subscriptions] downgrade ${sub.id} -> past_due (asaas status: ${asaasStatus})`,
-        );
-        downgraded += 1;
+        outcome = { provider, outcome: "skipped", reason: "unknown_provider" };
       }
+
+      if (outcome.outcome === "skipped") {
+        console.warn(
+          `[cron/reconcile-subscriptions] expired ${sub.id} skipped (provider=${provider}, reason=${outcome.reason ?? "n/a"})`,
+        );
+      }
+      outcomes.push(outcome);
     } catch (err) {
-      failed += 1;
       const reason = err instanceof Error ? err.message : String(err);
-      failures.push({ subscription_id: sub.id, reason });
+      failures.push({ subscription_id: sub.id, provider, reason });
+      outcomes.push({ provider, outcome: "failed", reason });
       console.error(
-        `[cron/reconcile-subscriptions] expired ${sub.id} falhou:`,
+        `[cron/reconcile-subscriptions] expired ${sub.id} (${provider}) falhou:`,
         err,
       );
     }
   }
 
-  return { processed: subs.length, renewed, downgraded, failed, failures };
+  return {
+    processed: subs.length,
+    byProvider: tallyByProvider(outcomes),
+    skipped: countOutcome(outcomes, "skipped"),
+    failed: countOutcome(outcomes, "failed"),
+    failures,
+  };
 }
 
 // TTL 900s: 2 fases x ate 25 subscriptions x ate 2 chamadas Asaas cada
@@ -644,16 +807,18 @@ router.post("/reconcile-subscriptions", withCronLock("reconcile-subscriptions", 
     const expired = await reconcileExpiredSubscriptions();
 
     const totalFailed = incomplete.failed + expired.failed;
+    // Contagens separadas por provider (byProvider) + skipped/failed por fase.
     const payload = {
       incomplete: {
         processed: incomplete.processed,
-        promoted: incomplete.promoted,
+        byProvider: incomplete.byProvider,
+        skipped: incomplete.skipped,
         failed: incomplete.failed,
       },
       expired: {
         processed: expired.processed,
-        renewed: expired.renewed,
-        downgraded: expired.downgraded,
+        byProvider: expired.byProvider,
+        skipped: expired.skipped,
         failed: expired.failed,
       },
     };
@@ -665,7 +830,15 @@ router.post("/reconcile-subscriptions", withCronLock("reconcile-subscriptions", 
       payload,
     });
 
-    res.json({ data: payload });
+    res.json({
+      data: {
+        ...payload,
+        failures: {
+          incomplete: incomplete.failures,
+          expired: expired.failures,
+        },
+      },
+    });
   } catch (err) {
     await recordCronRun({
       jobName: "reconcile-subscriptions",
