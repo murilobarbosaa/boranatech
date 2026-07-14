@@ -28,13 +28,15 @@ export type EmailCampaignJobData =
 // Status da waitlist elegiveis pra receber campanha. Nunca 'unsubscribed'.
 export const ELIGIBLE_WAITLIST_STATUSES = ["pending", "notified"];
 
-// Origens de destinatarios de um lote. 'users' existe no schema mas fica
-// desabilitada (sem campo de consentimento de marketing em profiles ainda).
+// Origens de destinatarios de um lote. 'contact_list' e uma lista importada de
+// fora da plataforma (Frente C): so membros status='valid', supressao e
+// consentimento reconsultados no dispatch.
 export type EmailCampaignBatchSource =
   | "waitlist"
   | "newsletter"
   | "custom"
-  | "users";
+  | "users"
+  | "contact_list";
 
 // Origens com tabela propria pra selecao/validacao de elegibilidade.
 export const TABLE_BACKED_SOURCES = ["waitlist", "newsletter"] as const;
@@ -388,11 +390,44 @@ async function selectNextEligibleUserEmails(
   return selected;
 }
 
-// mode 'selected' (e origem custom): e-mails escolhidos a dedo ou colados,
-// com elegibilidade revalidada NA HORA do dispatch (quem se descadastrou
-// entre o agendamento e o disparo nao recebe), excluindo suprimidos e quem ja
-// e recipient da campanha. Origem custom nao tem tabela pra revalidar: a
-// lista vale por si, filtrada pela supressao global e pelos dedups.
+// E-mails (lower) de USUARIOS existentes que recusaram marketing. Usado no
+// dispatch de contact_list promotional: um usuario que optou por nao receber
+// marketing NAO recebe so porque o e-mail apareceu numa lista importada. Quem
+// nao e usuario (sem conta) nao aparece aqui e passa (a base legal do import
+// vale). Pagina profiles e casa por lower(email), como o caminho de users.
+async function fetchMarketingOptedOutEmails(
+  wantedLower: Set<string>,
+): Promise<Set<string>> {
+  const blocked = new Set<string>();
+  if (wantedLower.size === 0) return blocked;
+  for (let from = 0; ; from += DB_PAGE) {
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("email, marketing_opt_in")
+      .range(from, from + DB_PAGE - 1);
+    if (error) {
+      throw new Error(
+        `Falha ao revalidar consentimento de marketing: ${error.message}`,
+      );
+    }
+    const rows = data ?? [];
+    for (const row of rows) {
+      if (!row.email) continue;
+      const lower = row.email.toLowerCase();
+      if (wantedLower.has(lower) && row.marketing_opt_in !== true) {
+        blocked.add(lower);
+      }
+    }
+    if (rows.length < DB_PAGE) break;
+  }
+  return blocked;
+}
+
+// mode 'selected' (origem custom e contact_list): e-mails colados ou de uma
+// lista importada, com elegibilidade revalidada NA HORA do dispatch (quem se
+// descadastrou entre o agendamento e o disparo nao recebe), excluindo suprimidos
+// e quem ja e recipient da campanha. contact_list promotional tambem exclui
+// usuario existente que recusou marketing (consentimento reconsultado no envio).
 async function selectBatchEligibleEmails(
   campaignId: string,
   batchId: string,
@@ -468,12 +503,23 @@ async function selectBatchEligibleEmails(
   const sentElsewhere = excludeOtherCampaigns
     ? await fetchSentEmailSetFromOtherCampaigns(campaignId)
     : null;
+
+  // contact_list promotional: reconsulta o consentimento de marketing dos que ja
+  // sao usuarios (nunca confia no snapshot do import). custom nao passa por aqui.
+  const marketingBlocked =
+    source === "contact_list" && usersFilter?.category === "promotional"
+      ? await fetchMarketingOptedOutEmails(
+          new Set(wanted.map((e) => e.toLowerCase())),
+        )
+      : null;
+
   return wanted.filter(
     (email) =>
       (eligible === null || eligible.has(email)) &&
       !existing.has(email) &&
       !suppressed.has(email.toLowerCase()) &&
-      !sentElsewhere?.has(email.toLowerCase()),
+      !sentElsewhere?.has(email.toLowerCase()) &&
+      !marketingBlocked?.has(email.toLowerCase()),
   );
 }
 
@@ -548,7 +594,10 @@ export async function dispatchCampaignBatch(
     let usersFilter:
       | { category: EmailCampaignCategory; segment: UserSegment }
       | undefined;
-    if (source === "users") {
+    // users usa categoria+segmento; contact_list usa a categoria para reconsultar
+    // o consentimento de marketing dos membros que ja sao usuarios (segmento nao
+    // se aplica a lista importada, fica "all").
+    if (source === "users" || source === "contact_list") {
       const { data: campaignRow, error: categoryError } = await supabaseAdmin
         .from("email_campaigns")
         .select("category")
@@ -566,7 +615,13 @@ export async function dispatchCampaignBatch(
     }
 
     let emails: string[];
-    if (batch.mode === "selected" || source === "custom") {
+    // contact_list e sempre mode=selected (garantido na criacao): resolvido por
+    // selectBatchEligibleEmails, que reconsulta supressao e consentimento.
+    if (
+      batch.mode === "selected" ||
+      source === "custom" ||
+      source === "contact_list"
+    ) {
       emails = await selectBatchEligibleEmails(
         batch.campaign_id,
         batch.id,

@@ -50,7 +50,13 @@ const MAX_SELECTED_PER_BATCH = 500;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LENGTH = 254;
 
-const BATCH_SOURCES = ["waitlist", "newsletter", "custom", "users"] as const;
+const BATCH_SOURCES = [
+  "waitlist",
+  "newsletter",
+  "custom",
+  "users",
+  "contact_list",
+] as const;
 type BatchSource = (typeof BATCH_SOURCES)[number];
 
 function isTableBackedSource(value: string): value is TableBackedSource {
@@ -1050,8 +1056,9 @@ router.post("/:id/batches", async (req, res, next) => {
         createError(400, "invalid_mode", "Modo de lote inválido."),
       );
     }
-    // Lista avulsa nao tem "proximos da fila": e sempre a lista colada.
-    if (source === "custom" && mode !== "selected") {
+    // Lista avulsa e lista importada nao tem "proximos da fila": e sempre a
+    // lista escolhida (modo selected).
+    if ((source === "custom" || source === "contact_list") && mode !== "selected") {
       return next(
         createError(
           400,
@@ -1080,7 +1087,64 @@ router.post("/:id/batches", async (req, res, next) => {
     }
 
     let emails: string[] = [];
-    if (mode === "selected") {
+    if (source === "contact_list") {
+      // Emails resolvidos NO SERVER a partir dos membros validos da lista (nunca
+      // confia numa lista de e-mails vinda do client). Cada lote pega ate 500
+      // membros validos ainda nao incluidos nesta campanha; listas maiores usam
+      // varios lotes. Supressao e consentimento sao reconsultados no dispatch.
+      const contactListId =
+        typeof body.contactListId === "string" ? body.contactListId : "";
+      if (
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          contactListId,
+        )
+      ) {
+        return next(
+          createError(
+            400,
+            "missing_contact_list",
+            "Selecione a lista de contatos.",
+          ),
+        );
+      }
+      const alreadyInCampaign =
+        await fetchCampaignRecipientEmailSet(req.params.id);
+      const picked = new Set<string>();
+      for (let from = 0; ; from += 1000) {
+        const { data: memberRows, error: membersError } = await supabaseAdmin
+          .from("contact_list_members")
+          .select("email")
+          .eq("list_id", contactListId)
+          .eq("status", "valid")
+          .order("created_at", { ascending: true })
+          .range(from, from + 999);
+        if (membersError) {
+          return next(
+            createError(500, "db_error", "Erro ao ler a lista de contatos."),
+          );
+        }
+        const rows = memberRows ?? [];
+        for (const row of rows) {
+          if (typeof row.email !== "string" || !row.email.trim()) continue;
+          const email = row.email.trim().toLowerCase();
+          if (alreadyInCampaign.has(email) || picked.has(email)) continue;
+          picked.add(email);
+          if (picked.size >= MAX_SELECTED_PER_BATCH) break;
+        }
+        if (rows.length < 1000 || picked.size >= MAX_SELECTED_PER_BATCH) break;
+      }
+      emails = Array.from(picked);
+      if (emails.length === 0) {
+        return next(
+          createError(
+            400,
+            "no_eligible_members",
+            // TODO(Ana)
+            "Nenhum contato válido novo nesta lista para enviar.",
+          ),
+        );
+      }
+    } else if (mode === "selected") {
       if (!Array.isArray(body.emails) || body.emails.length === 0) {
         return next(
           createError(
