@@ -5788,58 +5788,21 @@ export default function Admin() {
                   </div>
                 )}
               </div>
-              <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <div className="mt-6">
+                {/* TODO(Ana): copy final da atribuicao de jornada de conversao. */}
                 <article className="card-brutal rounded-3xl bg-white p-6">
                   <h3 className="font-display text-2xl font-black text-slate-950">
-                    Páginas que antecedem a assinatura
+                    Jornada até a assinatura
                   </h3>
-                  <div className="mt-5">
-                    {posthogHasData && posthogStats?.pages.length ? (
-                      <div className="space-y-3">
-                        {posthogStats.pages.slice(0, 5).map((page) => (
-                          <div
-                            key={page.page}
-                            className="flex items-center justify-between gap-4 rounded-2xl border-2 border-slate-900 bg-slate-50 p-4"
-                          >
-                            <p className="truncate text-sm font-black text-slate-950">
-                              {page.page}
-                            </p>
-                            <p className="text-sm font-black text-violet-700">
-                              {formatCount(page.views)} views
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <PosthogStateNotice state={posthogState} />
-                    )}
-                  </div>
-                </article>
-                <article className="card-brutal rounded-3xl bg-violet-700 p-6 text-white">
-                  <h3 className="font-display text-2xl font-black">
-                    Ação recomendada
-                  </h3>
-                  <p className="mt-3 text-sm font-semibold text-violet-100">
-                    {posthogHasData && posthogStats?.pages[0]
-                      ? `Priorize CTAs Pro em ${posthogStats.pages[0].page}, a página com maior volume nos últimos 30 dias.`
-                      : "Quando o Posthog retornar sessões e eventos, esta área passa a sugerir ações com base no comportamento real."}
+                  <p className="mt-3 max-w-3xl text-sm font-semibold text-slate-600">
+                    A atribuição de jornada (quais páginas e recursos Pro
+                    antecedem a assinatura) começa a ficar disponível conforme os
+                    eventos de conversão recém-instrumentados (checkout_started,
+                    pro_gate_hit, subscription_completed) acumulam no PostHog.
+                    Enquanto isso, o volume bruto por página está na aba Páginas,
+                    não aqui: aquele número é tráfego do site, não jornada de quem
+                    assinou.
                   </p>
-                  <div className="mt-5">
-                    {posthogHasData ? (
-                      <div className="rounded-2xl border-2 border-white/80 bg-white/10 p-4">
-                        <p className="text-2xl font-black">
-                          {formatCount(
-                            posthogStats?.events.quiz_completed || 0,
-                          )}
-                        </p>
-                        <p className="text-xs font-bold text-violet-100">
-                          quizzes concluídos nos últimos 30 dias
-                        </p>
-                      </div>
-                    ) : (
-                      <PosthogStateNotice state={posthogState} />
-                    )}
-                  </div>
                 </article>
               </div>
             </AdminSection>
