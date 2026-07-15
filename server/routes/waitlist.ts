@@ -173,7 +173,7 @@ function sendUnsubscribePage(res: Response, status: number, html: string) {
   res.status(status).type("html").send(html);
 }
 
-// TODO(Ana): copy da pagina de descadastro concluido da lista de espera.
+// TODO(Ana): copy da pagina de descadastro concluido (neutra, vale pra qualquer origem).
 // Resposta generica: token valido ou invalido caem na MESMA pagina, pra nao
 // vazar se o token (e o e-mail por tras dele) existe.
 function unsubscribeSuccessPage(res: Response) {
@@ -182,8 +182,7 @@ function unsubscribeSuccessPage(res: Response) {
     200,
     renderUnsubscribePage({
       heading: "Descadastro concluido",
-      message:
-        "Voce nao vai mais receber e-mails da lista de espera do Bora na Tech.",
+      message: "Voce nao vai mais receber estes e-mails do Bora na Tech.",
     }),
   );
 }
@@ -194,14 +193,14 @@ function unsubscribeSuccessPage(res: Response) {
 // existencia ou expiracao.
 router.get("/unsubscribe", (req, res) => {
   const token = typeof req.query.token === "string" ? req.query.token : "";
-  // TODO(Ana): copy da pagina de confirmacao de descadastro da lista de espera.
+  // TODO(Ana): copy da pagina de confirmacao de descadastro (neutra, qualquer origem).
   sendUnsubscribePage(
     res,
     200,
     renderUnsubscribePage({
-      heading: "Cancelar e-mails da lista de espera",
+      heading: "Cancelar estes e-mails",
       message:
-        "Quer parar de receber os e-mails da lista de espera do Bora na Tech? Confirme abaixo.",
+        "Quer parar de receber estes e-mails do Bora na Tech? Confirme abaixo.",
       form: {
         action: "/api/waitlist/unsubscribe",
         token,
