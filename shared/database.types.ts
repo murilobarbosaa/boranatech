@@ -694,6 +694,7 @@ export type Database = {
           created_by: string
           description: string | null
           duplicate_count: number
+          footer_reason: string | null
           id: string
           invalid_count: number
           lgpd_basis: string
@@ -710,6 +711,7 @@ export type Database = {
           created_by: string
           description?: string | null
           duplicate_count: number
+          footer_reason?: string | null
           id?: string
           invalid_count: number
           lgpd_basis: string
@@ -726,6 +728,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           duplicate_count?: number
+          footer_reason?: string | null
           id?: string
           invalid_count?: number
           lgpd_basis?: string
@@ -996,6 +999,7 @@ export type Database = {
         Row: {
           batch_limit: number | null
           campaign_id: string
+          contact_list_id: string | null
           created_at: string
           created_by: string
           dispatched_at: string | null
@@ -1010,6 +1014,7 @@ export type Database = {
         Insert: {
           batch_limit?: number | null
           campaign_id: string
+          contact_list_id?: string | null
           created_at?: string
           created_by: string
           dispatched_at?: string | null
@@ -1024,6 +1029,7 @@ export type Database = {
         Update: {
           batch_limit?: number | null
           campaign_id?: string
+          contact_list_id?: string | null
           created_at?: string
           created_by?: string
           dispatched_at?: string | null
@@ -1041,6 +1047,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaign_batches_contact_list_id_fkey"
+            columns: ["contact_list_id"]
+            isOneToOne: false
+            referencedRelation: "contact_lists"
             referencedColumns: ["id"]
           },
         ]
