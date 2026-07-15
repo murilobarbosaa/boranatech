@@ -968,6 +968,13 @@ async function reconcileExpiredSubscriptions() {
     )
     .eq("status", "active")
     .or("cancel_at_period_end.is.null,cancel_at_period_end.eq.false")
+    // Boleto (renewal_type='manual') NAO tem subscription na Stripe: seu
+    // provider_subscription_id e um Checkout Session cs_..., entao um retrieve
+    // lancaria e contaria a linha como failed todo dia. Boleto expirado nao
+    // precisa de reconcile: o current_period_end no passado JA e a verdade
+    // (is_user_pro nega pelo periodo). Excluido do filtro (renewal_type e NOT
+    // NULL default 'auto', entao neq nao descarta cartao). Cartao inalterado.
+    .neq("renewal_type", "manual")
     .lte("current_period_end", cutoff)
     .limit(25);
 
