@@ -290,25 +290,39 @@ async function applySubscription(
     affiliate_code: affiliateCode,
   };
 
-  const result = existing
-    ? await supabaseAdmin
-        .from("subscriptions")
-        .update(patch)
-        .eq("provider_subscription_id", sub.id)
-    : // Webhooks concorrentes (completed/created/invoice.paid no mesmo segundo)
-      // leem existing=null juntos; upsert por provider_subscription_id absorve a
-      // corrida (o perdedor vira UPDATE) em vez de estourar a unique constraint.
-      await supabaseAdmin
-        .from("subscriptions")
-        .upsert(
-          { ...baseRequired, ...patch },
-          { onConflict: "provider_subscription_id" },
-        );
+  // raceLost: so o ramo de INSERT concorrente pode perder a corrida. No UPDATE
+  // (linha ja existia) os efeitos de transicao seguem normais.
+  let raceLost = false;
+  let result;
+  if (existing) {
+    result = await supabaseAdmin
+      .from("subscriptions")
+      .update(patch)
+      .eq("provider_subscription_id", sub.id);
+  } else {
+    // Webhooks concorrentes (completed/created/invoice.paid no mesmo segundo)
+    // leem existing=null juntos. ignoreDuplicates faz o conflito virar DO
+    // NOTHING: so o INSERT real volta linha; o perdedor volta vazio. Assim a
+    // unique constraint nao estoura E handleTransition (email + conversao de
+    // afiliado) dispara uma unica vez, no handler que de fato criou a linha.
+    result = await supabaseAdmin
+      .from("subscriptions")
+      .upsert(
+        { ...baseRequired, ...patch },
+        { onConflict: "provider_subscription_id", ignoreDuplicates: true },
+      )
+      .select("id");
+    raceLost = !result.error && (result.data?.length ?? 0) === 0;
+  }
 
   if (result.error) {
     console.error("[webhook/stripe] subscriptions write failed:", result.error);
     throw createError(500, "db_error", "Erro ao gravar assinatura.");
   }
+
+  // Perdedor da corrida: a linha ja foi criada por outro handler, que dispara os
+  // efeitos. Nao redisparar email nem conversao de afiliado.
+  if (raceLost) return;
 
   const revenueCents = sub.items?.data?.[0]?.price?.unit_amount ?? 0;
   await handleTransition(userId, existing?.status ?? null, status, {
