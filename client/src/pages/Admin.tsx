@@ -145,7 +145,6 @@ type AdminSectionId =
   | "financeiro"
   | "ia"
   | "afiliados"
-  | "newsletter"
   | "emails"
   | "beta"
   | "vagas";
@@ -361,11 +360,6 @@ const adminNavItems: AdminNavItem[] = [
     href: "#afiliados",
     label: "Afiliados",
     icon: <Handshake className="h-4 w-4" />,
-  },
-  {
-    href: "#newsletter",
-    label: "Newsletter",
-    icon: <Mail className="h-4 w-4" />,
   },
   {
     href: "#emails",
@@ -1298,13 +1292,17 @@ function NewsletterAdminSection() {
   ];
 
   return (
-    <AdminSection
-      id="newsletter"
-      eyebrow="newsletter"
-      icon={<Mail className="h-4 w-4" />}
-      title="Assinantes da newsletter"
-      subtitle="Visão somente leitura de quem entrou na newsletter, por status. Sem edição."
-    >
+    <section className="space-y-4">
+      <div>
+        {/* TODO(Ana): título e subtítulo do bloco de newsletter dentro de Emails. */}
+        <h3 className="font-display text-2xl font-black text-slate-950">
+          Assinantes da newsletter
+        </h3>
+        <p className="mt-1 text-sm font-semibold text-slate-500">
+          Visão somente leitura de quem entrou na newsletter, por status. Sem
+          edição.
+        </p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {countCards.map((card) => (
           <div
@@ -1430,7 +1428,7 @@ function NewsletterAdminSection() {
           </div>
         </div>
       ) : null}
-    </AdminSection>
+    </section>
   );
 }
 
@@ -3870,6 +3868,10 @@ function EmailCampaignsAdminSection() {
       <div className="mt-8 border-t-4 border-slate-900 pt-8">
         <ContactListsManager />
       </div>
+
+      <div className="mt-8 border-t-4 border-slate-900 pt-8">
+        <NewsletterAdminSection />
+      </div>
     </AdminSection>
   );
 }
@@ -5979,7 +5981,6 @@ export default function Admin() {
             </AdminSection>
           ) : null}
 
-          {activeSection === "newsletter" ? <NewsletterAdminSection /> : null}
 
           {activeSection === "emails" ? <EmailCampaignsAdminSection /> : null}
 
