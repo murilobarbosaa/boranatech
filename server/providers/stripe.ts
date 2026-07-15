@@ -449,7 +449,20 @@ async function onBoletoAsyncPaymentSucceeded(
   eventCreatedAt: Date,
 ): Promise<void> {
   const session = event.data.object as Stripe.Checkout.Session;
-  if (session.metadata?.payment_method !== "boleto") return;
+  // async_payment_succeeded so existe para pagamento assincrono; no nosso sistema
+  // isso e sempre boleto (cartao compensa sincrono, sem este evento). Se o metadata
+  // nao confirma boleto, e um pagamento CONFIRMADO que nao conseguimos rotear:
+  // grita e forca retry da Stripe, nunca dropa em silencio (dinheiro entrou).
+  if (session.metadata?.payment_method !== "boleto") {
+    console.error(
+      `[webhook/stripe] async_payment_succeeded sem metadata boleto (session ${session.id}); pagamento confirmado nao roteado.`,
+    );
+    throw createError(
+      500,
+      "boleto_metadata_missing",
+      "Pagamento de boleto sem metadata para ativar.",
+    );
+  }
 
   const accessDays = Number.parseInt(session.metadata?.access_days ?? "", 10);
   if (!Number.isFinite(accessDays) || accessDays <= 0) {
@@ -488,21 +501,20 @@ async function onBoletoAsyncPaymentSucceeded(
   }
 
   if (!activated || activated.length === 0) {
-    // 0 linhas: ou a linha ja estava active (reprocesso, no-op idempotente) ou
-    // ela nao existe. Distingue: linha ausente e falha critica (boleto pago sem
-    // linha) e precisa aparecer; ja-active segue silencioso.
+    // 0 linhas atualizadas. So e seguro seguir em silencio se a linha JA esta
+    // active (reprocesso idempotente: o acesso ja foi concedido). Qualquer outro
+    // caso e boleto pago que nao virou acesso (linha ausente, canceled, etc.):
+    // dinheiro entrou e acesso nao saiu, entao grita e forca retry.
     const { data: current } = await supabaseAdmin
       .from("subscriptions")
       .select("status")
       .eq("provider_subscription_id", session.id)
       .maybeSingle();
-    if (!current) {
-      console.error(
-        `[webhook/stripe] boleto pago sem linha pendente (session ${session.id}); investigar.`,
-      );
-      throw createError(500, "db_error", "Linha do boleto não encontrada.");
-    }
-    return;
+    if (current?.status === "active") return;
+    console.error(
+      `[webhook/stripe] boleto pago nao ativou (session ${session.id}, status atual: ${current?.status ?? "AUSENTE"}); investigar.`,
+    );
+    throw createError(500, "db_error", "Boleto pago não ativou a assinatura.");
   }
 
   const row = activated[0];
