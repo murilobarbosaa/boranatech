@@ -85,6 +85,8 @@ type AiUsage = {
   requests: string;
   credits: string;
   cost: string;
+  // Custo numerico bruto (nao formatado), para a barra de proporcao.
+  costValue: number;
   status: "ok" | "watch" | "high";
 };
 
@@ -5207,10 +5209,16 @@ export default function Admin() {
         requests: String(stats.calls),
         credits: `${successRate}% sucesso`,
         cost: formatCurrency(stats.cost),
+        costValue: stats.cost,
         status: stats.cost > 50 ? "high" : successRate < 80 ? "watch" : "ok",
       };
     });
   }, [aiStats]);
+  // Maior custo entre as ferramentas: base 100% da barra. 0 quando nao ha custo.
+  const maxAiCost = aiUsageReal.reduce(
+    (max, item) => Math.max(max, item.costValue),
+    0,
+  );
   const healthItemsReal = useMemo(() => buildHealthItems(health), [health]);
   // Deriva os stats so quando o estado e "ok"; caso contrario null. Mantem o
   // nome posthogStats para as leituras de render continuarem validas.
@@ -6261,7 +6269,12 @@ export default function Admin() {
                           <div className="h-3 rounded-full border border-slate-900 bg-slate-100">
                             <div
                               className="h-full rounded-full bg-pink-600"
-                              style={{ width: "100%" }}
+                              style={{
+                                width:
+                                  maxAiCost > 0
+                                    ? `${(item.costValue / maxAiCost) * 100}%`
+                                    : "0%",
+                              }}
                             />
                           </div>
                         </div>
