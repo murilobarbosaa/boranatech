@@ -21,7 +21,31 @@ export async function getMySubscription() {
   return json.data;
 }
 
-export async function createCheckout(planId = "pro_monthly") {
+export type CheckoutPaymentMethod = "card" | "boleto";
+
+// Preserva o error.code que o server manda (createError -> { error: { code } }),
+// para a UI mostrar mensagem por slug (conflict, boleto_pending, ...). Antes o
+// createCheckout colapsava tudo num Error generico. Mesmo padrao do RenewalError.
+export class CheckoutError extends Error {
+  code: string;
+  constructor(code: string, message?: string) {
+    super(message ?? code);
+    this.name = "CheckoutError";
+    this.code = code;
+  }
+}
+
+async function checkoutErrorCode(res: Response): Promise<string> {
+  const body = (await res.json().catch(() => null)) as {
+    error?: { code?: string };
+  } | null;
+  return body?.error?.code ?? "unknown";
+}
+
+export async function createCheckout(
+  planId = "pro_monthly",
+  paymentMethod?: CheckoutPaymentMethod,
+) {
   const headers = await getAuthHeader();
   let affiliateCode: string | undefined;
   try {
@@ -35,10 +59,11 @@ export async function createCheckout(planId = "pro_monthly") {
   const res = await fetch(`${API_BASE}/billing/checkout`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ affiliateCode, planId }),
+    // payment_method ausente => o server usa 'card' (retrocompativel).
+    body: JSON.stringify({ affiliateCode, planId, payment_method: paymentMethod }),
   });
 
-  if (!res.ok) throw new Error("Erro ao iniciar checkout");
+  if (!res.ok) throw new CheckoutError(await checkoutErrorCode(res));
   const json = await res.json();
   return json.data;
 }
