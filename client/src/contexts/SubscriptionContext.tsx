@@ -13,6 +13,9 @@ import { useAuth } from "./AuthContext";
 
 interface SubscriptionContextValue {
   isPro: boolean;
+  // Exposto para o card do perfil distinguir "Pro via admin" de "Pro via cortesia"
+  // quando nao ha assinatura. isPro acima ja e (isPro || isAdmin).
+  isAdmin: boolean;
   subscription: unknown;
   loading: boolean;
   refreshSubscription: (options?: { silent?: boolean }) => Promise<void>;
@@ -22,8 +25,8 @@ const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
   undefined,
 );
 
-// Mock de dev parametrizavel por ?devSub=pending|renewal|active (default active),
-// para exercitar os estados de boleto pendente sem gerar boleto real. So roda sob
+// Mock de dev parametrizavel por ?devSub=pending|renewal|active|nosub (default
+// active), para exercitar os estados do card sem dados reais. So roda sob
 // import.meta.env.DEV; some no build de producao.
 function buildDevMockSubscription(): { subscription: unknown; isPro: boolean } {
   const now = Date.now();
@@ -58,6 +61,12 @@ function buildDevMockSubscription(): { subscription: unknown; isPro: boolean } {
   // Cenario B: assinatura ativa + boleto de renovacao pendente. Pro/ativo normal.
   if (scenario === "renewal") {
     return { subscription: { ...activeSub, pendingBoleto }, isPro: true };
+  }
+  // Pro SEM assinatura (admin / cortesia): espelha a resposta real (plano free),
+  // isPro true. O badge ADMIN vs CORTESIA depende de a conta ser admin (isAdmin, do
+  // useAdmin), nao do mock. So para exercitar o card em dev.
+  if (scenario === "nosub") {
+    return { subscription: { status: "free" }, isPro: true };
   }
   // active (default): ativa, sem pendente.
   return { subscription: { ...activeSub, pendingBoleto: null }, isPro: true };
@@ -159,6 +168,7 @@ export function SubscriptionProvider({
   const value = useMemo<SubscriptionContextValue>(
     () => ({
       isPro: isPro || isAdmin,
+      isAdmin,
       subscription,
       loading: loading || adminLoading,
       refreshSubscription,

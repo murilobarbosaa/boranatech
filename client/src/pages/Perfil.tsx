@@ -664,6 +664,7 @@ export default function Perfil() {
   } = useAuth();
   const {
     isPro,
+    isAdmin,
     loading: subscriptionLoading,
     subscription,
     refreshSubscription,
@@ -841,6 +842,26 @@ export default function Perfil() {
     subscriptionData?.status ?? (isPro ? "active" : "free");
   const statusInfo = getStatusLabel(subscriptionStatus);
   const proSince = formatProSince(subscriptionData?.created_at);
+
+  // Assinatura REAL = linha em subscriptions (o /subscription devolve status
+  // 'active'/'trialing'/'past_due'). Sem linha, devolve 'free'. Um cliente pagante
+  // tem hasRealSubscription=true e nao muda em NADA (badge/valor/renovacao/cancelar
+  // seguem iguais). So Pro-sem-assinatura (admin, ou cortesia via DEV_PRO_USER_IDS)
+  // entra no ramo novo.
+  const hasRealSubscription =
+    !!subscriptionData?.status && subscriptionData.status !== "free";
+  const proWithoutSubscription = isPro && !hasRealSubscription;
+  // Badge honesto por caso: ADMIN se admin, CORTESIA se Pro-sem-assinatura nao
+  // admin; senao o status real da assinatura.
+  const subscriptionBadge = proWithoutSubscription
+    ? {
+        label: isAdmin ? "Admin" : "Cortesia",
+        className: "bg-violet-200 text-violet-900 border-violet-700",
+      }
+    : {
+        label: statusInfo.label,
+        className: statusBadgeStyles[statusInfo.variant],
+      };
 
   // Boleto aguardando pagamento (do endpoint). Plano/valor vem do planPricing.ts
   // (fonte unica). Cenario A: !isPro + pendingBoleto -> card proprio. Cenario B:
@@ -1704,11 +1725,9 @@ export default function Perfil() {
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
-                        className={`inline-block rounded-full border-2 px-3 py-1 font-display text-[11px] font-black uppercase tracking-[0.18em] ${
-                          statusBadgeStyles[statusInfo.variant]
-                        }`}
+                        className={`inline-block rounded-full border-2 px-3 py-1 font-display text-[11px] font-black uppercase tracking-[0.18em] ${subscriptionBadge.className}`}
                       >
-                        {statusInfo.label}
+                        {subscriptionBadge.label}
                       </span>
                       {proSince ? (
                         <span className="font-mono text-xs text-slate-600">
@@ -1729,25 +1748,32 @@ export default function Perfil() {
                         </span>
                       </div>
 
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
-                          Valor
-                        </span>
-                        <span className="font-display font-black text-slate-950">
-                          {planPrice}
-                        </span>
-                      </div>
+                      {/* Sem assinatura (admin/cortesia) nao ha Valor nem Proxima
+                          renovacao: omite as linhas (linha vazia e pior que ausente).
+                          Pagante tem hasRealSubscription=true -> mostra igual. */}
+                      {hasRealSubscription ? (
+                        <>
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                              Valor
+                            </span>
+                            <span className="font-display font-black text-slate-950">
+                              {planPrice}
+                            </span>
+                          </div>
 
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
-                          Próxima renovação
-                        </span>
-                        <span className="font-display font-black text-slate-950">
-                          {formatPeriodEnd(
-                            subscriptionData?.current_period_end,
-                          )}
-                        </span>
-                      </div>
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                              Próxima renovação
+                            </span>
+                            <span className="font-display font-black text-slate-950">
+                              {formatPeriodEnd(
+                                subscriptionData?.current_period_end,
+                              )}
+                            </span>
+                          </div>
+                        </>
+                      ) : null}
                     </div>
 
                     {/* Cenario B: renovacao por boleto em processamento. Brutal-flat
