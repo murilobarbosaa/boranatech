@@ -21,17 +21,16 @@ import {
   Code2,
   Compass,
   Cpu,
+  CreditCard,
   GraduationCap,
   History,
   Layers,
   type LucideIcon,
   Mail,
   Map,
-  MessageSquare,
   MonitorPlay,
   Palette,
   Scale,
-  ShieldCheck,
   Sparkles,
   Trophy,
   Users,
@@ -42,7 +41,6 @@ import {
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import CeuEstrelado from "@/components/shared/CeuEstrelado";
-import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
 import UserAvatar from "@/components/UserAvatar";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
@@ -161,10 +159,6 @@ const PRO_UNLOCKS: Array<{ icon: LucideIcon; text: string }> = [
     text: `Todas as plataformas de estudo (grátis vê ${FREE_PLATFORMS_SAMPLE_SIZE})`,
   },
   { icon: History, text: "Histórico de conversas com a IA" },
-  {
-    icon: MessageSquare,
-    text: "Banco de perguntas e desafios de entrevista",
-  },
 ];
 
 // Total de exclusivos exibido no topo do card Pro. O +2 sao o Comparador e a
@@ -219,11 +213,6 @@ const COMPARE_ROWS: CompareRow[] = [
     pro: true as const,
   })),
   {
-    feature: "Banco de perguntas e desafios de entrevista",
-    free: false,
-    pro: true,
-  },
-  {
     feature: "Feed de vagas júnior, estágio e trainee",
     free: false,
     pro: true,
@@ -239,25 +228,6 @@ const COMPARE_ROWS: CompareRow[] = [
 
 const COMPARE_FREE_TOTAL = COMPARE_ROWS.filter((r) => r.free !== false).length;
 const COMPARE_PRO_TOTAL = COMPARE_ROWS.length;
-
-// TODO(Ana): revisar copy do FAQ da página de planos.
-const CHECKOUT_FAQ: Array<{ pergunta: string; resposta: string }> = [
-  {
-    pergunta: "Posso cancelar quando quiser?",
-    resposta:
-      "Sim. O cancelamento é feito na área de assinatura do seu perfil, sem taxa e sem burocracia. O acesso Pro continua até o fim do período já pago.",
-  },
-  {
-    pergunta: "Quais formas de pagamento vocês aceitam?",
-    resposta:
-      "Cartão de crédito em todos os planos. Nos planos semestral e anual também dá pra pagar com boleto.",
-  },
-  {
-    pergunta: "O que acontece com meus dados se eu cancelar?",
-    resposta:
-      "Nada se perde: sua conta, seu progresso e seu histórico continuam guardados. Você volta pro plano grátis e, se assinar de novo, retoma de onde parou.",
-  },
-];
 
 const FREE_ITEMS: Array<{ icon: LucideIcon; text: string }> = [
   { icon: Layers, text: `Catálogo de ${areasCount} áreas de TI` },
@@ -1363,6 +1333,8 @@ export default function Checkout() {
                     ? "Abrindo checkout..."
                     : `Assinar ${currentPlan.label} · ${formatPrice(discountedPrice(currentPlan.price))}`}
                 </button>
+                {/* TODO(Ana): revisar copy da linha de reducao de risco (absorveu
+                    o essencial do antigo FAQ: acesso pos-cancelamento e boleto). */}
                 <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm font-bold text-slate-700">
                   <li className="inline-flex items-center gap-1.5">
                     <CalendarX
@@ -1370,15 +1342,16 @@ export default function Checkout() {
                       className="shrink-0 text-slate-500"
                       aria-hidden="true"
                     />
-                    Cancele quando quiser
+                    Cancele quando quiser, sem taxa e com acesso até o fim do
+                    período pago
                   </li>
                   <li className="inline-flex items-center gap-1.5">
-                    <ShieldCheck
+                    <CreditCard
                       size={14}
                       className="shrink-0 text-slate-500"
                       aria-hidden="true"
                     />
-                    Sem taxa de cancelamento
+                    Cartão em todos os planos, boleto no semestral e anual
                   </li>
                   <li className="inline-flex items-center gap-1.5">
                     <Mail
@@ -1404,51 +1377,6 @@ export default function Checkout() {
       </section>
 
       <section
-        aria-labelledby="planos-faq-title"
-        className="border-t-2 border-slate-950 bg-[#faf8f4] py-16 md:py-20"
-      >
-        <div className="container max-w-3xl">
-          <motion.h2
-            id="planos-faq-title"
-            {...fade()}
-            className="text-center font-display font-black leading-[1.1] text-slate-950"
-            style={{ fontSize: "clamp(24px, 3.5vw, 36px)" }}
-          >
-            Perguntas rápidas
-          </motion.h2>
-          <motion.div {...fade(0.05)} className="mt-8 space-y-4">
-            {CHECKOUT_FAQ.map((item) => (
-              <DetailsChevronOnly
-                key={item.pergunta}
-                className="card-brutal rounded-2xl bg-white p-5"
-                title={
-                  <h3 className="font-display text-lg font-black text-slate-950">
-                    {item.pergunta}
-                  </h3>
-                }
-              >
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  {item.resposta}
-                </p>
-              </DetailsChevronOnly>
-            ))}
-          </motion.div>
-          <motion.p
-            {...fade(0.1)}
-            className="mt-6 text-center text-sm font-bold text-slate-600"
-          >
-            Mais dúvidas?{" "}
-            <Link
-              href="/perguntas-frequentes"
-              className="text-violet-800 underline underline-offset-4 hover:text-violet-950"
-            >
-              Veja as perguntas frequentes
-            </Link>
-          </motion.p>
-        </div>
-      </section>
-
-      <section
         aria-labelledby="planos-fechamento-title"
         className="relative overflow-hidden border-t-2 border-slate-950 bg-slate-950 py-14 md:py-16"
       >
@@ -1461,7 +1389,7 @@ export default function Checkout() {
             style={{ fontSize: "clamp(24px, 3.5vw, 36px)" }}
           >
             {/* TODO(Ana): revisar copy do fechamento */}
-            Sem mais dúvidas? Bora acelerar sua entrada em{" "}
+            Escolheu o plano? Bora acelerar sua entrada em{" "}
             <span className="relative inline-block">
               <span className="relative">TI</span>
               <span
