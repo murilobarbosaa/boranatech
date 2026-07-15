@@ -8,11 +8,16 @@ export interface CheckoutUser {
   email: string;
 }
 
+// Boleto: pagamento unico (mode: payment), renovacao manual, so nos planos
+// semestral/anual. 'card' (default) mantem o fluxo recorrente (mode: subscription).
+export type CheckoutPaymentMethod = "card" | "boleto";
+
 export interface CreateCheckoutInput {
   user: CheckoutUser;
   planId: PlanId;
   // Codigo de afiliado ja normalizado (uppercase/trim); "" quando ausente.
   affiliateCode: string;
+  paymentMethod: CheckoutPaymentMethod;
 }
 
 export interface CreateCheckoutResult {

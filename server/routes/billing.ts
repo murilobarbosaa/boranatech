@@ -143,10 +143,41 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
         ? req.body.planId
         : "pro_monthly";
 
+    // payment_method opcional: ausente => 'card' (retrocompativel com o frontend
+    // atual, que nao manda o campo). Valor invalido => 400.
+    const rawPaymentMethod = req.body?.payment_method;
+    if (
+      rawPaymentMethod !== undefined &&
+      rawPaymentMethod !== "card" &&
+      rawPaymentMethod !== "boleto"
+    ) {
+      return next(
+        createError(
+          400,
+          "invalid_payment_method",
+          "Forma de pagamento inválida.",
+        ),
+      );
+    }
+    const paymentMethod: "card" | "boleto" =
+      rawPaymentMethod === "boleto" ? "boleto" : "card";
+
+    // Boleto so nos planos semestral/anual (pagamento unico). Mensal e cartao-only.
+    if (paymentMethod === "boleto" && planId === "pro_monthly") {
+      return next(
+        createError(
+          400,
+          "boleto_not_allowed_on_monthly",
+          "Boleto não está disponível no plano mensal.",
+        ),
+      );
+    }
+
     const data = await stripeProvider.createCheckout({
       user: { id: userId, email: req.user!.email },
       planId,
       affiliateCode,
+      paymentMethod,
     });
 
     res.json({ data });

@@ -8,6 +8,7 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { createError } from "../middleware/error";
 import { isFirstPurchase } from "./shared";
+import { getPlanChargeValue, PLAN_PRICING } from "../../shared/planPricing";
 import type { Gender } from "../../shared/gender";
 import type { PlanId } from "../../shared/planPricing";
 import type {
@@ -337,6 +338,15 @@ async function onCheckoutCompleted(
   eventCreatedAt: Date,
 ): Promise<void> {
   const session = event.data.object as Stripe.Checkout.Session;
+
+  // Boleto: sessao mode:payment sem subscription na Stripe. Grava a linha pendente
+  // (sem acesso Pro) para a UI mostrar "boleto em analise". O pagamento assincrono
+  // (async_payment_succeeded) e tratado na proxima task.
+  if (session.metadata?.payment_method === "boleto") {
+    await applyBoletoPending(session, event, eventCreatedAt);
+    return;
+  }
+
   const subRef = session.subscription;
   const subId = typeof subRef === "string" ? subRef : (subRef?.id ?? null);
   if (!subId) return;
@@ -353,6 +363,81 @@ async function onCheckoutCompleted(
     };
   }
   await applySubscription(sub, event, eventCreatedAt);
+}
+
+// Linha pendente de boleto: gravada no checkout.session.completed, quando o boleto
+// foi gerado mas ainda nao pago (payment_status != 'paid'). NAO concede acesso Pro
+// (status 'pending' + current_period_end null; is_user_pro so aceita active/
+// trialing). A confirmacao do pagamento e a duracao do acesso ficam na proxima
+// task (async_payment_succeeded), que reencontra a linha pelo session id.
+async function applyBoletoPending(
+  session: Stripe.Checkout.Session,
+  event: Stripe.Event,
+  eventCreatedAt: Date,
+): Promise<void> {
+  // Se por algum motivo ja veio pago, quem sincroniza e a proxima task; nao grava
+  // pendente aqui para nao mascarar o acesso.
+  if (session.payment_status === "paid") return;
+
+  const userId =
+    session.metadata?.supabase_user_id || session.client_reference_id;
+  if (!userId) {
+    console.warn(
+      `[webhook/stripe] boleto session ${session.id} sem supabase_user_id; ignorando.`,
+    );
+    return;
+  }
+
+  const planCode = session.metadata?.plan_id;
+  if (!planCode) {
+    console.warn(
+      `[webhook/stripe] boleto session ${session.id} sem plan_id; ignorando.`,
+    );
+    return;
+  }
+
+  const { data: proPlan } = await supabaseAdmin
+    .from("plans")
+    .select("id")
+    .eq("code", planCode)
+    .maybeSingle();
+  if (!proPlan) throw createError(500, "db_error", "Plano Pro não encontrado.");
+
+  const customerId =
+    typeof session.customer === "string"
+      ? session.customer
+      : (session.customer?.id ?? null);
+
+  const row = {
+    user_id: userId,
+    plan_id: proPlan.id,
+    provider: "stripe",
+    // Boleto nao tem subscription: chaveia pelo Checkout Session id (cs_...), que
+    // existe desde a criacao e volta em todos os eventos da sessao.
+    provider_subscription_id: session.id,
+    provider_customer_id: customerId,
+    affiliate_code: session.metadata?.affiliate_code || null,
+    status: "pending",
+    payment_method: "boleto",
+    renewal_type: "manual",
+    current_period_start: null,
+    current_period_end: null,
+    last_event_at: eventCreatedAt.toISOString(),
+    raw_provider_payload: event,
+  };
+
+  // Idempotente: session id e unico e ignoreDuplicates evita erro se o evento
+  // reentrar (retry da Stripe). Sem handleTransition: pendente nao vira Pro.
+  const { error } = await supabaseAdmin
+    .from("subscriptions")
+    .upsert(row, {
+      onConflict: "provider_subscription_id",
+      ignoreDuplicates: true,
+    });
+  if (error) {
+    console.error("[webhook/stripe] boleto pending write failed:", error);
+    throw createError(500, "db_error", "Erro ao gravar assinatura.");
+  }
 }
 
 async function onInvoicePaid(
@@ -445,6 +530,13 @@ async function ensureAffiliateCoupon(
   }
 }
 
+// Boleto: dias de acesso Pro concedidos quando o pagamento compensa (proxima
+// task). So os planos semestral/anual aceitam boleto; o mensal fica de fora.
+const BOLETO_ACCESS_DAYS: Partial<Record<PlanId, number>> = {
+  pro_semiannual: 182,
+  pro_annual: 365,
+};
+
 async function createCheckout(
   input: CreateCheckoutInput,
 ): Promise<CreateCheckoutResult> {
@@ -466,6 +558,25 @@ async function createCheckout(
     .maybeSingle();
   if (existing) {
     throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
+  }
+
+  // Guard de boleto pendente: enquanto um boleto aguarda pagamento, nao gera outro
+  // checkout (nem boleto nem cartao) para evitar pagamento em duplicidade. Code
+  // slug distinto do 409 acima: a UI precisa diferenciar "ja e assinante" de
+  // "boleto aguardando pagamento".
+  const { data: pendingBoleto } = await supabaseAdmin
+    .from("subscriptions")
+    .select("status")
+    .eq("user_id", input.user.id)
+    .eq("payment_method", "boleto")
+    .eq("status", "pending")
+    .maybeSingle();
+  if (pendingBoleto) {
+    throw createError(
+      409,
+      "boleto_pending",
+      "Você tem um boleto aguardando pagamento.",
+    );
   }
 
   // Afiliado/desconto: mesma regra do Asaas. So valida afiliado ativo; o desconto
@@ -516,6 +627,53 @@ async function createCheckout(
     plan_id: input.planId,
     affiliate_code: validAffiliateCode || "",
   };
+
+  if (input.paymentMethod === "boleto") {
+    // Boleto: pagamento unico (mode: payment). Nao pode usar price recurring, entao
+    // o valor vem inline de planPricing.ts (fonte unica: e o que o site mostra e o
+    // que a Stripe cobra). O acesso Pro so e concedido quando o boleto compensa
+    // (async_payment_succeeded, proxima task); por isso metadata carrega
+    // payment_method/renewal_type/access_days para a linha ser reidratada la.
+    const accessDays = BOLETO_ACCESS_DAYS[input.planId];
+    if (!accessDays) {
+      throw createError(
+        400,
+        "boleto_not_allowed_on_monthly",
+        "Boleto não está disponível neste plano.",
+      );
+    }
+    const boletoMetadata = {
+      ...metadata,
+      payment_method: "boleto",
+      renewal_type: "manual",
+      access_days: String(accessDays),
+    };
+    const session = await getStripe().checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["boleto"],
+      payment_method_options: { boleto: { expires_after_days: 3 } },
+      line_items: [
+        {
+          price_data: {
+            currency: "brl",
+            unit_amount: Math.round(getPlanChargeValue(input.planId) * 100),
+            product_data: {
+              name: `Bora na Tech Pro ${PLAN_PRICING[input.planId].label}`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      client_reference_id: input.user.id,
+      customer_email: input.user.email || undefined,
+      metadata: boletoMetadata,
+      discounts,
+      success_url: `${env.appPublicUrl}/planos/sucesso`,
+      cancel_url: `${env.appPublicUrl}/planos`,
+    });
+    // Boleto nao gera subscription na Stripe; a linha e chaveada pelo session id.
+    return { checkoutUrl: session.url ?? undefined, subscriptionId: "" };
+  }
 
   const session = await getStripe().checkout.sessions.create({
     mode: "subscription",
