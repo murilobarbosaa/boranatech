@@ -34,8 +34,7 @@ type ErrorContent = {
 const GENERIC_ERROR: ErrorContent = {
   icon: <AlertTriangle className="h-6 w-6 text-slate-700" />,
   title: "Não conseguimos processar este link",
-  body: "Entre na sua conta para gerenciar sua assinatura.",
-  // TODO(Ana): rotulo do botao (destino /planos definido na task).
+  body: "Escolha seu plano para renovar.",
   action: { label: "Ver planos", href: "/planos" },
 };
 
@@ -49,14 +48,12 @@ const ERROR_CONTENT: Record<string, ErrorContent> = {
     icon: <Check className="h-6 w-6 text-slate-700" strokeWidth={3} />,
     title: "Sua assinatura já foi renovada",
     body: "Não é preciso fazer nada.",
-    // TODO(Ana): rotulo do botao (destino /perfil definido na task).
     action: { label: "Ir para o perfil", href: "/perfil" },
   },
   expired_token: {
     icon: <AlertTriangle className="h-6 w-6 text-slate-700" />,
     title: "Este link expirou",
-    body: "Entre na sua conta para renovar.",
-    // TODO(Ana): rotulo do botao (destino /planos definido na task).
+    body: "Escolha seu plano para renovar.",
     action: { label: "Ver planos", href: "/planos" },
   },
 };
