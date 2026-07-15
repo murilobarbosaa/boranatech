@@ -2419,6 +2419,7 @@ export type Database = {
           provider_subscription_id: string | null
           raw_provider_payload: Json | null
           renewal_reminder_sent_at: string | null
+          renewal_reminders_sent: string[]
           renewal_type: string
           status: string
           trial_end: string | null
@@ -2441,6 +2442,7 @@ export type Database = {
           provider_subscription_id?: string | null
           raw_provider_payload?: Json | null
           renewal_reminder_sent_at?: string | null
+          renewal_reminders_sent?: string[]
           renewal_type?: string
           status?: string
           trial_end?: string | null
@@ -2463,6 +2465,7 @@ export type Database = {
           provider_subscription_id?: string | null
           raw_provider_payload?: Json | null
           renewal_reminder_sent_at?: string | null
+          renewal_reminders_sent?: string[]
           renewal_type?: string
           status?: string
           trial_end?: string | null

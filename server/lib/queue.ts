@@ -11,6 +11,7 @@ import {
   sendNewsletterWelcomeEmail,
   sendPaymentFailedEmail,
   sendProUpgradeEmail,
+  sendRenewalReminderEmail,
   sendWaitlistConfirmationEmail,
   sendWelcomeEmail,
 } from "./email";
@@ -23,6 +24,14 @@ export type EmailJobData =
   | ({ type: "cancellation" } & Recipient)
   | ({ type: "cancellation_scheduled"; effectiveAt: string } & Recipient)
   | ({ type: "payment_failed" } & Recipient)
+  | ({
+      type: "renewal_reminder";
+      planName: string;
+      priceLabel: string;
+      dueDateIso: string;
+      renewUrl: string;
+      daysRemaining: number;
+    } & Recipient)
   | ({ type: "waitlist_confirmation" } & Recipient)
   | { type: "newsletter_confirm"; to: string; confirmUrl: string }
   | { type: "newsletter_welcome"; to: string; unsubscribeUrl: string };
@@ -42,6 +51,10 @@ const EMAIL_CRITICALITY: Record<
   cancellation: "critical",
   cancellation_scheduled: "critical",
   payment_failed: "critical",
+  // Critico: se o lembrete nao sai, o boleto vence e o assinante perde o acesso
+  // que renovaria. Com Redis fora, o envio direto (fallback critico) mantem o
+  // lembrete saindo em vez de sumir calado.
+  renewal_reminder: "critical",
   waitlist_confirmation: "standard",
   newsletter_confirm: "standard",
   newsletter_welcome: "standard",
@@ -87,6 +100,15 @@ async function sendDirect(data: EmailJobData) {
       break;
     case "payment_failed":
       await sendPaymentFailedEmail(data.to, data.name, data.gender);
+      break;
+    case "renewal_reminder":
+      await sendRenewalReminderEmail(data.to, data.name, {
+        planName: data.planName,
+        priceLabel: data.priceLabel,
+        dueDateIso: data.dueDateIso,
+        renewUrl: data.renewUrl,
+        daysRemaining: data.daysRemaining,
+      });
       break;
     case "waitlist_confirmation":
       await sendWaitlistConfirmationEmail(data.to, data.name);

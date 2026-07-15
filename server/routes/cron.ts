@@ -8,11 +8,14 @@ import { reindexSearchDocuments } from "../lib/searchIndex";
 import { recordCronRun } from "../lib/cron-logs";
 import { env } from "../lib/env";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
+import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
+import { issueRenewalToken } from "../lib/renewalToken";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { createError } from "../middleware/error";
 import { getStripeSubscriptionState } from "../providers/stripe";
+import { isPlanId, PLAN_PRICING } from "../../shared/planPricing";
 
 const router = Router();
 
@@ -470,6 +473,200 @@ router.post("/process-cancellations", withCronLock("process-cancellations", 600,
     next(err);
   }
 }));
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Regua por plano: dias antes do vencimento em que cada lembrete dispara.
+const RENEWAL_MILESTONES: Record<string, number[]> = {
+  pro_annual: [30, 7, 1],
+  pro_semiannual: [15, 7, 1],
+};
+
+// Marco "ativo" = o MENOR N cuja janela ainda contem daysUntil. Anual: 30d cobre
+// (7,30], 7d cobre (1,7], 1d cobre <=1 (contiguo, sem overlap). Um marco por
+// assinatura por run; o array renewal_reminders_sent garante um envio por marco
+// mesmo com run diaria/atrasada (catch-up dentro da janela, nunca retroativo).
+function activeRenewalMilestone(
+  milestones: number[],
+  daysUntil: number,
+): number | null {
+  const eligible = milestones.filter((n) => daysUntil <= n);
+  return eligible.length > 0 ? Math.min(...eligible) : null;
+}
+
+// Lembrete de renovacao de boleto manual. Filtro fail-closed: SO renewal_type=
+// 'manual' (cartao renova sozinho e nunca pode receber este e-mail) e status=
+// 'active', com vencimento na janela do maior marco. Um marco por assinatura por
+// run; marca o marco so apos o enqueue ser aceito (at-least-once).
+router.post(
+  "/expiring-subscriptions",
+  withCronLock("expiring-subscriptions", 600, async (_req, res, next) => {
+    const startedAt = new Date();
+    try {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      // Janela do maior marco (30d anual) + folga; semestral (<=15d) cai dentro.
+      const windowIso = new Date(now.getTime() + 31 * DAY_MS).toISOString();
+
+      // Usa o indice parcial subscriptions_manual_renewal_expiry_idx
+      // (renewal_type='manual' AND status='active', em current_period_end).
+      const { data: due, error: dueError } = await supabaseAdmin
+        .from("subscriptions")
+        .select(
+          "id, user_id, current_period_end, renewal_reminders_sent, plan_id",
+        )
+        .eq("renewal_type", "manual")
+        .eq("status", "active")
+        .gt("current_period_end", nowIso)
+        .lte("current_period_end", windowIso);
+
+      if (dueError) {
+        await recordCronRun({
+          jobName: "expiring-subscriptions",
+          status: "error",
+          startedAt,
+          errorMessage: dueError.message,
+        });
+        return next(
+          createError(500, "db_error", "Erro ao buscar assinaturas a vencer."),
+        );
+      }
+
+      const rows = due || [];
+
+      // plan_id (uuid) -> code, numa consulta so (poucos planos).
+      const planCodeById = new Map<string, string>();
+      if (rows.length > 0) {
+        const { data: plans } = await supabaseAdmin
+          .from("plans")
+          .select("id, code");
+        for (const p of plans || []) planCodeById.set(p.id, p.code);
+      }
+
+      let sent = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const row of rows) {
+        try {
+          const code = row.plan_id ? planCodeById.get(row.plan_id) : undefined;
+          const milestones = code ? RENEWAL_MILESTONES[code] : undefined;
+          if (
+            !code ||
+            !isPlanId(code) ||
+            !milestones ||
+            !row.current_period_end
+          ) {
+            skipped++;
+            continue;
+          }
+
+          const periodEndMs = new Date(row.current_period_end).getTime();
+          const daysUntil = (periodEndMs - now.getTime()) / DAY_MS;
+          const n = activeRenewalMilestone(milestones, daysUntil);
+          if (n === null) {
+            skipped++;
+            continue;
+          }
+
+          const milestoneCode = `d${n}`;
+          const already = row.renewal_reminders_sent ?? [];
+          if (already.includes(milestoneCode)) {
+            skipped++;
+            continue;
+          }
+
+          const token = issueRenewalToken({
+            subscriptionId: row.id,
+            currentPeriodEnd: row.current_period_end,
+          });
+          if (!token) {
+            console.error(
+              `[cron/expiring-subscriptions] token nulo para sub ${row.id} (RENEWAL_TOKEN_SECRET ausente?); pulando.`,
+            );
+            failed++;
+            continue;
+          }
+
+          const { data: authData } = await supabaseAdmin.auth.admin.getUserById(
+            row.user_id,
+          );
+          const emailTo = authData?.user?.email;
+          if (!emailTo) {
+            console.warn(
+              `[cron/expiring-subscriptions] sub ${row.id} sem e-mail; pulando.`,
+            );
+            skipped++;
+            continue;
+          }
+          const name = String(
+            authData?.user?.user_metadata?.name ||
+              emailTo.split("@")[0] ||
+              "assinante",
+          );
+
+          const pricing = PLAN_PRICING[code];
+          const renewUrl = `${env.appPublicUrl}/renovar?t=${token}`;
+          const daysRemaining = Math.max(0, Math.round(daysUntil));
+
+          // Enfileira PRIMEIRO; so marca o marco se o enqueue for ACEITO. Se o
+          // enqueue lancar (Redis fora/timeout), NAO marca -> a proxima run tenta
+          // de novo (at-least-once no enfileiramento). Uma falha posterior do
+          // worker (attempts:3) nao desmarca: aquele marco se perde, mas os outros
+          // dois cobrem o assinante.
+          await enqueueEmail({
+            type: "renewal_reminder",
+            to: emailTo,
+            name,
+            gender: null,
+            planName: pricing.label,
+            priceLabel: pricing.totalLabel,
+            dueDateIso: row.current_period_end,
+            renewUrl,
+            daysRemaining,
+          });
+
+          const { error: markError } = await supabaseAdmin
+            .from("subscriptions")
+            .update({ renewal_reminders_sent: [...already, milestoneCode] })
+            .eq("id", row.id);
+          if (markError) {
+            // Enfileirado mas nao marcado: risco de reenvio na proxima run. Grita.
+            console.error(
+              `[cron/expiring-subscriptions] marco ${milestoneCode} enfileirado mas NAO marcado (sub ${row.id}):`,
+              markError,
+            );
+            failed++;
+          } else {
+            sent++;
+          }
+        } catch (err) {
+          failed++;
+          console.error(
+            `[cron/expiring-subscriptions] falha na sub ${row.id}:`,
+            err,
+          );
+        }
+      }
+
+      await recordCronRun({
+        jobName: "expiring-subscriptions",
+        status: failed > 0 ? "partial" : "success",
+        startedAt,
+        payload: { candidates: rows.length, sent, skipped, failed },
+      });
+      res.json({ data: { candidates: rows.length, sent, skipped, failed } });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "expiring-subscriptions",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
 
 type SubRow = {
   id: string;

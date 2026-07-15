@@ -429,6 +429,56 @@ export async function sendCancellationEmail(
   });
 }
 
+// Lembrete de renovacao de boleto (renewal_type='manual'). UM template
+// parametrizado para os tres marcos (D-30/D-15, D-7, D-1): a estrutura e a mesma
+// (plano, valor, vencimento, link one-click); so muda quantos dias faltam, um
+// dado factual. Tres templates duplicariam quase o mesmo HTML sem ganho.
+export async function sendRenewalReminderEmail(
+  to: string,
+  name: string,
+  data: {
+    planName: string;
+    priceLabel: string;
+    dueDateIso: string;
+    renewUrl: string;
+    daysRemaining: number;
+  },
+) {
+  const safeName = escapeHtml(name);
+  const safePlan = escapeHtml(data.planName);
+  const safePrice = escapeHtml(data.priceLabel);
+  const theme = NEUTRAL_THEME;
+  const due = new Date(data.dueDateIso);
+  const formattedDate = Number.isNaN(due.getTime())
+    ? "em breve"
+    : due.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+  const safeDate = escapeHtml(formattedDate);
+  const whenLine =
+    data.daysRemaining <= 0
+      ? "hoje"
+      : data.daysRemaining === 1
+        ? "amanhã"
+        : `em ${data.daysRemaining} dias`;
+  // TODO(Ana): copy final do lembrete de renovacao.
+  const title = "Hora de renovar seu Pro";
+  const body = `
+    ${paragraph(`Olá, ${safeName}. Sua assinatura ${safePlan} vence ${whenLine} (${safeDate}).`)}
+    ${paragraph(`Como o pagamento é por boleto, a renovação não é automática. Para manter o acesso, gere um novo boleto de ${safePrice}.`)}
+    ${button("Renovar assinatura", data.renewUrl, theme)}
+    ${paragraph("O botão acima gera o boleto na hora. Qualquer dúvida, é só responder este e-mail.")}
+  `;
+  await sendEmail({
+    to,
+    from: FROM_TRANSACTIONAL,
+    subject: title,
+    html: layout(theme, title, body),
+  });
+}
+
 // Origem do lote de campanha. Espelha email_campaign_batches.source; define qual
 // frase de rodape descreve, com honestidade, COMO o e-mail chegou aquela pessoa.
 export type CampaignAudience =
