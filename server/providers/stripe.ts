@@ -764,14 +764,28 @@ async function createCheckout(
   // checkout (nem boleto nem cartao) para evitar pagamento em duplicidade. Code
   // slug distinto do 409 acima: a UI precisa diferenciar "ja e assinante" de
   // "boleto aguardando pagamento".
-  const { data: pendingBoleto } = await supabaseAdmin
+  // Fail-closed, igual ao guard de ativa: limit(1) + presenca (sem .maybeSingle(),
+  // que erraria com multiplas linhas), e erro de query BLOQUEIA, nunca libera.
+  // Decisao de cobranca nao pode sobreviver ignorando error.
+  const { data: pendingBoleto, error: pendingError } = await supabaseAdmin
     .from("subscriptions")
-    .select("status")
+    .select("id")
     .eq("user_id", input.user.id)
     .eq("payment_method", "boleto")
     .eq("status", "pending")
-    .maybeSingle();
-  if (pendingBoleto) {
+    .limit(1);
+  if (pendingError) {
+    console.error(
+      "[billing/checkout] guard de boleto pendente falhou; bloqueando:",
+      pendingError,
+    );
+    throw createError(
+      500,
+      "db_error",
+      "Não foi possível verificar seu boleto pendente. Tente novamente.",
+    );
+  }
+  if (pendingBoleto && pendingBoleto.length > 0) {
     throw createError(
       409,
       "boleto_pending",
