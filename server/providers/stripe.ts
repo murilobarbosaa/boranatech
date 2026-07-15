@@ -521,6 +521,35 @@ async function onBoletoAsyncPaymentSucceeded(
   });
 }
 
+// Boleto nao pago / expirado: cancela a linha pendente. Apenas o flip
+// pending->canceled, condicional (idempotente) e SEM handleTransition: o usuario
+// nunca teve acesso, entao um e-mail de cancelamento seria errado. Efeito colateral
+// desejado: 'canceled' sai do filtro do guard 409 (payment_method='boleto' AND
+// status='pending'), liberando o usuario para gerar novo checkout.
+async function onBoletoAsyncPaymentFailed(
+  event: Stripe.Event,
+  eventCreatedAt: Date,
+): Promise<void> {
+  const session = event.data.object as Stripe.Checkout.Session;
+  if (session.metadata?.payment_method !== "boleto") return;
+
+  const { error } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      status: "canceled",
+      canceled_at: eventCreatedAt.toISOString(),
+      last_event_at: eventCreatedAt.toISOString(),
+      raw_provider_payload: event,
+    })
+    .eq("provider_subscription_id", session.id)
+    .eq("status", "pending");
+
+  if (error) {
+    console.error("[webhook/stripe] boleto failure write failed:", error);
+    throw createError(500, "db_error", "Erro ao cancelar assinatura.");
+  }
+}
+
 async function onInvoicePaid(
   event: Stripe.Event,
   eventCreatedAt: Date,
@@ -1039,6 +1068,9 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         break;
       case "checkout.session.async_payment_succeeded":
         await onBoletoAsyncPaymentSucceeded(event, eventCreatedAt);
+        break;
+      case "checkout.session.async_payment_failed":
+        await onBoletoAsyncPaymentFailed(event, eventCreatedAt);
         break;
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
