@@ -169,6 +169,35 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       }
     }
 
+    // Intencao de "nao renovar" do boleto (renewal_type='manual'), lida de
+    // subscription_cancellations. A UI do boleto usa ISTO, nao cancel_at_period_end
+    // (que para boleto e sempre false). Cartao nao passa por aqui (renewal_type
+    // 'auto'), entao a query nem roda: comportamento de cartao inalterado.
+    const subRow = subscription as {
+      renewal_type?: string | null;
+      provider_subscription_id?: string | null;
+      current_period_end?: string | null;
+    } | null;
+    let nonRenewal: { effectiveAt: string | null } | null = null;
+    if (
+      subRow?.renewal_type === "manual" &&
+      subRow.provider_subscription_id
+    ) {
+      const { data: intent } = await supabaseAdmin
+        .from("subscription_cancellations")
+        .select("effective_at")
+        .eq("provider_subscription_id", subRow.provider_subscription_id)
+        .neq("status", "reverted")
+        .order("canceled_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (intent) {
+        nonRenewal = {
+          effectiveAt: intent.effective_at ?? subRow.current_period_end ?? null,
+        };
+      }
+    }
+
     if (!subscription) {
       const { data: freePlan } = await supabaseAdmin
         .from("plans")
@@ -182,6 +211,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
           status: "free",
           isPro,
           pendingBoleto,
+          nonRenewal: null,
         },
       });
     }
@@ -191,6 +221,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         ...subscription,
         isPro,
         pendingBoleto,
+        nonRenewal,
       },
     });
   } catch (err) {
