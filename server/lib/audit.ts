@@ -2,7 +2,7 @@ import { supabaseAdmin } from "./supabaseAdmin";
 
 export async function logAudit(params: {
   actorUserId: string;
-  action: "create" | "update" | "delete" | "publish" | "unpublish";
+  action: "create" | "update" | "delete" | "publish" | "unpublish" | "reveal";
   resourceType: string;
   resourceId?: string;
   resourceSlug?: string;
