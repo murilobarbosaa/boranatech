@@ -474,21 +474,67 @@ async function onBoletoAsyncPaymentSucceeded(
     throw createError(500, "config_error", "access_days ausente no boleto.");
   }
 
-  const periodStart = eventCreatedAt.toISOString();
+  // Le a linha antes de calcular o periodo: precisamos do user_id para achar a
+  // ancora, e este e o ponto de "grita"/idempotencia. Reprocesso com a linha JA
+  // active = no-op silencioso; ausente ou estado inesperado = boleto pago sem
+  // acesso = grita e forca retry.
+  const paidAtIso = eventCreatedAt.toISOString();
+  const { data: pendingRow } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, user_id, status")
+    .eq("provider_subscription_id", session.id)
+    .maybeSingle();
+  if (!pendingRow) {
+    console.error(
+      `[webhook/stripe] boleto pago sem linha (session ${session.id}); investigar.`,
+    );
+    throw createError(500, "db_error", "Linha do boleto não encontrada.");
+  }
+  if (pendingRow.status !== "pending") {
+    if (pendingRow.status === "active") return; // reprocesso idempotente
+    console.error(
+      `[webhook/stripe] boleto pago nao ativou (session ${session.id}, status atual: ${pendingRow.status}); investigar.`,
+    );
+    throw createError(500, "db_error", "Boleto pago não ativou a assinatura.");
+  }
+
+  // Renovacao SOMA ao periodo, nao substitui. Ancora = maior current_period_end
+  // ainda vigente (> pagamento) entre as subs active/trialing do usuario, EXCETO
+  // esta linha. 1a compra: sem vigente -> ancora = agora. Renovacao cedo: ancora =
+  // fim atual (nao perde os dias que faltavam). Renovacao atrasada: o periodo
+  // antigo ja venceu, o filtro > pagamento o exclui -> ancora = agora (sem
+  // retroativo dos dias sem acesso).
+  const { data: vigente } = await supabaseAdmin
+    .from("subscriptions")
+    .select("current_period_end")
+    .eq("user_id", pendingRow.user_id)
+    .in("status", ["active", "trialing"])
+    .gt("current_period_end", paidAtIso)
+    .neq("id", pendingRow.id)
+    .order("current_period_end", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const anchorMs = vigente?.current_period_end
+    ? new Date(vigente.current_period_end).getTime()
+    : eventCreatedAt.getTime();
+  // current_period_start = ancora: na renovacao vigente o novo periodo comeca
+  // exatamente onde o anterior termina (contiguo, sem overlap de receita); na 1a
+  // compra e na renovacao atrasada a ancora e o proprio pagamento.
+  const periodStart = new Date(anchorMs).toISOString();
   const periodEnd = new Date(
-    eventCreatedAt.getTime() + accessDays * 24 * 60 * 60 * 1000,
+    anchorMs + accessDays * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  // Ativacao idempotente: o flip so acontece com status='pending'. Reenvio do
-  // mesmo evento (ou qualquer reprocesso com a linha ja active) atualiza 0 linhas,
-  // entao handleTransition (email + conversao de afiliado) dispara UMA vez.
+  // Flip atomico: so com status='pending'. Idempotente mesmo se a linha for
+  // ativada entre a leitura acima e este UPDATE (0 linhas -> nao soma de novo).
   const { data: activated, error } = await supabaseAdmin
     .from("subscriptions")
     .update({
       status: "active",
       current_period_start: periodStart,
       current_period_end: periodEnd,
-      last_event_at: eventCreatedAt.toISOString(),
+      last_event_at: paidAtIso,
       raw_provider_payload: event,
     })
     .eq("provider_subscription_id", session.id)
@@ -499,25 +545,39 @@ async function onBoletoAsyncPaymentSucceeded(
     console.error("[webhook/stripe] boleto activation write failed:", error);
     throw createError(500, "db_error", "Erro ao ativar assinatura.");
   }
-
   if (!activated || activated.length === 0) {
-    // 0 linhas atualizadas. So e seguro seguir em silencio se a linha JA esta
-    // active (reprocesso idempotente: o acesso ja foi concedido). Qualquer outro
-    // caso e boleto pago que nao virou acesso (linha ausente, canceled, etc.):
-    // dinheiro entrou e acesso nao saiu, entao grita e forca retry.
-    const { data: current } = await supabaseAdmin
-      .from("subscriptions")
-      .select("status")
-      .eq("provider_subscription_id", session.id)
-      .maybeSingle();
-    if (current?.status === "active") return;
-    console.error(
-      `[webhook/stripe] boleto pago nao ativou (session ${session.id}, status atual: ${current?.status ?? "AUSENTE"}); investigar.`,
-    );
-    throw createError(500, "db_error", "Boleto pago não ativou a assinatura.");
+    // Corrida: alguem flipou entre a leitura e o UPDATE. Ja tratado por quem
+    // flipou; nao redispara efeitos nem re-aposenta.
+    return;
   }
 
   const row = activated[0];
+
+  // Aposenta as assinaturas antigas do usuario (a que ancorou + qualquer residuo
+  // active/trialing), para nao ficarem duas linhas ativas inflando admin/MRR,
+  // quebrando o guard 409 e disparando lembrete espurio na regua. status
+  // 'superseded' (NAO 'canceled': foi renovacao, nao cancelamento; sem
+  // canceled_at, updated_at carimba via trigger). Best-effort: a ativacao ja
+  // ocorreu, entao erro aqui loga alto e segue (o reprocesso curto-circuita em
+  // 'active' e nao repetiria isto; a proxima renovacao tambem limpa residuo).
+  const { data: retired, error: retireError } = await supabaseAdmin
+    .from("subscriptions")
+    .update({ status: "superseded" })
+    .eq("user_id", row.user_id)
+    .in("status", ["active", "trialing"])
+    .neq("id", pendingRow.id)
+    .select("id");
+  if (retireError) {
+    console.error(
+      `[webhook/stripe] falha ao aposentar assinatura antiga (session ${session.id}, user ${row.user_id}); orfa pode persistir:`,
+      retireError,
+    );
+  } else if (retired && retired.length > 0) {
+    console.log(
+      `[webhook/stripe] ${retired.length} assinatura(s) superseded na renovacao (user ${row.user_id}).`,
+    );
+  }
+
   const { data: plan } = await supabaseAdmin
     .from("plans")
     .select("code, name")
@@ -675,13 +735,27 @@ async function createCheckout(
   // Pulado SO na renovacao (internalRenewal), onde a assinatura esta active de
   // proposito. internalRenewal e interno e nunca chega pelo corpo HTTP.
   if (!input.internalRenewal) {
-    const { data: existing } = await supabaseAdmin
+    // Fail-closed: nada de .maybeSingle() aqui (ele ERRA com multiplas linhas
+    // ativas e, se o error for ignorado, libera o checkout). limit(1) + presenca;
+    // e um erro de query BLOQUEIA, nunca libera.
+    const { data: activeRows, error: guardError } = await supabaseAdmin
       .from("subscriptions")
-      .select("status")
+      .select("id")
       .eq("user_id", input.user.id)
       .in("status", ["active", "trialing"])
-      .maybeSingle();
-    if (existing) {
+      .limit(1);
+    if (guardError) {
+      console.error(
+        "[billing/checkout] guard de assinatura ativa falhou; bloqueando:",
+        guardError,
+      );
+      throw createError(
+        500,
+        "db_error",
+        "Não foi possível verificar sua assinatura. Tente novamente.",
+      );
+    }
+    if (activeRows && activeRows.length > 0) {
       throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
     }
   }
