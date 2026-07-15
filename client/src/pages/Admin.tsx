@@ -8,7 +8,6 @@ import {
   BarChart3,
   Bot,
   BrainCircuit,
-  CheckCircle2,
   Clock3,
   Compass,
   Copy,
@@ -6898,55 +6897,6 @@ export default function Admin() {
                         Nenhuma ação registrada ainda.
                       </p>
                     )}
-                  </div>
-                </article>
-              </div>
-
-              <div className="grid gap-6 xl:grid-cols-3">
-                <article className="card-brutal rounded-3xl bg-yellow-300 p-6">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Search className="h-6 w-6" />O que monitorar
-                  </h2>
-                  <ul className="mt-5 space-y-3 text-sm font-bold text-slate-800">
-                    <li className="flex gap-2">
-                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Crescimento
-                      diário de usuários ativos.
-                    </li>
-                    <li className="flex gap-2">
-                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Custo por
-                      chamada de IA e limite mensal.
-                    </li>
-                    <li className="flex gap-2">
-                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Conversão de
-                      recursos Pro para assinatura.
-                    </li>
-                    <li className="flex gap-2">
-                      <CheckCircle2 className="h-5 w-5 shrink-0" /> Erros em
-                      login, pagamento e geração com IA.
-                    </li>
-                  </ul>
-                </article>
-
-                <article className="card-brutal rounded-3xl bg-white p-6 xl:col-span-2">
-                  <h2 className="font-display flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <Mail className="h-6 w-6" />
-                    Próximas integrações recomendadas
-                  </h2>
-                  <div className="mt-5 grid gap-4 md:grid-cols-2">
-                    {/* TODO(Ana): revisar a lista de integracoes ainda pendentes. */}
-                    {[
-                      "Atribuição de aquisição por canal via UTM.",
-                      "Analytics por usuário (funcionalidades usadas e sessões).",
-                      "Agregação dos motivos de cancelamento no admin.",
-                      "Monitor de erros por rota, dispositivo, navegador e usuário afetado.",
-                    ].map((item) => (
-                      <div
-                        key={item}
-                        className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4 text-sm font-bold text-slate-700"
-                      >
-                        {item}
-                      </div>
-                    ))}
                   </div>
                 </article>
               </div>
