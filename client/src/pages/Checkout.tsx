@@ -96,23 +96,23 @@ const HERO_PILLS: Array<{ icon: LucideIcon; text: string; color: string }> = [
   {
     icon: Scale,
     text: "Comparador",
-    color: "bg-orange-100 text-orange-700",
+    color: "bg-orange-300",
   },
-  { icon: Bot, text: "IA pessoal", color: "bg-violet-100 text-violet-700" },
+  { icon: Bot, text: "IA pessoal", color: "bg-violet-300" },
   {
     icon: Sparkles,
     text: "8+ ferramentas com IA",
-    color: "bg-amber-100 text-amber-700",
+    color: "bg-amber-300",
   },
   {
     icon: Briefcase,
     text: "Feed de vagas",
-    color: "bg-sky-100 text-sky-700",
+    color: "bg-sky-300",
   },
   {
     icon: Palette,
     text: "Personalização",
-    color: "bg-pink-100 text-pink-700",
+    color: "bg-pink-300",
   },
 ];
 
@@ -311,7 +311,7 @@ function CompareCellContent({
         <X
           size={18}
           strokeWidth={3}
-          className="inline text-rose-300"
+          className="inline text-rose-400"
           aria-hidden="true"
         />
         <span className="sr-only">Não incluído</span>
@@ -320,8 +320,10 @@ function CompareCellContent({
   }
   return (
     <span
-      className={`text-[11px] font-black leading-tight ${
-        side === "pro" ? "text-violet-800" : "text-slate-500"
+      className={`inline-block rounded-full border-[1.5px] border-slate-900 px-1.5 py-0.5 text-[10px] font-black leading-tight shadow-[1px_1px_0_#0f172a] ${
+        side === "pro"
+          ? "bg-violet-200 text-violet-950"
+          : "bg-white text-slate-700"
       }`}
     >
       {value}
@@ -732,13 +734,9 @@ export default function Checkout() {
                 return (
                   <li
                     key={pill.text}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-sm font-black text-white"
+                    className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-3.5 py-1.5 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] ${pill.color}`}
                   >
-                    <span
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${pill.color}`}
-                    >
-                      <Icon size={14} strokeWidth={2.5} aria-hidden="true" />
-                    </span>
+                    <Icon size={14} strokeWidth={2.5} aria-hidden="true" />
                     {pill.text}
                   </li>
                 );
@@ -806,9 +804,12 @@ export default function Checkout() {
           <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2 md:items-start">
             <motion.div
               {...fade(0.05)}
-              className="rounded-3xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a]"
+              className="rounded-3xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#0f172a]"
             >
-              <h3 className="font-display text-lg font-black text-slate-950">
+              <span className="inline-block w-fit rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                100% grátis
+              </span>
+              <h3 className="mt-3 font-display text-lg font-black text-slate-950">
                 Grátis você já tem
               </h3>
               <ul className="mt-4 space-y-2.5">
@@ -844,7 +845,7 @@ export default function Checkout() {
                       key={item.text}
                       className="flex items-center gap-2.5 text-sm font-bold text-slate-800"
                     >
-                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 border-slate-300 bg-slate-100">
+                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 bg-slate-200">
                         <Icon
                           size={13}
                           className="text-slate-500"
@@ -867,7 +868,7 @@ export default function Checkout() {
 
             <motion.div
               {...fade(0.1)}
-              className="relative max-md:order-first overflow-hidden rounded-3xl border-2 border-slate-950 bg-gradient-to-b from-slate-950 via-slate-900 to-violet-950 p-6 shadow-[5px_5px_0_#7c3aed,0_0_45px_rgba(124,58,237,0.35)]"
+              className="relative max-md:order-first overflow-hidden rounded-3xl border-2 border-slate-950 bg-slate-950 p-6 shadow-[5px_5px_0_#7c3aed] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#7c3aed]"
             >
               <CeuEstrelado
                 glowColor="rgba(124,58,237,0.18)"
@@ -879,14 +880,14 @@ export default function Checkout() {
                   <Sparkles size={18} className="text-amber-400" />O Pro
                   adiciona
                 </h3>
-                <p className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-violet-400/50 bg-violet-500/20 px-3 py-1 text-xs font-black uppercase tracking-wider text-violet-200">
+                <p className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
                   <ProStarIcon />
                   Tudo do grátis + {PRO_EXCLUSIVE_COUNT} recursos exclusivos
                 </p>
 
                 {/* TODO(Ana): revisar copy do destaque do comparador (agora Pro) */}
-                <div className="mt-4 rounded-2xl border-2 border-amber-400 bg-amber-400/10 p-4">
-                  <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-amber-300">
+                <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-amber-100 p-4 shadow-[3px_3px_0_#0f172a]">
+                  <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-slate-950">
                     <Scale size={16} strokeWidth={2.5} aria-hidden="true" />
                     Comparador completo
                   </p>
@@ -894,13 +895,13 @@ export default function Checkout() {
                     {COMPARADOR_CATEGORIES.map((cat) => (
                       <span
                         key={cat}
-                        className="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] font-black text-slate-100"
+                        className="rounded-full border-[1.5px] border-slate-900 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[1px_1px_0_#0f172a]"
                       >
                         {cat}
                       </span>
                     ))}
                   </div>
-                  <p className="mt-2.5 text-sm font-medium leading-relaxed text-slate-300">
+                  <p className="mt-2.5 text-sm font-medium leading-relaxed text-slate-700">
                     Compare custo, tempo, dificuldade, mercado, certificação,
                     pré-requisitos e indicações lado a lado antes de decidir.
                   </p>
@@ -922,35 +923,35 @@ export default function Checkout() {
                 </ul>
 
                 {/* TODO(Ana): revisar copy do destaque da IA pessoal */}
-                <div className="mt-5 rounded-2xl border-2 border-violet-500 bg-violet-950/50 p-4">
-                  <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-white">
+                <div className="mt-5 rounded-2xl border-2 border-slate-900 bg-violet-100 p-4 shadow-[3px_3px_0_#0f172a]">
+                  <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-slate-950">
                     <Zap
                       size={16}
-                      className="text-amber-400"
+                      className="text-amber-500"
                       fill="currentColor"
                       aria-hidden="true"
                     />
                     Sua própria IA pessoal
                   </p>
-                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-300">
+                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-700">
                     Uma IA que conhece você, seu perfil e seus objetivos: te
                     guia, acompanha seu progresso e conversa sobre a sua
                     jornada, não só sobre a plataforma.
                   </p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-xl border border-white/15 bg-white/5 p-3">
-                      <p className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                    <div className="rounded-xl border-2 border-slate-900 bg-white p-3">
+                      <p className="text-xs font-black uppercase tracking-wider text-emerald-700">
                         IA no grátis
                       </p>
-                      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-300">
+                      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
                         Tira-dúvidas da plataforma.
                       </p>
                     </div>
-                    <div className="rounded-xl border border-violet-400/40 bg-violet-500/15 p-3">
-                      <p className="text-xs font-black uppercase tracking-wider text-violet-300">
+                    <div className="rounded-xl border-2 border-slate-900 bg-violet-200 p-3">
+                      <p className="text-xs font-black uppercase tracking-wider text-violet-800">
                         IA no Pro
                       </p>
-                      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-200">
+                      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-700">
                         Conhece seu perfil e objetivos, com guias,
                         acompanhamento e interação personalizada.
                       </p>
@@ -969,7 +970,7 @@ export default function Checkout() {
                         key={item.text}
                         className="flex items-center gap-2.5 text-sm font-bold text-slate-100"
                       >
-                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-slate-900 bg-sky-300 text-slate-950">
                           <Icon
                             size={13}
                             strokeWidth={2.5}
@@ -993,7 +994,7 @@ export default function Checkout() {
                         key={item.text}
                         className="flex items-center gap-2.5 text-sm font-bold text-slate-100"
                       >
-                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-pink-100 text-pink-700">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-slate-900 bg-pink-300 text-slate-950">
                           <Icon
                             size={13}
                             strokeWidth={2.5}
@@ -1005,7 +1006,7 @@ export default function Checkout() {
                     );
                   })}
                 </ul>
-                <div className="mt-3 flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 p-4">
+                <div className="mt-3 flex items-center gap-4 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]">
                   <UserAvatar
                     name="Bora na Tech"
                     border="pro-holo"
@@ -1013,15 +1014,15 @@ export default function Checkout() {
                     size="md"
                   />
                   <div className="min-w-0">
-                    <p className="text-sm font-black text-white">
+                    <p className="text-sm font-black text-slate-950">
                       Seu perfil com cara de Pro
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                      <span className="inline-flex items-center gap-1 rounded-full border-[1.5px] border-slate-900 bg-amber-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-900">
                         <Trophy size={10} aria-hidden="true" />
                         Conquista Pro
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-violet-300">
+                      <span className="inline-flex items-center gap-1 rounded-full border-[1.5px] border-slate-900 bg-violet-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-violet-900">
                         <Sparkles size={10} aria-hidden="true" />
                         Borda exclusiva
                       </span>
@@ -1065,11 +1066,18 @@ export default function Checkout() {
 
       <section
         aria-labelledby="tabela-comparativa-title"
-        className="border-t-2 border-slate-950 bg-[#faf8f4] py-16 md:py-20"
+        className="relative overflow-hidden border-t-2 border-slate-950 bg-[#faf8f4] py-16 md:py-20"
       >
-        <div className="container max-w-3xl">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+        >
+          <div className="animate-gentle-float absolute -left-10 top-24 h-44 w-44 rounded-full bg-violet-300 opacity-[0.18] blur-3xl" />
+          <div className="animate-gentle-float absolute -right-14 bottom-24 h-56 w-56 rounded-full bg-amber-300 opacity-[0.16] blur-3xl" />
+        </div>
+        <div className="container relative max-w-3xl">
           <motion.div {...fade()} className="text-center">
-            <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-slate-700">
+            <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 font-display text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
               Comparativo completo
             </p>
             <h2
@@ -1119,7 +1127,7 @@ export default function Checkout() {
                 {COMPARE_ROWS.map((row) => (
                   <tr
                     key={row.feature}
-                    className="border-b border-slate-200 last:border-b-0"
+                    className="border-b border-slate-200 transition-colors last:border-b-0 hover:bg-amber-50"
                   >
                     <th
                       scope="row"
@@ -1176,11 +1184,17 @@ export default function Checkout() {
       <section
         id="planos-section"
         aria-labelledby="planos-title"
-        className="relative bg-white py-16 md:py-24"
+        className="relative overflow-hidden border-t-2 border-slate-950 py-16 md:py-24"
+        style={{
+          backgroundColor: "#faf8f4",
+          backgroundImage:
+            "radial-gradient(rgba(245, 158, 11, 0.16) 1.5px, transparent 1.5px)",
+          backgroundSize: "22px 22px",
+        }}
       >
         <div className="container">
           <motion.div {...fade()} className="mx-auto max-w-3xl text-center">
-            <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-slate-700">
+            <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 font-display text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
               Escolha seu plano
             </p>
             <h2
@@ -1191,7 +1205,7 @@ export default function Checkout() {
               3 opções.{" "}
               <span className="text-amber-600">Mesmas ferramentas.</span>
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm md:text-base font-bold text-slate-600">
+            <p className="mx-auto mt-5 inline-flex max-w-xl flex-wrap items-center justify-center gap-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2 text-sm md:text-base font-bold text-slate-700 shadow-[3px_3px_0_#0f172a]">
               {/* TODO(Ana): revisar copy da âncora de valor */}
               {PRO_EXCLUSIVE_COUNT} recursos exclusivos, incluindo sua IA
               pessoal, por menos de{" "}
@@ -1276,7 +1290,7 @@ export default function Checkout() {
                       className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
                         selected
                           ? "border-slate-900 bg-slate-950"
-                          : "border-slate-300 bg-white"
+                          : "border-slate-900 bg-white"
                       }`}
                     >
                       {selected ? (
