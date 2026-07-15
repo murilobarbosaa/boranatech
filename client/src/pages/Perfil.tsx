@@ -1740,7 +1740,7 @@ export default function Perfil() {
                         acesso e esta tudo certo. Calibrado pelo bloco de cancelamento
                         agendado abaixo (irmao condicional), mas em tom informativo. */}
                     {pendingBoleto ? (
-                      <div className="mt-5 flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-3 shadow-[3px_3px_0_#0f172a]">
+                      <div className="mt-5 flex items-center gap-3 rounded-2xl border-2 border-slate-950 bg-white p-3 shadow-[3px_3px_0_#0f172a]">
                         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800]">
                           <RefreshCw
                             className="h-4 w-4 text-slate-950"
