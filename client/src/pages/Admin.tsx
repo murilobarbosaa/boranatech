@@ -2446,7 +2446,8 @@ function EmailCampaignsAdminSection() {
       } catch (err) {
         if (cancelled) return;
         setPickerError(
-          err instanceof Error ? err.message : "Erro ao listar a waitlist.",
+          // TODO(Ana): mensagem de erro ao listar os contatos da origem.
+          err instanceof Error ? err.message : "Erro ao listar os contatos.",
         );
         setPickerItems([]);
         setPickerTotal(null);
@@ -2643,13 +2644,9 @@ function EmailCampaignsAdminSection() {
       eyebrow="emails"
       icon={<Send className="h-4 w-4" />}
       // TODO(Ana): título e subtítulo da aba Emails.
-      title="Campanhas de e-mail para a waitlist"
-      subtitle="Crie uma campanha, envie um teste para você e dispare para a lista de espera com fila e limite de velocidade."
+      title="Campanhas de e-mail"
+      subtitle="Crie uma campanha, envie um teste para você e dispare para a audiência escolhida com fila e limite de velocidade."
     >
-      <div className="mb-8 border-b-4 border-slate-900 pb-8">
-        <ContactListsManager />
-      </div>
-
       <div className="grid gap-5 lg:grid-cols-2">
         <article className="card-brutal rounded-3xl bg-white p-6">
           {/* TODO(Ana): rótulos do formulário de campanha. */}
@@ -2820,10 +2817,10 @@ function EmailCampaignsAdminSection() {
                   </p>
                 )}
                 <div className="mt-4 border-t-2 border-slate-200 pt-3 text-center text-[11px] font-semibold text-slate-400">
-                  {/* TODO(Ana): rodapé do preview. */}
+                  {/* TODO(Ana): rodapé do preview (o rodapé real varia por origem). */}
                   <p>
-                    Você está recebendo este e-mail porque entrou na lista de
-                    espera do Bora na Tech.
+                    O rodapé real explica a origem do envio e é definido pela
+                    audiência escolhida no disparo.
                   </p>
                   <p className="mt-1 underline">
                     Não quero mais receber estes e-mails
@@ -2929,9 +2926,8 @@ function EmailCampaignsAdminSection() {
                   className="bnt-pressable rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[3px_3px_0_#0f172a]"
                 >
                   {/* TODO(Ana) */}
-                  {detail.status === "draft"
-                    ? "Enviar para a waitlist"
-                    : "Novo lote"}
+                  {/* TODO(Ana): rotulo do botao de disparo (origem escolhida no modal). */}
+                  {detail.status === "draft" ? "Enviar campanha" : "Novo lote"}
                 </button>
               ) : null}
             </div>
@@ -3611,8 +3607,8 @@ function EmailCampaignsAdminSection() {
                 <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border-2 border-slate-900">
                   {pickerLoading ? (
                     <p className="p-4 text-sm font-semibold text-slate-600">
-                      {/* TODO(Ana) */}
-                      Carregando waitlist...
+                      {/* TODO(Ana): copy de carregando contatos da origem. */}
+                      Carregando contatos...
                     </p>
                   ) : pickerError ? (
                     <p className="p-4 text-sm font-semibold text-rose-600">
@@ -3870,6 +3866,10 @@ function EmailCampaignsAdminSection() {
           </div>
         </div>
       ) : null}
+
+      <div className="mt-8 border-t-4 border-slate-900 pt-8">
+        <ContactListsManager />
+      </div>
     </AdminSection>
   );
 }
