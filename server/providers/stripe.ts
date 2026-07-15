@@ -1203,8 +1203,26 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
         });
         break;
       default:
-        // Demais eventos: registrados para dedupe, sem mutacao.
-        break;
+        // Evento NAO tratado: nao ha mutacao, entao o dedup nao protege nada aqui e
+        // ainda deixaria o evento IRRECUPERAVEL por resend caso um handler seja
+        // adicionado depois (ja aconteceu: um async_payment_succeeded caiu aqui na
+        // janela de um deploy e ficou preso). Remove o proprio billing_event para
+        // que um resend futuro chegue ao (novo) handler. O dedup dos eventos
+        // TRATADOS fica intacto — eles nao passam por aqui. A Stripe nao reenvia
+        // sozinho apos 200, entao isso nao vira ruido; so o resend manual (o que
+        // queremos) reprocessa.
+        try {
+          await supabaseAdmin
+            .from("billing_events")
+            .delete()
+            .eq("id", event.id);
+        } catch (cleanupErr) {
+          console.warn(
+            "[webhook/stripe] falha ao limpar dedup de evento nao tratado:",
+            cleanupErr,
+          );
+        }
+        return { received: true, unhandled: true };
     }
     return { received: true };
   } catch (procErr) {
