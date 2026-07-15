@@ -1,33 +1,44 @@
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
   BookOpen,
+  Bot,
   Building2,
   Calendar,
-  CalendarCheck,
+  CalendarX,
+  Camera,
   Check,
   Code2,
   Compass,
   Cpu,
-  FileText,
-  Github,
   GraduationCap,
   Layers,
-  Linkedin,
   type LucideIcon,
-  Map,
+  Mail,
   MessageSquare,
-  Mic,
+  Palette,
+  Scale,
+  ShieldCheck,
   Sparkles,
+  Trophy,
   Users,
+  Zap,
 } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import CeuEstrelado from "@/components/shared/CeuEstrelado";
+import { DetailsChevronOnly } from "@/components/shared/DetailsChevronOnly";
+import UserAvatar from "@/components/UserAvatar";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
@@ -43,7 +54,6 @@ import {
 } from "@/services/subscriptionService";
 import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import { apiUrl } from "@/lib/api";
-import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
 import {
   FROM_MONTHLY_LABEL,
   MONTHLY_BASE_LABEL,
@@ -75,31 +85,56 @@ const plans = PLAN_ORDER.map((id) => {
   };
 });
 
-const PRO_FEATURE_ICONS: Record<string, LucideIcon> = {
-  FileText,
-  Map,
-  Mic,
-  CalendarCheck,
-  Linkedin,
-  Github,
-  Users,
-};
+const HERO_PILLS: Array<{ icon: LucideIcon; text: string; color: string }> = [
+  { icon: Bot, text: "IA pessoal", color: "bg-violet-100 text-violet-700" },
+  {
+    icon: Sparkles,
+    text: "8+ ferramentas com IA",
+    color: "bg-amber-100 text-amber-700",
+  },
+  {
+    icon: Palette,
+    text: "Personalização",
+    color: "bg-pink-100 text-pink-700",
+  },
+];
 
-const FEATURE_ICON_COLOR: Record<ProFeature["color"], string> = {
-  emerald: "bg-emerald-100 text-emerald-700",
-  blue: "bg-blue-100 text-blue-700",
-  violet: "bg-violet-100 text-violet-700",
-  sky: "bg-sky-100 text-sky-700",
-  orange: "bg-orange-100 text-orange-700",
-  amber: "bg-amber-100 text-amber-700",
-  fuchsia: "bg-fuchsia-100 text-fuchsia-700",
-  pink: "bg-pink-100 text-pink-700",
-  cyan: "bg-cyan-100 text-cyan-700",
-};
+// TODO(Ana): revisar nomes das ferramentas exibidos na comparação.
+const PRO_AI_TOOLS = [
+  "Roadmap personalizado por IA",
+  "Plano de carreira inteligente",
+  "Sugestão de projetos pra portfólio",
+  "Simulador de entrevistas",
+  "Gerador de currículo",
+  "Avaliador de currículo",
+  "Avaliador de LinkedIn",
+  "Avaliador de GitHub",
+];
 
-const mainFeatures = PRO_FEATURES.filter((f) => f.group === "main");
-const extraFeatures = PRO_FEATURES.filter((f) => f.group === "extra");
-const extraNames = extraFeatures.map((f) => f.title).join(", ");
+const PRO_PERSONALIZATION: Array<{ icon: LucideIcon; text: string }> = [
+  { icon: Camera, text: "Foto de perfil na conta" },
+  { icon: Palette, text: "Bordas de perfil personalizadas" },
+  { icon: Trophy, text: "Conquistas especiais exclusivas" },
+];
+
+// TODO(Ana): revisar copy do FAQ da página de planos.
+const CHECKOUT_FAQ: Array<{ pergunta: string; resposta: string }> = [
+  {
+    pergunta: "Posso cancelar quando quiser?",
+    resposta:
+      "Sim. O cancelamento é feito na área de assinatura do seu perfil, sem taxa e sem burocracia. O acesso Pro continua até o fim do período já pago.",
+  },
+  {
+    pergunta: "Quais formas de pagamento vocês aceitam?",
+    resposta:
+      "Cartão de crédito em todos os planos. Nos planos semestral e anual também dá pra pagar com boleto.",
+  },
+  {
+    pergunta: "O que acontece com meus dados se eu cancelar?",
+    resposta:
+      "Nada se perde: sua conta, seu progresso e seu histórico continuam guardados. Você volta pro plano grátis e, se assinar de novo, retoma de onde parou.",
+  },
+];
 
 const FREE_ITEMS: Array<{ icon: LucideIcon; text: string }> = [
   { icon: Layers, text: `Catálogo de ${areasCount} áreas de TI` },
@@ -114,6 +149,27 @@ const FREE_ITEMS: Array<{ icon: LucideIcon; text: string }> = [
 ];
 
 const FREE_HREF = "/";
+
+// Ancora de valor: preco por dia do plano anual, arredondado PRA CIMA no decimo
+// de real, pra frase "menos de X por dia" ser sempre verdadeira com o preco vigente.
+const ANNUAL_PER_DAY =
+  Math.floor((PLAN_PRICING.pro_annual.total / 365) * 10) / 10 + 0.1;
+
+// Prova social: mesma fonte e mesmo cache da home (GET /api/stats/users-count,
+// contagem real de profiles, com localStorage compartilhado). null = sem numero
+// confiavel (primeira visita sem cache E backend degradado); a faixa some em
+// vez de exibir numero inventado.
+const USERS_COUNT_LS_KEY = "bnt_users_count";
+
+function readCachedUsersCount(): number | null {
+  try {
+    const raw = window.localStorage.getItem(USERS_COUNT_LS_KEY);
+    const n = raw === null ? NaN : Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -154,8 +210,8 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
         aria-live="polite"
       >
         {/* TODO(Ana): copy de sucesso da lista de espera (pedir confirmacao no inbox, double opt-in). */}
-        Pronto! Vamos te avisar por e-mail assim que a assinatura abrir. Confira
-        sua caixa de entrada para confirmar.
+        Pronto! A gente te avisa por e-mail assim que a assinatura abrir. Dá uma
+        olhada na sua caixa de entrada pra confirmar.
       </p>
     );
   }
@@ -181,9 +237,10 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed, source: "planos_pro" }),
       });
-      const data = (await res.json().catch(() => null)) as
-        | { ok?: boolean; error?: { code?: string } }
-        | null;
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: { code?: string };
+      } | null;
 
       if (res.ok && data?.ok) {
         setSubmitStatus("success");
@@ -234,7 +291,7 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
         >
           <Sparkles className="h-5 w-5" />
           {/* TODO(Ana): rotulos do CTA da lista de espera (normal e carregando). */}
-          {submitting ? "Enviando..." : "Avise-me quando abrir"}
+          {submitting ? "Enviando..." : "Me avisa quando abrir"}
         </button>
       </div>
       <p
@@ -263,6 +320,29 @@ export default function Checkout() {
   const [billingStatus, setBillingStatus] = useState<"loading" | "on" | "off">(
     "loading",
   );
+  const [usersCount, setUsersCount] = useState<number | null>(() =>
+    readCachedUsersCount(),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(apiUrl("/api/stats/users-count"))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data || typeof data.count !== "number") return;
+        if (data.count <= 0) return;
+        setUsersCount(data.count);
+        try {
+          window.localStorage.setItem(USERS_COUNT_LS_KEY, String(data.count));
+        } catch {
+          // localStorage indisponivel: segue sem cache, proximo load refaz o fetch.
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -350,6 +430,27 @@ export default function Checkout() {
   }
 
   const hasCoupon = discountPercent > 0 && !!affiliateCode;
+  const currentPlan = plans.find((p) => p.id === selectedPlan) ?? plans[0];
+
+  // Radiogroup de planos (padrao WAI-ARIA): setas movem o foco E selecionam;
+  // so o card selecionado fica no tab order (roving tabindex).
+  const planRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  function handlePlanKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    idx: number,
+  ) {
+    let next: number;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      next = (idx + 1) % plans.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      next = (idx - 1 + plans.length) % plans.length;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    setSelectedPlan(plans[next].id);
+    planRefs.current[next]?.focus();
+  }
 
   const fade = (delay = 0) => ({
     initial: reduce ? false : { opacity: 0, y: 18 },
@@ -360,10 +461,10 @@ export default function Checkout() {
 
   return (
     <Layout>
-      {/* TODO(Ana): revisar meta description do plano Pro apos remocao de ferramentas */}
+      {/* TODO(Ana): revisar title e meta description da pagina de planos */}
       <SEO
-        title="Plano Pro · Bora na Tech?"
-        description={`Desbloqueie as ferramentas com IA pra entrar em TI: roadmaps, plano de carreira, análise de currículo, LinkedIn, portfólio e entrevista. A partir de ${FROM_MONTHLY_LABEL}/mês no plano anual.`}
+        title="Planos · Ferramentas com IA pra entrar em TI"
+        description={`Sua IA pessoal e 8 ferramentas com IA pra entrar em TI: roadmap, plano de carreira, currículo, entrevistas, LinkedIn e GitHub. A partir de ${FROM_MONTHLY_LABEL}/mês no plano anual.`}
         keywords={[
           "plano pro bora na tech",
           "ia carreira ti",
@@ -420,7 +521,7 @@ export default function Checkout() {
             </p>
             <p className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-950/70">
               {/* TODO(Ana): confirmar copy final */}
-              Válido apenas na primeira compra. Renovações no valor cheio.
+              Vale só na primeira compra. Renovações no valor cheio.
             </p>
           </div>
         </div>
@@ -459,38 +560,31 @@ export default function Checkout() {
               {...fade(0.1)}
               className="mx-auto mt-5 max-w-2xl text-base md:text-lg font-medium leading-relaxed text-slate-300"
             >
-              {/* TODO(Ana): revisar copy sem contagem de ferramentas */}
-              O Pro desbloqueia as ferramentas com IA pra acelerar sua entrada
-              em TI.
+              {/* TODO(Ana): revisar copy do subtítulo do hero */}O Pro coloca
+              análise personalizada com IA em cada etapa da sua entrada em TI.
             </motion.p>
 
             <motion.ul
               {...fade(0.15)}
               className="mt-8 flex flex-wrap justify-center gap-2.5"
             >
-              {mainFeatures.map((feature) => {
-                const Icon = PRO_FEATURE_ICONS[feature.iconName];
+              {HERO_PILLS.map((pill) => {
+                const Icon = pill.icon;
                 return (
                   <li
-                    key={feature.id}
+                    key={pill.text}
                     className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-sm font-black text-white"
                   >
                     <span
-                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${FEATURE_ICON_COLOR[feature.color]}`}
+                      className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${pill.color}`}
                     >
                       <Icon size={14} strokeWidth={2.5} aria-hidden="true" />
                     </span>
-                    {feature.title}
+                    {pill.text}
                   </li>
                 );
               })}
             </motion.ul>
-            <motion.p
-              {...fade(0.2)}
-              className="mt-3 text-sm font-medium text-slate-400"
-            >
-              E mais: {extraNames}.
-            </motion.p>
 
             <motion.div
               {...fade(0.25)}
@@ -528,6 +622,18 @@ export default function Checkout() {
         }}
       >
         <div className="container">
+          {usersCount !== null ? (
+            <motion.p
+              {...fade()}
+              className="mx-auto mb-8 flex w-fit items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-950 shadow-[3px_3px_0_#0f172a]"
+            >
+              <Users size={16} className="text-violet-700" aria-hidden="true" />
+              {/* TODO(Ana): revisar copy da prova social (mesmo padrão do badge
+                  da home, que evita terminar a frase com a marca "Bora na Tech?") */}
+              +{usersCount.toLocaleString("pt-BR")} pessoas já encontraram seu
+              caminho
+            </motion.p>
+          ) : null}
           <motion.h2
             id="free-vs-pro-title"
             {...fade()}
@@ -538,7 +644,7 @@ export default function Checkout() {
             <span className="text-violet-700">acelera</span>.
           </motion.h2>
 
-          <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2 md:items-start">
             <motion.div
               {...fade(0.05)}
               className="rounded-3xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a]"
@@ -546,6 +652,19 @@ export default function Checkout() {
               <h3 className="font-display text-lg font-black text-slate-950">
                 Grátis você já tem
               </h3>
+              {/* TODO(Ana): revisar copy do destaque do comparador */}
+              <div className="mt-4 rounded-2xl border-2 border-slate-950 bg-emerald-50 p-4">
+                <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-emerald-800">
+                  <Scale size={16} strokeWidth={2.5} aria-hidden="true" />
+                  Compare tudo antes de decidir
+                </p>
+                <p className="mt-2 text-sm font-medium leading-relaxed text-slate-700">
+                  O comparador coloca lado a lado graduações e faculdades,
+                  cursos, plataformas de estudo, áreas de TI, tecnologias e
+                  mais: custo, tempo, dificuldade, mercado, certificação,
+                  pré-requisitos e indicações, tudo de graça.
+                </p>
+              </div>
               <ul className="mt-4 space-y-2.5">
                 {FREE_ITEMS.map((item) => {
                   const Icon = item.icon;
@@ -571,38 +690,109 @@ export default function Checkout() {
 
             <motion.div
               {...fade(0.1)}
-              className="rounded-3xl border-2 border-slate-950 bg-slate-950 p-6 shadow-[5px_5px_0_#7c3aed]"
+              className="max-md:order-first rounded-3xl border-2 border-slate-950 bg-slate-950 p-6 shadow-[5px_5px_0_#7c3aed]"
             >
               <h3 className="inline-flex items-center gap-2 font-display text-lg font-black text-white">
                 <Sparkles size={18} className="text-amber-400" />O Pro adiciona
               </h3>
-              <ul className="mt-4 space-y-2.5">
-                {mainFeatures.map((feature) => {
-                  const Icon = PRO_FEATURE_ICONS[feature.iconName];
+
+              <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+                Ferramentas com IA ({PRO_AI_TOOLS.length})
+              </p>
+              <ul className="mt-2.5 space-y-2">
+                {PRO_AI_TOOLS.map((tool) => (
+                  <li
+                    key={tool}
+                    className="flex items-center gap-2.5 text-sm font-bold text-slate-100"
+                  >
+                    <ProStarIcon />
+                    {tool}
+                  </li>
+                ))}
+              </ul>
+
+              {/* TODO(Ana): revisar copy do destaque da IA pessoal */}
+              <div className="mt-5 rounded-2xl border-2 border-violet-500 bg-violet-950/50 p-4">
+                <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-white">
+                  <Zap
+                    size={16}
+                    className="text-amber-400"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  />
+                  Sua própria IA pessoal
+                </p>
+                <p className="mt-2 text-sm font-medium leading-relaxed text-slate-300">
+                  Uma IA que conhece você, seu perfil e seus objetivos: te guia,
+                  acompanha seu progresso e conversa sobre a sua jornada, não só
+                  sobre a plataforma.
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-white/15 bg-white/5 p-3">
+                    <p className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                      IA no grátis
+                    </p>
+                    <p className="mt-1 text-xs font-medium leading-relaxed text-slate-300">
+                      Tira-dúvidas da plataforma.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-violet-400/40 bg-violet-500/15 p-3">
+                    <p className="text-xs font-black uppercase tracking-wider text-violet-300">
+                      IA no Pro
+                    </p>
+                    <p className="mt-1 text-xs font-medium leading-relaxed text-slate-200">
+                      Conhece seu perfil e objetivos, com guias, acompanhamento
+                      e interação personalizada.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+                Personalização e status ({PRO_PERSONALIZATION.length})
+              </p>
+              <ul className="mt-2.5 space-y-2">
+                {PRO_PERSONALIZATION.map((item) => {
+                  const Icon = item.icon;
                   return (
                     <li
-                      key={feature.id}
-                      className="flex items-start gap-2.5 text-sm font-bold text-slate-100"
+                      key={item.text}
+                      className="flex items-center gap-2.5 text-sm font-bold text-slate-100"
                     >
-                      <span
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${FEATURE_ICON_COLOR[feature.color]}`}
-                      >
+                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-pink-100 text-pink-700">
                         <Icon size={13} strokeWidth={2.5} aria-hidden="true" />
                       </span>
-                      <span>
-                        {feature.title}
-                        <span className="font-medium text-slate-400">
-                          {" "}
-                          · {feature.label}
-                        </span>
-                      </span>
+                      {item.text}
                     </li>
                   );
                 })}
               </ul>
+              <div className="mt-3 flex items-center gap-4 rounded-2xl border border-white/15 bg-white/5 p-4">
+                <UserAvatar
+                  name="Bora na Tech"
+                  border="pro-holo"
+                  icon="rocket"
+                  size="md"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-white">
+                    Seu perfil com cara de Pro
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                      <Trophy size={10} aria-hidden="true" />
+                      Conquista Pro
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-violet-300">
+                      <Sparkles size={10} aria-hidden="true" />
+                      Borda exclusiva
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <p className="mt-4 text-xs font-medium text-slate-400">
-                {/* TODO(Ana): revisar copy sem contagem de ferramentas */}E
-                mais: {extraNames}.
+                E ainda: comunidade exclusiva Pro (em breve).
               </p>
             </motion.div>
           </div>
@@ -618,7 +808,7 @@ export default function Checkout() {
               className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
             >
               <Sparkles size={18} aria-hidden="true" />
-              <span>Assinar Pro</span>
+              <span>Desbloquear as ferramentas com IA</span>
               <ArrowRight
                 size={18}
                 className="transition-transform group-hover:translate-x-1"
@@ -652,6 +842,14 @@ export default function Checkout() {
               3 opções.{" "}
               <span className="text-amber-600">Mesmas ferramentas.</span>
             </h2>
+            <p className="mx-auto mt-4 max-w-xl text-sm md:text-base font-bold text-slate-600">
+              {/* TODO(Ana): revisar copy da âncora de valor */}8 ferramentas
+              com IA + sua IA pessoal por menos de{" "}
+              <span className="text-slate-950">
+                {formatPrice(ANNUAL_PER_DAY)} por dia
+              </span>{" "}
+              no plano anual.
+            </p>
           </motion.div>
 
           {hasCoupon ? (
@@ -666,13 +864,17 @@ export default function Checkout() {
                 </span>
                 <span className="text-xs font-semibold text-emerald-700">
                   {/* TODO(Ana): confirmar copy final */}
-                  Válido apenas na primeira compra. Renovações no valor cheio.
+                  Vale só na primeira compra. Renovações no valor cheio.
                 </span>
               </span>
             </div>
           ) : null}
 
-          <div className="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-3">
+          <div
+            role="radiogroup"
+            aria-label="Escolha do plano de assinatura"
+            className="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-3"
+          >
             {plans.map((plan, idx) => {
               const selected = selectedPlan === plan.id;
               const finalPrice = discountedPrice(plan.price);
@@ -680,15 +882,31 @@ export default function Checkout() {
                 <motion.button
                   key={plan.id}
                   {...fade(0.05 * idx)}
+                  ref={(el: HTMLButtonElement | null) => {
+                    planRefs.current[idx] = el;
+                  }}
                   type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  tabIndex={selected ? 0 : -1}
                   onClick={() => setSelectedPlan(plan.id)}
-                  aria-pressed={selected}
-                  className={`relative flex min-h-[320px] flex-col rounded-3xl border-2 border-slate-900 p-6 text-left shadow-[6px_6px_0_#0f172a] transition-all duration-200 hover:-translate-y-1 hover:shadow-[8px_8px_0_#0f172a] ${
-                    plan.highlight ? "bg-[#FFB800]" : "bg-white"
-                  } ${selected ? "ring-4 ring-violet-300" : ""}`}
+                  onKeyDown={(event) => handlePlanKeyDown(event, idx)}
+                  className={`relative flex min-h-[320px] flex-col rounded-3xl p-6 text-left transition-all duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600 ${
+                    plan.highlight
+                      ? "border-[3px] border-violet-700 shadow-[6px_6px_0_#7c3aed] hover:shadow-[8px_8px_0_#7c3aed]"
+                      : "border-2 border-slate-900 shadow-[6px_6px_0_#0f172a] hover:shadow-[8px_8px_0_#0f172a]"
+                  } ${
+                    selected ? "bg-[#FFB800]" : "bg-white hover:bg-amber-50"
+                  }`}
                 >
                   {plan.badge ? (
-                    <span className="mb-4 w-fit rounded-full border-2 border-slate-900 bg-slate-950 px-3 py-1 text-xs font-black text-[#FFB800]">
+                    <span
+                      className={`mb-4 w-fit rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black ${
+                        plan.highlight
+                          ? "bg-violet-700 text-white"
+                          : "bg-slate-950 text-[#FFB800]"
+                      }`}
+                    >
                       {plan.badge}
                     </span>
                   ) : null}
@@ -703,9 +921,21 @@ export default function Checkout() {
                         </p>
                       ) : null}
                     </div>
-                    {selected ? (
-                      <Check className="h-7 w-7 text-slate-950" />
-                    ) : null}
+                    <span
+                      aria-hidden="true"
+                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+                        selected
+                          ? "border-slate-900 bg-slate-950"
+                          : "border-slate-300 bg-white"
+                      }`}
+                    >
+                      {selected ? (
+                        <Check
+                          className="h-4 w-4 text-[#FFB800]"
+                          strokeWidth={3}
+                        />
+                      ) : null}
+                    </span>
                   </div>
                   <div className="mt-6">
                     {discountPercent > 0 ? (
@@ -749,12 +979,36 @@ export default function Checkout() {
                   className="pro-glare bnt-pressable inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-8 py-4 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[5px_5px_0_#0f172a]"
                 >
                   <Sparkles className="h-5 w-5" />
-                  {loading ? "Abrindo checkout..." : "Assinar agora"}
+                  {loading
+                    ? "Abrindo checkout..."
+                    : `Assinar ${currentPlan.label} · ${formatPrice(discountedPrice(currentPlan.price))}`}
                 </button>
-                <p className="text-center text-sm font-bold text-slate-700">
-                  Cancele quando quiser · Sem taxa de cancelamento · Suporte por
-                  e-mail
-                </p>
+                <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm font-bold text-slate-700">
+                  <li className="inline-flex items-center gap-1.5">
+                    <CalendarX
+                      size={14}
+                      className="shrink-0 text-slate-500"
+                      aria-hidden="true"
+                    />
+                    Cancele quando quiser
+                  </li>
+                  <li className="inline-flex items-center gap-1.5">
+                    <ShieldCheck
+                      size={14}
+                      className="shrink-0 text-slate-500"
+                      aria-hidden="true"
+                    />
+                    Sem taxa de cancelamento
+                  </li>
+                  <li className="inline-flex items-center gap-1.5">
+                    <Mail
+                      size={14}
+                      className="shrink-0 text-slate-500"
+                      aria-hidden="true"
+                    />
+                    Suporte por e-mail
+                  </li>
+                </ul>
               </>
             ) : (
               <WaitlistCta defaultEmail={profile?.email ?? user?.email ?? ""} />
@@ -766,6 +1020,101 @@ export default function Checkout() {
               Continuar com o básico (grátis)
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="planos-faq-title"
+        className="border-t-2 border-slate-950 bg-[#faf8f4] py-16 md:py-20"
+      >
+        <div className="container max-w-3xl">
+          <motion.h2
+            id="planos-faq-title"
+            {...fade()}
+            className="text-center font-display font-black leading-[1.1] text-slate-950"
+            style={{ fontSize: "clamp(24px, 3.5vw, 36px)" }}
+          >
+            Perguntas rápidas
+          </motion.h2>
+          <motion.div {...fade(0.05)} className="mt-8 space-y-4">
+            {CHECKOUT_FAQ.map((item) => (
+              <DetailsChevronOnly
+                key={item.pergunta}
+                className="card-brutal rounded-2xl bg-white p-5"
+                title={
+                  <h3 className="font-display text-lg font-black text-slate-950">
+                    {item.pergunta}
+                  </h3>
+                }
+              >
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  {item.resposta}
+                </p>
+              </DetailsChevronOnly>
+            ))}
+          </motion.div>
+          <motion.p
+            {...fade(0.1)}
+            className="mt-6 text-center text-sm font-bold text-slate-600"
+          >
+            Mais dúvidas?{" "}
+            <Link
+              href="/perguntas-frequentes"
+              className="text-violet-800 underline underline-offset-4 hover:text-violet-950"
+            >
+              Veja as perguntas frequentes
+            </Link>
+          </motion.p>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="planos-fechamento-title"
+        className="relative overflow-hidden border-t-2 border-slate-950 bg-slate-950 py-14 md:py-16"
+      >
+        <CeuEstrelado />
+        <div className="container relative z-10 flex flex-col items-center gap-6 text-center">
+          <motion.h2
+            id="planos-fechamento-title"
+            {...fade()}
+            className="max-w-2xl font-display font-black leading-[1.1] text-white"
+            style={{ fontSize: "clamp(24px, 3.5vw, 36px)" }}
+          >
+            {/* TODO(Ana): revisar copy do fechamento */}
+            Sem mais dúvidas? Bora acelerar sua entrada em{" "}
+            <span className="relative inline-block">
+              <span className="relative">TI</span>
+              <span
+                className="absolute -bottom-1 left-0 right-0 -z-10 h-2.5 rounded-md bg-amber-400"
+                aria-hidden="true"
+              />
+            </span>
+            .
+          </motion.h2>
+          <motion.div
+            {...fade(0.05)}
+            className="flex flex-col items-center justify-center gap-3 sm:flex-row"
+          >
+            <button
+              type="button"
+              onClick={scrollToPlans}
+              aria-label="Voltar para a escolha de plano"
+              className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#7c3aed] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#7c3aed]"
+            >
+              <ProStarIcon />
+              <span>Assinar {currentPlan.label}</span>
+              <ArrowRight
+                size={18}
+                className="transition-transform group-hover:translate-x-1"
+              />
+            </button>
+            <Link
+              href={FREE_HREF}
+              className="bnt-pressable inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-white px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#7c3aed] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#7c3aed]"
+            >
+              Continuar com o básico
+            </Link>
+          </motion.div>
         </div>
       </section>
 
