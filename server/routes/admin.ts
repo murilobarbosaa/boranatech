@@ -691,17 +691,38 @@ router.get("/audit-logs", async (req, res, next) => {
   }
 });
 
+// Aceita apenas UUID: as chaves de auth.users / profiles.user_id sao UUID.
+// Barra qualquer coisa fora desse formato antes de tocar o banco ou o PostHog.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// CPF e guardado so com digitos. maskCpf revela APENAS os 2 ultimos digitos
+// (default seguro do modal); null quando nao ha CPF. formatCpf so e usado no
+// endpoint de revelacao (auditado) para exibir o numero completo formatado.
+function maskCpf(raw: string | null | undefined): string | null {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (!digits) return null;
+  const last2 = digits.slice(-2).padStart(2, "*");
+  return `***.***.***-${last2}`;
+}
+
+function formatCpf(raw: string | null | undefined): string {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (digits.length !== 11) return digits;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
 router.get("/users", async (req, res, next) => {
   try {
     const { limit = "50", offset = "0", search } = req.query;
     const parsedLimit = Math.min(parseInt(String(limit), 10) || 50, 100);
     const parsedOffset = parseInt(String(offset), 10) || 0;
 
+    // Lista ENXUTA: so o necessario para a linha (nome, email, status). CPF e os
+    // demais campos de profiles NAO trafegam aqui; vem sob demanda em /users/:id.
     let query = supabaseAdmin
       .from("profiles")
-      .select(
-        "id, user_id, name, email, area_interesse, onboarding_completed, created_at",
-      )
+      .select("id, user_id, name, email, onboarding_completed")
       .order("created_at", { ascending: false })
       .limit(parsedLimit)
       .range(parsedOffset, parsedOffset + parsedLimit - 1);
@@ -713,6 +734,105 @@ router.get("/users", async (req, res, next) => {
       return next(createError(500, "db_error", "Erro ao buscar usuários."));
 
     res.json({ data: data || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Detalhe de um usuario para o modal do admin. Chave = user_id (UUID). Retorna
+// os campos de profiles uteis no perfil; o CPF vem MASCARADO (cpf_masked) e o
+// numero completo so pelo endpoint de revelacao (auditado) abaixo. Campos
+// operacionais de moderacao de avatar e o blob de preferences ficam de fora.
+router.get("/users/:id", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select(
+        "user_id, name, full_name, email, handle, gender, headline, bio, city, uf, area_interesse, nivel_atual, objetivo, career_goal, github_url, linkedin_url, website_url, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, created_at, updated_at",
+      )
+      .eq("user_id", uid)
+      .maybeSingle();
+
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar usuário."));
+    if (!data)
+      return next(createError(404, "not_found", "Usuário não encontrado."));
+
+    const { cpf, ...rest } = data;
+    res.json({
+      data: {
+        ...rest,
+        cpf_masked: maskCpf(cpf),
+        has_cpf: Boolean((cpf || "").replace(/\D/g, "")),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Revelacao do CPF completo. So existe UM caminho e ele SEMPRE audita antes de
+// devolver o numero: escreve o log em content_audit_logs e, se essa escrita
+// falhar, responde erro SEM o CPF (fail-closed). Nao ha caminho que revele sem
+// registrar quem revelou, de quem e quando.
+router.post("/users/:id/reveal-cpf", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("cpf")
+      .eq("user_id", uid)
+      .maybeSingle();
+
+    if (error)
+      return next(createError(500, "db_error", "Erro ao buscar usuário."));
+    if (!data)
+      return next(createError(404, "not_found", "Usuário não encontrado."));
+
+    const digits = (data.cpf || "").replace(/\D/g, "");
+    if (!digits) {
+      return next(
+        createError(404, "cpf_not_found", "Usuário sem CPF cadastrado."),
+      );
+    }
+
+    // Auditoria PRIMEIRO. Fail-closed: sem log gravado, nao ha revelacao.
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "reveal",
+        resource_type: "profile_cpf",
+        resource_id: uid,
+        resource_slug: null,
+        before_json: null,
+        after_json: null,
+      });
+
+    if (auditError) {
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          "Não foi possível registrar a auditoria da revelação.",
+        ),
+      );
+    }
+
+    res.json({ data: { cpf: formatCpf(data.cpf) } });
   } catch (err) {
     next(err);
   }
