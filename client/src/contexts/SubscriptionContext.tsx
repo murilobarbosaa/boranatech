@@ -36,7 +36,7 @@ function buildDevMockSubscription() {
     plans: {
       name: "Pro Anual",
       code: "pro_annual",
-      price_cents: 17990,
+      price_cents: 22200,
     },
   };
 }
