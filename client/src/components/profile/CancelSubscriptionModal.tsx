@@ -17,6 +17,10 @@ interface CancelSubscriptionModalProps {
   }) => Promise<void>;
   periodEnd?: string | null;
   isLoading?: boolean;
+  // "cancel" = cartao (cancela a recorrencia). "non_renewal" = boleto (avisa que
+  // nao vai renovar; nao ha recorrencia a cancelar). So muda a copy; o motivo e
+  // coletado nos dois casos.
+  mode?: "cancel" | "non_renewal";
 }
 
 const REASONS: Array<{ code: CancelReasonCode; label: string }> = [
@@ -41,7 +45,9 @@ export function CancelSubscriptionModal({
   onConfirm,
   periodEnd,
   isLoading,
+  mode = "cancel",
 }: CancelSubscriptionModalProps) {
+  const isNonRenewal = mode === "non_renewal";
   const [step, setStep] = useState<"retain" | "reason">("retain");
   const [reasonCode, setReasonCode] = useState<CancelReasonCode | "">("");
   const [reasonText, setReasonText] = useState("");
@@ -94,16 +100,30 @@ export function CancelSubscriptionModal({
 
         {step === "retain" ? (
           <div className="p-6 md:p-8">
+            {/* TODO(Ana): copy do topo do modal (cartao vs boleto). */}
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
-              Cancelamento
+              {isNonRenewal ? "Não renovar" : "Cancelamento"}
             </p>
             <h2 className="font-display mt-2 text-3xl font-black text-[#1a1a1a] md:text-4xl">
-              Espera, antes de cancelar...
+              {isNonRenewal
+                ? "Espera, antes de decidir..."
+                : "Espera, antes de cancelar..."}
             </h2>
             <p className="mt-3 text-sm font-semibold text-slate-600">
-              Você vai perder acesso ao Pro{" "}
-              {formattedDate ? `em ${formattedDate}` : "no fim do período"}. Tem
-              certeza? Olha o que você ainda tem disponível:
+              {isNonRenewal ? (
+                <>
+                  Sua assinatura por boleto não renova sozinha. Se você avisar
+                  que não vai continuar, seu acesso Pro segue até{" "}
+                  {formattedDate ?? "o fim do período"}. Olha o que você ainda
+                  tem disponível:
+                </>
+              ) : (
+                <>
+                  Você vai perder acesso ao Pro{" "}
+                  {formattedDate ? `em ${formattedDate}` : "no fim do período"}.
+                  Tem certeza? Olha o que você ainda tem disponível:
+                </>
+              )}
             </p>
 
             <ul className="mt-6 space-y-3">
@@ -133,7 +153,8 @@ export function CancelSubscriptionModal({
                 onClick={() => setStep("reason")}
                 className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_#0f172a] hover:text-[#1a1a1a]"
               >
-                Cancelar mesmo assim
+                {/* TODO(Ana): rotulo do botao de avancar (cartao vs boleto). */}
+                {isNonRenewal ? "Não vou renovar" : "Cancelar mesmo assim"}
               </button>
             </div>
           </div>
@@ -145,7 +166,10 @@ export function CancelSubscriptionModal({
               </span>
               <div>
                 <h2 className="font-display text-2xl font-black text-[#1a1a1a] md:text-3xl">
-                  Por que você está cancelando?
+                  {/* TODO(Ana): titulo do passo de motivo (cartao vs boleto). */}
+                  {isNonRenewal
+                    ? "Por que você não vai renovar?"
+                    : "Por que você está cancelando?"}
                 </h2>
                 <p className="mt-1 text-sm font-semibold text-slate-600">
                   Sua resposta é opcional e nos ajuda a melhorar o produto.
@@ -207,7 +231,14 @@ export function CancelSubscriptionModal({
                 disabled={isLoading}
                 className="flex-1 rounded-full border-2 border-rose-900 bg-rose-100 px-5 py-3 font-display font-black text-rose-800 shadow-[3px_3px_0_#7f1d1d] disabled:opacity-60"
               >
-                {isLoading ? "Cancelando..." : "Confirmar cancelamento"}
+                {/* TODO(Ana): rotulo do botao de confirmar (cartao vs boleto). */}
+                {isLoading
+                  ? isNonRenewal
+                    ? "Salvando..."
+                    : "Cancelando..."
+                  : isNonRenewal
+                    ? "Confirmar"
+                    : "Confirmar cancelamento"}
               </button>
             </div>
           </div>

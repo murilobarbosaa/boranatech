@@ -98,6 +98,11 @@ type SubscriptionData = {
   created_at?: string | null;
   current_period_end?: string | null;
   cancel_at_period_end?: boolean;
+  payment_method?: string | null;
+  renewal_type?: string | null;
+  // Intencao de "nao renovar" do boleto (de subscription_cancellations). A UI do
+  // boleto usa ISTO, nao cancel_at_period_end (que para boleto e sempre false).
+  nonRenewal?: { effectiveAt?: string | null } | null;
   pendingBoleto?: PendingBoleto | null;
 };
 
@@ -841,6 +846,13 @@ export default function Perfil() {
   // (fonte unica). Cenario A: !isPro + pendingBoleto -> card proprio. Cenario B:
   // isPro + pendingBoleto -> card ativo normal + aviso de renovacao.
   const pendingBoleto = subscriptionData?.pendingBoleto ?? null;
+  // Boleto: renewal_type='manual' (nao renova sozinho). O botao vira "nao
+  // renovar" e o estado vem de nonRenewal (subscription_cancellations), nao de
+  // cancel_at_period_end. Cartao (renewal_type 'auto') segue o caminho de sempre.
+  const isBoletoSubscription =
+    subscriptionData?.renewal_type === "manual" ||
+    subscriptionData?.payment_method === "boleto";
+  const nonRenewalRegistered = subscriptionData?.nonRenewal ?? null;
   const pendingPlanId =
     pendingBoleto?.planCode && isPlanId(pendingBoleto.planCode)
       ? pendingBoleto.planCode
@@ -1757,36 +1769,75 @@ export default function Perfil() {
                       </div>
                     ) : null}
 
-                    {subscriptionData?.cancel_at_period_end &&
-                    subscriptionData?.current_period_end ? (
-                      <div className="mt-5 rounded-2xl border-2 border-amber-400 bg-amber-50 p-3">
-                        <p className="text-sm font-bold text-amber-900">
-                          ⚠️ Cancelamento agendado. Acesso Pro até{" "}
-                          {formatPeriodEnd(subscriptionData.current_period_end)}
-                          .
-                        </p>
+                    {isBoletoSubscription ? (
+                      nonRenewalRegistered ? (
+                        <div className="mt-5 rounded-2xl border-2 border-amber-400 bg-amber-50 p-3">
+                          {/* TODO(Ana): copy do estado "nao vai renovar" do boleto. */}
+                          <p className="text-sm font-bold text-amber-900">
+                            Você avisou que não vai renovar. Seu acesso Pro
+                            continua até{" "}
+                            {formatPeriodEnd(
+                              nonRenewalRegistered.effectiveAt ??
+                                subscriptionData?.current_period_end,
+                            )}
+                            .
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleReactivate}
+                            disabled={reactivating}
+                            className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {/* TODO(Ana): rotulo do botao de desfazer do boleto. */}
+                            {reactivating ? "Desfazendo..." : "Voltar atrás"}
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           type="button"
-                          onClick={handleReactivate}
-                          disabled={reactivating}
-                          className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                          onClick={() => setCancelModalOpen(true)}
+                          className="mt-6 text-sm font-bold text-rose-700 underline-offset-2 hover:text-rose-900 hover:underline"
                         >
-                          {reactivating
-                            ? "Reativando..."
-                            : "Reativar meu plano"}
+                          {/* TODO(Ana): rotulo do botao "nao renovar" do boleto. */}
+                          Não renovar
                         </button>
-                      </div>
-                    ) : null}
+                      )
+                    ) : (
+                      <>
+                        {subscriptionData?.cancel_at_period_end &&
+                        subscriptionData?.current_period_end ? (
+                          <div className="mt-5 rounded-2xl border-2 border-amber-400 bg-amber-50 p-3">
+                            <p className="text-sm font-bold text-amber-900">
+                              ⚠️ Cancelamento agendado. Acesso Pro até{" "}
+                              {formatPeriodEnd(
+                                subscriptionData.current_period_end,
+                              )}
+                              .
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleReactivate}
+                              disabled={reactivating}
+                              className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-4 py-2 font-display text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {reactivating
+                                ? "Reativando..."
+                                : "Reativar meu plano"}
+                            </button>
+                          </div>
+                        ) : null}
 
-                    {!subscriptionData?.cancel_at_period_end ? (
-                      <button
-                        type="button"
-                        onClick={() => setCancelModalOpen(true)}
-                        className="mt-6 text-sm font-bold text-rose-700 underline-offset-2 hover:text-rose-900 hover:underline"
-                      >
-                        Cancelar assinatura
-                      </button>
-                    ) : null}
+                        {!subscriptionData?.cancel_at_period_end ? (
+                          <button
+                            type="button"
+                            onClick={() => setCancelModalOpen(true)}
+                            className="mt-6 text-sm font-bold text-rose-700 underline-offset-2 hover:text-rose-900 hover:underline"
+                          >
+                            Cancelar assinatura
+                          </button>
+                        ) : null}
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
@@ -1925,6 +1976,7 @@ export default function Perfil() {
             onConfirm={handleCancelSubscription}
             periodEnd={subscriptionData?.current_period_end}
             isLoading={cancelingSubscription}
+            mode={isBoletoSubscription ? "non_renewal" : "cancel"}
           />
 
           <SignOutConfirmModal
