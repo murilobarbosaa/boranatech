@@ -107,15 +107,19 @@ export default function SocialAuthButtons({
         </div>
       )}
 
+      {/* No cadastro, exige o aceite dos termos antes do OAuth (igual ao botao de
+          e-mail/senha, que ja e desabilitado sem o aceite). Fecha o buraco de criar
+          conta por Google sem consentimento — vale para /cadastro e para o modal. */}
       <div className={cn("grid gap-3", showDivider && "mt-4")}>
         {enabledProviders.map((provider) => {
           const isLoading = loadingProvider === provider.id;
+          const blockedByConsent = mode === "cadastro" && !consentAccepted;
           return (
             <button
               key={provider.id}
               type="button"
               onClick={() => handleProviderClick(provider.id)}
-              disabled={loadingProvider !== null}
+              disabled={loadingProvider !== null || blockedByConsent}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black text-slate-950 shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
               aria-label={`${mode === "cadastro" ? "Cadastrar" : "Entrar"} com ${provider.label}`}
             >
