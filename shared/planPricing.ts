@@ -69,3 +69,11 @@ export function isPlanId(value: string): value is PlanId {
 export function getPlanChargeValue(planId: PlanId): number {
   return PLAN_PRICING[planId].total;
 }
+
+// Preco em CENTAVOS de um code de plano, ou null se o code nao for um plano Pro
+// conhecido (ex.: 'free'). Fonte unica para todos os leitores de preco (server e
+// client): substitui a leitura de plans.price_cents. O caller decide o fallback
+// para code desconhecido (tipicamente manter o valor antigo ou 0).
+export function getPlanPriceCents(code: string): number | null {
+  return isPlanId(code) ? Math.round(PLAN_PRICING[code].total * 100) : null;
+}

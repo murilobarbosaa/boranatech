@@ -79,7 +79,7 @@ import {
 import type { Profile } from "@/services/contracts";
 import { updateMyProfile } from "@/services/profileService";
 import { greet } from "@shared/greeting";
-import { isPlanId, PLAN_PRICING } from "@shared/planPricing";
+import { getPlanPriceCents, isPlanId, PLAN_PRICING } from "@shared/planPricing";
 
 type SubscriptionPlan = {
   name?: string | null;
@@ -826,9 +826,12 @@ export default function Perfil() {
     avatarSections[0];
   const planName =
     subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
-  const planPrice = subscriptionData?.plans?.price_cents
-    ? formatCurrencyFromCents(subscriptionData.plans.price_cents)
-    : "-";
+  // Preco do card vem do planPricing.ts (via code), nao de plans.price_cents.
+  // Mesmo formatador de antes, entao o valor exibido nao muda.
+  const planCents = subscriptionData?.plans?.code
+    ? getPlanPriceCents(subscriptionData.plans.code)
+    : null;
+  const planPrice = planCents != null ? formatCurrencyFromCents(planCents) : "-";
   const subscriptionStatus =
     subscriptionData?.status ?? (isPro ? "active" : "free");
   const statusInfo = getStatusLabel(subscriptionStatus);

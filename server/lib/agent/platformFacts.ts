@@ -1,3 +1,4 @@
+import { getPlanPriceCents } from "../../../shared/planPricing";
 import { env } from "../env";
 import { supabaseAdmin } from "../supabaseAdmin";
 
@@ -45,6 +46,7 @@ const PLANS_FALLBACK_FACT =
   "Para valores atualizados, indique a pagina /planos.";
 
 interface PlanRow {
+  code: string | null;
   name: string;
   price_cents: number;
   currency: string | null;
@@ -72,16 +74,19 @@ async function buildPlansFact(): Promise<string> {
   try {
     const { data, error } = await supabaseAdmin
       .from("plans")
-      .select("name, price_cents, currency, interval")
+      .select("code, name, price_cents, currency, interval")
       .eq("is_active", true)
       .order("price_cents", { ascending: true });
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as PlanRow[];
     if (rows.length === 0) return PLANS_FALLBACK_FACT;
-    const parts = rows.map(
-      (r) =>
-        `${r.name}: ${formatPrice(r.price_cents, r.currency)} ${formatInterval(r.interval)}`,
-    );
+    // Preco do planPricing.ts (fonte unica); plans.price_cents so como fallback
+    // defensivo para code desconhecido (ex.: 'free'). A ordem (por price_cents) fica
+    // igual: apos a migration, plans.price_cents == planPricing.
+    const parts = rows.map((r) => {
+      const cents = getPlanPriceCents(r.code ?? "") ?? r.price_cents;
+      return `${r.name}: ${formatPrice(cents, r.currency)} ${formatInterval(r.interval)}`;
+    });
     // TODO(Ana): revisar esta linha de planos e precos.
     return `Planos e precos do Plano Pro: ${parts.join("; ")}. A assinatura e feita na pagina /planos.`;
   } catch (err) {

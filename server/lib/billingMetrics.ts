@@ -1,3 +1,4 @@
+import { getPlanPriceCents } from "../../shared/planPricing";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Metricas financeiras reais para o admin. SO calculo, sem UI. Todas as funcoes
@@ -248,7 +249,10 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
       continue;
     }
 
-    const priceCents = Number(plan.price_cents ?? 0);
+    // Preco do planPricing.ts (fonte unica); plans.price_cents so como fallback
+    // defensivo para um code desconhecido (nao ocorre com os planos Pro reais).
+    const priceCents =
+      getPlanPriceCents(plan.code ?? "") ?? Number(plan.price_cents ?? 0);
     const interval = String(plan.interval ?? "");
     const perMonth = monthlyEquivalentCents(priceCents, interval);
 

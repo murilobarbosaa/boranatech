@@ -106,13 +106,11 @@ export default function CheckoutSucesso() {
     sessionStorage.removeItem("bnt_checkout_pending");
     const sub = subscription as {
       provider?: string | null;
-      plans?: { code?: string | null; price_cents?: number | null } | null;
+      plans?: { code?: string | null } | null;
     } | null;
     const planCode = sub?.plans?.code ?? "";
-    const priceCents =
-      typeof sub?.plans?.price_cents === "number"
-        ? sub.plans.price_cents
-        : planPriceCents(planCode);
+    // Preco do planPricing.ts (via planPriceCents), nao de plans.price_cents.
+    const priceCents = planPriceCents(planCode);
     captureSubscriptionCompleted({
       plan_code: planCode,
       price_cents: priceCents,

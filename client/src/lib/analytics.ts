@@ -1,13 +1,13 @@
 import posthog from "posthog-js";
 
-import { PLAN_PRICING, isPlanId } from "@shared/planPricing";
+import { getPlanPriceCents } from "@shared/planPricing";
 
 // Funil de conversao instrumentado no client (PostHog). Nomes de evento e
 // propriedades centralizados aqui para nao divergirem entre CTAs e gates.
 // A identidade da jornada (posthog.identify/reset) ja vive em AuthContext.
 
 export function planPriceCents(planCode: string): number {
-  return isPlanId(planCode) ? Math.round(PLAN_PRICING[planCode].total * 100) : 0;
+  return getPlanPriceCents(planCode) ?? 0;
 }
 
 // Clique para assinar, ANTES do redirect para a Stripe.
