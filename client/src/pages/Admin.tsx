@@ -39,6 +39,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CancellationReasonsDashboard } from "@/components/admin/CancellationReasonsDashboard";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
@@ -5793,11 +5794,7 @@ export default function Admin() {
                       Motivos de cancelamento
                     </h3>
                     <div className="mt-4">
-                      {/* TODO(Ana): copy do placeholder de motivos de cancelamento. */}
-                      <PendingIntegration
-                        tool="Motivos de cancelamento"
-                        description="Requer agregação dos motivos coletados no cancelamento."
-                      />
+                      <CancellationReasonsDashboard />
                     </div>
                   </article>
                   <article className="card-brutal rounded-3xl bg-rose-50 p-6">
