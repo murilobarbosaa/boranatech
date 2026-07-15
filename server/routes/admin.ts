@@ -458,6 +458,88 @@ router.get("/churn-risk", async (_req, res, next) => {
   }
 });
 
+// Agrega os motivos de cancelamento (subscription_cancellations) para a aba
+// Retencao. SO leitura. Considera status IN ('scheduled','completed'): 'reverted'
+// e desistencia (a pessoa deu o motivo mas FICOU), entao nao conta como
+// cancelamento, senao inflaria a distribuicao com quem nao cancelou. Percentual e
+// sobre o total considerado; linhas sem reason_code entram no total mas nao em
+// nenhum bucket (a diferenca ate 100% e "nao informado").
+const CANCELLATION_REASON_CODES = [
+  "expensive",
+  "unused",
+  "missing_feature",
+  "paused",
+  "other",
+] as const;
+
+router.get("/cancellation-reasons", async (_req, res, next) => {
+  try {
+    // Tally paginado do reason_code entre os cancelamentos considerados.
+    const counts: Record<string, number> = {};
+    let total = 0;
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabaseAdmin
+        .from("subscription_cancellations")
+        .select("reason_code")
+        .in("status", ["scheduled", "completed"])
+        .range(from, from + PAGE - 1);
+      if (error)
+        return next(
+          createError(500, "db_error", "Erro ao buscar cancelamentos."),
+        );
+      const rows = (data ?? []) as Array<{ reason_code: string | null }>;
+      for (const row of rows) {
+        total += 1;
+        if (row.reason_code) {
+          counts[row.reason_code] = (counts[row.reason_code] ?? 0) + 1;
+        }
+      }
+      if (rows.length < PAGE) break;
+    }
+
+    const byReason = CANCELLATION_REASON_CODES.map((code) => {
+      const count = counts[code] ?? 0;
+      return {
+        code,
+        count,
+        percent: total > 0 ? Math.round((count / total) * 100) : 0,
+      };
+    });
+
+    // Comentarios livres (o insight real): ultimos 50 com reason_text preenchido,
+    // mais recentes primeiro.
+    const { data: commentRows, error: commentsError } = await supabaseAdmin
+      .from("subscription_cancellations")
+      .select("reason_code, reason_text, canceled_at")
+      .in("status", ["scheduled", "completed"])
+      .not("reason_text", "is", null)
+      .neq("reason_text", "")
+      .order("canceled_at", { ascending: false })
+      .limit(50);
+    if (commentsError)
+      return next(
+        createError(500, "db_error", "Erro ao buscar comentários."),
+      );
+
+    const comments = (
+      (commentRows ?? []) as Array<{
+        reason_code: string | null;
+        reason_text: string | null;
+        canceled_at: string | null;
+      }>
+    ).map((row) => ({
+      reasonCode: row.reason_code,
+      reasonText: row.reason_text,
+      canceledAt: row.canceled_at,
+    }));
+
+    res.json({ data: { total, byReason, comments } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/me", async (req, res, next) => {
   try {
     const { data: role } = await supabaseAdmin
