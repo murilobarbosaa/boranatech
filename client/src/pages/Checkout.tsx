@@ -36,7 +36,12 @@ import {
   captureCheckoutStarted,
   planPriceCents,
 } from "@/lib/analytics";
-import { createCheckout } from "@/services/subscriptionService";
+import {
+  CheckoutError,
+  createCheckout,
+  type CheckoutPaymentMethod,
+} from "@/services/subscriptionService";
+import PaymentMethodDialog from "@/components/pro/PaymentMethodDialog";
 import { apiUrl } from "@/lib/api";
 import { PRO_FEATURES, type ProFeature } from "@shared/proFeatures";
 import {
@@ -249,6 +254,7 @@ export default function Checkout() {
   const { affiliateCode, discountPercent } = useAffiliate();
   const [selectedPlan, setSelectedPlan] = useState("pro_semiannual");
   const [loading, setLoading] = useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const reduce = useReducedMotion();
 
   // Kill-switch do pagamento, lido do endpoint publico de flags. Fail-closed
@@ -292,7 +298,9 @@ export default function Checkout() {
     return Number((price * (1 - discountPercent / 100)).toFixed(2));
   }
 
-  async function handleSubscribe() {
+  // CTA "Assinar": deslogado -> cadastro (comportamento inalterado); mensal ->
+  // cartao direto (boleto nao e permitido ali); anual/semestral -> dialog de metodo.
+  function handleSubscribe() {
     if (!session) {
       const query = affiliateCode
         ? `?ref=${encodeURIComponent(affiliateCode)}&cupom=${encodeURIComponent(affiliateCode)}&desconto=${discountPercent}`
@@ -301,22 +309,41 @@ export default function Checkout() {
       return;
     }
 
+    if (selectedPlan === "pro_monthly") {
+      void doCheckout("card");
+      return;
+    }
+    setPaymentDialogOpen(true);
+  }
+
+  // Dispara o checkout com o metodo escolhido. captureCheckoutStarted vive AQUI (na
+  // confirmacao), nao ao abrir o dialog: quem abre e fecha nao iniciou checkout.
+  async function doCheckout(paymentMethod: CheckoutPaymentMethod) {
+    setPaymentDialogOpen(false);
     setLoading(true);
     try {
-      // checkout_started ANTES do redirect. Marca o checkout como pendente para
-      // detectar abandono quando a pessoa voltar ao cancel_url (/planos).
       captureCheckoutStarted({
         plan_code: selectedPlan,
         price_cents: planPriceCents(selectedPlan),
         source_path: window.location.pathname,
         cta_id: "checkout_page_subscribe",
       });
+      // Marca o checkout como pendente para detectar abandono no cancel_url (/planos).
       sessionStorage.setItem("bnt_checkout_pending", selectedPlan);
-      const { checkoutUrl } = await createCheckout(selectedPlan);
+      const { checkoutUrl } = await createCheckout(selectedPlan, paymentMethod);
       if (checkoutUrl) window.location.href = checkoutUrl;
     } catch (error) {
       console.error("[Checkout] createCheckout failed", error);
-      toast.error("Não foi possível iniciar o checkout. Tente novamente.");
+      const code = error instanceof CheckoutError ? error.code : "";
+      if (code === "conflict") {
+        toast.error("Você já tem uma assinatura ativa.");
+      } else if (code === "boleto_pending") {
+        toast.error(
+          "Você tem um boleto aguardando pagamento. Confira seu e-mail.",
+        );
+      } else {
+        toast.error("Não foi possível iniciar o checkout. Tente novamente.");
+      }
     } finally {
       setLoading(false);
     }
@@ -741,6 +768,12 @@ export default function Checkout() {
           </div>
         </div>
       </section>
+
+      <PaymentMethodDialog
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        onSelect={(method) => void doCheckout(method)}
+      />
     </Layout>
   );
 }
