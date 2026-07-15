@@ -14,7 +14,7 @@ import {
   getFinanceTimeseries,
 } from "../lib/financeMetrics";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
-import { getPosthogStats } from "../lib/posthog";
+import { getPosthogStats, getPosthogUserActivity } from "../lib/posthog";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { syncBalanceTransactions } from "../lib/stripeSync";
@@ -833,6 +833,24 @@ router.post("/users/:id/reveal-cpf", async (req, res, next) => {
     }
 
     res.json({ data: { cpf: formatCpf(data.cpf) } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Atividade real do usuario no PostHog (funcionalidades usadas + historico de
+// navegacao). Repassa a maquina de estados do getPosthogUserActivity; nunca
+// colapsa falha em lista vazia.
+router.get("/users/:id/activity", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+    const result = await getPosthogUserActivity(uid);
+    res.json({ data: result });
   } catch (err) {
     next(err);
   }

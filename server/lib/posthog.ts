@@ -306,3 +306,80 @@ export async function getPosthogStats(
     return { state: "error", reason, httpStatus };
   }
 }
+
+// Atividade de UMA pessoa. features = quantas vezes cada funcionalidade foi
+// usada; navigation = os pageviews recentes (pagina + timestamp).
+export type PosthogUserActivity = {
+  features: Array<{ event: string; count: number }>;
+  navigation: Array<{ page: string; timestamp: string }>;
+};
+
+export type PosthogUserActivityState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; hasData: boolean; activity: PosthogUserActivity };
+
+// Eventos que NAO contam como "funcionalidade usada": os automaticos do PostHog
+// ($pageview, $pageleave, autocapture...) saem via `event not like '$%'`; os de
+// autenticacao saem por esta lista (login e acesso, nao funcionalidade).
+const AUTH_EVENTS = [
+  "user_signed_up",
+  "user_signed_in",
+  "user_signed_out",
+  "oauth_sign_in_started",
+];
+
+// Atividade de uma pessoa via distinct_id = uid do Supabase (o mesmo id com que
+// o AuthContext faz posthog.identify). Mesma maquina de estados do
+// getPosthogStats: not_configured / error / ok. hasData=false e "sem dados"
+// legitimo (pessoa sem eventos), NUNCA um erro mascarado de zero.
+export async function getPosthogUserActivity(
+  uid: string,
+): Promise<PosthogUserActivityState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  // uid ja vem validado como UUID na rota; o escape e defesa em profundidade.
+  const safeUid = uid.replace(/'/g, "''");
+  const authList = AUTH_EVENTS.map((event) => `'${event}'`).join(",");
+  const pageFromUrl =
+    "if(trimRight(path(properties.$current_url), '/') = '', '/', trimRight(path(properties.$current_url), '/'))";
+
+  try {
+    const [features, navigation] = await Promise.all([
+      runPosthogQuery(
+        `select event, count() as total from events where distinct_id = '${safeUid}' and event not like '$%' and event not in (${authList}) group by event order by total desc limit 50`,
+      ),
+      runPosthogQuery(
+        `select ${pageFromUrl} as page, timestamp from events where event = '$pageview' and distinct_id = '${safeUid}' order by timestamp desc limit 50`,
+      ),
+    ]);
+
+    const activity: PosthogUserActivity = {
+      features: (features.results || [])
+        .map((row) => ({
+          event: String(row[0] ?? ""),
+          count: cellToNumber(row[1]),
+        }))
+        .filter((item) => item.event && item.count > 0),
+      navigation: (navigation.results || [])
+        .map((row) => ({
+          page: String(row[0] ?? "/"),
+          timestamp: String(row[1] ?? ""),
+        }))
+        .filter((item) => item.timestamp),
+    };
+
+    const hasData =
+      activity.features.length > 0 || activity.navigation.length > 0;
+
+    return { state: "ok", hasData, activity };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
