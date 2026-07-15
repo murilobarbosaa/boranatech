@@ -5,6 +5,10 @@ import {
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
 import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
 import { reconcilePendingQuizResult } from "@/services/careerQuizService";
+import {
+  PENDING_CONSENT_KEY,
+  recordConsent,
+} from "@/services/consentService";
 import type { Profile } from "@/services/contracts";
 import { getMyProfile } from "@/services/profileService";
 import type { Gender } from "@shared/gender";
@@ -308,6 +312,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // email/senha ja dispara no signUp; a funcao ignora provider=email.
           if (event === "SIGNED_IN") {
             captureUserSignedUpForOAuth(nextSession.user);
+            // Aceite pendente de um signup (e-mail com sessao imediata, OAuth, ou
+            // magic link se um dia existir): agora ha identidade via JWT, grava o
+            // consentimento. Consome a flag uma vez. .catch silencioso, sem retry —
+            // se falhar, o ConsentGate cobre no proximo carregamento.
+            if (sessionStorage.getItem(PENDING_CONSENT_KEY)) {
+              sessionStorage.removeItem(PENDING_CONSENT_KEY);
+              void recordConsent().catch((consentErr) => {
+                console.warn(
+                  "[auth] failed to record pending consent:",
+                  consentErr,
+                );
+              });
+            }
           }
         }
         reconcileQuizForSession(nextSession);

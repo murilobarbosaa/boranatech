@@ -3,6 +3,12 @@ import { supabase } from "@/lib/supabase";
 
 const API_BASE = apiUrl("/api");
 
+// Flag de "aceite pendente" gravada no signup (form de e-mail ou OAuth) e consumida
+// quando a sessao aparece (SIGNED_IN em AuthContext). sessionStorage de proposito:
+// sobrevive ao redirect do OAuth na mesma aba, mas NAO espera horas por confirmacao
+// de e-mail (aba nao sobrevive) — nesse caso o ConsentGate cobre no primeiro login.
+export const PENDING_CONSENT_KEY = "bnt_pending_consent";
+
 async function getAuthHeader(): Promise<Record<string, string>> {
   const {
     data: { session },

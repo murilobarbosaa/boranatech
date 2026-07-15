@@ -16,7 +16,7 @@ import {
   signupSchema,
 } from "@/lib/authSchemas";
 import { getMyProfile } from "@/services/profileService";
-import { hasActiveSession, recordConsent } from "@/services/consentService";
+import { PENDING_CONSENT_KEY } from "@/services/consentService";
 import { greet } from "@shared/greeting";
 
 export default function Auth({
@@ -58,18 +58,14 @@ export default function Auth({
           return;
         }
 
+        // Aceite pendente: gravado pelo AuthContext no SIGNED_IN, quando ha
+        // identidade via JWT. Com confirmacao de e-mail OFF, o signUp ja emite
+        // SIGNED_IN e o consentimento e gravado na hora. Com confirmacao ON nao ha
+        // sessao agora e a flag nao sobrevive a espera do e-mail (horas, outra aba):
+        // o ConsentGate cobre no primeiro login (degradacao aceita). Nunca enviamos
+        // os flags em metadata do signUp.
+        sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
         await signUp(parsed.data);
-        // Registro duravel de consentimento so quando ha identidade via JWT.
-        // Com confirmacao de email desligada o signUp ja retorna sessao; se um
-        // dia for ligada, nao havera token aqui e o ConsentGate registra no
-        // primeiro login. Nunca enviamos os flags em metadata do signUp.
-        if (await hasActiveSession()) {
-          try {
-            await recordConsent();
-          } catch (consentErr) {
-            console.warn("[Auth] failed to record consent:", consentErr);
-          }
-        }
         getMyProfile().catch((triggerErr) => {
           console.warn("[Auth] failed to trigger welcome email:", triggerErr);
         });
@@ -130,7 +126,7 @@ export default function Auth({
             {isSignup && signupBanner ? (
               <div className="mt-5">{signupBanner}</div>
             ) : null}
-            <SocialAuthButtons mode={mode} />
+            <SocialAuthButtons mode={mode} consentAccepted={acceptedConsent} />
             {error && (
               <div
                 role="alert"

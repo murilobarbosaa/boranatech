@@ -2,12 +2,17 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { PENDING_CONSENT_KEY } from "@/services/consentService";
 
 type SocialAuthButtonsProps = {
   mode: "login" | "cadastro";
   onBeforeOAuth?: () => void;
   showDivider?: boolean;
   redirectTo?: string;
+  // Aceite dos termos (so no cadastro). Marca a flag de consentimento pendente
+  // antes do redirect OAuth para o AuthContext gravar no retorno. Sem aceite, o
+  // ConsentGate cobre no primeiro login (degradacao aceita).
+  consentAccepted?: boolean;
 };
 
 type SocialProvider = "google";
@@ -54,6 +59,7 @@ export default function SocialAuthButtons({
   onBeforeOAuth,
   showDivider = true,
   redirectTo,
+  consentAccepted = false,
 }: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(
@@ -73,6 +79,11 @@ export default function SocialAuthButtons({
       onBeforeOAuth?.();
       if (mode === "cadastro") {
         localStorage.setItem("bnt_social_signup_pending", "true");
+        // So grava o aceite se o usuario marcou o checkbox de termos. Sem isso, o
+        // ConsentGate pede o aceite no primeiro login.
+        if (consentAccepted) {
+          sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
+        }
       }
       await signInWithOAuth(provider, redirectTo ? { redirectTo } : undefined);
     } catch (error) {
