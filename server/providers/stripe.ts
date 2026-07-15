@@ -898,7 +898,7 @@ async function createCheckout(
     // metodos recorrentes: 'card' ja exibe Apple Pay e Google Pay automaticamente
     // (carteiras de cartao, sem entry propria); 'link' preserva o Link. Boleto fica
     // de fora (o caminho de boleto e o outro branch, mode:payment).
-    payment_method_types: ["card", "link"],
+    payment_method_types: ["card"],
     line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: input.user.id,
     customer_email: input.user.email || undefined,
