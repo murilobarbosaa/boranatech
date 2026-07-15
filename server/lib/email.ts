@@ -538,9 +538,12 @@ export async function sendCampaignEmail(params: {
     params.firstName,
   );
   const title = escapeCampaignHtml(personalizedSubject);
+  // {nome} no corpo: substituido no texto CRU; renderCampaignBodyHtml escapa
+  // cada bloco depois, entao o nome passa pelo mesmo escape do resto do corpo.
+  const personalizedBody = applyNamePlaceholder(params.body, params.firstName);
   const html = campaignLayout({
     title,
-    bodyHtml: renderCampaignBodyHtml(params.body),
+    bodyHtml: renderCampaignBodyHtml(personalizedBody),
     imageUrl: params.imageUrl,
     unsubscribeUrl: params.unsubscribeUrl,
     footerReason: params.footerReason,
