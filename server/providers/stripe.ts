@@ -1065,7 +1065,7 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
   const { data: sub, error } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, provider_subscription_id, current_period_end, status, cancel_at_period_end",
+      "id, provider_subscription_id, current_period_end, status, cancel_at_period_end, renewal_type",
     )
     .eq("user_id", input.userId)
     .eq("provider", "stripe")
@@ -1087,6 +1087,30 @@ async function reactivate(input: ReactivateInput): Promise<ReactivateResult> {
       redirect_to_checkout: true,
       checkout_path: "/planos",
       message: "Sua janela de reativação venceu. Vamos para um novo plano.",
+    };
+  }
+
+  // BOLETO (renewal_type='manual'): desfazer o "nao renovar" e so marcar a
+  // intencao como 'reverted'. Sem Stripe, sem cancel_at_period_end. Ramifica
+  // ANTES da logica de cartao, que fica byte-identica. Fail-loud (o update E a
+  // acao). Idempotente: segundo clique nao acha 'scheduled' e retorna sucesso.
+  if (sub.renewal_type === "manual") {
+    const { error: revertError } = await supabaseAdmin
+      .from("subscription_cancellations")
+      .update({ status: "reverted" })
+      .eq("provider_subscription_id", sub.provider_subscription_id)
+      .eq("status", "scheduled");
+    if (revertError) {
+      throw createError(
+        500,
+        "db_error",
+        "Não foi possível desfazer. Tente novamente.",
+      );
+    }
+    return {
+      cancel_at_period_end: false,
+      // TODO(Ana): mensagem de sucesso do "voltar atras" do boleto.
+      message: `Pronto: o aviso de não renovação foi removido. Seu acesso Pro segue até ${formatEffectiveDate(sub.current_period_end)} e você pode renovar quando quiser.`,
     };
   }
 
