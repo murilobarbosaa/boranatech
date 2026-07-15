@@ -971,6 +971,23 @@ router.post("/:id/test", async (req, res, next) => {
       return next(createError(404, "not_found", "Campanha não encontrada."));
     }
 
+    // Preview do {nome}: o admin e um usuario, entao resolve o proprio primeiro
+    // nome pelo profiles. Best-effort: falha de lookup nao derruba o teste (fica
+    // vazio, mostrando como a copy aparece sem nome).
+    let testFirstName = "";
+    try {
+      const { data: adminProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("name, full_name")
+        .eq("email", req.user.email)
+        .limit(1);
+      const adminRow = adminProfile?.[0];
+      const adminName = (adminRow?.name || adminRow?.full_name || "").trim();
+      if (adminName) testFirstName = adminName.split(/\s+/)[0];
+    } catch (lookupErr) {
+      console.warn("[email-campaign] Falha ao resolver nome no teste", lookupErr);
+    }
+
     try {
       await sendCampaignEmail({
         to: req.user.email,
@@ -983,6 +1000,7 @@ router.post("/:id/test", async (req, res, next) => {
         // TODO(Ana): frase de rodape do e-mail de teste.
         footerReason:
           "Este é um envio de teste. No disparo real, o rodapé reflete a origem da campanha.",
+        firstName: testFirstName,
       });
     } catch (sendErr) {
       console.error("[email-campaign] Falha no envio de teste", sendErr);

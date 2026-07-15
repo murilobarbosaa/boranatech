@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 
 import {
+  applyNamePlaceholder,
   escapeCampaignHtml,
   renderCampaignBodyHtml,
 } from "../../shared/emailCampaignBody";
@@ -525,11 +526,18 @@ export async function sendCampaignEmail(params: {
   imageUrl: string | null;
   unsubscribeUrl: string;
   footerReason: string;
+  firstName: string;
 }) {
   if (!env.resendApiKey || !resend) {
     throw new Error("RESEND_API_KEY ausente. Envio de campanha requer Resend.");
   }
-  const title = escapeCampaignHtml(params.subject);
+  // {nome} no assunto: substituido no texto cru; o header vai com o nome cru e o
+  // titulo HTML e escapado logo abaixo (mesmo escape do assunto sem nome).
+  const personalizedSubject = applyNamePlaceholder(
+    params.subject,
+    params.firstName,
+  );
+  const title = escapeCampaignHtml(personalizedSubject);
   const html = campaignLayout({
     title,
     bodyHtml: renderCampaignBodyHtml(params.body),
@@ -540,7 +548,7 @@ export async function sendCampaignEmail(params: {
   const result = await sendEmail({
     to: params.to,
     from: FROM_RELATIONSHIP,
-    subject: params.subject,
+    subject: personalizedSubject,
     html,
     headers: {
       // Alem do mailto padrao, a URL de descadastro da campanha. O header

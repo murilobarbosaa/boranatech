@@ -861,6 +861,72 @@ async function resolveCampaignFooterReason(
   return campaignFooterReason(source);
 }
 
+// Primeiro nome: primeira palavra do nome, com trim. Vazio, so espacos ou
+// ausente retorna "" (nome ausente NAO e erro, e vazio legitimo).
+function firstNameFrom(value: string | null | undefined): string {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) return "";
+  return trimmed.split(/\s+/)[0];
+}
+
+// Resolve o PRIMEIRO nome do destinatario conforme a origem do lote:
+// - users: lookup em profiles por email (name, senao full_name).
+// - contact_list: contact_list_members.name daquele membro naquela lista.
+// - waitlist, newsletter, custom: sempre "" (essas origens nao tem nome; NAO
+//   derivar do e-mail, que e chute).
+// Erro de consulta PROPAGA (retry do worker); nome ausente e "" legitimo.
+async function resolveRecipientFirstName(
+  email: string,
+  batchId: string | null,
+): Promise<string> {
+  if (!batchId) return "";
+
+  const { data: batch, error } = await supabaseAdmin
+    .from("email_campaign_batches")
+    .select("source, contact_list_id")
+    .eq("id", batchId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Falha ao buscar lote do destinatario: ${error.message}`);
+  }
+  if (!batch) return "";
+
+  const source = (batch.source ?? "custom") as CampaignAudience;
+
+  if (source === "users") {
+    const { data, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("name, full_name")
+      .eq("email", email)
+      .limit(1);
+    if (profileError) {
+      throw new Error(
+        `Falha ao buscar perfil do destinatario: ${profileError.message}`,
+      );
+    }
+    const row = data?.[0];
+    return firstNameFrom(row?.name || row?.full_name);
+  }
+
+  if (source === "contact_list") {
+    if (!batch.contact_list_id) return "";
+    const { data, error: memberError } = await supabaseAdmin
+      .from("contact_list_members")
+      .select("name")
+      .eq("list_id", batch.contact_list_id)
+      .eq("email", email)
+      .limit(1);
+    if (memberError) {
+      throw new Error(
+        `Falha ao buscar membro da lista: ${memberError.message}`,
+      );
+    }
+    return firstNameFrom(data?.[0]?.name);
+  }
+
+  return "";
+}
+
 async function processRecipientJob(job: Job<EmailCampaignJobData>) {
   const { campaignId, recipientId } = job.data as EmailCampaignSendJobData;
 
@@ -900,6 +966,12 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
   // escreveu para AQUELA lista (contact_lists.footer_reason). Lote ausente
   // (recipient antigo sem batch_id) cai no fallback neutro do campaignFooterReason.
   const footerReason = await resolveCampaignFooterReason(recipient.batch_id);
+  // Primeiro nome por destinatario (origem do lote). Vazio quando a origem nao
+  // tem nome ou o registro nao traz um: a copy com {nome} some sem quebrar.
+  const firstName = await resolveRecipientFirstName(
+    recipient.email,
+    recipient.batch_id,
+  );
 
   const unsubscribeUrl = buildCampaignUnsubscribeUrl(recipient.email);
   await sendCampaignEmail({
@@ -909,6 +981,7 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
     imageUrl: campaign.image_url,
     unsubscribeUrl,
     footerReason,
+    firstName,
   });
 
   // RPC falhando DEPOIS do envio: rethrow deixa o BullMQ tentar de novo e o
