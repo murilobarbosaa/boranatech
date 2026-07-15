@@ -11,6 +11,7 @@ import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { enqueueEmail } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { issueRenewalToken } from "../lib/renewalToken";
+import { getStripe } from "../lib/stripeClient";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { syncBalanceTransactions } from "../lib/stripeSync";
 import { createError } from "../middleware/error";
@@ -659,6 +660,143 @@ router.post(
     } catch (err) {
       await recordCronRun({
         jobName: "expiring-subscriptions",
+        status: "error",
+        startedAt,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
+      next(err);
+    }
+  }),
+);
+
+// Boleto vence em 3 dias (expires_after_days); passado o prazo o Stripe emite
+// async_payment_failed e o handler marca canceled. Se ESSE evento se perde, a linha
+// fica pending para sempre e o guard 409 boleto_pending trava o usuario de assinar
+// de novo (bug silencioso, permanente, do lado de quem quer pagar). Este cron limpa
+// os orfaos: pending de boleto com created_at alem da janela segura. NUNCA cancela
+// boleto pago: consulta a Checkout Session e so cancela com payment_status != 'paid'.
+// Na duvida (pago, ou erro na consulta), deixa a linha VIVA. Sem e-mail.
+const ORPHAN_BOLETO_DAYS = 4; // 3d do boleto + 1d de folga (evento tardio, TZ, skew)
+
+router.post(
+  "/expire-pending-boletos",
+  withCronLock("expire-pending-boletos", 600, async (_req, res, next) => {
+    const startedAt = new Date();
+    try {
+      const cutoffIso = new Date(
+        Date.now() - ORPHAN_BOLETO_DAYS * DAY_MS,
+      ).toISOString();
+
+      const { data: orphans, error: orphansError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("id, provider_subscription_id")
+        .eq("payment_method", "boleto")
+        .eq("status", "pending")
+        .lt("created_at", cutoffIso);
+
+      if (orphansError) {
+        await recordCronRun({
+          jobName: "expire-pending-boletos",
+          status: "error",
+          startedAt,
+          errorMessage: orphansError.message,
+        });
+        return next(
+          createError(500, "db_error", "Erro ao buscar boletos pendentes."),
+        );
+      }
+
+      const rows = orphans || [];
+      const stripe = getStripe();
+      let canceled = 0;
+      let paidKept = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const row of rows) {
+        try {
+          const sessionId = row.provider_subscription_id;
+          if (!sessionId) {
+            skipped++;
+            continue;
+          }
+
+          // Guard definitivo antes de matar: 1 retrieve por orfao (raros, e o
+          // conjunto ja veio filtrado por idade), custo negligivel.
+          let session: Awaited<
+            ReturnType<typeof stripe.checkout.sessions.retrieve>
+          >;
+          try {
+            session = await stripe.checkout.sessions.retrieve(sessionId);
+          } catch (stripeErr) {
+            // Falha na consulta = incerteza: NAO cancela (fail-safe, deixa viva).
+            console.error(
+              `[cron/expire-pending-boletos] retrieve falhou para ${sessionId}; mantendo linha viva:`,
+              stripeErr,
+            );
+            failed++;
+            continue;
+          }
+
+          if (session.payment_status === "paid") {
+            // Boleto PAGO cujo async_payment_succeeded se perdeu: dinheiro entrou,
+            // acesso nao saiu. NUNCA cancelar; grita para investigacao (a reativacao
+            // passa pelo handler de webhook, fora do escopo deste cron).
+            console.error(
+              `[cron/expire-pending-boletos] boleto PAGO ainda pending (session ${sessionId}, sub ${row.id}); NAO cancelado, investigar ativacao perdida.`,
+            );
+            paidKept++;
+            continue;
+          }
+
+          // Nao pago e alem da janela: orfao. Marca canceled (mesmo estado do
+          // async_payment_failed), liberando o guard 409. Condicional em pending
+          // para idempotencia.
+          const { error: cancelError } = await supabaseAdmin
+            .from("subscriptions")
+            .update({
+              status: "canceled",
+              canceled_at: new Date().toISOString(),
+              last_event_at: new Date().toISOString(),
+            })
+            .eq("id", row.id)
+            .eq("status", "pending");
+          if (cancelError) {
+            console.error(
+              `[cron/expire-pending-boletos] falha ao cancelar sub ${row.id}:`,
+              cancelError,
+            );
+            failed++;
+          } else {
+            canceled++;
+          }
+        } catch (err) {
+          failed++;
+          console.error(
+            `[cron/expire-pending-boletos] falha na sub ${row.id}:`,
+            err,
+          );
+        }
+      }
+
+      await recordCronRun({
+        jobName: "expire-pending-boletos",
+        status: failed > 0 ? "partial" : "success",
+        startedAt,
+        payload: {
+          candidates: rows.length,
+          canceled,
+          paidKept,
+          skipped,
+          failed,
+        },
+      });
+      res.json({
+        data: { candidates: rows.length, canceled, paidKept, skipped, failed },
+      });
+    } catch (err) {
+      await recordCronRun({
+        jobName: "expire-pending-boletos",
         status: "error",
         startedAt,
         errorMessage: err instanceof Error ? err.message : String(err),
