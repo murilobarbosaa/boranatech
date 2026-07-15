@@ -534,7 +534,22 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       canceledAt: row.canceled_at,
     }));
 
-    res.json({ data: { total, byReason, comments } });
+    // Revertidos: linha AUXILIAR, fora do total e dos percentuais. 'reverted' e
+    // quem deu o motivo e voltou atras (cartao: reativou; boleto: desfez o aviso
+    // de nao renovar). Nao respondem "por que cancelam", entao ficam fora da
+    // distribuicao, mas o total interessa para contexto.
+    const { count: revertedCount, error: revertedError } = await supabaseAdmin
+      .from("subscription_cancellations")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "reverted");
+    if (revertedError)
+      return next(
+        createError(500, "db_error", "Erro ao buscar revertidos."),
+      );
+
+    res.json({
+      data: { total, byReason, comments, revertedCount: revertedCount ?? 0 },
+    });
   } catch (err) {
     next(err);
   }

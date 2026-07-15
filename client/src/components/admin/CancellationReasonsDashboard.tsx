@@ -16,6 +16,8 @@ type CancellationReasonsData = {
   total: number;
   byReason: ByReason[];
   comments: CancellationComment[];
+  // Auxiliar: quem deu o motivo e voltou atras. Fora do total e dos percentuais.
+  revertedCount: number;
 };
 
 // Traducao dos 5 reason_code (CHECK da subscription_cancellations) para pt-BR.
@@ -174,6 +176,19 @@ export function CancellationReasonsDashboard() {
               </div>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {data.revertedCount > 0 ? (
+        <div className="border-t-2 border-slate-200 pt-4">
+          {/* TODO(Ana): copy da linha auxiliar de revertidos. Nao prometer que
+              ficaram: no cartao e reativacao real, no boleto e so desfazer o
+              aviso (a pessoa ainda pode nao pagar o proximo boleto). */}
+          <p className="text-xs font-bold text-slate-500">
+            {data.revertedCount === 1
+              ? "1 pessoa deu um motivo mas voltou atrás do aviso de cancelamento. Fora da distribuição acima."
+              : `${data.revertedCount} pessoas deram um motivo mas voltaram atrás do aviso de cancelamento. Fora da distribuição acima.`}
+          </p>
         </div>
       ) : null}
     </div>
