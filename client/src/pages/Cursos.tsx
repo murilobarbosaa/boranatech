@@ -29,6 +29,7 @@ import VideoEmbedDialog from "@/components/shared/VideoEmbedDialog";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { areasTI, cursosGratuitos } from "@/lib/data";
+import { FREE_COURSES_SAMPLE_SIZE } from "@/lib/freeTierLimits";
 import { getCourses } from "@/services/contentService";
 import { youtubeEmbedUrl } from "@/lib/utils";
 
@@ -84,11 +85,7 @@ const areaTagClass: Record<string, string> = {
 // Normaliza (minusculas, sem acento) para comparar niveis de forma tolerante,
 // ja que a API pode devolver caixa/acentuacao diferente do rotulo do filtro.
 function normalizarNivel(valor: string): string {
-  return valor
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
+  return valor.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 
 // Mapeia codigos curtos de idioma da API (ex.: "pt-BR", "en") para o rotulo do
@@ -209,7 +206,7 @@ function CursoQuiz({
   );
 }
 
-const SAMPLE_SIZE = 6;
+const SAMPLE_SIZE = FREE_COURSES_SAMPLE_SIZE;
 
 export default function Cursos() {
   const { isPro, loading } = useSubscription();
@@ -267,7 +264,8 @@ export default function Cursos() {
         slugLabel.toLowerCase().includes(searchQuery.toLowerCase());
       const matchArea = area === AREA_ALL || c.areaSlug === area;
       const matchNivel =
-        nivel === "Todos" || normalizarNivel(c.nivel) === normalizarNivel(nivel);
+        nivel === "Todos" ||
+        normalizarNivel(c.nivel) === normalizarNivel(nivel);
       const matchIdioma =
         idioma === "Todos" ||
         c.idioma.includes(idioma) ||
@@ -393,8 +391,8 @@ export default function Cursos() {
                   <div className="mt-3 rounded-2xl border-2 border-slate-900 bg-amber-100 p-4 shadow-[4px_4px_0_#fbbf24]">
                     <p className="text-xs leading-relaxed text-slate-950">
                       No começo, certificados de bons cursos já ajudam a montar
-                      base e portfólio. Certificações pesam mais quando você foca
-                      numa área ou tecnologia e a vaga pede.
+                      base e portfólio. Certificações pesam mais quando você
+                      foca numa área ou tecnologia e a vaga pede.
                     </p>
                   </div>
                 </motion.div>
@@ -660,146 +658,154 @@ export default function Cursos() {
                       }
                     >
                       <div className="group flex flex-col rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-[5px_5px_0_#fbbf24] transition-all duration-200">
-                  {/* Tags */}
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div className="flex flex-wrap gap-2">
-                      <span
-                        className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}
-                      >
-                        {labelForAreaSlug(curso.areaSlug)}
-                      </span>
-                      <span
-                        className={`rounded-md border px-2.5 py-1 text-[11px] font-black ${
-                          (curso.tipo || "Gratuito") === "Pago"
-                            ? "border-amber-200 bg-amber-50 text-amber-700"
-                            : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        }`}
-                      >
-                        {curso.tipo || "Gratuito"}
-                      </span>
-                      {curso.certificate === "sim" ? (
-                        <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800">
-                          <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
-                          {(curso.tipo || "Gratuito") !== "Pago"
-                            ? "Certificado grátis"
-                            : "Com certificado"}
-                        </span>
-                      ) : curso.certificate === "nao" ? (
-                        <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500">
-                          Sem certificado
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span
-                        className={`rounded-md px-2 py-1 text-[11px] font-bold ${
-                          curso.nivel === "Iniciante"
-                            ? "bg-blue-50 text-blue-700"
-                            : curso.nivel === "Intermediário"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-red-50 text-red-700"
-                        }`}
-                      >
-                        {curso.nivel}
-                      </span>
-                      <FavoriteButton
-                        compact
-                        item={{
-                          id: curso.id,
-                          type: "curso",
-                          title: curso.titulo,
-                          subtitle: curso.canal,
-                          url: curso.link,
-                        }}
-                      />
-                    </div>
-                  </div>
+                        {/* Tags */}
+                        <div className="mb-4 flex items-start justify-between gap-3">
+                          <div className="flex flex-wrap gap-2">
+                            <span
+                              className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${(curso.areaSlug && areaTagClass[curso.areaSlug]) || "bg-slate-100 text-slate-600"}`}
+                            >
+                              {labelForAreaSlug(curso.areaSlug)}
+                            </span>
+                            <span
+                              className={`rounded-md border px-2.5 py-1 text-[11px] font-black ${
+                                (curso.tipo || "Gratuito") === "Pago"
+                                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                                  : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                              }`}
+                            >
+                              {curso.tipo || "Gratuito"}
+                            </span>
+                            {curso.certificate === "sim" ? (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-800">
+                                <BadgeCheck
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden
+                                />
+                                {(curso.tipo || "Gratuito") !== "Pago"
+                                  ? "Certificado grátis"
+                                  : "Com certificado"}
+                              </span>
+                            ) : curso.certificate === "nao" ? (
+                              <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                                Sem certificado
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span
+                              className={`rounded-md px-2 py-1 text-[11px] font-bold ${
+                                curso.nivel === "Iniciante"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : curso.nivel === "Intermediário"
+                                    ? "bg-amber-50 text-amber-700"
+                                    : "bg-red-50 text-red-700"
+                              }`}
+                            >
+                              {curso.nivel}
+                            </span>
+                            <FavoriteButton
+                              compact
+                              item={{
+                                id: curso.id,
+                                type: "curso",
+                                title: curso.titulo,
+                                subtitle: curso.canal,
+                                url: curso.link,
+                              }}
+                            />
+                          </div>
+                        </div>
 
-                  {/* Title */}
-                  <h3 className="font-display text-lg font-black leading-snug text-slate-950">
-                    {curso.titulo}
-                  </h3>
-                  <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-amber-700">
-                    {curso.canal}
-                    {curso.preco ? ` · ${curso.preco}` : ""}
-                  </p>
-                  <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
-                    {curso.descricao}
-                  </p>
+                        {/* Title */}
+                        <h3 className="font-display text-lg font-black leading-snug text-slate-950">
+                          {curso.titulo}
+                        </h3>
+                        <p className="mt-1 text-[11px] font-black uppercase tracking-wide text-amber-700">
+                          {curso.canal}
+                          {curso.preco ? ` · ${curso.preco}` : ""}
+                        </p>
+                        <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-600">
+                          {curso.descricao}
+                        </p>
 
-                  {/* Why recommended */}
-                  <div className="mt-4 flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
-                    <Sparkles
-                      className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
-                      aria-hidden
-                    />
-                    <p className="text-xs leading-relaxed text-amber-900">
-                      <span className="font-black">Por que indicamos:</span>{" "}
-                      {curso.motivoIndicacao}
-                    </p>
-                  </div>
-
-                  {/* What you learn */}
-                  <div className="mt-4">
-                    <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
-                      O que você aprende
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {curso.oQueAprende.map((item) => (
-                        <span
-                          key={item}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition-colors group-hover:border-slate-300"
-                        >
-                          <span
-                            className="h-1.5 w-1.5 rounded-full bg-amber-400"
+                        {/* Why recommended */}
+                        <div className="mt-4 flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+                          <Sparkles
+                            className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
                             aria-hidden
                           />
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                          <p className="text-xs leading-relaxed text-amber-900">
+                            <span className="font-black">
+                              Por que indicamos:
+                            </span>{" "}
+                            {curso.motivoIndicacao}
+                          </p>
+                        </div>
 
-                  {/* Meta */}
-                  <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-slate-500">
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" /> {curso.duracao}
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <Globe className="h-3.5 w-3.5" /> {curso.idioma}
-                      </span>
-                    </div>
-                    {youtubeEmbedUrl(curso.link) ? (
-                      <VideoEmbedDialog
-                        source={curso.link}
-                        title={curso.titulo}
-                        href={curso.link}
-                      >
-                        <button
-                          type="button"
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
-                        >
-                          Assistir aqui <PlayCircle className="h-3 w-3" />
-                        </button>
-                      </VideoEmbedDialog>
-                    ) : (
-                      <a
-                        href={curso.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
-                      >
-                        Acessar <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
-                  </div>
-                </div>
+                        {/* What you learn */}
+                        <div className="mt-4">
+                          <p className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-500">
+                            O que você aprende
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {curso.oQueAprende.map((item) => (
+                              <span
+                                key={item}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 transition-colors group-hover:border-slate-300"
+                              >
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full bg-amber-400"
+                                  aria-hidden
+                                />
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Meta */}
+                        <div className="mt-5 flex items-center justify-between gap-3 border-t border-slate-100 pt-4">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-slate-500">
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" /> {curso.duracao}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Globe className="h-3.5 w-3.5" /> {curso.idioma}
+                            </span>
+                          </div>
+                          {youtubeEmbedUrl(curso.link) ? (
+                            <VideoEmbedDialog
+                              source={curso.link}
+                              title={curso.titulo}
+                              href={curso.link}
+                            >
+                              <button
+                                type="button"
+                                className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
+                              >
+                                Assistir aqui <PlayCircle className="h-3 w-3" />
+                              </button>
+                            </VideoEmbedDialog>
+                          ) : (
+                            <a
+                              href={curso.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex shrink-0 items-center gap-1 rounded-lg border-2 border-slate-900 bg-amber-500 px-3 py-1.5 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-amber-400 hover:shadow-[3px_3px_0_#0f172a]"
+                            >
+                              Acessar <ExternalLink className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     {locked ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
                         <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
-                          <Lock className="h-6 w-6 text-slate-950" aria-hidden />
+                          <Lock
+                            className="h-6 w-6 text-slate-950"
+                            aria-hidden
+                          />
                         </span>
                         <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
                           <ProStarIcon className="h-3.5 w-3.5" /> Pro
