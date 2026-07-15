@@ -978,6 +978,11 @@ router.post("/:id/test", async (req, res, next) => {
         body: campaign.body,
         imageUrl: campaign.image_url,
         unsubscribeUrl: buildCampaignUnsubscribeUrl(req.user.email),
+        // Teste ao proprio admin: sem origem de lote, o rodape real e definido
+        // pela origem no disparo. Deixa isso explicito no preview.
+        // TODO(Ana): frase de rodape do e-mail de teste.
+        footerReason:
+          "Este é um envio de teste. No disparo real, o rodapé reflete a origem da campanha.",
       });
     } catch (sendErr) {
       console.error("[email-campaign] Falha no envio de teste", sendErr);
@@ -1087,6 +1092,9 @@ router.post("/:id/batches", async (req, res, next) => {
     }
 
     let emails: string[] = [];
+    // Guardado no lote para o envio saber de qual lista importada veio o rodape
+    // (contact_lists.footer_reason). Null nas demais origens.
+    let batchContactListId: string | null = null;
     if (source === "contact_list") {
       // Emails resolvidos NO SERVER a partir dos membros validos da lista (nunca
       // confia numa lista de e-mails vinda do client). Cada lote pega ate 500
@@ -1107,6 +1115,7 @@ router.post("/:id/batches", async (req, res, next) => {
           ),
         );
       }
+      batchContactListId = contactListId;
       const alreadyInCampaign =
         await fetchCampaignRecipientEmailSet(req.params.id);
       const picked = new Set<string>();
@@ -1277,6 +1286,7 @@ router.post("/:id/batches", async (req, res, next) => {
         exclude_other_campaigns: excludeOtherCampaigns,
         source,
         user_segment: userSegment,
+        contact_list_id: batchContactListId,
         scheduled_for: scheduledFor,
         created_by: req.user.id,
       })

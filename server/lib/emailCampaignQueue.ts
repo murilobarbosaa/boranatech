@@ -1,7 +1,11 @@
 import * as Sentry from "@sentry/node";
 import { Queue, Worker, type Job } from "bullmq";
 
-import { sendCampaignEmail } from "./email";
+import {
+  campaignFooterReason,
+  sendCampaignEmail,
+  type CampaignAudience,
+} from "./email";
 import { batchJobId, recipientJobId } from "./emailCampaignJobIds";
 import { env } from "./env";
 import { queueConnection } from "./redis";
@@ -814,12 +818,55 @@ async function recordResult(
   }
 }
 
+// Resolve a frase de rodape a partir do lote do destinatario. Uma consulta ao
+// lote (source + contact_list_id); para contact_list, mais uma a contact_lists
+// pela frase daquela lista. Sem lote (recipient antigo sem batch_id) ou origem
+// desconhecida: fallback neutro. Erros de consulta propagam (retry do worker),
+// no mesmo padrao das outras leituras do envio.
+async function resolveCampaignFooterReason(
+  batchId: string | null,
+): Promise<string> {
+  if (!batchId) return campaignFooterReason("custom");
+
+  const { data: batch, error } = await supabaseAdmin
+    .from("email_campaign_batches")
+    .select("source, contact_list_id")
+    .eq("id", batchId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`Falha ao buscar lote do destinatario: ${error.message}`);
+  }
+  if (!batch) return campaignFooterReason("custom");
+
+  const source = (batch.source ?? "custom") as CampaignAudience;
+
+  if (source === "contact_list") {
+    let contactListReason: string | null = null;
+    if (batch.contact_list_id) {
+      const { data: list, error: listError } = await supabaseAdmin
+        .from("contact_lists")
+        .select("footer_reason")
+        .eq("id", batch.contact_list_id)
+        .maybeSingle();
+      if (listError) {
+        throw new Error(
+          `Falha ao buscar a lista de contatos do lote: ${listError.message}`,
+        );
+      }
+      contactListReason = list?.footer_reason ?? null;
+    }
+    return campaignFooterReason("contact_list", contactListReason);
+  }
+
+  return campaignFooterReason(source);
+}
+
 async function processRecipientJob(job: Job<EmailCampaignJobData>) {
   const { campaignId, recipientId } = job.data as EmailCampaignSendJobData;
 
   const { data: recipient, error: recipientError } = await supabaseAdmin
     .from("email_campaign_recipients")
-    .select("id, email, status")
+    .select("id, email, status, batch_id")
     .eq("id", recipientId)
     .maybeSingle();
   if (recipientError) {
@@ -848,6 +895,12 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
     throw new Error(`Campanha ${campaignId} nao encontrada.`);
   }
 
+  // Rodape honesto por origem: a razao do envio vem do lote do destinatario
+  // (email_campaign_batches.source). Para contact_list, usa a frase que o admin
+  // escreveu para AQUELA lista (contact_lists.footer_reason). Lote ausente
+  // (recipient antigo sem batch_id) cai no fallback neutro do campaignFooterReason.
+  const footerReason = await resolveCampaignFooterReason(recipient.batch_id);
+
   const unsubscribeUrl = buildCampaignUnsubscribeUrl(recipient.email);
   await sendCampaignEmail({
     to: recipient.email,
@@ -855,6 +908,7 @@ async function processRecipientJob(job: Job<EmailCampaignJobData>) {
     body: campaign.body,
     imageUrl: campaign.image_url,
     unsubscribeUrl,
+    footerReason,
   });
 
   // RPC falhando DEPOIS do envio: rethrow deixa o BullMQ tentar de novo e o

@@ -428,15 +428,57 @@ export async function sendCancellationEmail(
   });
 }
 
-// Layout das campanhas para a waitlist: imagem opcional como hero no topo do
-// card (mesmo padrao do waitlistLayout: primeira linha da tabela, sem padding,
-// largura total), nome, titulo, corpo renderizado (shared/emailCampaignBody) e
-// rodape com link de descadastro e endereco do remetente.
+// Origem do lote de campanha. Espelha email_campaign_batches.source; define qual
+// frase de rodape descreve, com honestidade, COMO o e-mail chegou aquela pessoa.
+export type CampaignAudience =
+  | "waitlist"
+  | "newsletter"
+  | "users"
+  | "custom"
+  | "contact_list";
+
+// Fallback neutro e honesto: usado quando a origem nao carrega uma frase propria
+// (lista avulsa, ou lista importada sem footer_reason preenchido). Descreve so o
+// remetente, sem inventar uma origem que nao se sabe.
+// TODO(Ana): frase neutra de rodape (fallback sem origem declarada).
+const NEUTRAL_FOOTER_REASON =
+  "Você está recebendo este e-mail do Bora na Tech.";
+
+// Frase de rodape por origem. Descreve APENAS como o e-mail chegou aquela pessoa,
+// nunca base legal. Para contact_list, usa a frase da propria lista (escrita pelo
+// admin no import); vazia cai no fallback neutro.
+// TODO(Ana): revisar as frases de rodape por origem abaixo.
+export function campaignFooterReason(
+  audience: CampaignAudience,
+  contactListReason?: string | null,
+): string {
+  switch (audience) {
+    case "waitlist":
+      return "Você está recebendo este e-mail porque entrou na lista de espera do Bora na Tech.";
+    case "newsletter":
+      return "Você está recebendo este e-mail porque assinou a newsletter do Bora na Tech.";
+    case "users":
+      return "Você está recebendo este e-mail porque tem uma conta no Bora na Tech.";
+    case "contact_list": {
+      const reason = (contactListReason ?? "").trim();
+      return reason || NEUTRAL_FOOTER_REASON;
+    }
+    case "custom":
+    default:
+      return NEUTRAL_FOOTER_REASON;
+  }
+}
+
+// Layout das campanhas: imagem opcional como hero no topo do card (mesmo padrao
+// do waitlistLayout: primeira linha da tabela, sem padding, largura total), nome,
+// titulo, corpo renderizado (shared/emailCampaignBody) e rodape com a razao do
+// envio (honesta por origem), link de descadastro e endereco do remetente.
 function campaignLayout(opts: {
   title: string;
   bodyHtml: string;
   imageUrl: string | null;
   unsubscribeUrl: string;
+  footerReason: string;
 }) {
   // TODO(Ana): alt text generico do hero da campanha.
   const heroHtml = opts.imageUrl
@@ -461,7 +503,7 @@ function campaignLayout(opts: {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:2px solid #E2E8F0;font-size:0;line-height:0;">&nbsp;</td></tr></table>
         </td></tr>
         <tr><td style="padding:18px 40px 30px 40px;text-align:center;">
-          <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#94A3B8;">Voce esta recebendo este e-mail porque entrou na lista de espera do Bora na Tech.</p>
+          <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:#94A3B8;">${escapeCampaignHtml(opts.footerReason)}</p>
           <p style="margin:0 0 8px;font-size:12px;line-height:1.5;">
             <a href="${opts.unsubscribeUrl}" style="color:#64748B;">Nao quero mais receber estes e-mails</a>
           </p>
@@ -482,6 +524,7 @@ export async function sendCampaignEmail(params: {
   body: string;
   imageUrl: string | null;
   unsubscribeUrl: string;
+  footerReason: string;
 }) {
   if (!env.resendApiKey || !resend) {
     throw new Error("RESEND_API_KEY ausente. Envio de campanha requer Resend.");
@@ -492,6 +535,7 @@ export async function sendCampaignEmail(params: {
     bodyHtml: renderCampaignBodyHtml(params.body),
     imageUrl: params.imageUrl,
     unsubscribeUrl: params.unsubscribeUrl,
+    footerReason: params.footerReason,
   });
   const result = await sendEmail({
     to: params.to,
