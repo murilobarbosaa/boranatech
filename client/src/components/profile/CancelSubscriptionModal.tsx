@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+
 type CancelReasonCode =
   | "expensive"
   | "unused"
@@ -60,8 +62,6 @@ export function CancelSubscriptionModal({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   const formattedDate = periodEnd
     ? new Date(periodEnd).toLocaleDateString("pt-BR", {
         day: "2-digit",
@@ -78,16 +78,20 @@ export function CancelSubscriptionModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-      onClick={() => {
-        if (!isLoading) onClose();
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isLoading) onClose();
       }}
     >
-      <div
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border-2 border-[#1a1a1a] bg-white shadow-[4px_4px_0_#0f172a]"
-        onClick={(event) => event.stopPropagation()}
+      <DialogContent
+        showCloseButton={false}
+        aria-describedby={undefined}
+        className="max-h-[90vh] gap-0 overflow-y-auto rounded-3xl border-2 border-[#1a1a1a] bg-white p-0 shadow-[4px_4px_0_#0f172a]"
       >
+        <DialogTitle className="sr-only">
+          {isNonRenewal ? "Não renovar assinatura" : "Cancelar assinatura"}
+        </DialogTitle>
         <button
           type="button"
           onClick={onClose}
@@ -243,7 +247,7 @@ export function CancelSubscriptionModal({
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
