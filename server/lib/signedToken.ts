@@ -64,3 +64,46 @@ export function verifySignedToken<T extends Record<string, string | number>>(opt
 
   return decoded as T & { exp: number };
 }
+
+// Variante que DISTINGUE "invalido/adulterado" de "expirado" para quem precisa de
+// mensagens diferentes (ex.: pagina de renovacao). Mesmo formato e mesmo sign() do
+// verifySignedToken; assinatura errada, payload corrompido ou purpose divergente =
+// "invalid"; assinatura ok mas exp no passado = "expired". Fail-closed por padrao.
+export type DetailedVerifyResult<T> =
+  | { status: "valid"; claims: T & { exp: number } }
+  | { status: "invalid" }
+  | { status: "expired" };
+
+export function verifySignedTokenDetailed<
+  T extends Record<string, string | number>,
+>(opts: {
+  token: string;
+  secret: string;
+  expectedPurpose: string;
+}): DetailedVerifyResult<T> {
+  const parts = opts.token.split(".");
+  if (parts.length !== 2) return { status: "invalid" };
+  const [payloadB64, signature] = parts;
+
+  const expected = sign(payloadB64, opts.secret);
+  const signatureBuf = Buffer.from(signature);
+  const expectedBuf = Buffer.from(expected);
+  if (signatureBuf.length !== expectedBuf.length) return { status: "invalid" };
+  if (!crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
+    return { status: "invalid" };
+  }
+
+  let decoded: Record<string, unknown>;
+  try {
+    decoded = JSON.parse(fromBase64Url(payloadB64)) as Record<string, unknown>;
+  } catch {
+    return { status: "invalid" };
+  }
+
+  if (typeof decoded.exp !== "number") return { status: "invalid" };
+  // Assinatura valida mas fora do prazo: distinto de adulterado.
+  if (decoded.exp <= Date.now()) return { status: "expired" };
+  if (decoded.purpose !== opts.expectedPurpose) return { status: "invalid" };
+
+  return { status: "valid", claims: decoded as T & { exp: number } };
+}

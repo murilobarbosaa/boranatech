@@ -18,6 +18,11 @@ export interface CreateCheckoutInput {
   // Codigo de afiliado ja normalizado (uppercase/trim); "" quando ausente.
   affiliateCode: string;
   paymentMethod: CheckoutPaymentMethod;
+  // INTERNO, NUNCA vem do corpo HTTP: so o handler de renovacao (que ja validou o
+  // token assinado) seta true, para pular o guard de "assinatura ativa" (na
+  // renovacao a assinatura esta active de proposito). O guard de boleto pendente
+  // continua valendo. Nenhuma rota faz spread de req.body neste input.
+  internalRenewal?: boolean;
 }
 
 export interface CreateCheckoutResult {

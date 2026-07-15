@@ -198,6 +198,9 @@ export const env = {
     | "off",
   // Secret HMAC dos tokens de newsletter (confirmacao/descadastro). Ausente: deny.
   newsletterTokenSecret: process.env.NEWSLETTER_TOKEN_SECRET || "",
+  // Secret HMAC do token de renovacao de boleto (link one-click no e-mail de
+  // lembrete). Ausente: o endpoint de renovacao nega, sem crashar.
+  renewalTokenSecret: process.env.RENEWAL_TOKEN_SECRET || "",
   // Base URL absoluta do BACKEND para montar os links de confirm/unsubscribe nos
   // e-mails (ex.: https://api.boranatech.com.br). Vazia = captura fechada (nao da
   // pra montar link valido). Nao reutiliza appPublicUrl, que aponta pro frontend.

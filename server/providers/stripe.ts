@@ -672,14 +672,18 @@ async function createCheckout(
   }
 
   // Guard de assinatura ativa (paridade com Asaas): evita assinatura duplicada.
-  const { data: existing } = await supabaseAdmin
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", input.user.id)
-    .in("status", ["active", "trialing"])
-    .maybeSingle();
-  if (existing) {
-    throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
+  // Pulado SO na renovacao (internalRenewal), onde a assinatura esta active de
+  // proposito. internalRenewal e interno e nunca chega pelo corpo HTTP.
+  if (!input.internalRenewal) {
+    const { data: existing } = await supabaseAdmin
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", input.user.id)
+      .in("status", ["active", "trialing"])
+      .maybeSingle();
+    if (existing) {
+      throw createError(409, "conflict", "Usuário já possui assinatura ativa.");
+    }
   }
 
   // Guard de boleto pendente: enquanto um boleto aguarda pagamento, nao gera outro

@@ -1,13 +1,102 @@
 import { Router } from "express";
 
 import { env } from "../lib/env";
-import { isPlanId, type PlanId } from "../../shared/planPricing";
+import { verifyRenewalToken } from "../lib/renewalToken";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
 import { stripeProvider } from "../providers";
+import { isPlanId, PLAN_PRICING, type PlanId } from "../../shared/planPricing";
 
 const router = Router();
+
+// Resolve o token de renovacao -> assinatura + plano, com os casos de erro que a
+// pagina /renovar renderiza (cada um com code slug distinto). Compartilhado pelo
+// GET (preview) e pelo POST (gera o boleto). Nunca expoe PII.
+type RenewalResolved = {
+  subscriptionId: string;
+  userId: string;
+  planId: PlanId;
+  currentPeriodEnd: string | null;
+};
+
+async function resolveRenewal(
+  token: string,
+): Promise<
+  | { ok: false; status: number; code: string; message: string }
+  | { ok: true; data: RenewalResolved }
+> {
+  const verified = verifyRenewalToken(token);
+  if (verified.status === "invalid") {
+    return {
+      ok: false,
+      status: 400,
+      code: "invalid_token",
+      message: "Link de renovação inválido.",
+    };
+  }
+  if (verified.status === "expired") {
+    return {
+      ok: false,
+      status: 400,
+      code: "expired_token",
+      message: "Este link de renovação expirou.",
+    };
+  }
+
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("id, user_id, status, current_period_end, plan_id")
+    .eq("id", verified.subscriptionId)
+    .maybeSingle();
+
+  // Cancelada ou inexistente compartilham o slug (a task agrupa os dois casos).
+  if (!sub || sub.status === "canceled") {
+    return {
+      ok: false,
+      status: 404,
+      code: "subscription_unavailable",
+      message: "Assinatura não encontrada ou cancelada.",
+    };
+  }
+
+  // Ja renovada: o periodo avancou alem do que o token foi emitido (pend).
+  const currentEndMs = sub.current_period_end
+    ? new Date(sub.current_period_end).getTime()
+    : 0;
+  if (currentEndMs > verified.periodEndMs) {
+    return {
+      ok: false,
+      status: 409,
+      code: "already_renewed",
+      message: "Esta assinatura já foi renovada.",
+    };
+  }
+
+  const { data: plan } = await supabaseAdmin
+    .from("plans")
+    .select("code")
+    .eq("id", sub.plan_id)
+    .maybeSingle();
+  if (!plan || !isPlanId(plan.code)) {
+    return {
+      ok: false,
+      status: 500,
+      code: "plan_unavailable",
+      message: "Plano não encontrado.",
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      subscriptionId: sub.id,
+      userId: sub.user_id,
+      planId: plan.code,
+      currentPeriodEnd: sub.current_period_end,
+    },
+  };
+}
 
 router.get("/subscription", requireAuth, async (req, res, next) => {
   try {
@@ -178,6 +267,81 @@ router.post("/checkout", requireAuth, async (req, res, next) => {
       planId,
       affiliateCode,
       paymentMethod,
+    });
+
+    res.json({ data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Renovacao de boleto por token assinado (link one-click do e-mail). SEM
+// requireAuth: o token e a autenticacao. GET so mostra plano/valor/vencimento para
+// a pagina /renovar; POST gera o boleto de fato (intencao explicita, nao page load).
+
+router.get("/renew", async (req, res, next) => {
+  try {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      return next(
+        createError(400, "invalid_token", "Link de renovação inválido."),
+      );
+    }
+    const r = await resolveRenewal(token);
+    if (!r.ok) return next(createError(r.status, r.code, r.message));
+
+    // Preview sem PII: so plano, valor e vencimento.
+    const pricing = PLAN_PRICING[r.data.planId];
+    res.json({
+      data: {
+        planId: r.data.planId,
+        planLabel: pricing.label,
+        priceLabel: pricing.totalLabel,
+        periodEnd: r.data.currentPeriodEnd,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/renew", async (req, res, next) => {
+  try {
+    // Kill-switch fail-closed: gerar boleto chama o provider; corta antes.
+    if (!env.billingEnabled) {
+      return next(
+        createError(
+          503,
+          "billing_disabled",
+          "Pagamentos temporariamente indisponíveis. Tente novamente em breve.",
+        ),
+      );
+    }
+
+    const token = typeof req.body?.token === "string" ? req.body.token : "";
+    if (!token) {
+      return next(
+        createError(400, "invalid_token", "Link de renovação inválido."),
+      );
+    }
+    const r = await resolveRenewal(token);
+    if (!r.ok) return next(createError(r.status, r.code, r.message));
+
+    // Token e a auth (nao ha req.user): busca o e-mail do dono para prefill.
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(
+      r.data.userId,
+    );
+    const email = authData?.user?.email || "";
+
+    // internalRenewal: seta AQUI, no server, apos validar o token. Pula so o guard
+    // de assinatura ativa; o guard de boleto pendente segue valendo e pode lancar
+    // 409 boleto_pending. Nunca vem do corpo HTTP.
+    const data = await stripeProvider.createCheckout({
+      user: { id: r.data.userId, email },
+      planId: r.data.planId,
+      affiliateCode: "",
+      paymentMethod: "boleto",
+      internalRenewal: true,
     });
 
     res.json({ data });
