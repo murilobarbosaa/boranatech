@@ -78,11 +78,17 @@ import {
 import type { Profile } from "@/services/contracts";
 import { updateMyProfile } from "@/services/profileService";
 import { greet } from "@shared/greeting";
+import { isPlanId, PLAN_PRICING } from "@shared/planPricing";
 
 type SubscriptionPlan = {
   name?: string | null;
   code?: string | null;
   price_cents?: number | null;
+};
+
+type PendingBoleto = {
+  planCode?: string | null;
+  createdAt?: string | null;
 };
 
 type SubscriptionData = {
@@ -91,6 +97,7 @@ type SubscriptionData = {
   created_at?: string | null;
   current_period_end?: string | null;
   cancel_at_period_end?: boolean;
+  pendingBoleto?: PendingBoleto | null;
 };
 
 type CancelReasonCode =
@@ -825,6 +832,23 @@ export default function Perfil() {
     subscriptionData?.status ?? (isPro ? "active" : "free");
   const statusInfo = getStatusLabel(subscriptionStatus);
   const proSince = formatProSince(subscriptionData?.created_at);
+
+  // Boleto aguardando pagamento (do endpoint). Plano/valor vem do planPricing.ts
+  // (fonte unica). Cenario A: !isPro + pendingBoleto -> card proprio. Cenario B:
+  // isPro + pendingBoleto -> card ativo normal + aviso de renovacao.
+  const pendingBoleto = subscriptionData?.pendingBoleto ?? null;
+  const pendingPlanId =
+    pendingBoleto?.planCode && isPlanId(pendingBoleto.planCode)
+      ? pendingBoleto.planCode
+      : null;
+  const pendingPlanName = pendingPlanId
+    ? `Pro ${PLAN_PRICING[pendingPlanId].label}`
+    : "Pro";
+  const pendingPlanPrice = pendingPlanId
+    ? PLAN_PRICING[pendingPlanId].totalLabel
+    : "-";
+  const pendingStatusInfo = getStatusLabel("pending");
+
   const currentStreak = studyStats?.current_streak ?? 0;
   const longestStreak = studyStats?.longest_streak ?? 0;
   const totalHours = Math.round((studyStats?.total_minutes ?? 0) / 60);
@@ -1598,6 +1622,57 @@ export default function Perfil() {
                   <p className="font-display text-xl font-black text-slate-950">
                     Carregando assinatura...
                   </p>
+                ) : !isPro && pendingBoleto ? (
+                  // Cenario A: boleto de primeira compra aguardando pagamento.
+                  // Sem acesso Pro ainda; sem botao de cancelar e sem CTA.
+                  <>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
+                      Assinatura
+                    </p>
+
+                    <h2
+                      className="font-display mt-2 font-black leading-none text-slate-950"
+                      style={{ fontSize: "clamp(3rem, 7vw, 5.5rem)" }}
+                    >
+                      PRO
+                    </h2>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span
+                        className={`inline-block rounded-full border-2 px-3 py-1 font-display text-[11px] font-black uppercase tracking-[0.18em] ${
+                          statusBadgeStyles[pendingStatusInfo.variant]
+                        }`}
+                      >
+                        {pendingStatusInfo.label}
+                      </span>
+                    </div>
+
+                    <div className="my-6 border-t-2 border-dashed border-amber-200" />
+
+                    <div className="space-y-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                          Plano
+                        </span>
+                        <span className="font-display font-black text-slate-950">
+                          {pendingPlanName}
+                        </span>
+                      </div>
+
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-amber-700">
+                          Valor
+                        </span>
+                        <span className="font-display font-black text-slate-950">
+                          {pendingPlanPrice}
+                        </span>
+                      </div>
+
+                      <p className="pt-1 text-sm font-semibold text-slate-600">
+                        Boleto enviado para seu e-mail. Vence em 3 dias.
+                      </p>
+                    </div>
+                  </>
                 ) : isPro ? (
                   <>
                     <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-amber-700">
@@ -1658,6 +1733,17 @@ export default function Perfil() {
                         </span>
                       </div>
                     </div>
+
+                    {/* Cenario B: renovacao por boleto em processamento. Neutro,
+                        nao alarmante: o usuario tem acesso e esta tudo certo. */}
+                    {pendingBoleto ? (
+                      <div className="mt-5 rounded-2xl border-2 border-slate-300 bg-slate-50 p-3">
+                        <p className="text-sm font-bold text-slate-700">
+                          🔄 Renovação em processamento. Seu boleto está
+                          aguardando pagamento.
+                        </p>
+                      </div>
+                    ) : null}
 
                     {subscriptionData?.cancel_at_period_end &&
                     subscriptionData?.current_period_end ? (

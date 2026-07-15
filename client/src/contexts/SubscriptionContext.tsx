@@ -22,10 +22,16 @@ const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(
   undefined,
 );
 
-function buildDevMockSubscription() {
+// Mock de dev parametrizavel por ?devSub=pending|renewal|active (default active),
+// para exercitar os estados de boleto pendente sem gerar boleto real. So roda sob
+// import.meta.env.DEV; some no build de producao.
+function buildDevMockSubscription(): { subscription: unknown; isPro: boolean } {
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
-  return {
+  const scenario =
+    new URLSearchParams(window.location.search).get("devSub") ?? "active";
+
+  const activeSub = {
     isPro: true,
     status: "active",
     cancel_at_period_end: false,
@@ -39,6 +45,22 @@ function buildDevMockSubscription() {
       price_cents: 22200,
     },
   };
+  const pendingBoleto = {
+    planCode: "pro_annual",
+    createdAt: new Date(now - day).toISOString(),
+  };
+
+  // Cenario A: primeira compra por boleto, sem acesso. Espelha a resposta real
+  // (plano free + pendingBoleto), isPro false.
+  if (scenario === "pending") {
+    return { subscription: { status: "free", pendingBoleto }, isPro: false };
+  }
+  // Cenario B: assinatura ativa + boleto de renovacao pendente. Pro/ativo normal.
+  if (scenario === "renewal") {
+    return { subscription: { ...activeSub, pendingBoleto }, isPro: true };
+  }
+  // active (default): ativa, sem pendente.
+  return { subscription: { ...activeSub, pendingBoleto: null }, isPro: true };
 }
 
 export function SubscriptionProvider({
@@ -64,8 +86,9 @@ export function SubscriptionProvider({
       }
 
       if (import.meta.env.DEV) {
-        setSubscription(buildDevMockSubscription());
-        setIsPro(true);
+        const mock = buildDevMockSubscription();
+        setSubscription(mock.subscription);
+        setIsPro(mock.isPro);
         setLoading(false);
         return;
       }
@@ -102,8 +125,9 @@ export function SubscriptionProvider({
     }
 
     if (import.meta.env.DEV) {
-      setSubscription(buildDevMockSubscription());
-      setIsPro(true);
+      const mock = buildDevMockSubscription();
+      setSubscription(mock.subscription);
+      setIsPro(mock.isPro);
       setLoading(false);
       return;
     }
