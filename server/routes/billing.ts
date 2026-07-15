@@ -46,7 +46,7 @@ async function resolveRenewal(
 
   const { data: sub } = await supabaseAdmin
     .from("subscriptions")
-    .select("id, user_id, status, current_period_end, plan_id")
+    .select("id, user_id, status, current_period_end, plan_id, renewal_type")
     .eq("id", verified.subscriptionId)
     .maybeSingle();
 
@@ -57,6 +57,19 @@ async function resolveRenewal(
       status: 404,
       code: "subscription_unavailable",
       message: "Assinatura não encontrada ou cancelada.",
+    };
+  }
+
+  // Defesa em profundidade: renovacao manual e SO para boleto (renewal_type
+  // 'manual'). Uma sub de cartao renova sozinha; gerar boleto para ela cobraria
+  // em duplicidade. Nao confia so na promessa de que o cron nunca emite o token
+  // para uma sub 'auto'.
+  if (sub.renewal_type !== "manual") {
+    return {
+      ok: false,
+      status: 409,
+      code: "not_manual_renewal",
+      message: "Esta assinatura não usa renovação manual.",
     };
   }
 
