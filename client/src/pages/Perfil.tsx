@@ -19,6 +19,7 @@ import {
   LogOut,
   MapPin,
   MessageSquare,
+  RefreshCw,
   Star,
   Trash2,
 } from "lucide-react";
@@ -1734,13 +1735,21 @@ export default function Perfil() {
                       </div>
                     </div>
 
-                    {/* Cenario B: renovacao por boleto em processamento. Neutro,
-                        nao alarmante: o usuario tem acesso e esta tudo certo. */}
+                    {/* Cenario B: renovacao por boleto em processamento. Brutal-flat
+                        com acento amarelo do sistema (nao alarmante): o usuario tem
+                        acesso e esta tudo certo. Calibrado pelo bloco de cancelamento
+                        agendado abaixo (irmao condicional), mas em tom informativo. */}
                     {pendingBoleto ? (
-                      <div className="mt-5 rounded-2xl border-2 border-slate-300 bg-slate-50 p-3">
-                        <p className="text-sm font-bold text-slate-700">
-                          🔄 Renovação em processamento. Seu boleto está
-                          aguardando pagamento.
+                      <div className="mt-5 flex items-start gap-3 rounded-2xl border-2 border-slate-950 bg-white p-3 shadow-[3px_3px_0_#0f172a]">
+                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-slate-950 bg-[#FFB800]">
+                          <RefreshCw
+                            className="h-4 w-4 text-slate-950"
+                            strokeWidth={2.5}
+                          />
+                        </span>
+                        <p className="text-sm font-bold text-slate-800">
+                          Renovação em processamento. Seu boleto está aguardando
+                          pagamento.
                         </p>
                       </div>
                     ) : null}
