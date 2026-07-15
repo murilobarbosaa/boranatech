@@ -44,6 +44,7 @@ import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
+import { PagesDashboard } from "@/components/admin/PagesDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import {
@@ -5796,53 +5797,10 @@ export default function Admin() {
               eyebrow="comportamento por página"
               icon={<Eye className="h-4 w-4" />}
               title="Qualidade real das páginas"
-              subtitle="Compare tempo médio, profundidade de scroll, taxa de saída e páginas por sessão para descobrir onde o conteúdo prende ou perde pessoas."
+              // TODO(Ana): revisar copy do subtitulo da aba Paginas.
+              subtitle="Veja tempo médio, profundidade de scroll e taxa de saída por página para descobrir onde o conteúdo prende ou perde pessoas."
             >
-              <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-                <div className="p-6">
-                  {overviewLoading ? (
-                    <LoadingBlock />
-                  ) : posthogHasData && posthogStats?.pages.length ? (
-                    <div className="overflow-hidden rounded-2xl border-2 border-slate-900">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-100 text-xs font-black uppercase text-slate-600">
-                          <tr>
-                            <th className="px-4 py-3">Página</th>
-                            <th className="px-4 py-3">Pageviews</th>
-                            <th className="px-4 py-3">Participação</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y-2 divide-slate-100">
-                          {posthogStats.pages.map((page) => {
-                            const share =
-                              posthogStats.totalPageviews > 0
-                                ? Math.round(
-                                    (page.views / posthogStats.totalPageviews) *
-                                      100,
-                                  )
-                                : 0;
-                            return (
-                              <tr key={page.page}>
-                                <td className="px-4 py-3 font-black text-slate-950">
-                                  {page.page}
-                                </td>
-                                <td className="px-4 py-3 font-semibold text-slate-600">
-                                  {formatCount(page.views)}
-                                </td>
-                                <td className="px-4 py-3 font-semibold text-violet-700">
-                                  {share}%
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <PosthogStateNotice state={posthogState} />
-                  )}
-                </div>
-              </article>
+              <PagesDashboard />
             </AdminSection>
           ) : null}
 
