@@ -116,6 +116,7 @@ function ImportWizard({
   const [description, setDescription] = useState("");
   const [lgpdBasis, setLgpdBasis] = useState("");
   const [lgpdNote, setLgpdNote] = useState("");
+  const [footerReason, setFooterReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -189,6 +190,7 @@ function ImportWizard({
           original_filename: file?.name ?? null,
           lgpd_basis: lgpdBasis.trim(),
           lgpd_note: lgpdNote.trim() || null,
+          footer_reason: footerReason.trim() || null,
           members: report.members,
         }),
       });
@@ -434,6 +436,28 @@ function ImportWizard({
                 rows={3}
                 className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white p-2 text-sm font-semibold"
               />
+              {/* TODO(Ana): copy do aviso de que o campo acima e nota interna. */}
+              <span className="mt-1 block text-[11px] font-semibold normal-case text-slate-500">
+                Nota interna. O destinatário não lê isto.
+              </span>
+            </label>
+
+            <label className="block text-xs font-black uppercase text-slate-600">
+              {/* TODO(Ana): rotulo do campo da frase de rodape do e-mail. */}
+              Frase de rodapé do e-mail (o destinatário lê)
+              <textarea
+                value={footerReason}
+                onChange={(e) => setFooterReason(e.target.value)}
+                rows={2}
+                placeholder="Ex: Você está recebendo este e-mail porque baixou nosso ebook."
+                className="mt-1 block w-full rounded-xl border-2 border-slate-900 bg-white p-2 text-sm font-semibold"
+              />
+              {/* TODO(Ana): copy do aviso de que esta frase aparece no e-mail. */}
+              <span className="mt-1 block text-[11px] font-semibold normal-case text-slate-500">
+                Vai no rodapé do e-mail que esta lista receber, explicando de
+                forma honesta como o contato chegou até você. Se ficar em branco,
+                usamos uma frase neutra.
+              </span>
             </label>
 
             {saveError ? <ErrorBlock message={saveError} /> : null}

@@ -136,6 +136,12 @@ router.post("/", async (req, res, next) => {
             : null,
         lgpd_basis: lgpdBasis,
         lgpd_note: typeof body.lgpd_note === "string" ? body.lgpd_note.trim() : null,
+        // Frase que o DESTINATARIO le no rodape do e-mail desta lista. Distinta
+        // de lgpd_note (interna). Vazia => envio usa fallback neutro.
+        footer_reason:
+          typeof body.footer_reason === "string" && body.footer_reason.trim()
+            ? body.footer_reason.trim()
+            : null,
         total_rows: members.length,
         valid_count: counts.valid,
         invalid_count: counts.invalid,
