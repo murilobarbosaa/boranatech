@@ -23,7 +23,7 @@ import {
 import { savePendingIntent, type PendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
 import { getMyProfile } from "@/services/profileService";
-import { hasActiveSession, recordConsent } from "@/services/consentService";
+import { PENDING_CONSENT_KEY } from "@/services/consentService";
 import type { Gender } from "@shared/gender";
 import { greet } from "@shared/greeting";
 
@@ -102,17 +102,13 @@ export default function AuthModal({
           return;
         }
 
+        // Aceite pendente: gravado pelo AuthContext no SIGNED_IN, quando ha
+        // identidade via JWT. Confirmacao de e-mail OFF -> SIGNED_IN imediato e grava
+        // na hora; ON -> sem sessao agora e a flag nao sobrevive a espera do e-mail:
+        // o ConsentGate cobre no primeiro login (degradacao aceita). Mesmo padrao do
+        // Auth.tsx. Nunca enviamos os flags em metadata do signUp.
+        sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
         await signUp(parsed.data);
-        // Registro duravel de consentimento so quando ha identidade via JWT.
-        // Sem sessao (confirmacao de email ligada) o ConsentGate registra no
-        // primeiro login. Nunca enviamos os flags em metadata do signUp.
-        if (await hasActiveSession()) {
-          try {
-            await recordConsent();
-          } catch (consentErr) {
-            console.warn("[AuthModal] failed to record consent:", consentErr);
-          }
-        }
         getMyProfile().catch((triggerErr) => {
           console.warn(
             "[AuthModal] failed to trigger welcome email:",
@@ -193,6 +189,7 @@ export default function AuthModal({
 
         <SocialAuthButtons
           mode={isSignup ? "cadastro" : "login"}
+          consentAccepted={acceptedConsent}
           onBeforeOAuth={persistIntentForOAuth}
           showDivider={false}
           redirectTo={
