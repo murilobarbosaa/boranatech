@@ -138,6 +138,37 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
 
     const isPro = !rpcError && isProRpc === true;
 
+    // Boleto pendente (aguardando pagamento). Existe no cenario A (primeira compra
+    // por boleto, sem sub ativa -> plano free) e no B (renovacao, junto de uma sub
+    // ativa). ADITIVO: nao altera a query primaria nem is_user_pro. Cartao nunca
+    // tem pending, entao para cartao isto sempre volta null. { planCode, createdAt },
+    // sem PII; o card resolve plano/valor via planPricing.ts.
+    const { data: pending } = await supabaseAdmin
+      .from("subscriptions")
+      .select("created_at, plan_id")
+      .eq("user_id", userId)
+      .eq("payment_method", "boleto")
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let pendingBoleto: { planCode: string; createdAt: string | null } | null =
+      null;
+    if (pending?.plan_id) {
+      const { data: pendingPlan } = await supabaseAdmin
+        .from("plans")
+        .select("code")
+        .eq("id", pending.plan_id)
+        .maybeSingle();
+      if (pendingPlan?.code) {
+        pendingBoleto = {
+          planCode: pendingPlan.code,
+          createdAt: pending.created_at,
+        };
+      }
+    }
+
     if (!subscription) {
       const { data: freePlan } = await supabaseAdmin
         .from("plans")
@@ -150,6 +181,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
           plan: freePlan,
           status: "free",
           isPro,
+          pendingBoleto,
         },
       });
     }
@@ -158,6 +190,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       data: {
         ...subscription,
         isPro,
+        pendingBoleto,
       },
     });
   } catch (err) {
