@@ -14,6 +14,7 @@ import { issueRenewalToken } from "../lib/renewalToken";
 import { getStripe } from "../lib/stripeClient";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { syncBalanceTransactions } from "../lib/stripeSync";
+import { collectSubscriptionSnapshot } from "../lib/subscriptionSnapshots";
 import { createError } from "../middleware/error";
 import { getStripeSubscriptionState } from "../providers/stripe";
 import { isPlanId, PLAN_PRICING } from "../../shared/planPricing";
@@ -1081,6 +1082,32 @@ router.post("/sync-finance", withCronLock("sync-finance", 600, async (_req, res,
   } catch (err) {
     await recordCronRun({
       jobName: "sync-finance",
+      status: "error",
+      startedAt,
+      errorMessage: err instanceof Error ? err.message : String(err),
+    });
+    next(err);
+  }
+}));
+
+// TTL 300s: job leve (le subscriptions + getMrrSnapshot + um upsert). Registra o
+// snapshot diario do estado das assinaturas em subscription_snapshots (idempotente
+// por snapshot_date). subscriptions e apenas LIDA aqui.
+router.post("/snapshot-subscriptions", withCronLock("snapshot-subscriptions", 300, async (_req, res, next) => {
+  const startedAt = new Date();
+
+  try {
+    const result = await collectSubscriptionSnapshot();
+    await recordCronRun({
+      jobName: "snapshot-subscriptions",
+      status: "success",
+      startedAt,
+      payload: { ...result },
+    });
+    res.json({ data: result });
+  } catch (err) {
+    await recordCronRun({
+      jobName: "snapshot-subscriptions",
       status: "error",
       startedAt,
       errorMessage: err instanceof Error ? err.message : String(err),
