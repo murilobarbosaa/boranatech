@@ -78,6 +78,7 @@ const QuizCarreiraResultado = lazyWithRetry(
 );
 const RecuperarSenha = lazyWithRetry(() => import("@/pages/RecuperarSenha"));
 const RedefinirSenha = lazyWithRetry(() => import("@/pages/RedefinirSenha"));
+const Renovar = lazyWithRetry(() => import("@/pages/Renovar"));
 const RoadmapIA = lazyWithRetry(() => import("@/pages/RoadmapIA"));
 const RoadmapIAView = lazyWithRetry(() => import("@/pages/RoadmapIAView"));
 const RoadmapQuiz = lazyWithRetry(() => import("@/pages/RoadmapQuiz"));
@@ -301,6 +302,9 @@ function Router() {
         <Route path="/perguntas-frequentes" component={PerguntasFrequentes} />
         <Route path="/planos/sucesso" component={CheckoutSucesso} />
         <Route path="/planos" component={Checkout} />
+        {/* Renovacao de boleto por token (link do e-mail). PUBLICA, sem
+            RequireAuth: o token e a auth. Fora do sitemap/prerender, noindex. */}
+        <Route path="/renovar" component={Renovar} />
         {/* TODO: remover redirect após 90 dias em prod */}
         <Route path="/pro/sucesso">
           {() => <Redirect to="/planos/sucesso" />}
