@@ -1,4 +1,4 @@
-import { getPlanPriceCents } from "../../shared/planPricing";
+import { resolvePlanPriceCents } from "./planPrice";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Metricas financeiras reais para o admin. SO calculo, sem UI. Todas as funcoes
@@ -250,9 +250,13 @@ export async function getMrrSnapshot(): Promise<MrrSnapshot> {
     }
 
     // Preco do planPricing.ts (fonte unica); plans.price_cents so como fallback
-    // defensivo para um code desconhecido (nao ocorre com os planos Pro reais).
-    const priceCents =
-      getPlanPriceCents(plan.code ?? "") ?? Number(plan.price_cents ?? 0);
+    // defensivo para code desconhecido (nao ocorre com os planos Pro reais), e nesse
+    // caso o helper grita no Sentry.
+    const priceCents = resolvePlanPriceCents(
+      plan.code,
+      Number(plan.price_cents ?? 0),
+      "getMrrSnapshot",
+    );
     const interval = String(plan.interval ?? "");
     const perMonth = monthlyEquivalentCents(priceCents, interval);
 

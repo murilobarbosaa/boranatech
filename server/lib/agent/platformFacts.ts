@@ -1,5 +1,5 @@
-import { getPlanPriceCents } from "../../../shared/planPricing";
 import { env } from "../env";
+import { resolvePlanPriceCents } from "../planPrice";
 import { supabaseAdmin } from "../supabaseAdmin";
 
 // Fatos canonicos da plataforma injetados como mensagem system nos DOIS tiers
@@ -84,7 +84,7 @@ async function buildPlansFact(): Promise<string> {
     // defensivo para code desconhecido (ex.: 'free'). A ordem (por price_cents) fica
     // igual: apos a migration, plans.price_cents == planPricing.
     const parts = rows.map((r) => {
-      const cents = getPlanPriceCents(r.code ?? "") ?? r.price_cents;
+      const cents = resolvePlanPriceCents(r.code, r.price_cents, "platformFacts");
       return `${r.name}: ${formatPrice(cents, r.currency)} ${formatInterval(r.interval)}`;
     });
     // TODO(Ana): revisar esta linha de planos e precos.

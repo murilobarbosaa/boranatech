@@ -21,7 +21,7 @@ import { syncBalanceTransactions } from "../lib/stripeSync";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
 import { requireAdmin, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
-import { getPlanPriceCents } from "../../shared/planPricing";
+import { resolvePlanPriceCents } from "../lib/planPrice";
 import contactListsRouter from "./adminContactLists";
 import emailCampaignsRouter from "./adminEmailCampaigns";
 
@@ -420,10 +420,13 @@ router.get("/churn-risk", async (_req, res, next) => {
       const plan = Array.isArray(subscription.plans)
         ? subscription.plans[0]
         : subscription.plans;
-      // Preco do planPricing.ts (fonte unica); plans.price_cents so como fallback
-      // defensivo para code desconhecido.
-      const priceCents =
-        getPlanPriceCents(plan?.code ?? "") ?? Number(plan?.price_cents || 0);
+      // Preco do planPricing.ts (fonte unica); fallback defensivo para o banco (o
+      // helper grita no Sentry se o code for real e faltar no modulo).
+      const priceCents = resolvePlanPriceCents(
+        plan?.code,
+        Number(plan?.price_cents || 0),
+        "churn-risk",
+      );
 
       return {
         name: String(
@@ -873,13 +876,21 @@ router.get("/subscriptions", async (_req, res, next) => {
       return next(createError(500, "db_error", "Erro ao buscar assinaturas."));
 
     // Mantem a forma da resposta, mas o preco exibido vem do planPricing.ts (fonte
-    // unica), nao de plans.price_cents. Fallback defensivo para code desconhecido.
+    // unica), nao de plans.price_cents. Fallback defensivo para o banco (helper
+    // grita no Sentry se o code for real e faltar no modulo).
     const rows = (data || []).map((row) => {
-      const plans = (row as { plans?: { code?: string | null } | null }).plans;
-      const cents = plans?.code ? getPlanPriceCents(plans.code) : null;
-      return cents != null && plans
-        ? { ...row, plans: { ...plans, price_cents: cents } }
-        : row;
+      const plans = (
+        row as {
+          plans?: { code?: string | null; price_cents?: number | null } | null;
+        }
+      ).plans;
+      if (!plans) return row;
+      const cents = resolvePlanPriceCents(
+        plans.code,
+        plans.price_cents ?? 0,
+        "/subscriptions",
+      );
+      return { ...row, plans: { ...plans, price_cents: cents } };
     });
 
     res.json({ data: rows });
