@@ -209,7 +209,32 @@ router.get("/", async (req, res, next) => {
     if (error)
       return next(createError(500, "db_error", "Erro ao buscar as listas."));
 
-    res.json({ data: { rows: data ?? [], total: count ?? 0, page, pageSize } });
+    // Cobertura de nome por lista: membros validos com name preenchido. Usado no
+    // modal de disparo pra mostrar quantos receberiam {nome} personalizado.
+    const rows = data ?? [];
+    const rowsWithNamed = await Promise.all(
+      rows.map(async (row) => {
+        const { count: namedCount, error: namedError } = await supabaseAdmin
+          .from("contact_list_members")
+          .select("id", { count: "exact", head: true })
+          .eq("list_id", row.id)
+          .eq("status", "valid")
+          .not("name", "is", null)
+          .neq("name", "");
+        if (namedError) {
+          throw createError(
+            500,
+            "db_error",
+            "Erro ao contar contatos com nome.",
+          );
+        }
+        return { ...row, named_count: namedCount ?? 0 };
+      }),
+    );
+
+    res.json({
+      data: { rows: rowsWithNamed, total: count ?? 0, page, pageSize },
+    });
   } catch (err) {
     next(err);
   }

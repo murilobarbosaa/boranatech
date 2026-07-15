@@ -321,12 +321,16 @@ router.get("/audience-count", async (req, res, next) => {
 
     const PAGE = 1000;
     let count = 0;
+    // Cobertura de nome: numero de elegiveis com nome (so origem users tem nome
+    // por natureza aqui). null = origem sem nome (waitlist/newsletter), pra a UI
+    // dizer "esta origem nao envia nome" em vez de mostrar zero.
+    let withName: number | null = source === "users" ? 0 : null;
     if (source === "users") {
       const seen = new Set<string>();
       for (let from = 0; ; from += PAGE) {
         const { data, error } = await supabaseAdmin
           .from("profiles")
-          .select("user_id, email, marketing_opt_in")
+          .select("user_id, email, marketing_opt_in, name, full_name")
           .range(from, from + PAGE - 1);
         if (error) {
           console.error("[email-campaign] Falha ao contar usuários", error);
@@ -352,6 +356,12 @@ router.get("/audience-count", async (req, res, next) => {
           if (suppressed.has(email)) continue;
           if (sentElsewhere?.has(email)) continue;
           count += 1;
+          if (
+            (row.name && row.name.trim()) ||
+            (row.full_name && row.full_name.trim())
+          ) {
+            withName = (withName ?? 0) + 1;
+          }
         }
         if (rows.length < PAGE) break;
       }
@@ -382,7 +392,7 @@ router.get("/audience-count", async (req, res, next) => {
       }
     }
 
-    res.json({ data: { count } });
+    res.json({ data: { count, withName } });
   } catch (err) {
     next(err);
   }

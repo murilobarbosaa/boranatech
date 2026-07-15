@@ -57,7 +57,10 @@ import SEO from "@/components/SEO";
 import { SignOutConfirmModal } from "@/components/profile/SignOutConfirmModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { adminFetch } from "@/lib/adminApi";
-import { renderCampaignBodyHtml } from "@shared/emailCampaignBody";
+import {
+  applyNamePlaceholder,
+  renderCampaignBodyHtml,
+} from "@shared/emailCampaignBody";
 import { readAdminClaim } from "@/lib/adminClaim";
 import { apiUrl } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
@@ -1786,7 +1789,12 @@ type EmailBatchSource =
   | "users"
   | "contact_list";
 
-type ContactListOption = { id: string; name: string; valid_count: number };
+type ContactListOption = {
+  id: string;
+  name: string;
+  valid_count: number;
+  named_count: number;
+};
 
 type EmailUserSegment = "all" | "never_pro" | "active_pro" | "ex_pro";
 
@@ -1994,6 +2002,11 @@ function EmailCampaignsAdminSection() {
   const [limitText, setLimitText] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
   const [eligibleCount, setEligibleCount] = useState<number | null>(null);
+  // Cobertura de nome dos elegiveis: numero (origem users) ou null (origem sem
+  // nome: waitlist/newsletter). undefined enquanto nao carregado.
+  const [eligibleWithName, setEligibleWithName] = useState<
+    number | null | undefined
+  >(undefined);
   const [eligibleError, setEligibleError] = useState<string | null>(null);
 
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(
@@ -2278,6 +2291,7 @@ function EmailCampaignsAdminSection() {
       segment: EmailUserSegment = "all",
     ) => {
       setEligibleCount(null);
+      setEligibleWithName(undefined);
       setEligibleError(null);
       try {
         const params = new URLSearchParams();
@@ -2288,7 +2302,9 @@ function EmailCampaignsAdminSection() {
         const json = await adminFetch(
           `/email-campaigns/audience-count?${params.toString()}`,
         );
-        setEligibleCount((json.data as { count: number }).count);
+        const data = json.data as { count: number; withName: number | null };
+        setEligibleCount(data.count);
+        setEligibleWithName(data.withName);
       } catch (err) {
         // Erro de contagem é exibido como erro, nunca como zero.
         setEligibleError(
@@ -2621,7 +2637,14 @@ function EmailCampaignsAdminSection() {
     }
   }
 
-  const previewBodyHtml = renderCampaignBodyHtml(bodyText);
+  // Preview do {nome}: mostra o corpo com um nome de exemplo, pra o Murilo ver
+  // como a personalizacao fica. A versao sem nome aparece como nota logo abaixo.
+  // TODO(Ana): nome de exemplo do preview de personalizacao.
+  const PREVIEW_EXAMPLE_NAME = "Maria";
+  const hasNamePlaceholder = bodyText.includes("{nome}");
+  const previewBodyHtml = renderCampaignBodyHtml(
+    applyNamePlaceholder(bodyText, PREVIEW_EXAMPLE_NAME),
+  );
   const trimmedImageUrl = imageUrl.trim();
   const pending = detail ? campaignPendingCount(detail) : null;
   const progressPercent =
@@ -2680,9 +2703,18 @@ function EmailCampaignsAdminSection() {
                 onChange={(event) => setBodyText(event.target.value)}
                 rows={8}
                 // TODO(Ana): placeholder do corpo.
-                placeholder="Quebra de linha dupla vira parágrafo."
+                placeholder="Quebra de linha dupla vira parágrafo. Use {nome} para o primeiro nome."
                 className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
               />
+              {/* TODO(Ana): copy da ajuda do placeholder {nome}. */}
+              <p className="mt-1 text-[11px] font-semibold text-slate-500">
+                Escreva <code className="font-black">{"{nome}"}</code> para
+                inserir o primeiro nome da pessoa. Só as origens Usuários e Lista
+                importada têm nome; nas demais (Waitlist, Newsletter, Lista
+                avulsa) o <code className="font-black">{"{nome}"}</code> some,
+                junto do espaço antes dele. Ex: "Oi {"{nome}"}," vira "Oi," para
+                quem não tem nome.
+              </p>
             </div>
             <div>
               {/* TODO(Ana): rótulo do campo de categoria. */}
@@ -2801,7 +2833,8 @@ function EmailCampaignsAdminSection() {
                   BORA NA TECH
                 </p>
                 <h4 className="font-display mt-3 text-xl font-black text-slate-950">
-                  {subject.trim() || "Assunto da campanha"}
+                  {applyNamePlaceholder(subject, PREVIEW_EXAMPLE_NAME).trim() ||
+                    "Assunto da campanha"}
                 </h4>
                 {bodyText.trim() ? (
                   <div
@@ -2814,6 +2847,15 @@ function EmailCampaignsAdminSection() {
                     campanha aparece aqui.
                   </p>
                 )}
+                {hasNamePlaceholder ? (
+                  // TODO(Ana): copy da nota de personalizacao do preview.
+                  <p className="mt-3 rounded-lg border-2 border-slate-300 bg-slate-50 p-2 text-[11px] font-semibold text-slate-500">
+                    Acima, com nome de exemplo (
+                    <span className="font-black">{PREVIEW_EXAMPLE_NAME}</span>).
+                    Para quem não tem nome, o <code>{"{nome}"}</code> some (e o
+                    espaço antes dele): "Oi {"{nome}"}," vira "Oi,".
+                  </p>
+                ) : null}
                 <div className="mt-4 border-t-2 border-slate-200 pt-3 text-center text-[11px] font-semibold text-slate-400">
                   {/* TODO(Ana): rodapé do preview (o rodapé real varia por origem). */}
                   <p>
@@ -3436,6 +3478,18 @@ function EmailCampaignsAdminSection() {
                   No envio, cada lote pega até 500 válidos novos; supressão e
                   consentimento são reconsultados na hora.
                 </p>
+                {(() => {
+                  const selectedList = contactLists.find(
+                    (list) => list.id === selectedContactListId,
+                  );
+                  if (!selectedList) return null;
+                  return (
+                    // TODO(Ana): copy da cobertura de nome da lista importada.
+                    <p className="mt-1 text-xs font-bold text-slate-500">
+                      {`${selectedList.named_count} de ${selectedList.valid_count} contatos com nome (recebem {nome} personalizado).`}
+                    </p>
+                  );
+                })()}
               </div>
             ) : null}
 
@@ -3454,11 +3508,21 @@ function EmailCampaignsAdminSection() {
                   opt-in.
                 </p>
               ) : (
-                <p className="mt-3 text-sm font-semibold text-slate-600">
-                  {eligibleCount === null
-                    ? "Contando destinatários elegíveis..."
-                    : `${eligibleCount} pessoas elegíveis nesta origem.`}
-                </p>
+                <div className="mt-3 space-y-1">
+                  <p className="text-sm font-semibold text-slate-600">
+                    {eligibleCount === null
+                      ? "Contando destinatários elegíveis..."
+                      : `${eligibleCount} pessoas elegíveis nesta origem.`}
+                  </p>
+                  {eligibleCount !== null ? (
+                    // TODO(Ana): copy da cobertura de nome por origem.
+                    <p className="text-xs font-bold text-slate-500">
+                      {typeof eligibleWithName === "number"
+                        ? `${eligibleWithName} com nome (recebem {nome} personalizado).`
+                        : "Esta origem não tem nome: {nome} some para todos."}
+                    </p>
+                  ) : null}
+                </div>
               )
             ) : null}
 
@@ -3517,6 +3581,10 @@ function EmailCampaignsAdminSection() {
                   placeholder="Um e-mail por linha (vírgula e ponto e vírgula também separam)."
                   className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white px-3 py-2 text-sm font-semibold"
                 />
+                {/* TODO(Ana): copy do aviso de que lista avulsa nao tem nome. */}
+                <p className="mt-1 text-xs font-bold text-slate-500">
+                  Lista avulsa não tem nome: {"{nome}"} some para todos.
+                </p>
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs font-bold">
                   <span className="text-slate-600">
                     {/* TODO(Ana): contador da lista avulsa. */}
