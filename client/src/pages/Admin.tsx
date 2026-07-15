@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import {
   Activity,
   AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
   BarChart3,
   Bot,
   BrainCircuit,
@@ -73,8 +71,6 @@ type MetricCard = {
   label: string;
   value: string;
   detail: string;
-  trend: string;
-  direction: "up" | "down" | "neutral";
   icon: ReactNode;
   color: string;
 };
@@ -304,8 +300,6 @@ const metricCards: MetricCard[] = [
     label: "Usuários",
     value: "0",
     detail: "Perfis cadastrados no banco",
-    trend: "real",
-    direction: "neutral",
     icon: <Users className="h-6 w-6" />,
     color: "bg-violet-700 text-white",
   },
@@ -313,8 +307,6 @@ const metricCards: MetricCard[] = [
     label: "Assinantes Pro",
     value: "0",
     detail: "Assinaturas ativas no banco",
-    trend: "real",
-    direction: "neutral",
     icon: <CreditCard className="h-6 w-6" />,
     color: "bg-[#ffb800] text-slate-950",
   },
@@ -322,8 +314,6 @@ const metricCards: MetricCard[] = [
     label: "Receita recorrente",
     value: "0",
     detail: "MRR das assinaturas ativas",
-    trend: "real",
-    direction: "neutral",
     icon: <DollarSign className="h-6 w-6" />,
     color: "bg-emerald-600 text-white",
   },
@@ -331,8 +321,6 @@ const metricCards: MetricCard[] = [
     label: "Chamadas de IA",
     value: "0",
     detail: "Registros em ai_usage_logs",
-    trend: "real",
-    direction: "neutral",
     icon: <Bot className="h-6 w-6" />,
     color: "bg-pink-600 text-white",
   },
@@ -340,8 +328,6 @@ const metricCards: MetricCard[] = [
     label: "Cursos cadastrados",
     value: "0",
     detail: "Itens na tabela courses",
-    trend: "real",
-    direction: "neutral",
     icon: <FileText className="h-6 w-6" />,
     color: "bg-blue-600 text-white",
   },
@@ -349,8 +335,6 @@ const metricCards: MetricCard[] = [
     label: "Custo de IA",
     value: "0",
     detail: "Custo estimado dos últimos 30 dias",
-    trend: "real",
-    direction: "neutral",
     icon: <Zap className="h-6 w-6" />,
     color: "bg-orange-500 text-white",
   },
@@ -556,29 +540,6 @@ function buildHealthItems(health: HealthResponse | null): HealthItem[] {
 
 function contentTitle(item: ContentItem) {
   return item.title || item.name || item.slug || item.id;
-}
-
-function TrendBadge({
-  direction,
-  value,
-}: {
-  direction: MetricCard["direction"];
-  value: string;
-}) {
-  const Icon = direction === "down" ? ArrowDownRight : ArrowUpRight;
-  const tone =
-    direction === "down"
-      ? "bg-orange-100 text-orange-800"
-      : "bg-emerald-100 text-emerald-800";
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border border-slate-900 px-2 py-1 text-xs font-black ${tone}`}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {value}
-    </span>
-  );
 }
 
 function StatusPill({ status }: { status: AiUsage["status"] }) {
@@ -5549,10 +5510,6 @@ export default function Admin() {
                       >
                         {metric.icon}
                       </span>
-                      <TrendBadge
-                        direction={metric.direction}
-                        value={metric.trend}
-                      />
                     </div>
                     <p className="mt-5 text-sm font-black uppercase tracking-wide text-slate-500">
                       {metric.label}
