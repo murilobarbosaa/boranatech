@@ -45,6 +45,7 @@ import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
 import { PagesDashboard } from "@/components/admin/PagesDashboard";
+import { UsersDashboard } from "@/components/admin/UsersDashboard";
 import PendingIntegration from "@/components/admin/PendingIntegration";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
 import {
@@ -148,30 +149,6 @@ type AdminSectionId =
   | "emails"
   | "beta"
   | "vagas";
-
-type UserProfile = {
-  userId?: string;
-  name: string;
-  email: string;
-  signedUpAt: string;
-  convertedAt: string;
-  interest: string;
-  source: string;
-  status: string;
-  paidTotal: string;
-  features: Array<{ name: string; uses: number }>;
-  sessions: string[];
-};
-
-type AdminUserRecord = {
-  id?: string;
-  user_id?: string;
-  name?: string | null;
-  email?: string | null;
-  area_interesse?: string | null;
-  onboarding_completed?: boolean | null;
-  created_at?: string | null;
-};
 
 type DashboardData = {
   counts?: {
@@ -425,27 +402,6 @@ function formatAdminDate(value?: string | null) {
   if (Number.isNaN(date.getTime())) return "Não informado";
 
   return new Intl.DateTimeFormat("pt-BR").format(date);
-}
-
-function toUserProfile(record: AdminUserRecord): UserProfile {
-  const email = record.email || record.user_id || record.id || "sem-email";
-  const fallbackName = email.includes("@") ? email.split("@")[0] : "Usuário";
-
-  return {
-    userId: record.user_id,
-    name: record.name || fallbackName,
-    email,
-    signedUpAt: formatAdminDate(record.created_at),
-    convertedAt: "Não convertido",
-    interest: record.area_interesse || "Não informado",
-    source: record.onboarding_completed
-      ? "Onboarding completo"
-      : "Não informado",
-    status: record.onboarding_completed ? "Ativo" : "Cadastro incompleto",
-    paidTotal: "R$ 0,00",
-    features: [],
-    sessions: [],
-  };
 }
 
 function formatCurrency(value: number) {
@@ -4781,9 +4737,6 @@ export default function Admin() {
   const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[] | null>(
     null,
   );
-  const [selectedUserSub, setSelectedUserSub] = useState<{
-    status: string | null;
-  } | null>(null);
   const [billingMetrics, setBillingMetrics] = useState<BillingMetricsData | null>(
     null,
   );
@@ -4824,8 +4777,6 @@ export default function Admin() {
   const [copiedAffiliateCardId, setCopiedAffiliateCardId] = useState<
     string | null
   >(null);
-  const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
-  const [selectedUserEmail, setSelectedUserEmail] = useState("");
 
   useEffect(() => {
     if (authLoading) {
@@ -5075,41 +5026,6 @@ export default function Admin() {
     };
   }, [authLoading, user]);
 
-  useEffect(() => {
-    if (accessState !== "allowed") {
-      setUserProfiles([]);
-      setSelectedUserEmail("");
-      return;
-    }
-
-    let cancelled = false;
-
-    adminFetch("/users")
-      .then((json) => {
-        if (cancelled) return;
-
-        const profiles: UserProfile[] = Array.isArray(json.data)
-          ? json.data.map((record: AdminUserRecord) => toUserProfile(record))
-          : [];
-        setUserProfiles(profiles);
-        setSelectedUserEmail((current) => {
-          if (profiles.some((profile) => profile.email === current))
-            return current;
-          return profiles[0]?.email ?? "";
-        });
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setUserProfiles([]);
-          setSelectedUserEmail("");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [accessState]);
-
   const lastUpdated = useMemo(
     () =>
       new Intl.DateTimeFormat("pt-BR", {
@@ -5124,43 +5040,6 @@ export default function Admin() {
     [affiliateCode, affiliateDiscount],
   );
 
-  const selectedUser =
-    userProfiles.find((user) => user.email === selectedUserEmail) ??
-    userProfiles[0] ??
-    null;
-  // Lookup da assinatura do usuario selecionado via /subscribers (filtro por
-  // email), no lugar do endpoint deprecated /subscriptions.
-  useEffect(() => {
-    const email = selectedUser?.email;
-    const userId = selectedUser?.userId;
-    if (!email) {
-      setSelectedUserSub(null);
-      return;
-    }
-    let cancelled = false;
-    adminFetch(`/subscribers?pageSize=25&search=${encodeURIComponent(email)}`)
-      .then((json) => {
-        if (cancelled) return;
-        const rows: Array<{
-          userId: string | null;
-          email: string | null;
-          status: string | null;
-        }> = Array.isArray(json.data?.rows) ? json.data.rows : [];
-        const match =
-          rows.find((row) =>
-            userId ? row.userId === userId : row.email === email,
-          ) ??
-          rows[0] ??
-          null;
-        setSelectedUserSub(match ? { status: match.status } : null);
-      })
-      .catch(() => {
-        if (!cancelled) setSelectedUserSub(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedUser?.email, selectedUser?.userId]);
   const aiUsageReal = useMemo<AiUsage[]>(() => {
     return Object.entries(aiStats).map(([tool, stats]) => {
       const successRate =
@@ -5813,126 +5692,11 @@ export default function Admin() {
               id="usuarios"
               eyebrow="perfil individual"
               icon={<UserRound className="h-4 w-4" />}
-              title="Usuários, sessões e valor pago"
-              subtitle="Clique em um usuário para ver cadastro, conversão Pro, área de interesse, funcionalidades usadas, origem, status e histórico de navegação."
+              title="Usuários"
+              // TODO(Ana): revisar copy do subtitulo da aba Usuarios.
+              subtitle="Clique em um usuário para ver cadastro, área de interesse, assinatura, onboarding, status, funcionalidades usadas e histórico de navegação."
             >
-              <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-                <article className="card-brutal overflow-hidden rounded-3xl bg-white">
-                  {userProfiles.length ? (
-                    userProfiles.map((user) => (
-                      <button
-                        key={user.email}
-                        type="button"
-                        onClick={() => setSelectedUserEmail(user.email)}
-                        className={`grid w-full gap-2 border-b-2 border-slate-100 p-4 text-left transition hover:bg-yellow-50 ${
-                          selectedUser?.email === user.email
-                            ? "bg-violet-100"
-                            : "bg-white"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-display text-lg font-black text-slate-950">
-                            {user.name}
-                          </p>
-                          <span className="rounded-full border-2 border-slate-900 bg-white px-3 py-1 text-xs font-black">
-                            {user.status}
-                          </span>
-                        </div>
-                        <p className="text-sm font-semibold text-slate-500">
-                          {user.email}
-                        </p>
-                        <p className="text-xs font-black uppercase text-violet-700">
-                          {user.source} • {user.paidTotal}
-                        </p>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-6">
-                      <p className="font-display text-xl font-black text-slate-950">
-                        Nenhum usuário encontrado
-                      </p>
-                      <p className="mt-2 text-sm font-semibold text-slate-500">
-                        A lista será preenchida com os perfis retornados por
-                        /api/admin/users.
-                      </p>
-                    </div>
-                  )}
-                </article>
-                {selectedUser ? (
-                  <article className="card-brutal rounded-3xl bg-white p-6">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h3 className="font-display text-2xl font-black text-slate-950">
-                          {selectedUser.name}
-                        </h3>
-                        <p className="text-sm font-semibold text-slate-500">
-                          {selectedUser.email}
-                        </p>
-                      </div>
-                      <span className="rounded-full border-2 border-slate-900 bg-yellow-300 px-3 py-1 text-xs font-black">
-                        {selectedUser.paidTotal} pagos
-                      </span>
-                    </div>
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                      {[
-                        ["Cadastro", selectedUser.signedUpAt],
-                        [
-                          "Assinatura",
-                          selectedUserSub?.status || "Sem assinatura ativa",
-                        ],
-                        ["Área", selectedUser.interest],
-                        ["Origem", selectedUser.source],
-                      ].map(([label, value]) => (
-                        <div
-                          key={label}
-                          className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-4"
-                        >
-                          <p className="text-xs font-black uppercase text-violet-700">
-                            {label}
-                          </p>
-                          <p className="font-display text-lg font-black text-slate-950">
-                            {value}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-5 grid gap-5 lg:grid-cols-2">
-                      <div>
-                        <p className="mb-2 font-display text-lg font-black text-slate-950">
-                          Funcionalidades usadas
-                        </p>
-                        <div className="space-y-2">
-                          <PendingIntegration
-                            tool="Posthog"
-                            description="Integração com analytics pendente (Posthog)"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <p className="mb-2 font-display text-lg font-black text-slate-950">
-                          Sessões recentes
-                        </p>
-                        <div className="space-y-2">
-                          <PendingIntegration
-                            tool="Posthog"
-                            description="Integração com analytics pendente (Posthog)"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                ) : (
-                  <article className="card-brutal rounded-3xl bg-white p-6">
-                    <p className="font-display text-2xl font-black text-slate-950">
-                      Selecione um usuário
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-slate-500">
-                      Os detalhes aparecem aqui quando houver perfis retornados
-                      pelo backend.
-                    </p>
-                  </article>
-                )}
-              </div>
+              <UsersDashboard />
             </AdminSection>
           ) : null}
 
