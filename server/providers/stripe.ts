@@ -295,9 +295,15 @@ async function applySubscription(
         .from("subscriptions")
         .update(patch)
         .eq("provider_subscription_id", sub.id)
-    : await supabaseAdmin
+    : // Webhooks concorrentes (completed/created/invoice.paid no mesmo segundo)
+      // leem existing=null juntos; upsert por provider_subscription_id absorve a
+      // corrida (o perdedor vira UPDATE) em vez de estourar a unique constraint.
+      await supabaseAdmin
         .from("subscriptions")
-        .insert({ ...baseRequired, ...patch });
+        .upsert(
+          { ...baseRequired, ...patch },
+          { onConflict: "provider_subscription_id" },
+        );
 
   if (result.error) {
     console.error("[webhook/stripe] subscriptions write failed:", result.error);
