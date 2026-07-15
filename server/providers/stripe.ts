@@ -440,6 +440,87 @@ async function applyBoletoPending(
   }
 }
 
+// Boleto compensou: ativa a assinatura. Boleto e mode:payment, entao NAO ha
+// invoice.paid; este e o unico caminho de ativacao. O periodo de acesso e
+// calculado aqui (now + access_days do metadata: 365 anual, 182 semestral),
+// porque nao existe subscription na Stripe de onde puxar o periodo.
+async function onBoletoAsyncPaymentSucceeded(
+  event: Stripe.Event,
+  eventCreatedAt: Date,
+): Promise<void> {
+  const session = event.data.object as Stripe.Checkout.Session;
+  if (session.metadata?.payment_method !== "boleto") return;
+
+  const accessDays = Number.parseInt(session.metadata?.access_days ?? "", 10);
+  if (!Number.isFinite(accessDays) || accessDays <= 0) {
+    // Sem access_days nao da para calcular o periodo. Falha (billing_event e
+    // removido) para a Stripe reenviar e o problema aparecer, nunca ativar torto.
+    console.error(
+      `[webhook/stripe] boleto session ${session.id} sem access_days valido; nao ativa.`,
+    );
+    throw createError(500, "config_error", "access_days ausente no boleto.");
+  }
+
+  const periodStart = eventCreatedAt.toISOString();
+  const periodEnd = new Date(
+    eventCreatedAt.getTime() + accessDays * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  // Ativacao idempotente: o flip so acontece com status='pending'. Reenvio do
+  // mesmo evento (ou qualquer reprocesso com a linha ja active) atualiza 0 linhas,
+  // entao handleTransition (email + conversao de afiliado) dispara UMA vez.
+  const { data: activated, error } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      status: "active",
+      current_period_start: periodStart,
+      current_period_end: periodEnd,
+      last_event_at: eventCreatedAt.toISOString(),
+      raw_provider_payload: event,
+    })
+    .eq("provider_subscription_id", session.id)
+    .eq("status", "pending")
+    .select("user_id, affiliate_code, plan_id");
+
+  if (error) {
+    console.error("[webhook/stripe] boleto activation write failed:", error);
+    throw createError(500, "db_error", "Erro ao ativar assinatura.");
+  }
+
+  if (!activated || activated.length === 0) {
+    // 0 linhas: ou a linha ja estava active (reprocesso, no-op idempotente) ou
+    // ela nao existe. Distingue: linha ausente e falha critica (boleto pago sem
+    // linha) e precisa aparecer; ja-active segue silencioso.
+    const { data: current } = await supabaseAdmin
+      .from("subscriptions")
+      .select("status")
+      .eq("provider_subscription_id", session.id)
+      .maybeSingle();
+    if (!current) {
+      console.error(
+        `[webhook/stripe] boleto pago sem linha pendente (session ${session.id}); investigar.`,
+      );
+      throw createError(500, "db_error", "Linha do boleto não encontrada.");
+    }
+    return;
+  }
+
+  const row = activated[0];
+  const { data: plan } = await supabaseAdmin
+    .from("plans")
+    .select("code, name")
+    .eq("id", row.plan_id)
+    .maybeSingle();
+
+  // Reaproveita os efeitos do caminho de cartao. prev='pending' (nao-Pro) ->
+  // 'active' (Pro): becameActive dispara email/cache/conversao, igual ao cartao.
+  await handleTransition(row.user_id, "pending", "active", {
+    affiliateCode: row.affiliate_code,
+    revenueCents: session.amount_total ?? 0,
+    planName: plan?.name || plan?.code || "Pro",
+  });
+}
+
 async function onInvoicePaid(
   event: Stripe.Event,
   eventCreatedAt: Date,
@@ -955,6 +1036,9 @@ async function handleWebhook(input: WebhookInput): Promise<WebhookResult> {
     switch (event.type) {
       case "checkout.session.completed":
         await onCheckoutCompleted(event, eventCreatedAt);
+        break;
+      case "checkout.session.async_payment_succeeded":
+        await onBoletoAsyncPaymentSucceeded(event, eventCreatedAt);
         break;
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
