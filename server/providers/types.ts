@@ -44,6 +44,10 @@ export interface CancelResult {
   effective_at: string | null;
   status?: string;
   message: string;
+  // true no caminho de boleto (renewal_type='manual'): a acao registrou a
+  // intencao de NAO renovar, sem cancelar recorrencia (nao existe) e sem tocar a
+  // Stripe. Ausente/false no caminho de cartao.
+  non_renewal?: boolean;
 }
 
 export interface ReactivateInput {

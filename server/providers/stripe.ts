@@ -922,7 +922,7 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
   const { data: sub, error } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "id, provider_subscription_id, current_period_end, status, cancel_at_period_end",
+      "id, provider_subscription_id, current_period_end, status, cancel_at_period_end, payment_method, renewal_type",
     )
     .eq("user_id", input.userId)
     .eq("provider", "stripe")
@@ -939,6 +939,58 @@ async function cancel(input: CancelInput): Promise<CancelResult> {
       "Nenhuma assinatura ativa encontrada.",
     );
   }
+
+  // BOLETO (renewal_type='manual'): NAO ha subscription recorrente na Stripe
+  // (provider_subscription_id e um Checkout Session cs_...). "Cancelar" aqui e so
+  // registrar a intencao de nao renovar; o acesso ja acaba naturalmente em
+  // current_period_end (is_user_pro nega pelo periodo). NAO chama a Stripe, NAO
+  // seta cancel_at_period_end (senao acordaria o bug latente do cron
+  // process-cancellations). Idempotente por pre-checagem; INSERT fail-loud (e a
+  // unica coisa que a acao faz).
+  if (sub.renewal_type === "manual") {
+    const { data: existingIntent, error: intentError } = await supabaseAdmin
+      .from("subscription_cancellations")
+      .select("id")
+      .eq("provider_subscription_id", sub.provider_subscription_id)
+      .neq("status", "reverted")
+      .order("canceled_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (intentError) {
+      throw createError(500, "db_error", "Erro ao verificar cancelamento.");
+    }
+
+    if (!existingIntent) {
+      const { error: insertError } = await supabaseAdmin
+        .from("subscription_cancellations")
+        .insert({
+          user_id: input.userId,
+          provider_subscription_id: sub.provider_subscription_id,
+          reason_code: input.reasonCode || null,
+          reason_text: input.reasonText || null,
+          effective_at: sub.current_period_end,
+          status: "scheduled",
+        });
+      // Fail-loud: sem o registro, a acao nao fez nada. Ao contrario do cartao
+      // (best-effort), aqui o INSERT E a acao, entao o erro sobe para a UI.
+      if (insertError) {
+        throw createError(
+          500,
+          "db_error",
+          "Não foi possível registrar. Tente novamente.",
+        );
+      }
+    }
+
+    return {
+      cancel_at_period_end: false,
+      effective_at: sub.current_period_end,
+      non_renewal: true,
+      // TODO(Ana): mensagem de sucesso do "nao renovar" do boleto.
+      message: `Anotado: sua assinatura não vai renovar. Você mantém o acesso Pro até ${formatEffectiveDate(sub.current_period_end)}.`,
+    };
+  }
+
   if (sub.cancel_at_period_end) {
     throw createError(
       409,
