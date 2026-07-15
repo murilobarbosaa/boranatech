@@ -894,10 +894,11 @@ async function createCheckout(
     // Explicito (opt-out do dynamic payment methods): sem isso a Stripe ofereceria
     // TODOS os metodos habilitados na conta, inclusive Boleto — e um boleto pago por
     // aqui viraria uma sessao mode:subscription SEM metadata.payment_method='boleto'
-    // nem access_days, tratado como cartao e fora da regua de renovacao manual. So
-    // metodos recorrentes: 'card' ja exibe Apple Pay e Google Pay automaticamente
-    // (carteiras de cartao, sem entry propria); 'link' preserva o Link. Boleto fica
-    // de fora (o caminho de boleto e o outro branch, mode:payment).
+    // nem access_days, tratado como cartao e fora da regua de renovacao manual.
+    // 'card' ja exibe Apple Pay e Google Pay automaticamente (carteiras de cartao,
+    // sem entry propria). Link NAO entra: a Stripe rejeita 'link' explicito em
+    // mode:subscription com 400 (derrubou o checkout em prod, commit 61869dd). Boleto
+    // fica de fora (o caminho de boleto e o outro branch, mode:payment).
     payment_method_types: ["card"],
     line_items: [{ price: priceId, quantity: 1 }],
     client_reference_id: input.user.id,
