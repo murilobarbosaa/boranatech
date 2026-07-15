@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import Layout from "@/components/Layout";
+import ProGate from "@/components/pro/ProGate";
 import SEO from "@/components/SEO";
 import { cn } from "@/lib/utils";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 type ComparisonCategory = "faculdades" | "cursos" | "areas" | "plataformas";
 type ComparisonItem = {
@@ -872,6 +874,7 @@ const comparisonRows: Array<{
 ];
 
 export default function Comparador() {
+  const { isPro } = useSubscription();
   const [comparisonKind, setComparisonKind] =
     useState<ComparisonCategory>("faculdades");
   const [objective, setObjective] = useState("todos");
@@ -971,359 +974,373 @@ export default function Comparador() {
         </div>
       </section>
 
-      <section className="bg-[#faf8f4] py-12">
-        <div className="container space-y-6">
-          {/* PASSO 1: escolher a subarea (controle unico) */}
-          {/* TODO(Ana): revisar copy dos passos do comparador */}
-          <motion.div
-            initial={reduce ? false : { opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-60px" }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="mb-4 flex items-center gap-3">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
-                1
-              </span>
-              <div>
-                <h2 className="font-display text-2xl font-black text-slate-950">
-                  O que você quer comparar?
-                </h2>
-                <p className="text-sm font-semibold text-slate-600">
-                  Escolha uma categoria. A comparação acontece só dentro dela.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {comparisonGroups.map((g, idx) => {
-                const ui = SUBAREA_UI[g.id];
-                const Icon = ui.Icon;
-                const active = comparisonKind === g.id;
-                return (
-                  <motion.button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setComparisonKind(g.id)}
-                    aria-pressed={active}
-                    initial={reduce ? false : { opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{
-                      duration: 0.3,
-                      delay: Math.min(idx * 0.05, 0.2),
-                    }}
-                    whileHover={reduce ? undefined : { y: -2 }}
-                    className={cn(
-                      "flex h-full flex-col rounded-2xl border-2 border-slate-900 p-4 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2",
-                      active
-                        ? cn(ui.bg, ui.shadow)
-                        : "bg-white shadow-[3px_3px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a]",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "inline-flex h-9 w-9 items-center justify-center rounded-xl border-2 border-slate-900 bg-white",
-                        ui.text,
-                      )}
-                    >
-                      <Icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="mt-3 font-display text-sm font-black text-slate-950">
-                      {g.label}
-                    </span>
-                    <span className="mt-1 text-xs font-semibold text-slate-500">
-                      {g.hint}
-                    </span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </motion.div>
-
-          {/* PASSO 2: filtros subordinados a subarea */}
-          <div className="card-brutal rounded-2xl bg-white p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+      {/* Comparador e recurso Pro: free/deslogado ve o hero (landing) + gate,
+          nunca o conteudo interativo. Mesmo mecanismo das ferramentas Pro. */}
+      {!isPro ? (
+        <section className="bg-[#faf8f4] py-12">
+          <div className="container">
+            {/* TODO(Ana): revisar copy do gate do comparador */}
+            <ProGate
+              feature="comparador"
+              description="Compare graduações e faculdades, cursos, plataformas de estudo, áreas de TI e tecnologias lado a lado: custo, tempo, dificuldade, mercado, certificação, pré-requisitos e indicações antes de decidir."
+            />
+          </div>
+        </section>
+      ) : (
+        <section className="bg-[#faf8f4] py-12">
+          <div className="container space-y-6">
+            {/* PASSO 1: escolher a subarea (controle unico) */}
+            {/* TODO(Ana): revisar copy dos passos do comparador */}
+            <motion.div
+              initial={reduce ? false : { opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-60px" }}
+              transition={{ duration: 0.4 }}
+            >
+              <div className="mb-4 flex items-center gap-3">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
-                  2
+                  1
                 </span>
                 <div>
                   <h2 className="font-display text-2xl font-black text-slate-950">
-                    Refine (opcional)
+                    O que você quer comparar?
                   </h2>
                   <p className="text-sm font-semibold text-slate-600">
-                    Ajuste prioridade, pagamento e ritmo para filtrar as opções
-                    desta categoria.
+                    Escolha uma categoria. A comparação acontece só dentro dela.
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-violet-50"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Limpar filtros
-              </button>
-            </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {comparisonGroups.map((g, idx) => {
+                  const ui = SUBAREA_UI[g.id];
+                  const Icon = ui.Icon;
+                  const active = comparisonKind === g.id;
+                  return (
+                    <motion.button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setComparisonKind(g.id)}
+                      aria-pressed={active}
+                      initial={reduce ? false : { opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{
+                        duration: 0.3,
+                        delay: Math.min(idx * 0.05, 0.2),
+                      }}
+                      whileHover={reduce ? undefined : { y: -2 }}
+                      className={cn(
+                        "flex h-full flex-col rounded-2xl border-2 border-slate-900 p-4 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2",
+                        active
+                          ? cn(ui.bg, ui.shadow)
+                          : "bg-white shadow-[3px_3px_0_#0f172a] hover:shadow-[5px_5px_0_#0f172a]",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-flex h-9 w-9 items-center justify-center rounded-xl border-2 border-slate-900 bg-white",
+                          ui.text,
+                        )}
+                      >
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="mt-3 font-display text-sm font-black text-slate-950">
+                        {g.label}
+                      </span>
+                      <span className="mt-1 text-xs font-semibold text-slate-500">
+                        {g.hint}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <label className="text-xs font-black uppercase text-slate-600">
-                Prioridade
-                <select
-                  value={objective}
-                  onChange={(event) => setObjective(event.target.value)}
-                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
+            {/* PASSO 2: filtros subordinados a subarea */}
+            <div className="card-brutal rounded-2xl bg-white p-5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                    2
+                  </span>
+                  <div>
+                    <h2 className="font-display text-2xl font-black text-slate-950">
+                      Refine (opcional)
+                    </h2>
+                    <p className="text-sm font-semibold text-slate-600">
+                      Ajuste prioridade, pagamento e ritmo para filtrar as
+                      opções desta categoria.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-white px-4 py-2 text-sm font-black hover:bg-violet-50"
                 >
-                  {objectives.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-black uppercase text-slate-600">
-                Pagamento
-                <select
-                  value={budget}
-                  onChange={(event) => setBudget(event.target.value)}
-                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
-                >
-                  {budgets.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs font-black uppercase text-slate-600">
-                Ritmo / duração
-                <select
-                  value={duration}
-                  onChange={(event) => setDuration(event.target.value)}
-                  className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
-                >
-                  {durations.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+                  <RotateCcw className="h-4 w-4" />
+                  Limpar filtros
+                </button>
+              </div>
 
-            <div className="mt-4 flex flex-wrap items-start gap-2 rounded-xl bg-violet-50 p-3 text-sm font-bold text-violet-900">
-              <Filter className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                {filteredItems.length >= 2
-                  ? `${filteredItems.length} opções neste grupo batem com prioridade, pagamento e duração.`
-                  : `Com esses filtros há poucas opções. Mostramos todas as ${itemsInKind.length} deste tipo para você ainda conseguir comparar duas.`}
-              </span>
-            </div>
-          </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="text-xs font-black uppercase text-slate-600">
+                  Prioridade
+                  <select
+                    value={objective}
+                    onChange={(event) => setObjective(event.target.value)}
+                    className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
+                  >
+                    {objectives.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-black uppercase text-slate-600">
+                  Pagamento
+                  <select
+                    value={budget}
+                    onChange={(event) => setBudget(event.target.value)}
+                    className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
+                  >
+                    {budgets.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-black uppercase text-slate-600">
+                  Ritmo / duração
+                  <select
+                    value={duration}
+                    onChange={(event) => setDuration(event.target.value)}
+                    className="mt-1 w-full rounded-xl border-2 border-slate-900 bg-white p-3 text-sm font-black text-slate-900"
+                  >
+                    {durations.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-          {/* PASSO 3: escolher A e B (mesmo grupo) */}
-          <div className="flex items-center gap-3">
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
-              3
-            </span>
-            <div>
-              <h2 className="font-display text-2xl font-black text-slate-950">
-                Coloque lado a lado
-              </h2>
-              <p className="text-sm font-semibold text-slate-600">
-                Escolha as duas opções de "{kindMeta?.label ?? comparisonKind}"
-                para comparar.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
-              <span className="inline-flex items-center gap-2">
-                <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-slate-900 bg-violet-200 text-xs font-black text-violet-900">
-                  A
+              <div className="mt-4 flex flex-wrap items-start gap-2 rounded-xl bg-violet-50 p-3 text-sm font-bold text-violet-900">
+                <Filter className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {filteredItems.length >= 2
+                    ? `${filteredItems.length} opções neste grupo batem com prioridade, pagamento e duração.`
+                    : `Com esses filtros há poucas opções. Mostramos todas as ${itemsInKind.length} deste tipo para você ainda conseguir comparar duas.`}
                 </span>
-                <span className="text-slate-950">Opção A</span>
+              </div>
+            </div>
+
+            {/* PASSO 3: escolher A e B (mesmo grupo) */}
+            <div className="flex items-center gap-3">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-slate-900 bg-amber-300 font-display text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a]">
+                3
               </span>
-              <span className="mt-0.5 block text-xs font-semibold text-slate-500">
-                Mesmo grupo que a opção B
-              </span>
-              <select
-                value={left.id}
-                onChange={(event) => {
-                  const id = event.target.value;
-                  setLeftId(id);
-                  if (id === rightId && options.length >= 2) {
-                    const swap = options.find((o) => o.id !== id);
-                    if (swap) setRightId(swap.id);
-                  }
-                }}
-                className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
-              >
-                {options.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
-              <span className="inline-flex items-center gap-2">
-                <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-slate-900 bg-amber-200 text-xs font-black text-amber-900">
-                  B
+              <div>
+                <h2 className="font-display text-2xl font-black text-slate-950">
+                  Coloque lado a lado
+                </h2>
+                <p className="text-sm font-semibold text-slate-600">
+                  Escolha as duas opções de "{kindMeta?.label ?? comparisonKind}
+                  " para comparar.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
+                <span className="inline-flex items-center gap-2">
+                  <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-slate-900 bg-violet-200 text-xs font-black text-violet-900">
+                    A
+                  </span>
+                  <span className="text-slate-950">Opção A</span>
                 </span>
-                <span className="text-slate-950">Opção B</span>
-              </span>
-              <span className="mt-0.5 block text-xs font-semibold text-slate-500">
-                Só entradas do tipo "{kindMeta?.label ?? comparisonKind}"
-              </span>
-              <select
-                value={right.id}
-                onChange={(event) => setRightId(event.target.value)}
-                className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
-              >
-                {options
-                  .filter((option) => option.id !== left.id)
-                  .map((option) => (
+                <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                  Mesmo grupo que a opção B
+                </span>
+                <select
+                  value={left.id}
+                  onChange={(event) => {
+                    const id = event.target.value;
+                    setLeftId(id);
+                    if (id === rightId && options.length >= 2) {
+                      const swap = options.find((o) => o.id !== id);
+                      if (swap) setRightId(swap.id);
+                    }
+                  }}
+                  className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
+                >
+                  {options.map((option) => (
                     <option key={option.id} value={option.id}>
                       {option.name}
                     </option>
                   ))}
-              </select>
-            </label>
-          </div>
+                </select>
+              </label>
+              <label className="card-brutal rounded-2xl bg-white p-4 text-sm font-bold">
+                <span className="inline-flex items-center gap-2">
+                  <span className="grid h-6 w-6 place-items-center rounded-full border-2 border-slate-900 bg-amber-200 text-xs font-black text-amber-900">
+                    B
+                  </span>
+                  <span className="text-slate-950">Opção B</span>
+                </span>
+                <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                  Só entradas do tipo "{kindMeta?.label ?? comparisonKind}"
+                </span>
+                <select
+                  value={right.id}
+                  onChange={(event) => setRightId(event.target.value)}
+                  className="mt-2 w-full rounded-xl border-2 border-slate-300 bg-white p-3"
+                >
+                  {options
+                    .filter((option) => option.id !== left.id)
+                    .map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
 
-          <div className="grid gap-5 lg:grid-cols-2">
-            {[left, right].map((item) => (
-              <motion.article
-                key={item.id}
-                initial={reduce ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                className="card-brutal rounded-2xl bg-white p-6"
-              >
-                <p className="mb-2 inline-flex rounded-full bg-violet-100 px-2 py-1 text-xs font-black uppercase text-violet-700">
-                  {item.type}
-                </p>
-                <h2 className="font-display text-3xl font-black text-slate-950">
-                  {item.name}
-                </h2>
-                <p className="mt-2 text-sm font-semibold text-slate-600">
-                  {item.decisionTip}
-                </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl bg-emerald-50 p-3">
-                    <p className="text-xs font-black uppercase text-emerald-700">
-                      Preço
-                    </p>
-                    <p className="text-sm font-black">{item.avgPrice}</p>
-                  </div>
-                  <div className="rounded-xl bg-amber-50 p-3">
-                    <p className="text-xs font-black uppercase text-amber-700">
-                      Tempo
-                    </p>
-                    <p className="text-sm font-black">{item.duration}</p>
-                  </div>
-                  <div className="rounded-xl bg-blue-50 p-3">
-                    <p className="text-xs font-black uppercase text-blue-700">
-                      Iniciante
-                    </p>
-                    <p className="text-sm font-black">
-                      {scoreLabel(item.beginnerScore)}
-                    </p>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-          </div>
-
-          <div className="card-brutal overflow-hidden rounded-2xl bg-white">
-            <div className="overflow-x-auto">
-              <div className="min-w-[560px]">
-                <div className="grid grid-cols-3 border-b-2 border-slate-900 bg-violet-700 text-white">
-                  <div className="p-4 text-sm font-black">Critério</div>
-                  <div className="p-4 text-sm font-black">{left.name}</div>
-                  <div className="p-4 text-sm font-black">{right.name}</div>
-                </div>
-                {comparisonRows.map((row) => (
-                  <div
-                    key={row.label}
-                    className="grid grid-cols-3 border-b border-slate-200 last:border-0"
-                  >
-                    <div className="p-4 text-sm font-black text-slate-950">
-                      {row.label}
+            <div className="grid gap-5 lg:grid-cols-2">
+              {[left, right].map((item) => (
+                <motion.article
+                  key={item.id}
+                  initial={reduce ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="card-brutal rounded-2xl bg-white p-6"
+                >
+                  <p className="mb-2 inline-flex rounded-full bg-violet-100 px-2 py-1 text-xs font-black uppercase text-violet-700">
+                    {item.type}
+                  </p>
+                  <h2 className="font-display text-3xl font-black text-slate-950">
+                    {item.name}
+                  </h2>
+                  <p className="mt-2 text-sm font-semibold text-slate-600">
+                    {item.decisionTip}
+                  </p>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl bg-emerald-50 p-3">
+                      <p className="text-xs font-black uppercase text-emerald-700">
+                        Preço
+                      </p>
+                      <p className="text-sm font-black">{item.avgPrice}</p>
                     </div>
-                    <div className="p-4 text-sm text-slate-600">
-                      {row.getValue(left)}
+                    <div className="rounded-xl bg-amber-50 p-3">
+                      <p className="text-xs font-black uppercase text-amber-700">
+                        Tempo
+                      </p>
+                      <p className="text-sm font-black">{item.duration}</p>
                     </div>
-                    <div className="p-4 text-sm text-slate-600">
-                      {row.getValue(right)}
+                    <div className="rounded-xl bg-blue-50 p-3">
+                      <p className="text-xs font-black uppercase text-blue-700">
+                        Iniciante
+                      </p>
+                      <p className="text-sm font-black">
+                        {scoreLabel(item.beginnerScore)}
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
+                </motion.article>
+              ))}
             </div>
-          </div>
 
-          <div className="grid gap-5 lg:grid-cols-3">
-            <div className="card-brutal rounded-2xl bg-violet-50 p-5 lg:col-span-2">
-              <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
-                <Lightbulb className="h-6 w-6 text-violet-700" />
-                Recomendação prática
-              </h2>
-              <p className="mt-3 text-sm font-semibold text-slate-700">
-                {recommendation}
-              </p>
-              <p className="mt-3 text-sm text-slate-600">
-                Regra simples: se você precisa de diploma, escolha faculdade. Se
-                precisa testar uma área rápido, comece com curso gratuito e
-                projeto. Se quer decidir entre áreas, compare pelo tipo de
-                tarefa que você aguenta fazer toda semana.
-              </p>
-            </div>
-            <div className="card-brutal rounded-2xl bg-white p-5">
-              <h3 className="font-display text-xl font-black text-slate-950">
-                Pontos de atenção
-              </h3>
-              <div className="mt-3 space-y-3">
-                {[left, right].map((item) => (
-                  <div key={item.id}>
-                    <p className="mb-1 flex items-center gap-2 text-sm font-black text-slate-800">
-                      <AlertTriangle className="h-4 w-4 text-amber-600" />{" "}
-                      {item.name}
-                    </p>
-                    <ul className="space-y-1 text-xs text-slate-600">
-                      {item.cautions.slice(0, 2).map((caution) => (
-                        <li key={caution}>• {caution}</li>
-                      ))}
-                    </ul>
+            <div className="card-brutal overflow-hidden rounded-2xl bg-white">
+              <div className="overflow-x-auto">
+                <div className="min-w-[560px]">
+                  <div className="grid grid-cols-3 border-b-2 border-slate-900 bg-violet-700 text-white">
+                    <div className="p-4 text-sm font-black">Critério</div>
+                    <div className="p-4 text-sm font-black">{left.name}</div>
+                    <div className="p-4 text-sm font-black">{right.name}</div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            {[left, right].map((item) => (
-              <div
-                key={item.id}
-                className="card-brutal rounded-2xl bg-white p-5"
-              >
-                <h3 className="mb-3 flex items-center gap-2 font-display text-xl font-black text-slate-950">
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
-                  Vantagens de {item.name}
-                </h3>
-                <ul className="space-y-2 text-sm text-slate-700">
-                  {item.pros.map((pro) => (
-                    <li key={pro}>• {pro}</li>
+                  {comparisonRows.map((row) => (
+                    <div
+                      key={row.label}
+                      className="grid grid-cols-3 border-b border-slate-200 last:border-0"
+                    >
+                      <div className="p-4 text-sm font-black text-slate-950">
+                        {row.label}
+                      </div>
+                      <div className="p-4 text-sm text-slate-600">
+                        {row.getValue(left)}
+                      </div>
+                      <div className="p-4 text-sm text-slate-600">
+                        {row.getValue(right)}
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
-            ))}
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="card-brutal rounded-2xl bg-violet-50 p-5 lg:col-span-2">
+                <h2 className="flex items-center gap-2 font-display text-2xl font-black text-slate-950">
+                  <Lightbulb className="h-6 w-6 text-violet-700" />
+                  Recomendação prática
+                </h2>
+                <p className="mt-3 text-sm font-semibold text-slate-700">
+                  {recommendation}
+                </p>
+                <p className="mt-3 text-sm text-slate-600">
+                  Regra simples: se você precisa de diploma, escolha faculdade.
+                  Se precisa testar uma área rápido, comece com curso gratuito e
+                  projeto. Se quer decidir entre áreas, compare pelo tipo de
+                  tarefa que você aguenta fazer toda semana.
+                </p>
+              </div>
+              <div className="card-brutal rounded-2xl bg-white p-5">
+                <h3 className="font-display text-xl font-black text-slate-950">
+                  Pontos de atenção
+                </h3>
+                <div className="mt-3 space-y-3">
+                  {[left, right].map((item) => (
+                    <div key={item.id}>
+                      <p className="mb-1 flex items-center gap-2 text-sm font-black text-slate-800">
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />{" "}
+                        {item.name}
+                      </p>
+                      <ul className="space-y-1 text-xs text-slate-600">
+                        {item.cautions.slice(0, 2).map((caution) => (
+                          <li key={caution}>• {caution}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-2">
+              {[left, right].map((item) => (
+                <div
+                  key={item.id}
+                  className="card-brutal rounded-2xl bg-white p-5"
+                >
+                  <h3 className="mb-3 flex items-center gap-2 font-display text-xl font-black text-slate-950">
+                    <CheckCircle className="h-5 w-5 text-emerald-600" />
+                    Vantagens de {item.name}
+                  </h3>
+                  <ul className="space-y-2 text-sm text-slate-700">
+                    {item.pros.map((pro) => (
+                      <li key={pro}>• {pro}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </Layout>
   );
 }

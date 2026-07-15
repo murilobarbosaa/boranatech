@@ -121,9 +121,7 @@ export const PAGE_FAMILY: Record<string, ColorFamily> = {
   "empresas/ranking-junior": "application",
   entrevistas: "application",
   "entrevistas/sessao": "application",
-  "entrevistas/perguntas": "application",
   "entrevistas/simulador": "application",
-  "entrevistas/desafios": "application",
   // Divergencia intencional: violet consolidado da pagina (revisao com IA),
   // nao o blue da familia application nem o emerald do hub portfolio.
   "portfolio/analisar": "discovery",

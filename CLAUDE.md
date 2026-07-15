@@ -82,7 +82,8 @@ supabase/migrations/
 ## Acesso Pro
 
 - `isPro || isAdmin` é intencional em toda a plataforma: admin enxerga como Pro por design, não é bug.
-- Produto: descoberta é grátis, análise personalizada por IA é Pro. Isso decide onde entra ProGate/paywall.
+- Produto: catálogo e descoberta são grátis; análise personalizada por IA é Pro. Exceções explícitas (decisão de produto de 2026-07): o Comparador (/comparador e /tecnologias/comparar) e a área de entrevistas (/entrevistas) são 100% Pro. Isso decide onde entra ProGate/paywall.
+- Cursos e Plataformas são freemium: o grátis vê uma amostra (tamanhos em `client/src/lib/freeTierLimits.ts`), o Pro vê tudo.
 
 ## Convenções de Git / Commits
 

@@ -571,7 +571,9 @@ function DesktopMenuItem({
 
           <div
             className="grid gap-4"
-            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))" }}
+            style={{
+              gridTemplateColumns: "repeat(auto-fit, minmax(11rem, 1fr))",
+            }}
           >
             {menu.columns.map((column, columnIndex) => (
               <div
@@ -673,6 +675,7 @@ function DesktopNav({ location }: { location: string }) {
         className="inline-flex items-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-3 py-1.5 text-sm font-black text-slate-950 shadow-[4px_4px_0_#0f172a,0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
       >
         Comparador
+        <ProStarBadge />
       </Link>
     </nav>
   );
@@ -1007,6 +1010,7 @@ export default function Header() {
             className="mx-4 mt-3 flex items-center justify-center gap-1 rounded-full border-2 border-slate-950 bg-amber-300 px-4 py-3 text-center text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a,0_0_16px_rgba(245,158,11,0.55)] transition-transform hover:-translate-y-0.5 hover:bg-amber-200"
           >
             Comparador
+            <ProStarBadge />
           </Link>
         </nav>
 

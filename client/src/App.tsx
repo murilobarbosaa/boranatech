@@ -34,42 +34,62 @@ const Comunidades = lazyWithRetry(() => import("@/pages/Comunidades"));
 const Sobre = lazyWithRetry(() => import("@/pages/Sobre"));
 const Conquistas = lazyWithRetry(() => import("@/pages/conquistas/Conquistas"));
 const Creators = lazyWithRetry(() => import("@/pages/Creators"));
-const CurriculoAnalisar = lazyWithRetry(() => import("@/pages/CurriculoAnalisar"));
+const CurriculoAnalisar = lazyWithRetry(
+  () => import("@/pages/CurriculoAnalisar"),
+);
 const CurriculoGerar = lazyWithRetry(() => import("@/pages/CurriculoGerar"));
 const Cursos = lazyWithRetry(() => import("@/pages/Cursos"));
 const Dicas = lazyWithRetry(() => import("@/pages/Dicas"));
 const Dicionario = lazyWithRetry(() => import("@/pages/Dicionario"));
 const EmpresaDetalhe = lazyWithRetry(() => import("@/pages/EmpresaDetalhe"));
-const EmpresaRankingJunior = lazyWithRetry(() => import("@/pages/EmpresaRankingJunior"));
+const EmpresaRankingJunior = lazyWithRetry(
+  () => import("@/pages/EmpresaRankingJunior"),
+);
 const Empresas = lazyWithRetry(() => import("@/pages/Empresas"));
-const EntrevistaDesafios = lazyWithRetry(() => import("@/pages/EntrevistaDesafios"));
-const EntrevistaPerguntas = lazyWithRetry(() => import("@/pages/EntrevistaPerguntas"));
-const EntrevistaSessao = lazyWithRetry(() => import("@/pages/EntrevistaSessao"));
+const EntrevistaSessao = lazyWithRetry(
+  () => import("@/pages/EntrevistaSessao"),
+);
 const Entrevistas = lazyWithRetry(() => import("@/pages/Entrevistas"));
 const Vagas = lazyWithRetry(() => import("@/pages/Vagas"));
 const EstudosDiario = lazyWithRetry(() => import("@/pages/EstudosDiario"));
 const Eventos = lazyWithRetry(() => import("@/pages/Eventos"));
 const Evolucao = lazyWithRetry(() => import("@/pages/Evolucao"));
-const FaculdadeDetalhe = lazyWithRetry(() => import("@/pages/FaculdadeDetalhe"));
+const FaculdadeDetalhe = lazyWithRetry(
+  () => import("@/pages/FaculdadeDetalhe"),
+);
 const Faculdades = lazyWithRetry(() => import("@/pages/Faculdades"));
 const Ferramentas = lazyWithRetry(() => import("@/pages/Ferramentas"));
 const GuiaIa = lazyWithRetry(() => import("@/pages/GuiaIa"));
 const Ingles = lazyWithRetry(() => import("@/pages/Ingles"));
-const InglesEntrevista = lazyWithRetry(() => import("@/pages/InglesEntrevista"));
-const InglesNoTrabalho = lazyWithRetry(() => import("@/pages/InglesNoTrabalho"));
-const InglesOndeEstudar = lazyWithRetry(() => import("@/pages/InglesOndeEstudar"));
-const InglesVocabulario = lazyWithRetry(() => import("@/pages/InglesVocabulario"));
+const InglesEntrevista = lazyWithRetry(
+  () => import("@/pages/InglesEntrevista"),
+);
+const InglesNoTrabalho = lazyWithRetry(
+  () => import("@/pages/InglesNoTrabalho"),
+);
+const InglesOndeEstudar = lazyWithRetry(
+  () => import("@/pages/InglesOndeEstudar"),
+);
+const InglesVocabulario = lazyWithRetry(
+  () => import("@/pages/InglesVocabulario"),
+);
 const Licenca = lazyWithRetry(() => import("@/pages/Licenca"));
-const LinkedinAnalisar = lazyWithRetry(() => import("@/pages/LinkedinAnalisar"));
+const LinkedinAnalisar = lazyWithRetry(
+  () => import("@/pages/LinkedinAnalisar"),
+);
 const Mentorias = lazyWithRetry(() => import("@/pages/Mentorias"));
 const Mulheres = lazyWithRetry(() => import("@/pages/Mulheres"));
 const Noticias = lazyWithRetry(() => import("@/pages/Noticias"));
 const Perfil = lazyWithRetry(() => import("@/pages/Perfil"));
 const PerfilFavoritos = lazyWithRetry(() => import("@/pages/PerfilFavoritos"));
-const PerguntasFrequentes = lazyWithRetry(() => import("@/pages/PerguntasFrequentes"));
+const PerguntasFrequentes = lazyWithRetry(
+  () => import("@/pages/PerguntasFrequentes"),
+);
 const PlanoCarreira = lazyWithRetry(() => import("@/pages/PlanoCarreira"));
 const Plataformas = lazyWithRetry(() => import("@/pages/Plataformas"));
-const PortfolioAnalisar = lazyWithRetry(() => import("@/pages/PortfolioAnalisar"));
+const PortfolioAnalisar = lazyWithRetry(
+  () => import("@/pages/PortfolioAnalisar"),
+);
 const Privacidade = lazyWithRetry(() => import("@/pages/Privacidade"));
 const Projetos = lazyWithRetry(() => import("@/pages/Projetos"));
 const QuizCarreira = lazyWithRetry(() => import("@/pages/QuizCarreira"));
@@ -86,11 +106,17 @@ const RoadmapsV2 = lazyWithRetry(() => import("@/pages/RoadmapsV2"));
 const RoadmapsV2Index = lazyWithRetry(() => import("@/pages/RoadmapsV2Index"));
 const Salarios = lazyWithRetry(() => import("@/pages/Salarios"));
 const SubAreaDetalhe = lazyWithRetry(() => import("@/pages/SubAreaDetalhe"));
-const TecnologiaComparador = lazyWithRetry(() => import("@/pages/TecnologiaComparador"));
-const TecnologiaDetalhe = lazyWithRetry(() => import("@/pages/TecnologiaDetalhe"));
+const TecnologiaComparador = lazyWithRetry(
+  () => import("@/pages/TecnologiaComparador"),
+);
+const TecnologiaDetalhe = lazyWithRetry(
+  () => import("@/pages/TecnologiaDetalhe"),
+);
 const TecnologiaJogos = lazyWithRetry(() => import("@/pages/TecnologiaJogos"));
 const TecnologiaMapa = lazyWithRetry(() => import("@/pages/TecnologiaMapa"));
-const TecnologiaRanking = lazyWithRetry(() => import("@/pages/TecnologiaRanking"));
+const TecnologiaRanking = lazyWithRetry(
+  () => import("@/pages/TecnologiaRanking"),
+);
 const Tecnologias = lazyWithRetry(() => import("@/pages/Tecnologias"));
 const TermosDeUso = lazyWithRetry(() => import("@/pages/TermosDeUso"));
 const TrocarSenha = lazyWithRetry(() => import("@/pages/TrocarSenha"));
@@ -167,7 +193,11 @@ function Router() {
         </Route>
         <Route path="/salarios" component={Salarios} />
         <Route path="/entrevistas" component={Entrevistas} />
-        <Route path="/entrevistas/perguntas" component={EntrevistaPerguntas} />
+        {/* Paginas free de perguntas/desafios removidas (area de entrevistas
+            virou 100% Pro); redirect preserva links salvos. */}
+        <Route path="/entrevistas/perguntas">
+          {() => <Redirect to="/entrevistas" />}
+        </Route>
         {/* TODO: remover redirect após 90 dias em prod */}
         <Route path="/entrevistas/simulador">
           {() => <Redirect to="/entrevistas" />}
@@ -179,7 +209,9 @@ function Router() {
             </RequireAuth>
           )}
         </Route>
-        <Route path="/entrevistas/desafios" component={EntrevistaDesafios} />
+        <Route path="/entrevistas/desafios">
+          {() => <Redirect to="/entrevistas" />}
+        </Route>
         <Route path="/portfolio">
           {() => <Redirect to="/portfolio/analisar" />}
         </Route>

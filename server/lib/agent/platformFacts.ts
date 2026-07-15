@@ -27,9 +27,9 @@ const CANCELLATION_FACT =
 
 // Fatos das ferramentas Pro (atualizados na frente de features Pro de 2026-07).
 const PRO_TOOLS_FACT =
-  "Ferramentas Pro atuais: analise de curriculo (/curriculo/analisar), geracao de curriculo (/curriculo/gerar), analise de LinkedIn com nota, checklist de recrutador e textos prontos (/linkedin/analisar), analise de portfolio com base no GitHub (/portfolio/analisar), treino de entrevista com IA (/entrevistas), plano de carreira com IA (/plano-carreira) e Roadmap com IA (/roadmaps/ia).";
+  "Ferramentas Pro atuais: analise de curriculo (/curriculo/analisar), geracao de curriculo (/curriculo/gerar), analise de LinkedIn com nota, checklist de recrutador e textos prontos (/linkedin/analisar), analise de portfolio com base no GitHub (/portfolio/analisar), treino de entrevista com IA (/entrevistas), plano de carreira com IA (/plano-carreira), Roadmap com IA (/roadmaps/ia) e o Comparador (/comparador), que poe faculdades, cursos, plataformas, areas e tecnologias lado a lado.";
 const INTERVIEW_FACT =
-  "Entrevistas: a pagina /entrevistas reune o guia gratuito do processo seletivo (com banco de perguntas e desafios) e o treino de entrevista com IA (Pro), com feedback por resposta e veredito de preparo. O antigo simulador separado foi unificado nessa pagina.";
+  "Entrevistas: a pagina /entrevistas e 100% Pro e concentra o treino de entrevista com IA, com feedback por resposta e veredito de preparo. As antigas paginas gratuitas de banco de perguntas e desafios foram removidas.";
 const CAREER_PLAN_FACT =
   "Plano de carreira: a pagina /plano-carreira gera com IA a rota da carreira da pessoa (degraus ordenados, certificacoes com preco de referencia e cronograma) com checklist de progresso. Substituiu o antigo plano de estudos (/estudos).";
 const MENTORIAS_FACT =
@@ -84,13 +84,20 @@ async function buildPlansFact(): Promise<string> {
     // defensivo para code desconhecido (ex.: 'free'). A ordem (por price_cents) fica
     // igual: apos a migration, plans.price_cents == planPricing.
     const parts = rows.map((r) => {
-      const cents = resolvePlanPriceCents(r.code, r.price_cents, "platformFacts");
+      const cents = resolvePlanPriceCents(
+        r.code,
+        r.price_cents,
+        "platformFacts",
+      );
       return `${r.name}: ${formatPrice(cents, r.currency)} ${formatInterval(r.interval)}`;
     });
     // TODO(Ana): revisar esta linha de planos e precos.
     return `Planos e precos do Plano Pro: ${parts.join("; ")}. A assinatura e feita na pagina /planos.`;
   } catch (err) {
-    console.warn("[platformFacts] leitura de plans falhou, usando fallback:", err);
+    console.warn(
+      "[platformFacts] leitura de plans falhou, usando fallback:",
+      err,
+    );
     return PLANS_FALLBACK_FACT;
   }
 }
