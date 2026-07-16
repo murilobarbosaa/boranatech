@@ -85,16 +85,6 @@ const plans = PLAN_ORDER.map((id) => {
   };
 });
 
-// Nuvem do hero: TODAS as ferramentas, uma por chip, derivada dos mesmos
-// arrays da comparacao (nada chumbado que desincronize).
-const CHIP_COLORS = [
-  "bg-amber-300",
-  "bg-violet-300",
-  "bg-sky-300",
-  "bg-pink-300",
-  "bg-orange-300",
-];
-
 // Categorias reais do comparador (Comparador.tsx + TecnologiaComparador.tsx),
 // agora 100% Pro. Alimentam o destaque do card Pro e a tabela.
 const COMPARADOR_CATEGORIES = [
@@ -726,10 +716,10 @@ export default function Checkout() {
 
       <section
         aria-labelledby="pro-hero-title"
-        className="relative overflow-hidden bg-slate-950 py-14 md:py-16"
+        className="relative flex min-h-[55vh] items-center overflow-hidden bg-slate-950 py-14 md:min-h-[78vh] md:py-16"
       >
         <CeuEstrelado />
-        <div className="container relative z-10">
+        <div className="container relative z-10 w-full">
           <div className="mx-auto max-w-3xl text-center">
             <motion.p
               {...fade()}
@@ -755,7 +745,7 @@ export default function Checkout() {
             </motion.h1>
             <motion.p
               {...fade(0.1)}
-              className="mx-auto mt-5 max-w-2xl text-base md:text-lg font-medium leading-relaxed text-slate-300"
+              className="mx-auto mt-6 max-w-2xl text-lg md:text-xl font-bold leading-relaxed text-slate-200"
             >
               {/* TODO(Ana): revisar copy do subtítulo do hero */}
               Tudo isso desbloqueado no Pro:
@@ -763,16 +753,21 @@ export default function Checkout() {
 
             <motion.ul
               {...fade(0.15)}
-              className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2"
+              className="mx-auto mt-9 flex max-w-3xl flex-wrap justify-center gap-2.5"
             >
-              {HERO_TOOL_CHIPS.map((chip, idx) => {
+              {HERO_TOOL_CHIPS.map((chip) => {
                 const Icon = chip.icon;
                 return (
                   <li
                     key={chip.text}
-                    className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] ${CHIP_COLORS[idx % CHIP_COLORS.length]}`}
+                    className="group inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 px-3 py-1 text-xs font-bold text-white transition-colors hover:border-amber-300/80"
                   >
-                    <Icon size={13} strokeWidth={2.5} aria-hidden="true" />
+                    <Icon
+                      size={13}
+                      strokeWidth={2}
+                      className="text-amber-400 transition-colors group-hover:text-amber-300"
+                      aria-hidden="true"
+                    />
                     {chip.text}
                   </li>
                 );
@@ -781,7 +776,7 @@ export default function Checkout() {
 
             <motion.div
               {...fade(0.25)}
-              className="mt-6 flex flex-col items-center gap-3"
+              className="mt-9 flex flex-col items-center gap-3"
             >
               <button
                 type="button"
