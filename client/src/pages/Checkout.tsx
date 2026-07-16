@@ -909,6 +909,16 @@ export default function Checkout() {
         className="relative overflow-hidden bg-slate-950 py-14 md:py-20"
       >
         <CeuEstrelado />
+        {/* Continuacao sutil do glow do hero (mesma cor, opacidade menor)
+            pra emenda entre as duas secoes nao marcar uma linha reta. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-72"
+          style={{
+            background:
+              "radial-gradient(ellipse 70% 100% at 50% 0%, rgba(255,184,0,0.03), transparent 70%)",
+          }}
+        />
         <div className="container relative z-10">
           {usersCount !== null ? (
             <motion.p
@@ -1042,9 +1052,13 @@ export default function Checkout() {
                     <p className="mt-1 text-sm font-bold text-slate-700">
                       {plan.period}
                     </p>
-                    {plan.monthlyEquivalent ? (
-                      <p className="mt-2 inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950">
-                        equivale a{" "}
+                  </div>
+                  {/* my-auto centraliza o box no vao entre a periodicidade e o
+                      rodape; py-2 garante respiro minimo quando o card aperta. */}
+                  {plan.monthlyEquivalent ? (
+                    <div className="my-auto pt-2">
+                      <p className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950">
+                        Equivale a{" "}
                         {plan.savingsPercent > 0 ? (
                           <span className="font-bold text-slate-400 line-through">
                             {MONTHLY_BASE_LABEL}
@@ -1052,9 +1066,9 @@ export default function Checkout() {
                         ) : null}
                         {plan.monthlyEquivalent}
                       </p>
-                    ) : null}
-                  </div>
-                  <p className="mt-auto pt-6 text-sm font-bold text-slate-700">
+                    </div>
+                  ) : null}
+                  <p className="mt-auto pt-2 text-sm font-bold text-slate-700">
                     Todos os benefícios Pro incluídos.
                   </p>
                 </motion.button>
