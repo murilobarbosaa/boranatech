@@ -552,6 +552,54 @@
   }
 }
 
+/* Mais ciclos de ±12deg (não oscilações mais lentas): mantém a cadência de
+   ~120ms por balanço, só toca por mais tempo. A duração (1080ms) tem par no
+   timeout de useBellRing (NotificationBell.tsx) que remove a classe; os dois
+   precisam andar juntos. */
+@keyframes bellRing {
+  0% {
+    transform: rotate(0deg);
+  }
+  11% {
+    transform: rotate(12deg);
+  }
+  22% {
+    transform: rotate(-11deg);
+  }
+  33% {
+    transform: rotate(10deg);
+  }
+  44% {
+    transform: rotate(-9deg);
+  }
+  56% {
+    transform: rotate(8deg);
+  }
+  67% {
+    transform: rotate(-6deg);
+  }
+  78% {
+    transform: rotate(5deg);
+  }
+  89% {
+    transform: rotate(-3deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-bell-ring {
+  transform-origin: top center;
+  animation: bellRing 1080ms ease-in-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bell-ring {
+    animation: none;
+  }
+}
+
 @keyframes progressIndeterminate {
   0% {
     transform: translateX(-120%);

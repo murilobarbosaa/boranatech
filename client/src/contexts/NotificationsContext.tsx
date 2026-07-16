@@ -30,6 +30,13 @@ interface NotificationsContextValue {
   isLoading: boolean;
   hasError: boolean;
   hasMore: boolean;
+  // Contador monotônico que sobe SÓ quando um fetch do servidor traz
+  // unread_count maior que o fetch anterior (chegada genuína). A primeira
+  // resposta da sessão é baseline (não emite). Mutações otimistas
+  // (markAsRead/markAllAsRead) e seus rollbacks nunca mexem aqui, então o
+  // sino nunca balança por oscilação de UI. Vive no provider (montado uma
+  // vez no App), logo sobrevive à remontagem do sino a cada navegação.
+  arrivalSignal: number;
   refresh: (options?: { silent?: boolean }) => Promise<void>;
   loadMore: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
@@ -52,7 +59,11 @@ export function NotificationsProvider({
   const [hasError, setHasError] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadedOnce, setLoadedOnce] = useState(false);
+  const [arrivalSignal, setArrivalSignal] = useState(0);
   const loadingMoreRef = useRef(false);
+  // Último unread_count VINDO DO SERVIDOR (null = ainda sem baseline). Fonte da
+  // verdade pra detectar chegada; nunca reflete decremento otimista local.
+  const lastServerUnreadRef = useRef<number | null>(null);
 
   // Refresca a primeira página e o unread_count. Itens mais antigos já
   // carregados via loadMore são preservados (merge por id): o poll nunca
@@ -72,6 +83,13 @@ export function NotificationsProvider({
           ];
         });
         setUnreadCount(page.unread_count);
+        // Sinal de chegada: emite só quando o servidor reporta MAIS não lidas
+        // que a última resposta do servidor. A primeira é baseline (ref null).
+        const prevServerUnread = lastServerUnreadRef.current;
+        lastServerUnreadRef.current = page.unread_count;
+        if (prevServerUnread !== null && page.unread_count > prevServerUnread) {
+          setArrivalSignal((signal) => signal + 1);
+        }
         setNextCursor((prevCursor) =>
           loadedOnce ? prevCursor : page.next_cursor,
         );
@@ -167,6 +185,9 @@ export function NotificationsProvider({
       setLoadedOnce(false);
       setHasError(false);
       setIsLoading(false);
+      // Reseta a baseline: o próximo login rebaseia sem emitir chegada.
+      // arrivalSignal fica como está (monotônico); o sino desmonta no logout.
+      lastServerUnreadRef.current = null;
       return;
     }
     void refresh();
@@ -205,12 +226,14 @@ export function NotificationsProvider({
       isLoading: isLoading && !loadedOnce,
       hasError,
       hasMore: nextCursor !== null,
+      arrivalSignal,
       refresh,
       loadMore,
       markAsRead,
       markAllAsRead,
     }),
     [
+      arrivalSignal,
       hasError,
       isLoading,
       loadMore,
