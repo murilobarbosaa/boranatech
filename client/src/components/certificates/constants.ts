@@ -1,4 +1,4 @@
-// Constantes de certificado compartilhadas pelos componentes da fase 2B.
+// Constantes de certificado compartilhadas pelos componentes de certificado.
 
 // Mesmo valor de siteUrl em SEO.tsx / completionCtas.ts. A pagina publica de
 // verificacao vive em /certificados/{code}.
@@ -8,15 +8,18 @@ export function verificationUrl(code: string): string {
   return `${SITE_URL}/certificados/${code}`;
 }
 
-// Company Page do LinkedIn ainda NAO existe. Enquanto for null, o botao "Add to
-// Profile" envia o nome da organizacao como texto (organizationName).
-// TODO(Ana): trocar por organizationId quando a Company Page existir.
-export const CERT_LINKEDIN_ORG_ID: string | null = null;
+// Organization ID da Company Page da BoraNaTech no LinkedIn, usado no Add to
+// Profile de certificacao.
+export const CERT_LINKEDIN_ORG_ID = "135254003";
 
-// Razao social emissora, exibida no certificado e na verificacao publica.
-// TODO(Ana): incluir CNPJ.
-export const CERT_ISSUER_NAME = "Bora Ecosystem LTDA";
+// Rodape legal definitivo do emissor (razao social, CNPJ, CNAE). Exibido no
+// certificado em HTML e nas paginas publicas de certificado.
+export const CERT_ISSUER_LEGAL =
+  "Emitido por BORA ECOSYSTEM LTDA, CNPJ 67.688.579/0001-06. Certificado de curso livre (CNAE 8599-6/04). Não é diploma e não confere título ou registro profissional.";
 
-// Nome da organizacao usado no Add to Profile do LinkedIn enquanto nao ha
-// organizationId. TODO(Ana): revisar.
-export const CERT_LINKEDIN_ORG_NAME = "Bora na Tech";
+// Bloco de assinatura institucional (sem imagem, sem nome de pessoa fisica).
+// Vai onde o design do certificado pedir (fase do PDF).
+export const CERT_ISSUER_SIGNATURE = [
+  "BORA ECOSYSTEM LTDA",
+  "Coordenação BoraNaTech",
+];

@@ -2,7 +2,7 @@ import { ShieldCheck } from "lucide-react";
 
 import type { SyllabusSection } from "@shared/certificates/types";
 
-import { CERT_ISSUER_NAME, verificationUrl } from "./constants";
+import { CERT_ISSUER_LEGAL, verificationUrl } from "./constants";
 
 // Certificado desenhado em HTML (nao e PDF; PDF e a fase 3). Reusado no card de
 // conclusao (visao do titular, sem CPF) e na pagina publica (com CPF mascarado
@@ -130,8 +130,7 @@ export default function CertificateView({
             </a>
           </p>
           <p className="mt-2 text-xs font-medium text-slate-400">
-            {/* TODO(Ana): incluir CNPJ */}
-            Emitido por {CERT_ISSUER_NAME}.
+            {CERT_ISSUER_LEGAL}
           </p>
         </div>
       </div>

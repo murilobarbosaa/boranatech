@@ -1,10 +1,6 @@
 import { Linkedin } from "lucide-react";
 
-import {
-  CERT_LINKEDIN_ORG_ID,
-  CERT_LINKEDIN_ORG_NAME,
-  verificationUrl,
-} from "./constants";
+import { CERT_LINKEDIN_ORG_ID, verificationUrl } from "./constants";
 
 // Dois botoes distintos (item 4), so no estado already_issued:
 // a) Add to Profile de certificacao, com os campos preenchidos;
@@ -25,15 +21,8 @@ function addToProfileUrl(
     name: roadmapTitle,
     certId: code,
     certUrl: verificationUrl(code),
+    organizationId: CERT_LINKEDIN_ORG_ID,
   });
-
-  // organizationId ainda nao existe (Company Page pendente): enquanto null,
-  // manda organizationName como texto.
-  if (CERT_LINKEDIN_ORG_ID) {
-    params.set("organizationId", CERT_LINKEDIN_ORG_ID);
-  } else {
-    params.set("organizationName", CERT_LINKEDIN_ORG_NAME);
-  }
 
   const date = new Date(issuedAt);
   if (!Number.isNaN(date.getTime())) {

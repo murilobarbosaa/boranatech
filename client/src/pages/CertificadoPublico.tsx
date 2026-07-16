@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { ShieldAlert, ShieldX } from "lucide-react";
 
 import CertificateView from "@/components/certificates/CertificateView";
-import { CERT_ISSUER_NAME } from "@/components/certificates/constants";
+import { CERT_ISSUER_LEGAL } from "@/components/certificates/constants";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { getPublicCertificate } from "@/services/certificateService";
@@ -21,16 +21,11 @@ function CenteredSpinner() {
   );
 }
 
-// Rodape legal comum aos estados: curso livre, nao e diploma.
+// Rodape legal do emissor, comum a todos os estados.
 function Disclaimer() {
   return (
     <p className="mt-6 text-center text-xs font-medium leading-relaxed text-slate-500">
-      {/* TODO(Ana): revisar aviso legal do certificado */}
-      Certificado de curso livre. Não é diploma, não confere título nem registro
-      profissional.
-      <br />
-      {/* TODO(Ana): incluir CNPJ */}
-      Emitido por {CERT_ISSUER_NAME}.
+      {CERT_ISSUER_LEGAL}
     </p>
   );
 }

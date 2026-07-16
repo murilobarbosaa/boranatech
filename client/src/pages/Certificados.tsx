@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { Award, Search } from "lucide-react";
 
-import { CERT_ISSUER_NAME } from "@/components/certificates/constants";
+import { CERT_ISSUER_LEGAL } from "@/components/certificates/constants";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { useAuth } from "@/contexts/AuthContext";
@@ -170,8 +170,7 @@ export default function Certificados() {
           ) : null}
 
           <p className="mt-10 text-center text-xs font-medium leading-relaxed text-slate-500">
-            {/* TODO(Ana): incluir CNPJ */}
-            Emitido por {CERT_ISSUER_NAME}.
+            {CERT_ISSUER_LEGAL}
           </p>
         </div>
       </section>
