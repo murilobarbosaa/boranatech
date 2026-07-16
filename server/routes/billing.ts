@@ -198,6 +198,45 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
       }
     }
 
+    // De onde vem o acesso: assinatura real, concessao de influencer ou admin.
+    // ADITIVO: isPro e subscription seguem exatamente como estao; o client usa
+    // isto so para rotular o acesso com honestidade (ex: influencer nao ve
+    // botao de cancelar uma assinatura que nao existe). Fail-open para null:
+    // erro aqui nao derruba o endpoint, so deixa a origem indeterminada.
+    let accessSource: "subscription" | "influencer" | "admin" | null = null;
+    if (subscription) {
+      accessSource = "subscription";
+    } else {
+      const { data: influencerRow, error: influencerError } =
+        await supabaseAdmin
+          .from("influencers")
+          .select("id")
+          .eq("user_id", userId)
+          .is("revoked_at", null)
+          .maybeSingle();
+      if (influencerError) {
+        console.error(
+          "[billing/subscription] influencer lookup failed:",
+          influencerError,
+        );
+      }
+      if (influencerRow) {
+        accessSource = "influencer";
+      } else {
+        const { data: adminData, error: adminError } = await supabaseAdmin.rpc(
+          "is_user_admin",
+          { p_user_id: userId },
+        );
+        if (adminError) {
+          console.error(
+            "[billing/subscription] is_user_admin RPC failed:",
+            adminError,
+          );
+        }
+        if (!adminError && adminData === true) accessSource = "admin";
+      }
+    }
+
     if (!subscription) {
       const { data: freePlan } = await supabaseAdmin
         .from("plans")
@@ -212,6 +251,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
           isPro,
           pendingBoleto,
           nonRenewal: null,
+          accessSource,
         },
       });
     }
@@ -222,6 +262,7 @@ router.get("/subscription", requireAuth, async (req, res, next) => {
         isPro,
         pendingBoleto,
         nonRenewal,
+        accessSource,
       },
     });
   } catch (err) {

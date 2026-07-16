@@ -104,6 +104,9 @@ type SubscriptionData = {
   // boleto usa ISTO, nao cancel_at_period_end (que para boleto e sempre false).
   nonRenewal?: { effectiveAt?: string | null } | null;
   pendingBoleto?: PendingBoleto | null;
+  // Origem do acesso Pro (aditivo, do GET /subscription): 'influencer' e Pro
+  // de parceria sem assinatura; a UI rotula honesto e nao oferece cancelar.
+  accessSource?: "subscription" | "influencer" | "admin" | null;
 };
 
 type CancelReasonCode =
@@ -852,11 +855,15 @@ export default function Perfil() {
   const hasRealSubscription =
     !!subscriptionData?.status && subscriptionData.status !== "free";
   const proWithoutSubscription = isPro && !hasRealSubscription;
-  // Badge honesto por caso: ADMIN se admin, CORTESIA se Pro-sem-assinatura nao
-  // admin; senao o status real da assinatura.
+  const isInfluencerAccess =
+    proWithoutSubscription && subscriptionData?.accessSource === "influencer";
+  // Badge honesto por caso: ADMIN se admin, PARCEIRO se o acesso vem de
+  // concessao de influencer, CORTESIA nos demais Pro-sem-assinatura; senao o
+  // status real da assinatura.
+  // TODO(Ana): rotulo "Parceiro" do acesso de influencer.
   const subscriptionBadge = proWithoutSubscription
     ? {
-        label: isAdmin ? "Admin" : "Cortesia",
+        label: isAdmin ? "Admin" : isInfluencerAccess ? "Parceiro" : "Cortesia",
         className: "bg-violet-200 text-violet-900 border-violet-700",
       }
     : {
@@ -1749,9 +1756,9 @@ export default function Perfil() {
                         </span>
                       </div>
 
-                      {/* Sem assinatura (admin/cortesia) nao ha Valor nem Proxima
-                          renovacao: omite as linhas (linha vazia e pior que ausente).
-                          Pagante tem hasRealSubscription=true -> mostra igual. */}
+                      {/* Sem assinatura (admin/cortesia/parceiro) nao ha Valor nem
+                          Proxima renovacao: omite as linhas (linha vazia e pior que
+                          ausente). Pagante tem hasRealSubscription=true -> mostra igual. */}
                       {hasRealSubscription ? (
                         <>
                           <div className="flex items-baseline justify-between gap-3">
@@ -1774,6 +1781,14 @@ export default function Perfil() {
                             </span>
                           </div>
                         </>
+                      ) : null}
+
+                      {/* TODO(Ana): copy do acesso de parceiro (influencer). */}
+                      {isInfluencerAccess ? (
+                        <p className="text-sm font-bold text-slate-700">
+                          Acesso Pro de parceiro, concedido pela equipe. Sem
+                          cobrança, sem renovação e sem prazo.
+                        </p>
                       ) : null}
                     </div>
 
