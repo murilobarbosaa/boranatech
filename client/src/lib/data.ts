@@ -15202,6 +15202,38 @@ export const cursosGratuitos = [
     oQueAprende: ["Criptografia", "KMS", "Gestão de chaves"],
     proximoConteudo: "IAM no Google Cloud"
   },
+  {
+    id: "curso-qa-intro-software-testing",
+    certificate: "nao",
+    titulo: "Introduction to Software Testing",
+    canal: "University of Minnesota",
+    plataforma: "Coursera",
+    link: "https://www.coursera.org/learn/introduction-software-testing",
+    areaSlug: "qa" as string | null,
+    nivel: "Iniciante",
+    duracao: "Trilha autoguiada",
+    idioma: "Inglês",
+    descricao: "Curso introdutório sobre conceitos e técnicas de teste de software, disponível em auditoria gratuita.",
+    motivoIndicacao: "Boa base teórica de testes para quem está começando em QA.",
+    oQueAprende: ["Conceitos de teste", "Casos de teste", "Cobertura"],
+    proximoConteudo: "Quality Assurance no freeCodeCamp"
+  },
+  {
+    id: "curso-qa-github-actions-cicd",
+    certificate: "sim",
+    titulo: "Automatizar fluxos com GitHub Actions",
+    canal: "Microsoft Learn",
+    plataforma: "Microsoft Learn",
+    link: "https://learn.microsoft.com/pt-br/training/paths/automate-workflow-github-actions/",
+    areaSlug: "qa" as string | null,
+    nivel: "Intermediário",
+    duracao: "Trilha autoguiada",
+    idioma: "Português",
+    descricao: "Trilha da Microsoft sobre como automatizar fluxos de trabalho e testes em pipelines com o GitHub Actions.",
+    motivoIndicacao: "CI e CD com testes automatizados é parte central do trabalho de QA moderno.",
+    oQueAprende: ["GitHub Actions", "CI e CD", "Automação de testes"],
+    proximoConteudo: "Testes em pipelines de DevOps"
+  },
 ];
 
 const plataformasBase = [
