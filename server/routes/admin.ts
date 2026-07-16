@@ -926,7 +926,7 @@ router.get("/users/:id", async (req, res, next) => {
     const { data, error } = await supabaseAdmin
       .from("profiles")
       .select(
-        "user_id, name, full_name, email, gender, headline, bio, city, uf, area_interesse, nivel_atual, objetivo, github_url, linkedin_url, website_url, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, created_at, updated_at",
+        "user_id, name, full_name, email, gender, headline, bio, city, uf, area_interesse, nivel_atual, objetivo, github_url, linkedin_url, website_url, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, avatar_url, avatar_mode, avatar_moderation_status, created_at, updated_at",
       )
       .eq("user_id", uid)
       .maybeSingle();
@@ -936,12 +936,105 @@ router.get("/users/:id", async (req, res, next) => {
     if (!data)
       return next(createError(404, "not_found", "Usuário não encontrado."));
 
-    const { cpf, ...rest } = data;
+    // Assinatura (a mais recente), intencao de cancelamento agendada e valor
+    // pago real, em paralelo. Quem nunca assinou vem com null nos tres: estado
+    // legitimo, nao erro.
+    const [subResult, cancelResult, financeResult] = await Promise.all([
+      supabaseAdmin
+        .from("subscriptions")
+        .select(
+          "status, payment_method, renewal_type, created_at, current_period_end, cancel_at_period_end, plans(code)",
+        )
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("subscription_cancellations")
+        .select("reason_code, reason_text, effective_at")
+        .eq("user_id", uid)
+        .eq("status", "scheduled")
+        .order("canceled_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      // Valor pago: soma de gross_cents dos types charge, refund e dispute.
+      // Refund e dispute chegam da Stripe com gross NEGATIVO, entao a soma ja
+      // desconta devolucao e chargeback. payout e adjustment ficam de fora:
+      // sao movimentos da conta Stripe, nao pagamentos do usuario.
+      supabaseAdmin
+        .from("finance_transactions")
+        .select("gross_cents")
+        .eq("user_id", uid)
+        .in("type", ["charge", "refund", "dispute"]),
+    ]);
+
+    if (subResult.error)
+      return next(
+        dbError("user subscription", subResult.error, "Erro ao buscar usuário."),
+      );
+    if (cancelResult.error)
+      return next(
+        dbError(
+          "user cancellation intent",
+          cancelResult.error,
+          "Erro ao buscar usuário.",
+        ),
+      );
+    if (financeResult.error)
+      return next(
+        dbError("user paid total", financeResult.error, "Erro ao buscar usuário."),
+      );
+
+    const subRow = subResult.data as {
+      status: string | null;
+      payment_method: string | null;
+      renewal_type: string | null;
+      created_at: string | null;
+      current_period_end: string | null;
+      cancel_at_period_end: boolean | null;
+      plans: { code: string | null } | { code: string | null }[] | null;
+    } | null;
+    const subPlan = Array.isArray(subRow?.plans) ? subRow?.plans[0] : subRow?.plans;
+
+    const paidTotalCents = (financeResult.data || []).reduce(
+      (sum, row) => sum + (row.gross_cents ?? 0),
+      0,
+    );
+
+    const { cpf, avatar_url, avatar_mode, avatar_moderation_status, ...rest } =
+      data;
     res.json({
       data: {
         ...rest,
         cpf_masked: maskCpf(cpf),
         has_cpf: Boolean((cpf || "").replace(/\D/g, "")),
+        // Nao existe avatar_pending_url no schema: a foto e UMA (avatar_url) e o
+        // avatar_moderation_status diz o estado dela (clean | pending_review |
+        // removed). A UI decide o que mostrar a partir disso.
+        avatar: {
+          url: avatar_url,
+          mode: avatar_mode,
+          moderation_status: avatar_moderation_status,
+        },
+        subscription: subRow
+          ? {
+              plan_code: subPlan?.code ?? null,
+              status: subRow.status,
+              payment_method: subRow.payment_method,
+              renewal_type: subRow.renewal_type,
+              created_at: subRow.created_at,
+              current_period_end: subRow.current_period_end,
+              cancel_at_period_end: subRow.cancel_at_period_end,
+            }
+          : null,
+        cancellation_intent: cancelResult.data
+          ? {
+              reason_code: cancelResult.data.reason_code,
+              reason_text: cancelResult.data.reason_text,
+              effective_at: cancelResult.data.effective_at,
+            }
+          : null,
+        paid_total_cents: paidTotalCents,
       },
     });
   } catch (err) {
