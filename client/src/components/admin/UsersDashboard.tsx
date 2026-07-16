@@ -21,7 +21,6 @@ type UserDetail = {
   name: string | null;
   full_name: string | null;
   email: string | null;
-  handle: string | null;
   gender: string | null;
   headline: string | null;
   bio: string | null;
@@ -30,7 +29,6 @@ type UserDetail = {
   area_interesse: string | null;
   nivel_atual: string | null;
   objetivo: string | null;
-  career_goal: string | null;
   github_url: string | null;
   linkedin_url: string | null;
   website_url: string | null;
@@ -488,7 +486,6 @@ export function UsersDashboard() {
                     value={fmtText(detail.full_name)}
                   />
                   <Field label="E-mail" value={fmtText(detail.email)} />
-                  <Field label="Handle" value={fmtText(detail.handle)} />
                   <Field label="Gênero" value={fmtText(detail.gender)} />
                 </Group>
 
@@ -542,10 +539,6 @@ export function UsersDashboard() {
                     value={fmtText(detail.nivel_atual)}
                   />
                   <Field label="Objetivo" value={fmtText(detail.objetivo)} />
-                  <Field
-                    label="Meta de carreira"
-                    value={fmtText(detail.career_goal)}
-                  />
                   <Field label="Bio" value={fmtText(detail.bio)} />
                 </Group>
 
