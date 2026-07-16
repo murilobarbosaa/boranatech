@@ -98,6 +98,18 @@ function readIdOrString(value: unknown): string | null {
   return null;
 }
 
+// Le o livemode da source expandida (defesa em profundidade da guarda de
+// ambiente). O proprio balance transaction NAO expoe livemode; charge, payout
+// e dispute expandidos expoem, refund nao. null = sinal indisponivel nesta
+// linha (a guarda de chave em assertKeyMatchesDatabase segue cobrindo).
+function readSourceLivemode(
+  source: Stripe.BalanceTransaction["source"],
+): boolean | null {
+  if (!source || typeof source === "string") return null;
+  const livemode = (source as { livemode?: unknown }).livemode;
+  return typeof livemode === "boolean" ? livemode : null;
+}
+
 // Extrai charge/invoice/customer da source expandida. Refund/dispute/payout nao
 // resolvem customer aqui de forma confiavel: retornam null (estado legitimo).
 function extractRefs(source: Stripe.BalanceTransaction["source"]): Refs {
@@ -152,6 +164,7 @@ export async function syncBalanceTransactions(
   params: { since?: Date } = {},
 ): Promise<SyncResult> {
   assertKeyMatchesDatabase();
+  const databaseIsLocal = isLocalSupabaseUrl(resolvedSupabaseUrl());
 
   const stripe = getStripe();
 
@@ -179,6 +192,18 @@ export async function syncBalanceTransactions(
     if (!mappedType) {
       skipped += 1;
       continue;
+    }
+
+    // Guarda POR LINHA: dado de sandbox NUNCA entra num banco de producao,
+    // independente da chave que listou. Aborta na primeira linha suspeita (o
+    // upsert e idempotente: as linhas ja gravadas passaram nas duas guardas).
+    if (!databaseIsLocal && readSourceLivemode(bt.source) === false) {
+      const message =
+        `[stripeSync] SYNC ABORTADO: balance transaction ${bt.id} tem ` +
+        `livemode:false (dado de TESTE) e o Supabase e de producao. ` +
+        `Esta linha NAO foi gravada em finance_transactions.`;
+      console.error(message);
+      throw new Error(message);
     }
 
     const refs = extractRefs(bt.source);
