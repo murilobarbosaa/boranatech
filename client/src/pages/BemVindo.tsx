@@ -55,10 +55,15 @@ export default function BemVindo() {
   // local pra nao prender a pessoa nesta tela num retorno futuro. Leva junto
   // a escolha de opt-in de marketing (o carimbo e gravado pelo server).
   function marcarOnboarding() {
-    void updateMyProfile({
-      onboarding_completed: true,
-      marketing_opt_in: marketingOptIn,
-    })
+    // So grava o opt-in quando marcado AQUI. NUNCA grava false: o default do banco
+    // ja e false, e um false aqui poderia sobrescrever um opt-in feito no cadastro,
+    // que chega via PATCH concorrente no SIGNED_IN. Por isso omitimos o campo em vez
+    // de mandar false. Idempotente.
+    const updates: Record<string, unknown> = { onboarding_completed: true };
+    if (marketingOptIn) {
+      updates.marketing_opt_in = true;
+    }
+    void updateMyProfile(updates)
       .then(() => refreshProfile())
       .catch(() => {
         try {
@@ -111,19 +116,24 @@ export default function BemVindo() {
           primeira vaga.
         </p>
 
-        <label className="mx-auto mt-6 flex max-w-md cursor-pointer items-start justify-center gap-2 text-left text-sm font-medium text-slate-300">
-          <input
-            type="checkbox"
-            checked={marketingOptIn}
-            onChange={(event) => setMarketingOptIn(event.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0 accent-amber-400"
-          />
-          {/* TODO(Ana): texto do consentimento de comunicação promocional. */}
-          <span>
-            Aceito receber e-mails com novidades e promoções do Bora na Tech.
-            Dá pra mudar isso no perfil quando quiser.
-          </span>
-        </label>
+        {/* So oferece o opt-in a quem ainda nao optou. Quem marcou no cadastro
+            (profile.marketing_opt_in === true) nao e perguntado de novo. Usuarios
+            antigos (default false) continuam vendo normalmente. */}
+        {profile?.marketing_opt_in !== true && (
+          <label className="mx-auto mt-6 flex max-w-md cursor-pointer items-start justify-center gap-2 text-left text-sm font-medium text-slate-300">
+            <input
+              type="checkbox"
+              checked={marketingOptIn}
+              onChange={(event) => setMarketingOptIn(event.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-amber-400"
+            />
+            {/* TODO(Ana): texto do consentimento de comunicação promocional. */}
+            <span>
+              Aceito receber e-mails com novidades e promoções do Bora na Tech.
+              Dá pra mudar isso no perfil quando quiser.
+            </span>
+          </label>
+        )}
 
         {/* Botao primario: Primeiros passos. */}
         <div className="mt-6 flex flex-col items-center gap-2">
