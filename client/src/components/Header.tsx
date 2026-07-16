@@ -27,6 +27,7 @@ import {
   resolveEffectiveBorder,
 } from "@/constants/avatarOptions";
 import UserAvatar, { effectiveOwnAvatar } from "@/components/UserAvatar";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { SignOutConfirmModal } from "./profile/SignOutConfirmModal";
 type MenuItem = {
   label: string;
@@ -843,6 +844,7 @@ export default function Header() {
               </>
             ) : (
               <>
+                <NotificationBell variant="desktop" />
                 <Link
                   href="/perfil"
                   className="inline-flex"
@@ -956,6 +958,7 @@ export default function Header() {
                 />
                 <span>{userName}</span>
               </Link>
+              <NotificationBell variant="mobile" onOpen={closeMobileDrawer} />
               <div className="mt-3 flex gap-2">
                 {isAdmin ? (
                   <Link

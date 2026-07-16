@@ -12,6 +12,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import RequireAuth from "./components/auth/RequireAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
+import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAffiliate } from "./hooks/useAffiliate";
@@ -375,16 +376,18 @@ function App() {
         <AuthProvider>
           <FavoritesProvider>
             <SubscriptionProvider>
-              <TooltipProvider>
-                <Toaster />
-                <AffiliateTracker />
-                <ScrollToTop />
-                <LaunchGate>
-                  <ConsentGate>
-                    <Router />
-                  </ConsentGate>
-                </LaunchGate>
-              </TooltipProvider>
+              <NotificationsProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <AffiliateTracker />
+                  <ScrollToTop />
+                  <LaunchGate>
+                    <ConsentGate>
+                      <Router />
+                    </ConsentGate>
+                  </LaunchGate>
+                </TooltipProvider>
+              </NotificationsProvider>
             </SubscriptionProvider>
           </FavoritesProvider>
         </AuthProvider>
