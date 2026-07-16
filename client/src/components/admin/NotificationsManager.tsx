@@ -30,6 +30,7 @@ import {
   type AdminNotificationAudience,
   type AdminNotificationCategory,
   type AdminNotificationInput,
+  type AdminNotificationMutationResult,
   type AdminNotificationStatus,
   type AdminNotificationType,
   type AudiencePreview,
@@ -98,7 +99,28 @@ const AUDIENCE_META: Record<
     description:
       "Já pagou e hoje não tem plano ativo (past_due fica de fora).",
   },
+  custom: {
+    label: "Emails específicos",
+    description:
+      "Lista fixa de destinatários, resolvida por email na criação. Quem não tem cadastro fica de fora.",
+  },
 };
+
+// Mesma validação de email do server (adminNotifications/adminEmailCampaigns).
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_CUSTOM_RECIPIENTS = 500;
+
+// Um por linha, vírgula ou ponto e vírgula; dedupe case-insensitive.
+function parseRecipientEmails(text: string): string[] {
+  return Array.from(
+    new Set(
+      text
+        .split(/[\s,;]+/)
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  );
+}
 
 const TYPE_OPTIONS = Object.entries(TYPE_META) as Array<
   [AdminNotificationType, { label: string; badge: string }]
@@ -158,6 +180,8 @@ type FormState = {
   cta_url: string;
   cta_label: string;
   expires_at_local: string;
+  // Texto cru do textarea de custom; os emails saem de parseRecipientEmails.
+  recipients_text: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -171,6 +195,7 @@ const EMPTY_FORM: FormState = {
   cta_url: "",
   cta_label: "",
   expires_at_local: "",
+  recipients_text: "",
 };
 
 function formFromNotification(n: AdminNotification): FormState {
@@ -186,12 +211,20 @@ function formFromNotification(n: AdminNotification): FormState {
     cta_url: n.cta_url ?? "",
     cta_label: n.cta_label ?? "",
     expires_at_local: n.expires_at ? isoToLocalInput(n.expires_at) : "",
+    // Emails da lista atual não são recuperáveis (guardamos user_id); vazio
+    // mantém a lista, preencher substitui inteira.
+    recipients_text: "",
   };
 }
 
 // Espelho client-side do zod do server, pra mensagem imediata; o erro do
-// server continua sendo exibido se algo passar.
-function validateForm(form: FormState): string | null {
+// server continua sendo exibido se algo passar. requireRecipients: true no
+// create e ao mudar um draft para custom; false editando um draft já custom
+// (textarea vazio mantém a lista atual).
+function validateForm(
+  form: FormState,
+  options: { requireRecipients: boolean },
+): string | null {
   if (!form.title.trim()) return "Informe o título.";
   if (form.title.trim().length > 200)
     return "O título deve ter no máximo 200 caracteres.";
@@ -217,11 +250,28 @@ function validateForm(form: FormState): string | null {
     if (Number.isNaN(ts)) return "Data de expiração inválida.";
     if (ts <= Date.now()) return "expires_at deve ser uma data futura.";
   }
+  if (form.audience === "custom") {
+    const emails = parseRecipientEmails(form.recipients_text);
+    if (options.requireRecipients && emails.length === 0)
+      return "Informe pelo menos um email de destinatário.";
+    if (emails.length > MAX_CUSTOM_RECIPIENTS)
+      return `No máximo ${MAX_CUSTOM_RECIPIENTS} emails por notificação.`;
+    const invalid = emails.filter((email) => !EMAIL_PATTERN.test(email));
+    if (invalid.length > 0)
+      return `Email inválido na lista: ${invalid[0]}${invalid.length > 1 ? ` (e mais ${invalid.length - 1})` : ""}.`;
+  }
   return null;
 }
 
 function payloadFromForm(form: FormState): AdminNotificationInput {
+  const recipientEmails =
+    form.audience === "custom"
+      ? parseRecipientEmails(form.recipients_text)
+      : [];
   return {
+    ...(recipientEmails.length > 0
+      ? { recipient_emails: recipientEmails }
+      : {}),
     title: form.title.trim(),
     body: form.body.trim(),
     type: form.type,
@@ -409,6 +459,11 @@ export function NotificationsManager() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Resolução da última gravação custom (matched × unmatched do server).
+  const [recipientFeedback, setRecipientFeedback] = useState<{
+    matched: string[];
+    unmatched: string[];
+  } | null>(null);
 
   const [publishTarget, setPublishTarget] = useState<AdminNotification | null>(
     null,
@@ -460,18 +515,21 @@ export function NotificationsManager() {
   function openCreate() {
     setForm(EMPTY_FORM);
     setFormError(null);
+    setRecipientFeedback(null);
     setFormMode({ mode: "create" });
   }
 
   function openEdit(notification: AdminNotification) {
     setForm(formFromNotification(notification));
     setFormError(null);
+    setRecipientFeedback(null);
     setFormMode({ mode: "edit", notification });
   }
 
   function closeForm() {
     setFormMode(null);
     setFormError(null);
+    setRecipientFeedback(null);
   }
 
   async function handleSave() {
@@ -504,24 +562,44 @@ export function NotificationsManager() {
       return;
     }
 
-    const validationError = validateForm(form);
+    // Emails obrigatórios: sempre no create custom; no edit, só quando o
+    // draft está VIRANDO custom (draft já custom com textarea vazio mantém a
+    // lista atual).
+    const requireRecipients =
+      form.audience === "custom" &&
+      (formMode?.mode !== "edit" ||
+        formMode.notification.audience !== "custom");
+    const validationError = validateForm(form, { requireRecipients });
     if (validationError) {
       setFormError(validationError);
       return;
     }
     setSaving(true);
     setFormError(null);
+    setRecipientFeedback(null);
     try {
       const payload = payloadFromForm(form);
+      let result: AdminNotificationMutationResult;
       if (formMode?.mode === "edit") {
-        await patchNotification(formMode.notification.id, payload);
+        result = await patchNotification(formMode.notification.id, payload);
         toast.success("Rascunho atualizado.");
       } else {
-        await createNotification(payload);
+        result = await createNotification(payload);
         toast.success("Rascunho criado.");
       }
-      closeForm();
       void load();
+      // Emails sem cadastro: o draft foi salvo, mas o form permanece aberto
+      // (em edição do draft salvo) com o aviso, pra corrigir antes de publicar.
+      if (result.unmatched && result.unmatched.length > 0) {
+        setRecipientFeedback({
+          matched: result.matched ?? [],
+          unmatched: result.unmatched,
+        });
+        setFormMode({ mode: "edit", notification: result.data });
+        setForm(formFromNotification(result.data));
+      } else {
+        closeForm();
+      }
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Erro ao salvar.");
     } finally {
@@ -567,13 +645,17 @@ export function NotificationsManager() {
     setStatsPreview(null);
     setStatsError(null);
     setStatsLoading(true);
+    // custom não tem preview de segmento: o denominador exato é o
+    // recipient_count da própria notificação.
     void Promise.all([
       fetchNotificationStats(notification.id),
-      fetchAudiencePreview(notification.audience, notification.category),
+      notification.audience === "custom"
+        ? Promise.resolve(null)
+        : fetchAudiencePreview(notification.audience, notification.category),
     ])
       .then(([statsRes, previewRes]) => {
         setStats(statsRes.data);
-        setStatsPreview(previewRes.data);
+        setStatsPreview(previewRes ? previewRes.data : null);
       })
       .catch((error) => {
         setStatsError(
@@ -586,10 +668,18 @@ export function NotificationsManager() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const statsIsCustom = statsTarget?.audience === "custom";
+  const statsDenominator = statsIsCustom
+    ? (statsTarget?.recipient_count ?? 0)
+    : (statsPreview?.matched ?? 0);
   const readRate =
-    stats && statsPreview && statsPreview.matched > 0
-      ? Math.min(100, Math.round((stats.total_reads / statsPreview.matched) * 100))
+    stats && statsDenominator > 0
+      ? Math.min(100, Math.round((stats.total_reads / statsDenominator) * 100))
       : null;
+  const parsedRecipients =
+    form.audience === "custom"
+      ? parseRecipientEmails(form.recipients_text)
+      : [];
 
   return (
     <div className="space-y-6">
@@ -763,6 +853,50 @@ export function NotificationsManager() {
                   {AUDIENCE_META[form.audience].description}
                 </p>
               </div>
+              {form.audience === "custom" ? (
+                <div>
+                  <label htmlFor="notif-recipients" className={labelClass}>
+                    Emails dos destinatários ({parsedRecipients.length}/
+                    {MAX_CUSTOM_RECIPIENTS})
+                  </label>
+                  <textarea
+                    id="notif-recipients"
+                    rows={5}
+                    value={form.recipients_text}
+                    disabled={editingPublished}
+                    placeholder={
+                      formMode.mode === "edit" &&
+                      formMode.notification.audience === "custom"
+                        ? `Deixe vazio para manter a lista atual (${formMode.notification.recipient_count ?? 0} destinatários). Preencher substitui a lista inteira.`
+                        : "um@email.com, outro@email.com (um por linha ou separados por vírgula)"
+                    }
+                    onChange={(e) =>
+                      setForm({ ...form, recipients_text: e.target.value })
+                    }
+                    className={`${inputClass} font-mono`}
+                  />
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Um por linha ou separados por vírgula; duplicados são
+                    ignorados. Emails sem cadastro na plataforma não recebem.
+                  </p>
+                </div>
+              ) : null}
+              {recipientFeedback ? (
+                <div className="rounded-xl border-2 border-amber-600 bg-amber-50 px-3 py-2 text-sm">
+                  <p className="font-bold text-amber-800">
+                    {recipientFeedback.matched.length} com cadastro
+                    (receberão). {recipientFeedback.unmatched.length} sem
+                    cadastro e NÃO receberão:
+                  </p>
+                  <p className="mt-1 break-all font-mono text-xs text-amber-900">
+                    {recipientFeedback.unmatched.join(", ")}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-amber-800">
+                    O rascunho foi salvo. Corrija a lista acima (substitui a
+                    atual) ou publique só para os encontrados.
+                  </p>
+                </div>
+              ) : null}
               {form.type === "coupon" ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
@@ -879,12 +1013,27 @@ export function NotificationsManager() {
             </div>
 
             <div className="space-y-4">
-              {!editingPublished ? (
+              {!editingPublished && form.audience !== "custom" ? (
                 <AudienceReach
                   audience={form.audience}
                   category={form.category}
                   enabled
                 />
+              ) : null}
+              {!editingPublished && form.audience === "custom" ? (
+                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
+                  <p className="text-xs font-black uppercase text-violet-700">
+                    Destinatários
+                  </p>
+                  <p className="font-display mt-1 text-xl font-black text-slate-950">
+                    {parsedRecipients.length.toLocaleString("pt-BR")} emails na
+                    lista
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Quantos têm cadastro você vê ao salvar (matched ×
+                    unmatched).
+                  </p>
+                </div>
               ) : null}
               <NotificationPreviewCard form={form} />
             </div>
@@ -938,6 +1087,12 @@ export function NotificationsManager() {
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-600">
                       {AUDIENCE_META[item.audience].label}
+                      {item.audience === "custom" ? (
+                        <span className="block text-[11px] font-semibold text-slate-400">
+                          {item.recipient_count.toLocaleString("pt-BR")}{" "}
+                          destinatários
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-600">
                       {item.category === "promotional"
@@ -1106,11 +1261,27 @@ export function NotificationsManager() {
                     : "Sem data de expiração."}
                 </p>
               </div>
-              <AudienceReach
-                audience={publishTarget.audience}
-                category={publishTarget.category}
-                enabled
-              />
+              {publishTarget.audience === "custom" ? (
+                <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
+                  <p className="text-xs font-black uppercase text-violet-700">
+                    Destinatários
+                  </p>
+                  <p className="font-display mt-1 text-xl font-black text-slate-950">
+                    Será enviada para{" "}
+                    {publishTarget.recipient_count.toLocaleString("pt-BR")}{" "}
+                    usuários
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Lista fixa resolvida na criação; não muda depois.
+                  </p>
+                </div>
+              ) : (
+                <AudienceReach
+                  audience={publishTarget.audience}
+                  category={publishTarget.category}
+                  enabled
+                />
+              )}
             </div>
           ) : null}
           <DialogFooter>
@@ -1197,13 +1368,17 @@ export function NotificationsManager() {
                 </div>
                 <div className="rounded-2xl border-2 border-slate-900 bg-emerald-50 p-3">
                   <p className="text-xs font-black uppercase text-emerald-700">
-                    Taxa de leitura (estimativa)
+                    {statsIsCustom
+                      ? "Taxa de leitura (exata)"
+                      : "Taxa de leitura (estimativa)"}
                   </p>
                   <p className="font-display mt-1 text-2xl font-black text-slate-950">
                     {readRate !== null ? `${readRate}%` : "-"}
                   </p>
                   <p className="mt-1 text-[11px] font-semibold text-slate-500">
-                    Sobre o alcance atual da audience, que muda com o tempo.
+                    {statsIsCustom
+                      ? `Sobre os ${statsDenominator.toLocaleString("pt-BR")} destinatários fixos da lista.`
+                      : "Sobre o alcance atual da audience, que muda com o tempo."}
                   </p>
                 </div>
               </div>

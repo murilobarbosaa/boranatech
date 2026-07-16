@@ -1831,6 +1831,29 @@ export type Database = {
           },
         ]
       }
+      notification_recipients: {
+        Row: {
+          notification_id: string
+          user_id: string
+        }
+        Insert: {
+          notification_id: string
+          user_id: string
+        }
+        Update: {
+          notification_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_recipients_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           audience: string

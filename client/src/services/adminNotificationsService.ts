@@ -14,7 +14,8 @@ export type AdminNotificationAudience =
   | "all"
   | "never_pro"
   | "active_pro"
-  | "ex_pro";
+  | "ex_pro"
+  | "custom";
 
 export type AdminNotification = {
   id: string;
@@ -34,6 +35,7 @@ export type AdminNotification = {
   created_at: string;
   updated_at: string;
   read_count: number;
+  recipient_count: number;
 };
 
 export type AdminNotificationInput = {
@@ -47,6 +49,15 @@ export type AdminNotificationInput = {
   cta_url?: string | null;
   cta_label?: string | null;
   expires_at?: string | null;
+  // Obrigatório (min 1, max 500) quando audience é custom; proibido nas demais.
+  recipient_emails?: string[];
+};
+
+// POST/PATCH de audience custom devolvem a resolução da lista junto.
+export type AdminNotificationMutationResult = {
+  data: AdminNotification;
+  matched?: string[];
+  unmatched?: string[];
 };
 
 export type NotificationStats = {
@@ -76,7 +87,7 @@ export async function listNotifications(options?: {
 
 export async function createNotification(
   input: AdminNotificationInput,
-): Promise<{ data: AdminNotification }> {
+): Promise<AdminNotificationMutationResult> {
   return adminFetch("/notifications", {
     method: "POST",
     body: JSON.stringify(input),
@@ -86,7 +97,7 @@ export async function createNotification(
 export async function patchNotification(
   id: string,
   patch: Partial<AdminNotificationInput> & { status?: "published" | "archived" },
-): Promise<{ data: AdminNotification }> {
+): Promise<AdminNotificationMutationResult> {
   return adminFetch(`/notifications/${id}`, {
     method: "PATCH",
     body: JSON.stringify(patch),

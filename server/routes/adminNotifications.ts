@@ -32,7 +32,24 @@ const NOTIFICATION_TYPES = [
 ] as const;
 const NOTIFICATION_STATUSES = ["draft", "published", "archived"] as const;
 
+// Audiences aceitas na criacao: os segmentos (avaliados na leitura) mais
+// 'custom' (lista fixa materializada em notification_recipients).
+const NOTIFICATION_AUDIENCES = [
+  "all",
+  "never_pro",
+  "active_pro",
+  "ex_pro",
+  "custom",
+] as const;
+
 const DB_PAGE = 1000;
+
+// Mesma validacao de email das campanhas (adminEmailCampaigns): presenca de
+// local, arroba e dominio com ponto.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_CUSTOM_RECIPIENTS = 500;
+const EMAIL_LOOKUP_CHUNK = 100;
 
 const expiresAtSchema = z
   .string()
@@ -42,6 +59,18 @@ function isFuture(iso: string): boolean {
   return Date.parse(iso) > Date.now();
 }
 
+const recipientEmailsSchema = z
+  .array(
+    z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(MAX_EMAIL_LENGTH)
+      .regex(EMAIL_PATTERN, "Email inválido na lista de destinatários."),
+  )
+  .min(1, "Informe pelo menos um email.")
+  .max(MAX_CUSTOM_RECIPIENTS, `No máximo ${MAX_CUSTOM_RECIPIENTS} emails.`);
+
 // Cupom exige codigo (mesmo check do banco, validado antes pra dar mensagem
 // clara em vez de erro de constraint).
 const CreateSchema = z
@@ -50,18 +79,27 @@ const CreateSchema = z
     body: z.string().trim().min(1).max(2000),
     type: z.enum(NOTIFICATION_TYPES).default("announcement"),
     category: z.enum(["product", "promotional"]).default("product"),
-    audience: z.enum(USER_SEGMENTS).default("all"),
+    audience: z.enum(NOTIFICATION_AUDIENCES).default("all"),
     coupon_code: z.string().trim().min(1).max(64).nullable().optional(),
     discount_percent: z.number().int().min(1).max(100).nullable().optional(),
     cta_url: z.string().trim().url().max(2048).nullable().optional(),
     cta_label: z.string().trim().min(1).max(60).nullable().optional(),
     expires_at: expiresAtSchema.nullable().optional(),
+    recipient_emails: recipientEmailsSchema.optional(),
   })
   .refine((data) => data.type !== "coupon" || Boolean(data.coupon_code), {
     message: "coupon_code é obrigatório quando type é coupon.",
   })
   .refine((data) => !data.expires_at || isFuture(data.expires_at), {
     message: "expires_at deve ser uma data futura.",
+  })
+  .refine(
+    (data) =>
+      data.audience !== "custom" || (data.recipient_emails?.length ?? 0) > 0,
+    { message: "recipient_emails é obrigatório quando audience é custom." },
+  )
+  .refine((data) => data.audience === "custom" || !data.recipient_emails, {
+    message: "recipient_emails só é aceito com audience custom.",
   });
 
 const PatchSchema = z
@@ -70,13 +108,14 @@ const PatchSchema = z
     body: z.string().trim().min(1).max(2000).optional(),
     type: z.enum(NOTIFICATION_TYPES).optional(),
     category: z.enum(["product", "promotional"]).optional(),
-    audience: z.enum(USER_SEGMENTS).optional(),
+    audience: z.enum(NOTIFICATION_AUDIENCES).optional(),
     coupon_code: z.string().trim().min(1).max(64).nullable().optional(),
     discount_percent: z.number().int().min(1).max(100).nullable().optional(),
     cta_url: z.string().trim().url().max(2048).nullable().optional(),
     cta_label: z.string().trim().min(1).max(60).nullable().optional(),
     expires_at: expiresAtSchema.nullable().optional(),
     status: z.enum(["published", "archived"]).optional(),
+    recipient_emails: recipientEmailsSchema.optional(),
   })
   .refine((data) => !data.expires_at || isFuture(data.expires_at), {
     message: "expires_at deve ser uma data futura.",
@@ -93,10 +132,92 @@ type NotificationRow = {
   id: string;
   type: string;
   status: string;
+  audience: string;
   coupon_code: string | null;
   expires_at: string | null;
   [key: string]: unknown;
 };
+
+type ResolvedRecipients = {
+  matched: string[];
+  unmatched: string[];
+  userIds: string[];
+};
+
+// Mapeamento puro linhas de profiles -> recipients. ATENCAO ao schema:
+// profiles tem id PROPRIO (uuid local) e user_id (FK para auth.users, o valor
+// que notification_recipients.user_id exige). Linha sem user_id valido vira
+// unmatched, nunca erro: so falha real de banco vira 500.
+export function mapProfileRowsToRecipients(
+  requested: string[],
+  rows: Array<{ user_id: string | null; email: string | null }>,
+): ResolvedRecipients {
+  const matched: string[] = [];
+  const userIds = new Set<string>();
+  for (const row of rows) {
+    if (!row.email || !row.user_id) continue;
+    matched.push(String(row.email).toLowerCase());
+    userIds.add(row.user_id);
+  }
+  const matchedSet = new Set(matched);
+  const unmatched = requested.filter((email) => !matchedSet.has(email));
+  return { matched, unmatched, userIds: Array.from(userIds) };
+}
+
+// Resolve emails -> auth user_id via profiles.user_id (mesmo padrao do
+// emailCampaignQueue, que sempre le user_id de profiles). Entrada ja vem
+// lowercased pelo zod; o match e por igualdade no email do profile (espelho
+// do auth, normalizado pelo GoTrue). Lotes de 100 pra nao estourar o tamanho
+// de URL do PostgREST com listas de ate 500.
+async function resolveRecipientEmails(
+  emails: string[],
+): Promise<ResolvedRecipients> {
+  const unique = Array.from(new Set(emails));
+  const rows: Array<{ user_id: string | null; email: string | null }> = [];
+  for (let i = 0; i < unique.length; i += EMAIL_LOOKUP_CHUNK) {
+    const chunk = unique.slice(i, i + EMAIL_LOOKUP_CHUNK);
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, email")
+      .in("email", chunk);
+    if (error) {
+      throw new Error(error.message);
+    }
+    rows.push(
+      ...((data ?? []) as Array<{
+        user_id: string | null;
+        email: string | null;
+      }>),
+    );
+  }
+  return mapProfileRowsToRecipients(unique, rows);
+}
+
+async function insertRecipients(
+  notificationId: string,
+  userIds: string[],
+): Promise<void> {
+  const { error } = await supabaseAdmin.from("notification_recipients").insert(
+    userIds.map((userId) => ({
+      notification_id: notificationId,
+      user_id: userId,
+    })),
+  );
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+async function countRecipients(notificationId: string): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("notification_recipients")
+    .select("user_id", { count: "exact", head: true })
+    .eq("notification_id", notificationId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  return count ?? 0;
+}
 
 async function findNotification(
   id: string,
@@ -131,9 +252,10 @@ router.get("/", async (req, res, next) => {
   try {
     let query = supabaseAdmin
       .from("notifications")
-      .select(`${ADMIN_COLUMNS}, notification_reads(count)`, {
-        count: "exact",
-      })
+      .select(
+        `${ADMIN_COLUMNS}, notification_reads(count), notification_recipients(count)`,
+        { count: "exact" },
+      )
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
     if (status) query = query.eq("status", status);
@@ -145,10 +267,14 @@ router.get("/", async (req, res, next) => {
     }
 
     const items = ((data ?? []) as unknown as Array<
-      NotificationRow & { notification_reads: Array<{ count: number }> }
-    >).map(({ notification_reads, ...row }) => ({
+      NotificationRow & {
+        notification_reads: Array<{ count: number }>;
+        notification_recipients: Array<{ count: number }>;
+      }
+    >).map(({ notification_reads, notification_recipients, ...row }) => ({
       ...row,
       read_count: notification_reads?.[0]?.count ?? 0,
+      recipient_count: notification_recipients?.[0]?.count ?? 0,
     }));
 
     res.json({ data: items, total: count ?? items.length });
@@ -161,7 +287,10 @@ router.get("/", async (req, res, next) => {
 });
 
 // POST /api/admin/notifications: cria sempre em draft; publicar e um passo
-// explicito (POST /:id/publish).
+// explicito (POST /:id/publish). Para audience=custom, a lista e resolvida e
+// materializada AQUI: se nenhum email casar, nada e criado; se o insert dos
+// recipients falhar depois da notificacao criada, a notificacao e deletada
+// (compensacao) pra nunca sobrar custom sem lista.
 router.post("/", async (req, res, next) => {
   const parsed = CreateSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -176,6 +305,20 @@ router.post("/", async (req, res, next) => {
   const data = parsed.data;
 
   try {
+    let resolved: ResolvedRecipients | null = null;
+    if (data.audience === "custom") {
+      resolved = await resolveRecipientEmails(data.recipient_emails ?? []);
+      if (resolved.userIds.length === 0) {
+        return next(
+          createError(
+            400,
+            "no_recipients_matched",
+            "Nenhum dos emails informados tem cadastro na plataforma.",
+          ),
+        );
+      }
+    }
+
     const { data: created, error } = await supabaseAdmin
       .from("notifications")
       .insert({
@@ -197,8 +340,26 @@ router.post("/", async (req, res, next) => {
     if (error) {
       throw new Error(error.message);
     }
+    const createdRow = created as unknown as NotificationRow;
 
-    res.status(201).json({ data: created });
+    if (resolved) {
+      try {
+        await insertRecipients(createdRow.id, resolved.userIds);
+      } catch (recipientsErr) {
+        await supabaseAdmin
+          .from("notifications")
+          .delete()
+          .eq("id", createdRow.id);
+        throw recipientsErr;
+      }
+    }
+
+    res.status(201).json({
+      data: created,
+      ...(resolved
+        ? { matched: resolved.matched, unmatched: resolved.unmatched }
+        : {}),
+    });
   } catch (err) {
     console.error("[admin/notifications] create failed", err);
     return next(createError(500, "db_error", "Erro ao criar notificação."));
@@ -283,9 +444,9 @@ router.patch("/:id", async (req, res, next) => {
         );
       }
     } else {
-      const touchedContent = CONTENT_FIELDS.some(
-        (field) => patch[field] !== undefined,
-      );
+      const touchedContent =
+        CONTENT_FIELDS.some((field) => patch[field] !== undefined) ||
+        patch.recipient_emails !== undefined;
       if (touchedContent) {
         return next(
           createError(
@@ -303,7 +464,48 @@ router.patch("/:id", async (req, res, next) => {
       }
     }
 
-    if (Object.keys(update).length === 0) {
+    // Recipients: so em draft (published caiu no 409 acima se tocou). A lista
+    // e substituida INTEIRA (delete + insert) quando recipient_emails vem no
+    // patch; sem o campo, a lista atual e mantida.
+    let resolved: ResolvedRecipients | null = null;
+    if (existing.status === "draft") {
+      const effectiveAudience = (update.audience ??
+        existing.audience) as string;
+      if (patch.recipient_emails && effectiveAudience !== "custom") {
+        return next(
+          createError(
+            400,
+            "invalid_request",
+            "recipient_emails só é aceito com audience custom.",
+          ),
+        );
+      }
+      if (effectiveAudience === "custom") {
+        if (existing.audience !== "custom" && !patch.recipient_emails) {
+          return next(
+            createError(
+              400,
+              "invalid_request",
+              "Informe recipient_emails ao mudar a audience para custom.",
+            ),
+          );
+        }
+        if (patch.recipient_emails) {
+          resolved = await resolveRecipientEmails(patch.recipient_emails);
+          if (resolved.userIds.length === 0) {
+            return next(
+              createError(
+                400,
+                "no_recipients_matched",
+                "Nenhum dos emails informados tem cadastro na plataforma.",
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    if (Object.keys(update).length === 0 && resolved === null) {
       return res.json({ data: existing });
     }
     update.updated_at = new Date().toISOString();
@@ -317,8 +519,39 @@ router.patch("/:id", async (req, res, next) => {
     if (error) {
       throw new Error(error.message);
     }
+    const updatedRow = updated as unknown as NotificationRow;
 
-    res.json({ data: updated });
+    if (existing.status === "draft") {
+      if (resolved) {
+        const { error: deleteError } = await supabaseAdmin
+          .from("notification_recipients")
+          .delete()
+          .eq("notification_id", id.data);
+        if (deleteError) {
+          throw new Error(deleteError.message);
+        }
+        await insertRecipients(id.data, resolved.userIds);
+      } else if (
+        existing.audience === "custom" &&
+        updatedRow.audience !== "custom"
+      ) {
+        // Saiu de custom pra segmento: a lista antiga nao faz mais sentido.
+        const { error: deleteError } = await supabaseAdmin
+          .from("notification_recipients")
+          .delete()
+          .eq("notification_id", id.data);
+        if (deleteError) {
+          throw new Error(deleteError.message);
+        }
+      }
+    }
+
+    res.json({
+      data: updated,
+      ...(resolved
+        ? { matched: resolved.matched, unmatched: resolved.unmatched }
+        : {}),
+    });
   } catch (err) {
     console.error("[admin/notifications] patch failed", err);
     return next(createError(500, "db_error", "Erro ao editar notificação."));
@@ -330,20 +563,22 @@ const AudiencePreviewQuerySchema = z.object({
   category: z.enum(["product", "promotional"]).default("product"),
 });
 
-// Ids com marketing_opt_in = true (regra da category promotional), paginado.
+// Auth user_ids com marketing_opt_in = true (regra da category promotional),
+// paginado. user_id, nao profiles.id: os sets de segmento sao chaveados pelo
+// id de auth.users.
 async function fetchOptedInUserIds(): Promise<string[]> {
   const ids: string[] = [];
   for (let from = 0; ; from += DB_PAGE) {
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id")
+      .select("user_id")
       .eq("marketing_opt_in", true)
       .range(from, from + DB_PAGE - 1);
     if (error) {
       throw new Error(error.message);
     }
     const rows = data ?? [];
-    ids.push(...rows.map((row) => row.id as string));
+    ids.push(...rows.map((row) => row.user_id as string));
     if (rows.length < DB_PAGE) break;
   }
   return ids;
@@ -397,6 +632,17 @@ async function computeAudiencePreview(
 // Varre subscriptions/profiles na base toda, entao o resultado fica em cache
 // (Redis, fail-open pra compute direto sem Redis) por 10 min por combinacao.
 router.get("/audience-preview", async (req, res, next) => {
+  // custom nao tem preview de segmento: o alcance e o matched da resolucao
+  // de emails, que o POST/PATCH ja retorna.
+  if (req.query.audience === "custom") {
+    return next(
+      createError(
+        400,
+        "invalid_request",
+        "audience custom não tem preview de segmento; o alcance é a lista de destinatários.",
+      ),
+    );
+  }
   const parsed = AudiencePreviewQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     return next(
@@ -456,6 +702,21 @@ router.post("/:id/publish", async (req, res, next) => {
           "expires_at deve ser uma data futura para publicar.",
         ),
       );
+    }
+    // Guarda de integridade: custom sem destinatario nunca publica (pode
+    // acontecer se um replace de lista falhou no meio; o draft fica sem
+    // linhas e o admin resolve reenviando a lista).
+    if (existing.audience === "custom") {
+      const recipients = await countRecipients(existing.id);
+      if (recipients === 0) {
+        return next(
+          createError(
+            400,
+            "no_recipients_matched",
+            "Esta notificação custom está sem destinatários; reenvie a lista de emails antes de publicar.",
+          ),
+        );
+      }
     }
 
     const nowIso = new Date().toISOString();

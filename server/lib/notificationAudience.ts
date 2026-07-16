@@ -17,7 +17,11 @@ import {
 //   Redis + is_user_pro/is_user_admin): admin enxerga como Pro por design da
 //   plataforma, igual ao resto do produto.
 // - category 'promotional' so aparece com profiles.marketing_opt_in = true,
-//   espelhando a regra das campanhas de email.
+//   espelhando a regra das campanhas de email. Vale INCLUSIVE para audience
+//   'custom': ser destinatario nomeado nao dispensa o consentimento LGPD de
+//   comunicacao promocional.
+// - audience 'custom': lista materializada em notification_recipients na
+//   criacao; visivel apenas para quem tem linha la (alem das regras acima).
 // - status = 'published' sempre; expirada NAO e filtrada (historico honesto),
 //   apenas anotada com is_expired.
 
@@ -52,6 +56,10 @@ export type NotificationAudienceContext = {
   // outro perfil de pagamento.
   allowedAudiences: UserSegment[];
   includePromotional: boolean;
+  // Ids das notificacoes audience='custom' das quais este usuario e
+  // destinatario (notification_recipients). Resolvido junto com o contexto
+  // pra lista e checagem pontual usarem a mesma fonte.
+  recipientNotificationIds: string[];
 };
 
 export function annotateExpiration(
@@ -73,13 +81,19 @@ export async function resolveAudienceContext(
   userId: string,
   isPro: boolean,
 ): Promise<NotificationAudienceContext> {
-  const [flags, profileResult] = await Promise.all([
+  const [flags, profileResult, recipientResult] = await Promise.all([
     fetchProStatusFlagsForUser(userId),
+    // profiles.user_id e a FK para auth.users; profiles.id e um uuid LOCAL
+    // (padrao de todo o server: .eq("user_id", ...)).
     supabaseAdmin
       .from("profiles")
       .select("marketing_opt_in")
-      .eq("id", userId)
+      .eq("user_id", userId)
       .maybeSingle(),
+    supabaseAdmin
+      .from("notification_recipients")
+      .select("notification_id")
+      .eq("user_id", userId),
   ]);
 
   const effectiveFlags = { ...flags, active: flags.active || isPro };
@@ -93,18 +107,54 @@ export async function resolveAudienceContext(
     profileResult.error === null &&
     profileResult.data?.marketing_opt_in === true;
 
-  return { allowedAudiences, includePromotional };
+  // Erro aqui nao derruba o feed inteiro: as custom apenas somem ate a
+  // proxima resolucao (fail-closed, nunca mostra custom alheia).
+  if (recipientResult.error) {
+    console.warn(
+      "[notificationAudience] falha ao resolver recipients",
+      recipientResult.error.message,
+    );
+  }
+  const recipientNotificationIds = (recipientResult.data ?? []).map(
+    (row) => row.notification_id as string,
+  );
+
+  return { allowedAudiences, includePromotional, recipientNotificationIds };
 }
 
-// Query base das notificacoes visiveis ao contexto: published + audience do
-// usuario + regra de opt-in. Reutilizada pelo feed, pelo unread_count e pela
-// validacao de leitura.
+// Semantica de visibilidade de UMA notificacao published no contexto. E o
+// predicado canonico: visibleQuery (listas, em SQL) implementa EXATAMENTE
+// esta tabela e os testes cobrem este predicado; mudou aqui, mudar la.
+export function rowVisibleInContext(
+  row: { id: string; audience: string; category: string },
+  ctx: NotificationAudienceContext,
+): boolean {
+  if (row.category === "promotional" && !ctx.includePromotional) {
+    return false;
+  }
+  if (row.audience === "custom") {
+    return ctx.recipientNotificationIds.includes(row.id);
+  }
+  return (ctx.allowedAudiences as string[]).includes(row.audience);
+}
+
+// Query base das notificacoes visiveis ao contexto: published + (audience do
+// usuario OU custom da qual e destinatario) + regra de opt-in. Reutilizada
+// pelo feed, pelo unread_count e pelo read-all. O filtro de custom entra na
+// PROPRIA query (or por ids resolvidos do contexto), nunca "busca tudo e
+// filtra em JS".
 function visibleQuery(ctx: NotificationAudienceContext, columns: string) {
   let query = supabaseAdmin
     .from("notifications")
     .select(columns)
-    .eq("status", "published")
-    .in("audience", ctx.allowedAudiences);
+    .eq("status", "published");
+  if (ctx.recipientNotificationIds.length > 0) {
+    query = query.or(
+      `audience.in.(${ctx.allowedAudiences.join(",")}),id.in.(${ctx.recipientNotificationIds.join(",")})`,
+    );
+  } else {
+    query = query.in("audience", ctx.allowedAudiences);
+  }
   if (!ctx.includePromotional) {
     query = query.eq("category", "product");
   }
@@ -156,13 +206,21 @@ export async function listVisibleNotificationIds(
 }
 
 // Uma notificacao especifica e visivel a este usuario? Usada antes de gravar
-// leitura: nunca registramos read de algo que o usuario nao pode ver.
+// leitura: nunca registramos read de algo que o usuario nao pode ver. Busca a
+// linha published e decide pelo predicado canonico (rowVisibleInContext).
 export async function isNotificationVisibleToUser(
   notificationId: string,
   ctx: NotificationAudienceContext,
 ): Promise<boolean> {
-  const { data, error } = await visibleQuery(ctx, "id")
+  const { data, error } = await supabaseAdmin
+    .from("notifications")
+    .select("id, audience, category")
+    .eq("status", "published")
     .eq("id", notificationId)
     .maybeSingle();
-  return error === null && data !== null;
+  if (error || !data) return false;
+  return rowVisibleInContext(
+    data as { id: string; audience: string; category: string },
+    ctx,
+  );
 }
