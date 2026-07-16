@@ -1,11 +1,64 @@
 import type Stripe from "stripe";
 
+import { env } from "./env";
 import { getStripe } from "./stripeClient";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Sincroniza a RECEITA da Stripe (balance transactions, regime de CAIXA) para
 // finance_transactions. Idempotente pelo stripe_balance_transaction_id. Erro de
 // API ou de banco PROPAGA: nunca retorna parcial fingindo sucesso.
+
+// Hosts que identificam um Supabase LOCAL (supabase start / CLI). Qualquer
+// outro host e tratado como producao: fail-closed, na duvida nao grava.
+const LOCAL_SUPABASE_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
+// Mesmo fallback do supabaseAdmin: a guarda precisa julgar exatamente a URL em
+// que o client escreve.
+function resolvedSupabaseUrl(): string {
+  return env.supabaseUrl || "http://localhost:54321";
+}
+
+export function isLocalSupabaseUrl(url: string): boolean {
+  try {
+    return LOCAL_SUPABASE_HOSTS.has(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function supabaseHost(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+export type StripeKeyMode = "test" | "live" | "unknown";
+
+export function stripeKeyMode(key: string): StripeKeyMode {
+  if (key.startsWith("sk_test_") || key.startsWith("rk_test_")) return "test";
+  if (key.startsWith("sk_live_") || key.startsWith("rk_live_")) return "live";
+  return "unknown";
+}
+
+// Guarda de ambiente (incidente de 2026-07: o sync rodou com sk_test_ apontando
+// o Supabase de producao e gravou receita de sandbox em finance_transactions).
+// Banco NAO local exige chave live confirmada pelo prefixo; qualquer outra
+// combinacao (test ou prefixo desconhecido) aborta ANTES da primeira escrita.
+// Chave de teste com banco local segue permitida: e o desenvolvimento normal.
+function assertKeyMatchesDatabase(): void {
+  const supabaseUrl = resolvedSupabaseUrl();
+  if (isLocalSupabaseUrl(supabaseUrl)) return;
+  const mode = stripeKeyMode(env.stripeSecretKey);
+  if (mode === "live") return;
+  const message =
+    `[stripeSync] SYNC ABORTADO: STRIPE_SECRET_KEY ${mode === "test" ? "de TESTE (sk_test_)" : "com prefixo desconhecido"} ` +
+    `com Supabase de producao (${supabaseHost(supabaseUrl)}). ` +
+    `Nada foi gravado em finance_transactions.`;
+  console.error(message);
+  throw new Error(message);
+}
 
 type FinanceType = "charge" | "refund" | "adjustment" | "dispute" | "payout";
 
@@ -98,6 +151,8 @@ async function resolveByCustomer(
 export async function syncBalanceTransactions(
   params: { since?: Date } = {},
 ): Promise<SyncResult> {
+  assertKeyMatchesDatabase();
+
   const stripe = getStripe();
 
   const listParams: Stripe.BalanceTransactionListParams = {
