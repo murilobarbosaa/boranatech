@@ -68,6 +68,14 @@ type UserDetail = {
     reason_text: string | null;
     effective_at: string | null;
   } | null;
+  // Concessao de influencer ATIVA (null quando nao e influencer). Acesso Pro
+  // vitalicio sem assinatura, ortogonal a subscription: os dois podem coexistir.
+  influencer: {
+    granted_at: string | null;
+    note: string | null;
+    granted_by_name: string | null;
+    granted_by_email: string | null;
+  } | null;
   paid_total_cents: number;
   created_at: string | null;
   updated_at: string | null;
@@ -376,6 +384,15 @@ export function UsersDashboard() {
   const [revealing, setRevealing] = useState(false);
   const [revealError, setRevealError] = useState<string | null>(null);
 
+  // Influencer: formulario de concessao (nota), confirmacao de revogacao e
+  // refetch do detalhe apos mutacao (detailVersion entra nas deps do effect).
+  const [grantOpen, setGrantOpen] = useState(false);
+  const [grantNote, setGrantNote] = useState("");
+  const [revokeConfirm, setRevokeConfirm] = useState(false);
+  const [influencerBusy, setInfluencerBusy] = useState(false);
+  const [influencerError, setInfluencerError] = useState<string | null>(null);
+  const [detailVersion, setDetailVersion] = useState(0);
+
   // Debounce da busca: so dispara a query depois da pausa na digitacao. Mudar a
   // busca volta para a pagina 1 (a pagina atual pode nao existir no resultado).
   useEffect(() => {
@@ -437,6 +454,10 @@ export function UsersDashboard() {
       setRevealError(null);
       setMoreOpen(false);
       setActivityRequested(false);
+      setGrantOpen(false);
+      setGrantNote("");
+      setRevokeConfirm(false);
+      setInfluencerError(null);
       return;
     }
 
@@ -446,10 +467,10 @@ export function UsersDashboard() {
     setDetailError(null);
     setRevealedCpf(null);
     setRevealError(null);
-    setActivity(null);
-    setActivityError(null);
-    setMoreOpen(false);
-    setActivityRequested(false);
+    setGrantOpen(false);
+    setGrantNote("");
+    setRevokeConfirm(false);
+    setInfluencerError(null);
     adminFetch(`/users/${activeUserId}`)
       .then((json) => {
         if (cancelled) return;
@@ -469,7 +490,7 @@ export function UsersDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [activeUserId]);
+  }, [activeUserId, detailVersion]);
 
   // Fetch preguicoso da atividade PostHog: dispara uma unica vez por usuario,
   // quando o dropdown abre pela primeira vez.
@@ -500,6 +521,50 @@ export function UsersDashboard() {
       cancelled = true;
     };
   }, [activeUserId, moreOpen, activityRequested]);
+
+  async function handleGrantInfluencer() {
+    if (!activeUserId || influencerBusy) return;
+    setInfluencerBusy(true);
+    setInfluencerError(null);
+    try {
+      await adminFetch(`/users/${activeUserId}/influencer`, {
+        method: "POST",
+        body: JSON.stringify({ note: grantNote.trim() }),
+      });
+      setGrantOpen(false);
+      setGrantNote("");
+      setDetailVersion((version) => version + 1);
+    } catch (err) {
+      setInfluencerError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao conceder acesso de influencer.",
+      );
+    } finally {
+      setInfluencerBusy(false);
+    }
+  }
+
+  async function handleRevokeInfluencer() {
+    if (!activeUserId || influencerBusy) return;
+    setInfluencerBusy(true);
+    setInfluencerError(null);
+    try {
+      await adminFetch(`/users/${activeUserId}/influencer/revoke`, {
+        method: "POST",
+      });
+      setRevokeConfirm(false);
+      setDetailVersion((version) => version + 1);
+    } catch (err) {
+      setInfluencerError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao revogar acesso de influencer.",
+      );
+    } finally {
+      setInfluencerBusy(false);
+    }
+  }
 
   async function handleReveal() {
     if (!activeUserId) return;
@@ -752,6 +817,113 @@ export function UsersDashboard() {
                         Este usuário nunca assinou um plano.
                       </div>
                     )}
+
+                    {/* TODO(Ana): revisar toda a copy do bloco de influencer
+                        (rotulos, avisos, botoes e confirmacao de revogacao). */}
+                    {detail.influencer ? (
+                      <div className="space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
+                        <span className="inline-block rounded-full border-2 border-violet-700 bg-violet-200 px-3 py-1 text-xs font-black uppercase text-violet-900">
+                          Influencer
+                        </span>
+                        <p className="text-sm font-semibold text-violet-900">
+                          Acesso Pro de parceiro, sem assinatura e sem prazo. O
+                          acesso Pro desta conta vem desta concessão
+                          {detail.subscription
+                            ? " (além da assinatura acima)"
+                            : ""}
+                          .
+                        </p>
+                        <p className="text-xs font-black uppercase tracking-wide text-violet-700">
+                          Desde {fmtDate(detail.influencer.granted_at)}
+                        </p>
+                        <p className="text-xs font-semibold text-violet-800">
+                          Concedido por:{" "}
+                          {detail.influencer.granted_by_name ||
+                            detail.influencer.granted_by_email ||
+                            NAO_INFORMADO}
+                        </p>
+                        <p className="text-xs font-semibold text-violet-800">
+                          Nota: {fmtText(detail.influencer.note)}
+                        </p>
+                        {revokeConfirm ? (
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={handleRevokeInfluencer}
+                              disabled={influencerBusy}
+                              className="rounded-full border-2 border-slate-900 bg-rose-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                            >
+                              {influencerBusy
+                                ? "Revogando..."
+                                : "Confirmar revogação"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setRevokeConfirm(false)}
+                              disabled={influencerBusy}
+                              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                            >
+                              Manter acesso
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setRevokeConfirm(true)}
+                            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase"
+                          >
+                            Revogar acesso
+                          </button>
+                        )}
+                      </div>
+                    ) : grantOpen ? (
+                      <div className="space-y-2 rounded-2xl border-2 border-violet-700 bg-violet-50 p-3">
+                        <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
+                          Conceder acesso de influencer
+                        </p>
+                        <textarea
+                          value={grantNote}
+                          onChange={(event) => setGrantNote(event.target.value)}
+                          placeholder="Por que este usuário está recebendo acesso? (ex: parceria de divulgação)"
+                          rows={2}
+                          className="w-full rounded-xl border-2 border-slate-900 bg-white p-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleGrantInfluencer}
+                            disabled={influencerBusy}
+                            className="rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                          >
+                            {influencerBusy ? "Concedendo..." : "Conceder"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGrantOpen(false);
+                              setGrantNote("");
+                            }}
+                            disabled={influencerBusy}
+                            className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setGrantOpen(true)}
+                        className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase"
+                      >
+                        Tornar influencer
+                      </button>
+                    )}
+                    {influencerError ? (
+                      <p className="text-xs font-black text-rose-700">
+                        {influencerError}
+                      </p>
+                    ) : null}
                   </section>
 
                   <section className="space-y-3">
