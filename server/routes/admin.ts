@@ -15,6 +15,7 @@ import {
 } from "../lib/financeMetrics";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import { getPosthogStats, getPosthogUserActivity } from "../lib/posthog";
+import { getUsageRetention } from "../lib/usageRetention";
 import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
@@ -468,6 +469,19 @@ router.get("/churn-risk", async (_req, res, next) => {
         .sort((a, b) => b.days_inactive - a.days_inactive)
         .slice(0, 10),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Retencao de USO da aba Retencao: distribuicao de dias desde o ultimo acesso e
+// de frequencia de navegacao sobre a base inteira. getUsageRetention ja loga o
+// erro original e retorna estado union (not_configured/error/ok); nunca zero por
+// falha. So leitura.
+router.get("/usage-retention", async (_req, res, next) => {
+  try {
+    const result = await getUsageRetention();
+    res.json({ data: result });
   } catch (err) {
     next(err);
   }
