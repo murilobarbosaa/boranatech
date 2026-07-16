@@ -126,41 +126,11 @@ export default function Auth({
             {isSignup && signupBanner ? (
               <div className="mt-5">{signupBanner}</div>
             ) : null}
-            {/* Aceite ANTES do botao social: no cadastro o Google nasce
-                desabilitado sem o aceite, entao o checkbox precisa vir primeiro. */}
-            {isSignup && (
-              <label className="mt-5 flex items-start gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 h-4 w-4 flex-shrink-0"
-                  checked={acceptedConsent}
-                  onChange={(event) => setAcceptedConsent(event.target.checked)}
-                />
-                {/* TODO(Ana): texto do aceite de Termos e Politica no cadastro. */}
-                <span>
-                  Li e aceito os{" "}
-                  <a
-                    href="/termos-de-uso"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-bold text-violet-700 underline"
-                  >
-                    Termos de Uso
-                  </a>{" "}
-                  e a{" "}
-                  <a
-                    href="/privacidade"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-bold text-violet-700 underline"
-                  >
-                    Política de Privacidade
-                  </a>
-                  .
-                </span>
-              </label>
+            {/* Login: social acima do form (inalterado). No cadastro o social vai
+                para baixo do form, junto dos checkboxes (ver abaixo). */}
+            {!isSignup && (
+              <SocialAuthButtons mode={mode} consentAccepted={acceptedConsent} />
             )}
-            <SocialAuthButtons mode={mode} consentAccepted={acceptedConsent} />
             {error && (
               <div
                 role="alert"
@@ -238,6 +208,38 @@ export default function Auth({
                   isFocused={passwordFocused}
                 />
               )}
+              {isSignup && (
+                <label className="flex items-start gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 flex-shrink-0"
+                    checked={acceptedConsent}
+                    onChange={(event) => setAcceptedConsent(event.target.checked)}
+                  />
+                  {/* TODO(Ana): texto do aceite de Termos e Politica no cadastro. */}
+                  <span>
+                    Li e aceito os{" "}
+                    <a
+                      href="/termos-de-uso"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-violet-700 underline"
+                    >
+                      Termos de Uso
+                    </a>{" "}
+                    e a{" "}
+                    <a
+                      href="/privacidade"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-violet-700 underline"
+                    >
+                      Política de Privacidade
+                    </a>
+                    .
+                  </span>
+                </label>
+              )}
               <button
                 className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSubmitting || (isSignup && !acceptedConsent)}
@@ -251,6 +253,24 @@ export default function Auth({
                     : "Entrar"}
               </button>
             </form>
+            {isSignup && (
+              <div className="mt-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-px flex-1 bg-slate-200" />
+                  <span className="text-[11px] font-black uppercase text-slate-500">
+                    ou
+                  </span>
+                  <div className="h-px flex-1 bg-slate-200" />
+                </div>
+                <div className="mt-4">
+                  <SocialAuthButtons
+                    mode={mode}
+                    consentAccepted={acceptedConsent}
+                    showDivider={false}
+                  />
+                </div>
+              </div>
+            )}
             {!isSignup && (
               <Link
                 href="/recuperar-senha"
