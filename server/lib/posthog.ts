@@ -383,3 +383,50 @@ export async function getPosthogUserActivity(
     return { state: "error", reason, httpStatus };
   }
 }
+
+// Atividade agregada por PESSOA para a aba Retencao: o ultimo $pageview e em
+// quantos dias distintos a pessoa navegou. Keyada por distinct_id, que e o uid do
+// Supabase para usuarios identificados (mesmo id do posthog.identify no
+// AuthContext). O cruzamento com a base (usageRetention) casa distinct_id com
+// profiles.user_id; distinct_ids anonimos (pre-identify) simplesmente nao casam e
+// caem fora. Consequencia conhecida e aceitavel: pageviews ANTES do identify (com
+// distinct_id anonimo) nao entram, entao isto mede uso LOGADO. Sem janela de
+// tempo: "ultimo acesso" precisa do pageview mais recente mesmo que antigo, e a
+// frequencia cobre toda a vida da plataforma. Mesma maquina de estados dos demais
+// leitores do modulo: erro nunca vira zero.
+export type PosthogPersonActivity = {
+  distinctId: string;
+  lastPageview: string;
+  activeDays: number;
+};
+
+export type PosthogPersonActivityState =
+  | { state: "not_configured"; missing: string[] }
+  | { state: "error"; reason: string; httpStatus?: number }
+  | { state: "ok"; persons: PosthogPersonActivity[] };
+
+export async function getPosthogPersonActivity(): Promise<PosthogPersonActivityState> {
+  const missing: string[] = [];
+  if (!env.posthogApiKey) missing.push("POSTHOG_API_KEY");
+  if (!env.posthogProjectId) missing.push("POSTHOG_PROJECT_ID");
+  if (missing.length > 0) return { state: "not_configured", missing };
+
+  try {
+    const result = await runPosthogQuery(
+      `select distinct_id, max(timestamp) as last_pv, count(distinct toDate(timestamp)) as active_days from events where event = '$pageview' and distinct_id is not null group by distinct_id`,
+    );
+    const persons: PosthogPersonActivity[] = (result.results || [])
+      .map((row) => ({
+        distinctId: String(row[0] ?? ""),
+        lastPageview: String(row[1] ?? ""),
+        activeDays: cellToNumber(row[2]),
+      }))
+      .filter((person) => person.distinctId && person.lastPageview);
+    return { state: "ok", persons };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const httpStatus =
+      err instanceof PosthogQueryError ? err.httpStatus : undefined;
+    return { state: "error", reason, httpStatus };
+  }
+}
