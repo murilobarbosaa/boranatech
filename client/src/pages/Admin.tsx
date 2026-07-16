@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { CancellationReasonsDashboard } from "@/components/admin/CancellationReasonsDashboard";
+import { UsageRetentionDashboard } from "@/components/admin/UsageRetentionDashboard";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
 import { NotificationsManager } from "@/components/admin/NotificationsManager";
@@ -5790,10 +5791,7 @@ export default function Admin() {
               <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 <article className="card-brutal overflow-hidden rounded-3xl bg-white">
                   <div className="p-6">
-                    <PendingIntegration
-                      tool="Posthog"
-                      description="Requer dados de sessão históricos"
-                    />
+                    <UsageRetentionDashboard />
                   </div>
                 </article>
                 <div className="grid gap-6">
