@@ -4,6 +4,7 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  Bell,
   Bot,
   BrainCircuit,
   Clock3,
@@ -42,6 +43,7 @@ import { toast } from "sonner";
 import { CancellationReasonsDashboard } from "@/components/admin/CancellationReasonsDashboard";
 import { ContactListsManager } from "@/components/admin/ContactListsManager";
 import { ConversionDashboard } from "@/components/admin/ConversionDashboard";
+import { NotificationsManager } from "@/components/admin/NotificationsManager";
 import { ExpensesManager } from "@/components/admin/ExpensesManager";
 import { FinanceDashboard } from "@/components/admin/FinanceDashboard";
 import { IntegrationsHealthPanel } from "@/components/admin/IntegrationsHealthPanel";
@@ -150,6 +152,7 @@ type AdminSectionId =
   | "ia"
   | "afiliados"
   | "emails"
+  | "notificacoes"
   | "beta"
   | "vagas";
 
@@ -370,6 +373,11 @@ const adminNavItems: AdminNavItem[] = [
     // TODO(Ana): rótulo da aba de campanhas de e-mail.
     label: "Emails",
     icon: <Send className="h-4 w-4" />,
+  },
+  {
+    href: "#notificacoes",
+    label: "Notificações",
+    icon: <Bell className="h-4 w-4" />,
   },
   {
     href: "#beta",
@@ -6048,6 +6056,18 @@ export default function Admin() {
 
 
           {activeSection === "emails" ? <EmailCampaignsAdminSection /> : null}
+
+          {activeSection === "notificacoes" ? (
+            <AdminSection
+              id="notificacoes"
+              eyebrow="notificações"
+              icon={<Bell className="h-4 w-4" />}
+              title="Notificações in-app"
+              subtitle="Crie avisos, cupons e comunicados que aparecem no sino do usuário. Publicado é imutável; arquivar tira do feed sem apagar o histórico."
+            >
+              <NotificationsManager />
+            </AdminSection>
+          ) : null}
 
           {activeSection === "beta" ? <BetaCodesAdminSection /> : null}
 
