@@ -199,6 +199,17 @@ function filterPayload(body: Record<string, unknown>, allowedFields: string[]) {
   return payload;
 }
 
+// Loga a causa REAL do banco (code/message/details do Postgres/PostgREST) ANTES
+// de trocar pelo db_error generico. createError cria um Error novo com a mensagem
+// generica, entao sem este log o 500 chega ao servidor sem a causa raiz (foi
+// exatamente isso que custou uma investigacao inteira: 42703 undefined_column
+// escondido atras de "Erro ao buscar usuario"). O cliente continua recebendo so a
+// mensagem generica; detalhe de schema nunca vaza para o browser.
+function dbError(scope: string, error: unknown, clientMessage: string) {
+  console.error(`[admin] db error (${scope}):`, error);
+  return createError(500, "db_error", clientMessage);
+}
+
 type AuthUserLite = {
   email: string | null;
   lastSignInAt: string | null;
@@ -367,7 +378,7 @@ router.get("/churn-risk", async (_req, res, next) => {
     if (error)
       return next(
         // TODO(Ana)
-        createError(500, "db_error", "Erro ao buscar assinaturas."),
+        dbError("subscriptions fetch", error, "Erro ao buscar assinaturas."),
       );
 
     const activeSubscriptions = (subscriptions || []).filter(
@@ -386,7 +397,7 @@ router.get("/churn-risk", async (_req, res, next) => {
     if (profilesError)
       return next(
         // TODO(Ana)
-        createError(500, "db_error", "Erro ao buscar perfis."),
+        dbError("churn-risk profiles", profilesError, "Erro ao buscar perfis."),
       );
     const profilesByUserId = new Map(
       (profiles || []).map((profile) => [profile.user_id, profile]),
@@ -486,7 +497,7 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
         .range(from, from + PAGE - 1);
       if (error)
         return next(
-          createError(500, "db_error", "Erro ao buscar cancelamentos."),
+          dbError("cancellation-reasons tally", error, "Erro ao buscar cancelamentos."),
         );
       const rows = (data ?? []) as Array<{ reason_code: string | null }>;
       for (const row of rows) {
@@ -519,7 +530,7 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       .limit(50);
     if (commentsError)
       return next(
-        createError(500, "db_error", "Erro ao buscar comentários."),
+        dbError("cancellation-reasons comments", commentsError, "Erro ao buscar comentários."),
       );
 
     const comments = (
@@ -544,7 +555,7 @@ router.get("/cancellation-reasons", async (_req, res, next) => {
       .eq("status", "reverted");
     if (revertedError)
       return next(
-        createError(500, "db_error", "Erro ao buscar revertidos."),
+        dbError("cancellation-reasons reverted", revertedError, "Erro ao buscar revertidos."),
       );
 
     res.json({
@@ -590,7 +601,7 @@ router.get("/content/:type", async (req, res, next) => {
 
     const { data, error } = await query;
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar conteúdo."));
+      return next(dbError("content list", error, "Erro ao buscar conteúdo."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -644,7 +655,7 @@ router.post("/content/:type", async (req, res, next) => {
         return next(
           createError(409, "conflict", "Já existe um item com este slug."),
         );
-      return next(createError(500, "db_error", "Erro ao criar item."));
+      return next(dbError("content create", error, "Erro ao criar item."));
     }
 
     await logAudit({
@@ -701,7 +712,7 @@ router.patch("/content/:type/:id", async (req, res, next) => {
       .select()
       .single();
     if (error)
-      return next(createError(500, "db_error", "Erro ao atualizar item."));
+      return next(dbError("content update", error, "Erro ao atualizar item."));
 
     const action =
       "is_published" in updates
@@ -745,14 +756,14 @@ router.delete("/content/:type/:id", async (req, res, next) => {
     if (req.query.force === "true" || type === "affiliates") {
       const { error } = await supabaseAdmin.from(type).delete().eq("id", id);
       if (error)
-        return next(createError(500, "db_error", "Erro ao deletar item."));
+        return next(dbError("content delete", error, "Erro ao deletar item."));
     } else {
       const { error } = await supabaseAdmin
         .from(type)
         .update({ is_published: false })
         .eq("id", id);
       if (error)
-        return next(createError(500, "db_error", "Erro ao despublicar item."));
+        return next(dbError("content unpublish", error, "Erro ao despublicar item."));
     }
 
     await logAudit({
@@ -787,7 +798,7 @@ router.get("/audit-logs", async (req, res, next) => {
 
     const { data, error } = await query;
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar logs."));
+      return next(dbError("audit logs", error, "Erro ao buscar logs."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -835,7 +846,7 @@ router.get("/users", async (req, res, next) => {
 
     const { data, error } = await query;
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar usuários."));
+      return next(dbError("users list", error, "Erro ao buscar usuários."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -865,7 +876,7 @@ router.get("/users/:id", async (req, res, next) => {
       .maybeSingle();
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar usuário."));
+      return next(dbError("GET /users/:id", error, "Erro ao buscar usuário."));
     if (!data)
       return next(createError(404, "not_found", "Usuário não encontrado."));
 
@@ -902,7 +913,7 @@ router.post("/users/:id/reveal-cpf", async (req, res, next) => {
       .maybeSingle();
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar usuário."));
+      return next(dbError("GET /users/:id", error, "Erro ao buscar usuário."));
     if (!data)
       return next(createError(404, "not_found", "Usuário não encontrado."));
 
@@ -970,7 +981,7 @@ router.get("/subscriptions", async (_req, res, next) => {
       .limit(100);
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar assinaturas."));
+      return next(dbError("subscriptions fetch", error, "Erro ao buscar assinaturas."));
 
     // Mantem a forma da resposta, mas o preco exibido vem do planPricing.ts (fonte
     // unica), nao de plans.price_cents. Fallback defensivo para o banco (helper
@@ -1304,7 +1315,7 @@ router.get("/finance/transactions", async (req, res, next) => {
 
     const { data, count, error } = await query;
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar transações."));
+      return next(dbError("finance transactions", error, "Erro ao buscar transações."));
 
     res.json({
       data: { rows: data ?? [], total: count ?? 0, page, pageSize },
@@ -1336,7 +1347,7 @@ router.get("/finance/expenses", async (req, res, next) => {
 
     const { data, count, error } = await query;
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar despesas."));
+      return next(dbError("expenses list", error, "Erro ao buscar despesas."));
 
     res.json({
       data: { rows: data ?? [], total: count ?? 0, page, pageSize },
@@ -1356,7 +1367,7 @@ router.post("/finance/expenses", async (req, res, next) => {
       .select()
       .single();
     if (error)
-      return next(createError(500, "db_error", "Erro ao criar despesa."));
+      return next(dbError("expense create", error, "Erro ao criar despesa."));
     res.status(201).json({ data });
   } catch (err) {
     next(err);
@@ -1374,7 +1385,7 @@ router.patch("/finance/expenses/:id", async (req, res, next) => {
       .select()
       .maybeSingle();
     if (error)
-      return next(createError(500, "db_error", "Erro ao atualizar despesa."));
+      return next(dbError("expense update", error, "Erro ao atualizar despesa."));
     if (!data)
       return next(createError(404, "not_found", "Despesa não encontrada."));
     res.json({ data });
@@ -1390,7 +1401,7 @@ router.delete("/finance/expenses/:id", async (req, res, next) => {
       .delete()
       .eq("id", req.params.id);
     if (error)
-      return next(createError(500, "db_error", "Erro ao remover despesa."));
+      return next(dbError("expense delete", error, "Erro ao remover despesa."));
     res.json({ data: { deleted: true, id: req.params.id } });
   } catch (err) {
     next(err);
@@ -1453,7 +1464,7 @@ router.get("/ai-stats", async (_req, res, next) => {
       );
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar stats de IA."));
+      return next(dbError("ai-stats", error, "Erro ao buscar stats de IA."));
 
     const stats: Record<
       string,
@@ -1535,7 +1546,7 @@ router.get("/affiliates-stats", async (_req, res, next) => {
     if (error)
       return next(
         // TODO(Ana)
-        createError(500, "db_error", "Erro ao buscar afiliados."),
+        dbError("affiliates", error, "Erro ao buscar afiliados."),
       );
 
     res.json({ data: data || [] });
@@ -1557,7 +1568,7 @@ router.get("/avatar-reports", async (_req, res, next) => {
 
     if (error)
       return next(
-        createError(500, "db_error", "Erro ao buscar fila de moderação."),
+        dbError("moderation queue", error, "Erro ao buscar fila de moderação."),
       );
 
     const rows = targets || [];
@@ -1574,7 +1585,7 @@ router.get("/avatar-reports", async (_req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(createError(500, "db_error", "Erro ao buscar denúncias."));
+      return next(dbError("reports fetch", reportsError, "Erro ao buscar denúncias."));
 
     const agg = new Map<
       string,
@@ -1623,7 +1634,7 @@ router.post("/avatar-reports/:userId/restore", async (req, res, next) => {
       .eq("user_id", targetUserId);
 
     if (profileError)
-      return next(createError(500, "db_error", "Erro ao restaurar avatar."));
+      return next(dbError("avatar restore", profileError, "Erro ao restaurar avatar."));
 
     const { error: reportsError } = await supabaseAdmin
       .from("avatar_reports")
@@ -1632,7 +1643,7 @@ router.post("/avatar-reports/:userId/restore", async (req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(createError(500, "db_error", "Erro ao fechar denúncias."));
+      return next(dbError("close reports", reportsError, "Erro ao fechar denúncias."));
 
     res.json({ ok: true });
   } catch (err) {
@@ -1665,7 +1676,7 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
       .eq("user_id", targetUserId);
 
     if (profileError)
-      return next(createError(500, "db_error", "Erro ao remover avatar."));
+      return next(dbError("avatar remove", profileError, "Erro ao remover avatar."));
 
     // Nao deixa a imagem de violacao confirmada no bucket (best-effort).
     await deleteAvatarObject(target?.avatar_storage_path ?? null);
@@ -1677,7 +1688,7 @@ router.post("/avatar-reports/:userId/confirm", async (req, res, next) => {
       .eq("status", "open");
 
     if (reportsError)
-      return next(createError(500, "db_error", "Erro ao fechar denúncias."));
+      return next(dbError("close reports", reportsError, "Erro ao fechar denúncias."));
 
     res.json({ ok: true });
   } catch (err) {
@@ -1730,7 +1741,7 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
     );
     for (const result of countResults) {
       if (result.error)
-        return next(createError(500, "db_error", "Erro ao contar assinantes."));
+        return next(dbError("subscribers count", result.error, "Erro ao contar assinantes."));
     }
     const counts = {
       pending_confirmation: countResults[0].count ?? 0,
@@ -1755,7 +1766,7 @@ router.get("/newsletter/subscribers", async (req, res, next) => {
 
     const { data, count, error } = await listQuery;
     if (error)
-      return next(createError(500, "db_error", "Erro ao buscar assinantes."));
+      return next(dbError("subscribers list", error, "Erro ao buscar assinantes."));
 
     res.json({
       data: {
@@ -1786,7 +1797,7 @@ router.get("/beta-codes", async (_req, res, next) => {
     ]);
 
     if (codesRes.error)
-      return next(createError(500, "db_error", "Erro ao buscar códigos."));
+      return next(dbError("beta codes", codesRes.error, "Erro ao buscar códigos."));
 
     // Falha nos logs nao derruba a lista: agregado zera, os codigos aparecem.
     const usage = new Map<string, { count: number; last: string | null }>();
@@ -1827,7 +1838,7 @@ router.get("/beta-logs", async (req, res, next) => {
       .order("created_at", { ascending: false })
       .limit(parsedLimit);
 
-    if (error) return next(createError(500, "db_error", "Erro ao buscar logs."));
+    if (error) return next(dbError("audit logs", error, "Erro ao buscar logs."));
 
     res.json({ data: data || [] });
   } catch (err) {
@@ -1849,7 +1860,7 @@ router.post("/beta-codes/:id/revoke", async (req, res, next) => {
       .maybeSingle();
 
     if (error)
-      return next(createError(500, "db_error", "Erro ao revogar código."));
+      return next(dbError("beta code revoke", error, "Erro ao revogar código."));
     if (!data)
       return next(createError(404, "not_found", "Código não encontrado."));
 
