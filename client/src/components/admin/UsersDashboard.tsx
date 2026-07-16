@@ -35,16 +35,10 @@ type UserDetail = {
   full_name: string | null;
   email: string | null;
   gender: string | null;
-  headline: string | null;
   bio: string | null;
-  city: string | null;
-  uf: string | null;
   area_interesse: string | null;
   nivel_atual: string | null;
   objetivo: string | null;
-  github_url: string | null;
-  linkedin_url: string | null;
-  website_url: string | null;
   onboarding_completed: boolean | null;
   onboarding_step: number | null;
   marketing_opt_in: boolean | null;
@@ -168,21 +162,6 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
         {value}
       </p>
     </div>
-  );
-}
-
-function LinkValue({ url }: { url: string | null | undefined }) {
-  const trimmed = (url ?? "").trim();
-  if (!trimmed) return <>{NAO_INFORMADO}</>;
-  return (
-    <a
-      href={trimmed}
-      target="_blank"
-      rel="noreferrer"
-      className="text-violet-700 underline"
-    >
-      {trimmed}
-    </a>
   );
 }
 
@@ -720,13 +699,7 @@ export function UsersDashboard() {
                   </div>
                 </Group>
 
-                <Group title="Localização">
-                  <Field label="Cidade" value={fmtText(detail.city)} />
-                  <Field label="UF" value={fmtText(detail.uf)} />
-                </Group>
-
                 <Group title="Perfil e carreira">
-                  <Field label="Headline" value={fmtText(detail.headline)} />
                   <Field
                     label="Área de interesse"
                     value={fmtText(detail.area_interesse)}
@@ -737,21 +710,6 @@ export function UsersDashboard() {
                   />
                   <Field label="Objetivo" value={fmtText(detail.objetivo)} />
                   <Field label="Bio" value={fmtText(detail.bio)} />
-                </Group>
-
-                <Group title="Links">
-                  <Field
-                    label="GitHub"
-                    value={<LinkValue url={detail.github_url} />}
-                  />
-                  <Field
-                    label="LinkedIn"
-                    value={<LinkValue url={detail.linkedin_url} />}
-                  />
-                  <Field
-                    label="Site"
-                    value={<LinkValue url={detail.website_url} />}
-                  />
                 </Group>
 
                 {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,

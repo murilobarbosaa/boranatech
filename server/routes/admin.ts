@@ -925,8 +925,12 @@ router.get("/users/:id", async (req, res, next) => {
 
     const { data, error } = await supabaseAdmin
       .from("profiles")
+      // Colunas conferidas contra shared/database.types.ts (gerado do banco
+      // real). headline, city, uf, github_url, linkedin_url e website_url NAO
+      // existem em profiles (a migration 20260623120000 que as criaria nunca
+      // foi aplicada em producao): selecionar qualquer uma derruba a query.
       .select(
-        "user_id, name, full_name, email, gender, headline, bio, city, uf, area_interesse, nivel_atual, objetivo, github_url, linkedin_url, website_url, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, avatar_url, avatar_mode, avatar_moderation_status, created_at, updated_at",
+        "user_id, name, full_name, email, gender, bio, area_interesse, nivel_atual, objetivo, onboarding_completed, onboarding_step, marketing_opt_in, marketing_opt_in_at, welcome_email_sent, cpf, avatar_url, avatar_mode, avatar_moderation_status, created_at, updated_at",
       )
       .eq("user_id", uid)
       .maybeSingle();
