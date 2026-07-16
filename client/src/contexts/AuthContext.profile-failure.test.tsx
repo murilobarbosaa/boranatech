@@ -52,6 +52,9 @@ const profileSvc = vi.hoisted(() => {
 
 vi.mock("@/services/profileService", () => ({
   getMyProfile: profileSvc.fn,
+  // Constante re-exportada pelo modulo real; o AuthContext le no fluxo de
+  // opt-in de marketing pos-OAuth.
+  PENDING_MARKETING_OPTIN_KEY: "bnt_pending_marketing_optin",
 }));
 
 vi.mock("posthog-js", () => ({
