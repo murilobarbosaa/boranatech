@@ -1,31 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import {
-  ArrowRight,
-  CalendarCheck,
-  Code2,
-  FileText,
-  Github,
-  Linkedin,
-  type LucideIcon,
-  Mic,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, type LucideIcon, Sparkles } from "lucide-react";
 
 import SEO from "@/components/SEO";
 import CeuEstrelado from "@/components/shared/CeuEstrelado";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateMyProfile } from "@/services/profileService";
+import { PRO_TOOL_ICONS } from "@/lib/proToolIcons";
 
 // TODO(Ana): copy provisoria dos beneficios Pro. Revisar titulos e ordem.
+// Icones vem da fonte unica compartilhada com /planos (proToolIcons).
 const PRO_BENEFICIOS: { icon: LucideIcon; label: string }[] = [
-  { icon: Github, label: "Análise de GitHub" },
-  { icon: Linkedin, label: "Otimização de LinkedIn" },
-  { icon: FileText, label: "Análise de currículo" },
-  { icon: CalendarCheck, label: "Plano de carreira" }, // TODO(Ana): validar label
-  { icon: Mic, label: "Simulador de entrevista" },
-  { icon: Code2, label: "Análise de portfólio" },
+  { icon: PRO_TOOL_ICONS.avaliadorGithub, label: "Análise de GitHub" },
+  { icon: PRO_TOOL_ICONS.avaliadorLinkedin, label: "Otimização de LinkedIn" },
+  { icon: PRO_TOOL_ICONS.avaliadorCurriculo, label: "Análise de currículo" },
+  { icon: PRO_TOOL_ICONS.planoCarreira, label: "Plano de carreira" }, // TODO(Ana): validar label
+  {
+    icon: PRO_TOOL_ICONS.simuladorEntrevistas,
+    label: "Simulador de entrevista",
+  },
+  { icon: PRO_TOOL_ICONS.projetosPortfolio, label: "Análise de portfólio" },
   { icon: Sparkles, label: "Ferramentas exclusivas" },
 ];
 
@@ -112,8 +107,8 @@ export default function BemVindo() {
           </span>
         </h1>
         <p className="mx-auto mt-4 max-w-md text-base font-medium text-slate-300">
-          Sua conta tá pronta. Vamos te mostrar o caminho do primeiro passo até a
-          primeira vaga.
+          Sua conta tá pronta. Vamos te mostrar o caminho do primeiro passo até
+          a primeira vaga.
         </p>
 
         {/* So oferece o opt-in a quem ainda nao optou. Quem marcou no cadastro

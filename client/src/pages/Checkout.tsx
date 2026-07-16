@@ -11,7 +11,6 @@ import { Link, useLocation } from "wouter";
 import {
   ArrowRight,
   BookOpen,
-  Bot,
   Briefcase,
   CalendarX,
   Camera,
@@ -58,6 +57,7 @@ import {
   type PlanId,
 } from "@shared/planPricing";
 import { areasCount, dictionaryTermsCount } from "@/lib/countsGenerated";
+import { PRO_TOOL_ICONS } from "@/lib/proToolIcons";
 import {
   FREE_COURSES_SAMPLE_SIZE,
   FREE_PLATFORMS_SAMPLE_SIZE,
@@ -85,28 +85,14 @@ const plans = PLAN_ORDER.map((id) => {
   };
 });
 
-const HERO_PILLS: Array<{ icon: LucideIcon; text: string; color: string }> = [
-  {
-    icon: Scale,
-    text: "Comparador",
-    color: "bg-orange-300",
-  },
-  { icon: Bot, text: "IA pessoal", color: "bg-violet-300" },
-  {
-    icon: Sparkles,
-    text: "8+ ferramentas com IA",
-    color: "bg-amber-300",
-  },
-  {
-    icon: Briefcase,
-    text: "Feed de vagas",
-    color: "bg-sky-300",
-  },
-  {
-    icon: Palette,
-    text: "Personalização",
-    color: "bg-pink-300",
-  },
+// Nuvem do hero: TODAS as ferramentas, uma por chip, derivada dos mesmos
+// arrays da comparacao (nada chumbado que desincronize).
+const CHIP_COLORS = [
+  "bg-amber-300",
+  "bg-violet-300",
+  "bg-sky-300",
+  "bg-pink-300",
+  "bg-orange-300",
 ];
 
 // Categorias reais do comparador (Comparador.tsx + TecnologiaComparador.tsx),
@@ -120,15 +106,59 @@ const COMPARADOR_CATEGORIES = [
 ];
 
 // TODO(Ana): revisar nomes das ferramentas exibidos na comparação.
-const PRO_AI_TOOLS = [
-  "Roadmap personalizado por IA",
-  "Plano de carreira inteligente",
-  "Sugestão de projetos pra portfólio",
-  "Simulador de entrevistas",
-  "Gerador de currículo",
-  "Avaliador de currículo",
-  "Avaliador de LinkedIn",
-  "Avaliador de GitHub",
+// label = linha da comparacao; chip = versao curta do hero. Icones da fonte
+// unica compartilhada com /bem-vindo (proToolIcons).
+const PRO_AI_TOOLS: Array<{ label: string; chip: string; icon: LucideIcon }> = [
+  {
+    label: "Roadmap personalizado por IA",
+    chip: "Roadmap por IA",
+    icon: PRO_TOOL_ICONS.roadmapIA,
+  },
+  {
+    label: "Plano de carreira inteligente",
+    chip: "Plano de carreira",
+    icon: PRO_TOOL_ICONS.planoCarreira,
+  },
+  {
+    label: "Sugestão de projetos pra portfólio",
+    chip: "Projetos pra portfólio",
+    icon: PRO_TOOL_ICONS.projetosPortfolio,
+  },
+  {
+    label: "Simulador de entrevistas",
+    chip: "Simulador de entrevistas",
+    icon: PRO_TOOL_ICONS.simuladorEntrevistas,
+  },
+  {
+    label: "Gerador de currículo",
+    chip: "Gerador de currículo",
+    icon: PRO_TOOL_ICONS.geradorCurriculo,
+  },
+  {
+    label: "Avaliador de currículo",
+    chip: "Avaliador de currículo",
+    icon: PRO_TOOL_ICONS.avaliadorCurriculo,
+  },
+  {
+    label: "Avaliador de LinkedIn",
+    chip: "Avaliador de LinkedIn",
+    icon: PRO_TOOL_ICONS.avaliadorLinkedin,
+  },
+  {
+    label: "Avaliador de GitHub",
+    chip: "Avaliador de GitHub",
+    icon: PRO_TOOL_ICONS.avaliadorGithub,
+  },
+];
+
+// Nuvem de chips do hero: comparador + IA pessoal + as 8 ferramentas + vagas
+// + personalizacao, todos derivados dos arrays canonicos da pagina.
+const HERO_TOOL_CHIPS: Array<{ text: string; icon: LucideIcon }> = [
+  { text: "Comparador", icon: PRO_TOOL_ICONS.comparador },
+  { text: "IA pessoal", icon: PRO_TOOL_ICONS.iaPessoal },
+  ...PRO_AI_TOOLS.map((tool) => ({ text: tool.chip, icon: tool.icon })),
+  { text: "Feed de vagas", icon: PRO_TOOL_ICONS.feedVagas },
+  { text: "Personalização de perfil", icon: PRO_TOOL_ICONS.personalizacao },
 ];
 
 const PRO_PERSONALIZATION: Array<{ icon: LucideIcon; text: string }> = [
@@ -152,6 +182,20 @@ const PRO_UNLOCKS: Array<{ icon: LucideIcon; text: string }> = [
     text: `Todas as plataformas de estudo (grátis vê ${FREE_PLATFORMS_SAMPLE_SIZE})`,
   },
   { icon: History, text: "Histórico de conversas com a IA" },
+];
+
+// Estrelas twinkle da secao de precos (fundo claro): reusa o CeuEstrelado do
+// hero (animate-twinkle: so opacity/transform, estatico em reduced-motion),
+// sem pattern e com glow discreto pra funcionar sobre o cream.
+const PRICING_STARS = [
+  { top: "8%", left: "6%", size: 7, delay: 0.2, duration: 3 },
+  { top: "14%", left: "90%", size: 6, delay: 1.4, duration: 2.6 },
+  { top: "38%", left: "3%", size: 5, delay: 2.2, duration: 3.4 },
+  { top: "42%", left: "96%", size: 7, delay: 0.8, duration: 2.8 },
+  { top: "70%", left: "8%", size: 6, delay: 1.8, duration: 3.2 },
+  { top: "78%", left: "92%", size: 5, delay: 0.5, duration: 2.7 },
+  { top: "90%", left: "30%", size: 6, delay: 2.6, duration: 3 },
+  { top: "88%", left: "68%", size: 7, delay: 1.1, duration: 3.5 },
 ];
 
 // Total de exclusivos exibido no topo do card Pro. O +2 sao o Comparador e a
@@ -219,7 +263,7 @@ const COMPARE_GROUPS: Array<{
   {
     title: "Ferramentas com IA",
     rows: PRO_AI_TOOLS.map((tool) => ({
-      feature: tool,
+      feature: tool.label,
       free: false as const,
       pro: true as const,
     })),
@@ -266,7 +310,9 @@ function readCachedUsersCount(): number | null {
   }
 }
 
-// Celula da tabela Gratis x Pro: check (tem), X (nao tem) ou rotulo de limite.
+// Celula da checklist espelhada: cada lado "acende" quando tem o recurso.
+// true = check na cor do lado, false = X apagado, string = rotulo de limite
+// (chip no gratis, texto aceso no Pro).
 function CompareCellContent({
   value,
   side,
@@ -280,7 +326,7 @@ function CompareCellContent({
         <Check
           size={18}
           strokeWidth={3.5}
-          className={`inline ${side === "pro" ? "text-violet-700" : "text-emerald-600"}`}
+          className={`inline ${side === "pro" ? "text-violet-800" : "text-emerald-700"}`}
           aria-hidden="true"
         />
         <span className="sr-only">Incluído</span>
@@ -291,23 +337,24 @@ function CompareCellContent({
     return (
       <>
         <X
-          size={18}
+          size={16}
           strokeWidth={3}
-          className="inline text-rose-400"
+          className="inline text-slate-300"
           aria-hidden="true"
         />
         <span className="sr-only">Não incluído</span>
       </>
     );
   }
+  if (side === "pro") {
+    return (
+      <span className="text-[11px] font-black leading-tight text-violet-900">
+        {value}
+      </span>
+    );
+  }
   return (
-    <span
-      className={`inline-block rounded-full border-[1.5px] border-slate-900 px-1.5 py-0.5 text-[10px] font-black leading-tight shadow-[1px_1px_0_#0f172a] ${
-        side === "pro"
-          ? "bg-violet-200 text-violet-950"
-          : "bg-white text-slate-700"
-      }`}
-    >
+    <span className="inline-block rounded-full border-[1.5px] border-slate-900 bg-white px-1.5 py-0.5 text-[10px] font-black leading-tight text-slate-700 shadow-[1px_1px_0_#0f172a]">
       {value}
     </span>
   );
@@ -710,24 +757,23 @@ export default function Checkout() {
               {...fade(0.1)}
               className="mx-auto mt-5 max-w-2xl text-base md:text-lg font-medium leading-relaxed text-slate-300"
             >
-              {/* TODO(Ana): revisar copy do subtítulo do hero */}O Pro
-              desbloqueia o comparador, sua IA pessoal e as ferramentas pra
-              acelerar sua entrada em TI.
+              {/* TODO(Ana): revisar copy do subtítulo do hero */}
+              Tudo isso desbloqueado no Pro:
             </motion.p>
 
             <motion.ul
               {...fade(0.15)}
-              className="mt-6 flex flex-wrap justify-center gap-2.5"
+              className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2"
             >
-              {HERO_PILLS.map((pill) => {
-                const Icon = pill.icon;
+              {HERO_TOOL_CHIPS.map((chip, idx) => {
+                const Icon = chip.icon;
                 return (
                   <li
-                    key={pill.text}
-                    className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-3.5 py-1.5 text-sm font-black text-slate-950 shadow-[2px_2px_0_#0f172a] ${pill.color}`}
+                    key={chip.text}
+                    className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 px-3 py-1 text-xs font-black text-slate-950 shadow-[2px_2px_0_#0f172a] ${CHIP_COLORS[idx % CHIP_COLORS.length]}`}
                   >
-                    <Icon size={14} strokeWidth={2.5} aria-hidden="true" />
-                    {pill.text}
+                    <Icon size={13} strokeWidth={2.5} aria-hidden="true" />
+                    {chip.text}
                   </li>
                 );
               })}
@@ -777,6 +823,11 @@ export default function Checkout() {
           <div className="animate-gentle-float absolute -right-12 top-[30%] h-64 w-64 rounded-full bg-violet-300 opacity-[0.25] blur-3xl" />
           <div className="animate-gentle-float absolute left-[15%] bottom-10 h-40 w-40 rounded-full bg-amber-400 opacity-[0.22] blur-3xl" />
         </div>
+        <CeuEstrelado
+          stars={PRICING_STARS}
+          showPattern={false}
+          glowColor="rgba(255,184,0,0.10)"
+        />
         <div className="container relative">
           {usersCount !== null ? (
             <motion.p
@@ -1096,7 +1147,7 @@ export default function Checkout() {
             {...fade(0.1)}
             className="mt-8 overflow-hidden rounded-3xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#0f172a]"
           >
-            <table className="w-full table-fixed border-collapse text-left">
+            <table className="w-full table-fixed border-collapse">
               <caption className="sr-only">
                 Comparação de recursos entre o plano grátis e o plano Pro
               </caption>
@@ -1104,26 +1155,26 @@ export default function Checkout() {
                 <tr className="border-b-2 border-slate-950">
                   <th
                     scope="col"
-                    className="px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-slate-500"
-                  >
-                    Recursos
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-16 border-l-2 border-slate-950 px-1 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700 sm:w-32"
+                    className="w-16 border-r-2 border-slate-950 bg-emerald-200 px-1 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-950 sm:w-32"
                   >
                     Grátis
                   </th>
                   <th
                     scope="col"
-                    className="w-24 border-l-2 border-violet-700 bg-violet-700 px-1 py-2.5 text-center sm:w-44"
+                    className="px-4 py-3 text-center text-xs font-black uppercase tracking-[0.15em] text-slate-500"
+                  >
+                    Recursos
+                  </th>
+                  <th
+                    scope="col"
+                    className="w-24 border-l-2 border-violet-700 bg-slate-950 px-1 py-2.5 text-center sm:w-44"
                   >
                     <span className="flex flex-col items-center gap-1">
                       <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-white">
                         <ProStarIcon />
                         Pro
                       </span>
-                      <span className="hidden text-[10px] font-bold text-violet-200 sm:block">
+                      <span className="hidden text-[10px] font-bold text-violet-300 sm:block">
                         a partir de {FROM_MONTHLY_LABEL}/mês
                       </span>
                       <button
@@ -1143,16 +1194,12 @@ export default function Checkout() {
                 return (
                   <tbody key={group.title}>
                     <tr className="border-y border-slate-300 bg-[#faf8f4]">
-                      <th
-                        colSpan={2}
-                        scope="colgroup"
-                        className="px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-600"
-                      >
+                      <th colSpan={3} scope="colgroup" className="px-4 py-1.5">
                         <button
                           type="button"
                           aria-expanded={open}
                           onClick={() => toggleGroup(group.title)}
-                          className="flex min-h-6 w-full items-center gap-2 text-left text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 transition-colors hover:text-slate-950"
+                          className="mx-auto flex min-h-6 w-full max-w-md items-center justify-center gap-2 text-center text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 transition-colors hover:text-slate-950"
                         >
                           <ChevronRight
                             className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
@@ -1174,30 +1221,32 @@ export default function Checkout() {
                           ) : null}
                         </button>
                       </th>
-                      <td
-                        aria-hidden="true"
-                        className="border-l-2 border-violet-700 bg-violet-50"
-                      />
                     </tr>
                     {open
                       ? group.rows.map((row) => (
                           <tr
                             key={row.feature}
-                            className="border-b border-slate-200 transition-colors last:border-b-0 hover:bg-amber-50"
+                            className="border-b border-slate-200 last:border-b-0"
                           >
-                            <th
-                              scope="row"
-                              className="px-4 py-1.5 text-sm font-bold text-slate-800"
+                            <td
+                              className={`border-r-2 border-slate-950 px-1 py-1.5 text-center ${
+                                row.free === false
+                                  ? "bg-slate-50"
+                                  : "bg-emerald-100"
+                              }`}
                             >
-                              {row.feature}
-                            </th>
-                            <td className="border-l-2 border-slate-950 px-1 py-1.5 text-center">
                               <CompareCellContent
                                 value={row.free}
                                 side="free"
                               />
                             </td>
-                            <td className="border-l-2 border-violet-700 bg-violet-50 px-1 py-1.5 text-center">
+                            <th
+                              scope="row"
+                              className="px-4 py-1.5 text-center text-sm font-bold text-slate-800"
+                            >
+                              {row.feature}
+                            </th>
+                            <td className="border-l-2 border-violet-700 bg-violet-200 px-1 py-1.5 text-center shadow-[inset_0_0_14px_rgba(124,58,237,0.25)]">
                               <CompareCellContent value={row.pro} side="pro" />
                             </td>
                           </tr>
@@ -1207,17 +1256,17 @@ export default function Checkout() {
                 );
               })}
               <tfoot>
-                <tr className="border-t-2 border-slate-950 bg-slate-950">
+                <tr className="border-t-2 border-slate-950">
+                  <td className="border-r-2 border-slate-950 bg-emerald-400 px-1 py-2.5 text-center font-display text-2xl font-black text-slate-950">
+                    {COMPARE_FREE_TOTAL}
+                  </td>
                   <th
                     scope="row"
-                    className="px-4 py-3 text-sm font-black text-white"
+                    className="bg-slate-950 px-4 py-3 text-center text-sm font-black uppercase tracking-wider text-white"
                   >
                     Total de recursos
                   </th>
-                  <td className="border-l-2 border-slate-950 px-1 py-3 text-center font-display text-lg font-black text-slate-300">
-                    {COMPARE_FREE_TOTAL}
-                  </td>
-                  <td className="border-l-2 border-violet-700 bg-violet-700 px-1 py-3 text-center font-display text-lg font-black text-white">
+                  <td className="border-l-2 border-violet-700 bg-violet-700 px-1 py-2.5 text-center font-display text-2xl font-black text-white">
                     {COMPARE_PRO_TOTAL}
                   </td>
                 </tr>
