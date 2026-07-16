@@ -23,7 +23,11 @@ const WHAT_IS_FACT =
 const CERTIFICATES_FACT =
   "Certificados: o BoraNaTech nao emite certificados proprios. A plataforma orienta o caminho e indica cursos, e muitos dos cursos indicados emitem os certificados deles.";
 const CANCELLATION_FACT =
-  "Cancelamento: a assinatura pode ser cancelada a qualquer momento na pagina /perfil; em caso de duvida, o suporte resolve.";
+  "Cancelamento: a assinatura pode ser cancelada a qualquer momento na pagina /perfil, sem taxa; o acesso Pro continua ate o fim do periodo ja pago. Em caso de duvida, o suporte resolve.";
+
+// TODO(Ana): revisar copy do fato de pagamento.
+const PAYMENT_FACT =
+  "Pagamento: cartao de credito em todos os planos; boleto disponivel nos planos semestral e anual (boleto vence em 3 dias e a renovacao dele e manual).";
 
 // Fatos das ferramentas Pro (atualizados na frente de features Pro de 2026-07).
 const PRO_TOOLS_FACT =
@@ -136,6 +140,7 @@ function composeFacts(dynamicFacts: string[]): string {
     CERTIFICATES_FACT,
     ...(SUPPORT_FACT.length > 0 ? [SUPPORT_FACT] : []),
     CANCELLATION_FACT,
+    PAYMENT_FACT,
   ];
   return [FACTS_HEADER, ...facts.map((f) => `- ${f}`)].join("\n");
 }

@@ -12,14 +12,11 @@ import {
   ArrowRight,
   BookOpen,
   Briefcase,
-  CalendarX,
   Camera,
   Check,
   ChevronRight,
-  CreditCard,
   History,
   type LucideIcon,
-  Mail,
   MonitorPlay,
   Palette,
   Scale,
@@ -222,20 +219,6 @@ const PRO_UNLOCKS: Array<{ icon: LucideIcon; text: string }> = [
   { icon: PRO_TOOL_ICONS.suporteWhatsapp, text: "Suporte pelo WhatsApp" },
 ];
 
-// Estrelas twinkle da secao de precos (fundo claro): reusa o CeuEstrelado do
-// hero (animate-twinkle: so opacity/transform, estatico em reduced-motion),
-// sem pattern e com glow discreto pra funcionar sobre o cream.
-const PRICING_STARS = [
-  { top: "8%", left: "6%", size: 7, delay: 0.2, duration: 3 },
-  { top: "14%", left: "90%", size: 6, delay: 1.4, duration: 2.6 },
-  { top: "38%", left: "3%", size: 5, delay: 2.2, duration: 3.4 },
-  { top: "42%", left: "96%", size: 7, delay: 0.8, duration: 2.8 },
-  { top: "70%", left: "8%", size: 6, delay: 1.8, duration: 3.2 },
-  { top: "78%", left: "92%", size: 5, delay: 0.5, duration: 2.7 },
-  { top: "90%", left: "30%", size: 6, delay: 2.6, duration: 3 },
-  { top: "88%", left: "68%", size: 7, delay: 1.1, duration: 3.5 },
-];
-
 // Total de exclusivos exibido no topo do card Pro. O +2 sao o Comparador e a
 // IA pessoal, que tem blocos proprios no card em vez de itens de lista.
 const PRO_EXCLUSIVE_COUNT =
@@ -433,7 +416,7 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
   if (submitStatus === "success") {
     return (
       <p
-        className="max-w-md text-center text-sm font-bold text-emerald-700"
+        className="max-w-md text-center text-sm font-bold text-emerald-400"
         role="status"
         aria-live="polite"
       >
@@ -494,7 +477,7 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
 
   return (
     <form onSubmit={handleWaitlist} noValidate className="w-full max-w-md">
-      <p className="mb-3 text-center text-sm font-bold text-slate-700">
+      <p className="mb-3 text-center text-sm font-bold text-slate-300">
         {/* TODO(Ana): copy do aviso de indisponibilidade temporaria do checkout. */}
         A assinatura abre em breve. Deixe seu e-mail que a gente te avisa.
       </p>
@@ -524,7 +507,7 @@ function WaitlistCta({ defaultEmail }: { defaultEmail: string }) {
       </div>
       <p
         id="waitlist-status"
-        className="mt-2 min-h-[1rem] text-center text-xs font-bold text-rose-600"
+        className="mt-2 min-h-[1rem] text-center text-xs font-bold text-rose-400"
         aria-live="polite"
       >
         {submitStatus === "error" ? errorMessage : ""}
@@ -923,34 +906,16 @@ export default function Checkout() {
       <section
         id="planos-section"
         aria-labelledby="planos-title"
-        className="relative overflow-hidden border-t-2 border-slate-950 py-14 md:py-20"
-        style={{
-          backgroundColor: "#faf8f4",
-          backgroundImage:
-            "radial-gradient(rgba(245, 158, 11, 0.45) 1.5px, transparent 1.5px)",
-          backgroundSize: "20px 20px",
-        }}
+        className="relative overflow-hidden bg-slate-950 py-14 md:py-20"
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-        >
-          <div className="animate-gentle-float absolute -left-10 top-16 h-48 w-48 rounded-full bg-amber-300 opacity-[0.35] blur-3xl" />
-          <div className="animate-gentle-float absolute -right-12 top-[30%] h-64 w-64 rounded-full bg-violet-300 opacity-[0.25] blur-3xl" />
-          <div className="animate-gentle-float absolute left-[15%] bottom-10 h-40 w-40 rounded-full bg-amber-400 opacity-[0.22] blur-3xl" />
-        </div>
-        <CeuEstrelado
-          stars={PRICING_STARS}
-          showPattern={false}
-          glowColor="rgba(255,184,0,0.10)"
-        />
-        <div className="container relative">
+        <CeuEstrelado />
+        <div className="container relative z-10">
           {usersCount !== null ? (
             <motion.p
               {...fade()}
-              className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-950 shadow-[3px_3px_0_#0f172a]"
+              className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border border-amber-400/40 px-4 py-2 text-sm font-bold text-white"
             >
-              <Users size={16} className="text-violet-700" aria-hidden="true" />
+              <Users size={16} className="text-amber-400" aria-hidden="true" />
               {/* TODO(Ana): revisar copy da prova social (mesmo padrão do badge
                   da home, que evita terminar a frase com a marca "Bora na Tech?") */}
               +{usersCount.toLocaleString("pt-BR")} pessoas já encontraram seu
@@ -958,22 +923,22 @@ export default function Checkout() {
             </motion.p>
           ) : null}
           <motion.div {...fade()} className="mx-auto max-w-3xl text-center">
-            <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 font-display text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+            <p className="inline-flex items-center gap-2 rounded-full border border-amber-400/40 px-3 py-1 font-display text-xs font-black uppercase tracking-[0.2em] text-amber-300">
               Escolha seu plano
             </p>
             <h2
               id="planos-title"
-              className="mt-4 font-display font-black leading-[1.05] text-slate-950"
+              className="mt-4 font-display font-black leading-[1.05] text-white"
               style={{ fontSize: "clamp(28px, 4.5vw, 48px)" }}
             >
               3 opções.{" "}
-              <span className="text-amber-600">Mesmas ferramentas.</span>
+              <span className="text-amber-400">Mesmas ferramentas.</span>
             </h2>
-            <p className="mx-auto mt-5 inline-flex max-w-xl flex-wrap items-center justify-center gap-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2 text-sm md:text-base font-bold text-slate-700 shadow-[3px_3px_0_#0f172a]">
+            <p className="mx-auto mt-5 inline-flex max-w-xl flex-wrap items-center justify-center gap-1 rounded-2xl border border-amber-400/40 bg-white/5 px-4 py-2 text-sm md:text-base font-bold text-slate-200">
               {/* TODO(Ana): revisar copy da âncora de valor */}
               {PRO_EXCLUSIVE_COUNT} recursos exclusivos, incluindo sua IA
               pessoal, por menos de{" "}
-              <span className="text-slate-950">
+              <span className="text-amber-300">
                 {formatPrice(ANNUAL_PER_DAY)} por dia
               </span>{" "}
               no plano anual.
@@ -1019,10 +984,10 @@ export default function Checkout() {
                   tabIndex={selected ? 0 : -1}
                   onClick={() => setSelectedPlan(plan.id)}
                   onKeyDown={(event) => handlePlanKeyDown(event, idx)}
-                  className={`relative flex min-h-[320px] flex-col rounded-3xl p-6 text-left transition-all duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600 ${
+                  className={`relative flex min-h-[320px] flex-col rounded-3xl p-6 text-left transition-all duration-200 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-amber-300 ${
                     plan.highlight
                       ? "border-[3px] border-violet-700 shadow-[6px_6px_0_#7c3aed] hover:shadow-[8px_8px_0_#7c3aed]"
-                      : "border-2 border-slate-900 shadow-[6px_6px_0_#0f172a] hover:shadow-[8px_8px_0_#0f172a]"
+                      : "border-2 border-slate-900 shadow-[6px_6px_0_#FCC700] hover:shadow-[8px_8px_0_#FCC700]"
                   } ${
                     selected ? "bg-[#FFB800]" : "bg-white hover:bg-amber-50"
                   }`}
@@ -1078,10 +1043,10 @@ export default function Checkout() {
                       {plan.period}
                     </p>
                     {plan.monthlyEquivalent ? (
-                      <p className="mt-2 inline-block rounded-full border-2 border-slate-900 bg-white px-3 py-2 text-sm font-black text-slate-950">
-                        equivalente a{" "}
+                      <p className="mt-2 inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-950">
+                        equivale a{" "}
                         {plan.savingsPercent > 0 ? (
-                          <span className="mr-1 font-bold text-slate-400 line-through">
+                          <span className="font-bold text-slate-400 line-through">
                             {MONTHLY_BASE_LABEL}
                           </span>
                         ) : null}
@@ -1111,42 +1076,13 @@ export default function Checkout() {
                     ? "Abrindo checkout..."
                     : `Assinar ${currentPlan.label} · ${formatPrice(discountedPrice(currentPlan.price))}`}
                 </button>
-                {/* TODO(Ana): revisar copy da linha de reducao de risco (absorveu
-                    o essencial do antigo FAQ: acesso pos-cancelamento e boleto). */}
-                <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-sm font-bold text-slate-700">
-                  <li className="inline-flex items-center gap-1.5">
-                    <CalendarX
-                      size={14}
-                      className="shrink-0 text-slate-500"
-                      aria-hidden="true"
-                    />
-                    Cancele quando quiser, sem taxa e com acesso até o fim do
-                    período pago
-                  </li>
-                  <li className="inline-flex items-center gap-1.5">
-                    <CreditCard
-                      size={14}
-                      className="shrink-0 text-slate-500"
-                      aria-hidden="true"
-                    />
-                    Cartão em todos os planos, boleto no semestral e anual
-                  </li>
-                  <li className="inline-flex items-center gap-1.5">
-                    <Mail
-                      size={14}
-                      className="shrink-0 text-slate-500"
-                      aria-hidden="true"
-                    />
-                    Suporte por e-mail, e pelo WhatsApp no Pro
-                  </li>
-                </ul>
               </>
             ) : (
               <WaitlistCta defaultEmail={profile?.email ?? user?.email ?? ""} />
             )}
             <Link
               href={FREE_HREF}
-              className="text-sm font-bold text-slate-500 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-800 hover:decoration-slate-800"
+              className="text-sm font-bold text-slate-400 underline decoration-slate-600 underline-offset-4 transition-colors hover:text-slate-200 hover:decoration-slate-400"
             >
               Continuar com o básico (grátis)
             </Link>
