@@ -712,7 +712,7 @@ export function UsersDashboard() {
 
       {activeUserId ? (
         <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-          <div className="card-brutal my-8 w-full max-w-6xl rounded-3xl bg-white p-6">
+          <div className="card-brutal my-8 w-full max-w-3xl rounded-3xl bg-white p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-display text-2xl font-black text-slate-950">
@@ -742,20 +742,23 @@ export function UsersDashboard() {
             ) : detail ? (
               <div className="mt-6 space-y-6">
                 {/* Visivel de cara: Identificacao (com a foto), Assinatura e
-                    Documento lado a lado. Abaixo de lg empilha na vertical. */}
-                <div className="grid items-start gap-6 lg:grid-cols-3">
+                    Documento empilhados na vertical. Dentro de cada bloco os
+                    campos compactos usam a largura em 2 colunas (>= sm). */}
+                <div className="space-y-6">
                   <section className="space-y-2.5">
                     <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                       Identificação
                     </h4>
                     <AvatarBlock avatar={detail.avatar} />
-                    <Field label="Nome" value={fmtText(detail.name)} />
-                    <Field
-                      label="Nome completo"
-                      value={fmtText(detail.full_name)}
-                    />
-                    <Field label="E-mail" value={fmtText(detail.email)} />
-                    <Field label="Gênero" value={fmtText(detail.gender)} />
+                    <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+                      <Field label="Nome" value={fmtText(detail.name)} />
+                      <Field
+                        label="Nome completo"
+                        value={fmtText(detail.full_name)}
+                      />
+                      <Field label="E-mail" value={fmtText(detail.email)} />
+                      <Field label="Gênero" value={fmtText(detail.gender)} />
+                    </div>
                   </section>
 
                   {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
@@ -766,44 +769,48 @@ export function UsersDashboard() {
                     </h4>
                     {detail.subscription ? (
                       <>
-                        <Field
-                          label="Plano"
-                          value={fmtText(detail.subscription.plan_code)}
-                        />
-                        <Field
-                          label="Status"
-                          value={fmtText(detail.subscription.status)}
-                        />
-                        <Field
-                          label="Método de pagamento"
-                          value={labelFrom(
-                            PAYMENT_METHOD_LABELS,
-                            detail.subscription.payment_method,
-                          )}
-                        />
-                        <Field
-                          label="Renovação"
-                          value={labelFrom(
-                            RENEWAL_TYPE_LABELS,
-                            detail.subscription.renewal_type,
-                          )}
-                        />
-                        <Field
-                          label="Assinou em"
-                          value={fmtDate(detail.subscription.created_at)}
-                        />
-                        <Field
-                          label={
-                            detail.subscription.cancel_at_period_end
-                              ? "Expira em"
-                              : "Renova em"
-                          }
-                          value={fmtDate(detail.subscription.current_period_end)}
-                        />
-                        <Field
-                          label="Valor pago (total)"
-                          value={fmtBrl(detail.paid_total_cents)}
-                        />
+                        <div className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+                          <Field
+                            label="Plano"
+                            value={fmtText(detail.subscription.plan_code)}
+                          />
+                          <Field
+                            label="Status"
+                            value={fmtText(detail.subscription.status)}
+                          />
+                          <Field
+                            label="Método de pagamento"
+                            value={labelFrom(
+                              PAYMENT_METHOD_LABELS,
+                              detail.subscription.payment_method,
+                            )}
+                          />
+                          <Field
+                            label="Renovação"
+                            value={labelFrom(
+                              RENEWAL_TYPE_LABELS,
+                              detail.subscription.renewal_type,
+                            )}
+                          />
+                          <Field
+                            label="Assinou em"
+                            value={fmtDate(detail.subscription.created_at)}
+                          />
+                          <Field
+                            label={
+                              detail.subscription.cancel_at_period_end
+                                ? "Expira em"
+                                : "Renova em"
+                            }
+                            value={fmtDate(
+                              detail.subscription.current_period_end,
+                            )}
+                          />
+                          <Field
+                            label="Valor pago (total)"
+                            value={fmtBrl(detail.paid_total_cents)}
+                          />
+                        </div>
                         {detail.cancellation_intent ? (
                           <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-3">
                             <p className="text-[11px] font-black uppercase tracking-wide text-amber-800">
@@ -990,7 +997,7 @@ export function UsersDashboard() {
 
                 {moreOpen ? (
                   <div className="space-y-6">
-                    <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid items-start gap-6 sm:grid-cols-2">
                       <section className="space-y-2.5">
                         <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                           Perfil e carreira
