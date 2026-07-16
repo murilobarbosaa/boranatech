@@ -8,6 +8,7 @@ import {
   Github,
   Linkedin,
   Map,
+  MessageCircle,
   Mic,
   Palette,
   Scale,
@@ -29,4 +30,5 @@ export const PRO_TOOL_ICONS = {
   avaliadorGithub: Github,
   feedVagas: Briefcase,
   personalizacao: Palette,
+  suporteWhatsapp: MessageCircle,
 } as const satisfies Record<string, LucideIcon>;

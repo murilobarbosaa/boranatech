@@ -37,8 +37,9 @@ const MENTORIAS_FACT =
 
 // TODO(Ana): so entra em producao quando a caixa de email existir; incluir no
 // texto final apenas se a constante nao for vazia.
+// TODO(Ana): validar copy do canal de WhatsApp Pro.
 const SUPPORT_FACT =
-  "Suporte: o canal oficial e o email contato@boranatech.com.br.";
+  "Suporte: o canal oficial e o email contato@boranatech.com.br; assinantes Pro tambem tem um canal direto de suporte pelo WhatsApp.";
 
 // Fallback quando a leitura de planos falha ou nao retorna plano ativo.
 // TODO(Ana): revisar esta linha de fallback de precos.

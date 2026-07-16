@@ -58,6 +58,15 @@ import {
 } from "@shared/planPricing";
 import { areasCount, dictionaryTermsCount } from "@/lib/countsGenerated";
 import { PRO_TOOL_ICONS } from "@/lib/proToolIcons";
+import { PRO_TOOL_DETAILS, type ProToolId } from "@/lib/proToolDetails";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   FREE_COURSES_SAMPLE_SIZE,
   FREE_PLATFORMS_SAMPLE_SIZE,
@@ -98,43 +107,56 @@ const COMPARADOR_CATEGORIES = [
 // TODO(Ana): revisar nomes das ferramentas exibidos na comparação.
 // label = linha da comparacao; chip = versao curta do hero. Icones da fonte
 // unica compartilhada com /bem-vindo (proToolIcons).
-const PRO_AI_TOOLS: Array<{ label: string; chip: string; icon: LucideIcon }> = [
+const PRO_AI_TOOLS: Array<{
+  id: ProToolId;
+  label: string;
+  chip: string;
+  icon: LucideIcon;
+}> = [
   {
+    id: "roadmapIA" as const,
     label: "Roadmap personalizado por IA",
     chip: "Roadmap por IA",
     icon: PRO_TOOL_ICONS.roadmapIA,
   },
   {
+    id: "planoCarreira" as const,
     label: "Plano de carreira inteligente",
     chip: "Plano de carreira",
     icon: PRO_TOOL_ICONS.planoCarreira,
   },
   {
+    id: "projetosPortfolio" as const,
     label: "Sugestão de projetos pra portfólio",
     chip: "Projetos pra portfólio",
     icon: PRO_TOOL_ICONS.projetosPortfolio,
   },
   {
+    id: "simuladorEntrevistas" as const,
     label: "Simulador de entrevistas",
     chip: "Simulador de entrevistas",
     icon: PRO_TOOL_ICONS.simuladorEntrevistas,
   },
   {
+    id: "geradorCurriculo" as const,
     label: "Gerador de currículo",
     chip: "Gerador de currículo",
     icon: PRO_TOOL_ICONS.geradorCurriculo,
   },
   {
+    id: "avaliadorCurriculo" as const,
     label: "Avaliador de currículo",
     chip: "Avaliador de currículo",
     icon: PRO_TOOL_ICONS.avaliadorCurriculo,
   },
   {
+    id: "avaliadorLinkedin" as const,
     label: "Avaliador de LinkedIn",
     chip: "Avaliador de LinkedIn",
     icon: PRO_TOOL_ICONS.avaliadorLinkedin,
   },
   {
+    id: "avaliadorGithub" as const,
     label: "Avaliador de GitHub",
     chip: "Avaliador de GitHub",
     icon: PRO_TOOL_ICONS.avaliadorGithub,
@@ -143,12 +165,29 @@ const PRO_AI_TOOLS: Array<{ label: string; chip: string; icon: LucideIcon }> = [
 
 // Nuvem de chips do hero: comparador + IA pessoal + as 8 ferramentas + vagas
 // + personalizacao, todos derivados dos arrays canonicos da pagina.
-const HERO_TOOL_CHIPS: Array<{ text: string; icon: LucideIcon }> = [
-  { text: "Comparador", icon: PRO_TOOL_ICONS.comparador },
-  { text: "IA pessoal", icon: PRO_TOOL_ICONS.iaPessoal },
-  ...PRO_AI_TOOLS.map((tool) => ({ text: tool.chip, icon: tool.icon })),
-  { text: "Feed de vagas", icon: PRO_TOOL_ICONS.feedVagas },
-  { text: "Personalização de perfil", icon: PRO_TOOL_ICONS.personalizacao },
+const HERO_TOOL_CHIPS: Array<{
+  id: ProToolId;
+  text: string;
+  icon: LucideIcon;
+}> = [
+  { id: "comparador", text: "Comparador", icon: PRO_TOOL_ICONS.comparador },
+  { id: "iaPessoal", text: "IA pessoal", icon: PRO_TOOL_ICONS.iaPessoal },
+  ...PRO_AI_TOOLS.map((tool) => ({
+    id: tool.id,
+    text: tool.chip,
+    icon: tool.icon,
+  })),
+  { id: "feedVagas", text: "Feed de vagas", icon: PRO_TOOL_ICONS.feedVagas },
+  {
+    id: "personalizacao",
+    text: "Personalização de perfil",
+    icon: PRO_TOOL_ICONS.personalizacao,
+  },
+  {
+    id: "suporteWhatsapp",
+    text: "Suporte pelo WhatsApp",
+    icon: PRO_TOOL_ICONS.suporteWhatsapp,
+  },
 ];
 
 const PRO_PERSONALIZATION: Array<{ icon: LucideIcon; text: string }> = [
@@ -172,6 +211,7 @@ const PRO_UNLOCKS: Array<{ icon: LucideIcon; text: string }> = [
     text: `Todas as plataformas de estudo (grátis vê ${FREE_PLATFORMS_SAMPLE_SIZE})`,
   },
   { icon: History, text: "Histórico de conversas com a IA" },
+  { icon: PRO_TOOL_ICONS.suporteWhatsapp, text: "Suporte pelo WhatsApp" },
 ];
 
 // Estrelas twinkle da secao de precos (fundo claro): reusa o CeuEstrelado do
@@ -248,6 +288,7 @@ const COMPARE_GROUPS: Array<{
         pro: true,
       },
       { feature: "Histórico de conversas com a IA", free: false, pro: true },
+      { feature: "Suporte pelo WhatsApp", free: false, pro: true },
     ],
   },
   {
@@ -502,6 +543,11 @@ export default function Checkout() {
   const [usersCount, setUsersCount] = useState<number | null>(() =>
     readCachedUsersCount(),
   );
+  // CTA "Quero o Pro" dentro do modal de feature: fecha o dialog e ancora nos
+  // precos; nesse caso NAO devolvemos o foco ao chip (senao o browser rola de
+  // volta pro hero brigando com o scroll). ESC/backdrop seguem devolvendo.
+  const skipChipFocusRef = useRef(false);
+
   // Grupos da tabela comparativa: os 2 primeiros abrem por padrao, os demais
   // ficam colapsados pra segurar a altura da pagina.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
@@ -757,18 +803,83 @@ export default function Checkout() {
             >
               {HERO_TOOL_CHIPS.map((chip) => {
                 const Icon = chip.icon;
+                const details = PRO_TOOL_DETAILS[chip.id];
                 return (
-                  <li
-                    key={chip.text}
-                    className="group inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 px-3 py-1 text-xs font-bold text-white transition-colors hover:border-amber-300/80"
-                  >
-                    <Icon
-                      size={13}
-                      strokeWidth={2}
-                      className="text-amber-400 transition-colors group-hover:text-amber-300"
-                      aria-hidden="true"
-                    />
-                    {chip.text}
+                  <li key={chip.text}>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-amber-400/40 px-4 py-1.5 text-sm font-bold text-white transition-all duration-150 hover:border-amber-300/90 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 motion-safe:hover:scale-[1.04]"
+                        >
+                          <Icon
+                            size={15}
+                            strokeWidth={2}
+                            className="text-amber-400 transition-colors group-hover:text-amber-300"
+                            aria-hidden="true"
+                          />
+                          {chip.text}
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent
+                        onCloseAutoFocus={(event) => {
+                          if (skipChipFocusRef.current) {
+                            event.preventDefault();
+                            skipChipFocusRef.current = false;
+                          }
+                        }}
+                        className="max-w-md overflow-hidden rounded-3xl border border-amber-400/50 bg-slate-950 p-8 text-center text-slate-100 shadow-[0_0_60px_rgba(251,191,36,0.18)]"
+                      >
+                        <CeuEstrelado
+                          stars={PRICING_STARS}
+                          showPattern={false}
+                          glowColor="rgba(255,184,0,0.12)"
+                        />
+                        <div className="relative flex flex-col items-center">
+                          <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/50 bg-amber-400/10">
+                            <Icon
+                              size={28}
+                              strokeWidth={2}
+                              className="text-amber-400"
+                              aria-hidden="true"
+                            />
+                          </span>
+                          <DialogTitle className="mt-4 font-display text-2xl font-black text-white">
+                            {details.title}
+                          </DialogTitle>
+                          <DialogDescription className="mt-3 text-sm font-medium leading-relaxed text-slate-300">
+                            {details.description}
+                          </DialogDescription>
+                          {details.bullets ? (
+                            <ul className="mt-4 space-y-1.5 text-left">
+                              {details.bullets.map((bullet) => (
+                                <li
+                                  key={bullet}
+                                  className="flex items-start gap-2 text-sm font-medium text-slate-200"
+                                >
+                                  <ProStarIcon className="mt-0.5" />
+                                  {bullet}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          <DialogClose asChild>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                skipChipFocusRef.current = true;
+                                scrollToPlans();
+                              }}
+                              className="pro-glare bnt-pressable mt-6 inline-flex items-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_#7c3aed] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#7c3aed]"
+                            >
+                              <ProStarIcon />
+                              Quero o Pro
+                              <ArrowRight size={16} aria-hidden="true" />
+                            </button>
+                          </DialogClose>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </li>
                 );
               })}
@@ -1016,7 +1127,7 @@ export default function Checkout() {
                       className="shrink-0 text-slate-500"
                       aria-hidden="true"
                     />
-                    Suporte por e-mail
+                    Suporte por e-mail, e pelo WhatsApp no Pro
                   </li>
                 </ul>
               </>
