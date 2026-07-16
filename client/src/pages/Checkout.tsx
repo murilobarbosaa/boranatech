@@ -134,7 +134,7 @@ const PRO_AI_TOOLS: Array<{
   {
     id: "simuladorEntrevistas" as const,
     label: "Simulador de entrevistas",
-    chip: "Simulador de entrevistas",
+    chip: "Simulador de entrevista",
     icon: PRO_TOOL_ICONS.simuladorEntrevistas,
   },
   {
@@ -180,7 +180,7 @@ const HERO_TOOL_CHIPS: Array<{
   { id: "feedVagas", text: "Feed de vagas", icon: PRO_TOOL_ICONS.feedVagas },
   {
     id: "personalizacao",
-    text: "Personalização de perfil",
+    text: "Personalização",
     icon: PRO_TOOL_ICONS.personalizacao,
   },
   {
@@ -188,6 +188,14 @@ const HERO_TOOL_CHIPS: Array<{
     text: "Suporte pelo WhatsApp",
     icon: PRO_TOOL_ICONS.suporteWhatsapp,
   },
+];
+
+// Nuvem do hero em exatamente 3 linhas no desktop (5/4/4); no mobile cada
+// linha quebra por conta propria, mantendo o empilhamento.
+const HERO_CHIP_ROWS = [
+  HERO_TOOL_CHIPS.slice(0, 5),
+  HERO_TOOL_CHIPS.slice(5, 9),
+  HERO_TOOL_CHIPS.slice(9),
 ];
 
 const PRO_PERSONALIZATION: Array<{ icon: LucideIcon; text: string }> = [
@@ -766,7 +774,7 @@ export default function Checkout() {
       >
         <CeuEstrelado />
         <div className="container relative z-10 w-full">
-          <div className="mx-auto max-w-3xl text-center">
+          <div className="mx-auto max-w-4xl text-center">
             <motion.p
               {...fade()}
               className="font-display text-xs md:text-sm font-black uppercase tracking-[0.2em] text-amber-400"
@@ -797,93 +805,95 @@ export default function Checkout() {
               Tudo isso desbloqueado no Pro:
             </motion.p>
 
-            <motion.ul
+            <motion.div
               {...fade(0.15)}
-              className="mx-auto mt-9 flex max-w-3xl flex-wrap justify-center gap-2.5"
+              className="mx-auto mt-9 flex max-w-4xl flex-col items-center gap-2.5"
             >
-              {HERO_TOOL_CHIPS.map((chip) => {
-                const Icon = chip.icon;
-                const details = PRO_TOOL_DETAILS[chip.id];
-                return (
-                  <li key={chip.text}>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button
-                          type="button"
-                          className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-amber-400/40 px-4 py-1.5 text-sm font-bold text-white transition-all duration-150 hover:border-amber-300/90 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 motion-safe:hover:scale-[1.04]"
-                        >
-                          <Icon
-                            size={15}
-                            strokeWidth={2}
-                            className="text-amber-400 transition-colors group-hover:text-amber-300"
-                            aria-hidden="true"
-                          />
-                          {chip.text}
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent
-                        onCloseAutoFocus={(event) => {
-                          if (skipChipFocusRef.current) {
-                            event.preventDefault();
-                            skipChipFocusRef.current = false;
-                          }
-                        }}
-                        className="max-w-md overflow-hidden rounded-3xl border border-amber-400/50 bg-slate-950 p-8 text-center text-slate-100 shadow-[0_0_60px_rgba(251,191,36,0.18)]"
-                      >
-                        <CeuEstrelado
-                          stars={PRICING_STARS}
-                          showPattern={false}
-                          glowColor="rgba(255,184,0,0.12)"
-                        />
-                        <div className="relative flex flex-col items-center">
-                          <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/50 bg-amber-400/10">
-                            <Icon
-                              size={28}
-                              strokeWidth={2}
-                              className="text-amber-400"
-                              aria-hidden="true"
-                            />
-                          </span>
-                          <DialogTitle className="mt-4 font-display text-2xl font-black text-white">
-                            {details.title}
-                          </DialogTitle>
-                          <DialogDescription className="mt-3 text-sm font-medium leading-relaxed text-slate-300">
-                            {details.description}
-                          </DialogDescription>
-                          {details.bullets ? (
-                            <ul className="mt-4 space-y-1.5 text-left">
-                              {details.bullets.map((bullet) => (
-                                <li
-                                  key={bullet}
-                                  className="flex items-start gap-2 text-sm font-medium text-slate-200"
-                                >
-                                  <ProStarIcon className="mt-0.5" />
-                                  {bullet}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                          <DialogClose asChild>
+              {HERO_CHIP_ROWS.map((row, rowIdx) => (
+                <ul
+                  key={rowIdx}
+                  className="flex flex-wrap justify-center gap-2.5"
+                >
+                  {row.map((chip) => {
+                    const Icon = chip.icon;
+                    const details = PRO_TOOL_DETAILS[chip.id];
+                    return (
+                      <li key={chip.text}>
+                        <Dialog>
+                          <DialogTrigger asChild>
                             <button
                               type="button"
-                              onClick={() => {
-                                skipChipFocusRef.current = true;
-                                scrollToPlans();
-                              }}
-                              className="pro-glare bnt-pressable mt-6 inline-flex items-center gap-2 overflow-hidden rounded-full border-2 border-slate-900 bg-[#FFB800] px-6 py-3 font-display text-sm font-black text-slate-950 shadow-[4px_4px_0_#7c3aed] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#7c3aed]"
+                              className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-amber-400/40 px-4 py-1.5 text-sm font-bold text-white transition-all duration-150 hover:border-amber-300/90 hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300 motion-safe:hover:scale-[1.04]"
                             >
-                              <ProStarIcon />
-                              Quero o Pro
-                              <ArrowRight size={16} aria-hidden="true" />
+                              <Icon
+                                size={15}
+                                strokeWidth={2}
+                                className="text-amber-400 transition-colors group-hover:text-amber-300"
+                                aria-hidden="true"
+                              />
+                              {chip.text}
                             </button>
-                          </DialogClose>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </li>
-                );
-              })}
-            </motion.ul>
+                          </DialogTrigger>
+                          <DialogContent
+                            onCloseAutoFocus={(event) => {
+                              if (skipChipFocusRef.current) {
+                                event.preventDefault();
+                                skipChipFocusRef.current = false;
+                              }
+                            }}
+                            className="max-w-md overflow-hidden rounded-3xl border border-amber-400/50 bg-slate-950 p-8 text-center text-slate-100 shadow-[0_0_60px_rgba(251,191,36,0.18)]"
+                          >
+                            <div className="relative flex flex-col items-center">
+                              <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/50">
+                                <Icon
+                                  size={30}
+                                  strokeWidth={2}
+                                  className="text-amber-400"
+                                  aria-hidden="true"
+                                />
+                              </span>
+                              <DialogTitle className="mt-4 font-display text-2xl font-black text-white">
+                                {details.title}
+                              </DialogTitle>
+                              <DialogDescription className="mt-3 text-sm font-medium leading-relaxed text-slate-300">
+                                {details.description}
+                              </DialogDescription>
+                              {details.bullets ? (
+                                <ul className="mt-4 space-y-1.5 text-left">
+                                  {details.bullets.map((bullet) => (
+                                    <li
+                                      key={bullet}
+                                      className="flex items-start gap-2 text-sm font-medium text-slate-200"
+                                    >
+                                      <ProStarIcon className="mt-0.5" />
+                                      {bullet}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                              <DialogClose asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    skipChipFocusRef.current = true;
+                                    scrollToPlans();
+                                  }}
+                                  className="pro-glare bnt-pressable mt-7 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-slate-950 bg-[#FFB800] px-8 py-3.5 font-display text-base font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a]"
+                                >
+                                  <ProStarIcon />
+                                  Quero o Pro
+                                  <ArrowRight size={16} aria-hidden="true" />
+                                </button>
+                              </DialogClose>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ))}
+            </motion.div>
 
             <motion.div
               {...fade(0.25)}
