@@ -890,14 +890,19 @@ export default function Header() {
             )}
           </div>
 
-          <button
-            className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] 2xl:hidden"
-            onClick={() => setMobileOpen(true)}
-            aria-label="Abrir menu"
-            type="button"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2 2xl:hidden">
+            {user ? (
+              <NotificationBell variant="mobile" onOpen={closeMobileDrawer} />
+            ) : null}
+            <button
+              className="rounded-md border-2 border-slate-900 p-2 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a]"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menu"
+              type="button"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -958,7 +963,6 @@ export default function Header() {
                 />
                 <span>{userName}</span>
               </Link>
-              <NotificationBell variant="mobile" onOpen={closeMobileDrawer} />
               <div className="mt-3 flex gap-2">
                 {isAdmin ? (
                   <Link

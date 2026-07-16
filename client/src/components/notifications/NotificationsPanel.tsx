@@ -260,10 +260,17 @@ function NotificationCard({
   );
 }
 
+// variant "sheet": o ui/sheet renderiza um X absoluto em top-4 right-4, então
+// o header reserva pr-12 pra nada cair embaixo dele e o botão ganha altura de
+// toque maior. flex-wrap: em ~360px o rótulo completo não cabe na mesma linha
+// do título (título ~114px + botão ~200px + paddings 72px > 360px), então o
+// botão desce inteiro pra linha de baixo em vez de truncar ou espremer.
 export default function NotificationsPanel({
   onClose,
+  variant = "popover",
 }: {
   onClose?: () => void;
+  variant?: "popover" | "sheet";
 }) {
   const {
     notifications,
@@ -288,7 +295,11 @@ export default function NotificationsPanel({
 
   return (
     <div className="flex h-full max-h-[inherit] flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b-2 border-slate-900 bg-[#faf8f4] px-4 py-3">
+      <div
+        className={`flex shrink-0 items-center justify-between gap-2 border-b-2 border-slate-900 bg-[#faf8f4] px-4 py-3 ${
+          variant === "sheet" ? "flex-wrap pr-12" : ""
+        }`}
+      >
         <h2 className="font-display text-base font-black text-slate-950">
           Notificações
         </h2>
@@ -296,7 +307,9 @@ export default function NotificationsPanel({
           type="button"
           onClick={() => void markAllAsRead()}
           disabled={unreadCount === 0}
-          className="inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 py-1.5 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+          className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${
+            variant === "sheet" ? "py-2.5" : "py-1.5"
+          }`}
         >
           <CheckCheck className="h-3.5 w-3.5" />
           Marcar todas como lidas
