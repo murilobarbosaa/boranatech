@@ -30,6 +30,7 @@ import {
   Headphones,
   Bot,
   Code2,
+  Factory,
 } from "lucide-react";
 
 export interface SubArea {
@@ -4172,6 +4173,96 @@ const baseAreasTI: AreaTI[] = [
       "Análise e Desenvolvimento de Sistemas (ADS)",
       "Ciência da Computação",
       "Sistemas de Informação",
+    ],
+  },
+  {
+    id: "automacao-industrial",
+    nome: "Automação Industrial",
+    slug: "automacao-industrial",
+    icon: Factory,
+    tagClass: "tag-automacao-industrial",
+    descricaoCurta:
+      "Programa e mantém as máquinas e sistemas que fazem as fábricas funcionarem sozinhas.",
+    descricaoCompleta:
+      "O profissional de automação industrial faz a ponte entre o mundo físico das fábricas e a tecnologia. Ele programa CLPs (controladores lógicos programáveis), configura sensores, robôs e sistemas de supervisão que controlam linhas de produção inteiras. É uma área que mistura elétrica, eletrônica e programação, e está no coração da indústria 4.0.",
+    oQueFaz:
+      "Programa controladores industriais (CLPs), integra sensores e atuadores, configura sistemas de supervisão (SCADA/IHM) e garante que máquinas e linhas de produção operem de forma automática, segura e eficiente.",
+    tarefasDiarias: [
+      "Programar e ajustar lógica de CLPs (ladder, por exemplo)",
+      "Configurar telas de supervisão (SCADA e IHM)",
+      "Instalar e calibrar sensores e atuadores",
+      "Diagnosticar falhas em máquinas e painéis elétricos",
+      "Documentar projetos e diagramas elétricos",
+    ],
+    perfilIndicado:
+      "Gosta de ver a tecnologia funcionando no mundo físico, curte resolver problemas práticos e tem interesse por elétrica, eletrônica e lógica. Ideal para quem prefere chão de fábrica a escritório.",
+    habilidades: [
+      "Programação de CLP (ladder e texto estruturado)",
+      "Elétrica e eletrônica básica",
+      "Redes industriais (Profinet, Modbus)",
+      "Sistemas SCADA e IHM",
+      "Leitura de diagramas elétricos",
+      "Instrumentação e sensores",
+    ],
+    ferramentas: [
+      "TIA Portal (Siemens)",
+      "CoDeSys",
+      "OpenPLC (gratuito)",
+      "Elipse SCADA",
+      "AutoCAD Electrical",
+      "Multímetro e osciloscópio",
+    ],
+    dificuldade: 3,
+    cargos: [
+      "Técnico em Automação Industrial",
+      "Tecnólogo em Automação Industrial",
+      "Programador de CLP",
+      "Técnico em Mecatrônica",
+      "Engenheiro de Controle e Automação",
+    ],
+    faixaSalarial: "R$ 2.800 a R$ 4.200 (técnico júnior)",
+    salarios: [
+      { nivel: "Técnico Júnior", faixa: "R$ 3.500 a R$ 4.300" },
+      { nivel: "Pleno", faixa: "R$ 4.800 a R$ 5.500" },
+      { nivel: "Sênior", faixa: "R$ 6.000 a R$ 7.000" },
+      { nivel: "Engenheiro de Automação", faixa: "R$ 11.000 a R$ 15.000" },
+    ],
+    cursosGratuitos: [
+      "SENAI EAD: Lógica de Programação (gratuito)",
+      "SENAI EAD: Metrologia (gratuito)",
+      "OpenPLC Project: simulador gratuito de CLP para praticar",
+    ],
+    roadmapInicial: [
+      "Aprender elétrica e eletrônica básica",
+      "Estudar lógica de programação",
+      "Aprender programação de CLP em ladder",
+      "Praticar com simulador (OpenPLC ou CoDeSys)",
+      "Estudar redes industriais e sensores",
+      "Montar projetos práticos e buscar curso técnico ou estágio",
+    ],
+    projetos: [
+      "Semáforo automatizado em simulador de CLP",
+      "Esteira transportadora simulada com sensores",
+      "Painel de supervisão simples em SCADA gratuito",
+    ],
+    termosEssenciais: [
+      "CLP",
+      "SCADA",
+      "IHM",
+      "Ladder",
+      "Sensor e atuador",
+      "Indústria 4.0",
+    ],
+    dicasIniciais:
+      "Diferente das áreas puramente de software, aqui um curso técnico (SENAI, IFs) pesa muito na contratação. Comece pela lógica e pelo simulador gratuito, mas planeje uma formação técnica ou tecnóloga.",
+    requiresGraduation: "recomendado",
+    tempoMedioFormacao: "1 a 2 anos (curso técnico) até a primeira vaga",
+    crescimentoMercado: "alto",
+    faculdadesRelacionadas: [
+      "Engenharia de Controle e Automação",
+      "Engenharia Mecatrônica",
+      "Tecnologia em Automação Industrial",
+      "Engenharia Elétrica",
     ],
   },
 ];

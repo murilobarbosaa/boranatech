@@ -91,6 +91,7 @@ const perfilMap: Record<string, string[]> = {
     "infraestrutura",
     "blockchain",
     "iot",
+    "automacao-industrial",
   ],
   pessoas: ["gestao", "produto", "analise-sistemas"],
   organizacao: [

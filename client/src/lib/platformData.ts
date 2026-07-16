@@ -2846,6 +2846,7 @@ export const AREA_ACCENT: Record<string, string> = {
   "QA / Testes de Software": "#713f12",
   "Análise de Sistemas": "#7c2d12",
   "Automação e RPA": "#c2410c",
+  "Automação Industrial": "#d97706",
   "Blockchain / Web3": "#b91c1c",
   "IoT / Sistemas Embarcados": "#9f1239",
   "Sistemas Embarcados / Robótica": "#991b1b",
