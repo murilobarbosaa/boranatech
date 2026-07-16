@@ -827,28 +827,84 @@ function formatCpf(raw: string | null | undefined): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
+// Escapa a busca para o ilike do PostgREST: % e _ sao curingas do LIKE (usuario
+// digitando % nao pode virar wildcard acidental) e \ e o proprio escape. O
+// padrao final vai entre aspas duplas no filtro or=, entao aspas duplas tambem
+// sao escapadas (virgula e parenteses, estruturais do or=, ficam inofensivos
+// dentro das aspas).
+function ilikePattern(term: string): string {
+  const escaped = term
+    .replace(/\\/g, "\\\\")
+    .replace(/[%_]/g, (ch) => `\\${ch}`)
+    .replace(/"/g, '\\"');
+  return `"%${escaped}%"`;
+}
+
 router.get("/users", async (req, res, next) => {
   try {
-    const { limit = "50", offset = "0", search } = req.query;
-    const parsedLimit = Math.min(parseInt(String(limit), 10) || 50, 100);
-    const parsedOffset = parseInt(String(offset), 10) || 0;
+    const pageRaw = parseInt(String(req.query.page ?? "1"), 10);
+    const pageSizeRaw = parseInt(String(req.query.pageSize ?? "50"), 10);
+    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
+    const pageSize = Math.min(
+      Math.max(Number.isFinite(pageSizeRaw) ? pageSizeRaw : 50, 1),
+      100,
+    );
+    const search =
+      typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const filterRaw =
+      typeof req.query.filter === "string" ? req.query.filter : "all";
+    const filter =
+      filterRaw === "pro" || filterRaw === "not_pro" ? filterRaw : "all";
+
+    // Filtro Pro por lista explicita de user_id com subscription active (decisao
+    // do Murilo): subscriptions nao tem FK declarada para profiles, entao o join
+    // implicito do PostgREST nao e confiavel. A lista e minuscula e o resultado
+    // exato.
+    let proUserIds: string[] = [];
+    if (filter !== "all") {
+      const { data: subRows, error: subError } = await supabaseAdmin
+        .from("subscriptions")
+        .select("user_id")
+        .eq("status", "active");
+      if (subError)
+        return next(
+          dbError("users pro filter", subError, "Erro ao buscar usuários."),
+        );
+      proUserIds = Array.from(
+        new Set((subRows || []).map((row) => row.user_id)),
+      );
+    }
 
     // Lista ENXUTA: so o necessario para a linha (nome, email, status). CPF e os
     // demais campos de profiles NAO trafegam aqui; vem sob demanda em /users/:id.
+    const rangeFrom = (page - 1) * pageSize;
     let query = supabaseAdmin
       .from("profiles")
-      .select("id, user_id, name, email, onboarding_completed")
+      .select("id, user_id, name, email, onboarding_completed", {
+        count: "exact",
+      })
       .order("created_at", { ascending: false })
-      .limit(parsedLimit)
-      .range(parsedOffset, parsedOffset + parsedLimit - 1);
+      .range(rangeFrom, rangeFrom + pageSize - 1);
 
-    if (search) query = query.ilike("email", `%${search}%`);
+    if (search) {
+      const pattern = ilikePattern(search);
+      query = query.or(`name.ilike.${pattern},email.ilike.${pattern}`);
+    }
+    if (filter === "pro") {
+      // Sem nenhum assinante ativo, o resultado correto e vazio: in() com lista
+      // vazia devolve zero linhas, exatamente o esperado.
+      query = query.in("user_id", proUserIds);
+    } else if (filter === "not_pro" && proUserIds.length > 0) {
+      query = query.not("user_id", "in", `(${proUserIds.join(",")})`);
+    }
 
-    const { data, error } = await query;
+    const { data, count, error } = await query;
     if (error)
       return next(dbError("users list", error, "Erro ao buscar usuários."));
 
-    res.json({ data: data || [] });
+    res.json({
+      data: { items: data || [], total: count ?? 0, page, pageSize },
+    });
   } catch (err) {
     next(err);
   }
