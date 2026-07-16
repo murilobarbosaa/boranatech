@@ -14,6 +14,19 @@ type UserRow = {
   onboarding_completed?: boolean | null;
 };
 
+// Espelha o payload paginado de GET /users.
+type UsersListPayload = {
+  items: UserRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+type ProFilter = "all" | "pro" | "not_pro";
+
+const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 350;
+
 // Espelha o payload de GET /users/:id (CPF ja mascarado; sem campos de moderacao
 // de avatar nem o blob de preferences).
 type UserDetail = {
@@ -39,6 +52,28 @@ type UserDetail = {
   welcome_email_sent: boolean | null;
   cpf_masked: string | null;
   has_cpf: boolean;
+  // A foto e UMA (avatar_url); moderation_status diz o estado dela (clean |
+  // pending_review | removed). Nao existe avatar_pending_url no schema.
+  avatar: {
+    url: string | null;
+    mode: string | null;
+    moderation_status: string | null;
+  } | null;
+  subscription: {
+    plan_code: string | null;
+    status: string | null;
+    payment_method: string | null;
+    renewal_type: string | null;
+    created_at: string | null;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean | null;
+  } | null;
+  cancellation_intent: {
+    reason_code: string | null;
+    reason_text: string | null;
+    effective_at: string | null;
+  } | null;
+  paid_total_cents: number;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -82,6 +117,34 @@ function fmtDateTime(value: string | null | undefined): string {
 function fmtBool(value: boolean | null | undefined): string {
   if (value === null || value === undefined) return NAO_INFORMADO;
   return value ? "Sim" : "Não";
+}
+
+function fmtBrl(cents: number | null | undefined): string {
+  if (typeof cents !== "number") return NAO_INFORMADO;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(cents / 100);
+}
+
+// TODO(Ana): revisar os rotulos de metodo de pagamento e tipo de renovacao.
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  card: "Cartão",
+  pix: "Pix",
+  boleto: "Boleto",
+};
+
+const RENEWAL_TYPE_LABELS: Record<string, string> = {
+  auto: "Automática",
+  manual: "Manual",
+};
+
+function labelFrom(
+  map: Record<string, string>,
+  value: string | null | undefined,
+): string {
+  if (!value) return NAO_INFORMADO;
+  return map[value] ?? value;
 }
 
 function statusLabel(onboardingCompleted: boolean | null | undefined): string {
@@ -131,6 +194,74 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
       </h4>
       <div className="grid gap-3 sm:grid-cols-2">{children}</div>
     </section>
+  );
+}
+
+// TODO(Ana): revisar toda a copy do bloco de foto (rotulos de estado e avisos).
+function AvatarBlock({ avatar }: { avatar: UserDetail["avatar"] }) {
+  const [broken, setBroken] = useState(false);
+  const url = avatar?.url ?? null;
+  const status = avatar?.moderation_status ?? null;
+  const showImage = Boolean(url) && !broken;
+
+  const statusBadge =
+    status === "pending_review"
+      ? {
+          label: "Aguardando aprovação",
+          className: "border-amber-500 bg-amber-100 text-amber-900",
+        }
+      : status === "removed"
+        ? {
+            label: "Rejeitada pela moderação",
+            className: "border-rose-500 bg-rose-100 text-rose-900",
+          }
+        : url
+          ? {
+              label: "Foto atual",
+              className: "border-emerald-600 bg-emerald-100 text-emerald-900",
+            }
+          : null;
+
+  return (
+    <div className="flex items-start gap-4 rounded-2xl border-2 border-slate-900 bg-violet-50 p-4 sm:col-span-2">
+      {showImage ? (
+        <img
+          src={url as string}
+          alt="Foto do usuário"
+          onError={() => setBroken(true)}
+          className="h-24 w-24 shrink-0 rounded-2xl border-2 border-slate-900 object-cover"
+        />
+      ) : (
+        <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-slate-400 bg-white text-xs font-black uppercase text-slate-400">
+          Sem foto
+        </div>
+      )}
+      <div className="space-y-2">
+        {statusBadge ? (
+          <span
+            className={`inline-block rounded-full border-2 px-3 py-1 text-xs font-black uppercase ${statusBadge.className}`}
+          >
+            {statusBadge.label}
+          </span>
+        ) : null}
+        {status === "removed" ? (
+          <p className="text-sm font-semibold text-slate-600">
+            A foto enviada foi rejeitada e removida pela moderação.
+          </p>
+        ) : status === "pending_review" ? (
+          <p className="text-sm font-semibold text-slate-600">
+            Esta foto ainda não está pública: aguarda aprovação da moderação.
+          </p>
+        ) : !url ? (
+          <p className="text-sm font-semibold text-slate-600">
+            Este usuário não tem foto enviada.
+          </p>
+        ) : null}
+        <p className="text-xs font-black uppercase tracking-wide text-violet-700">
+          Modo do avatar: {avatar?.mode === "photo" ? "Foto" : "Ícone"}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -246,16 +377,20 @@ function ActivityBlock({
 
 export function UsersDashboard() {
   const [rows, setRows] = useState<UserRow[]>([]);
+  const [total, setTotal] = useState(0);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<ProFilter>("all");
+  const [page, setPage] = useState(1);
 
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
 
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
-
-  const [subStatus, setSubStatus] = useState<string | null>(null);
 
   const [activity, setActivity] = useState<PosthogUserActivityState | null>(
     null,
@@ -267,14 +402,32 @@ export function UsersDashboard() {
   const [revealing, setRevealing] = useState(false);
   const [revealError, setRevealError] = useState<string | null>(null);
 
+  // Debounce da busca: so dispara a query depois da pausa na digitacao. Mudar a
+  // busca volta para a pagina 1 (a pagina atual pode nao existir no resultado).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   useEffect(() => {
     let cancelled = false;
     setListLoading(true);
     setListError(null);
-    adminFetch("/users")
+    const params = new URLSearchParams({
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+    });
+    if (search) params.set("search", search);
+    if (filter !== "all") params.set("filter", filter);
+    adminFetch(`/users?${params.toString()}`)
       .then((json) => {
         if (cancelled) return;
-        setRows(Array.isArray(json.data) ? (json.data as UserRow[]) : []);
+        const payload = (json.data as UsersListPayload) ?? null;
+        setRows(Array.isArray(payload?.items) ? payload.items : []);
+        setTotal(typeof payload?.total === "number" ? payload.total : 0);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -282,6 +435,7 @@ export function UsersDashboard() {
           err instanceof Error ? err.message : "Erro ao buscar usuários.",
         );
         setRows([]);
+        setTotal(0);
       })
       .finally(() => {
         if (!cancelled) setListLoading(false);
@@ -289,7 +443,12 @@ export function UsersDashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [search, filter, page]);
+
+  function changeFilter(next: ProFilter) {
+    setFilter(next);
+    setPage(1);
+  }
 
   // Ao abrir o modal (activeUserId): busca detalhe, assinatura e atividade. Cada
   // fonte tem seu proprio estado; a falha de uma nao apaga as outras.
@@ -297,7 +456,6 @@ export function UsersDashboard() {
     if (!activeUserId) {
       setDetail(null);
       setDetailError(null);
-      setSubStatus(null);
       setActivity(null);
       setActivityError(null);
       setRevealedCpf(null);
@@ -350,40 +508,6 @@ export function UsersDashboard() {
     };
   }, [activeUserId]);
 
-  // Assinatura real via /subscribers (mesmo lookup por email do painel).
-  useEffect(() => {
-    const email = detail?.email;
-    if (!email) {
-      setSubStatus(null);
-      return;
-    }
-    let cancelled = false;
-    adminFetch(`/subscribers?pageSize=25&search=${encodeURIComponent(email)}`)
-      .then((json) => {
-        if (cancelled) return;
-        const list: Array<{
-          userId: string | null;
-          email: string | null;
-          status: string | null;
-        }> = Array.isArray(json.data?.rows) ? json.data.rows : [];
-        const match =
-          list.find((row) =>
-            detail?.user_id
-              ? row.userId === detail.user_id
-              : row.email === email,
-          ) ??
-          list[0] ??
-          null;
-        setSubStatus(match?.status ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setSubStatus(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [detail?.email, detail?.user_id]);
-
   async function handleReveal() {
     if (!activeUserId) return;
     setRevealing(true);
@@ -402,8 +526,45 @@ export function UsersDashboard() {
     }
   }
 
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
   return (
     <div className="space-y-6">
+      {/* TODO(Ana): revisar copy da busca, filtros, paginacao e estado vazio. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Buscar por nome ou e-mail..."
+          className="min-w-[220px] flex-1 rounded-2xl border-2 border-slate-900 bg-white px-4 py-2.5 font-semibold text-slate-900 shadow-[3px_3px_0_#0f172a] outline-none placeholder:text-slate-400 focus:bg-yellow-50"
+        />
+        <div className="flex rounded-2xl border-2 border-slate-900 bg-white shadow-[3px_3px_0_#0f172a]">
+          {(
+            [
+              { value: "all", label: "Todos" },
+              { value: "pro", label: "Pro" },
+              { value: "not_pro", label: "Não-Pro" },
+            ] as Array<{ value: ProFilter; label: string }>
+          ).map((option, index) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => changeFilter(option.value)}
+              className={`px-4 py-2.5 text-sm font-black uppercase ${
+                index > 0 ? "border-l-2 border-slate-900" : ""
+              } ${
+                filter === option.value
+                  ? "bg-yellow-300 text-slate-950"
+                  : "bg-white text-slate-500 hover:bg-yellow-50"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <article className="card-brutal overflow-hidden rounded-3xl bg-white">
         {listLoading ? (
           <div className="p-6">
@@ -441,12 +602,44 @@ export function UsersDashboard() {
               Nenhum usuário encontrado
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-500">
-              A lista é preenchida com os perfis retornados por
-              /api/admin/users.
+              {search || filter !== "all"
+                ? "Nenhum resultado para a busca ou filtro atual. Ajuste os critérios e tente de novo."
+                : "A lista é preenchida com os perfis retornados por /api/admin/users."}
             </p>
           </div>
         )}
       </article>
+
+      {!listLoading && !listError ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-black uppercase tracking-wide text-slate-600">
+            {total} resultado{total === 1 ? "" : "s"}
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={page <= 1}
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+            >
+              Anterior
+            </button>
+            <span className="text-sm font-black text-slate-950">
+              Página {page} de {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setPage((current) => Math.min(totalPages, current + 1))
+              }
+              disabled={page >= totalPages}
+              className="rounded-full border-2 border-slate-900 bg-white px-4 py-1.5 text-xs font-black uppercase shadow-[3px_3px_0_#0f172a] disabled:opacity-40 disabled:shadow-none"
+            >
+              Próxima
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {activeUserId ? (
         <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/50 p-4">
@@ -479,6 +672,10 @@ export function UsersDashboard() {
               </div>
             ) : detail ? (
               <div className="mt-6 space-y-6">
+                <Group title="Foto">
+                  <AvatarBlock avatar={detail.avatar} />
+                </Group>
+
                 <Group title="Identificação">
                   <Field label="Nome" value={fmtText(detail.name)} />
                   <Field
@@ -557,11 +754,81 @@ export function UsersDashboard() {
                   />
                 </Group>
 
-                <Group title="Assinatura e onboarding">
-                  <Field
-                    label="Assinatura"
-                    value={subStatus || "Sem assinatura ativa"}
-                  />
+                {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
+                    aviso de cancelamento e o estado de quem nunca assinou). */}
+                <section className="space-y-3">
+                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                    Assinatura
+                  </h4>
+                  {detail.subscription ? (
+                    <>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field
+                          label="Plano"
+                          value={fmtText(detail.subscription.plan_code)}
+                        />
+                        <Field
+                          label="Status"
+                          value={fmtText(detail.subscription.status)}
+                        />
+                        <Field
+                          label="Método de pagamento"
+                          value={labelFrom(
+                            PAYMENT_METHOD_LABELS,
+                            detail.subscription.payment_method,
+                          )}
+                        />
+                        <Field
+                          label="Renovação"
+                          value={labelFrom(
+                            RENEWAL_TYPE_LABELS,
+                            detail.subscription.renewal_type,
+                          )}
+                        />
+                        <Field
+                          label="Assinou em"
+                          value={fmtDate(detail.subscription.created_at)}
+                        />
+                        <Field
+                          label={
+                            detail.subscription.cancel_at_period_end
+                              ? "Expira em"
+                              : "Renova em"
+                          }
+                          value={fmtDate(detail.subscription.current_period_end)}
+                        />
+                        <Field
+                          label="Valor pago (total)"
+                          value={fmtBrl(detail.paid_total_cents)}
+                        />
+                      </div>
+                      {detail.cancellation_intent ? (
+                        <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-3">
+                          <p className="text-[11px] font-black uppercase tracking-wide text-amber-800">
+                            Cancelamento agendado
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-amber-900">
+                            Motivo:{" "}
+                            {fmtText(
+                              detail.cancellation_intent.reason_text ||
+                                detail.cancellation_intent.reason_code,
+                            )}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold text-amber-900">
+                            Efetivo em:{" "}
+                            {fmtDate(detail.cancellation_intent.effective_at)}
+                          </p>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                      Este usuário nunca assinou um plano.
+                    </div>
+                  )}
+                </section>
+
+                <Group title="Onboarding">
                   <Field
                     label="Onboarding"
                     value={detail.onboarding_completed ? "Concluído" : "Incompleto"}
