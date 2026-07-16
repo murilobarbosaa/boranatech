@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
+import { PENDING_MARKETING_OPTIN_KEY } from "@/services/profileService";
 
 type SocialAuthButtonsProps = {
   mode: "login" | "cadastro";
@@ -13,6 +14,10 @@ type SocialAuthButtonsProps = {
   // antes do redirect OAuth para o AuthContext gravar no retorno. Sem aceite, o
   // ConsentGate cobre no primeiro login (degradacao aceita).
   consentAccepted?: boolean;
+  // Opt-in de marketing (opcional, so no cadastro). Marca a flag pendente antes do
+  // redirect OAuth; o AuthContext grava marketing_opt_in no retorno. Desmarcado nao
+  // grava nada (o default do banco ja e false).
+  marketingOptIn?: boolean;
 };
 
 type SocialProvider = "google";
@@ -60,6 +65,7 @@ export default function SocialAuthButtons({
   showDivider = true,
   redirectTo,
   consentAccepted = false,
+  marketingOptIn = false,
 }: SocialAuthButtonsProps) {
   const { signInWithOAuth } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | null>(
@@ -83,6 +89,10 @@ export default function SocialAuthButtons({
         // ConsentGate pede o aceite no primeiro login.
         if (consentAccepted) {
           sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
+        }
+        // So grava a flag de opt-in se marcado; desmarcado nao persiste (default false).
+        if (marketingOptIn) {
+          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
         }
       }
       await signInWithOAuth(provider, redirectTo ? { redirectTo } : undefined);

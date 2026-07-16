@@ -4,6 +4,13 @@ import type { Profile, ProfileSnapshot } from "./contracts";
 
 const API_BASE = apiUrl("/api");
 
+// Flag de "opt-in de marketing pendente", gravada no signup (form de e-mail ou
+// OAuth) e consumida quando a sessao aparece (SIGNED_IN em AuthContext), mesmo
+// padrao do PENDING_CONSENT_KEY. sessionStorage sobrevive ao redirect do OAuth na
+// mesma aba. Setada SO quando a pessoa marca o opt-in: o default do banco ja e
+// false, entao so precisamos persistir o "true".
+export const PENDING_MARKETING_OPTIN_KEY = "bnt_pending_marketing_optin";
+
 async function getAuthHeader(): Promise<Record<string, string>> {
   const {
     data: { session },
@@ -54,4 +61,11 @@ export async function updateMyProfile(
   if (!res.ok) throw new Error("Erro ao atualizar perfil");
   const json = (await res.json()) as { data: Profile };
   return json.data;
+}
+
+// Consome a flag de opt-in pendente: grava marketing_opt_in=true via PATCH /api/me
+// (o server carimba marketing_opt_in_at). Precisa de sessao, por isso o consumo e no
+// SIGNED_IN do AuthContext, igual ao recordConsent.
+export async function recordPendingMarketingOptIn(): Promise<void> {
+  await updateMyProfile({ marketing_opt_in: true });
 }

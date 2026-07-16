@@ -22,7 +22,10 @@ import {
 } from "@/lib/authSchemas";
 import { savePendingIntent, type PendingIntent } from "@/lib/pendingIntent";
 import { cn } from "@/lib/utils";
-import { getMyProfile } from "@/services/profileService";
+import {
+  getMyProfile,
+  PENDING_MARKETING_OPTIN_KEY,
+} from "@/services/profileService";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
 import type { Gender } from "@shared/gender";
 import { greet } from "@shared/greeting";
@@ -59,12 +62,16 @@ export default function AuthModal({
   const [error, setError] = useState<FriendlyError | null>(null);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [acceptedConsent, setAcceptedConsent] = useState(false);
+  // Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal). Persistido
+  // em profiles.marketing_opt_in via a flag pendente consumida no SIGNED_IN.
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   useEffect(() => {
     if (open) {
       setTab(defaultTab);
       setError(null);
       setAcceptedConsent(false);
+      setMarketingOptIn(false);
     }
   }, [open, defaultTab]);
 
@@ -74,6 +81,7 @@ export default function AuthModal({
 
   useEffect(() => {
     setAcceptedConsent(false);
+    setMarketingOptIn(false);
   }, [tab]);
 
   const isSignup = tab === "signup";
@@ -108,6 +116,11 @@ export default function AuthModal({
         // o ConsentGate cobre no primeiro login (degradacao aceita). Mesmo padrao do
         // Auth.tsx. Nunca enviamos os flags em metadata do signUp.
         sessionStorage.setItem(PENDING_CONSENT_KEY, "1");
+        // Opt-in de marketing: so grava a flag se marcado (persistimos so o "true";
+        // o default do banco ja e false). Consumida no SIGNED_IN, igual ao consent.
+        if (marketingOptIn) {
+          sessionStorage.setItem(PENDING_MARKETING_OPTIN_KEY, "1");
+        }
         await signUp(parsed.data);
         getMyProfile().catch((triggerErr) => {
           console.warn(
@@ -326,6 +339,19 @@ export default function AuthModal({
               </span>
             </label>
           )}
+          {/* Opt-in de marketing: OPCIONAL, nasce desmarcado (exigencia legal),
+              visualmente mais leve que o aceite. Nao bloqueia submit nem Google. */}
+          {isSignup && (
+            <label className="flex items-start gap-2 text-xs text-slate-500">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-3.5 w-3.5 flex-shrink-0"
+                checked={marketingOptIn}
+                onChange={(event) => setMarketingOptIn(event.target.checked)}
+              />
+              <span>Quero receber novidades e ofertas por e-mail</span>
+            </label>
+          )}
           <button
             className="btn-brutal-accent inline-flex w-full justify-center rounded-full px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-60"
             disabled={isSubmitting || (isSignup && !acceptedConsent)}
@@ -351,6 +377,7 @@ export default function AuthModal({
               <SocialAuthButtons
                 mode="cadastro"
                 consentAccepted={acceptedConsent}
+                marketingOptIn={marketingOptIn}
                 onBeforeOAuth={persistIntentForOAuth}
                 showDivider={false}
                 redirectTo={

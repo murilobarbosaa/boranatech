@@ -10,7 +10,11 @@ import {
   recordConsent,
 } from "@/services/consentService";
 import type { Profile } from "@/services/contracts";
-import { getMyProfile } from "@/services/profileService";
+import {
+  getMyProfile,
+  PENDING_MARKETING_OPTIN_KEY,
+  recordPendingMarketingOptIn,
+} from "@/services/profileService";
 import type { Gender } from "@shared/gender";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import {
@@ -322,6 +326,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.warn(
                   "[auth] failed to record pending consent:",
                   consentErr,
+                );
+              });
+            }
+            // Opt-in de marketing pendente do signup: mesmo padrao do consent.
+            // So existe a flag se a pessoa marcou (persistimos so o "true"). Grava
+            // profiles.marketing_opt_in via PATCH /api/me. .catch silencioso: se
+            // falhar, o /bem-vindo ainda oferece o opt-in (profile continua false).
+            if (sessionStorage.getItem(PENDING_MARKETING_OPTIN_KEY)) {
+              sessionStorage.removeItem(PENDING_MARKETING_OPTIN_KEY);
+              void recordPendingMarketingOptIn().catch((optInErr) => {
+                console.warn(
+                  "[auth] failed to record pending marketing opt-in:",
+                  optInErr,
                 );
               });
             }
