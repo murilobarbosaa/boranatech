@@ -2565,6 +2565,110 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "React Kanban Board Drag and Drop",
       url: "https://www.youtube.com/watch?v=CkjhqUbgvHo",
     },
+    "analise-exploratoria-pandas": {
+      title: "Analise Exploratoria de Dados com Python e Pandas",
+      url: "https://www.youtube.com/watch?v=dUpyC40so4Y",
+    },
+    "dashboard-power-bi": {
+      title: "Criando Dashboard no Power BI do Zero",
+      url: "https://www.youtube.com/watch?v=Ve4IWvKM_Dk",
+    },
+    "limpeza-dados-python": {
+      title: "Limpeza de Dados com Pandas",
+      url: "https://www.youtube.com/watch?v=GfSFqYY5GgI",
+    },
+    "analise-sentimento-tweets": {
+      title: "Analise de Sentimento com Python e NLP",
+      url: "https://www.youtube.com/watch?v=7Z-h1dHDMao",
+    },
+    "analise-covid-python": {
+      title: "Analise de Dados COVID-19 com Python",
+      url: "https://www.youtube.com/watch?v=NZx-c5J6sO8",
+    },
+    "correlacao-heatmap-seaborn": {
+      title: "Heatmap de Correlacao com Seaborn",
+      url: "https://www.youtube.com/watch?v=0ucjYFoTMbE",
+    },
+    "previsao-serie-temporal": {
+      title: "Previsao de Serie Temporal com Python",
+      url: "https://www.youtube.com/watch?v=e8Yw4alG16Q",
+    },
+    "analise-churn-python": {
+      title: "Analise de Churn com Python e scikit-learn",
+      url: "https://www.youtube.com/watch?v=N9KNPSwI9aU",
+    },
+    "segmentacao-clientes-kmeans": {
+      title: "Segmentacao de Clientes com K-Means",
+      url: "https://www.youtube.com/watch?v=5M5HXMQkbuo",
+    },
+    "analise-redes-sociais": {
+      title: "Analise de Redes Sociais com NetworkX",
+      url: "https://www.youtube.com/watch?v=g8LZBxoHHCo",
+    },
+    "relatorio-automatizado-python": {
+      title: "Geracao de Relatorios com Python",
+      url: "https://www.youtube.com/watch?v=T_T0KCDhUso",
+    },
+    "classificador-spam-sklearn": {
+      title: "Classificador de Spam com Machine Learning",
+      url: "https://www.youtube.com/watch?v=3y-DMzFAR28",
+    },
+    "detector-sentimento-nlp": {
+      title: "Analise de Sentimento com Hugging Face",
+      url: "https://www.youtube.com/watch?v=QpzMWQihe00",
+    },
+    "chatbot-langchain": {
+      title: "Chatbot com LangChain e OpenAI",
+      url: "https://www.youtube.com/watch?v=lG7Uxts9SXs",
+    },
+    "reconhecimento-digitos-mnist": {
+      title: "Reconhecimento de Digitos com TensorFlow",
+      url: "https://www.youtube.com/watch?v=bte-DHomn9Q",
+    },
+    "sistema-recomendacao-filmes": {
+      title: "Sistema de Recomendacao com Python",
+      url: "https://www.youtube.com/watch?v=UJATnXFiegc",
+    },
+    "detector-fake-news": {
+      title: "Detector de Fake News com Machine Learning",
+      url: "https://www.youtube.com/watch?v=O_EklvU9KSk",
+    },
+    "gerador-texto-gpt": {
+      title: "Gerando Texto com GPT e Python",
+      url: "https://www.youtube.com/watch?v=zGz9NIaYGWg",
+    },
+    "classificador-imagens-keras": {
+      title: "Classificacao de Imagens com Keras e CNN",
+      url: "https://www.youtube.com/watch?v=aircAruvnKk",
+    },
+    "assistente-pdf-rag": {
+      title: "Chatbot com RAG e LangChain",
+      url: "https://www.youtube.com/watch?v=8F2DvoQr3sU",
+    },
+    "detector-objetos-yolo": {
+      title: "Deteccao de Objetos com YOLOv8",
+      url: "https://www.youtube.com/watch?v=zOVkUCFHCuE",
+    },
+    "pipeline-etl-python": {
+      title: "Pipeline ETL com Python do Zero",
+      url: "https://www.youtube.com/watch?v=mW_ItJgB5jg",
+    },
+    "orquestracao-airflow": {
+      title: "Apache Airflow para Iniciantes",
+      url: "https://www.youtube.com/watch?v=K9AnJ9_ZAXE",
+    },
+    "modelagem-dimensional-dbt": {
+      title: "dbt para Engenharia de Dados",
+      url: "https://www.youtube.com/watch?v=5rNquRnNb4E",
+    },
+    "data-lake-s3-python": {
+      title: "Data Lake com AWS S3 e Python",
+      url: "https://www.youtube.com/watch?v=C1nLQM-mS4Q",
+    },
+    "streaming-kafka-python": {
+      title: "Apache Kafka com Python",
+      url: "https://www.youtube.com/watch?v=ebeRP_pZCPM",
+    },
     default: {
       title: "Como planejar projeto iniciante para portfólio",
       url: "https://www.youtube.com/results?search_query=projeto+iniciante+portfolio+programacao",
