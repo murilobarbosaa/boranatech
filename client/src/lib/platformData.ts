@@ -2467,6 +2467,104 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Como priorizar backlogs complexos",
       url: "https://www.youtube.com/results?search_query=priorizacao+backlog+matriz+rice",
     },
+    "portfolio-pessoal-html-css": {
+      title:
+        "Como Criar um Portfolio do Zero com HTML e CSS para Iniciantes",
+      url: "https://www.youtube.com/watch?v=SV7TL0hxmIQ",
+    },
+    "calculadora-javascript": {
+      title: "Como Criar uma Calculadora com HTML, CSS e JavaScript",
+      url: "https://www.youtube.com/watch?v=42TShjXR0m0",
+    },
+    "todo-list-javascript": {
+      title:
+        "Projeto de JavaScript para iniciantes - To Do List com JavaScript puro",
+      url: "https://www.youtube.com/watch?v=HSssE1PRQcA",
+    },
+    "buscador-cep-javascript": {
+      title:
+        "AUTOCOMPLETAR ENDERECO PELO CEP - PROJETO HTML CSS E JAVASCRIPT",
+      url: "https://www.youtube.com/watch?v=FMaEIVdaAFo",
+    },
+    "dark-mode-toggle-javascript": {
+      title: "COMO APLICAR DARK MODE COM HTML, CSS E JAVASCRIPT",
+      url: "https://www.youtube.com/watch?v=i1dNnS6pXAo",
+    },
+    "timer-pomodoro-javascript": {
+      title: "Cronometro com JavaScript",
+      url: "https://www.youtube.com/watch?v=8-2kYsa2xog",
+    },
+    "quiz-interativo-javascript": {
+      title: "Develop Quiz Application using Html CSS and JavaScript",
+      url: "https://www.youtube.com/watch?v=gNHkqla-Yvw",
+    },
+    "jogo-da-memoria-javascript": {
+      title: "Jogo da memoria javascript, html e css",
+      url: "https://www.youtube.com/watch?v=0SeqdHCBYVo",
+    },
+    "app-de-clima-javascript": {
+      title: "Aplicacao de Clima com OpenWeather API",
+      url: "https://www.youtube.com/watch?v=VS8EBgPwsSU",
+    },
+    "clone-landing-page-iphone": {
+      title: "Clone pagina iPhone 13 Pro - Projeto de HTML e CSS",
+      url: "https://www.youtube.com/watch?v=E3sKnfq4myo",
+    },
+    "api-tarefas-nodejs": {
+      title:
+        "Crie uma API RESTful com Node.js e MongoDB | CRUD com Node, Express e Mongoose",
+      url: "https://www.youtube.com/watch?v=K5QaTfE5ylk",
+    },
+    "api-autenticacao-jwt": {
+      title: "Como usar JWT para autenticar seu app Node.js",
+      url: "https://www.youtube.com/watch?v=50CoyU79O2Y",
+    },
+    "crud-banco-dados-java": {
+      title:
+        "Live Coding Java: CRUD com Java Spring | Construa uma API Rest na pratica",
+      url: "https://www.youtube.com/watch?v=tP6wtEaCnSI",
+    },
+    "web-scraper-python": {
+      title: "Web Scraping com Python: Coletando Dados de sites",
+      url: "https://www.youtube.com/watch?v=cccWOzLcPK0",
+    },
+    "bot-telegram-python": {
+      title: "Bot Telegram com Python",
+      url: "https://www.youtube.com/watch?v=6h7hoELOO14",
+    },
+    "api-clima-tempo-backend": {
+      title: "Aplicacao de Clima com OpenWeather API - JavaScript com API",
+      url: "https://www.youtube.com/watch?v=VS8EBgPwsSU",
+    },
+    "sistema-upload-multer": {
+      title: "Upload de arquivos: back-end com NodeJS | Diego Fernandes",
+      url: "https://www.youtube.com/watch?v=MkkbUfcZUZM",
+    },
+    "agendador-cron-jobs": {
+      title: "Cron - Agendando tarefas no NodeJS",
+      url: "https://www.youtube.com/watch?v=UcCVBYxVI58",
+    },
+    "encurtador-url-php": {
+      title:
+        "Como fazer um ENCURTADOR DE LINKS com HTML, CSS, JAVASCRIPT e PHP",
+      url: "https://www.youtube.com/watch?v=yikIQmhuHAI",
+    },
+    "notificador-emails-nodemailer": {
+      title: "Enviando E-mail de um Formulario HTML",
+      url: "https://www.youtube.com/watch?v=Io_9g_1rr9M",
+    },
+    "chat-realtime-socketio": {
+      title: "Aplicacao de Chat em React JS",
+      url: "https://www.youtube.com/watch?v=IH15jW8X-Ng",
+    },
+    "gerenciador-agendamentos-reservas": {
+      title: "Sistema de Agendamento com Pagamento Integrado",
+      url: "https://www.youtube.com/watch?v=sLj6iTyLPf8",
+    },
+    "clone-trello-kanban": {
+      title: "React Kanban Board Drag and Drop",
+      url: "https://www.youtube.com/watch?v=CkjhqUbgvHo",
+    },
     default: {
       title: "Como planejar projeto iniciante para portfólio",
       url: "https://www.youtube.com/results?search_query=projeto+iniciante+portfolio+programacao",
