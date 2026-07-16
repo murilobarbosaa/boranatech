@@ -335,12 +335,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // falhar, o /bem-vindo ainda oferece o opt-in (profile continua false).
             if (sessionStorage.getItem(PENDING_MARKETING_OPTIN_KEY)) {
               sessionStorage.removeItem(PENDING_MARKETING_OPTIN_KEY);
-              void recordPendingMarketingOptIn().catch((optInErr) => {
-                console.warn(
-                  "[auth] failed to record pending marketing opt-in:",
-                  optInErr,
-                );
-              });
+              const optInUserId = nextSession.user.id;
+              void recordPendingMarketingOptIn()
+                .then(async () => {
+                  // O GET inicial do profile pode ler o banco ANTES deste
+                  // PATCH commitar e deixar marketing_opt_in=false em memoria
+                  // (o /bem-vindo perguntaria de novo). Refetch pra alinhar.
+                  // NAO usar refreshProfile aqui: a closure deste effect
+                  // capturaria a versao com session=null, que LIMPA o profile.
+                  // Guarda de sessao: se deslogou (ou trocou de usuario)
+                  // enquanto o PATCH voava, nao refetcha, pra nao ressuscitar
+                  // perfil de sessao encerrada (mesma preocupacao da Race B).
+                  if (!mounted || !supabase) return;
+                  const { data } = await supabase.auth.getSession();
+                  if (!mounted) return;
+                  if (data.session?.user?.id !== optInUserId) return;
+                  startProfileLifecycle(
+                    data.session,
+                    profileRef.current ? "background" : "initial",
+                  );
+                })
+                .catch((optInErr) => {
+                  console.warn(
+                    "[auth] failed to record pending marketing opt-in:",
+                    optInErr,
+                  );
+                });
             }
           }
         }
