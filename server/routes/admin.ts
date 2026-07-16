@@ -15,6 +15,7 @@ import {
 } from "../lib/financeMetrics";
 import { fetchUsdBrlRate } from "../lib/fx/ptax";
 import { getPosthogStats, getPosthogUserActivity } from "../lib/posthog";
+import { invalidateProStatusCache } from "../lib/proStatusCache";
 import { emailQueue } from "../lib/queue";
 import { cacheConnection } from "../lib/redis";
 import { syncBalanceTransactions } from "../lib/stripeSync";
@@ -24,6 +25,7 @@ import { createError } from "../middleware/error";
 import { resolvePlanPriceCents } from "../lib/planPrice";
 import contactListsRouter from "./adminContactLists";
 import emailCampaignsRouter from "./adminEmailCampaigns";
+import notificationsAdminRouter from "./adminNotifications";
 
 const router = Router();
 
@@ -33,6 +35,8 @@ router.use(requireAdmin);
 // Campanhas de e-mail pra waitlist (aba Emails). Depois dos guards de admin.
 router.use("/email-campaigns", emailCampaignsRouter);
 router.use("/contact-lists", contactListsRouter);
+// Notificacoes in-app (broadcast). Depois dos guards de admin.
+router.use("/notifications", notificationsAdminRouter);
 
 const EDITABLE_TABLES: Record<string, string[]> = {
   news: [
@@ -940,10 +944,11 @@ router.get("/users/:id", async (req, res, next) => {
     if (!data)
       return next(createError(404, "not_found", "Usuário não encontrado."));
 
-    // Assinatura (a mais recente), intencao de cancelamento agendada e valor
-    // pago real, em paralelo. Quem nunca assinou vem com null nos tres: estado
-    // legitimo, nao erro.
-    const [subResult, cancelResult, financeResult] = await Promise.all([
+    // Assinatura (a mais recente), intencao de cancelamento agendada, valor
+    // pago real e acesso de influencer, em paralelo. Quem nunca assinou vem com
+    // null: estado legitimo, nao erro.
+    const [subResult, cancelResult, financeResult, influencerResult] =
+      await Promise.all([
       supabaseAdmin
         .from("subscriptions")
         .select(
@@ -970,6 +975,14 @@ router.get("/users/:id", async (req, res, next) => {
         .select("gross_cents")
         .eq("user_id", uid)
         .in("type", ["charge", "refund", "dispute"]),
+      // Concessao de influencer ATIVA (revoked_at null); o indice unico parcial
+      // garante no maximo uma.
+      supabaseAdmin
+        .from("influencers")
+        .select("id, granted_at, granted_by, note")
+        .eq("user_id", uid)
+        .is("revoked_at", null)
+        .maybeSingle(),
     ]);
 
     if (subResult.error)
@@ -988,6 +1001,43 @@ router.get("/users/:id", async (req, res, next) => {
       return next(
         dbError("user paid total", financeResult.error, "Erro ao buscar usuário."),
       );
+    if (influencerResult.error)
+      return next(
+        dbError(
+          "user influencer lookup",
+          influencerResult.error,
+          "Erro ao buscar usuário.",
+        ),
+      );
+
+    // Nome/email de quem concedeu, para o modal mostrar "concedido por".
+    let influencer: {
+      granted_at: string | null;
+      note: string | null;
+      granted_by_name: string | null;
+      granted_by_email: string | null;
+    } | null = null;
+    if (influencerResult.data) {
+      const { data: granter, error: granterError } = await supabaseAdmin
+        .from("profiles")
+        .select("name, email")
+        .eq("user_id", influencerResult.data.granted_by)
+        .maybeSingle();
+      if (granterError)
+        return next(
+          dbError(
+            "influencer granter lookup",
+            granterError,
+            "Erro ao buscar usuário.",
+          ),
+        );
+      influencer = {
+        granted_at: influencerResult.data.granted_at ?? null,
+        note: influencerResult.data.note ?? null,
+        granted_by_name: granter?.name ?? null,
+        granted_by_email: granter?.email ?? null,
+      };
+    }
 
     const subRow = subResult.data as {
       status: string | null;
@@ -1039,6 +1089,7 @@ router.get("/users/:id", async (req, res, next) => {
             }
           : null,
         paid_total_cents: paidTotalCents,
+        influencer,
       },
     });
   } catch (err) {
@@ -1101,6 +1152,180 @@ router.post("/users/:id/reveal-cpf", async (req, res, next) => {
     }
 
     res.json({ data: { cpf: formatCpf(data.cpf) } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Concede acesso de INFLUENCER (Pro vitalicio sem assinatura). Auditoria
+// PRIMEIRO, fail-closed (padrao do reveal-cpf): sem rastro gravado, nao ha
+// concessao. Idempotente: quem ja tem concessao ativa nao ganha segunda linha
+// (e o indice unico parcial garante isso tambem contra corrida).
+router.post("/users/:id/influencer", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+    const noteRaw = (req.body as { note?: unknown } | undefined)?.note;
+    const note = typeof noteRaw === "string" ? noteRaw.trim() : "";
+
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from("influencers")
+      .select("id, granted_at, note")
+      .eq("user_id", uid)
+      .is("revoked_at", null)
+      .maybeSingle();
+    if (existingError)
+      return next(
+        dbError(
+          "influencer grant lookup",
+          existingError,
+          "Erro ao conceder acesso de influencer.",
+        ),
+      );
+    if (existing) {
+      return res.json({ data: { granted: false, already_active: true } });
+    }
+
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "grant",
+        resource_type: "influencer_access",
+        resource_id: uid,
+        resource_slug: null,
+        before_json: null,
+        after_json: { note: note || null },
+      });
+    if (auditError) {
+      console.error("[admin] influencer grant audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          // TODO(Ana)
+          "Não foi possível registrar a auditoria da concessão.",
+        ),
+      );
+    }
+
+    const { error: insertError } = await supabaseAdmin
+      .from("influencers")
+      .insert({
+        user_id: uid,
+        granted_by: req.user!.id,
+        note: note || null,
+      });
+    if (insertError) {
+      // 23505 = corrida com outra concessao simultanea: o estado final e o
+      // desejado (uma concessao ativa), responde como idempotencia.
+      if (insertError.code === "23505") {
+        return res.json({ data: { granted: false, already_active: true } });
+      }
+      return next(
+        dbError(
+          "influencer grant insert",
+          insertError,
+          "Erro ao conceder acesso de influencer.",
+        ),
+      );
+    }
+
+    // Efeito imediato: derruba o cache Redis do status Pro (TTL 60s).
+    await invalidateProStatusCache(uid);
+    res.status(201).json({ data: { granted: true } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Revoga o acesso de influencer: NAO deleta a linha, preenche revoked_at e
+// revoked_by (a historia fica). Auditoria primeiro, fail-closed. Revogar quem
+// nao e influencer ativo responde 404 com slug proprio, sem explodir.
+router.post("/users/:id/influencer/revoke", async (req, res, next) => {
+  try {
+    const uid = req.params.id;
+    if (!UUID_RE.test(uid)) {
+      return next(
+        createError(400, "invalid_user_id", "Identificador de usuário inválido."),
+      );
+    }
+
+    const { data: active, error: activeError } = await supabaseAdmin
+      .from("influencers")
+      .select("id, granted_at, granted_by, note")
+      .eq("user_id", uid)
+      .is("revoked_at", null)
+      .maybeSingle();
+    if (activeError)
+      return next(
+        dbError(
+          "influencer revoke lookup",
+          activeError,
+          "Erro ao revogar acesso de influencer.",
+        ),
+      );
+    if (!active) {
+      return next(
+        createError(
+          404,
+          "influencer_not_active",
+          // TODO(Ana)
+          "Este usuário não tem acesso de influencer ativo.",
+        ),
+      );
+    }
+
+    const { error: auditError } = await supabaseAdmin
+      .from("content_audit_logs")
+      .insert({
+        actor_user_id: req.user!.id,
+        action: "revoke",
+        resource_type: "influencer_access",
+        resource_id: uid,
+        resource_slug: null,
+        before_json: {
+          granted_at: active.granted_at,
+          granted_by: active.granted_by,
+          note: active.note,
+        },
+        after_json: null,
+      });
+    if (auditError) {
+      console.error("[admin] influencer revoke audit failed:", auditError);
+      return next(
+        createError(
+          500,
+          "audit_failed",
+          // TODO(Ana)
+          "Não foi possível registrar a auditoria da revogação.",
+        ),
+      );
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from("influencers")
+      .update({
+        revoked_at: new Date().toISOString(),
+        revoked_by: req.user!.id,
+      })
+      .eq("id", active.id)
+      .is("revoked_at", null);
+    if (updateError)
+      return next(
+        dbError(
+          "influencer revoke update",
+          updateError,
+          "Erro ao revogar acesso de influencer.",
+        ),
+      );
+
+    await invalidateProStatusCache(uid);
+    res.json({ data: { revoked: true } });
   } catch (err) {
     next(err);
   }
