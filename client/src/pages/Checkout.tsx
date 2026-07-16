@@ -13,21 +13,14 @@ import {
   BookOpen,
   Bot,
   Briefcase,
-  Building2,
-  Calendar,
   CalendarX,
   Camera,
   Check,
-  Code2,
-  Compass,
-  Cpu,
+  ChevronRight,
   CreditCard,
-  GraduationCap,
   History,
-  Layers,
   type LucideIcon,
   Mail,
-  Map,
   MonitorPlay,
   Palette,
   Scale,
@@ -166,15 +159,6 @@ const PRO_UNLOCKS: Array<{ icon: LucideIcon; text: string }> = [
 const PRO_EXCLUSIVE_COUNT =
   PRO_AI_TOOLS.length + PRO_UNLOCKS.length + PRO_PERSONALIZATION.length + 2;
 
-// Estrelas do fundo do card Pro: densidade bem menor que a do hero pra nao
-// competir com o conteudo (decoracao, nao protagonista).
-const PRO_CARD_STARS = [
-  { top: "6%", left: "88%", size: 5, delay: 0.4, duration: 3 },
-  { top: "30%", left: "6%", size: 4, delay: 1.6, duration: 3.4 },
-  { top: "58%", left: "92%", size: 4, delay: 2.2, duration: 2.8 },
-  { top: "88%", left: "10%", size: 5, delay: 0.9, duration: 3.2 },
-];
-
 // Tabela Gratis x Pro. free/pro: true = tem completo, false = nao tem,
 // string = versao limitada ou rotulo. As linhas Pro-only derivam dos MESMOS
 // arrays dos cards (PRO_AI_TOOLS, PRO_PERSONALIZATION) pra nunca desincronizar,
@@ -182,84 +166,82 @@ const PRO_CARD_STARS = [
 type CompareCell = boolean | string;
 type CompareRow = { feature: string; free: CompareCell; pro: CompareCell };
 
-const COMPARE_ROWS: CompareRow[] = [
-  { feature: "Quiz de carreira", free: true, pro: true },
+const COMPARE_GROUPS: Array<{
+  title: string;
+  // Mostra o preview do avatar Pro no sub-header do grupo (personalizacao).
+  preview?: boolean;
+  rows: CompareRow[];
+}> = [
   {
-    feature: `Catálogos: ${areasCount} áreas, +60 tecnologias, +20 empresas`,
-    free: true,
-    pro: true,
+    title: "Base grátis da plataforma",
+    rows: [
+      { feature: "Quiz de carreira", free: true, pro: true },
+      {
+        feature: `Catálogos: ${areasCount} áreas, +60 tecnologias, +20 empresas, +20 faculdades, +42 eventos e dicionário com +${dictionaryTermsCount} termos`,
+        free: true,
+        pro: true,
+      },
+      { feature: "Roadmaps de estudo por área", free: true, pro: true },
+      { feature: "+48 projetos pra praticar", free: true, pro: true },
+    ],
   },
-  { feature: "Roadmaps de estudo por área", free: true, pro: true },
-  { feature: "+48 projetos pra praticar", free: true, pro: true },
   {
-    feature: "Cursos",
-    free: `amostra de ${FREE_COURSES_SAMPLE_SIZE}`,
-    pro: "catálogo completo",
+    title: "Plataforma e conteúdo",
+    rows: [
+      {
+        feature: "Cursos",
+        free: `amostra de ${FREE_COURSES_SAMPLE_SIZE}`,
+        pro: "catálogo completo",
+      },
+      {
+        feature: "Plataformas de estudo",
+        free: `amostra de ${FREE_PLATFORMS_SAMPLE_SIZE}`,
+        pro: "todas",
+      },
+      {
+        feature: "Agente de IA",
+        free: "tira-dúvidas",
+        pro: "IA pessoal completa",
+      },
+      {
+        feature: `Comparador: ${COMPARADOR_CATEGORIES.join(", ").toLowerCase()}`,
+        free: false,
+        pro: true,
+      },
+      {
+        feature: "Feed de vagas júnior, estágio e trainee",
+        free: false,
+        pro: true,
+      },
+      { feature: "Histórico de conversas com a IA", free: false, pro: true },
+    ],
   },
   {
-    feature: "Plataformas de estudo",
-    free: `amostra de ${FREE_PLATFORMS_SAMPLE_SIZE}`,
-    pro: "todas",
+    title: "Ferramentas com IA",
+    rows: PRO_AI_TOOLS.map((tool) => ({
+      feature: tool,
+      free: false as const,
+      pro: true as const,
+    })),
   },
-  { feature: "Agente de IA", free: "tira-dúvidas", pro: "IA pessoal completa" },
   {
-    feature: `Comparador: ${COMPARADOR_CATEGORIES.join(", ").toLowerCase()}`,
-    free: false,
-    pro: true,
+    title: "Personalização e status",
+    preview: true,
+    rows: [
+      ...PRO_PERSONALIZATION.map((item) => ({
+        feature: item.text,
+        free: false as const,
+        pro: true as const,
+      })),
+      { feature: "Comunidade exclusiva Pro", free: false, pro: "em breve" },
+    ],
   },
-  ...PRO_AI_TOOLS.map((tool) => ({
-    feature: tool,
-    free: false as const,
-    pro: true as const,
-  })),
-  {
-    feature: "Feed de vagas júnior, estágio e trainee",
-    free: false,
-    pro: true,
-  },
-  { feature: "Histórico de conversas com a IA", free: false, pro: true },
-  ...PRO_PERSONALIZATION.map((item) => ({
-    feature: item.text,
-    free: false as const,
-    pro: true as const,
-  })),
-  { feature: "Comunidade exclusiva Pro", free: false, pro: "em breve" },
 ];
+
+const COMPARE_ROWS: CompareRow[] = COMPARE_GROUPS.flatMap((g) => g.rows);
 
 const COMPARE_FREE_TOTAL = COMPARE_ROWS.filter((r) => r.free !== false).length;
 const COMPARE_PRO_TOTAL = COMPARE_ROWS.length;
-
-const FREE_ITEMS: Array<{ icon: LucideIcon; text: string }> = [
-  { icon: Layers, text: `Catálogo de ${areasCount} áreas de TI` },
-  { icon: Cpu, text: "+60 tecnologias no catálogo" },
-  { icon: Map, text: "Roadmaps de estudo por área" },
-  { icon: Building2, text: "+20 empresas brasileiras de tech" },
-  { icon: GraduationCap, text: "+20 faculdades" },
-  { icon: Calendar, text: "+42 eventos tech" },
-  { icon: Code2, text: "+48 projetos pra praticar" },
-  { icon: BookOpen, text: `Dicionário com +${dictionaryTermsCount} termos` },
-  { icon: Compass, text: "Quiz de carreira completo" },
-];
-
-// Parciais: existem no gratis com limite; o Pro desbloqueia a versao completa.
-// Limites lidos da mesma fonte que aplica o gate (freeTierLimits).
-const FREE_PARTIAL_ITEMS: Array<{
-  icon: LucideIcon;
-  text: string;
-  limit: string;
-}> = [
-  {
-    icon: BookOpen,
-    text: "Cursos",
-    limit: `amostra de ${FREE_COURSES_SAMPLE_SIZE}`,
-  },
-  {
-    icon: MonitorPlay,
-    text: "Plataformas de estudo",
-    limit: `amostra de ${FREE_PLATFORMS_SAMPLE_SIZE}`,
-  },
-  { icon: Bot, text: "Agente de IA", limit: "tira-dúvidas com limite diário" },
-];
 
 const FREE_HREF = "/";
 
@@ -483,6 +465,14 @@ export default function Checkout() {
   const [usersCount, setUsersCount] = useState<number | null>(() =>
     readCachedUsersCount(),
   );
+  // Grupos da tabela comparativa: os 2 primeiros abrem por padrao, os demais
+  // ficam colapsados pra segurar a altura da pagina.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(COMPARE_GROUPS.map((g, i) => [g.title, i < 2])),
+  );
+  function toggleGroup(title: string) {
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -689,7 +679,7 @@ export default function Checkout() {
 
       <section
         aria-labelledby="pro-hero-title"
-        className="relative overflow-hidden bg-slate-950 py-20 md:py-24"
+        className="relative overflow-hidden bg-slate-950 py-14 md:py-16"
       >
         <CeuEstrelado />
         <div className="container relative z-10">
@@ -727,7 +717,7 @@ export default function Checkout() {
 
             <motion.ul
               {...fade(0.15)}
-              className="mt-8 flex flex-wrap justify-center gap-2.5"
+              className="mt-6 flex flex-wrap justify-center gap-2.5"
             >
               {HERO_PILLS.map((pill) => {
                 const Icon = pill.icon;
@@ -745,7 +735,7 @@ export default function Checkout() {
 
             <motion.div
               {...fade(0.25)}
-              className="mt-8 flex flex-col items-center gap-3"
+              className="mt-6 flex flex-col items-center gap-3"
             >
               <button
                 type="button"
@@ -769,20 +759,29 @@ export default function Checkout() {
       </section>
 
       <section
-        aria-labelledby="free-vs-pro-title"
-        className="relative overflow-hidden py-16 md:py-20"
+        id="planos-section"
+        aria-labelledby="planos-title"
+        className="relative overflow-hidden border-t-2 border-slate-950 py-14 md:py-20"
         style={{
-          backgroundColor: "#f5f3ff",
+          backgroundColor: "#faf8f4",
           backgroundImage:
-            "radial-gradient(rgba(124, 58, 237, 0.08) 1.5px, transparent 1.5px)",
-          backgroundSize: "22px 22px",
+            "radial-gradient(rgba(245, 158, 11, 0.45) 1.5px, transparent 1.5px)",
+          backgroundSize: "20px 20px",
         }}
       >
-        <div className="container">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+        >
+          <div className="animate-gentle-float absolute -left-10 top-16 h-48 w-48 rounded-full bg-amber-300 opacity-[0.35] blur-3xl" />
+          <div className="animate-gentle-float absolute -right-12 top-[30%] h-64 w-64 rounded-full bg-violet-300 opacity-[0.25] blur-3xl" />
+          <div className="animate-gentle-float absolute left-[15%] bottom-10 h-40 w-40 rounded-full bg-amber-400 opacity-[0.22] blur-3xl" />
+        </div>
+        <div className="container relative">
           {usersCount !== null ? (
             <motion.p
               {...fade()}
-              className="mx-auto mb-8 flex w-fit items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-950 shadow-[3px_3px_0_#0f172a]"
+              className="mx-auto mb-6 flex w-fit items-center gap-2 rounded-full border-2 border-slate-950 bg-white px-4 py-2 text-sm font-bold text-slate-950 shadow-[3px_3px_0_#0f172a]"
             >
               <Users size={16} className="text-violet-700" aria-hidden="true" />
               {/* TODO(Ana): revisar copy da prova social (mesmo padrão do badge
@@ -791,408 +790,6 @@ export default function Checkout() {
               caminho
             </motion.p>
           ) : null}
-          <motion.h2
-            id="free-vs-pro-title"
-            {...fade()}
-            className="mx-auto max-w-2xl text-center font-display font-black leading-[1.1] text-slate-950"
-            style={{ fontSize: "clamp(28px, 4vw, 40px)" }}
-          >
-            A base é <span className="text-emerald-600">grátis</span>. O Pro{" "}
-            <span className="text-violet-700">acelera</span>.
-          </motion.h2>
-
-          <div className="mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2 md:items-start">
-            <motion.div
-              {...fade(0.05)}
-              className="rounded-3xl border-2 border-slate-950 bg-white p-6 shadow-[5px_5px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#0f172a]"
-            >
-              <span className="inline-block w-fit rounded-full border-2 border-slate-900 bg-emerald-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
-                100% grátis
-              </span>
-              <h3 className="mt-3 font-display text-lg font-black text-slate-950">
-                Grátis você já tem
-              </h3>
-              <ul className="mt-4 space-y-2.5">
-                {FREE_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <li
-                      key={item.text}
-                      className="flex items-center gap-2.5 text-sm font-bold text-slate-800"
-                    >
-                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 border-slate-950 bg-emerald-100">
-                        <Icon
-                          size={13}
-                          className="text-emerald-700"
-                          strokeWidth={2.5}
-                          aria-hidden="true"
-                        />
-                      </span>
-                      {item.text}
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                Com limite no grátis
-              </p>
-              <ul className="mt-2.5 space-y-2.5">
-                {FREE_PARTIAL_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <li
-                      key={item.text}
-                      className="flex items-center gap-2.5 text-sm font-bold text-slate-800"
-                    >
-                      <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 border-slate-900 bg-slate-200">
-                        <Icon
-                          size={13}
-                          className="text-slate-500"
-                          strokeWidth={2.5}
-                          aria-hidden="true"
-                        />
-                      </span>
-                      <span>
-                        {item.text}
-                        <span className="font-medium text-slate-500">
-                          {" "}
-                          · {item.limit}
-                        </span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </motion.div>
-
-            <motion.div
-              {...fade(0.1)}
-              className="relative max-md:order-first overflow-hidden rounded-3xl border-2 border-slate-950 bg-slate-950 p-6 shadow-[5px_5px_0_#7c3aed] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#7c3aed]"
-            >
-              <CeuEstrelado
-                glowColor="rgba(124,58,237,0.18)"
-                stars={PRO_CARD_STARS}
-                className="opacity-80"
-              />
-              <div className="relative">
-                <h3 className="inline-flex items-center gap-2 font-display text-lg font-black text-white">
-                  <Sparkles size={18} className="text-amber-400" />O Pro
-                  adiciona
-                </h3>
-                <p className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
-                  <ProStarIcon />
-                  Tudo do grátis + {PRO_EXCLUSIVE_COUNT} recursos exclusivos
-                </p>
-
-                {/* TODO(Ana): revisar copy do destaque do comparador (agora Pro) */}
-                <div className="mt-4 rounded-2xl border-2 border-slate-900 bg-amber-100 p-4 shadow-[3px_3px_0_#0f172a]">
-                  <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-slate-950">
-                    <Scale size={16} strokeWidth={2.5} aria-hidden="true" />
-                    Comparador completo
-                  </p>
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {COMPARADOR_CATEGORIES.map((cat) => (
-                      <span
-                        key={cat}
-                        className="rounded-full border-[1.5px] border-slate-900 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[1px_1px_0_#0f172a]"
-                      >
-                        {cat}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-2.5 text-sm font-medium leading-relaxed text-slate-700">
-                    Compare custo, tempo, dificuldade, mercado, certificação,
-                    pré-requisitos e indicações lado a lado antes de decidir.
-                  </p>
-                </div>
-
-                <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                  Ferramentas com IA ({PRO_AI_TOOLS.length})
-                </p>
-                <ul className="mt-2.5 space-y-2">
-                  {PRO_AI_TOOLS.map((tool) => (
-                    <li
-                      key={tool}
-                      className="flex items-center gap-2.5 text-sm font-bold text-slate-100"
-                    >
-                      <ProStarIcon />
-                      {tool}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* TODO(Ana): revisar copy do destaque da IA pessoal */}
-                <div className="mt-5 rounded-2xl border-2 border-slate-900 bg-violet-100 p-4 shadow-[3px_3px_0_#0f172a]">
-                  <p className="inline-flex items-center gap-2 font-display text-sm font-black uppercase tracking-wider text-slate-950">
-                    <Zap
-                      size={16}
-                      className="text-amber-500"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    />
-                    Sua própria IA pessoal
-                  </p>
-                  <p className="mt-2 text-sm font-medium leading-relaxed text-slate-700">
-                    Uma IA que conhece você, seu perfil e seus objetivos: te
-                    guia, acompanha seu progresso e conversa sobre a sua
-                    jornada, não só sobre a plataforma.
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div className="rounded-xl border-2 border-slate-900 bg-white p-3">
-                      <p className="text-xs font-black uppercase tracking-wider text-emerald-700">
-                        IA no grátis
-                      </p>
-                      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
-                        Tira-dúvidas da plataforma.
-                      </p>
-                    </div>
-                    <div className="rounded-xl border-2 border-slate-900 bg-violet-200 p-3">
-                      <p className="text-xs font-black uppercase tracking-wider text-violet-800">
-                        IA no Pro
-                      </p>
-                      <p className="mt-1 text-xs font-medium leading-relaxed text-slate-700">
-                        Conhece seu perfil e objetivos, com guias,
-                        acompanhamento e interação personalizada.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                  Desbloqueios na plataforma ({PRO_UNLOCKS.length})
-                </p>
-                <ul className="mt-2.5 space-y-2">
-                  {PRO_UNLOCKS.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <li
-                        key={item.text}
-                        className="flex items-center gap-2.5 text-sm font-bold text-slate-100"
-                      >
-                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-slate-900 bg-sky-300 text-slate-950">
-                          <Icon
-                            size={13}
-                            strokeWidth={2.5}
-                            aria-hidden="true"
-                          />
-                        </span>
-                        {item.text}
-                      </li>
-                    );
-                  })}
-                </ul>
-
-                <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                  Personalização e status ({PRO_PERSONALIZATION.length})
-                </p>
-                <ul className="mt-2.5 space-y-2">
-                  {PRO_PERSONALIZATION.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <li
-                        key={item.text}
-                        className="flex items-center gap-2.5 text-sm font-bold text-slate-100"
-                      >
-                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-[1.5px] border-slate-900 bg-pink-300 text-slate-950">
-                          <Icon
-                            size={13}
-                            strokeWidth={2.5}
-                            aria-hidden="true"
-                          />
-                        </span>
-                        {item.text}
-                      </li>
-                    );
-                  })}
-                </ul>
-                <div className="mt-3 flex items-center gap-4 rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-[3px_3px_0_#0f172a]">
-                  <UserAvatar
-                    name="Bora na Tech"
-                    border="pro-holo"
-                    icon="rocket"
-                    size="md"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-slate-950">
-                      Seu perfil com cara de Pro
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-full border-[1.5px] border-slate-900 bg-amber-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-900">
-                        <Trophy size={10} aria-hidden="true" />
-                        Conquista Pro
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border-[1.5px] border-slate-900 bg-violet-200 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-violet-900">
-                        <Sparkles size={10} aria-hidden="true" />
-                        Borda exclusiva
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="mt-4 text-xs font-medium text-slate-400">
-                  E ainda: comunidade exclusiva Pro (em breve).
-                </p>
-              </div>
-            </motion.div>
-          </div>
-
-          <motion.div
-            {...fade(0.15)}
-            className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row"
-          >
-            <button
-              type="button"
-              onClick={scrollToPlans}
-              aria-label="Ir para escolha de plano"
-              className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
-            >
-              <Sparkles size={18} aria-hidden="true" />
-              <span>Desbloquear as ferramentas com IA</span>
-              <ArrowRight
-                size={18}
-                className="transition-transform group-hover:translate-x-1"
-              />
-            </button>
-            <Link
-              href={FREE_HREF}
-              className="bnt-pressable inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-white px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
-            >
-              Continuar com o básico
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="tabela-comparativa-title"
-        className="relative overflow-hidden border-t-2 border-slate-950 bg-[#faf8f4] py-16 md:py-20"
-      >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-        >
-          <div className="animate-gentle-float absolute -left-10 top-24 h-44 w-44 rounded-full bg-violet-300 opacity-[0.18] blur-3xl" />
-          <div className="animate-gentle-float absolute -right-14 bottom-24 h-56 w-56 rounded-full bg-amber-300 opacity-[0.16] blur-3xl" />
-        </div>
-        <div className="container relative max-w-3xl">
-          <motion.div {...fade()} className="text-center">
-            <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 font-display text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
-              Comparativo completo
-            </p>
-            <h2
-              id="tabela-comparativa-title"
-              className="mt-4 font-display font-black leading-[1.1] text-slate-950"
-              style={{ fontSize: "clamp(26px, 4vw, 40px)" }}
-            >
-              Grátis x Pro,{" "}
-              <span className="text-violet-700">linha a linha</span>.
-            </h2>
-          </motion.div>
-
-          <motion.div
-            {...fade(0.05)}
-            className="mt-10 overflow-hidden rounded-3xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#0f172a]"
-          >
-            <table className="w-full table-fixed border-collapse text-left">
-              <caption className="sr-only">
-                Comparação de recursos entre o plano grátis e o plano Pro
-              </caption>
-              <thead>
-                <tr className="border-b-2 border-slate-950">
-                  <th
-                    scope="col"
-                    className="px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-slate-500"
-                  >
-                    Recursos
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-16 border-l-2 border-slate-950 px-1 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700 sm:w-24"
-                  >
-                    Grátis
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-16 border-l-2 border-slate-950 bg-violet-700 px-1 py-3 text-center text-xs font-black uppercase tracking-wider text-white sm:w-24"
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      <ProStarIcon />
-                      Pro
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE_ROWS.map((row) => (
-                  <tr
-                    key={row.feature}
-                    className="border-b border-slate-200 transition-colors last:border-b-0 hover:bg-amber-50"
-                  >
-                    <th
-                      scope="row"
-                      className="px-4 py-2.5 text-sm font-bold text-slate-800"
-                    >
-                      {row.feature}
-                    </th>
-                    <td className="border-l-2 border-slate-950 px-1 py-2.5 text-center">
-                      <CompareCellContent value={row.free} side="free" />
-                    </td>
-                    <td className="border-l-2 border-slate-950 bg-violet-50 px-1 py-2.5 text-center">
-                      <CompareCellContent value={row.pro} side="pro" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-slate-950 bg-slate-950">
-                  <th
-                    scope="row"
-                    className="px-4 py-3 text-sm font-black text-white"
-                  >
-                    Total de recursos
-                  </th>
-                  <td className="border-l-2 border-slate-950 px-1 py-3 text-center font-display text-lg font-black text-slate-300">
-                    {COMPARE_FREE_TOTAL}
-                  </td>
-                  <td className="border-l-2 border-slate-950 bg-violet-700 px-1 py-3 text-center font-display text-lg font-black text-white">
-                    {COMPARE_PRO_TOTAL}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </motion.div>
-
-          <motion.div {...fade(0.1)} className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={scrollToPlans}
-              aria-label="Ir para escolha de plano"
-              className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
-            >
-              <Sparkles size={18} aria-hidden="true" />
-              <span>Escolher meu plano</span>
-              <ArrowRight
-                size={18}
-                className="transition-transform group-hover:translate-x-1"
-              />
-            </button>
-          </motion.div>
-        </div>
-      </section>
-
-      <section
-        id="planos-section"
-        aria-labelledby="planos-title"
-        className="relative overflow-hidden border-t-2 border-slate-950 py-16 md:py-24"
-        style={{
-          backgroundColor: "#faf8f4",
-          backgroundImage:
-            "radial-gradient(rgba(245, 158, 11, 0.16) 1.5px, transparent 1.5px)",
-          backgroundSize: "22px 22px",
-        }}
-      >
-        <div className="container">
           <motion.div {...fade()} className="mx-auto max-w-3xl text-center">
             <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-amber-300 px-3 py-1 font-display text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
               Escolha seu plano
@@ -1237,7 +834,7 @@ export default function Checkout() {
           <div
             role="radiogroup"
             aria-label="Escolha do plano de assinatura"
-            className="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-3"
+            className="mx-auto mt-10 grid max-w-5xl gap-6 lg:grid-cols-3"
           >
             {plans.map((plan, idx) => {
               const selected = selectedPlan === plan.id;
@@ -1274,32 +871,32 @@ export default function Checkout() {
                       {plan.badge}
                     </span>
                   ) : null}
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="font-display text-3xl font-black text-slate-950">
-                        {plan.label}
-                      </h3>
-                      {plan.savings ? (
-                        <p className="mt-1 text-sm font-black text-violet-800">
-                          {plan.savings}
-                        </p>
-                      ) : null}
-                    </div>
-                    <span
-                      aria-hidden="true"
-                      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
-                        selected
-                          ? "border-slate-900 bg-slate-950"
-                          : "border-slate-900 bg-white"
-                      }`}
-                    >
-                      {selected ? (
-                        <Check
-                          className="h-4 w-4 text-[#FFB800]"
-                          strokeWidth={3}
-                        />
-                      ) : null}
-                    </span>
+                  {/* Circulo de selecao em coordenada FIXA (absolute) pra ficar
+                      na mesma altura nos 3 cards, com ou sem badge. */}
+                  <span
+                    aria-hidden="true"
+                    className={`absolute right-6 top-6 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
+                      selected
+                        ? "border-slate-900 bg-slate-950"
+                        : "border-slate-900 bg-white"
+                    }`}
+                  >
+                    {selected ? (
+                      <Check
+                        className="h-4 w-4 text-[#FFB800]"
+                        strokeWidth={3}
+                      />
+                    ) : null}
+                  </span>
+                  <div className="pr-10">
+                    <h3 className="font-display text-3xl font-black text-slate-950">
+                      {plan.label}
+                    </h3>
+                    {plan.savings ? (
+                      <p className="mt-1 text-sm font-black text-violet-800">
+                        {plan.savings}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="mt-6">
                     {discountPercent > 0 ? (
@@ -1391,40 +988,255 @@ export default function Checkout() {
       </section>
 
       <section
-        aria-labelledby="planos-fechamento-title"
-        className="relative overflow-hidden border-t-2 border-slate-950 bg-slate-950 py-14 md:py-16"
+        aria-labelledby="tabela-comparativa-title"
+        className="relative overflow-hidden border-t-2 border-slate-950 py-14 md:py-20"
+        style={{
+          backgroundColor: "#f5f3ff",
+          backgroundImage:
+            "radial-gradient(rgba(124, 58, 237, 0.25) 1.5px, transparent 1.5px)",
+          backgroundSize: "20px 20px",
+        }}
       >
-        <CeuEstrelado />
-        <div className="container relative z-10 flex flex-col items-center gap-6 text-center">
-          <motion.h2
-            id="planos-fechamento-title"
-            {...fade()}
-            className="max-w-2xl font-display font-black leading-[1.1] text-white"
-            style={{ fontSize: "clamp(24px, 3.5vw, 36px)" }}
-          >
-            {/* TODO(Ana): revisar copy do fechamento */}
-            Escolheu o plano? Bora acelerar sua entrada em{" "}
-            <span className="relative inline-block">
-              <span className="relative">TI</span>
-              <span
-                className="absolute -bottom-1 left-0 right-0 -z-10 h-2.5 rounded-md bg-amber-400"
-                aria-hidden="true"
-              />
-            </span>
-            .
-          </motion.h2>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+        >
+          <div className="animate-gentle-float absolute -left-10 top-16 h-56 w-56 rounded-full bg-violet-300 opacity-[0.3] blur-3xl" />
+          <div className="animate-gentle-float absolute -right-12 top-[35%] h-72 w-72 rounded-full bg-fuchsia-300 opacity-[0.22] blur-3xl" />
+          <div className="animate-gentle-float absolute left-[20%] bottom-12 h-48 w-48 rounded-full bg-violet-400 opacity-[0.2] blur-3xl" />
+        </div>
+        <div className="container relative max-w-6xl">
+          <motion.div {...fade()} className="text-center">
+            <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 font-display text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
+              Grátis x Pro
+            </p>
+            <h2
+              id="tabela-comparativa-title"
+              className="mt-4 font-display font-black leading-[1.1] text-slate-950"
+              style={{ fontSize: "clamp(26px, 4vw, 40px)" }}
+            >
+              A base é <span className="text-emerald-600">grátis</span>. O Pro{" "}
+              <span className="text-violet-700">desbloqueia tudo</span>.
+            </h2>
+            <p className="mx-auto mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
+              <ProStarIcon />
+              Tudo do grátis + {PRO_EXCLUSIVE_COUNT} recursos exclusivos
+            </p>
+          </motion.div>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            {/* TODO(Ana): revisar copy do destaque do comparador (agora Pro) */}
+            <motion.div
+              {...fade(0.05)}
+              className="rounded-3xl border-2 border-slate-900 bg-amber-100 p-6 shadow-[5px_5px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#0f172a]"
+            >
+              <p className="inline-flex items-center gap-2 font-display text-base font-black uppercase tracking-wider text-slate-950">
+                <Scale size={18} strokeWidth={2.5} aria-hidden="true" />
+                Comparador completo
+                <ProStarIcon />
+              </p>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {COMPARADOR_CATEGORIES.map((cat) => (
+                  <span
+                    key={cat}
+                    className="rounded-full border-[1.5px] border-slate-900 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[1px_1px_0_#0f172a]"
+                  >
+                    {cat}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">
+                Compare custo, tempo, dificuldade, mercado, certificação,
+                pré-requisitos e indicações lado a lado antes de decidir.
+              </p>
+            </motion.div>
+
+            {/* TODO(Ana): revisar copy do destaque da IA pessoal */}
+            <motion.div
+              {...fade(0.1)}
+              className="rounded-3xl border-2 border-slate-900 bg-violet-100 p-6 shadow-[5px_5px_0_#7c3aed] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#7c3aed]"
+            >
+              <p className="inline-flex items-center gap-2 font-display text-base font-black uppercase tracking-wider text-slate-950">
+                <Zap
+                  size={18}
+                  className="text-amber-500"
+                  fill="currentColor"
+                  aria-hidden="true"
+                />
+                Sua própria IA pessoal
+                <ProStarIcon />
+              </p>
+              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">
+                Uma IA que conhece você, seu perfil e seus objetivos: te guia,
+                acompanha seu progresso e conversa sobre a sua jornada.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <div className="rounded-xl border-2 border-slate-900 bg-white p-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-emerald-700">
+                    IA no grátis
+                  </p>
+                  <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
+                    Tira-dúvidas da plataforma.
+                  </p>
+                </div>
+                <div className="rounded-xl border-2 border-slate-900 bg-violet-200 p-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-violet-800">
+                    IA no Pro
+                  </p>
+                  <p className="mt-1 text-xs font-medium leading-relaxed text-slate-700">
+                    Conhece seu perfil e objetivos, com guias, acompanhamento e
+                    interação personalizada.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
           <motion.div
-            {...fade(0.05)}
-            className="flex flex-col items-center justify-center gap-3 sm:flex-row"
+            {...fade(0.1)}
+            className="mt-8 overflow-hidden rounded-3xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#0f172a]"
+          >
+            <table className="w-full table-fixed border-collapse text-left">
+              <caption className="sr-only">
+                Comparação de recursos entre o plano grátis e o plano Pro
+              </caption>
+              <thead>
+                <tr className="border-b-2 border-slate-950">
+                  <th
+                    scope="col"
+                    className="px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-slate-500"
+                  >
+                    Recursos
+                  </th>
+                  <th
+                    scope="col"
+                    className="w-16 border-l-2 border-slate-950 px-1 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-700 sm:w-32"
+                  >
+                    Grátis
+                  </th>
+                  <th
+                    scope="col"
+                    className="w-24 border-l-2 border-violet-700 bg-violet-700 px-1 py-2.5 text-center sm:w-44"
+                  >
+                    <span className="flex flex-col items-center gap-1">
+                      <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-white">
+                        <ProStarIcon />
+                        Pro
+                      </span>
+                      <span className="hidden text-[10px] font-bold text-violet-200 sm:block">
+                        a partir de {FROM_MONTHLY_LABEL}/mês
+                      </span>
+                      <button
+                        type="button"
+                        onClick={scrollToPlans}
+                        aria-label="Voltar para a escolha de plano"
+                        className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-3.5 py-1 text-[11px] font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                      >
+                        Assinar
+                      </button>
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              {COMPARE_GROUPS.map((group) => {
+                const open = openGroups[group.title] === true;
+                return (
+                  <tbody key={group.title}>
+                    <tr className="border-y border-slate-300 bg-[#faf8f4]">
+                      <th
+                        colSpan={2}
+                        scope="colgroup"
+                        className="px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.15em] text-slate-600"
+                      >
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          onClick={() => toggleGroup(group.title)}
+                          className="flex min-h-6 w-full items-center gap-2 text-left text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 transition-colors hover:text-slate-950"
+                        >
+                          <ChevronRight
+                            className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
+                            strokeWidth={3}
+                            aria-hidden="true"
+                          />
+                          {group.title}
+                          <span className="rounded-full border-[1.5px] border-slate-900 bg-white px-1.5 py-px text-[10px] font-black text-slate-700 shadow-[1px_1px_0_#0f172a]">
+                            {group.rows.length}
+                          </span>
+                          {group.preview ? (
+                            <UserAvatar
+                              name="Bora na Tech"
+                              border="pro-holo"
+                              icon="rocket"
+                              size="sm"
+                              className="hidden sm:inline-flex"
+                            />
+                          ) : null}
+                        </button>
+                      </th>
+                      <td
+                        aria-hidden="true"
+                        className="border-l-2 border-violet-700 bg-violet-50"
+                      />
+                    </tr>
+                    {open
+                      ? group.rows.map((row) => (
+                          <tr
+                            key={row.feature}
+                            className="border-b border-slate-200 transition-colors last:border-b-0 hover:bg-amber-50"
+                          >
+                            <th
+                              scope="row"
+                              className="px-4 py-1.5 text-sm font-bold text-slate-800"
+                            >
+                              {row.feature}
+                            </th>
+                            <td className="border-l-2 border-slate-950 px-1 py-1.5 text-center">
+                              <CompareCellContent
+                                value={row.free}
+                                side="free"
+                              />
+                            </td>
+                            <td className="border-l-2 border-violet-700 bg-violet-50 px-1 py-1.5 text-center">
+                              <CompareCellContent value={row.pro} side="pro" />
+                            </td>
+                          </tr>
+                        ))
+                      : null}
+                  </tbody>
+                );
+              })}
+              <tfoot>
+                <tr className="border-t-2 border-slate-950 bg-slate-950">
+                  <th
+                    scope="row"
+                    className="px-4 py-3 text-sm font-black text-white"
+                  >
+                    Total de recursos
+                  </th>
+                  <td className="border-l-2 border-slate-950 px-1 py-3 text-center font-display text-lg font-black text-slate-300">
+                    {COMPARE_FREE_TOTAL}
+                  </td>
+                  <td className="border-l-2 border-violet-700 bg-violet-700 px-1 py-3 text-center font-display text-lg font-black text-white">
+                    {COMPARE_PRO_TOTAL}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </motion.div>
+
+          <motion.div
+            {...fade(0.15)}
+            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
             <button
               type="button"
               onClick={scrollToPlans}
               aria-label="Voltar para a escolha de plano"
-              className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#7c3aed] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#7c3aed]"
+              className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
             >
-              <ProStarIcon />
-              <span>Assinar {currentPlan.label}</span>
+              <Sparkles size={18} aria-hidden="true" />
+              <span>Escolher meu plano</span>
               <ArrowRight
                 size={18}
                 className="transition-transform group-hover:translate-x-1"
@@ -1432,7 +1244,7 @@ export default function Checkout() {
             </button>
             <Link
               href={FREE_HREF}
-              className="bnt-pressable inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-white px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#7c3aed] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#7c3aed]"
+              className="bnt-pressable inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-white px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
             >
               Continuar com o básico
             </Link>
