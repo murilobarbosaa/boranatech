@@ -27,7 +27,13 @@ const PRO_BENEFICIOS: { icon: LucideIcon; label: string }[] = [
 export default function BemVindo() {
   const reduce = useReducedMotion();
   const [, setLocation] = useLocation();
-  const { profile, refreshProfile } = useAuth();
+  const { profile, profileStatus, refreshProfile } = useAuth();
+  // O checkbox de opt-in so e COLETOR legitimo quando foi de fato exibido, e a
+  // decisao de exibir exige o profile carregado (profileStatus === "ready"):
+  // antes disso nao da pra saber se a pessoa ja optou no cadastro. Em "error"
+  // tambem nao exibimos: sem certeza, nao coletamos e nao escrevemos.
+  const optInColetavel =
+    profileStatus === "ready" && profile?.marketing_opt_in !== true;
   // Opt-in de comunicacao promocional: DESMARCADO por default, escolha
   // explicita. Editavel depois no perfil.
   const [marketingOptIn, setMarketingOptIn] = useState(false);
@@ -50,12 +56,13 @@ export default function BemVindo() {
   // local pra nao prender a pessoa nesta tela num retorno futuro. Leva junto
   // a escolha de opt-in de marketing (o carimbo e gravado pelo server).
   function marcarOnboarding() {
-    // So grava o opt-in quando marcado AQUI. NUNCA grava false: o default do banco
-    // ja e false, e um false aqui poderia sobrescrever um opt-in feito no cadastro,
-    // que chega via PATCH concorrente no SIGNED_IN. Por isso omitimos o campo em vez
-    // de mandar false. Idempotente.
+    // marketing_opt_in so entra no PATCH quando o checkbox foi exibido E marcado:
+    // o que este form nao coletou, ele nao escreve. NUNCA grava false: o default
+    // do banco ja e false, e um false aqui poderia sobrescrever um opt-in feito no
+    // cadastro (PATCH concorrente no SIGNED_IN). O PATCH /api/me aceita payload
+    // parcial, entao omitir o campo e seguro.
     const updates: Record<string, unknown> = { onboarding_completed: true };
-    if (marketingOptIn) {
+    if (optInColetavel && marketingOptIn) {
       updates.marketing_opt_in = true;
     }
     void updateMyProfile(updates)
@@ -111,10 +118,12 @@ export default function BemVindo() {
           a primeira vaga.
         </p>
 
-        {/* So oferece o opt-in a quem ainda nao optou. Quem marcou no cadastro
+        {/* So oferece o opt-in a quem ainda nao optou, e SO depois do profile
+            carregar (optInColetavel): renderizar antes causava flicker e abria
+            janela pra coletar de quem ja optou no cadastro. Quem marcou la
             (profile.marketing_opt_in === true) nao e perguntado de novo. Usuarios
             antigos (default false) continuam vendo normalmente. */}
-        {profile?.marketing_opt_in !== true && (
+        {optInColetavel && (
           <label className="mx-auto mt-6 flex max-w-md cursor-pointer items-start justify-center gap-2 text-left text-sm font-medium text-slate-300">
             <input
               type="checkbox"
