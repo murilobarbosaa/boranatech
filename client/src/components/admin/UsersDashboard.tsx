@@ -161,13 +161,24 @@ function displayName(row: UserRow): string {
   return "Usuário";
 }
 
+// Linha compacta de lista de definicao: rotulo pequeno em cima, valor embaixo,
+// sem caixa. A hierarquia vem do peso da tipografia, nao de borda/fundo. Campo
+// vazio (NAO_INFORMADO vindo dos formatadores) continua visivel, mas esmaecido:
+// o admin ve que esta vazio sem o texto disputar peso com dado real.
 function Field({ label, value }: { label: string; value: ReactNode }) {
+  const isEmpty = value === NAO_INFORMADO;
   return (
-    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
-      <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
         {label}
       </p>
-      <p className="mt-1 break-words font-display text-base font-black text-slate-950">
+      <p
+        className={
+          isEmpty
+            ? "break-words text-sm font-medium text-slate-400"
+            : "break-words text-sm font-bold text-slate-950"
+        }
+      >
         {value}
       </p>
     </div>
@@ -733,7 +744,7 @@ export function UsersDashboard() {
                 {/* Visivel de cara: Identificacao (com a foto), Assinatura e
                     Documento lado a lado. Abaixo de lg empilha na vertical. */}
                 <div className="grid items-start gap-6 lg:grid-cols-3">
-                  <section className="space-y-3">
+                  <section className="space-y-2.5">
                     <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                       Identificação
                     </h4>
@@ -749,7 +760,7 @@ export function UsersDashboard() {
 
                   {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
                       aviso de cancelamento e o estado de quem nunca assinou). */}
-                  <section className="space-y-3">
+                  <section className="space-y-2.5">
                     <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                       Assinatura
                     </h4>
@@ -813,9 +824,9 @@ export function UsersDashboard() {
                         ) : null}
                       </>
                     ) : (
-                      <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                      <p className="text-sm font-medium text-slate-400">
                         Este usuário nunca assinou um plano.
-                      </div>
+                      </p>
                     )}
 
                     {/* TODO(Ana): revisar toda a copy do bloco de influencer
@@ -926,7 +937,7 @@ export function UsersDashboard() {
                     ) : null}
                   </section>
 
-                  <section className="space-y-3">
+                  <section className="space-y-2.5">
                     <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                       Documento
                     </h4>
@@ -980,7 +991,7 @@ export function UsersDashboard() {
                 {moreOpen ? (
                   <div className="space-y-6">
                     <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-4">
-                      <section className="space-y-3">
+                      <section className="space-y-2.5">
                         <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                           Perfil e carreira
                         </h4>
@@ -999,7 +1010,7 @@ export function UsersDashboard() {
                         <Field label="Bio" value={fmtText(detail.bio)} />
                       </section>
 
-                      <section className="space-y-3">
+                      <section className="space-y-2.5">
                         <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                           Onboarding
                         </h4>
@@ -1026,7 +1037,7 @@ export function UsersDashboard() {
                         />
                       </section>
 
-                      <section className="space-y-3">
+                      <section className="space-y-2.5">
                         <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                           Marketing
                         </h4>
@@ -1044,7 +1055,7 @@ export function UsersDashboard() {
                         />
                       </section>
 
-                      <section className="space-y-3">
+                      <section className="space-y-2.5">
                         <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
                           Sistema
                         </h4>
