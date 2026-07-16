@@ -14,23 +14,18 @@ import {
   Briefcase,
   Camera,
   Check,
-  ChevronRight,
   History,
   type LucideIcon,
   MonitorPlay,
   Palette,
-  Scale,
   Sparkles,
   Trophy,
   Users,
-  X,
-  Zap,
 } from "lucide-react";
 
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import CeuEstrelado from "@/components/shared/CeuEstrelado";
-import UserAvatar from "@/components/UserAvatar";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAffiliate } from "@/hooks/useAffiliate";
@@ -224,14 +219,16 @@ const PRO_UNLOCKS: Array<{ icon: LucideIcon; text: string }> = [
 const PRO_EXCLUSIVE_COUNT =
   PRO_AI_TOOLS.length + PRO_UNLOCKS.length + PRO_PERSONALIZATION.length + 2;
 
-// Tabela Gratis x Pro. free/pro: true = tem completo, false = nao tem,
+// Dados Gratis x Pro. free/pro: true = tem completo, false = nao tem,
 // string = versao limitada ou rotulo. As linhas Pro-only derivam dos MESMOS
 // arrays dos cards (PRO_AI_TOOLS, PRO_PERSONALIZATION) pra nunca desincronizar,
 // e os totais derivam das linhas.
-type CompareCell = boolean | string;
-type CompareRow = { feature: string; free: CompareCell; pro: CompareCell };
+// A secao de comparacao foi removida (sera reconstruida); os agrupamentos e
+// totais ficam exportados pra futura secao de comparacao.
+export type CompareCell = boolean | string;
+export type CompareRow = { feature: string; free: CompareCell; pro: CompareCell };
 
-const COMPARE_GROUPS: Array<{
+export const COMPARE_GROUPS: Array<{
   title: string;
   // Mostra o preview do avatar Pro no sub-header do grupo (personalizacao).
   preview?: boolean;
@@ -304,10 +301,15 @@ const COMPARE_GROUPS: Array<{
   },
 ];
 
-const COMPARE_ROWS: CompareRow[] = COMPARE_GROUPS.flatMap((g) => g.rows);
+export const COMPARE_ROWS: CompareRow[] = COMPARE_GROUPS.flatMap(
+  (g) => g.rows,
+);
 
-const COMPARE_FREE_TOTAL = COMPARE_ROWS.filter((r) => r.free !== false).length;
-const COMPARE_PRO_TOTAL = COMPARE_ROWS.length;
+// usado pela futura secao de comparacao
+export const COMPARE_FREE_TOTAL = COMPARE_ROWS.filter(
+  (r) => r.free !== false,
+).length;
+export const COMPARE_PRO_TOTAL = COMPARE_ROWS.length;
 
 const FREE_HREF = "/";
 
@@ -330,56 +332,6 @@ function readCachedUsersCount(): number | null {
   } catch {
     return null;
   }
-}
-
-// Celula da checklist espelhada: cada lado "acende" quando tem o recurso.
-// true = check na cor do lado, false = X apagado, string = rotulo de limite
-// (chip no gratis, texto aceso no Pro).
-function CompareCellContent({
-  value,
-  side,
-}: {
-  value: CompareCell;
-  side: "free" | "pro";
-}) {
-  if (value === true) {
-    return (
-      <>
-        <Check
-          size={18}
-          strokeWidth={3.5}
-          className={`inline ${side === "pro" ? "text-violet-800" : "text-emerald-700"}`}
-          aria-hidden="true"
-        />
-        <span className="sr-only">Incluído</span>
-      </>
-    );
-  }
-  if (value === false) {
-    return (
-      <>
-        <X
-          size={16}
-          strokeWidth={3}
-          className="inline text-slate-300"
-          aria-hidden="true"
-        />
-        <span className="sr-only">Não incluído</span>
-      </>
-    );
-  }
-  if (side === "pro") {
-    return (
-      <span className="text-[11px] font-black leading-tight text-violet-900">
-        {value}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-block rounded-full border-[1.5px] border-slate-900 bg-white px-1.5 py-0.5 text-[10px] font-black leading-tight text-slate-700 shadow-[1px_1px_0_#0f172a]">
-      {value}
-    </span>
-  );
 }
 
 function formatPrice(value: number) {
@@ -538,15 +490,6 @@ export default function Checkout() {
   // precos; nesse caso NAO devolvemos o foco ao chip (senao o browser rola de
   // volta pro hero brigando com o scroll). ESC/backdrop seguem devolvendo.
   const skipChipFocusRef = useRef(false);
-
-  // Grupos da tabela comparativa: os 2 primeiros abrem por padrao, os demais
-  // ficam colapsados pra segurar a altura da pagina.
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(COMPARE_GROUPS.map((g, i) => [g.title, i < 2])),
-  );
-  function toggleGroup(title: string) {
-    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -1101,269 +1044,6 @@ export default function Checkout() {
               Continuar com o básico (grátis)
             </Link>
           </div>
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="tabela-comparativa-title"
-        className="relative overflow-hidden border-t-2 border-slate-950 py-14 md:py-20"
-        style={{
-          backgroundColor: "#f5f3ff",
-          backgroundImage:
-            "radial-gradient(rgba(124, 58, 237, 0.25) 1.5px, transparent 1.5px)",
-          backgroundSize: "20px 20px",
-        }}
-      >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-        >
-          <div className="animate-gentle-float absolute -left-10 top-16 h-56 w-56 rounded-full bg-violet-300 opacity-[0.3] blur-3xl" />
-          <div className="animate-gentle-float absolute -right-12 top-[35%] h-72 w-72 rounded-full bg-fuchsia-300 opacity-[0.22] blur-3xl" />
-          <div className="animate-gentle-float absolute left-[20%] bottom-12 h-48 w-48 rounded-full bg-violet-400 opacity-[0.2] blur-3xl" />
-        </div>
-        <div className="container relative max-w-6xl">
-          <motion.div {...fade()} className="text-center">
-            <p className="inline-flex items-center gap-2 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 font-display text-xs font-black uppercase tracking-wide text-slate-950 shadow-[3px_3px_0_#0f172a]">
-              Grátis x Pro
-            </p>
-            <h2
-              id="tabela-comparativa-title"
-              className="mt-4 font-display font-black leading-[1.1] text-slate-950"
-              style={{ fontSize: "clamp(26px, 4vw, 40px)" }}
-            >
-              A base é <span className="text-emerald-600">grátis</span>. O Pro{" "}
-              <span className="text-violet-700">desbloqueia tudo</span>.
-            </h2>
-            <p className="mx-auto mt-4 inline-flex w-fit items-center gap-1.5 rounded-full border-2 border-slate-900 bg-violet-300 px-3 py-1 text-xs font-black uppercase tracking-wide text-slate-950 shadow-[2px_2px_0_#0f172a]">
-              <ProStarIcon />
-              Tudo do grátis + {PRO_EXCLUSIVE_COUNT} recursos exclusivos
-            </p>
-          </motion.div>
-
-          <div className="mt-10 grid gap-6 md:grid-cols-2">
-            {/* TODO(Ana): revisar copy do destaque do comparador (agora Pro) */}
-            <motion.div
-              {...fade(0.05)}
-              className="rounded-3xl border-2 border-slate-900 bg-amber-100 p-6 shadow-[5px_5px_0_#0f172a] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#0f172a]"
-            >
-              <p className="inline-flex items-center gap-2 font-display text-base font-black uppercase tracking-wider text-slate-950">
-                <Scale size={18} strokeWidth={2.5} aria-hidden="true" />
-                Comparador completo
-                <ProStarIcon />
-              </p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {COMPARADOR_CATEGORIES.map((cat) => (
-                  <span
-                    key={cat}
-                    className="rounded-full border-[1.5px] border-slate-900 bg-white px-2.5 py-0.5 text-[11px] font-black text-slate-900 shadow-[1px_1px_0_#0f172a]"
-                  >
-                    {cat}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">
-                Compare custo, tempo, dificuldade, mercado, certificação,
-                pré-requisitos e indicações lado a lado antes de decidir.
-              </p>
-            </motion.div>
-
-            {/* TODO(Ana): revisar copy do destaque da IA pessoal */}
-            <motion.div
-              {...fade(0.1)}
-              className="rounded-3xl border-2 border-slate-900 bg-violet-100 p-6 shadow-[5px_5px_0_#7c3aed] transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[7px_7px_0_#7c3aed]"
-            >
-              <p className="inline-flex items-center gap-2 font-display text-base font-black uppercase tracking-wider text-slate-950">
-                <Zap
-                  size={18}
-                  className="text-amber-500"
-                  fill="currentColor"
-                  aria-hidden="true"
-                />
-                Sua própria IA pessoal
-                <ProStarIcon />
-              </p>
-              <p className="mt-3 text-sm font-medium leading-relaxed text-slate-700">
-                Uma IA que conhece você, seu perfil e seus objetivos: te guia,
-                acompanha seu progresso e conversa sobre a sua jornada.
-              </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-xl border-2 border-slate-900 bg-white p-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-emerald-700">
-                    IA no grátis
-                  </p>
-                  <p className="mt-1 text-xs font-medium leading-relaxed text-slate-600">
-                    Tira-dúvidas da plataforma.
-                  </p>
-                </div>
-                <div className="rounded-xl border-2 border-slate-900 bg-violet-200 p-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-violet-800">
-                    IA no Pro
-                  </p>
-                  <p className="mt-1 text-xs font-medium leading-relaxed text-slate-700">
-                    Conhece seu perfil e objetivos, com guias, acompanhamento e
-                    interação personalizada.
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          <motion.div
-            {...fade(0.1)}
-            className="mt-8 overflow-hidden rounded-3xl border-2 border-slate-950 bg-white shadow-[5px_5px_0_#0f172a]"
-          >
-            <table className="w-full table-fixed border-collapse">
-              <caption className="sr-only">
-                Comparação de recursos entre o plano grátis e o plano Pro
-              </caption>
-              <thead>
-                <tr className="border-b-2 border-slate-950">
-                  <th
-                    scope="col"
-                    className="w-16 border-r-2 border-slate-950 bg-emerald-200 px-1 py-3 text-center text-xs font-black uppercase tracking-wider text-slate-950 sm:w-32"
-                  >
-                    Grátis
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-3 text-center text-xs font-black uppercase tracking-[0.15em] text-slate-500"
-                  >
-                    Recursos
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-24 border-l-2 border-violet-700 bg-slate-950 px-1 py-2.5 text-center sm:w-44"
-                  >
-                    <span className="flex flex-col items-center gap-1">
-                      <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider text-white">
-                        <ProStarIcon />
-                        Pro
-                      </span>
-                      <span className="hidden text-[10px] font-bold text-violet-300 sm:block">
-                        a partir de {FROM_MONTHLY_LABEL}/mês
-                      </span>
-                      <button
-                        type="button"
-                        onClick={scrollToPlans}
-                        aria-label="Voltar para a escolha de plano"
-                        className="rounded-full border-2 border-slate-900 bg-[#FFB800] px-3.5 py-1 text-[11px] font-black text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
-                      >
-                        Assinar
-                      </button>
-                    </span>
-                  </th>
-                </tr>
-              </thead>
-              {COMPARE_GROUPS.map((group) => {
-                const open = openGroups[group.title] === true;
-                return (
-                  <tbody key={group.title}>
-                    <tr className="border-y border-slate-300 bg-[#faf8f4]">
-                      <th colSpan={3} scope="colgroup" className="px-4 py-1.5">
-                        <button
-                          type="button"
-                          aria-expanded={open}
-                          onClick={() => toggleGroup(group.title)}
-                          className="mx-auto flex min-h-6 w-full max-w-md items-center justify-center gap-2 text-center text-[11px] font-black uppercase tracking-[0.15em] text-slate-600 transition-colors hover:text-slate-950"
-                        >
-                          <ChevronRight
-                            className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? "rotate-90" : ""}`}
-                            strokeWidth={3}
-                            aria-hidden="true"
-                          />
-                          {group.title}
-                          <span className="rounded-full border-[1.5px] border-slate-900 bg-white px-1.5 py-px text-[10px] font-black text-slate-700 shadow-[1px_1px_0_#0f172a]">
-                            {group.rows.length}
-                          </span>
-                          {group.preview ? (
-                            <UserAvatar
-                              name="Bora na Tech"
-                              border="pro-holo"
-                              icon="rocket"
-                              size="sm"
-                              className="hidden sm:inline-flex"
-                            />
-                          ) : null}
-                        </button>
-                      </th>
-                    </tr>
-                    {open
-                      ? group.rows.map((row) => (
-                          <tr
-                            key={row.feature}
-                            className="border-b border-slate-200 last:border-b-0"
-                          >
-                            <td
-                              className={`border-r-2 border-slate-950 px-1 py-1.5 text-center ${
-                                row.free === false
-                                  ? "bg-slate-50"
-                                  : "bg-emerald-100"
-                              }`}
-                            >
-                              <CompareCellContent
-                                value={row.free}
-                                side="free"
-                              />
-                            </td>
-                            <th
-                              scope="row"
-                              className="px-4 py-1.5 text-center text-sm font-bold text-slate-800"
-                            >
-                              {row.feature}
-                            </th>
-                            <td className="border-l-2 border-violet-700 bg-violet-200 px-1 py-1.5 text-center shadow-[inset_0_0_14px_rgba(124,58,237,0.25)]">
-                              <CompareCellContent value={row.pro} side="pro" />
-                            </td>
-                          </tr>
-                        ))
-                      : null}
-                  </tbody>
-                );
-              })}
-              <tfoot>
-                <tr className="border-t-2 border-slate-950">
-                  <td className="border-r-2 border-slate-950 bg-emerald-400 px-1 py-2.5 text-center font-display text-2xl font-black text-slate-950">
-                    {COMPARE_FREE_TOTAL}
-                  </td>
-                  <th
-                    scope="row"
-                    className="bg-slate-950 px-4 py-3 text-center text-sm font-black uppercase tracking-wider text-white"
-                  >
-                    Total de recursos
-                  </th>
-                  <td className="border-l-2 border-violet-700 bg-violet-700 px-1 py-2.5 text-center font-display text-2xl font-black text-white">
-                    {COMPARE_PRO_TOTAL}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </motion.div>
-
-          <motion.div
-            {...fade(0.15)}
-            className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
-          >
-            <button
-              type="button"
-              onClick={scrollToPlans}
-              aria-label="Voltar para a escolha de plano"
-              className="pro-glare bnt-pressable group inline-flex items-center justify-center gap-2 overflow-hidden rounded-full border-2 border-slate-950 bg-[#FFB800] px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
-            >
-              <Sparkles size={18} aria-hidden="true" />
-              <span>Escolher meu plano</span>
-              <ArrowRight
-                size={18}
-                className="transition-transform group-hover:translate-x-1"
-              />
-            </button>
-            <Link
-              href={FREE_HREF}
-              className="bnt-pressable inline-flex items-center justify-center rounded-full border-2 border-slate-950 bg-white px-7 py-3.5 font-display text-base font-black text-slate-950 shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
-            >
-              Continuar com o básico
-            </Link>
-          </motion.div>
         </div>
       </section>
 
