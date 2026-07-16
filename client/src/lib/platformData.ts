@@ -2669,6 +2669,78 @@ export const projectHelpVideos: Record<string, { title: string; url: string }> =
       title: "Apache Kafka com Python",
       url: "https://www.youtube.com/watch?v=ebeRP_pZCPM",
     },
+    "redesign-app-bancario": {
+      title: "Como Fazer Redesign de App no Figma",
+      url: "https://www.youtube.com/watch?v=Hx-E3chNe8Y",
+    },
+    "design-system-basico": {
+      title: "Design System do Zero no Figma",
+      url: "https://www.youtube.com/watch?v=KQd7-IVDAXI",
+    },
+    "teste-usabilidade-maze": {
+      title: "Como Fazer Teste de Usabilidade com Maze",
+      url: "https://www.youtube.com/watch?v=yL4Vki0XaFI",
+    },
+    "wireframes-ecommerce": {
+      title: "Criando Wireframes de E-commerce no Figma",
+      url: "https://www.youtube.com/watch?v=SKqZAGQ8W6Y",
+    },
+    "prototipo-onboarding": {
+      title: "Prototipo de Onboarding no Figma",
+      url: "https://www.youtube.com/watch?v=3iXlMHkxfx8",
+    },
+    "mapa-jornada-cliente": {
+      title: "Como Criar Mapa de Jornada do Cliente",
+      url: "https://www.youtube.com/watch?v=X7iXPfKHEak",
+    },
+    "automacao-login-cypress": {
+      title: "Cypress do Zero ao Avancado",
+      url: "https://www.youtube.com/watch?v=1EzH1HsW_00",
+    },
+    "testes-api-postman": {
+      title: "Teste de API com Postman Completo",
+      url: "https://www.youtube.com/watch?v=WFHD47hzd0Q",
+    },
+    "testes-e2e-playwright": {
+      title: "Playwright para Automacao de Testes",
+      url: "https://www.youtube.com/watch?v=wGr5rz8WGCE",
+    },
+    "bdd-cucumber-javascript": {
+      title: "BDD com Cucumber e Cypress",
+      url: "https://www.youtube.com/watch?v=a-oMEVE94cE",
+    },
+    "performance-jmeter": {
+      title: "Testes de Performance com JMeter",
+      url: "https://www.youtube.com/watch?v=5M-V78Nla3c",
+    },
+    "pipeline-testes-github-actions": {
+      title: "CI com GitHub Actions para Testes",
+      url: "https://www.youtube.com/watch?v=IM-MHFtNMHk",
+    },
+    "prd-feature-nova": {
+      title: "Como Escrever um PRD de Produto",
+      url: "https://www.youtube.com/watch?v=bniWbNGDYHo",
+    },
+    "roadmap-produto-trimestral": {
+      title: "Como Criar Roadmap de Produto",
+      url: "https://www.youtube.com/watch?v=cJJF5bOLhk0",
+    },
+    "okrs-produto": {
+      title: "OKRs na Pratica para Times de Produto",
+      url: "https://www.youtube.com/watch?v=EIcpFZ5rbHc",
+    },
+    "priorizacao-rice": {
+      title: "Como Priorizar com Framework RICE",
+      url: "https://www.youtube.com/watch?v=pVTLuPbIBU0",
+    },
+    "analise-funil-conversao": {
+      title: "Analise de Funil de Conversao",
+      url: "https://www.youtube.com/watch?v=_3rDYlBM37I",
+    },
+    "hipoteses-teste-ab": {
+      title: "Como Fazer Testes AB de Produto",
+      url: "https://www.youtube.com/watch?v=zFMgpxG-chM",
+    },
     default: {
       title: "Como planejar projeto iniciante para portfólio",
       url: "https://www.youtube.com/results?search_query=projeto+iniciante+portfolio+programacao",
