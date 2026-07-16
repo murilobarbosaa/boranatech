@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { adminFetch } from "@/lib/adminApi";
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
@@ -162,17 +163,6 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
         {value}
       </p>
     </div>
-  );
-}
-
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="space-y-3">
-      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-        {title}
-      </h4>
-      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
-    </section>
   );
 }
 
@@ -376,6 +366,11 @@ export function UsersDashboard() {
   );
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState<string | null>(null);
+  // Dropdown "Mais informacoes": fechado por padrao a cada abertura do modal.
+  // activityRequested garante que o fetch do PostHog dispara UMA vez, na
+  // primeira abertura do dropdown, nunca junto com o detalhe.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [activityRequested, setActivityRequested] = useState(false);
 
   const [revealedCpf, setRevealedCpf] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
@@ -429,8 +424,9 @@ export function UsersDashboard() {
     setPage(1);
   }
 
-  // Ao abrir o modal (activeUserId): busca detalhe, assinatura e atividade. Cada
-  // fonte tem seu proprio estado; a falha de uma nao apaga as outras.
+  // Ao abrir o modal (activeUserId): busca o detalhe. A atividade PostHog NAO
+  // vem junto: fica para a primeira abertura do dropdown "Mais informacoes"
+  // (efeito abaixo), evitando chamada a toa em modal que nunca expande.
   useEffect(() => {
     if (!activeUserId) {
       setDetail(null);
@@ -439,6 +435,8 @@ export function UsersDashboard() {
       setActivityError(null);
       setRevealedCpf(null);
       setRevealError(null);
+      setMoreOpen(false);
+      setActivityRequested(false);
       return;
     }
 
@@ -448,6 +446,10 @@ export function UsersDashboard() {
     setDetailError(null);
     setRevealedCpf(null);
     setRevealError(null);
+    setActivity(null);
+    setActivityError(null);
+    setMoreOpen(false);
+    setActivityRequested(false);
     adminFetch(`/users/${activeUserId}`)
       .then((json) => {
         if (cancelled) return;
@@ -464,6 +466,18 @@ export function UsersDashboard() {
         if (!cancelled) setDetailLoading(false);
       });
 
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUserId]);
+
+  // Fetch preguicoso da atividade PostHog: dispara uma unica vez por usuario,
+  // quando o dropdown abre pela primeira vez.
+  useEffect(() => {
+    if (!activeUserId || !moreOpen || activityRequested) return;
+
+    let cancelled = false;
+    setActivityRequested(true);
     setActivityLoading(true);
     setActivityError(null);
     adminFetch(`/users/${activeUserId}/activity`)
@@ -485,7 +499,7 @@ export function UsersDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [activeUserId]);
+  }, [activeUserId, moreOpen, activityRequested]);
 
   async function handleReveal() {
     if (!activeUserId) return;
@@ -622,7 +636,7 @@ export function UsersDashboard() {
 
       {activeUserId ? (
         <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-          <div className="card-brutal my-8 w-full max-w-3xl rounded-3xl bg-white p-6">
+          <div className="card-brutal my-8 w-full max-w-6xl rounded-3xl bg-white p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-display text-2xl font-black text-slate-950">
@@ -651,76 +665,31 @@ export function UsersDashboard() {
               </div>
             ) : detail ? (
               <div className="mt-6 space-y-6">
-                <Group title="Foto">
-                  <AvatarBlock avatar={detail.avatar} />
-                </Group>
+                {/* Visivel de cara: Identificacao (com a foto), Assinatura e
+                    Documento lado a lado. Abaixo de lg empilha na vertical. */}
+                <div className="grid items-start gap-6 lg:grid-cols-3">
+                  <section className="space-y-3">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                      Identificação
+                    </h4>
+                    <AvatarBlock avatar={detail.avatar} />
+                    <Field label="Nome" value={fmtText(detail.name)} />
+                    <Field
+                      label="Nome completo"
+                      value={fmtText(detail.full_name)}
+                    />
+                    <Field label="E-mail" value={fmtText(detail.email)} />
+                    <Field label="Gênero" value={fmtText(detail.gender)} />
+                  </section>
 
-                <Group title="Identificação">
-                  <Field label="Nome" value={fmtText(detail.name)} />
-                  <Field
-                    label="Nome completo"
-                    value={fmtText(detail.full_name)}
-                  />
-                  <Field label="E-mail" value={fmtText(detail.email)} />
-                  <Field label="Gênero" value={fmtText(detail.gender)} />
-                </Group>
-
-                <Group title="Documento">
-                  <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3 sm:col-span-2">
-                    <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
-                      CPF
-                    </p>
-                    <p className="mt-1 break-words font-display text-base font-black text-slate-950">
-                      {revealedCpf ??
-                        (detail.has_cpf
-                          ? (detail.cpf_masked ?? NAO_INFORMADO)
-                          : NAO_INFORMADO)}
-                    </p>
-                    {detail.has_cpf && !revealedCpf ? (
-                      <button
-                        type="button"
-                        onClick={handleReveal}
-                        disabled={revealing}
-                        className="mt-3 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
-                      >
-                        {revealing ? "Revelando..." : "Revelar CPF"}
-                      </button>
-                    ) : null}
-                    {revealError ? (
-                      <p className="mt-2 text-xs font-black text-rose-700">
-                        {revealError}
-                      </p>
-                    ) : null}
-                    {/* TODO(Ana): copy do aviso de que revelar o CPF fica registrado em auditoria. */}
-                    <p className="mt-2 text-xs font-semibold text-slate-500">
-                      Revelar o CPF fica registrado em auditoria (quem revelou,
-                      de quem e quando).
-                    </p>
-                  </div>
-                </Group>
-
-                <Group title="Perfil e carreira">
-                  <Field
-                    label="Área de interesse"
-                    value={fmtText(detail.area_interesse)}
-                  />
-                  <Field
-                    label="Nível atual"
-                    value={fmtText(detail.nivel_atual)}
-                  />
-                  <Field label="Objetivo" value={fmtText(detail.objetivo)} />
-                  <Field label="Bio" value={fmtText(detail.bio)} />
-                </Group>
-
-                {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
-                    aviso de cancelamento e o estado de quem nunca assinou). */}
-                <section className="space-y-3">
-                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                    Assinatura
-                  </h4>
-                  {detail.subscription ? (
-                    <>
-                      <div className="grid gap-3 sm:grid-cols-2">
+                  {/* TODO(Ana): revisar toda a copy do bloco de assinatura (rotulos,
+                      aviso de cancelamento e o estado de quem nunca assinou). */}
+                  <section className="space-y-3">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                      Assinatura
+                    </h4>
+                    {detail.subscription ? (
+                      <>
                         <Field
                           label="Plano"
                           value={fmtText(detail.subscription.plan_code)}
@@ -759,83 +728,177 @@ export function UsersDashboard() {
                           label="Valor pago (total)"
                           value={fmtBrl(detail.paid_total_cents)}
                         />
+                        {detail.cancellation_intent ? (
+                          <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-3">
+                            <p className="text-[11px] font-black uppercase tracking-wide text-amber-800">
+                              Cancelamento agendado
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-amber-900">
+                              Motivo:{" "}
+                              {fmtText(
+                                detail.cancellation_intent.reason_text ||
+                                  detail.cancellation_intent.reason_code,
+                              )}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold text-amber-900">
+                              Efetivo em:{" "}
+                              {fmtDate(detail.cancellation_intent.effective_at)}
+                            </p>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                        Este usuário nunca assinou um plano.
                       </div>
-                      {detail.cancellation_intent ? (
-                        <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 p-3">
-                          <p className="text-[11px] font-black uppercase tracking-wide text-amber-800">
-                            Cancelamento agendado
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-amber-900">
-                            Motivo:{" "}
-                            {fmtText(
-                              detail.cancellation_intent.reason_text ||
-                                detail.cancellation_intent.reason_code,
-                            )}
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-amber-900">
-                            Efetivo em:{" "}
-                            {fmtDate(detail.cancellation_intent.effective_at)}
-                          </p>
-                        </div>
+                    )}
+                  </section>
+
+                  <section className="space-y-3">
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                      Documento
+                    </h4>
+                    <div className="rounded-2xl border-2 border-slate-900 bg-violet-50 p-3">
+                      <p className="text-[11px] font-black uppercase tracking-wide text-violet-700">
+                        CPF
+                      </p>
+                      <p className="mt-1 break-words font-display text-base font-black text-slate-950">
+                        {revealedCpf ??
+                          (detail.has_cpf
+                            ? (detail.cpf_masked ?? NAO_INFORMADO)
+                            : NAO_INFORMADO)}
+                      </p>
+                      {detail.has_cpf && !revealedCpf ? (
+                        <button
+                          type="button"
+                          onClick={handleReveal}
+                          disabled={revealing}
+                          className="mt-3 rounded-full border-2 border-slate-900 bg-yellow-300 px-4 py-1.5 text-xs font-black uppercase disabled:opacity-60"
+                        >
+                          {revealing ? "Revelando..." : "Revelar CPF"}
+                        </button>
                       ) : null}
-                    </>
-                  ) : (
-                    <div className="rounded-2xl border-2 border-slate-300 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                      Este usuário nunca assinou um plano.
+                      {revealError ? (
+                        <p className="mt-2 text-xs font-black text-rose-700">
+                          {revealError}
+                        </p>
+                      ) : null}
+                      {/* TODO(Ana): copy do aviso de que revelar o CPF fica registrado em auditoria. */}
+                      <p className="mt-2 text-xs font-semibold text-slate-500">
+                        Revelar o CPF fica registrado em auditoria (quem
+                        revelou, de quem e quando).
+                      </p>
                     </div>
-                  )}
-                </section>
+                  </section>
+                </div>
 
-                <Group title="Onboarding">
-                  <Field
-                    label="Onboarding"
-                    value={detail.onboarding_completed ? "Concluído" : "Incompleto"}
+                {/* TODO(Ana): rotulo do dropdown "Mais informacoes". */}
+                <button
+                  type="button"
+                  onClick={() => setMoreOpen((open) => !open)}
+                  aria-expanded={moreOpen}
+                  className="flex w-full items-center justify-between rounded-2xl border-2 border-slate-900 bg-white px-4 py-3 text-sm font-black uppercase tracking-[0.2em] text-slate-950 shadow-[3px_3px_0_#0f172a] transition hover:bg-yellow-50"
+                >
+                  Mais informações
+                  <ChevronDown
+                    className={`h-5 w-5 transition-transform ${moreOpen ? "rotate-180" : ""}`}
                   />
-                  <Field
-                    label="Passo do onboarding"
-                    value={
-                      detail.onboarding_step === null ||
-                      detail.onboarding_step === undefined
-                        ? NAO_INFORMADO
-                        : String(detail.onboarding_step)
-                    }
-                  />
-                  <Field
-                    label="Status"
-                    value={statusLabel(detail.onboarding_completed)}
-                  />
-                </Group>
+                </button>
 
-                <Group title="Marketing e sistema">
-                  <Field
-                    label="Opt-in de marketing"
-                    value={fmtBool(detail.marketing_opt_in)}
-                  />
-                  <Field
-                    label="Data do opt-in"
-                    value={fmtDateTime(detail.marketing_opt_in_at)}
-                  />
-                  <Field
-                    label="E-mail de boas-vindas"
-                    value={fmtBool(detail.welcome_email_sent)}
-                  />
-                  <Field label="Cadastro" value={fmtDate(detail.created_at)} />
-                  <Field
-                    label="Atualizado em"
-                    value={fmtDateTime(detail.updated_at)}
-                  />
-                </Group>
+                {moreOpen ? (
+                  <div className="space-y-6">
+                    <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-4">
+                      <section className="space-y-3">
+                        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                          Perfil e carreira
+                        </h4>
+                        <Field
+                          label="Área de interesse"
+                          value={fmtText(detail.area_interesse)}
+                        />
+                        <Field
+                          label="Nível atual"
+                          value={fmtText(detail.nivel_atual)}
+                        />
+                        <Field
+                          label="Objetivo"
+                          value={fmtText(detail.objetivo)}
+                        />
+                        <Field label="Bio" value={fmtText(detail.bio)} />
+                      </section>
 
-                <section className="space-y-3">
-                  <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
-                    Atividade
-                  </h4>
-                  <ActivityBlock
-                    loading={activityLoading}
-                    error={activityError}
-                    state={activity}
-                  />
-                </section>
+                      <section className="space-y-3">
+                        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                          Onboarding
+                        </h4>
+                        <Field
+                          label="Onboarding"
+                          value={
+                            detail.onboarding_completed
+                              ? "Concluído"
+                              : "Incompleto"
+                          }
+                        />
+                        <Field
+                          label="Passo do onboarding"
+                          value={
+                            detail.onboarding_step === null ||
+                            detail.onboarding_step === undefined
+                              ? NAO_INFORMADO
+                              : String(detail.onboarding_step)
+                          }
+                        />
+                        <Field
+                          label="Status"
+                          value={statusLabel(detail.onboarding_completed)}
+                        />
+                      </section>
+
+                      <section className="space-y-3">
+                        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                          Marketing
+                        </h4>
+                        <Field
+                          label="Opt-in de marketing"
+                          value={fmtBool(detail.marketing_opt_in)}
+                        />
+                        <Field
+                          label="Data do opt-in"
+                          value={fmtDateTime(detail.marketing_opt_in_at)}
+                        />
+                        <Field
+                          label="E-mail de boas-vindas"
+                          value={fmtBool(detail.welcome_email_sent)}
+                        />
+                      </section>
+
+                      <section className="space-y-3">
+                        <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                          Sistema
+                        </h4>
+                        <Field
+                          label="Cadastro"
+                          value={fmtDate(detail.created_at)}
+                        />
+                        <Field
+                          label="Atualizado em"
+                          value={fmtDateTime(detail.updated_at)}
+                        />
+                      </section>
+                    </div>
+
+                    <section className="space-y-3">
+                      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-slate-600">
+                        Atividade
+                      </h4>
+                      <ActivityBlock
+                        loading={activityLoading}
+                        error={activityError}
+                        state={activity}
+                      />
+                    </section>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="mt-5">
