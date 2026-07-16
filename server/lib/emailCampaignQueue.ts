@@ -10,6 +10,11 @@ import { batchJobId, recipientJobId } from "./emailCampaignJobIds";
 import { env } from "./env";
 import { queueConnection } from "./redis";
 import { supabaseAdmin } from "./supabaseAdmin";
+import {
+  fetchProStatusSets,
+  userMatchesSegment,
+  type UserSegment,
+} from "./userSegments";
 import { buildCampaignUnsubscribeUrl } from "./waitlistUnsubscribe";
 
 // Dois tipos de job na mesma fila: envio de UM destinatario e gatilho de
@@ -51,14 +56,15 @@ export type TableBackedSource = (typeof TABLE_BACKED_SOURCES)[number];
 // supressao global, e escopo newsletter).
 export const NEWSLETTER_ELIGIBLE_STATUSES = ["confirmed"];
 
-// Segmentos da origem users, derivados de subscriptions + plans no dispatch.
-export const USER_SEGMENTS = [
-  "all",
-  "never_pro",
-  "active_pro",
-  "ex_pro",
-] as const;
-export type UserSegment = (typeof USER_SEGMENTS)[number];
+// Segmentos da origem users: logica movida para userSegments.ts (compartilhada
+// com as notificacoes in-app). Re-export mantem os imports existentes deste
+// modulo funcionando.
+export {
+  USER_SEGMENTS,
+  fetchProStatusSets,
+  userMatchesSegment,
+} from "./userSegments";
+export type { ProStatusSets, UserSegment } from "./userSegments";
 
 // Categoria declarada da campanha. Regra de consentimento imposta na selecao
 // da origem users: product seleciona qualquer usuario nao suprimido (legitimo
@@ -223,76 +229,6 @@ export async function fetchSuppressedEmailSet(): Promise<Set<string>> {
     if (rows.length < DB_PAGE) break;
   }
   return emails;
-}
-
-export type ProStatusSets = {
-  active: Set<string>;
-  pastDue: Set<string>;
-  everPaid: Set<string>;
-};
-
-// Deriva o status Pro por user_id a partir de subscriptions + plans (linhas
-// nunca sao deletadas, so atualizadas pelo webhook/reconcile do Asaas).
-// active = mesma condicao do is_user_pro: plano pago, status active/trialing
-// e periodo vigente.
-export async function fetchProStatusSets(): Promise<ProStatusSets> {
-  const { data: plans, error: plansError } = await supabaseAdmin
-    .from("plans")
-    .select("id, code");
-  if (plansError) {
-    throw new Error(`Falha ao buscar planos: ${plansError.message}`);
-  }
-  const paidPlanIds = new Set(
-    (plans ?? [])
-      .filter((plan) => plan.code !== "free")
-      .map((plan) => plan.id),
-  );
-
-  const active = new Set<string>();
-  const pastDue = new Set<string>();
-  const everPaid = new Set<string>();
-  for (let from = 0; ; from += DB_PAGE) {
-    const { data, error } = await supabaseAdmin
-      .from("subscriptions")
-      .select("user_id, plan_id, status, current_period_end")
-      .range(from, from + DB_PAGE - 1);
-    if (error) {
-      throw new Error(`Falha ao buscar assinaturas: ${error.message}`);
-    }
-    const rows = data ?? [];
-    for (const row of rows) {
-      if (!row.plan_id || !paidPlanIds.has(row.plan_id)) continue;
-      everPaid.add(row.user_id);
-      const periodOk =
-        !row.current_period_end ||
-        new Date(row.current_period_end).getTime() > Date.now();
-      if ((row.status === "active" || row.status === "trialing") && periodOk) {
-        active.add(row.user_id);
-      } else if (row.status === "past_due") {
-        pastDue.add(row.user_id);
-      }
-    }
-    if (rows.length < DB_PAGE) break;
-  }
-  return { active, pastDue, everPaid };
-}
-
-// past_due fica FORA de active_pro e de ex_pro por decisao de produto: e
-// cliente em recuperacao de pagamento e nao deve receber campanha de win-back
-// no meio da cobranca. Entra apenas no segmento all.
-export function userMatchesSegment(
-  userId: string,
-  segment: UserSegment,
-  sets: ProStatusSets,
-): boolean {
-  if (segment === "all") return true;
-  if (segment === "active_pro") return sets.active.has(userId);
-  if (segment === "never_pro") return !sets.everPaid.has(userId);
-  return (
-    sets.everPaid.has(userId) &&
-    !sets.active.has(userId) &&
-    !sets.pastDue.has(userId)
-  );
 }
 
 function sourceTableQuery(source: TableBackedSource) {
