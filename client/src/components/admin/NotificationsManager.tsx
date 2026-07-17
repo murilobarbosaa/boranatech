@@ -11,6 +11,7 @@ import {
 import { toast } from "sonner";
 
 import { ErrorBlock, LoadingBlock } from "@/components/admin/StateBlocks";
+import { NOTIFICATION_TYPE_META as TYPE_META } from "@/lib/notificationTypeMeta";
 import {
   Dialog,
   DialogContent,
@@ -44,27 +45,8 @@ import {
 
 const PAGE_SIZE = 10;
 
-const TYPE_META: Record<
-  AdminNotificationType,
-  { label: string; badge: string }
-> = {
-  announcement: {
-    label: "Anúncio",
-    badge: "border-sky-800 bg-sky-100 text-sky-800",
-  },
-  coupon: {
-    label: "Cupom",
-    badge: "border-amber-700 bg-amber-100 text-amber-800",
-  },
-  optin: {
-    label: "Opt-in",
-    badge: "border-violet-800 bg-violet-100 text-violet-800",
-  },
-  system: {
-    label: "Sistema",
-    badge: "border-slate-600 bg-slate-100 text-slate-700",
-  },
-};
+// TYPE_META vem de @/lib/notificationTypeMeta (fonte única compartilhada com o
+// detalhe do usuário); importado com alias pra não mexer nas referências.
 
 const STATUS_META: Record<
   AdminNotificationStatus,
