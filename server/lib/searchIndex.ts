@@ -193,47 +193,6 @@ async function buildNews(): Promise<SearchDocumentRow[]> {
   );
 }
 
-interface EventRow {
-  id: string;
-  title: string;
-  description: string | null;
-  starts_at: string | null;
-  ends_at: string | null;
-  location_label: string | null;
-  city: string | null;
-  state: string | null;
-  online: boolean | null;
-}
-
-async function buildEvents(): Promise<SearchDocumentRow[]> {
-  const rows = await fetchPublishedRows<EventRow>(
-    "events",
-    "id, title, description, starts_at, ends_at, location_label, city, state, online",
-  );
-  const now = Date.now();
-  return rows
-    .filter((r) => {
-      // Evento passado nao entra. Sem data nenhuma, mantem (nao da pra saber).
-      const reference = r.ends_at ?? r.starts_at;
-      return !reference || new Date(reference).getTime() >= now;
-    })
-    .map((r) =>
-      doc(
-        "event",
-        r.id,
-        r.title,
-        compactText([
-          r.description,
-          r.online ? "online" : null,
-          r.location_label,
-          r.city && r.state ? `${r.city}/${r.state}` : (r.city ?? r.state),
-          r.starts_at ? r.starts_at.slice(0, 10) : null,
-        ]),
-        "/eventos",
-      ),
-    );
-}
-
 interface JobRow {
   id: string;
   title: string;
@@ -374,7 +333,6 @@ const SOURCES: SourceBuilder[] = [
   { type: "roadmap", build: buildRoadmaps },
   { type: "term", build: async () => buildGlossary() },
   { type: "news", build: buildNews },
-  { type: "event", build: buildEvents },
   { type: "job", build: buildJobs },
   { type: "area", build: buildAreas },
   { type: "technology", build: buildTechnologies },
