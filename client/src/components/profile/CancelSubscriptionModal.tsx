@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, type LucideIcon } from "lucide-react";
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { PRO_TOOL_ICONS } from "@/lib/proToolIcons";
 
 type CancelReasonCode =
   | "expensive"
@@ -33,12 +34,12 @@ const REASONS: Array<{ code: CancelReasonCode; label: string }> = [
   { code: "other", label: "Outro motivo" },
 ];
 
-const BENEFITS: Array<{ icon: string; text: string }> = [
-  { icon: "🤖", text: "Ferramentas de IA pra acelerar a carreira" }, // TODO(Ana): revisar copy sem contagem
-  { icon: "📚", text: "Roadmaps completos e plano de carreira personalizado" }, // TODO(Ana): validar copy
-  { icon: "🎯", text: "Analisador de currículo, LinkedIn e portfólio com IA" },
-  { icon: "💬", text: "Simulador de entrevistas técnicas e comportamentais" },
-  { icon: "📈", text: "Análise de GitHub com IA" }, // TODO(Ana): revisar beneficio substituto
+const BENEFITS: Array<{ Icon: LucideIcon; text: string }> = [
+  { Icon: PRO_TOOL_ICONS.iaPessoal, text: "Ferramentas de IA pra acelerar a carreira" }, // TODO(Ana): revisar copy sem contagem
+  { Icon: PRO_TOOL_ICONS.roadmapIA, text: "Roadmaps completos e plano de carreira personalizado" }, // TODO(Ana): validar copy
+  { Icon: PRO_TOOL_ICONS.avaliadorCurriculo, text: "Analisador de currículo, LinkedIn e portfólio com IA" },
+  { Icon: PRO_TOOL_ICONS.simuladorEntrevistas, text: "Simulador de entrevistas técnicas e comportamentais" },
+  { Icon: PRO_TOOL_ICONS.avaliadorGithub, text: "Análise de GitHub com IA" }, // TODO(Ana): revisar beneficio substituto
 ];
 
 export function CancelSubscriptionModal({
@@ -87,7 +88,7 @@ export function CancelSubscriptionModal({
       <DialogContent
         showCloseButton={false}
         aria-describedby={undefined}
-        className="max-h-[90vh] gap-0 overflow-y-auto rounded-3xl border-2 border-[#1a1a1a] bg-white p-0 shadow-[4px_4px_0_#0f172a]"
+        className="max-h-[85vh] gap-0 overflow-y-auto rounded-3xl border-2 border-[#1a1a1a] bg-white p-0 shadow-[4px_4px_0_#0f172a]"
       >
         <DialogTitle className="sr-only">
           {isNonRenewal ? "Não renovar assinatura" : "Cancelar assinatura"}
@@ -97,7 +98,7 @@ export function CancelSubscriptionModal({
           onClick={onClose}
           disabled={isLoading}
           aria-label="Fechar"
-          className="absolute right-4 top-4 rounded-full border-2 border-[#1a1a1a] bg-white p-1.5 text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] disabled:opacity-50"
+          className="absolute right-4 top-4 rounded-full border-2 border-[#1a1a1a] bg-white p-1.5 text-[#1a1a1a] shadow-[2px_2px_0_#0f172a] transition-colors duration-200 hover:border-rose-600 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50"
         >
           <X className="h-4 w-4" strokeWidth={3} />
         </button>
@@ -131,14 +132,16 @@ export function CancelSubscriptionModal({
             </p>
 
             <ul className="mt-6 space-y-3">
-              {BENEFITS.map((benefit) => (
+              {BENEFITS.map(({ Icon, text }) => (
                 <li
-                  key={benefit.text}
-                  className="flex items-start gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-3"
+                  key={text}
+                  className="flex items-center gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-[#faf8f4] p-3"
                 >
-                  <span className="text-xl leading-none">{benefit.icon}</span>
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-[#1a1a1a] bg-[#FFB800] text-slate-950">
+                    <Icon className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+                  </span>
                   <span className="text-sm font-bold text-[#1a1a1a]">
-                    {benefit.text}
+                    {text}
                   </span>
                 </li>
               ))}
@@ -148,14 +151,14 @@ export function CancelSubscriptionModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-5 py-3 font-display font-black text-[#1a1a1a] shadow-[3px_3px_0_#0f172a]"
+                className="pro-glare bnt-pressable inline-flex flex-1 items-center justify-center gap-2 overflow-hidden whitespace-nowrap rounded-full border-2 border-slate-900 bg-[#FFB800] px-5 py-3 font-display font-black text-slate-950 shadow-[5px_5px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[7px_7px_0_#0f172a]"
               >
                 Quero continuar Pro
               </button>
               <button
                 type="button"
                 onClick={() => setStep("reason")}
-                className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_#0f172a] hover:text-[#1a1a1a]"
+                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1a1a1a] hover:shadow-[5px_5px_0_#0f172a]"
               >
                 {/* TODO(Ana): rotulo do botao de avancar (cartao vs boleto). */}
                 {isNonRenewal ? "Não vou renovar" : "Cancelar mesmo assim"}
@@ -225,7 +228,7 @@ export function CancelSubscriptionModal({
                 type="button"
                 onClick={() => setStep("retain")}
                 disabled={isLoading}
-                className="flex-1 rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_#0f172a] hover:text-[#1a1a1a] disabled:opacity-60"
+                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-[#1a1a1a] bg-white px-5 py-3 font-display font-black text-slate-600 shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:text-[#1a1a1a] hover:shadow-[5px_5px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_#0f172a]"
               >
                 Voltar
               </button>
@@ -233,7 +236,7 @@ export function CancelSubscriptionModal({
                 type="button"
                 onClick={() => void handleSubmit()}
                 disabled={isLoading}
-                className="flex-1 rounded-full border-2 border-rose-900 bg-rose-100 px-5 py-3 font-display font-black text-rose-800 shadow-[3px_3px_0_#7f1d1d] disabled:opacity-60"
+                className="bnt-pressable inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full border-2 border-slate-950 bg-red-600 px-5 py-3 font-display font-black text-white shadow-[3px_3px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:bg-red-700 hover:shadow-[5px_5px_0_#0f172a] disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[3px_3px_0_#0f172a]"
               >
                 {/* TODO(Ana): rotulo do botao de confirmar (cartao vs boleto). */}
                 {isLoading
