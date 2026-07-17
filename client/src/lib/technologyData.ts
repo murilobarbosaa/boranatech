@@ -273,6 +273,13 @@ const areaMap: Record<string, string[]> = {
   Cloudflare: ["cloud", "ciberseguranca"],
   Databricks: ["dados", "ia", "cloud"],
   Gradle: ["backend", "mobile", "devops"],
+  // Automacao industrial: mapeadas aqui (client-only) de proposito, para NAO
+  // entrar no TECH_AREA_MAP compartilhado e poluir o vocabulario do analisador
+  // de LinkedIn (server/lib/skillNormalize.ts), cujas 22 areas nao incluem
+  // automacao-industrial.
+  CLP: ["automacao-industrial", "iot"],
+  SCADA: ["automacao-industrial", "iot"],
+  Modbus: ["automacao-industrial", "iot"],
 };
 
 const difficulties: Record<string, DifficultyLabel> = {
@@ -619,6 +626,9 @@ const names = [
   "ArgoCD",
   "Datadog",
   "Apache Tomcat",
+  "CLP",
+  "SCADA",
+  "Modbus",
 ];
 
 const logoUrls: Record<string, string> = {
@@ -1036,11 +1046,116 @@ export const combinesWithMap: Record<string, string[]> = {
   confluence: ["jira", "trello", "notion"],
 };
 
+// Overrides por tecnologia: Partial<Technology> mesclado POR ULTIMO sobre o
+// objeto gerado pelo template. So para techs cujo conteudo generico sairia
+// factualmente errado (ex.: automacao industrial, cujos materiais gratuitos reais
+// sao treinamentos de fabricante, nao cursos genericos de dev). category e
+// difficulty sao lidos do override ANTES de derivar difficultyScore/salaryRange,
+// pra manterem coerencia. Techs sem entrada aqui ficam 100% iguais ao template.
+const technologyOverrides: Record<string, Partial<Technology>> = {
+  CLP: {
+    category: "Ferramentas",
+    difficulty: "Intermediário",
+    description:
+      "CLP (Controlador Lógico Programável) é o computador industrial que comanda máquinas e linhas de produção. Ele lê sensores, executa uma lógica programada em ciclo contínuo e aciona motores, válvulas e atuadores, garantindo que o processo rode de forma automática e segura.",
+    useCases: [
+      "Automatizar uma linha de produção",
+      "Controlar partida e proteção de motores",
+      "Ler sensores e acionar atuadores em tempo real",
+      "Integrar máquinas a sistemas de supervisão",
+    ],
+    learningPath: [
+      "Entender lógica de contatos (ladder)",
+      "Aprender entradas e saídas digitais e analógicas",
+      "Programar num simulador (ex.: OpenPLC)",
+      "Montar uma automação simples de bancada",
+      "Estudar redes industriais e integração com SCADA",
+    ],
+    dailyTip:
+      "Comece pela lógica ladder num simulador antes de mexer em CLP físico: erra barato e aprende o ciclo de varredura.",
+    tools: ["TIA Portal", "CoDeSys", "OpenPLC", "Multímetro"],
+    courses: [
+      "SENAI EAD: cursos de CLP e linguagem Ladder",
+      "Documentação e treinamentos gratuitos dos fabricantes (Siemens, Altus, WEG)",
+    ],
+    companies: [
+      "Siemens",
+      "Rockwell Automation",
+      "Schneider Electric",
+      "WEG",
+    ],
+    combinesWith: ["scada", "modbus", "c"],
+  },
+  SCADA: {
+    category: "Ferramentas",
+    difficulty: "Intermediário",
+    description:
+      "SCADA é o sistema que supervisiona e controla processos industriais à distância. Ele coleta dados de CLPs e sensores em tempo real, mostra tudo em telas (IHM), registra histórico e dispara alarmes, deixando o operador acompanhar e agir sobre a planta inteira de um ponto só.",
+    useCases: [
+      "Supervisionar uma planta em tempo real",
+      "Criar telas de operação (IHM)",
+      "Registrar histórico e gerar alarmes",
+      "Integrar vários CLPs num painel único",
+    ],
+    learningPath: [
+      "Entender o que CLP e sensores entregam",
+      "Aprender tags e comunicação com CLP",
+      "Montar uma tela simples num software SCADA",
+      "Configurar alarmes e histórico",
+      "Praticar num projeto integrando CLP e SCADA",
+    ],
+    dailyTip:
+      "Modele bem as tags antes de desenhar telas: um SCADA organizado começa na nomenclatura das variáveis.",
+    tools: ["Elipse SCADA", "Ignition", "TIA Portal (WinCC)"],
+    courses: [
+      "Curso EAD Sistemas Supervisórios (Elipse Software, gratuito)",
+      "Curso ScadaBR online (gratuito, no YouTube)",
+    ],
+    companies: [
+      "Siemens",
+      "Schneider Electric",
+      "AVEVA",
+      "Inductive Automation",
+    ],
+    combinesWith: ["clp", "modbus"],
+  },
+  Modbus: {
+    category: "Ferramentas",
+    difficulty: "Intermediário",
+    description:
+      "Modbus é um dos protocolos de comunicação mais usados na indústria para CLPs, sensores e equipamentos conversarem entre si. Simples e aberto, funciona no modelo mestre/escravo (nas variantes RTU, serial, e TCP, sobre rede), e é a base de muita integração em automação.",
+    useCases: [
+      "Conectar CLP a sensores e inversores",
+      "Integrar equipamentos de fabricantes diferentes",
+      "Levar dados de chão de fábrica pro SCADA",
+      "Montar uma rede industrial simples",
+    ],
+    learningPath: [
+      "Entender mestre/escravo e registradores",
+      "Diferenciar Modbus RTU e Modbus TCP",
+      "Ler dados de um dispositivo real ou simulado",
+      "Integrar com um CLP",
+      "Conhecer alternativas como Profinet e EtherNet/IP",
+    ],
+    dailyTip:
+      "Comece pelo Modbus TCP com um simulador: dá pra entender registradores sem precisar de cabo serial e conversor.",
+    tools: ["Modbus Poll", "Wireshark", "CoDeSys"],
+    courses: [
+      "Especificação oficial do protocolo (Modbus Organization)",
+      "Documentação e treinamentos gratuitos dos fabricantes",
+    ],
+    companies: ["Schneider Electric", "Siemens", "WEG"],
+    combinesWith: ["clp", "scada"],
+  },
+};
+
 export const technologies: Technology[] = names.map((name) => {
-  const category = categoryFor(name);
-  const difficulty = difficulties[name] || "Intermediário";
+  const override = technologyOverrides[name] ?? {};
+  const category = override.category ?? categoryFor(name);
+  const difficulty =
+    override.difficulty ?? difficulties[name] ?? "Intermediário";
   const evidence = usageEvidence[slugify(name)];
-  return {
+  const base: Technology = {
     slug: slugify(name),
     name,
     icon: name.slice(0, 2).toUpperCase(),
@@ -1089,6 +1204,7 @@ export const technologies: Technology[] = names.map((name) => {
     ],
     games: notableGames[name],
   };
+  return { ...base, ...override };
 });
 
 export const technologyCategories = [
