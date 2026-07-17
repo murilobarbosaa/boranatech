@@ -166,6 +166,33 @@ export const creators: Creator[] = [
     area: "",
     redes: [],
   },
+  {
+    name: "dev.gbnunes",
+    handle: "dev.gbnunes",
+    photo: "",
+    instagram: "https://www.instagram.com/dev.gbnunes/",
+    bio: "",
+    area: "",
+    redes: [],
+  },
+  {
+    name: "yagoeletromec",
+    handle: "yagoeletromec",
+    photo: "",
+    instagram: "https://www.instagram.com/yagoeletromec/",
+    bio: "",
+    area: "",
+    redes: [],
+  },
+  {
+    name: "timoteo.dev",
+    handle: "timoteo.dev",
+    photo: "",
+    instagram: "https://www.instagram.com/timoteo.dev/",
+    bio: "",
+    area: "",
+    redes: [],
+  },
 ];
 
 // TODO(Ana): fundadores. Voce notou que voce e o Murilo ainda nao aparecem
