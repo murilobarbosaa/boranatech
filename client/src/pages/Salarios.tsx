@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import {
   calculadoraExplicacoes,
   cities,
+  formatBRL,
   levels,
   marketBeneficios,
   marketContext,
@@ -33,6 +34,8 @@ import {
   marketProgressao,
   marketTecnologias,
   marketTendencias,
+  parseHigh,
+  parseLow,
   salaryRows,
 } from "@/lib/marketData";
 
@@ -257,31 +260,6 @@ const LEVEL_RANK: Record<string, number> = {
   Sênior: 4,
   Especialista: 5,
 };
-
-function formatBRL(value: number) {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    maximumFractionDigits: 0,
-  });
-}
-
-// Os valores podem vir como numero unico (entradas antigas) ou como faixa em
-// texto "min-max" (entradas novas com fonte). Estes helpers lidam com os dois.
-function parseLow(value: number | string | undefined): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") return Number(value.split("-")[0]);
-  return NaN;
-}
-
-function parseHigh(value: number | string | undefined): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const parts = value.split("-");
-    return Number(parts[parts.length - 1]);
-  }
-  return NaN;
-}
 
 function formatRange(value: number | string | undefined): string {
   if (typeof value === "number") return formatBRL(value);

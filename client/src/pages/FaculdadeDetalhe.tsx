@@ -11,7 +11,7 @@ import Layout from "@/components/Layout";
 import FavoriteButton from "@/components/FavoriteButton";
 import { faculdades } from "@/lib/data";
 import { companies } from "@/lib/companyData";
-import { salaryRows } from "@/lib/marketData";
+import { salaryRows, formatSalaryValue } from "@/lib/marketData";
 import { technologies } from "@/lib/technologyData";
 import PageHero from "@/components/shared/PageHero";
 import { getPageAccentUi } from "@/lib/pageAccentUi";
@@ -577,28 +577,42 @@ export default function FaculdadeDetalhe() {
                     Salários médios relacionados
                   </h3>
                   <div className="space-y-3">
-                    {relatedSalaries.map((row) => (
-                      <div
-                        key={`${row.area}-${row.level}-${row.city}`}
-                        className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                      >
-                        <p
-                          className={cn(
-                            "text-xs font-black uppercase",
-                            ac.tbodyAccentBold,
-                          )}
+                    {relatedSalaries.map((row) => {
+                      const clt = formatSalaryValue(row.clt);
+                      const pj = formatSalaryValue(row.pj);
+                      const bolsa = formatSalaryValue(row.bolsa);
+                      const primary = clt
+                        ? `CLT: ${clt}`
+                        : bolsa
+                          ? `Bolsa: ${bolsa}`
+                          : null;
+                      const secondary = pj
+                        ? `PJ: ${pj} · ${String(row.city)}`
+                        : String(row.city);
+                      return (
+                        <div
+                          key={`${row.area}-${row.level}-${row.city}`}
+                          className="rounded-xl border border-slate-200 bg-slate-50 p-3"
                         >
-                          {String(row.area)} · {String(row.level)}
-                        </p>
-                        <p className="mt-1 text-sm font-bold text-slate-900">
-                          CLT: R$ {Number(row.clt).toLocaleString("pt-BR")}
-                        </p>
-                        <p className="text-xs font-medium text-slate-600">
-                          PJ: R$ {Number(row.pj).toLocaleString("pt-BR")} ·{" "}
-                          {String(row.city)}
-                        </p>
-                      </div>
-                    ))}
+                          <p
+                            className={cn(
+                              "text-xs font-black uppercase",
+                              ac.tbodyAccentBold,
+                            )}
+                          >
+                            {String(row.area)} · {String(row.level)}
+                          </p>
+                          {primary && (
+                            <p className="mt-1 text-sm font-bold text-slate-900">
+                              {primary}
+                            </p>
+                          )}
+                          <p className="text-xs font-medium text-slate-600">
+                            {secondary}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                   <Link
                     href="/salarios"

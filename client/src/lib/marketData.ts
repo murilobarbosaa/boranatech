@@ -9,6 +9,47 @@ export type SalaryRow = {
   ano?: number;
 };
 
+// Os valores de clt/pj/bolsa vem como numero unico (entradas antigas) ou como
+// faixa em texto "min-max" (entradas novas com fonte). Estes helpers lidam com
+// os dois formatos e sao compartilhados entre /salarios e a pagina de detalhe
+// de curso.
+export function formatBRL(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
+}
+
+export function parseLow(value: number | string | undefined): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") return Number(value.split("-")[0]);
+  return NaN;
+}
+
+export function parseHigh(value: number | string | undefined): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parts = value.split("-");
+    return Number(parts[parts.length - 1]);
+  }
+  return NaN;
+}
+
+// Formata um valor de salario pra exibicao em card: numero unico vira
+// "R$ 2.200"; faixa vira "R$ 4.000 a R$ 6.000". Retorna null quando o valor
+// esta ausente ou nao e parseavel, pra quem chama poder esconder a linha.
+export function formatSalaryValue(
+  value: number | string | undefined | null,
+): string | null {
+  if (value == null) return null;
+  const low = parseLow(value);
+  const high = parseHigh(value);
+  if (Number.isNaN(low) || Number.isNaN(high)) return null;
+  if (low === high) return formatBRL(low);
+  return `${formatBRL(low)} a ${formatBRL(high)}`;
+}
+
 const baseSalaryRows: SalaryRow[] = (
   [
     ["Front-end", "Estágio", "São Paulo", 2200, 3200],
