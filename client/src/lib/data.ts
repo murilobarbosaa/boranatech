@@ -15458,6 +15458,54 @@ export const cursosGratuitos = [
     oQueAprende: ["Boas práticas REST", "Rotas e verbos HTTP", "Node.js e Express"],
     proximoConteudo: "Autenticação e segurança de APIs"
   },
+  {
+    id: "curso-devops-engineering-beginners",
+    certificate: "nao",
+    titulo: "Engenharia de DevOps para Iniciantes",
+    canal: "freeCodeCamp",
+    plataforma: "freeCodeCamp",
+    link: "https://www.freecodecamp.org/news/devops-engineering-course-for-beginners/",
+    areaSlug: "devops" as string | null,
+    nivel: "Iniciante",
+    duracao: "Curso em vídeo",
+    idioma: "Inglês",
+    descricao: "Curso gratuito da freeCodeCamp que introduz os conceitos e as práticas de engenharia de DevOps.",
+    motivoIndicacao: "Boa visão geral de DevOps para quem está iniciando na área.",
+    oQueAprende: ["Cultura DevOps", "CI e CD", "Automação"],
+    proximoConteudo: "Docker e Kubernetes na prática"
+  },
+  {
+    id: "curso-devops-intro-ibm",
+    certificate: "nao",
+    titulo: "Introdução ao DevOps",
+    canal: "IBM",
+    plataforma: "Coursera",
+    link: "https://www.coursera.org/learn/intro-to-devops",
+    areaSlug: "devops" as string | null,
+    nivel: "Iniciante",
+    duracao: "Trilha autoguiada",
+    idioma: "Inglês",
+    descricao: "Curso introdutório de DevOps da IBM na Coursera, disponível em auditoria gratuita.",
+    motivoIndicacao: "Apresenta a cultura e os fundamentos de DevOps de forma acessível.",
+    oQueAprende: ["Cultura DevOps", "CI e CD", "Práticas ágeis"],
+    proximoConteudo: "Pipelines de CI e CD na prática"
+  },
+  {
+    id: "curso-devops-azure-container-instances",
+    certificate: "sim",
+    titulo: "Instâncias de Contêiner do Azure",
+    canal: "Microsoft Learn",
+    plataforma: "Microsoft Learn",
+    link: "https://learn.microsoft.com/pt-br/training/modules/create-run-container-images-azure-container-instances/",
+    areaSlug: "devops" as string | null,
+    nivel: "Intermediário",
+    duracao: "Trilha autoguiada",
+    idioma: "Português",
+    descricao: "Módulo gratuito da Microsoft Learn sobre como executar imagens de contêiner no Azure Container Instances.",
+    motivoIndicacao: "Executar contêineres gerenciados é uma tarefa comum no dia a dia de DevOps.",
+    oQueAprende: ["Imagens de contêiner", "Azure Container Instances", "Deploy de contêineres"],
+    proximoConteudo: "Orquestração com Kubernetes"
+  },
 ];
 
 const plataformasBase = [

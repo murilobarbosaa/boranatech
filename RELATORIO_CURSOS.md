@@ -15,9 +15,10 @@ Mapeamento de certificado (shape estatico): `certificate: "sim" | "nao" | "nao_i
 | 3 | 50 cursos de IA e machine learning | `0103e38` | 50 | 33 | 7 | 8 (mais 1 sem conteudo confirmavel) | sincronizado |
 | 4 | 50 cursos de QA e testes | `3331568` | 50 | 2 | 1 | 47 (30 por 404/timeout, 17 URLs de YouTube fabricadas) | sincronizado |
 | 5 | 100 cursos de front-end e back-end | (pendente) | 100 | 14 | 7 | 79 (ver detalhamento) | nao sincronizado |
+| 6 | 50 cursos de DevOps | (pendente) | 50 | 3 | 6 | 41 (ver detalhamento) | nao sincronizado |
 
-Total inserido ate agora: 73 cursos.
-Tabela `courses` no Supabase: 20 linhas curadas pre-existentes, agora 79 (59 novas). Lote 5 ainda nao sincronizado.
+Total inserido ate agora: 76 cursos.
+Tabela `courses` no Supabase: 20 linhas curadas pre-existentes, agora 79 (59 novas). Lotes 5 e 6 ainda nao sincronizados.
 
 ---
 
@@ -261,6 +262,64 @@ Observacao geral: como nos lotes anteriores, a grande maioria das URLs `freecode
 ### Zero travessao / en dash
 
 Todas as 14 entradas inseridas foram escritas so com hifen comum, sem travessao (—) nem en dash (–), conforme regra do CLAUDE.md.
+
+## Lote 6: 50 cursos de DevOps
+
+Commit: (pendente).
+Metodo de verificacao: `curl -sL --max-time 12 -A "Mozilla/5.0" <url> -o /dev/null -w "%{http_code}"`, em paralelo. Para os 200 e 403 foi feita verificacao extra de `<title>` e URL final (`url_effective`), com UA `Googlebot` para os 403 do cloudskillsboost, e controles negativos (slug falso) para netacad e YouTube. Todos com `areaSlug: "devops"`.
+
+Este lote teve rendimento muito baixo: das 50 URLs, so 3 eram cursos gratuitos, novos, validos e com o topico correto. O resto caiu em 404 real, redirecionamento-fantasma, curso pago/movido, ou conteudo divergente do nome proposto.
+
+### Inseridos (3)
+
+| id | titulo | plataforma | certificate | idioma |
+| -- | ------ | ---------- | ----------- | ------ |
+| curso-devops-engineering-beginners | Engenharia de DevOps para Iniciantes | freeCodeCamp | nao | Ingles |
+| curso-devops-intro-ibm | Introducao ao DevOps | Coursera (IBM) | nao | Ingles |
+| curso-devops-azure-container-instances | Instancias de Conteiner do Azure | Microsoft Learn | sim | Portugues |
+
+### Nao inseridos por duplicata (6)
+
+| # | Curso proposto | Ja existe como |
+| - | -------------- | -------------- |
+| D18 | Docker na Pratica (DevOps na Pratica, YouTube) | Docker e Kubernetes (DevOps na Pratica), mesmo canal `@DevOpsNaPratica` |
+| D19 | Descomplicando o Kubernetes (Linuxtips, YouTube) | LINUXtips (canal de Linux, Docker, Kubernetes e DevOps), mesmo canal `@LINUXtips` |
+| D20 | Kubernetes Hands-on (Full Cycle, YouTube) | Full Cycle - DevOps e Kubernetes, mesmo provedor e topico |
+| D21 | GitHub Actions CI/CD (Microsoft Learn) | curso-qa-github-actions-cicd (Lote 4), mesma URL `automate-workflow-github-actions` |
+| D36 | Terraform Multicloud (Linuxtips, YouTube) | LINUXtips (canal ja no catalogo), mesma URL `@LINUXtips` |
+| D37 | Ansible na Pratica (DevOps na Pratica, YouTube) | Docker e Kubernetes (DevOps na Pratica), mesmo canal `@DevOpsNaPratica` |
+
+Observacao sobre os canais de YouTube: `@DevOpsNaPratica`, `@LINUXtips` e `@FullCycle` existem (controle negativo: handle falso retorna 404, os reais retornam 200), mas cada canal ja esta representado uma vez no catalogo. As URLs sao a raiz do canal, nao um curso ou playlist especifico, entao entradas adicionais apontando para a mesma raiz seriam link duplicado.
+
+### Nao inseridos por conteudo pago, movido, divergente ou nao confirmavel (apesar de HTTP 200 ou 403) (14)
+
+Redirecionamento-fantasma no Microsoft Learn (o modulo/trilha foi aposentado e a URL cai em documentacao generica, nao no curso):
+- D3 Evoluir Praticas de DevOps: trilha some para `/azure/devops/get-started/` (doc generica).
+- D11 Containers Docker no Azure (`intro-to-docker-containers`): some para `/azure/container-registry/` (doc de ACR, topico diferente).
+- D14 Kubernetes no Azure AKS (`intro-to-kubernetes`): some para `/azure/aks/` (doc), inclusive em en-us; modulo aposentado.
+- D24 Pipeline Multi-Estagio Azure (`create-multi-stage-pipeline`): some para um tutorial de documentacao (`/azure/devops/pipelines/.../create-multistage-pipeline`); o modulo de treinamento com certificado nao existe mais.
+
+AWS Skill Builder (o esquema de URL `explore.skillbuilder.aws/.../elearning/...` esta morto; todas redirecionam para busca com `showRedirectNotFoundBanner=true`, mesmo padrao do BE50 do Lote 5):
+- D4 Getting Started with DevOps on AWS, D5 AWS DevOps Engineering Learning Plan, D29 AWS CodePipeline Essentials, D35 IaC na AWS, D48 Monitoring and Observability AWS.
+
+Google Cloud Skills Boost (403 de bot; via Googlebot o `<title>` real mostrou topico divergente do nome proposto, ou seja os IDs do prompt apontam para cursos de ML, nao DevOps):
+- D6 (`paths/17`, proposto "Google Cloud DevOps Learning Path") mostra "Professional Machine Learning Engineer Certification".
+- D15 (`course_templates/17`, proposto "Kubernetes com GKE") mostra "Production Machine Learning Systems".
+- D28 (`course_templates/20`, proposto "CI/CD Google Cloud") mostra "Building Scalable Java Microservices with Spring Boot and Spring Cloud".
+- D47 (`course_templates/355`, proposto "SRE Measuring Reliability") nao revela titulo; nao confirmavel e no padrao dos vizinhos, divergente.
+
+Cisco NetAcad nao confirmavel:
+- D44 DevNet Associate: `netacad.com` serve o mesmo shell de SPA (4484 bytes, sem mencao a DevNet) para o slug real e para um slug falso, ou seja retorna 200 para qualquer path. Impossivel confirmar que o curso existe nesse endereco, entao descartado para nao arriscar link quebrado.
+
+### Nao inseridos por URL reprovada no curl (27)
+
+404 real (27): D7 DevOps Cloud and Agile Foundations (Coursera), D8 Agile Scrum para DevOps (Coursera), D9 Docker para Iniciantes (freeCodeCamp), D10 Kubernetes para Iniciantes (freeCodeCamp), D12 Azure Container Registry (Microsoft), D16 Helm para Kubernetes (freeCodeCamp), D17 Cloud Native (freeCodeCamp), D22 Testes de Qualidade em Pipeline (Microsoft), D23 Azure Pipelines Deploy (Microsoft), D25 Jenkins CI/CD (freeCodeCamp), D26 GitLab CI/CD (freeCodeCamp), D27 CI/CD IBM (Coursera), D30 Pools de Agentes Azure (Microsoft), D31 Gerenciamento de Segredos em Pipelines (Microsoft), D32 Terraform para Iniciantes (freeCodeCamp), D33 Ansible para Iniciantes (freeCodeCamp), D34 Terraform no Azure (Microsoft), D38 Bicep Infraestrutura Azure (Microsoft), D39 GitOps (freeCodeCamp), D40 Linux Command Line e Bash (freeCodeCamp), D41 Shell Scripting e Bash (freeCodeCamp), D42 Nginx (freeCodeCamp), D43 Linux para DevOps (freeCodeCamp), D45 Fundamentos de Servidor Linux (Microsoft), D46 Prometheus e Grafana (freeCodeCamp), D49 Seguranca em DevOps DevSecOps (Microsoft), D50 Engenharia do Caos (Microsoft).
+
+Observacao geral: como nos lotes anteriores, quase todas as URLs `freecodecamp.org/news/...` propostas nao existem (slugs fabricados) e muitos modulos do `learn.microsoft.com` foram reorganizados para documentacao. Neste lote, alem disso, o AWS Skill Builder mudou o esquema de URL e o Google Cloud Skills Boost trazia IDs de curso trocados (apontando para ML em vez de DevOps).
+
+### Zero travessao / en dash
+
+Todas as 3 entradas inseridas foram escritas so com hifen comum, sem travessao (—) nem en dash (–), conforme regra do CLAUDE.md.
 
 ## Pendencias e decisoes em aberto
 
