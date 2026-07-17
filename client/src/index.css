@@ -600,6 +600,17 @@
   }
 }
 
+/* Anti layout-shift ao abrir qualquer modal Radix (Dialog/Sheet). O
+   react-remove-scroll trava o body com overflow:hidden e compensa a barra
+   sumida com margin-right no body + a var --removed-body-scroll-bar-size. Como
+   position:fixed ignora a margin do body, o header fixo saltaria ~15px. Aqui
+   compensamos o header com a mesma largura, só enquanto o scroll está travado
+   (seletor exige data-scroll-locked, some sozinho ao fechar). Fix global: vale
+   pra todos os modais do app (ProUpsell, Auth, detalhe de notificação, etc). */
+body[data-scroll-locked] [data-app-header] {
+  padding-right: var(--removed-body-scroll-bar-size, 0px);
+}
+
 @keyframes progressIndeterminate {
   0% {
     transform: translateX(-120%);

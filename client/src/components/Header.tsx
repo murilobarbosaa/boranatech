@@ -817,7 +817,10 @@ export default function Header() {
 
   return (
     <>
-      <header className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur">
+      <header
+        data-app-header
+        className="fixed left-0 right-0 top-0 z-[1000] border-b-2 border-slate-900 bg-[#f6f0df]/95 backdrop-blur"
+      >
         <div className="mx-auto flex h-16 w-full items-center justify-between gap-4 px-4 sm:px-6 lg:max-w-[1280px] lg:px-8 2xl:max-w-[1440px]">
           <Link href="/" className="group shrink-0">
             <Logo variant="light" size="sm" showTagline />
