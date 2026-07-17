@@ -20494,6 +20494,122 @@ export const faculdades = {
         "Crescimento pede mais estudo e certificação",
       ],
     },
+    {
+      nome: "Engenharia de Controle e Automação",
+      duracao: "5 anos",
+      tipo: "Bacharelado",
+      oQueEstuda:
+        "Sistemas de controle, automação de processos, robótica, instrumentação, eletrônica, CLPs e bastante matemática e física aplicada.",
+      perfilIndicado:
+        "Quem curte integrar hardware e software pra controlar máquinas e processos e não foge de matemática.",
+      diferencas:
+        "Mistura elétrica, mecânica e computação num curso só. Mais amplo que um tecnólogo de automação e mais focado em controle que uma engenharia elétrica pura.",
+      areasAtuacao: [
+        "Engenheiro de Automação",
+        "Engenheiro de Controle",
+        "Projetista de Sistemas Industriais",
+        "Integrador de Robótica",
+      ],
+      matematica: "Alto",
+      programacao: "Médio-Alto",
+      pontoPositivos: [
+        "Formação ampla (elétrica, mecânica e software)",
+        "Boa empregabilidade na indústria",
+        "Base sólida pra indústria 4.0",
+      ],
+      pontosAtencao: [
+        "Duração longa (5 anos)",
+        "Carga pesada de matemática e física",
+        "Mais presente em polos industriais",
+      ],
+    },
+    {
+      nome: "Engenharia Mecatrônica",
+      duracao: "5 anos",
+      tipo: "Bacharelado",
+      oQueEstuda:
+        "Integração de mecânica, eletrônica e computação pra criar sistemas automatizados e robôs. Passa por CLPs, sensores, atuadores e projeto de máquinas.",
+      perfilIndicado:
+        "Quem gosta de robótica e de juntar mecânica com eletrônica e programação num projeto só.",
+      diferencas:
+        "Puxa mais pro lado mecânico e de robótica que a Engenharia de Controle e Automação, que foca mais em processos e controle.",
+      areasAtuacao: [
+        "Engenheiro de Mecatrônica",
+        "Projetista de Robótica",
+        "Engenheiro de Automação",
+        "Desenvolvedor de Sistemas Embarcados",
+      ],
+      matematica: "Alto",
+      programacao: "Médio",
+      pontoPositivos: [
+        "Perfil versátil (mecânica, elétrica e software)",
+        "Forte em robótica",
+        "Demanda crescente com a automação",
+      ],
+      pontosAtencao: [
+        "Duração longa (5 anos)",
+        "Bastante matemática e física",
+        "Currículo denso por cobrir três áreas",
+      ],
+    },
+    {
+      nome: "Tecnologia em Automação Industrial",
+      duracao: "2 a 3 anos",
+      tipo: "Tecnólogo",
+      oQueEstuda:
+        "Programação de CLPs, sistemas de supervisão (SCADA e IHM), redes industriais, sensores e manutenção de sistemas automatizados. Bem prático e direto.",
+      perfilIndicado:
+        "Quem quer entrar rápido no chão de fábrica e prefere prática a teoria pesada.",
+      diferencas:
+        "Mais curto e prático que as engenharias. Foca em operar e manter a automação, não em projetar do zero.",
+      areasAtuacao: [
+        "Tecnólogo em Automação",
+        "Programador de CLP",
+        "Analista de Manutenção Industrial",
+        "Integrador de SCADA",
+      ],
+      matematica: "Médio-Alto",
+      programacao: "Médio",
+      pontoPositivos: [
+        "Duração curta (2 a 3 anos)",
+        "Bem prático e voltado à indústria",
+        "Entrada rápida no mercado",
+      ],
+      pontosAtencao: [
+        "Menos aprofundamento teórico que engenharia",
+        "Tecnólogo tem menos prestígio em alguns contextos",
+        "Mais restrito a polos industriais",
+      ],
+    },
+    {
+      nome: "Engenharia Elétrica",
+      duracao: "5 anos",
+      tipo: "Bacharelado",
+      oQueEstuda:
+        "Geração, transmissão e distribuição de energia, circuitos, eletrônica, sistemas de potência e também controle e automação.",
+      perfilIndicado:
+        "Quem gosta de eletricidade e energia e quer uma engenharia ampla e tradicional.",
+      diferencas:
+        "Mais ampla e focada em energia e sistemas elétricos que a Engenharia de Controle e Automação. Automação é uma das várias áreas que ela cobre.",
+      areasAtuacao: [
+        "Engenheiro Eletricista",
+        "Engenheiro de Energia",
+        "Engenheiro de Automação",
+        "Projetista Elétrico",
+      ],
+      matematica: "Alto",
+      programacao: "Médio",
+      pontoPositivos: [
+        "Formação ampla e tradicional",
+        "Mercado grande (energia, indústria e projetos)",
+        "Boa base pra automação e controle",
+      ],
+      pontosAtencao: [
+        "Duração longa (5 anos)",
+        "Matemática e física pesadas",
+        "Programação é menos central que em cursos de TI",
+      ],
+    },
   ],
 };
 
