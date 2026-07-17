@@ -261,7 +261,10 @@ export default function Auth({
                     checked={marketingOptIn}
                     onChange={(event) => setMarketingOptIn(event.target.checked)}
                   />
-                  <span>Quero receber novidades e ofertas por e-mail</span>
+                  <span>
+                    Aceito receber novidades, conteúdos e ofertas do Bora na
+                    Tech por e-mail. Você pode cancelar quando quiser.
+                  </span>
                 </label>
               )}
               <button
