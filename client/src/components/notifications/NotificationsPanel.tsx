@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { BellOff, CheckCheck, Clock, RefreshCw, Tag } from "lucide-react";
+import { BellOff, CheckCheck, Clock, RefreshCw, Tag, X } from "lucide-react";
 
 import CopyButton from "@/components/shared/CopyButton";
+import { SheetClose } from "@/components/ui/sheet";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import type { NotificationItem } from "@/services/notificationsService";
 
 // Painel de notificações compartilhado entre o Popover (desktop) e o Sheet
 // (mobile), ancorados pelo NotificationBell. Sem opção de deletar: histórico
 // do usuário é permanente; o que sai do feed é decisão do admin (archive).
-
-const BODY_CLAMP_THRESHOLD = 140;
+// Clicar num item abre a vista de detalhe (NotificationDetail) via onSelect; a
+// lista só mostra prévia (título, horário à direita, corpo em 2 linhas).
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "";
@@ -48,8 +49,9 @@ function formatCountdown(msLeft: number): string {
 }
 
 // Resolve o destino do CTA: caminho interno (ou URL do próprio site) navega
-// via wouter; externo abre em nova aba.
-function ctaTarget(url: string): { internal: boolean; href: string } {
+// via wouter; externo abre em nova aba. Exportado: o detalhe reusa a mesma
+// resolução.
+export function ctaTarget(url: string): { internal: boolean; href: string } {
   if (url.startsWith("/")) return { internal: true, href: url };
   try {
     const parsed = new URL(url);
@@ -65,7 +67,7 @@ function ctaTarget(url: string): { internal: boolean; href: string } {
   }
 }
 
-function CountdownBadge({
+export function CountdownBadge({
   expiresAt,
   onExpire,
 }: {
@@ -107,7 +109,7 @@ function CountdownBadge({
   );
 }
 
-function CouponBlock({
+export function CouponBlock({
   item,
   expired,
 }: {
@@ -145,26 +147,30 @@ function CouponBlock({
 
 function NotificationCard({
   item,
+  variant,
+  onSelect,
   onClose,
 }: {
   item: NotificationItem;
+  variant: "popover" | "sheet";
+  onSelect: (item: NotificationItem) => void;
   onClose?: () => void;
 }) {
   const { markAsRead } = useNotifications();
-  const [expanded, setExpanded] = useState(false);
   const [locallyExpired, setLocallyExpired] = useState(false);
 
   const expired = item.is_expired || locallyExpired;
   const unread = !item.read_at;
-  const clampable = item.body.length > BODY_CLAMP_THRESHOLD;
   const hasActiveCountdown =
     !expired &&
     item.expires_at !== null &&
     new Date(item.expires_at).getTime() > Date.now();
 
-  function handleInteract() {
+  // Clicar abre o detalhe (corpo completo vive lá, não mais inline). A
+  // interação marca como lida, mantendo a regra atual de "marcar na interação".
+  function handleSelect() {
     if (unread) void markAsRead(item.id);
-    if (clampable) setExpanded((prev) => !prev);
+    onSelect(item);
   }
 
   const cta = item.cta_url && !expired ? ctaTarget(item.cta_url) : null;
@@ -178,47 +184,48 @@ function NotificationCard({
     >
       <button
         type="button"
-        onClick={handleInteract}
+        onClick={handleSelect}
         className="block w-full rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
       >
         <div className="flex items-start gap-2">
           {unread ? (
             <span
-              className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-sky-500"
+              className="mt-2 h-2 w-2 shrink-0 rounded-full bg-sky-500"
               aria-hidden="true"
             />
           ) : null}
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-black text-slate-950">
+            {/* Título à esquerda (line-clamp-2, encolhe), horário fixo à direita
+                na mesma linha: em 360px o título longo não empurra o horário. */}
+            <div className="flex items-start justify-between gap-2">
+              <h3
+                className={`line-clamp-2 min-w-0 flex-1 font-black text-slate-950 ${
+                  variant === "sheet" ? "text-base" : "text-sm"
+                }`}
+              >
                 {item.title}
               </h3>
-              {expired ? (
-                <span className="inline-flex rounded-full border border-slate-400 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-500">
-                  Expirado
-                </span>
-              ) : null}
-              {hasActiveCountdown && item.expires_at ? (
-                <CountdownBadge
-                  expiresAt={item.expires_at}
-                  onExpire={() => setLocallyExpired(true)}
-                />
-              ) : null}
-            </div>
-            <p
-              className={`mt-1 text-sm text-slate-600 ${
-                clampable && !expanded ? "line-clamp-2" : ""
-              }`}
-            >
-              {item.body}
-            </p>
-            {clampable ? (
-              <span className="mt-0.5 inline-block text-xs font-bold text-violet-800">
-                {expanded ? "Ver menos" : "Ver mais"}
+              <span className="shrink-0 whitespace-nowrap pt-0.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {relativeTime(item.published_at)}
               </span>
+            </div>
+            {expired || hasActiveCountdown ? (
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {expired ? (
+                  <span className="inline-flex rounded-full border border-slate-400 bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-slate-500">
+                    Expirado
+                  </span>
+                ) : null}
+                {hasActiveCountdown && item.expires_at ? (
+                  <CountdownBadge
+                    expiresAt={item.expires_at}
+                    onExpire={() => setLocallyExpired(true)}
+                  />
+                ) : null}
+              </div>
             ) : null}
-            <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              {relativeTime(item.published_at)}
+            <p className="mt-1 line-clamp-2 text-sm text-slate-600">
+              {item.body}
             </p>
           </div>
         </div>
@@ -260,16 +267,13 @@ function NotificationCard({
   );
 }
 
-// variant "sheet": o ui/sheet renderiza um X absoluto em top-4 right-4, então
-// o header reserva pr-12 pra nada cair embaixo dele e o botão ganha altura de
-// toque maior. flex-wrap: em ~360px o rótulo completo não cabe na mesma linha
-// do título (título ~114px + botão ~200px + paddings 72px > 360px), então o
-// botão desce inteiro pra linha de baixo em vez de truncar ou espremer.
 export default function NotificationsPanel({
   onClose,
+  onSelect,
   variant = "popover",
 }: {
   onClose?: () => void;
+  onSelect: (item: NotificationItem) => void;
   variant?: "popover" | "sheet";
 }) {
   const {
@@ -283,6 +287,7 @@ export default function NotificationsPanel({
     markAllAsRead,
   } = useNotifications();
   const [loadingMore, setLoadingMore] = useState(false);
+  const isSheet = variant === "sheet";
 
   async function handleLoadMore() {
     setLoadingMore(true);
@@ -295,25 +300,40 @@ export default function NotificationsPanel({
 
   return (
     <div className="flex h-full max-h-[inherit] flex-col">
+      {/* No sheet, o X default do ui/sheet fica escondido (NotificationBell) e
+          renderizamos um SheetClose próprio aqui, agrupado com o "Marcar todas"
+          e na mesma altura (items-center). flex-wrap: em ~360px o grupo direito
+          (marcar + X) desce junto pra segunda linha, mantendo os dois alinhados
+          entre si; o X ganha área de toque de 44px. */}
       <div
         className={`flex shrink-0 items-center justify-between gap-2 border-b-2 border-slate-900 bg-[#faf8f4] px-4 py-3 ${
-          variant === "sheet" ? "flex-wrap pr-12" : ""
+          isSheet ? "flex-wrap" : ""
         }`}
       >
         <h2 className="font-display text-base font-black text-slate-950">
           Notificações
         </h2>
-        <button
-          type="button"
-          onClick={() => void markAllAsRead()}
-          disabled={unreadCount === 0}
-          className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${
-            variant === "sheet" ? "py-2.5" : "py-1.5"
-          }`}
-        >
-          <CheckCheck className="h-3.5 w-3.5" />
-          Marcar todas como lidas
-        </button>
+        <div className={`flex items-center gap-2 ${isSheet ? "ml-auto" : ""}`}>
+          <button
+            type="button"
+            onClick={() => void markAllAsRead()}
+            disabled={unreadCount === 0}
+            className={`inline-flex items-center gap-1.5 rounded-full border-2 border-slate-900 bg-white px-3 text-xs font-black text-slate-900 shadow-[2px_2px_0_#0f172a] transition-all hover:shadow-[3px_3px_0_#0f172a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${
+              isSheet ? "py-2.5" : "py-1.5"
+            }`}
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+            Marcar todas como lidas
+          </button>
+          {isSheet ? (
+            <SheetClose
+              aria-label="Fechar notificações"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-900 transition-colors hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            >
+              <X className="h-5 w-5" strokeWidth={2.5} />
+            </SheetClose>
+          ) : null}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -353,7 +373,13 @@ export default function NotificationsPanel({
         ) : (
           <>
             {notifications.map((item) => (
-              <NotificationCard key={item.id} item={item} onClose={onClose} />
+              <NotificationCard
+                key={item.id}
+                item={item}
+                variant={variant}
+                onSelect={onSelect}
+                onClose={onClose}
+              />
             ))}
             {hasMore ? (
               <div className="border-t border-slate-200 p-3 text-center">

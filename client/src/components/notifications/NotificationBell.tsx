@@ -3,12 +3,17 @@ import { Bell } from "lucide-react";
 
 import NotificationsPanel from "@/components/notifications/NotificationsPanel";
 import {
+  NotificationDetailDialog,
+  NotificationDetailSheet,
+} from "@/components/notifications/NotificationDetail";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useNotifications } from "@/contexts/NotificationsContext";
+import type { NotificationItem } from "@/services/notificationsService";
 
 // Sino de notificações do Header, sempre o mesmo botão redondo de 36px.
 // Desktop: Popover ancorado no botão. Mobile: o sino vive na barra ao lado do
@@ -73,13 +78,38 @@ export default function NotificationBell({
 }) {
   const { unreadCount, refresh, arrivalSignal } = useNotifications();
   const [open, setOpen] = useState(false);
+  // Notificação aberta em detalhe (null = lista). Vive aqui porque no desktop o
+  // detalhe é um Dialog irmão do Popover (que fecha ao abrir o detalhe).
+  const [selected, setSelected] = useState<NotificationItem | null>(null);
   const ringing = useBellRing(arrivalSignal);
+
+  // Desktop e mobile são instâncias distintas do sino, ambas sempre montadas (o
+  // Header só troca display via 2xl:hidden/2xl:flex). O conteúdo do Sheet/Dialog
+  // é portalado pro body, então esconder o container NÃO fecha um detalhe aberto:
+  // ao cruzar o 2xl, a instância escondida deixaria um overlay órfão na tela.
+  // Fecha painel+detalhe quando esta instância deixa de ser a visível. 1536px =
+  // 2xl do Tailwind, em sincronia com os 2xl:hidden/2xl:flex do Header.
+  useEffect(() => {
+    const mql = window.matchMedia("(min-width: 1536px)");
+    function closeIfInactive() {
+      const active = variant === "desktop" ? mql.matches : !mql.matches;
+      if (!active) {
+        setOpen(false);
+        setSelected(null);
+      }
+    }
+    mql.addEventListener("change", closeIfInactive);
+    return () => mql.removeEventListener("change", closeIfInactive);
+  }, [variant]);
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (next) {
       onOpen?.();
       void refresh({ silent: true });
+    } else {
+      // Fechar o painel volta à lista: reabrir não cai direto num detalhe velho.
+      setSelected(null);
     }
   }
 
@@ -94,31 +124,65 @@ export default function NotificationBell({
           <Bell className={bellIconClass} strokeWidth={2.5} />
           <UnreadBadge count={unreadCount} />
         </SheetTrigger>
+        {/* [&>button]:hidden esconde o SheetPrimitive.Close default do ui/sheet
+            (o único <button> filho direto do SheetContent). ui/ é gerado e não
+            deve ser editado; o X visível é o nosso SheetClose no header do
+            painel/detalhe. Não remova este seletor sem prover outro X. */}
         <SheetContent
           side="right"
           aria-describedby={undefined}
-          className="z-[1005] w-full gap-0 border-l-2 border-slate-900 bg-white p-0 sm:max-w-md"
+          className="z-[1005] w-full gap-0 border-l-2 border-slate-900 bg-white p-0 sm:max-w-md [&>button]:hidden"
         >
           <SheetTitle className="sr-only">Notificações</SheetTitle>
-          <NotificationsPanel variant="sheet" onClose={() => setOpen(false)} />
+          {/* Detalhe é camada absolute sobre a lista, que fica montada por baixo
+              (scroll preservado ao voltar). */}
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <NotificationsPanel
+              variant="sheet"
+              onClose={() => setOpen(false)}
+              onSelect={setSelected}
+            />
+            {selected ? (
+              <div className="absolute inset-0 z-10 bg-white">
+                <NotificationDetailSheet
+                  item={selected}
+                  onBack={() => setSelected(null)}
+                  onClose={() => setOpen(false)}
+                />
+              </div>
+            ) : null}
+          </div>
         </SheetContent>
       </Sheet>
     );
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger className={triggerClass} aria-label="Notificações">
-        <Bell className={bellIconClass} strokeWidth={2.5} />
-        <UnreadBadge count={unreadCount} />
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={10}
-        className="max-h-[70vh] w-[400px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-0 shadow-[5px_5px_0_#0f172a]"
-      >
-        <NotificationsPanel onClose={() => setOpen(false)} />
-      </PopoverContent>
-    </Popover>
+    <>
+      <Popover open={open} onOpenChange={handleOpenChange}>
+        <PopoverTrigger className={triggerClass} aria-label="Notificações">
+          <Bell className={bellIconClass} strokeWidth={2.5} />
+          <UnreadBadge count={unreadCount} />
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          sideOffset={10}
+          className="max-h-[70vh] w-[400px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border-2 border-slate-900 bg-white p-0 shadow-[5px_5px_0_#0f172a]"
+        >
+          <NotificationsPanel
+            onClose={() => setOpen(false)}
+            onSelect={(item) => {
+              // Fecha o popover e abre o modal (o modal é irmão, fora do popover).
+              setOpen(false);
+              setSelected(item);
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+      <NotificationDetailDialog
+        item={selected}
+        onClose={() => setSelected(null)}
+      />
+    </>
   );
 }
