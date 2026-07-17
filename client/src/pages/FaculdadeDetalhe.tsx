@@ -466,38 +466,40 @@ export default function FaculdadeDetalhe() {
                 </div>
               </section>
 
-              <section className="card-brutal rounded-xl bg-white p-6">
-                <h2 className="font-display mb-4 text-xl font-black text-slate-950">
-                  Empresas relacionadas
-                </h2>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {relatedCompanies.map((company) => (
-                    <Link
-                      key={company.slug}
-                      href={`/empresas/${company.slug}`}
-                      className={cn(
-                        "rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-colors",
-                        ac.cardHover,
-                      )}
-                    >
-                      <span className="font-display block font-black text-slate-950">
-                        {company.name}
-                      </span>
-                      <span className="text-sm font-medium text-slate-600">
-                        {company.segment} · {company.city}
-                      </span>
-                      <span
+              {relatedCompanies.length > 0 && (
+                <section className="card-brutal rounded-xl bg-white p-6">
+                  <h2 className="font-display mb-4 text-xl font-black text-slate-950">
+                    Empresas relacionadas
+                  </h2>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {relatedCompanies.map((company) => (
+                      <Link
+                        key={company.slug}
+                        href={`/empresas/${company.slug}`}
                         className={cn(
-                          "mt-2 block text-xs font-bold",
-                          ac.tbodyAccentBold,
+                          "rounded-xl border-2 border-slate-200 bg-slate-50 p-4 transition-colors",
+                          ac.cardHover,
                         )}
                       >
-                        Júnior: {company.juniorSalary}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
+                        <span className="font-display block font-black text-slate-950">
+                          {company.name}
+                        </span>
+                        <span className="text-sm font-medium text-slate-600">
+                          {company.segment} · {company.city}
+                        </span>
+                        <span
+                          className={cn(
+                            "mt-2 block text-xs font-bold",
+                            ac.tbodyAccentBold,
+                          )}
+                        >
+                          Júnior: {company.juniorSalary}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
             </main>
 
             <aside className="space-y-5">
@@ -564,77 +566,81 @@ export default function FaculdadeDetalhe() {
                 </div>
               </div>
 
-              <div
-                className={cn(
-                  "card-brutal rounded-xl border-2 bg-white p-5",
-                  ac.panelBorder,
-                )}
-              >
-                <h3 className="font-display mb-3 font-black text-slate-950">
-                  Salários médios relacionados
-                </h3>
-                <div className="space-y-3">
-                  {relatedSalaries.map((row) => (
-                    <div
-                      key={`${row.area}-${row.level}-${row.city}`}
-                      className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                    >
-                      <p
+              {relatedSalaries.length > 0 && (
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl border-2 bg-white p-5",
+                    ac.panelBorder,
+                  )}
+                >
+                  <h3 className="font-display mb-3 font-black text-slate-950">
+                    Salários médios relacionados
+                  </h3>
+                  <div className="space-y-3">
+                    {relatedSalaries.map((row) => (
+                      <div
+                        key={`${row.area}-${row.level}-${row.city}`}
+                        className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                      >
+                        <p
+                          className={cn(
+                            "text-xs font-black uppercase",
+                            ac.tbodyAccentBold,
+                          )}
+                        >
+                          {String(row.area)} · {String(row.level)}
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-slate-900">
+                          CLT: R$ {Number(row.clt).toLocaleString("pt-BR")}
+                        </p>
+                        <p className="text-xs font-medium text-slate-600">
+                          PJ: R$ {Number(row.pj).toLocaleString("pt-BR")} ·{" "}
+                          {String(row.city)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <Link
+                    href="/salarios"
+                    className={cn(
+                      "mt-3 inline-flex items-center gap-1 text-xs font-bold",
+                      ac.link,
+                      ac.linkHover,
+                    )}
+                  >
+                    Ver tabela salarial <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              )}
+
+              {relatedTechnologies.length > 0 && (
+                <div
+                  className={cn(
+                    "card-brutal rounded-xl border-2 bg-white p-5",
+                    ac.panelBorder,
+                  )}
+                >
+                  <h3 className="font-display mb-3 font-black text-slate-950">
+                    Tecnologias úteis
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {relatedTechnologies.map((technology) => (
+                      <Link
+                        key={technology.slug}
+                        href={`/tecnologias/${technology.slug}`}
                         className={cn(
-                          "text-xs font-black uppercase",
+                          "rounded-full border-2 px-3 py-1.5 text-xs font-black",
+                          ac.panelBorder,
+                          ac.panelSoft,
                           ac.tbodyAccentBold,
                         )}
                       >
-                        {String(row.area)} · {String(row.level)}
-                      </p>
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        CLT: R$ {Number(row.clt).toLocaleString("pt-BR")}
-                      </p>
-                      <p className="text-xs font-medium text-slate-600">
-                        PJ: R$ {Number(row.pj).toLocaleString("pt-BR")} ·{" "}
-                        {String(row.city)}
-                      </p>
-                    </div>
-                  ))}
+                        {technology.name}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
-                <Link
-                  href="/salarios"
-                  className={cn(
-                    "mt-3 inline-flex items-center gap-1 text-xs font-bold",
-                    ac.link,
-                    ac.linkHover,
-                  )}
-                >
-                  Ver tabela salarial <ExternalLink className="h-3 w-3" />
-                </Link>
-              </div>
-
-              <div
-                className={cn(
-                  "card-brutal rounded-xl border-2 bg-white p-5",
-                  ac.panelBorder,
-                )}
-              >
-                <h3 className="font-display mb-3 font-black text-slate-950">
-                  Tecnologias úteis
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {relatedTechnologies.map((technology) => (
-                    <Link
-                      key={technology.slug}
-                      href={`/tecnologias/${technology.slug}`}
-                      className={cn(
-                        "rounded-full border-2 px-3 py-1.5 text-xs font-black",
-                        ac.panelBorder,
-                        ac.panelSoft,
-                        ac.tbodyAccentBold,
-                      )}
-                    >
-                      {technology.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <div
                 className={cn(
