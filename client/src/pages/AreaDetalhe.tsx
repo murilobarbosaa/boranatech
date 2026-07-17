@@ -239,10 +239,14 @@ function AreaHeroStats({
   const tempoLabel = area.tempoMedioFormacao ?? "Varia por perfil";
   const salarios = area.salarios;
   let faixaResumo = area.faixaSalarial;
+  let nivelResumo = "do estágio ao sênior";
   if (salarios && salarios.length > 0) {
     const inicio = salarios[0].faixa.split(" a ");
     const fim = salarios[salarios.length - 1].faixa.split(" a ");
     faixaResumo = `${inicio[0]} a ${fim[fim.length - 1]}`;
+    nivelResumo = `do ${salarios[0].nivel.toLowerCase()} ao ${salarios[
+      salarios.length - 1
+    ].nivel.toLowerCase()}`;
   }
   return (
     <div className="rounded-3xl border-2 border-[#1a1a1a] bg-white p-6 shadow-[4px_4px_0_#0f172a] md:p-8">
@@ -271,7 +275,7 @@ function AreaHeroStats({
             {faixaResumo}
           </p>
           <p className="mt-0.5 text-xs font-medium text-slate-500">
-            do estágio ao sênior
+            {nivelResumo}
           </p>
         </div>
         <div className="md:border-l-2 md:border-slate-100 md:pl-6">
