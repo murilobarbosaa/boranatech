@@ -1,11 +1,56 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 
 import { cacheKey, getOrCompute } from "../lib/cache";
 import { supabaseAdmin } from "../lib/supabaseAdmin";
-import { requireAuth } from "../middleware/auth";
+import { checkProStatus, requireAuth } from "../middleware/auth";
 import { createError } from "../middleware/error";
+import {
+  FREE_COURSES_SAMPLE_SIZE,
+  FREE_PLATFORMS_SAMPLE_SIZE,
+} from "../../shared/freeTierLimits";
+import { projetos } from "../../shared/projects/catalog";
 
 const router = Router();
+
+// Slugs dos projetos premium, derivados da fonte canonica (catalogo estatico
+// compartilhado). A tabela `projects` do Supabase e um espelho seedado que NAO
+// carrega o flag pro, entao o gate do payload de /projects usa este set, nao
+// uma coluna do banco.
+const PRO_PROJECT_SLUGS = new Set(
+  projetos.filter((p) => p.pro === true).map((p) => p.id),
+);
+
+type TierPayload<T> = { data: T[]; lockedCount: number };
+
+// Amostra posicional: free ve os primeiros `sampleSize` itens; o resto vira
+// apenas contagem (lockedCount), sem dados. Pro ve tudo.
+function sampleByTier<T>(
+  data: T[],
+  isPro: boolean,
+  sampleSize: number,
+): TierPayload<T> {
+  if (isPro) return { data, lockedCount: 0 };
+  const sample = data.slice(0, sampleSize);
+  return { data: sample, lockedCount: Math.max(data.length - sampleSize, 0) };
+}
+
+// O payload destas rotas de catalogo VARIA por tier (Pro ve tudo; free/anonimo
+// so a amostra) e o tier deriva do header Authorization. A CDN da Vercel chaveia
+// o cache pela URL, nao pelo Authorization: uma unica resposta cacheada seria
+// servida pros dois tiers. Isso vaza nos dois sentidos: a amostra de 6 chegando
+// a um Pro, ou (se qualquer request autenticado gravasse o payload completo com
+// header publico) o catalogo pago chegando a free/anonimo. Por isso NUNCA
+// cacheavel em borda: `private, no-store` pra todo tier, sem excecao pro
+// anonimo. `Vary: Authorization` e defesa em profundidade (documenta a
+// dependencia e protege caso alguem reintroduza cache cacheavel aqui). Perder o
+// cache de 60s destas 3 rotas e irrelevante; servir o payload do tier errado
+// nao e. As paginas /cursos e /plataformas renderizam do estatico (data.ts),
+// entao nao dependem deste cache pra performance.
+function setTierCacheControl(_req: Request, res: Response) {
+  res.vary("Authorization");
+  res.set("Cache-Control", "private, no-store");
+}
 
 const NEWS_FEED_MAX_AGE_DAYS = 30; // TODO(Ana): janela de exibição do feed
 
@@ -211,7 +256,7 @@ router.get("/technologies/:slug", async (req, res, next) => {
   }
 });
 
-router.get("/courses", async (req, res, next) => {
+router.get("/courses", checkProStatus, async (req, res, next) => {
   try {
     const { area, is_free, level, search } = req.query;
     const payload = await getOrCompute(
@@ -237,14 +282,22 @@ router.get("/courses", async (req, res, next) => {
       { bypass: Boolean(search) },
     );
 
-    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
-    res.json(payload);
+    // Fatiamento por tier: free (inclui anonimo) so recebe a amostra; os itens
+    // travados nao vao no payload, so a contagem. Fail-closed: checkProStatus
+    // resolve req.isPro como false em qualquer erro.
+    const tier = sampleByTier(
+      payload.data,
+      req.isPro === true,
+      FREE_COURSES_SAMPLE_SIZE,
+    );
+    setTierCacheControl(req, res);
+    res.json(tier);
   } catch (err) {
     next(err);
   }
 });
 
-router.get("/platforms", async (_req, res, next) => {
+router.get("/platforms", checkProStatus, async (req, res, next) => {
   try {
     const payload = await getOrCompute(
       cacheKey("content:platforms"),
@@ -262,14 +315,19 @@ router.get("/platforms", async (_req, res, next) => {
       },
     );
 
-    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
-    res.json(payload);
+    const tier = sampleByTier(
+      payload.data,
+      req.isPro === true,
+      FREE_PLATFORMS_SAMPLE_SIZE,
+    );
+    setTierCacheControl(req, res);
+    res.json(tier);
   } catch (err) {
     next(err);
   }
 });
 
-router.get("/projects", async (req, res, next) => {
+router.get("/projects", checkProStatus, async (req, res, next) => {
   try {
     const { area, level } = req.query;
     const payload = await getOrCompute(
@@ -292,8 +350,21 @@ router.get("/projects", async (req, res, next) => {
       },
     );
 
-    res.set("Cache-Control", PUBLIC_CACHE_CONTROL);
-    res.json(payload);
+    // Gate por flag (nao posicional): free nao recebe os projetos premium. O
+    // espelho `projects` do Supabase nao seeda o flag pro, entao filtramos pelo
+    // slug contra a fonte canonica (PRO_PROJECT_SLUGS). Pro ve tudo.
+    const rows = payload.data as Array<{ slug?: string }>;
+    let data = rows;
+    let lockedCount = 0;
+    if (req.isPro !== true) {
+      const before = rows.length;
+      data = rows.filter(
+        (row) => !(row.slug && PRO_PROJECT_SLUGS.has(row.slug)),
+      );
+      lockedCount = before - data.length;
+    }
+    setTierCacheControl(req, res);
+    res.json({ data, lockedCount });
   } catch (err) {
     next(err);
   }
@@ -482,7 +553,11 @@ router.get("/sources/status", async (_req, res, next) => {
           .order("code");
 
         if (error)
-          throw createError(500, "db_error", "Erro ao buscar status das fontes.");
+          throw createError(
+            500,
+            "db_error",
+            "Erro ao buscar status das fontes.",
+          );
         return { data: data || [] };
       },
     );

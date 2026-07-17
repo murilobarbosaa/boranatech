@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "wouter";
 import { ArrowRight, BookOpen, ExternalLink, FolderGit2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getCourses } from "@/services/contentService";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { projetos } from "@/lib/data";
+import { cursosGratuitos, projetos } from "@/lib/data";
 import { areaLabel, GENERAL_AREA, type AreaSelection } from "@shared/areas";
 
 interface CourseCard {
@@ -23,9 +21,6 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
   const label = areaLabel(area);
   const { isPro } = useSubscription();
 
-  const [loading, setLoading] = useState(!isGeneral);
-  const [courses, setCourses] = useState<CourseCard[]>([]);
-
   // Projetos vem do catalogo estatico (mesma fonte da pagina /projetos).
   // Sugestao nunca oferece projeto pro a quem nao e assinante: seria um
   // convite pra uma porta trancada.
@@ -36,25 +31,23 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
       .slice(0, MAX_ITEMS);
   }, [area, isGeneral, isPro]);
 
-  useEffect(() => {
-    if (isGeneral) return;
-    let alive = true;
-    setLoading(true);
-
-    getCourses({ area })
-      .catch(() => [] as unknown[])
-      .then((crs) => {
-        if (!alive) return;
-        const c = (crs as CourseCard[])
-          .filter((x) => x.areaSlug === area)
-          .slice(0, MAX_ITEMS);
-        setCourses(c);
-        setLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
+  // Cursos tambem do catalogo estatico (mesma fonte da pagina /cursos). Antes
+  // vinha de getCourses({area}); a rota /api/content/courses agora e fatiada
+  // por tier no servidor e, sem token, serviria so a amostra, sub-representando
+  // estas sugestoes por area. A fonte canonica cobre todas as areas.
+  const courses = useMemo<CourseCard[]>(() => {
+    if (isGeneral) return [];
+    return cursosGratuitos
+      .filter((c) => c.areaSlug === area)
+      .slice(0, MAX_ITEMS)
+      .map((c) => ({
+        id: c.id,
+        titulo: c.titulo,
+        canal: c.canal,
+        link: c.link,
+        nivel: c.nivel,
+        areaSlug: c.areaSlug,
+      }));
   }, [area, isGeneral]);
 
   if (isGeneral) {
@@ -76,18 +69,6 @@ export default function NextStepsByArea({ area }: { area: AreaSelection }) {
           Fazer o quiz de carreira
           <ArrowRight className="h-4 w-4" />
         </Link>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-6 w-72 bg-slate-200" />
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <Skeleton className="h-28 w-full rounded-2xl bg-slate-200" />
-          <Skeleton className="h-28 w-full rounded-2xl bg-slate-200" />
-        </div>
       </div>
     );
   }

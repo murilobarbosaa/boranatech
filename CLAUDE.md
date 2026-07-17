@@ -83,7 +83,8 @@ supabase/migrations/
 
 - `isPro || isAdmin` é intencional em toda a plataforma: admin enxerga como Pro por design, não é bug.
 - Produto: catálogo e descoberta são grátis; análise personalizada por IA é Pro. Exceções explícitas (decisão de produto de 2026-07): o Comparador (/comparador e /tecnologias/comparar) e a área de entrevistas (/entrevistas) são 100% Pro. Isso decide onde entra ProGate/paywall.
-- Cursos e Plataformas são freemium: o grátis vê uma amostra (tamanhos em `client/src/lib/freeTierLimits.ts`), o Pro vê tudo.
+- Cursos e Plataformas são freemium: o grátis vê uma amostra (tamanhos em `client/src/lib/freeTierLimits.ts`, reexport de `shared/freeTierLimits.ts`, fonte única compartilhada com o server), o Pro vê tudo.
+- Dívida conhecida do gating de catálogo: o gate por tier cobre a API (`server/routes/content.ts`), o DOM, o HTML prerenderizado e o JSON-LD, mas o catálogo completo continua extraível do bundle JS, porque `client/src/lib/data.ts` é a fonte canônica e é importada estaticamente pelas páginas. Fechar isso exige inverter a fonte canônica para o DB (servir só a amostra ao free no runtime), o que é um projeto à parte.
 
 ## Convenções de Git / Commits
 
