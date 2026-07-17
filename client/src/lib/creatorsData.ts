@@ -131,7 +131,7 @@ export const creators: Creator[] = [
     redes: [],
   },
   {
-    name: "Gabriel",
+    name: "Gabriel Soares",
     handle: "gabrielsm.dev",
     photo: "/creators/gabrielsm-dev.jpg",
     instagram: "https://instagram.com/gabrielsm.dev",
@@ -167,7 +167,7 @@ export const creators: Creator[] = [
     redes: [],
   },
   {
-    name: "Gabriel",
+    name: "Gabriel Melo",
     handle: "dev.gbnunes",
     photo: "/creators/dev-gbnunes.jpg",
     instagram: "https://www.instagram.com/dev.gbnunes/",
