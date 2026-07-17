@@ -15,6 +15,7 @@ import {
   ExternalLink,
   GraduationCap,
   Lightbulb,
+  Lock,
   Route,
   Sparkles,
   TrendingUp,
@@ -37,6 +38,8 @@ import { getPageAccentUi } from "@/lib/pageAccentUi";
 import { technologies } from "@/lib/technologyData";
 import { cn } from "@/lib/utils";
 import { getArea } from "@/services/contentService";
+import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 const HERO_BLOB: Record<PageHeroAccent, string> = {
   violet: "bg-violet-300",
@@ -321,6 +324,8 @@ export default function AreaDetalhe() {
       .catch(() => setArea(local ?? null));
   }, [params.slug]);
 
+  const { isPro } = useSubscription();
+
   if (!area) {
     return (
       <Layout>
@@ -348,9 +353,15 @@ export default function AreaDetalhe() {
   const comingSoon = area.roadmapStatus === "coming-soon";
   const creators = areaCreators[area.slug] ?? [];
 
-  const cursosDaArea = cursosGratuitos
-    .filter((c) => c.areaSlug === area.slug)
-    .slice(0, 3);
+  const cursosDaAreaAll = cursosGratuitos.filter(
+    (c) => c.areaSlug === area.slug,
+  );
+  // Free/anonimo NAO recebe curso real desta secao (era um vazamento: os 3 por
+  // area quase nunca caem na amostra free global, entao expunha catalogo pago).
+  // So Pro renderiza os cursos; free ve um teaser. `slice(0,3)` fica atras do
+  // gate pra o dado real nunca chegar ao DOM de quem nao e Pro.
+  const cursosDaArea = isPro ? cursosDaAreaAll.slice(0, 3) : [];
+  const cursosDaAreaCount = cursosDaAreaAll.length;
   const empresasDaArea = companies
     .filter((company) => company.areas.includes(area.slug))
     .slice(0, 4);
@@ -772,6 +783,38 @@ export default function AreaDetalhe() {
                           </p>
                         </a>
                       ))}
+                    </div>
+                  ) : !isPro && cursosDaAreaCount > 0 ? (
+                    // Free/anonimo: teaser + CTA, SEM titulo/canal/link real.
+                    // Bloco simples (nao o LockedCatalogTeaser, que e uma grade
+                    // de catalogo com cards borrados e overlay absoluto: nao
+                    // encaixa nesta secao estreita de 3 cards). Mesma linguagem
+                    // visual da casa (Lock em circulo amber, selo Pro, CTA
+                    // amarelo).
+                    <div
+                      className={cn(
+                        "flex flex-col items-center gap-3 rounded-lg border-2 border-dashed p-5 text-center",
+                        ac.panelBorder,
+                      )}
+                    >
+                      <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
+                        <Lock className="h-5 w-5 text-slate-950" aria-hidden />
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
+                        <ProStarIcon className="h-3.5 w-3.5" /> Pro
+                      </span>
+                      {/* TODO(Ana): copy do teaser de cursos por area */}
+                      <p className="max-w-[16rem] text-sm font-black text-slate-950">
+                        Os {cursosDaAreaCount} cursos de {area.nome} liberam no
+                        Plano Pro.
+                      </p>
+                      <Link
+                        href="/planos"
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
+                      >
+                        Assine o Pro pra desbloquear{" "}
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                      </Link>
                     </div>
                   ) : (
                     <p className="text-sm text-slate-600">
