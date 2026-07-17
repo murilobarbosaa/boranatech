@@ -25,7 +25,7 @@ import { motion, type Variants } from "framer-motion";
 import FavoriteButton from "@/components/FavoriteButton";
 import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
-import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import LockedCatalogTeaser from "@/components/pro/LockedCatalogTeaser";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import EmbaixadoraBadge from "@/components/shared/EmbaixadoraBadge";
 import MiniQuiz, {
@@ -400,6 +400,12 @@ export default function Plataformas() {
     );
   });
 
+  // Free ve so as plataformas da amostra; as travadas nunca sao renderizadas
+  // (nem borradas). O teaser abaixo comunica quantas ficam no Pro.
+  const visiblePlatforms = isPro
+    ? filtered
+    : filtered.filter((p) => freePlatformIds.has(p.id));
+
   function clearFilters() {
     setCategoriaFilter("Todas");
     setTipoFilter("Todos");
@@ -746,240 +752,221 @@ export default function Plataformas() {
             </Link>
           ) : null}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((plat) => {
-              const locked = !isPro && !freePlatformIds.has(plat.id);
-              return (
-                <div key={plat.id} className="relative">
-                  <motion.div
-                    className={`card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#6ee7b7] ${locked ? "pointer-events-none select-none blur-[3px]" : ""}`}
-                    aria-hidden={locked}
-                    {...(plat.categoria === "Jogo"
-                      ? {
-                          initial: "rest",
-                          animate: "rest",
-                          whileHover: "hover",
-                          variants: gameCardMotion,
-                          transition: { duration: 0.2 },
-                        }
-                      : {})}
-                  >
-                    {/* Header */}
-                    <div className="mb-4 flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <motion.div
-                          variants={gameIconMotion}
-                          transition={{ duration: 0.5 }}
-                          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 p-2 shadow-[3px_3px_0_#0f172a] ${
-                            plat.categoria === "Jogo"
-                              ? "bg-gradient-to-br from-violet-200 to-emerald-200"
-                              : "bg-white"
-                          }`}
-                        >
-                          <PlatformLogo
-                            nome={plat.nome}
-                            logoUrl={plat.logoUrl}
-                            isGame={plat.categoria === "Jogo"}
-                          />
-                        </motion.div>
-                        <div className="min-w-0">
-                          <h3 className="font-display font-bold text-xl text-slate-900">
-                            {plat.nome}
-                          </h3>
-                          {plat.categoria === "Jogo" ? (
-                            <span className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full border-2 border-violet-300 bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-700">
-                              <Gamepad2 className="h-3 w-3" />
-                              Jogo
-                            </span>
-                          ) : null}
-                          <span
-                            className={`mt-1 inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-[11px] font-black ${
-                              plat.certificado
-                                ? "border-emerald-300 bg-emerald-100 text-emerald-700"
-                                : "border-slate-300 bg-slate-100 text-slate-600"
-                            }`}
-                          >
-                            {plat.certificado ? (
-                              <Award className="h-3 w-3" />
-                            ) : (
-                              <X className="h-3 w-3" />
-                            )}
-                            {plat.certificado
-                              ? "Oferece certificado"
-                              : "Sem certificado oficial"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full font-medium border-2 ${
-                            plat.tipo === "Gratuita"
-                              ? "bg-amber-100 text-amber-700 border-amber-300"
-                              : plat.tipo === "Híbrida"
-                                ? "bg-amber-100 text-amber-700 border-amber-300"
-                                : "bg-red-100 text-red-700 border-red-300"
-                          }`}
-                        >
-                          {plat.tipo}
-                        </span>
-                        <FavoriteButton
-                          compact
-                          item={{
-                            id: plat.id,
-                            type: "plataforma",
-                            title: plat.nome,
-                            subtitle: plat.tipo,
-                            url: plat.link,
-                          }}
+            {visiblePlatforms.map((plat) => (
+              <div key={plat.id} className="relative">
+                <motion.div
+                  className="card-brutal bg-white rounded-xl p-6 flex flex-col shadow-[5px_5px_0_#6ee7b7]"
+                  {...(plat.categoria === "Jogo"
+                    ? {
+                        initial: "rest",
+                        animate: "rest",
+                        whileHover: "hover",
+                        variants: gameCardMotion,
+                        transition: { duration: 0.2 },
+                      }
+                    : {})}
+                >
+                  {/* Header */}
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <motion.div
+                        variants={gameIconMotion}
+                        transition={{ duration: 0.5 }}
+                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-2 border-slate-900 p-2 shadow-[3px_3px_0_#0f172a] ${
+                          plat.categoria === "Jogo"
+                            ? "bg-gradient-to-br from-violet-200 to-emerald-200"
+                            : "bg-white"
+                        }`}
+                      >
+                        <PlatformLogo
+                          nome={plat.nome}
+                          logoUrl={plat.logoUrl}
+                          isGame={plat.categoria === "Jogo"}
                         />
+                      </motion.div>
+                      <div className="min-w-0">
+                        <h3 className="font-display font-bold text-xl text-slate-900">
+                          {plat.nome}
+                        </h3>
+                        {plat.categoria === "Jogo" ? (
+                          <span className="mr-1 mt-1 inline-flex items-center gap-1 rounded-full border-2 border-violet-300 bg-violet-100 px-2 py-0.5 text-[11px] font-black text-violet-700">
+                            <Gamepad2 className="h-3 w-3" />
+                            Jogo
+                          </span>
+                        ) : null}
+                        <span
+                          className={`mt-1 inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-[11px] font-black ${
+                            plat.certificado
+                              ? "border-emerald-300 bg-emerald-100 text-emerald-700"
+                              : "border-slate-300 bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {plat.certificado ? (
+                            <Award className="h-3 w-3" />
+                          ) : (
+                            <X className="h-3 w-3" />
+                          )}
+                          {plat.certificado
+                            ? "Oferece certificado"
+                            : "Sem certificado oficial"}
+                        </span>
                       </div>
                     </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full font-medium border-2 ${
+                          plat.tipo === "Gratuita"
+                            ? "bg-amber-100 text-amber-700 border-amber-300"
+                            : plat.tipo === "Híbrida"
+                              ? "bg-amber-100 text-amber-700 border-amber-300"
+                              : "bg-red-100 text-red-700 border-red-300"
+                        }`}
+                      >
+                        {plat.tipo}
+                      </span>
+                      <FavoriteButton
+                        compact
+                        item={{
+                          id: plat.id,
+                          type: "plataforma",
+                          title: plat.nome,
+                          subtitle: plat.tipo,
+                          url: plat.link,
+                        }}
+                      />
+                    </div>
+                  </div>
 
-                    <p className="text-sm text-slate-600 mb-4 flex-1">
-                      {plat.descricao}
+                  <p className="text-sm text-slate-600 mb-4 flex-1">
+                    {plat.descricao}
+                  </p>
+
+                  {/* Areas */}
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
+                      Áreas fortes
                     </p>
+                    <div className="flex flex-wrap gap-1">
+                      {plat.areasFortes.slice(0, 4).map((a) => (
+                        <span
+                          key={a}
+                          className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full"
+                        >
+                          {a}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
 
-                    {/* Areas */}
+                  {/* Tecnologias */}
+                  {plat.tecnologias.length > 0 && (
                     <div className="mb-4">
                       <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                        Áreas fortes
+                        Tecnologias
                       </p>
-                      <div className="flex flex-wrap gap-1">
-                        {plat.areasFortes.slice(0, 4).map((a) => (
-                          <span
-                            key={a}
-                            className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full"
+                      <div className="flex flex-wrap gap-2">
+                        {plat.tecnologias
+                          .map((slug) => techBySlug.get(slug))
+                          .filter((t): t is NonNullable<typeof t> => Boolean(t))
+                          .slice(0, 6)
+                          .map((t) => (
+                            <TechnologyLogo
+                              key={t.slug}
+                              name={t.name}
+                              icon={t.icon}
+                              logoUrl={t.logoUrl}
+                              className="h-8 w-8"
+                              imageClassName="h-5 w-5 p-0.5"
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pros / Cons */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <p className="text-xs font-medium text-emerald-700 mb-1.5">
+                        Pontos fortes
+                      </p>
+                      <ul className="space-y-1">
+                        {plat.pontosFortes.slice(0, 3).map((p) => (
+                          <li
+                            key={p}
+                            className="flex items-start gap-1 text-xs text-slate-600"
                           >
-                            {a}
-                          </span>
+                            <Check className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                            {p}
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     </div>
+                    <div>
+                      <p className="text-xs font-medium text-red-600 mb-1.5">
+                        Limitações
+                      </p>
+                      <ul className="space-y-1">
+                        {plat.limitacoes.slice(0, 3).map((l) => (
+                          <li
+                            key={l}
+                            className="flex items-start gap-1 text-xs text-slate-600"
+                          >
+                            <X className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                            {l}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
 
-                    {/* Tecnologias */}
-                    {plat.tecnologias.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-                          Tecnologias
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {plat.tecnologias
-                            .map((slug) => techBySlug.get(slug))
-                            .filter((t): t is NonNullable<typeof t> =>
-                              Boolean(t),
-                            )
-                            .slice(0, 6)
-                            .map((t) => (
-                              <TechnologyLogo
-                                key={t.slug}
-                                name={t.name}
-                                icon={t.icon}
-                                logoUrl={t.logoUrl}
-                                className="h-8 w-8"
-                                imageClassName="h-5 w-5 p-0.5"
-                              />
-                            ))}
-                        </div>
-                      </div>
+                  {/* Badges */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {plat.boaParaIniciantes && (
+                      <span className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                        <Star className="w-3 h-3" /> Para iniciantes
+                      </span>
                     )}
-
-                    {/* Pros / Cons */}
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div>
-                        <p className="text-xs font-medium text-emerald-700 mb-1.5">
-                          Pontos fortes
-                        </p>
-                        <ul className="space-y-1">
-                          {plat.pontosFortes.slice(0, 3).map((p) => (
-                            <li
-                              key={p}
-                              className="flex items-start gap-1 text-xs text-slate-600"
-                            >
-                              <Check className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
-                              {p}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-red-600 mb-1.5">
-                          Limitações
-                        </p>
-                        <ul className="space-y-1">
-                          {plat.limitacoes.slice(0, 3).map((l) => (
-                            <li
-                              key={l}
-                              className="flex items-start gap-1 text-xs text-slate-600"
-                            >
-                              <X className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                              {l}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    {/* Badges */}
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {plat.boaParaIniciantes && (
-                        <span className="flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                          <Star className="w-3 h-3" /> Para iniciantes
-                        </span>
-                      )}
-                      {plat.trilhasOrganizadas && (
-                        <span className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
-                          Trilhas organizadas
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Best for */}
-                    <div className="bg-slate-50 rounded-lg p-3 mb-4">
-                      <p className="text-xs text-slate-600">
-                        <strong>Melhor para:</strong> {plat.melhorPerfil}
-                      </p>
-                    </div>
-
-                    {/* Price + Link */}
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                      <span className="text-sm font-semibold text-slate-900">
-                        {plat.preco}
+                    {plat.trilhasOrganizadas && (
+                      <span className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                        Trilhas organizadas
                       </span>
-                      <a
-                        href={plat.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
-                      >
-                        {plat.categoria === "Jogo" ? "Jogar agora" : "Visitar"}{" "}
-                        <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </div>
-                  </motion.div>
-                  {locked ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
-                      <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
-                        <Lock className="h-6 w-6 text-slate-950" aria-hidden />
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
-                        <ProStarIcon className="h-3.5 w-3.5" /> Pro
-                      </span>
-                      {/* TODO(Ana): copy do card de plataforma travada */}
-                      <p className="max-w-[15rem] text-sm font-black text-slate-950">
-                        Esta plataforma faz parte do Plano Pro.
-                      </p>
-                      <Link
-                        href="/planos"
-                        className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
-                      >
-                        Assine o Pro pra desbloquear todos{" "}
-                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                      </Link>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+
+                  {/* Best for */}
+                  <div className="bg-slate-50 rounded-lg p-3 mb-4">
+                    <p className="text-xs text-slate-600">
+                      <strong>Melhor para:</strong> {plat.melhorPerfil}
+                    </p>
+                  </div>
+
+                  {/* Price + Link */}
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <span className="text-sm font-semibold text-slate-900">
+                      {plat.preco}
+                    </span>
+                    <a
+                      href={plat.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-700 text-white text-xs font-semibold rounded-lg border-2 border-slate-900 shadow-[2px_2px_0_#0f172a] hover:shadow-[3px_3px_0_#0f172a] hover:-translate-x-0.5 hover:-translate-y-0.5 transition-all"
+                    >
+                      {plat.categoria === "Jogo" ? "Jogar agora" : "Visitar"}{" "}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </motion.div>
+              </div>
+            ))}
           </div>
+          {!isPro && !loading ? (
+            <LockedCatalogTeaser
+              count={lockedTotal}
+              noun="plataformas"
+              accentShadow="#6ee7b7"
+              className="mt-8"
+            />
+          ) : null}
 
           {filtered.length === 0 && (
             <div className="card-brutal rounded-xl border-dashed bg-white p-10 text-center">

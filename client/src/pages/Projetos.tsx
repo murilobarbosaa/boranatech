@@ -22,6 +22,7 @@ import Layout from "@/components/Layout";
 import SEO from "@/components/SEO";
 import { AiCtaLink } from "@/components/shared/AiCta";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
+import LockedCatalogTeaser from "@/components/pro/LockedCatalogTeaser";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useProjectCompletion } from "@/hooks/useProjectCompletion";
 import ProjectValidationBlock from "@/components/projects/ProjectValidationBlock";
@@ -99,7 +100,14 @@ export default function Projetos() {
   // Fonte canonica: o catalogo estatico versionado (client/src/lib/data.ts).
   // A tabela projects do Supabase segue existindo pra outras superficies, mas
   // esta pagina nao a consome mais.
-  const projectItems = projetos;
+  // Free (inclui anonimo) nao recebe os projetos premium: filtramos pelo flag
+  // `pro` ANTES de qualquer derivacao/render, entao o card travado nunca entra
+  // no DOM. Pro ve tudo.
+  const projectItems = useMemo(
+    () => (isPro ? projetos : projetos.filter((p) => p.pro !== true)),
+    [isPro],
+  );
+  const lockedCount = isPro ? 0 : projetos.filter((p) => p.pro === true).length;
   // Deep-link /projetos/:id: abre o card expandido e rola ate ele. Id que nao
   // existe no catalogo mostra um banner discreto e a listagem normal.
   const deepLinkId = params.id ?? null;
@@ -142,7 +150,6 @@ export default function Projetos() {
   );
   // Modelo de acesso: projeto sem `pro` e gratuito pra todo mundo (inclusive
   // anonimo); projeto `pro` so abre pra assinante. A amostra de 6 morreu.
-  const hasProItems = projectItems.some((p) => p.pro === true);
 
   // Aprovacoes de validacao (camada validada, 5c): UMA chamada de lista pro
   // selo do header; o detalhe requisito a requisito hidrata por card, ao
@@ -289,18 +296,18 @@ export default function Projetos() {
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="relative w-full">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                aria-hidden
-              />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Buscar projeto por nome, objetivo ou tecnologia"
-                placeholder="Buscar por nome, objetivo ou tecnologia..."
-                className="w-full pl-9 pr-4 py-2 border-2 border-orange-200 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500"
-              />
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="Buscar projeto por nome, objetivo ou tecnologia"
+                  placeholder="Buscar por nome, objetivo ou tecnologia..."
+                  className="w-full pl-9 pr-4 py-2 border-2 border-orange-200 rounded-lg text-sm bg-white focus:outline-none focus:border-orange-500"
+                />
               </div>
               <select
                 value={area}
@@ -402,7 +409,7 @@ export default function Projetos() {
               está a lista completa.
             </p>
           )}
-          {!isPro && !loading && hasProItems ? (
+          {!isPro && !loading && lockedCount > 0 ? (
             <Link
               href="/planos"
               className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-slate-900 bg-violet-950 px-5 py-4 text-white shadow-[4px_4px_0_#0f172a] transition-transform hover:-translate-y-0.5"
@@ -441,7 +448,6 @@ export default function Projetos() {
                 </h2>
                 <div className="space-y-4">
                   {grupo.itens.map((projeto) => {
-                    const locked = projeto.pro === true && !isPro;
                     return (
                       <div
                         key={projeto.id}
@@ -452,8 +458,7 @@ export default function Projetos() {
                           style={{
                             boxShadow: `5px 5px 0 ${getAreaAccent(labelForAreaSlug(projeto.areaSlug))}`,
                           }}
-                          className={`card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5 ${locked ? "pointer-events-none select-none blur-[3px]" : ""}`}
-                          aria-hidden={locked}
+                          className="card-brutal overflow-hidden rounded-xl border-2 border-slate-950 bg-white transition-transform duration-200 motion-safe:hover:-translate-x-0.5 motion-safe:hover:-translate-y-0.5"
                         >
                           <div
                             className="flex w-full cursor-pointer items-start justify-between rounded-xl p-6 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500"
@@ -462,7 +467,6 @@ export default function Projetos() {
                             aria-expanded={expanded === projeto.id}
                             aria-controls={`projeto-detalhe-${projeto.id}`}
                             onClick={() => {
-                              if (locked) return;
                               setExpanded(
                                 expanded === projeto.id ? null : projeto.id,
                               );
@@ -471,7 +475,6 @@ export default function Projetos() {
                               if (e.target !== e.currentTarget) return;
                               if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
-                                if (locked) return;
                                 setExpanded(
                                   expanded === projeto.id ? null : projeto.id,
                                 );
@@ -514,7 +517,7 @@ export default function Projetos() {
                                 )}
                                 {/* Validado e o selo mais forte: quando existe,
                                     substitui o chip de concluido no header. */}
-                                {!locked && validatedIds.has(projeto.id) ? (
+                                {validatedIds.has(projeto.id) ? (
                                   <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-emerald-400 px-2 py-0.5 text-xs font-black text-slate-950">
                                     <Check
                                       className="h-3 w-3"
@@ -524,7 +527,6 @@ export default function Projetos() {
                                     Validado
                                   </span>
                                 ) : (
-                                  !locked &&
                                   completionReady &&
                                   projectsDone.has(projeto.id) && (
                                     <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
@@ -573,9 +575,9 @@ export default function Projetos() {
                             </div>
                           </div>
 
-                          {/* Blur nao e seguranca: o corpo de um projeto pro
-                              bloqueado NAO renderiza (nem por tras do blur). */}
-                          {expanded === projeto.id && !locked && (
+                          {/* Projeto pro so entra na lista renderizada pra
+                              assinante: o card travado nunca chega ao DOM. */}
+                          {expanded === projeto.id && (
                             <div
                               id={`projeto-detalhe-${projeto.id}`}
                               role="region"
@@ -718,30 +720,6 @@ export default function Projetos() {
                             </div>
                           )}
                         </div>
-                        {locked ? (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-slate-900 bg-white/70 p-6 text-center backdrop-blur-[2px]">
-                            <span className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-slate-900 bg-amber-300 shadow-[3px_3px_0_#0f172a]">
-                              <Lock
-                                className="h-6 w-6 text-slate-950"
-                                aria-hidden
-                              />
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-violet-100 px-2.5 py-0.5 text-[11px] font-black uppercase text-violet-800">
-                              <ProStarIcon className="h-3.5 w-3.5" /> Pro
-                            </span>
-                            {/* TODO(Ana): copy do card de projeto travado */}
-                            <p className="max-w-[15rem] text-sm font-black text-slate-950">
-                              Este projeto faz parte do Plano Pro.
-                            </p>
-                            <Link
-                              href="/planos"
-                              className="inline-flex items-center gap-1 rounded-full border-2 border-slate-900 bg-[#FFB800] px-4 py-2 text-xs font-black uppercase text-slate-950 shadow-[2px_2px_0_#0f172a] transition-transform hover:-translate-y-0.5"
-                            >
-                              Assine o Pro pra desbloquear todos{" "}
-                              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                            </Link>
-                          </div>
-                        ) : null}
                       </div>
                     );
                   })}
@@ -749,6 +727,14 @@ export default function Projetos() {
               </section>
             ))}
           </div>
+          {!isPro && !loading && lockedCount > 0 ? (
+            <LockedCatalogTeaser
+              count={lockedCount}
+              noun="projetos"
+              accentShadow={getAreaAccent("Carreira")}
+              className="mt-10"
+            />
+          ) : null}
 
           {filtered.length === 0 && (
             <div className="text-center py-16">
