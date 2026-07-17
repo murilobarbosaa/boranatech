@@ -3,7 +3,7 @@ import { roadmapsV2 } from "../../shared/roadmapV2/content";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Reindexacao completa e IDEMPOTENTE de search_documents, o indice que alimenta
-// a busca do site (/api/search) e a tool search_platform_content do agente.
+// a tool search_platform_content do agente.
 //
 // Contrato:
 //  - Upsert pela unique EXISTENTE (resource_type, resource_id); resource_id e o

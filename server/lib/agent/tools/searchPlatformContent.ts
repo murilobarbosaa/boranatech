@@ -75,7 +75,7 @@ export const searchPlatformContent: AgentTool = {
     let rows = (data ?? []) as SearchRow[];
 
     if (rows.length === 0) {
-      // Fallback ilike sobre titulo e descricao (espelha o da rota /api/search):
+      // Fallback ilike sobre titulo e descricao quando a full-text nao casa:
       // full-text vazio pode ser stemming ou erro de digitacao. Mesmos filtros
       // (is_published = true, mesmo teto). Erro do fallback nao vira falha da
       // tool: o full-text ja respondeu, entao segue como vazio legitimo.
