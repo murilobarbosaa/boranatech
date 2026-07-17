@@ -16,9 +16,10 @@ Mapeamento de certificado (shape estatico): `certificate: "sim" | "nao" | "nao_i
 | 4 | 50 cursos de QA e testes | `3331568` | 50 | 2 | 1 | 47 (30 por 404/timeout, 17 URLs de YouTube fabricadas) | sincronizado |
 | 5 | 100 cursos de front-end e back-end | (pendente) | 100 | 14 | 7 | 79 (ver detalhamento) | nao sincronizado |
 | 6 | 50 cursos de DevOps | (pendente) | 50 | 3 | 6 | 41 (ver detalhamento) | nao sincronizado |
+| 7 | 50 cursos de Gestao de Projetos e Produto | (pendente) | 49 | 16 | 1 | 32 (ver detalhamento) | nao sincronizado |
 
-Total inserido ate agora: 76 cursos.
-Tabela `courses` no Supabase: 20 linhas curadas pre-existentes, agora 79 (59 novas). Lotes 5 e 6 ainda nao sincronizados.
+Total inserido ate agora: 92 cursos.
+Tabela `courses` no Supabase: 20 linhas curadas pre-existentes, agora 79 (59 novas). Lotes 5, 6 e 7 ainda nao sincronizados.
 
 ---
 
@@ -320,6 +321,70 @@ Observacao geral: como nos lotes anteriores, quase todas as URLs `freecodecamp.o
 ### Zero travessao / en dash
 
 Todas as 3 entradas inseridas foram escritas so com hifen comum, sem travessao (—) nem en dash (–), conforme regra do CLAUDE.md.
+
+## Lote 7: 50 cursos de Gestao de Projetos e Produto
+
+Commit: (pendente).
+Metodo de verificacao: `curl -sL --max-time 12 -A "Mozilla/5.0" <url> -o /dev/null -w "%{http_code}"`, em paralelo, com verificacao extra de URL final e `<title>` (UA `Googlebot` nos 403 e controle negativo com slug falso) para pegar soft-404 e redirecionamento-fantasma.
+
+Correcao de area (Passo 0 ponto 2): o prompt pedia `area: "gestao-projetos"` e `"produto-digital"`, mas esses slugs NAO existem na taxonomia de cursos. As areas canonicas sao `gestao` (nome "Gestao de Projetos Tech", `data.ts` slug na linha 2360) e `produto` (nome "Produto Digital", slug na linha 1413). `produto-digital` so existe no catalogo de projetos (`shared/projects/catalog.ts`), nao em cursos. Mapeamento aplicado: `gestao-projetos -> "gestao"`, `produto-digital -> "produto"`.
+
+O prompt listava 49 bullets unicos (a nota sobre o "PMI Kickoff aparece duas vezes" so tem uma ocorrencia real na lista). Cursos gestao/produto ja existentes antes do lote: 5 + 4.
+
+### Inseridos (16: 10 em gestao, 6 em produto)
+
+| id | titulo | plataforma | areaSlug | certificate |
+| -- | ------ | ---------- | -------- | ----------- |
+| curso-gp-pmi-kickoff | PMI Kickoff | PMI | gestao | nao |
+| curso-gp-google-pm-foundations | Fundamentos de Gestao de Projetos (Google) | Coursera | gestao | nao |
+| curso-gp-google-pm-initiation | Iniciacao de Projetos (Google) | Coursera | gestao | nao |
+| curso-gp-google-pm-planning | Planejamento de Projetos (Google) | Coursera | gestao | nao |
+| curso-gp-google-pm-execution | Execucao de Projetos (Google) | Coursera | gestao | nao |
+| curso-gp-google-pm-agile | Gestao Agil de Projetos (Google) | Coursera | gestao | nao |
+| curso-gp-scrum-master-pathway | Trilha de Scrum Master | Scrum.org | gestao | nao |
+| curso-gp-scrum-developer-pathway | Trilha de Scrum Developer | Scrum.org | gestao | nao |
+| curso-gp-certiprof-sfpc | Scrum Foundation Professional Certificate | CertiProf | gestao | sim |
+| curso-gp-google-pm-capstone | Projeto Final de Gestao de Projetos (Google) | Coursera | gestao | nao |
+| curso-prod-product-owner-pathway | Trilha de Product Owner | Scrum.org | produto | nao |
+| curso-prod-alberta-spm-specialization | Especializacao em Gestao de Produtos de Software | Coursera | produto | nao |
+| curso-prod-intro-software-pm | Introducao a Gestao de Produtos de Software | Coursera | produto | nao |
+| curso-prod-software-processes-agile | Processos de Software e Praticas Ageis | Coursera | produto | nao |
+| curso-prod-agile-planning-software | Planejamento Agil de Produtos de Software | Coursera | produto | nao |
+| curso-prod-reviews-metrics-software | Revisoes e Metricas para Melhoria de Software | Coursera | produto | nao |
+
+Aprovados com ressalva de bloqueio de bot (dominio reconhecido): PMI Kickoff (pmi.org, 403 mesmo via Googlebot), as tres trilhas da Scrum.org (403 CloudFront), e o CertiProf SFPC (429 rate-limit persistente em 3 tentativas). Sao ofertas gratuitas reais e canonicas desses dominios. Os 11 cursos da Coursera responderam 200 e permaneceram na propria URL (sem redirecionamento).
+
+### Nao inseridos por duplicata (1)
+
+| # | Curso proposto | Ja existe como |
+| - | -------------- | -------------- |
+| G2 | Introducao a Gestao de Projetos (Fundacao Bradesco) | Introducao a Gestao de Projetos (Fundacao Bradesco, ev.org.br), mesmo curso. Alem disso a URL deu timeout 000. |
+
+### Nao inseridos por conteudo pago, movido, divergente ou nao confirmavel (apesar de HTTP 200 ou 403) (12)
+
+Esquema de URL morto (redireciona slug real E slug falso para um hub generico, com bytes identicos):
+- Atlassian University G32 Jira Fundamentals, G33 Confluence Fundamentals, G34 Agile with Jira, G35 Jira Product Discovery: `university.atlassian.com/student/path/...` cai em `community.atlassian.com/learning`.
+- SEBRAE G29 Design Thinking, G30 Modelagem Canvas, G42 Gestao de Equipes, G43 Planejamento Estrategico: `sebrae.com.br/sites/PortalSebrae/cursosonline/...` cai em `sebrae.com.br/empreendedores/conteudos`.
+
+Redirecionamento-fantasma no Microsoft Learn:
+- G46 DevOps e Equipes Multidisciplinares (`evolve-your-devops-practices`): some para `/azure/devops/get-started/` (mesmo caso do D3 no Lote 6).
+
+Google Cloud Skills Boost nao confirmavel:
+- G44 Google Cloud Digital Leader (`course_templates/355`): 403 de bot e sem titulo via Googlebot. O mesmo ID `355` foi proposto no Lote 6 (D47) com outro nome ("SRE Measuring Reliability"), sinal de ID chutado; descartado.
+
+YouTube com topico nao confirmavel:
+- G19 Scrum na Pratica (Annelise Gripp): canal existe, mas a descricao e generica ("videos sobre diferentes assuntos"), nao confirma foco em Scrum.
+- G39 Jira do Zero (Julio de Lima): canal existe, mas e focado em QA e testes (aparece assim no Lote 4); rotular como curso de Jira seria inventar.
+
+### Nao inseridos por URL reprovada no curl (20)
+
+404 real (17): G8 Project Management for Beginners (freeCodeCamp), G9 SDLC Overview (Microsoft), G10 Planejamento e Adocao de Nuvem (Microsoft), G13 Agile Development Scrum IBM (Coursera), G14 Agile Project Management (freeCodeCamp), G15 Scrum Master Certification Prep (freeCodeCamp), G20 Agilidade e Gestao de Fluxo (MindMaster, YouTube), G21 Product Management Fundamentos (freeCodeCamp), G31 Product Management Masterclasses (PM3, YouTube), G36 Jira Tutorial (freeCodeCamp), G37 Trello para Iniciantes (freeCodeCamp), G38 Azure Boards Agile (Microsoft), G40 Microsoft Project (Microsoft), G41 Projetos Hibridos Microsoft 365 (Microsoft), G45 Responsible AI Business School (Microsoft), G47 Governanca de TI COBIT e ITIL (Microsoft), G48 IBM Applied Project Management (Coursera).
+
+Timeout 000 (3): G1 Fundamentos de Gestao de Projetos, G11 Metodologias Ageis, G28 Design Thinking e Inovacao, todos da Fundacao Bradesco (`escolavirtual.bradesco.com.br`), dominio que segue sem responder deste ambiente.
+
+### Zero travessao / en dash
+
+Todas as 16 entradas inseridas foram escritas so com hifen comum, sem travessao (—) nem en dash (–), conforme regra do CLAUDE.md.
 
 ## Pendencias e decisoes em aberto
 
