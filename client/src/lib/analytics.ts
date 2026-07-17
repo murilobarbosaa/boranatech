@@ -42,6 +42,14 @@ export function captureProGateHit(props: {
   posthog.capture("pro_gate_hit", props);
 }
 
+// Clique no CTA de suporte pelo WhatsApp (canal exclusivo Pro). source distingue
+// de onde partiu: a tela de sucesso do checkout ou o card persistente no perfil.
+export function captureWhatsappSupportClicked(props: {
+  source: "checkout_success" | "perfil";
+}): void {
+  posthog.capture("whatsapp_support_clicked", props);
+}
+
 // --- Cadastro (user_signed_up) -------------------------------------------------
 // user_signed_up e a base do funil de conversao do admin. Precisa disparar UMA
 // vez por conta criada, em QUALQUER metodo (email/senha e OAuth). O bug de

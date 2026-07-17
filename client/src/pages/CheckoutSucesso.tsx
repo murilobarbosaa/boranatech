@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check, Clock, Loader2 } from "lucide-react";
+import { Check, Clock, Loader2, MessageCircle } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { fireProCelebration } from "@/lib/proConfetti";
@@ -9,8 +9,10 @@ import SEO from "@/components/SEO";
 import { ProStarIcon } from "@/components/pro/ProStarIcon";
 import {
   captureSubscriptionCompleted,
+  captureWhatsappSupportClicked,
   planPriceCents,
 } from "@/lib/analytics";
+import { whatsappSupportUrl } from "@/lib/whatsapp";
 import { clearStoredAffiliate } from "@/hooks/useAffiliate";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -69,6 +71,10 @@ export default function CheckoutSucesso() {
   const isLoadingScreen = checking || loading;
   const showSuccess = isPro;
   const showProcessing = processed && !isPro;
+
+  const whatsappUrl = whatsappSupportUrl(
+    "Olá! Acabei de assinar o Pro e gostaria de suporte.",
+  );
 
   // Confetti: dispara uma unica vez quando a tela de sucesso aparece.
   // Sequencia de bursts ao longo de ~2s (estilo festao), centrada no topo do card.
@@ -251,12 +257,30 @@ export default function CheckoutSucesso() {
                   Sua assinatura {planName} está ativa. Bora explorar tudo que o
                   Pro libera na sua jornada tech.
                 </p>
-                <Link
-                  href="/perfil"
-                  className="mt-8 inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
-                >
-                  Começar agora
-                </Link>
+                <div className="mt-8 flex flex-col items-center gap-3">
+                  <Link
+                    href="/perfil"
+                    className="inline-flex rounded-full border-2 border-[#1a1a1a] bg-[#FFB800] px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                  >
+                    Começar agora
+                  </Link>
+                  {whatsappUrl ? (
+                    <a
+                      href={whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() =>
+                        captureWhatsappSupportClicked({
+                          source: "checkout_success",
+                        })
+                      }
+                      className="inline-flex items-center gap-2 rounded-full border-2 border-[#1a1a1a] bg-white px-6 py-3 font-black text-[#1a1a1a] shadow-[4px_4px_0_#0f172a] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#0f172a]"
+                    >
+                      <MessageCircle className="h-5 w-5" />
+                      Suporte no WhatsApp
+                    </a>
+                  ) : null}
+                </div>
               </motion.div>
             ) : (
               <motion.div key="processing" {...fadeSlideUp}>

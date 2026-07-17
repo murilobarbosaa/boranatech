@@ -18,6 +18,7 @@ import {
   Linkedin,
   LogOut,
   MapPin,
+  MessageCircle,
   MessageSquare,
   RefreshCw,
   Star,
@@ -53,9 +54,11 @@ import {
   type AvatarBorderId,
   type AvatarIconId,
 } from "@/constants/avatarOptions";
+import { captureWhatsappSupportClicked } from "@/lib/analytics";
 import { apiUrl } from "@/lib/api";
 import { showActionToast, showErrorToast } from "@/lib/notify";
 import { supabase } from "@/lib/supabase";
+import { whatsappSupportUrl } from "@/lib/whatsapp";
 import {
   getStatusLabel,
   type SubscriptionStatusVariant,
@@ -835,6 +838,8 @@ export default function Perfil() {
     avatarSections[0];
   const planName =
     subscriptionData?.plans?.name || (isPro ? "Pro" : "Gratuito");
+  // Suporte Pro no WhatsApp: null quando VITE_WHATSAPP_NUMBER esta vazio.
+  const waSupportUrl = whatsappSupportUrl();
   // Preco do card vem do planPricing.ts (via code), nao de plans.price_cents.
   // Mesmo formatador de antes, entao o valor exibido nao muda.
   const planCents = subscriptionData?.plans?.code
@@ -1809,6 +1814,34 @@ export default function Perfil() {
                           pagamento.
                         </p>
                       </div>
+                    ) : null}
+
+                    {/* Suporte Pro no WhatsApp: canal exclusivo de assinantes,
+                        prometido no catalogo (proToolDetails.suporteWhatsapp). Visivel
+                        para todo Pro (inclui admin/cortesia via isPro). Some quando
+                        VITE_WHATSAPP_NUMBER esta vazio. */}
+                    {waSupportUrl ? (
+                      <a
+                        href={waSupportUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() =>
+                          captureWhatsappSupportClicked({ source: "perfil" })
+                        }
+                        className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-[#1a1a1a] bg-white/80 p-3 text-left shadow-[3px_3px_0_#0f172a] transition-all hover:-translate-y-0.5 hover:shadow-[5px_5px_0_#0f172a]"
+                      >
+                        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 border-[#1a1a1a] bg-[#FFB800]">
+                          <MessageCircle className="h-4 w-4 text-[#1a1a1a]" />
+                        </span>
+                        <span>
+                          <span className="block font-display text-sm font-black text-slate-950">
+                            Suporte Pro no WhatsApp
+                          </span>
+                          <span className="block text-xs font-semibold text-slate-600">
+                            Canal direto, exclusivo pra assinantes.
+                          </span>
+                        </span>
+                      </a>
                     ) : null}
 
                     {/* Cancelar / nao-renovar so faz sentido com assinatura REAL.
