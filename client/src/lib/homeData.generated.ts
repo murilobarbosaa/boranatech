@@ -41,6 +41,7 @@ export const skillsAreaNames = [
   "Front-end",
   "Back-end",
   "Full-stack",
+  "Desenvolvimento de Software",
   "Ciência de Dados",
   "UX/UI Design",
   "Inteligência Artificial",
@@ -60,7 +61,8 @@ export const skillsAreaNames = [
   "Análise de Sistemas",
   "Blockchain / Web3",
   "IoT / Sistemas Embarcados",
-  "Mainframe"
+  "Mainframe",
+  "Automação Industrial"
 ];
 
 export const praVoceNoticia = {
@@ -99,16 +101,16 @@ export const praVoceEventos = [
   {
     "id": "python-brasil",
     "nome": "Python Brasil",
-    "data": "Outubro/novembro (anual)",
+    "data": "14 a 19 de outubro de 2026",
     "horario": "Vários horários",
-    "cidade": "Varia por ano",
-    "estado": "NA",
+    "cidade": "Florianópolis",
+    "estado": "SC",
     "formato": "Híbrido",
     "area": "Python / Dados / IA",
     "valor": "Pago",
     "link": "https://pythonbrasil.org.br",
     "logoUrl": "https://www.google.com/s2/favicons?domain=python.org.br&sz=128",
-    "calendarStart": "20261015",
+    "calendarStart": "20261014",
     "calendarEnd": "20261019",
     "descricao": "Maior conferência de Python da América Latina. Palestras, tutoriais e sprints de código.",
     "organizador": "Associação Python Brasil",
