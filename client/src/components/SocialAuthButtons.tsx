@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { rememberSignupSource, signupSourceFromUrl } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { PENDING_CONSENT_KEY } from "@/services/consentService";
 import { PENDING_MARKETING_OPTIN_KEY } from "@/services/profileService";
@@ -85,6 +86,9 @@ export default function SocialAuthButtons({
       onBeforeOAuth?.();
       if (mode === "cadastro") {
         localStorage.setItem("bnt_social_signup_pending", "true");
+        // OAuth perde o returnTo no round-trip; persiste a origem agora (ainda
+        // em /cadastro?returnTo=...) pro user_signed_up ler no retorno.
+        rememberSignupSource(signupSourceFromUrl());
         // So grava o aceite se o usuario marcou o checkbox de termos. Sem isso, o
         // ConsentGate pede o aceite no primeiro login.
         if (consentAccepted) {

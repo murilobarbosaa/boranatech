@@ -1,6 +1,7 @@
 import {
   captureUserSignedUpForEmail,
   captureUserSignedUpForOAuth,
+  signupSourceFromUrl,
 } from "@/lib/analytics";
 import { assertSupabaseConfigured, supabase } from "@/lib/supabase";
 import { hasOAuthCallbackInUrl } from "@/lib/authCallback";
@@ -417,7 +418,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (error) throw error;
 
-        captureUserSignedUpForEmail();
+        captureUserSignedUpForEmail(signupSourceFromUrl());
       } catch (error) {
         console.error("[AuthContext] signUp failed", error);
         throw error;

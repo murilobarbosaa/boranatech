@@ -42,6 +42,105 @@ export function captureProGateHit(props: {
   posthog.capture("pro_gate_hit", props);
 }
 
+// Origem normalizada de um signup ou gate-hit. Valor de baixa cardinalidade
+// derivado do path: o path cru (ex: /areas/dados/engenheiro-dados) explodiria o
+// numero de valores distintos no PostHog e inviabilizaria o funil. "unknown"
+// (sem dado de origem) e distinto de "other" (origem conhecida, fora de areas):
+// no baseline sao coisas diferentes ("nao consegui atribuir" vs "veio de outro
+// lugar").
+export type ContentSource =
+  | "area_detail"
+  | "subarea_detail"
+  | "other"
+  | "unknown";
+
+const SIGNUP_SOURCE_STORAGE_KEY = "bnt_signup_source";
+// Janela de validade da origem persistida pro OAuth. Cobre o round-trip pro
+// provedor com folga (segundos a poucos minutos) e expira logo depois pra um
+// cadastro-OAuth abandonado nao contaminar um signup posterior nao relacionado.
+const SIGNUP_SOURCE_TTL_MS = 15 * 60_000;
+
+function safePathname(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
+
+// Classifica um path (tipicamente o returnTo que o RequireAuth injeta) na origem
+// de conteudo. Ausencia de path -> unknown; /areas/:slug -> area_detail;
+// /areas/:parent/:subarea -> subarea_detail; qualquer outro path conhecido
+// (incluindo a listagem /areas) -> other.
+export function classifyContentSource(
+  path: string | null | undefined,
+): ContentSource {
+  if (!path) return "unknown";
+  const clean = (path.startsWith("http") ? safePathname(path) : path).split(
+    /[?#]/,
+  )[0];
+  const seg = clean.split("/").filter(Boolean);
+  if (seg[0] !== "areas") return "other";
+  if (seg.length >= 3) return "subarea_detail";
+  if (seg.length === 2) return "area_detail";
+  return "other";
+}
+
+// Origem do signup a partir do returnTo na URL atual. Usado no fluxo de e-mail,
+// que dispara ainda na pagina /cadastro?returnTo=..., com a URL intacta. Sem
+// returnTo -> unknown.
+export function signupSourceFromUrl(): ContentSource {
+  if (typeof window === "undefined") return "unknown";
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+  return classifyContentSource(returnTo);
+}
+
+// OAuth perde o returnTo no round-trip pro provedor (o redirectTo volta pra
+// /perfil). A origem e persistida no clique do botao social (ainda em /cadastro)
+// e consumida no SIGNED_IN de criacao de conta. Guarda um timestamp pra expirar
+// (SIGNUP_SOURCE_TTL_MS) e nao mis-atribuir um cadastro abandonado.
+export function rememberSignupSource(source: ContentSource): void {
+  try {
+    localStorage.setItem(
+      SIGNUP_SOURCE_STORAGE_KEY,
+      JSON.stringify({ source, ts: Date.now() }),
+    );
+  } catch {
+    // localStorage indisponivel: signup OAuth cai em source=unknown.
+  }
+}
+
+function consumeSignupSource(): ContentSource {
+  try {
+    const raw = localStorage.getItem(SIGNUP_SOURCE_STORAGE_KEY);
+    if (!raw) return "unknown";
+    localStorage.removeItem(SIGNUP_SOURCE_STORAGE_KEY);
+    const { source, ts } = JSON.parse(raw) as {
+      source?: unknown;
+      ts?: unknown;
+    };
+    if (typeof ts !== "number" || Date.now() - ts > SIGNUP_SOURCE_TTL_MS) {
+      return "unknown";
+    }
+    return source === "area_detail" ||
+      source === "subarea_detail" ||
+      source === "other"
+      ? source
+      : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+// Anon bate no muro de conteudo (area/subarea) e e redirecionado pro cadastro.
+// Espelha captureProGateHit: mede quantos visitantes o gate empurra hoje.
+export function captureContentGateHit(props: {
+  feature: "area_detail" | "subarea_detail";
+  path: string;
+}): void {
+  posthog.capture("content_gate_hit", props);
+}
+
 // Clique no CTA de suporte pelo WhatsApp (canal exclusivo Pro). source distingue
 // de onde partiu: a tela de sucesso do checkout ou o card persistente no perfil.
 export function captureWhatsappSupportClicked(props: {
@@ -70,9 +169,12 @@ type SupabaseUserLike = {
 // menor que qualquer intervalo real ate um novo login.
 const SIGNUP_WINDOW_MS = 60_000;
 
-// Cadastro por email/senha. Ja disparava no signUp; agora carrega method.
-export function captureUserSignedUpForEmail(): void {
-  posthog.capture("user_signed_up", { method: "email" });
+// Cadastro por email/senha. Ja disparava no signUp; agora carrega method e a
+// origem (returnTo classificado), pra atribuir signups a paginas de conteudo.
+export function captureUserSignedUpForEmail(
+  source: ContentSource = "unknown",
+): void {
+  posthog.capture("user_signed_up", { method: "email", source });
 }
 
 // Cadastro via OAuth (Google). Chamado em TODO SIGNED_IN, mas so dispara quando a
@@ -106,5 +208,8 @@ export function captureUserSignedUpForOAuth(user: SupabaseUserLike): void {
     // localStorage indisponivel: segue sem dedup persistente. O sinal de
     // created_at ja evita reincidencia fora da janela.
   }
-  posthog.capture("user_signed_up", { method: provider });
+  posthog.capture("user_signed_up", {
+    method: provider,
+    source: consumeSignupSource(),
+  });
 }
