@@ -98,7 +98,7 @@ const team: TeamMember[] = [
     // TODO(Ana): revisar a voz. Texto do LinkedIn real, nao acrescentar nada.
     bio: "Estudante de tecnologia no UniCEUB e creator (@ana.natech). Representante discente no Colegiado de TI do UniCEUB e diretora de tecnologia e inovação do DCE. Já liderou projetos de software de ponta a ponta como gestora de projetos e designer de UX/UI.",
     links: [
-      { kind: "linkedin", url: "https://www.linkedin.com/in/anajuliamoura/" },
+      { kind: "linkedin", url: "https://www.linkedin.com/in/anajulia-moura/" },
       { kind: "instagram", url: "https://www.instagram.com/ana.natech/" },
     ],
   },
